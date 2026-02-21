@@ -1,0 +1,49 @@
+[
+  {
+    "id": 1,
+    "name": "Bangladesh Islamic Cultural Center (BICC)",
+    "type": "mosque",
+    "address": "Malminkaari 9 A, 00700 Helsinki",
+    "lat": 60.250280726774456,
+    "lng": 25.01109832122293,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "female_prayer": true,
+      "female_wudu": false,
+      "quran_classes": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 2,
+    "name": "Suomen Islamilainen Yhdyskunta",
+    "type": "mosque",
+    "address": "Lönnrotinkatu 22, 00180 Helsinki",
+    "lat": 60.16466031795139,
+    "lng": 24.93424255135939,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "female_prayer": true,
+      "female_wudu": true,
+      "quran_classes": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 3,
+    "name": "Yalla Malmi",
+    "type": "shop",
+    "address": "Hietakummuntie 19, 00700 Helsinki",
+    "lat": 60.249997451764266,
+    "lng": 25.012677196646568,
+    "tags": {
+      "halal_meat": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  }
+]

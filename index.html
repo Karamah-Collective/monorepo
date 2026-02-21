@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#1A73B8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>Helsinki Map</title>
+  <title>Halal Finder Helsinki</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -63,12 +63,13 @@
       </svg>
       <span>Routes</span>
     </button>
-    <button id="pins-btn" class="tab" aria-label="Saved places">
+    <button id="places-btn" class="tab" aria-label="Places">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 17.75l-6.172 3.245 1.179-6.873-5-4.867 6.9-1.002L12 2l3.093 6.253 6.9 1.002-5 4.867 1.179 6.873z"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+        <circle cx="12" cy="9" r="2.5"/>
       </svg>
-      <span>Saved</span>
-      <span id="badge" class="badge hide">0</span>
+      <span>Places</span>
+      <span id="places-badge" class="badge hide">0</span>
     </button>
     <button id="locate-btn" class="tab" aria-label="My location">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -186,22 +187,105 @@
     </div>
   </div>
 
-  <!-- ─── Saved Places Sheet (bottom) ─── -->
-  <div id="pin-sheet" class="sheet shut">
-    <div id="sheet-drag" class="sheet-drag"><span></span></div>
-    <div id="sheet-head" class="sheet-head">
-      <h2>Saved Places</h2>
-      <span id="pin-ct"></span>
-      <button id="sheet-close" class="sheet-x" aria-label="Close">
+  <!-- ─── Places Sheet (bottom) ─── -->
+  <div id="places-sheet" class="sheet shut">
+    <div id="places-drag" class="sheet-drag"><span></span></div>
+    <div class="sheet-head">
+      <h2>Places</h2>
+      <span id="places-ct"></span>
+      <button id="places-close" class="sheet-x" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div id="sheet-scroll">
-      <ul id="pin-list"></ul>
-      <div id="empty-pins">
-        <p>No saved places yet</p>
-        <span>Search or double-tap the map to save a spot</span>
+    <div id="places-filters">
+      <div id="places-type-chips">
+        <button class="pf-chip active" data-type="all">
+          <span class="pf-icon" style="--pf-c:var(--accent)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+          </span>
+          <span class="pf-label">All</span>
+        </button>
+        <button class="pf-chip" data-type="mosque">
+          <span class="pf-icon" style="--pf-c:#1FA86A">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+          </span>
+          <span class="pf-label">Mosques</span>
+        </button>
+        <button class="pf-chip" data-type="prayer_room">
+          <span class="pf-icon" style="--pf-c:#00B9E4">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a2 2 0 100 4 2 2 0 000-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </span>
+          <span class="pf-label">Prayer</span>
+        </button>
+        <button class="pf-chip" data-type="restaurant">
+          <span class="pf-icon" style="--pf-c:#FF6319">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+          </span>
+          <span class="pf-label">Food</span>
+        </button>
+        <button class="pf-chip" data-type="shop">
+          <span class="pf-icon" style="--pf-c:#8C4799">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg>
+          </span>
+          <span class="pf-label">Shops</span>
+        </button>
       </div>
+      <div id="tf-row" class="hide">
+        <button id="tf-toggle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filter<span id="tf-count" class="hide">0</span>
+          <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <div id="tag-filter-chips" class="shut"></div>
+    </div>
+    <div id="places-scroll">
+      <ul id="places-list"></ul>
+      <div id="places-empty" class="hide">
+        <p>No places found</p>
+        <span>Try changing your filters</span>
+      </div>
+    </div>
+    <div id="places-footer">
+      <button id="suggest-place-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Suggest a Place
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── Suggest Place Overlay ─── -->
+  <div id="suggest-overlay" class="hide">
+    <div id="suggest-card">
+      <div class="suggest-head">
+        <h3>Suggest a Place</h3>
+        <button id="suggest-close" class="sheet-x" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="suggest-form" autocomplete="off">
+        <label class="sg-label">Place Name <span class="sg-req">*</span>
+          <input id="sg-name" type="text" required placeholder="e.g. Halal Kitchen" />
+        </label>
+        <label class="sg-label">Type <span class="sg-req">*</span>
+          <select id="sg-type">
+            <option value="mosque">Mosque</option>
+            <option value="prayer_room">Prayer Room</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="shop">Shop</option>
+          </select>
+        </label>
+        <label class="sg-label">Address
+          <input id="sg-address" type="text" placeholder="Street, city" />
+        </label>
+        <label class="sg-label">Additional Notes
+          <textarea id="sg-notes" rows="3" placeholder="Any details about this place…"></textarea>
+        </label>
+        <button type="submit" id="sg-submit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Submit Suggestion
+        </button>
+      </form>
     </div>
   </div>
 

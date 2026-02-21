@@ -1,0 +1,33 @@
+{
+  "mosque": [
+    { "id": "daily_prayers", "label": "5 Daily" },
+    { "id": "jummah", "label": "Jummah" },
+    { "id": "taraweeh", "label": "Taraweeh" },
+    { "id": "eid_prayer", "label": "Eid Prayer" },
+    { "id": "janaza", "label": "Janaza" },
+    { "id": "quran_classes", "label": "Quran Class" },
+    { "id": "female_prayer", "label": "Sisters Section" },
+    { "id": "female_wudu", "label": "Sisters Wudu" }
+  ],
+  "prayer_room": [
+    { "id": "wudu", "label": "Wudu" },
+    { "id": "female_prayer", "label": "Sisters Section" },
+    { "id": "female_wudu", "label": "Sisters Wudu" },
+    { "id": "quran_available", "label": "Quran Available" }
+  ],
+  "restaurant": [
+    { "id": "fully_halal", "label": "Fully Halal" },
+    { "id": "partially_halal", "label": "Partially Halal" },
+    { "id": "halal_certified", "label": "Certified" },
+    { "id": "no_alcohol", "label": "No Alcohol" },
+    { "id": "zabiha", "label": "Zabiha" }
+  ],
+  "shop": [
+    { "id": "halal_meat", "label": "Halal Meat" },
+    { "id": "halal_groceries", "label": "Groceries" },
+    { "id": "asian_products", "label": "Asian" },
+    { "id": "african_products", "label": "African" },
+    { "id": "arab_products", "label": "Arab" },
+    { "id": "halal_certified", "label": "Certified" }
+  ]
+}
