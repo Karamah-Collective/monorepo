@@ -50,12 +50,12 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --tab-h: 56px;
 
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 button { border: none; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
+html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; line-height: 1.5; }
 #app { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .hide { display: none !important; }
 
@@ -88,6 +88,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #search-pill:hover { color: var(--text-2); }
 #search-pill:active { color: var(--accent); }
 #search-card.collapsed #search-expanded { display: none; }
+#search-box:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent-muted);
+  border-radius: var(--r-xl);
+}
 #search-card:not(.collapsed) #search-pill { display: none; }
 
 /* ── Expanded card ── */
@@ -208,6 +212,12 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 /* ── Active Tab Indicators ── */
 .tab.tracking { color: var(--accent); animation: tabTrackPulse 2s ease-in-out infinite; }
 .tab.route-active { color: var(--accent); }
+.tab.active-tab { color: var(--accent); }
+.tab.active-tab::after {
+  content: ''; position: absolute; bottom: 4px;
+  width: 16px; height: 3px; border-radius: 2px;
+  background: var(--accent);
+}
 @keyframes tabTrackPulse {
   0%, 100% { color: var(--accent); }
   50% { color: var(--accent-muted); }
@@ -216,7 +226,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .badge {
   position: absolute; top: 5px; right: calc(50% - 22px);
   min-width: 16px; height: 16px; line-height: 16px;
-  font-size: 9px; font-weight: 800; text-align: center;
+  font-size: 9px; font-weight: 700; text-align: center;
   color: #fff; background: var(--accent);
   border-radius: var(--r-pill); padding: 0 4px;
   pointer-events: none;
@@ -241,6 +251,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
     gap: 4px; font-size: 10px;
   }
   .tab svg { width: 20px; height: 20px; }
+  .tab.active-tab::after {
+    bottom: auto; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 16px; border-radius: 0 2px 2px 0;
+  }
   .badge { top: 4px; right: 8px; }
   #zoom-pill { bottom: 24px; }
   #search-card { bottom: 119px; }
@@ -258,21 +272,29 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   box-shadow: 0 -4px 20px rgba(0,0,0,.06);
   display: flex; flex-direction: column; overflow: hidden;
   transition: transform .4s cubic-bezier(.32,.72,0,1), height .35s cubic-bezier(.32,.72,0,1);
-  will-change: transform, height;
 }
 .sheet.shut { transform: translateY(100%); }
-.sheet.dragging { transition: none; }
+.sheet.dragging { transition: none; will-change: transform, height; }
 .sheet.full { height: calc(100vh - 24px); border-radius: var(--r-xl); }
 
-.sheet-drag { display: flex; justify-content: center; padding: 10px 0 4px; cursor: grab; touch-action: none; }
+.sheet-drag { display: flex; justify-content: center; padding: 10px 0 4px; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
 .sheet-drag span { width: 36px; height: 4px; background: var(--surface-3); border-radius: var(--r-pill); }
 
 .sheet-head {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 20px 16px; border-bottom: 1px solid var(--border-light);
   cursor: grab; touch-action: none;
+  -webkit-user-select: none; user-select: none;
 }
-.sheet-head h2 { flex: 1; font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+.sheet-head h2 { flex: 1; font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+
+.sheet-action-btn {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent); border: none; border-radius: 50%;
+  cursor: pointer; color: #fff;
+  transition: opacity .15s;
+}
+.sheet-action-btn:hover { opacity: .82; }
 
 .sheet-x {
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -286,10 +308,11 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 @media (min-width: 769px) {
   .sheet {
     left: auto; right: 92px;
-    top: 50%; bottom: auto;
-    transform: translateY(-50%) scale(1);
+    top: 0; bottom: 0;
+    margin: auto 0;
+    transform: none;
     transform-origin: right center;
-    height: auto;
+    height: fit-content;
     max-height: calc(100vh - 48px); width: 400px;
     border-radius: var(--r-xl);
     box-shadow: var(--shadow-lg);
@@ -297,7 +320,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
     transition: transform .35s cubic-bezier(.32,.72,0,1), opacity .25s ease;
   }
   .sheet.shut {
-    transform: translateY(-50%) translateX(40px) scale(.92);
+    transform: translateX(40px) scale(.92);
     opacity: 0;
     pointer-events: none;
   }
@@ -382,7 +405,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   min-width: 18px; height: 18px; padding: 0 5px;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent); color: #fff;
-  border-radius: var(--r-pill); font-size: 11px; font-weight: 800;
+  border-radius: var(--r-pill); font-size: 11px; font-weight: 700;
 }
 #tf-toggle.open #tf-count { background: #fff; color: var(--accent); }
 #tag-filter-chips {
@@ -414,20 +437,23 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   flex: 1; overflow-y: auto; overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  scroll-behavior: smooth;
 }
 #places-scroll::-webkit-scrollbar { width: 3px; }
 #places-scroll::-webkit-scrollbar-track { background: transparent; }
 #places-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-#places-list { list-style: none; }
+#places-list { list-style: none; padding: 4px 0; }
 #places-list li {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 20px; cursor: pointer;
-  border-bottom: 1px solid var(--border-light);
-  transition: background-color .15s;
+  margin: 6px 12px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--place-c, var(--accent));
+  border-radius: var(--r-md); cursor: pointer;
+  transition: border-color .15s, background-color .15s;
 }
-#places-list li:hover { background: var(--surface-2); }
-#places-list li:active { background: var(--accent-soft); }
+#places-list li:hover { background: var(--surface-2); border-color: var(--surface-3); border-left-color: var(--place-c, var(--accent)); }
+#places-list li:active { background: var(--accent-soft); border-color: var(--accent-muted); border-left-color: var(--place-c, var(--accent)); }
 
 .pl-icon {
   width: 38px; height: 38px; border-radius: var(--r-sm);
@@ -455,34 +481,56 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 #places-empty {
   display: flex; flex-direction: column; align-items: center;
-  padding: 40px 24px; text-align: center; gap: 8px;
+  padding: 20px 24px; text-align: center; gap: 6px;
 }
-#places-empty p { font-size: 16px; font-weight: 700; color: var(--text-2); }
-#places-empty span { font-size: 14px; color: var(--text-3); line-height: 1.6; }
+#places-empty .empty-icon {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border-radius: 50%; color: var(--text-3); margin-bottom: 2px;
+}
+#places-empty p { font-size: 15px; font-weight: 600; color: var(--text-2); }
+#places-empty span { font-size: 13px; color: var(--text-3); line-height: 1.5; }
 
-/* ── Places footer ── */
-#places-footer {
-  padding: 10px 16px;
-  border-top: 1px solid var(--border-light);
-  flex-shrink: 0;
+/* ── Skeleton loading ── */
+.pl-skeleton {
+  display: flex; align-items: center; gap: 14px;
+  margin: 6px 12px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--surface-3);
+  border-radius: var(--r-md);
 }
-#suggest-place-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; height: 42px; padding: 0 20px;
-  background: var(--surface-2); color: var(--text-2);
-  border: 1.5px solid var(--border); border-radius: var(--r-sm);
-  font-family: inherit; font-size: 14px; font-weight: 700;
+.skel-bone {
+  background: var(--surface-2); border-radius: 6px;
+  animation: shimmer 1.2s ease-in-out infinite alternate;
+}
+.skel-icon { width: 38px; height: 38px; border-radius: var(--r-sm); flex-shrink: 0; }
+.skel-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.skel-line { height: 12px; border-radius: 6px; }
+.skel-line-short { width: 60%; }
+.skel-line-long { width: 85%; }
+.skel-line-xs { width: 35%; height: 10px; }
+.skel-badge { width: 56px; height: 24px; border-radius: var(--r-pill); flex-shrink: 0; }
+@keyframes shimmer {
+  from { opacity: 1; }
+  to { opacity: .45; }
+}
+
+/* ── Suggest inline button (empty state) ── */
+.suggest-inline-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px;
+  background: none; color: var(--accent);
+  border-radius: var(--r-pill);
+  font-family: inherit; font-size: 13.5px; font-weight: 600;
   cursor: pointer;
-  transition: all .15s;
+  transition: background .15s;
 }
-#suggest-place-btn:hover { background: var(--surface-3); color: var(--text); border-color: var(--surface-3); }
+.suggest-inline-btn:hover { background: var(--accent-soft); }
 
 /* ═══════════════════════════════════════════════════════
    PLACE MARKERS
    ═══════════════════════════════════════════════════════ */
 .place-mk-wrap {
   cursor: pointer;
-  animation: markerDrop .35s cubic-bezier(.18,.89,.32,1.28);
 }
 .place-mk {
   display: flex; align-items: center; justify-content: center;
@@ -530,8 +578,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   background: rgba(255,255,255,.15); border-radius: 8px;
 }
 .pp-title {
-  grid-area: title; font-size: 14px; font-weight: 800;
-  line-height: 1.2; align-self: end; letter-spacing: -.01em;
+  grid-area: title; font-size: 14px; font-weight: 600;
+  line-height: 1.2; align-self: end;
 }
 .pp-sub {
   grid-area: sub; font-size: 10.5px; font-weight: 600;
@@ -607,8 +655,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   border-bottom: 1px solid var(--border-light);
 }
 .suggest-head h3 {
-  font-size: 18px; font-weight: 800; color: var(--text);
-  letter-spacing: -.02em;
+  font-size: 18px; font-weight: 600; color: var(--text);
+  letter-spacing: -.01em;
 }
 
 #suggest-form {
@@ -823,7 +871,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   padding: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
 }
 .picker-overlay.hide { display: none; }
 
@@ -843,8 +891,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   margin-bottom: 10px;
 }
 .cal-head span {
-  font-size: 14px; font-weight: 800; color: var(--text);
-  letter-spacing: -.01em;
+  font-size: 14px; font-weight: 600; color: var(--text);
 }
 .cal-nav {
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
@@ -875,7 +922,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   transition: background-color .12s, color .12s;
 }
 .cal-day:hover { background: var(--surface-2); }
-.cal-day.today { color: var(--accent); font-weight: 800; }
+.cal-day.today { color: var(--accent); font-weight: 700; }
 .cal-day.selected { background: var(--accent); color: #fff; }
 .cal-day.selected:hover { opacity: .88; }
 .cal-day.other-month { color: var(--text-3); opacity: .5; }
@@ -891,7 +938,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   text-transform: uppercase; letter-spacing: .04em;
 }
 .tp-colon {
-  font-size: 18px; font-weight: 800; color: var(--text-3);
+  font-size: 18px; font-weight: 700; color: var(--text-3);
   margin-top: 26px; flex-shrink: 0;
 }
 .tp-wheel {
@@ -953,7 +1000,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .itin-card.active { background: var(--accent-soft); border-color: var(--accent-muted); }
 
 .itin-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
-.itin-dur { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.03em; }
+.itin-dur { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
 .itin-card.active .itin-dur { color: var(--accent); }
 .itin-time { font-size: 13px; color: var(--text-3); font-weight: 600; font-variant-numeric: tabular-nums; }
 .itin-walk { font-size: 13px; color: var(--text-3); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
@@ -993,12 +1040,67 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .itin-expand svg { width: 14px; height: 14px; }
 .itin-card.active .itin-expand { display: flex; }
 
+/* ── Compact search summary bar (mobile, shown when results visible) ── */
+#dir-summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+.dir-sum-route {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.dir-sum-text {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 120px;
+}
+.dir-sum-arrow { flex-shrink: 0; color: var(--text-3); }
+#dir-sum-edit {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px; flex-shrink: 0;
+  background: var(--accent); color: #fff;
+  border-radius: var(--r-sm);
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+#dir-sum-edit:hover { opacity: .82; }
+
+/* ── Mobile: collapse search when results shown ── */
+@media (max-width: 768px) {
+  #dir-panel.results-shown #dir-inputs,
+  #dir-panel.results-shown #dir-time-bar,
+  #dir-panel.results-shown #dir-go {
+    display: none;
+  }
+  #dir-panel.results-shown #dir-summary {
+    display: flex !important;
+  }
+  /* When editing, hide summary and show inputs */
+  #dir-panel.results-shown.search-editing #dir-inputs,
+  #dir-panel.results-shown.search-editing #dir-time-bar,
+  #dir-panel.results-shown.search-editing #dir-go {
+    display: flex;
+  }
+  #dir-panel.results-shown.search-editing #dir-summary {
+    display: none !important;
+  }
+}
+/* Desktop: never show summary, always show full inputs */
+@media (min-width: 769px) {
+  #dir-summary { display: none !important; }
+}
+
 /* ── Focused route view ── */
 #dir-panel.route-focused #dir-inputs,
 #dir-panel.route-focused #dir-time-bar,
 #dir-panel.route-focused #dir-go,
-#dir-panel.route-focused #dir-head {
-  display: none;
+#dir-panel.route-focused #dir-head,
+#dir-panel.route-focused #dir-summary {
+  display: none !important;
 }
 #dir-panel.route-focused #dir-results {
   flex: 1;
@@ -1014,7 +1116,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border-light);
 }
-.focused-top-row h2 { flex: 1; font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+.focused-top-row h2 { flex: 1; font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
 #dir-focused-back {
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   background: var(--surface-2); border: none; border-radius: 50%;
@@ -1123,7 +1225,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .zone-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 6px;
-  font-size: 12px; font-weight: 800; letter-spacing: .02em;
+  font-size: 12px; font-weight: 700; letter-spacing: .02em;
   color: #fff; line-height: 1;
 }
 .zone-badge.zone-a { background: #1A73B8; }
@@ -1240,7 +1342,6 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 .pin-marker {
   cursor: pointer;
-  animation: markerDrop .35s cubic-bezier(.18,.89,.32,1.28);
 }
 @keyframes markerDrop {
   0% { transform: translateY(-16px); opacity: 0; }
@@ -1270,8 +1371,30 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .maplibregl-popup-content {
   border-radius: var(--r-lg) !important; padding: 16px 18px !important;
   box-shadow: var(--shadow-lg) !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
 }
+
+/* Pin action popup */
+.pin-action-popup .maplibregl-popup-content {
+  padding: 10px 10px !important;
+  border-radius: var(--r-md) !important;
+  min-width: 0;
+}
+.pin-action-popup .maplibregl-popup-close-button { display: none !important; }
+.pin-actions { display: flex; gap: 6px; }
+.pin-act-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px;
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  color: #fff;
+  border-radius: var(--r-sm); cursor: pointer;
+  transition: opacity .15s;
+  white-space: nowrap;
+}
+.pin-act-btn:hover { opacity: .82; }
+.pin-act-btn svg { flex-shrink: 0; }
+.pin-act-dir { background: var(--accent); }
+.pin-act-rm { background: var(--danger, #d93025); }
 .maplibregl-popup-close-button {
   font-size: 18px !important; top: 10px !important; right: 12px !important;
   color: var(--text-3) !important; width: 24px !important; height: 24px !important;
@@ -1318,8 +1441,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .sp-icon svg { width: 16px; height: 16px; color: #fff; }
 .sp-title {
-  grid-area: title; font-size: 14px; font-weight: 800;
-  line-height: 1.2; align-self: end; letter-spacing: -.01em;
+  grid-area: title; font-size: 14px; font-weight: 600;
+  line-height: 1.2; align-self: end;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sp-sub {
@@ -1348,7 +1471,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .sp-chip {
   display: inline-flex; align-items: center; gap: 3px;
   height: 24px; padding: 0 8px; border-radius: 6px;
-  font-size: 11.5px; font-weight: 800; color: #fff;
+  font-size: 11.5px; font-weight: 700; color: #fff;
   background: var(--rc, var(--accent));
   letter-spacing: .15px; cursor: default;
   white-space: nowrap;
@@ -1371,7 +1494,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .sp-tip {
   position: fixed; z-index: 9999;
   background: var(--text); color: #fff;
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
   font-size: 11px; font-weight: 500; line-height: 1.35;
   padding: 5px 9px; border-radius: 7px;
   white-space: normal; max-width: 200px; width: max-content;
@@ -1400,24 +1523,94 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
    RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  /* ── Search ── */
   #search-card { right: 12px; bottom: 172px; }
   #search-card:not(.collapsed) { width: min(94vw, 360px); }
-  #search-box { height: 46px; padding: 0 14px; }
-  #search-input { font-size: 16px; }
+  #search-box { height: 48px; padding: 0 14px; }
+  #search-input { font-size: 16px; } /* ≥16px prevents iOS zoom */
+  #search-drop { max-height: 44vh; }
 
+  /* ── Controls ── */
   #zoom-pill { right: 12px; bottom: 80px; }
 
-  #tab-bar { height: 56px; }
+  /* ── Tab bar with safe area ── */
+  #tab-bar {
+    height: 56px;
+    bottom: calc(12px + var(--safe-b));
+  }
   .tab { font-size: 10.5px; }
   .tab svg { width: 20px; height: 20px; }
 
+  /* ── Touch target minimums (44px recommended by Apple/Google) ── */
+  .sheet-x { width: 36px; height: 36px; }
+  .clear-btn { width: 36px; height: 36px; }
+  .dir-field-btn { width: 40px; height: 40px; }
+  .cal-nav { width: 38px; height: 38px; }
+  #snackbar-close { width: 34px; height: 34px; }
+  #dir-swap { width: 40px; height: 40px; }
+
+  /* ── Inputs: 16px prevents iOS auto-zoom ── */
+  .dir-field input { font-size: 16px; }
+  .sg-label input, .sg-label select, .sg-label textarea { font-size: 16px; }
+  #dir-date, #dir-time { font-size: 16px; }
+
+  /* ── Directions panel ── */
   .itin-card { margin: 6px 12px; padding: 14px; }
   #dir-inputs { padding: 12px 14px 6px; gap: 6px; }
   #dir-time-bar { padding: 4px 14px 8px; }
-  #dir-go { margin: 6px 14px 10px; height: 44px; }
+  #dir-go { margin: 6px 14px 10px; height: 48px; font-size: 16px; }
+  .dir-suggest { max-height: 180px; }
+
+  /* ── Sheet drag handle — larger touch area ── */
+  .sheet-drag { padding: 12px 0 6px; }
+  .sheet-drag span { width: 40px; height: 5px; }
+
+  /* ── Filter chips ── */
+  #tf-toggle { padding: 7px 14px; font-size: 13px; }
+  .tf-chip { padding: 7px 14px; font-size: 13px; }
+
+  /* ── Places list touch targets ── */
+  #places-list li { padding: 14px 14px; }
+
+  /* ── Snackbar safe area ── */
+  #route-snackbar { bottom: calc(var(--tab-h) + var(--safe-b) + 20px); }
+
+  /* ── Suggest overlay: near full-screen on phone ── */
+  #suggest-overlay { padding: 12px; align-items: flex-end; }
+  #suggest-card {
+    max-width: 100%; max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+
+  /* ── Sheet safe area for bottom padding ── */
+  .sheet { padding-bottom: var(--safe-b); }
+
+  /* ── Place popup mobile sizing ── */
+  .place-popup-wrap .maplibregl-popup-content {
+    max-width: min(300px, 90vw);
+  }
+
+  /* ── Pin action popup: horizontal buttons still ── */
+  .pin-act-btn { padding: 9px 16px; font-size: 13px; }
+
+  /* ── Remove sticky hover on touch devices ── */
+  .tab:hover { color: var(--text-3); }
+  .tab:active { color: var(--accent); }
+  #zoom-pill button:hover { color: var(--text-3); }
+  #search-pill:hover { color: var(--text-3); }
+  .pf-chip:hover .pf-icon { background: color-mix(in srgb, var(--pf-c) 12%, transparent); }
+  .pf-chip:hover .pf-label { color: var(--text-3); }
+  .itin-card:not(.active):not(.focused):hover { background: var(--surface); border-color: var(--border); }
+  #places-list li:hover { background: var(--surface); border-color: var(--border); border-left-color: var(--place-c, var(--accent)); }
+  #results-list li:hover { background: var(--surface); }
 }
 
 @media (max-width: 380px) {
   #search-card:not(.collapsed) { width: min(94vw, 320px); }
   #search-box { gap: 6px; }
+  .pf-icon { width: 40px; height: 40px; }
+  .pf-label { font-size: 10.5px; }
+  .pin-actions { flex-direction: column; }
+  .pin-act-btn { width: 100%; justify-content: center; }
 }

@@ -203,8 +203,10 @@ function showCurrentLocation() {
 
 // ─── Search result marker ───
 let searchMarker = null;
+let searchMarkerPopup = null;
 function showSearchMarker(lng, lat) {
   if (searchMarker) searchMarker.remove();
+  if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
   const el = document.createElement('div');
   el.className = 'pin-marker';
   el.innerHTML = `<div class="pin-outer" style="--pin-c:var(--accent,#1A73B8)">
@@ -212,8 +214,51 @@ function showSearchMarker(lng, lat) {
     <div class="pin-arrow"></div>
   </div>`;
   searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(map);
+
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; return; }
+    searchMarkerPopup = new maplibregl.Popup({ offset: [0, -44], closeButton: true, className: 'pin-action-popup' })
+      .setLngLat([lng, lat])
+      .setHTML(`
+        <div class="pin-actions">
+          <button class="pin-act-btn pin-act-dir" data-lng="${lng}" data-lat="${lat}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Directions
+          </button>
+          <button class="pin-act-btn pin-act-rm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Remove
+          </button>
+        </div>
+      `)
+      .addTo(map);
+
+    searchMarkerPopup.on('close', () => { searchMarkerPopup = null; });
+
+    const popEl = searchMarkerPopup.getElement();
+    popEl.addEventListener('click', async (ev) => {
+      const dirBtn = ev.target.closest('.pin-act-dir');
+      const rmBtn = ev.target.closest('.pin-act-rm');
+      if (dirBtn) {
+        const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
+        const name = await reverseGeocode(pLat, pLng);
+        dir.origin = { lat: pLat, lng: pLng, name };
+        dirFrom.value = name;
+        placeOriginMarker(pLng, pLat);
+        updateGoButton();
+        searchMarkerPopup.remove(); searchMarkerPopup = null;
+        clearSearchMarker();
+        openDirPanel();
+        if (!dir.dest) startPick('to');
+      } else if (rmBtn) {
+        searchMarkerPopup.remove(); searchMarkerPopup = null;
+        clearSearchMarker();
+      }
+    });
+  });
 }
-function clearSearchMarker() { if (searchMarker) { searchMarker.remove(); searchMarker = null; } }
+function clearSearchMarker() { if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; } if (searchMarker) { searchMarker.remove(); searchMarker = null; } }
 
 // ═══════════════════════════════════════
 //  PLACES (Halal Finder)
@@ -414,6 +459,11 @@ map.on('dblclick', async e => {
   showSearchMarker(lng, lat);
 });
 
+// Close pin popup on map drag (mobile UX)
+map.on('dragstart', () => {
+  if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
+});
+
 // ═══════════════════════════════════════
 //  PLACES SHEET
 // ═══════════════════════════════════════
@@ -421,8 +471,26 @@ map.on('dblclick', async e => {
 const placesSheet = document.getElementById('places-sheet');
 const scrim = document.getElementById('scrim');
 
-function openPlacesSheet() { dirPanel.classList.add('shut'); stopPick(); placesSheet.classList.remove('shut', 'full'); scrim.classList.remove('hide'); renderTagFilterBar(); renderPlacesList(); }
-function closePlacesSheet() { placesSheet.classList.add('shut'); placesSheet.classList.remove('full'); scrim.classList.add('hide'); }
+function setActiveTab(id) {
+  document.querySelectorAll('#tab-bar .tab').forEach(t => t.classList.remove('active-tab'));
+  if (id) { const t = document.getElementById(id); if (t) t.classList.add('active-tab'); }
+}
+
+function showPlacesSkeleton() {
+  const list = document.getElementById('places-list');
+  list.innerHTML = Array.from({length: 4}, () => `<div class="pl-skeleton">
+    <div class="skel-bone skel-icon"></div>
+    <div class="skel-body">
+      <div class="skel-bone skel-line skel-line-long"></div>
+      <div class="skel-bone skel-line skel-line-short"></div>
+      <div class="skel-bone skel-line skel-line-xs"></div>
+    </div>
+    <div class="skel-bone skel-badge"></div>
+  </div>`).join('');
+}
+
+function openPlacesSheet() { dirPanel.classList.add('shut'); stopPick(); placesSheet.classList.remove('shut', 'full'); scrim.classList.remove('hide'); setActiveTab('places-btn'); renderTagFilterBar(); renderPlacesList(); }
+function closePlacesSheet() { placesSheet.classList.add('shut'); placesSheet.classList.remove('full'); scrim.classList.add('hide'); setActiveTab(null); }
 
 document.getElementById('places-btn').addEventListener('click', () => placesSheet.classList.contains('shut') ? openPlacesSheet() : closePlacesSheet());
 document.getElementById('places-close').addEventListener('click', closePlacesSheet);
@@ -586,8 +654,8 @@ function renderPlacesList() {
     const typeTags = tagsData[p.type] || [];
     // Count positive tags
     const posCount = typeTags.filter(t => p.tags?.[t.id] === true).length;
-    const tagSummary = posCount ? `${posCount} feature${posCount > 1 ? 's' : ''}` : '';
-    return `<li data-idx="${i}" data-place-id="${p.id}">
+    const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? 's' : ''}` : '';
+    return `<li data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
       <span class="pl-icon" style="background:${cfg.color}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg>
       </span>
@@ -601,6 +669,11 @@ function renderPlacesList() {
   }).join('');
 }
 
+// ── Suggest a place ──
+function openSuggestOverlay() { document.getElementById('suggest-overlay').classList.remove('hide'); }
+document.getElementById('suggest-place-btn').addEventListener('click', openSuggestOverlay);
+document.getElementById('suggest-place-btn-empty').addEventListener('click', openSuggestOverlay);
+// Delegate for places list clicks
 document.getElementById('places-list').addEventListener('click', e => {
   const li = e.target.closest('li[data-place-id]');
   if (!li) return;
@@ -610,11 +683,6 @@ document.getElementById('places-list').addEventListener('click', e => {
     closePlacesSheet();
     showPlacePopup(place);
   }
-});
-
-// ── Suggest a place ──
-document.getElementById('suggest-place-btn').addEventListener('click', () => {
-  document.getElementById('suggest-overlay').classList.remove('hide');
 });
 document.getElementById('suggest-close').addEventListener('click', () => {
   document.getElementById('suggest-overlay').classList.add('hide');
@@ -671,9 +739,22 @@ const dir = {
 };
 
 // ── Open / Close ──
-function openDirPanel() { placesSheet.classList.add('shut'); dirPanel.classList.remove('shut', 'full'); scrim.classList.remove('hide'); routeSnackbar.classList.add('hide'); if (!dir.pickField) startPick('from'); }
-function closeDirPanel() { dirPanel.classList.add('shut'); dirPanel.classList.remove('full'); scrim.classList.add('hide'); stopPick(); updateSnackbar(); }
-function fullCloseDirPanel() { unfocusRoute(); closeDirPanel(); clearRoute(); if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; } if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; } }
+function openDirPanel() {
+  placesSheet.classList.add('shut'); dirPanel.classList.remove('shut', 'full'); scrim.classList.remove('hide'); routeSnackbar.classList.add('hide'); setActiveTab('dir-btn');
+  // Restore origin/dest markers
+  if (dir.originMarker) dir.originMarker.getElement().style.display = '';
+  if (dir.destMarker) dir.destMarker.getElement().style.display = '';
+  if (!dir.pickField) startPick('from');
+}
+function closeDirPanel() {
+  dirPanel.classList.add('shut'); dirPanel.classList.remove('full'); scrim.classList.add('hide'); stopPick(); updateSnackbar(); setActiveTab(null);
+  // Hide origin/dest markers if no active route
+  if (dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) {
+    if (dir.originMarker) dir.originMarker.getElement().style.display = 'none';
+    if (dir.destMarker) dir.destMarker.getElement().style.display = 'none';
+  }
+}
+function fullCloseDirPanel() { unfocusRoute(); closeDirPanel(); clearRoute(); exitResultsMode(); if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; } if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; } }
 
 document.getElementById('dir-btn').addEventListener('click', () => dirPanel.classList.contains('shut') ? openDirPanel() : closeDirPanel());
 document.getElementById('dir-close').addEventListener('click', closeDirPanel);
@@ -688,6 +769,7 @@ document.getElementById('snackbar-close').addEventListener('click', (e) => {
   dir.itineraries = []; dir.activeIdx = -1;
   dirItins.innerHTML = '';
   dirEmpty.classList.remove('hide');
+  exitResultsMode();
   updateGoButton();
 });
 
@@ -698,6 +780,7 @@ dirClearBtn.addEventListener('click', () => {
   dir.itineraries = []; dir.activeIdx = -1;
   dirItins.innerHTML = '';
   dirEmpty.classList.remove('hide');
+  exitResultsMode();
 });
 
 scrim.removeEventListener('click', closePlacesSheet);
@@ -1046,6 +1129,7 @@ async function findRoutes() {
   if (!dir.dest) { showDirError('Select a destination on the map or type a place'); return; }
 
   showDirLoading();
+  dirPanel.classList.remove('search-editing');
   const selectedTime = dirUseNow ? new Date().toISOString() : new Date(`${getDateValue()}T${getTimeValue()}`).toISOString();
   const dateTimeParam = dirTimeMode === 'depart'
     ? `earliestDeparture: "${selectedTime}"`
@@ -1081,6 +1165,7 @@ async function findRoutes() {
 function renderItineraries() {
   dirEmpty.classList.add('hide'); dirLoad.classList.add('hide'); dirErr.classList.add('hide');
   dirItins.innerHTML = ''; dir.activeIdx = -1;
+  enterResultsMode();
 
   dir.itineraries.forEach((itin, idx) => {
     const card = document.createElement('div'); card.className = 'itin-card'; card.dataset.idx = idx;
@@ -1278,6 +1363,26 @@ function legColor(m, leg) { if (leg && isTrunkBus(leg)) return '#FF6319'; return
 
 function showDirLoading() { dirEmpty.classList.add('hide'); dirErr.classList.add('hide'); dirItins.innerHTML = ''; dirLoad.classList.remove('hide'); }
 function showDirError(msg) { dirLoad.classList.add('hide'); dirEmpty.classList.add('hide'); dirErr.textContent = msg; dirErr.classList.remove('hide'); }
+
+// ── Collapsible search on mobile (results-shown state) ──
+const dirSummary = document.getElementById('dir-summary');
+const dirSumFrom = document.getElementById('dir-sum-from');
+const dirSumTo = document.getElementById('dir-sum-to');
+const dirSumEdit = document.getElementById('dir-sum-edit');
+
+function enterResultsMode() {
+  dirSumFrom.textContent = dir.origin?.name || 'Origin';
+  dirSumTo.textContent = dir.dest?.name || 'Destination';
+  dirPanel.classList.add('results-shown');
+  dirPanel.classList.remove('search-editing');
+}
+function exitResultsMode() {
+  dirPanel.classList.remove('results-shown', 'search-editing');
+}
+
+dirSumEdit.addEventListener('click', () => {
+  dirPanel.classList.toggle('search-editing');
+});
 
 // ═══════════════════════════════════════
 //  UTILS

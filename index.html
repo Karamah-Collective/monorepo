@@ -6,9 +6,6 @@
   <meta name="theme-color" content="#1A73B8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Halal Finder Helsinki</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -90,6 +87,21 @@
       </button>
       <button id="dir-close" class="sheet-x" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Compact route summary (shown when search is collapsed on mobile) -->
+    <div id="dir-summary" class="hide">
+      <div class="dir-sum-route">
+        <span class="dir-dot origin"></span>
+        <span id="dir-sum-from" class="dir-sum-text">Origin</span>
+        <svg class="dir-sum-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <span class="dir-dot dest"></span>
+        <span id="dir-sum-to" class="dir-sum-text">Destination</span>
+      </div>
+      <button id="dir-sum-edit" aria-label="Edit search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit
       </button>
     </div>
 
@@ -193,6 +205,9 @@
     <div class="sheet-head">
       <h2>Places</h2>
       <span id="places-ct"></span>
+      <button id="suggest-place-btn" class="sheet-action-btn" aria-label="Suggest a place" title="Suggest a place">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
       <button id="places-close" class="sheet-x" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -242,15 +257,16 @@
     <div id="places-scroll">
       <ul id="places-list"></ul>
       <div id="places-empty" class="hide">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 6 4 9 4 13a8 8 0 0016 0c0-4-4-7-8-11z"/><path d="M12 13v4"/><circle cx="12" cy="11" r="1"/></svg>
+        </div>
         <p>No places found</p>
-        <span>Try changing your filters</span>
+        <span>Try changing your filters or category</span>
+        <button id="suggest-place-btn-empty" class="suggest-inline-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Suggest a Place
+        </button>
       </div>
-    </div>
-    <div id="places-footer">
-      <button id="suggest-place-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        Suggest a Place
-      </button>
     </div>
   </div>
 
