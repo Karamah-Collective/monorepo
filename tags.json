@@ -18,12 +18,11 @@
   "restaurant": [
     { "id": "fully_halal", "label": "Fully Halal" },
     { "id": "partially_halal", "label": "Partially Halal" },
-    { "id": "halal_certified", "label": "Certified" },
-    { "id": "no_alcohol", "label": "No Alcohol" },
-    { "id": "zabiha", "label": "Zabiha" }
+    { "id": "no_alcohol", "label": "No Alcohol" }
   ],
   "shop": [
     { "id": "halal_meat", "label": "Halal Meat" },
+    { "id": "halal_butchery", "label": "Butchery" },
     { "id": "halal_groceries", "label": "Groceries" },
     { "id": "asian_products", "label": "Asian" },
     { "id": "african_products", "label": "African" },

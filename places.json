@@ -40,6 +40,358 @@
     "lng": 25.012677196646568,
     "tags": {
       "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 4,
+    "name": "KFC Kamppi",
+    "type": "restaurant",
+    "address": "Urho Kekkosen katu 1, 00100 Helsinki",
+    "lat": 60.16888,
+    "lng": 24.93200,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 5,
+    "name": "KFC Itäkeskus",
+    "type": "restaurant",
+    "address": "Itäkatu 1-5, 00930 Helsinki",
+    "lat": 60.21060,
+    "lng": 25.08260,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 6,
+    "name": "KFC Tripla",
+    "type": "restaurant",
+    "address": "Fredikanterassi 1, 00520 Helsinki",
+    "lat": 60.19840,
+    "lng": 24.92950,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 7,
+    "name": "KFC Jumbo",
+    "type": "restaurant",
+    "address": "Vantaanportinkatu 3, 01510 Vantaa",
+    "lat": 60.29220,
+    "lng": 25.04180,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 8,
+    "name": "KFC Sello",
+    "type": "restaurant",
+    "address": "Leppävaarankatu 3-9, 02600 Espoo",
+    "lat": 60.21830,
+    "lng": 24.81140,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 9,
+    "name": "Burger King Kamppi",
+    "type": "restaurant",
+    "address": "Salomonkatu 15, 00100 Helsinki",
+    "lat": 60.16960,
+    "lng": 24.93150,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 10,
+    "name": "Burger King Forum",
+    "type": "restaurant",
+    "address": "Mannerheimintie 20, 00100 Helsinki",
+    "lat": 60.16870,
+    "lng": 24.93830,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 11,
+    "name": "Burger King Itäkeskus",
+    "type": "restaurant",
+    "address": "Itäkatu 1, 00930 Helsinki",
+    "lat": 60.21020,
+    "lng": 25.08190,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 12,
+    "name": "Burger King Tripla",
+    "type": "restaurant",
+    "address": "Fredikanterassi 1, 00520 Helsinki",
+    "lat": 60.19860,
+    "lng": 24.93020,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 13,
+    "name": "Burger King Redi",
+    "type": "restaurant",
+    "address": "Hermannin rantatie 5, 00580 Helsinki",
+    "lat": 60.18720,
+    "lng": 24.97680,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 14,
+    "name": "Burger King Jumbo",
+    "type": "restaurant",
+    "address": "Vantaanportinkatu 3, 01510 Vantaa",
+    "lat": 60.29180,
+    "lng": 25.04250,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 15,
+    "name": "Yalla Sörnäinen",
+    "type": "shop",
+    "address": "Vaasanpolku 3, 00500 Helsinki",
+    "lat": 60.18750,
+    "lng": 24.95680,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 16,
+    "name": "Yalla Hakaniemi",
+    "type": "shop",
+    "address": "Hämeentie 13, 00530 Helsinki",
+    "lat": 60.17920,
+    "lng": 24.95120,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 17,
+    "name": "Yalla Itäkeskus",
+    "type": "shop",
+    "address": "Turunlinnantie 1, 00900 Helsinki",
+    "lat": 60.20960,
+    "lng": 25.07640,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 18,
+    "name": "Yalla Kontula",
+    "type": "shop",
+    "address": "Keinulaudankuja 4, 00940 Helsinki",
+    "lat": 60.23640,
+    "lng": 25.08280,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 19,
+    "name": "Beno Sörnäinen",
+    "type": "shop",
+    "address": "Vaasankatu 14, 00500 Helsinki",
+    "lat": 60.18690,
+    "lng": 24.95370,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 20,
+    "name": "Beno Hakaniemi",
+    "type": "shop",
+    "address": "Hämeentie 3, 00530 Helsinki",
+    "lat": 60.17830,
+    "lng": 24.95010,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 21,
+    "name": "Beno Kallio",
+    "type": "shop",
+    "address": "Fleminginkatu 15, 00530 Helsinki",
+    "lat": 60.18250,
+    "lng": 24.95090,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 22,
+    "name": "Beno Malmi",
+    "type": "shop",
+    "address": "Kirkonkyläntie 1, 00700 Helsinki",
+    "lat": 60.25080,
+    "lng": 25.01010,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 23,
+    "name": "Alanya Market Sörnäinen",
+    "type": "shop",
+    "address": "Vaasankatu 10, 00500 Helsinki",
+    "lat": 60.18670,
+    "lng": 24.95310,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 24,
+    "name": "Alanya Market Itäkeskus",
+    "type": "shop",
+    "address": "Tallinnanaukio 3, 00930 Helsinki",
+    "lat": 60.21010,
+    "lng": 25.08110,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 25,
+    "name": "Alanya Market Kontula",
+    "type": "shop",
+    "address": "Keinulaudankuja 4, 00940 Helsinki",
+    "lat": 60.23620,
+    "lng": 25.08320,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 26,
+    "name": "Alanya Market Kallio",
+    "type": "shop",
+    "address": "Hämeentie 29, 00530 Helsinki",
+    "lat": 60.18410,
+    "lng": 24.95390,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": 27,
+    "name": "Yalla Koivukylä",
+    "type": "shop",
+    "address": "Koivukylän puistotie 30, 01360 Vantaa",
+    "lat": 60.29400,
+    "lng": 25.04800,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true

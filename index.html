@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#1A73B8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Halal Finder Helsinki</title>
@@ -257,15 +257,14 @@
     <div id="places-scroll">
       <ul id="places-list"></ul>
       <div id="places-empty" class="hide">
-        <div class="empty-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 6 4 9 4 13a8 8 0 0016 0c0-4-4-7-8-11z"/><path d="M12 13v4"/><circle cx="12" cy="11" r="1"/></svg>
+        <div class="empty-anim">
+          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <div class="empty-ping"></div>
         </div>
-        <p>No places found</p>
-        <span>Try changing your filters or category</span>
-        <button id="suggest-place-btn-empty" class="suggest-inline-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          Suggest a Place
-        </button>
+        <div class="empty-text">
+          <span class="empty-title">No places found</span>
+          <span class="empty-sub">Try different filters · <button id="suggest-place-btn-empty" class="empty-suggest">Suggest one</button></span>
+        </div>
       </div>
     </div>
   </div>
@@ -280,10 +279,10 @@
         </button>
       </div>
       <form id="suggest-form" autocomplete="off">
-        <label class="sg-label">Place Name <span class="sg-req">*</span>
+        <label class="sg-label"><span>Place Name <span class="sg-req">*</span></span>
           <input id="sg-name" type="text" required placeholder="e.g. Halal Kitchen" />
         </label>
-        <label class="sg-label">Type <span class="sg-req">*</span>
+        <label class="sg-label"><span>Type <span class="sg-req">*</span></span>
           <select id="sg-type">
             <option value="mosque">Mosque</option>
             <option value="prayer_room">Prayer Room</option>
@@ -291,6 +290,11 @@
             <option value="shop">Shop</option>
           </select>
         </label>
+        <div class="sg-label">
+          <span>Tags</span>
+          <div id="sg-tags" class="sg-tags"></div>
+          <span class="sg-hint">tap to confirm · tap again to mark as missing</span>
+        </div>
         <label class="sg-label">Address
           <input id="sg-address" type="text" placeholder="Street, city" />
         </label>

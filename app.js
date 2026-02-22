@@ -3,6 +3,13 @@
    MapLibre GL + HSL transit + Directions + Places
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1 && !e.target.closest('#map')) e.preventDefault();
+}, { passive: false });
+
 // ─── Constants ───
 const HELSINKI = [24.9384, 60.1699];
 const FINLAND_SW = [19.5, 59.5];
@@ -10,7 +17,7 @@ const FINLAND_NE = [32.0, 70.5];
 const DIGITRANSIT_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
 const DT_API_KEY = '67e7adc2e4fe4d649753b3b8eb872c23';
 const NOMINATIM_REV = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1';
-const NOMINATIM_VB = '24.5,60.45,25.5,59.9';
+const NOMINATIM_VB = '24.0,60.8,25.8,59.8';
 
 const TRANSIT_COLORS = {
   bus:   '#1A73B8',
@@ -405,7 +412,7 @@ let debounce = null;
 async function search(q) {
   q = q.trim(); if (!q) { hideDrop(); return; }
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&viewbox=${NOMINATIM_VB}&bounded=0`, { headers: { 'Accept-Language': 'en' } });
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`, { headers: { 'Accept-Language': 'en' } });
     showResults(await r.json());
   } catch { rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">Search failed.</li>'; showDrop(); }
 }
@@ -489,8 +496,20 @@ function showPlacesSkeleton() {
   </div>`).join('');
 }
 
-function openPlacesSheet() { dirPanel.classList.add('shut'); stopPick(); placesSheet.classList.remove('shut', 'full'); scrim.classList.remove('hide'); setActiveTab('places-btn'); renderTagFilterBar(); renderPlacesList(); }
-function closePlacesSheet() { placesSheet.classList.add('shut'); placesSheet.classList.remove('full'); scrim.classList.add('hide'); setActiveTab(null); }
+function openPlacesSheet() {
+  dirPanel.classList.add('shut'); stopPick();
+  placesSheet.classList.remove('shut', 'full');
+  placesSheet.style.height = '';
+  scrim.classList.remove('hide'); setActiveTab('places-btn');
+  renderTagFilterBar(); renderPlacesList();
+  // Lock height after first render so tab switching doesn't resize
+  requestAnimationFrame(() => {
+    if (!placesSheet.classList.contains('shut') && !placesSheet.classList.contains('full')) {
+      placesSheet.style.height = placesSheet.offsetHeight + 'px';
+    }
+  });
+}
+function closePlacesSheet() { placesSheet.classList.add('shut'); placesSheet.classList.remove('full'); placesSheet.style.height = ''; scrim.classList.add('hide'); setActiveTab(null); }
 
 document.getElementById('places-btn').addEventListener('click', () => placesSheet.classList.contains('shut') ? openPlacesSheet() : closePlacesSheet());
 document.getElementById('places-close').addEventListener('click', closePlacesSheet);
@@ -572,8 +591,11 @@ const tfCount = document.getElementById('tf-count');
 function renderTagFilterBar() {
   const row = document.getElementById('tf-row');
 
-  // Hide entirely when "All" is selected
-  if (activeTypeFilter === 'all') {
+  // Hide when "All" selected OR when the type has zero places
+  const typePlaces = activeTypeFilter === 'all'
+    ? placesData
+    : placesData.filter(p => p.type === activeTypeFilter);
+  if (activeTypeFilter === 'all' || !typePlaces.length) {
     row.classList.add('hide');
     tfToggle.classList.remove('open');
     tfChips.classList.add('shut');
@@ -656,15 +678,15 @@ function renderPlacesList() {
     const posCount = typeTags.filter(t => p.tags?.[t.id] === true).length;
     const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? 's' : ''}` : '';
     return `<li data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
-      <span class="pl-icon" style="background:${cfg.color}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg>
+      <span class="pl-dot" style="background:${cfg.color}">
+        <svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg>
       </span>
-      <div class="pl-body">
-        <div class="pl-name">${esc(p.name)}</div>
-        <div class="pl-addr">${esc(p.address)}</div>
-        ${tagSummary ? `<div class="pl-tags-summary">${tagSummary}</div>` : ''}
+      <span class="pl-name">${esc(p.name)}</span>
+      <span class="pl-addr">${esc(p.address)}</span>
+      <div class="pl-meta">
+        <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
+        ${tagSummary ? `<span class="pl-tags-summary">${tagSummary}</span>` : ''}
       </div>
-      <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
     </li>`;
   }).join('');
 }
@@ -687,21 +709,64 @@ document.getElementById('places-list').addEventListener('click', e => {
 document.getElementById('suggest-close').addEventListener('click', () => {
   document.getElementById('suggest-overlay').classList.add('hide');
 });
+document.getElementById('suggest-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('suggest-overlay').classList.add('hide');
+});
+
+// ── Suggest form: dynamic tag chips based on type ──
+const sgTypeSelect = document.getElementById('sg-type');
+const sgTagsContainer = document.getElementById('sg-tags');
+
+function renderSuggestTags() {
+  const type = sgTypeSelect.value;
+  const tags = tagsData[type] || [];
+  sgTagsContainer.innerHTML = tags.map(t =>
+    `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral">` +
+      `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
+      `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
+      `${t.label}</button>`
+  ).join('');
+}
+
+sgTypeSelect.addEventListener('change', renderSuggestTags);
+renderSuggestTags();
+
+sgTagsContainer.addEventListener('click', e => {
+  const btn = e.target.closest('.sg-tag');
+  if (!btn) return;
+  const states = ['neutral', 'yes', 'no'];
+  const cur = states.indexOf(btn.dataset.state);
+  btn.dataset.state = states[(cur + 1) % 3];
+});
+
 document.getElementById('suggest-form').addEventListener('submit', e => {
   e.preventDefault();
   const name = document.getElementById('sg-name').value.trim();
-  const type = document.getElementById('sg-type').value;
+  const type = sgTypeSelect.value;
   const address = document.getElementById('sg-address').value.trim();
   const notes = document.getElementById('sg-notes').value.trim();
   const typeLabel = PLACE_CONFIG[type]?.label || type;
+
+  // Collect tag selections
+  const yesTags = [], noTags = [];
+  sgTagsContainer.querySelectorAll('.sg-tag').forEach(btn => {
+    const label = btn.textContent.trim();
+    if (btn.dataset.state === 'yes') yesTags.push(label);
+    else if (btn.dataset.state === 'no') noTags.push(label);
+  });
+  let tagInfo = '';
+  if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
+  if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
+
   const subject = encodeURIComponent(`New Place Suggestion: ${name}`);
   const body = encodeURIComponent(
-    `Place Name: ${name}\nType: ${typeLabel}\nAddress: ${address}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
+    `Place Name: ${name}\nType: ${typeLabel}\nAddress: ${address}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
   );
   // Open GitHub issue as primary method
   const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-suggestion`;
   window.open(ghUrl, '_blank');
   document.getElementById('suggest-form').reset();
+  renderSuggestTags();
   document.getElementById('suggest-overlay').classList.add('hide');
 });
 
@@ -841,7 +906,7 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
 
 async function dirGeoSearch(q, suggestEl, field) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1&viewbox=${NOMINATIM_VB}&bounded=0`, { headers: { 'Accept-Language': 'en' } });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`, { headers: { 'Accept-Language': 'en' } });
     const results = await res.json();
     if (!results.length) { suggestEl.innerHTML = '<li class="ds-none">No places found</li>'; suggestEl.classList.remove('hide'); return; }
     suggestEl.innerHTML = results.map(r => {
@@ -1112,7 +1177,7 @@ function decodePolyline(encoded) {
 async function autoResolveLocation(inputEl) {
   const q = inputEl.value.trim(); if (!q) return null;
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1&viewbox=${NOMINATIM_VB}&bounded=0`, { headers: { 'Accept-Language': 'en' } });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`, { headers: { 'Accept-Language': 'en' } });
     const results = await res.json();
     if (results.length) { const r = results[0]; return { lat: +r.lat, lng: +r.lon, name: r.display_name.split(',')[0] }; }
   } catch {} return null;
