@@ -2090,7 +2090,8 @@ function processTransitStops(geojson) {
       // Read routes: try cache first, fall back to live API
       const routesJson = f.properties.routes;
       let cachedRoutes = [];
-      try { cachedRoutes = routesJson ? JSON.parse(routesJson) : []; } catch(_) {}
+      if (Array.isArray(routesJson)) cachedRoutes = routesJson;
+      else { try { cachedRoutes = routesJson ? JSON.parse(routesJson) : []; } catch(_) {} }
 
       if (cachedRoutes.length > 0) {
         // ─── Cached routes (instant) ───
