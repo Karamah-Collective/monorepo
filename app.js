@@ -1677,9 +1677,6 @@ function focusRoute(idx) {
   const walkSec = itin.legs.filter(l => l.mode === 'WALK').reduce((s, l) => s + l.duration, 0);
   const transitLegs = itin.legs.filter(l => l.mode !== 'WALK').length;
 
-  // Title
-  document.getElementById('dir-focused-title').textContent = `${durMin} min`;
-
   // Endpoints
   document.getElementById('focused-origin').textContent = dir.origin?.name || 'Origin';
   document.getElementById('focused-dest').textContent = dir.dest?.name || 'Destination';
@@ -1700,11 +1697,13 @@ function focusRoute(idx) {
   // Meta line
   const transfers = transitLegs > 1 ? (transitLegs - 1) + ' transfer' + (transitLegs > 2 ? 's' : '') : 'Direct';
   document.getElementById('focused-meta').innerHTML =
+    `<span>${durMin} min</span>` +
+    `<span>·</span>` +
     `<span>${fmtTime(startT)} → ${fmtTime(endT)}</span>` +
     `<span>·</span>` +
     `<span>${transfers}</span>` +
     `<span>·</span>` +
-    `<span>${modeIcon('WALK', 12)} ${Math.round(walkSec / 60)} min</span>`;
+    `<span>${modeIcon('WALK', 12)} ${Math.round(walkSec / 60)} min walk</span>`;
 
   dirPanel.classList.add('route-focused');
   document.querySelectorAll('.itin-card').forEach((c, i) => {
@@ -1737,7 +1736,6 @@ function focusDirectRoute() {
   const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
   document.getElementById('focused-meta').innerHTML =
     `<span>${OSRM_LABELS[mode]}</span><span>·</span><span>${durLabel}</span><span>·</span><span>${distKm} km</span>`;
-  document.getElementById('dir-focused-title').textContent = `${OSRM_LABELS[mode]} Directions`;
   dirPanel.classList.add('route-focused');
   document.querySelectorAll('.itin-card').forEach(c => {
     if (c.classList.contains('direct-card')) { c.classList.add('focused', 'active'); c.style.display = ''; }
@@ -1752,10 +1750,19 @@ function highlightDirectStep(idx, stepEl) {
   if (!geom || !map.getSource('dir-highlight-src')) return;
   map.getSource('dir-highlight-src').setData({ type: 'Feature', geometry: geom });
   if (geom?.coordinates?.length >= 2) {
-    // Find midpoint coordinate of the segment
     const coords = geom.coordinates;
     const mid = coords[Math.floor(coords.length / 2)];
-    map.easeTo({ center: mid, duration: 400 });
+    // On mobile the panel covers the bottom of the viewport — pad the camera
+    // so the point is centred in the *visible* map area above the sheet.
+    const isMobile = window.innerWidth <= 768;
+    const panelH   = isMobile && !dirPanel.classList.contains('shut')
+      ? dirPanel.getBoundingClientRect().height
+      : 0;
+    map.easeTo({
+      center: mid,
+      duration: 400,
+      padding: { top: 0, right: 0, bottom: panelH, left: 0 }
+    });
   }
 }
 

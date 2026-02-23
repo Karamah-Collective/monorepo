@@ -152,7 +152,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .r-body { flex: 1; min-width: 0; }
 .r-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.r-addr { font-size: 12.5px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-addr { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ═══════════════════════════════════════════════════════
    ZOOM PILL (bottom-right, always visible)
@@ -481,13 +481,13 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .pl-dot svg { width: 14px; height: 14px; }
 .pl-name {
   grid-area: name; align-self: end;
-  font-size: 14.5px; font-weight: 600; color: var(--text);
+  font-size: 15px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.3; min-width: 0;
 }
 .pl-addr {
   grid-area: addr; align-self: start;
-  font-size: 12.5px; color: var(--text-3); line-height: 1.3;
+  font-size: 12px; color: var(--text-3); line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-width: 0;
 }
@@ -637,7 +637,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   line-height: 1.2; align-self: end;
 }
 .pp-sub {
-  grid-area: sub; font-size: 10.5px; font-weight: 600;
+  grid-area: sub; font-size: 11px; font-weight: 600;
   opacity: .75; line-height: 1.4;
 }
 
@@ -645,7 +645,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 .pp-addr {
   display: flex; align-items: center; gap: 6px;
-  font-size: 12.5px; color: var(--text-2);
+  font-size: 12px; color: var(--text-2);
   margin-bottom: 10px;
 }
 .pp-addr svg { flex-shrink: 0; color: var(--text-3); }
@@ -680,7 +680,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 32px; padding: 0 12px; border: none;
   border-radius: var(--r-sm);
-  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; font-size: 13px; font-weight: 700;
   line-height: 1; letter-spacing: .01em;
   cursor: pointer; white-space: nowrap;
   transition: filter .15s;
@@ -912,8 +912,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .ds-icon svg { width: 14px; height: 14px; }
 .ds-text { flex: 1; min-width: 0; }
-.ds-name { font-size: 14.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-addr { font-size: 12.5px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-addr { font-size: 12px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-none { padding: 16px; text-align: center; color: var(--text-3); font-size: 14px; cursor: default; }
 
 /* Go button */
@@ -938,6 +938,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 #dir-mode-toggle {
   display: flex;
+  width: 100%;
   background: var(--surface-2);
   border-radius: var(--r-sm);
   padding: 3px;
@@ -946,9 +947,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .mode-opt {
   flex: 1;
   display: flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 7px 4px; border: none; background: transparent;
-  border-radius: calc(var(--r-sm) - 3px);
-  font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 8px 4px; border: none; background: transparent;
+  border-radius: calc(var(--r-sm) - 2px);
+  font-family: inherit; font-size: 13px; font-weight: 700;
   color: var(--text-3); cursor: pointer; white-space: nowrap;
   transition: color .15s, background .15s, box-shadow .15s;
 }
@@ -1016,7 +1017,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .step-icon-wrap.step-roundabout { background: rgba(140,71,153,.12); color: #8C4799; }
 .step-text-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
 .step-inst { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; }
-.step-meta { font-size: 11.5px; font-weight: 500; color: var(--text-3); }
+.step-meta { font-size: 12px; font-weight: 500; color: var(--text-3); }
 
 /* ── Time Picker ── */
 #dir-time-bar {
@@ -1215,7 +1216,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 #dir-error {
   margin: 12px 16px; padding: 14px 16px; border-radius: var(--r-sm);
-  background: var(--danger-soft); color: var(--danger); font-size: 13.5px; font-weight: 600;
+  background: var(--danger-soft); color: var(--danger); font-size: 13px; font-weight: 600;
 }
 #dir-error::before { content: '⚠ '; }
 
@@ -1297,7 +1298,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   padding: 7px 14px; flex-shrink: 0;
   background: var(--accent); color: #fff;
   border-radius: var(--r-sm);
-  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; font-size: 13px; font-weight: 700;
   cursor: pointer;
   transition: filter .15s;
 }
@@ -1349,41 +1350,39 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #dir-panel.route-focused #dir-focused-head { display: flex; }
 
 .focused-top-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px 11px 14px;
   border-bottom: 1px solid var(--border-light);
 }
-.focused-top-row h2 { flex: 1; font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.focused-od {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.focused-od-text {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100px;
+}
+.focused-od-arrow { flex-shrink: 0; color: var(--text-3); }
 #dir-focused-back {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
   background: var(--surface-2); border: none; border-radius: 50%;
   cursor: pointer; color: var(--text-3);
   transition: color .15s;
 }
 #dir-focused-back:hover { color: var(--text-2); }
 
-.focused-route-summary {
-  padding: 14px 16px 16px;
+.focused-info-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 14px 11px;
   background: var(--accent-soft);
   border-bottom: 1px solid var(--border-light);
-  display: flex; flex-direction: column; gap: 10px;
 }
-.focused-endpoints {
-  display: flex; align-items: center; gap: 8px;
-}
-.focused-ep {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 14px; font-weight: 600; color: var(--text);
-  min-width: 0;
-}
-.focused-ep span:last-child {
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.focused-arrow { flex-shrink: 0; color: var(--text-3); }
-#focused-chain { gap: 5px; }
+#focused-chain { gap: 5px; flex-shrink: 0; }
 .focused-meta {
-  display: flex; align-items: center; gap: 12px;
-  font-size: 12.5px; font-weight: 600; color: var(--text-3);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--text-3);
 }
 .focused-meta svg { opacity: .5; }
 
@@ -1408,15 +1407,16 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .itin-card.focused .leg-icon { width: 26px; height: 26px; }
 .itin-card.focused .leg-icon svg { width: 14px; height: 14px; }
 .itin-card.focused .leg-mode-name { font-size: 15px; }
-.itin-card.focused .leg-stops { font-size: 13.5px; }
-.itin-card.focused .leg-stop-time { font-size: 12.5px; min-width: 42px; }
+.itin-card.focused .leg-stops { font-size: 14px; }
+.itin-card.focused .leg-stop-time { font-size: 12px; min-width: 42px; }
 .itin-card.focused .leg-inter-stop { padding: 5px 0 5px 12px; }
 .itin-card.focused .leg-inter-name { font-size: 13px; }
 .itin-card.focused .leg-expandable { padding: 10px 8px; margin: -4px -8px; }
 
 @media (max-width: 768px) {
   #dir-panel.route-focused {
-    max-height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     border-radius: 0;
     top: 0;
   }
@@ -1438,7 +1438,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .leg-expandable { cursor: pointer; border-radius: var(--r-xs); margin: -2px -6px; padding: 8px 6px; transition: background-color .15s; }
 .leg-expandable:hover { background: var(--surface-2); }
 .leg-expandable.leg-open { background: var(--accent-soft); }
-.leg-expand-hint { font-size: 11.5px; font-weight: 600; color: var(--accent-muted); margin-left: 6px; white-space: nowrap; }
+.leg-expand-hint { font-size: 12px; font-weight: 600; color: var(--accent-muted); margin-left: 6px; white-space: nowrap; }
 .leg-chevron { display: inline-block; transition: transform .25s; font-size: 12px; }
 .leg-expandable.leg-open .leg-chevron { transform: rotate(90deg); }
 
@@ -1446,7 +1446,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .leg-expandable.leg-open .leg-intermediate { display: block; }
 .leg-inter-stop { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px 10px; }
 .leg-inter-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; opacity: .5; }
-.leg-inter-name { font-size: 12.5px; color: var(--text-2); }
+.leg-inter-name { font-size: 12px; color: var(--text-2); }
 .leg-inter-name small { color: var(--text-3); }
 
 /* ── Zone badges ── */
@@ -1456,7 +1456,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   border-top: 1px solid var(--border-light);
 }
 .itin-zones-label {
-  font-size: 11.5px; font-weight: 700; color: var(--text-3);
+  font-size: 11px; font-weight: 700; color: var(--text-3);
   text-transform: uppercase; letter-spacing: .04em;
 }
 .zone-badge {
@@ -1470,7 +1470,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .zone-badge.zone-c { background: #D8B56A; }
 .zone-badge.zone-d { background: #FF6319; }
 .zone-badge.zone-default { background: #8d99a5; }
-.zone-badge.zone-inline { width: auto; height: 16px; padding: 0 5px; border-radius: 4px; font-size: 9.5px; vertical-align: middle; margin-left: 2px; }
+.zone-badge.zone-inline { width: auto; height: 16px; padding: 0 5px; border-radius: 4px; font-size: 10px; vertical-align: middle; margin-left: 2px; }
 
 /* ═══════════════════════════════════════════════════════
    ROUTE SNACKBAR
@@ -1503,7 +1503,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #snackbar-sub {
-  font-size: 11.5px; font-weight: 500; opacity: .75;
+  font-size: 12px; font-weight: 500; opacity: .75;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
 }
@@ -1622,7 +1622,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .pin-act-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 14px;
-  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; font-size: 13px; font-weight: 700;
   color: #fff;
   border-radius: var(--r-sm); cursor: pointer;
   transition: filter .15s;
@@ -1638,7 +1638,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   transition: color .15s !important;
 }
 .maplibregl-popup-close-button:hover { color: var(--text) !important; }
-.pop-title { font-weight: 700; font-size: 15.5px; color: var(--text); margin-bottom: 3px; }
+.pop-title { font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 3px; }
 .pop-coords { font-size: 12px; color: var(--text-3); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
 .pop-del {
   display: inline-flex; align-items: center; gap: 4px;
@@ -1683,13 +1683,13 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sp-sub {
-  grid-area: sub; font-size: 10.5px; font-weight: 600;
+  grid-area: sub; font-size: 11px; font-weight: 600;
   opacity: .75; line-height: 1.4;
   display: flex; align-items: center; gap: 5px;
 }
 .sp-code {
   background: rgba(255,255,255,.18); padding: 2px 6px;
-  border-radius: 4px; font-size: 10.5px; font-weight: 700;
+  border-radius: 4px; font-size: 11px; font-weight: 700;
   letter-spacing: .3px; opacity: 1; line-height: 1;
 }
 
@@ -1708,7 +1708,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .sp-chip {
   display: inline-flex; align-items: center; gap: 3px;
   height: 24px; padding: 0 8px; border-radius: var(--r-xs);
-  font-size: 11.5px; font-weight: 700; color: #fff;
+  font-size: 12px; font-weight: 700; color: #fff;
   background: var(--rc, var(--accent));
   letter-spacing: .15px; cursor: default;
   white-space: nowrap;
@@ -1716,7 +1716,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .sp-chip:hover { filter: brightness(1.12); }
 .sp-chip small {
-  font-weight: 600; font-size: 10px; opacity: .85;
+  font-weight: 600; font-size: 11px; opacity: .85;
   max-width: 80px; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -1775,7 +1775,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
     height: 56px;
     bottom: calc(12px + var(--safe-b));
   }
-  .tab { font-size: 10.5px; }
+  .tab { font-size: 11px; }
   .tab svg { width: 20px; height: 20px; }
 
   /* ── Touch target minimums (44px recommended by Apple/Google) ── */
@@ -1862,7 +1862,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   #search-card:not(.collapsed) { width: min(94vw, 320px); }
   #search-box { gap: 6px; }
   .pf-icon { width: 34px; height: 34px; }
-  .pf-label { font-size: 10.5px; }
+  .pf-label { font-size: 11px; }
   .pin-actions { flex-direction: column; }
   .pin-act-btn { width: 100%; justify-content: center; }
 }
