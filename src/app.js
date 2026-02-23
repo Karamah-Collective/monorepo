@@ -3,6 +3,9 @@
    MapLibre GL + HSL transit + Directions + Places
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Import secrets from local config (git-ignored in production) ──
+import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_REV, NOMINATIM_VB } from './config.local.js';
+
 // ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('gesturechange', e => e.preventDefault());
@@ -14,10 +17,6 @@ document.addEventListener('touchmove', e => {
 const HELSINKI = [24.9384, 60.1699];
 const FINLAND_SW = [19.5, 59.5];
 const FINLAND_NE = [32.0, 70.5];
-const DIGITRANSIT_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const DT_API_KEY = '67e7adc2e4fe4d649753b3b8eb872c23';
-const NOMINATIM_REV = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1';
-const NOMINATIM_VB = '24.0,60.8,25.8,59.8';
 
 const TRANSIT_COLORS = {
   bus:   '#1A73B8',
@@ -274,8 +273,8 @@ function clearSearchMarker() { if (searchMarkerPopup) { searchMarkerPopup.remove
 async function loadPlacesData() {
   try {
     const [pRes, tRes] = await Promise.all([
-      fetch('places.json'),
-      fetch('tags.json'),
+      fetch('../public/data/places.json'),
+      fetch('../public/data/tags.json'),
     ]);
     placesData = await pRes.json();
     tagsData = await tRes.json();
@@ -898,6 +897,7 @@ const dir = {
   directInfo: null,
   originMarker: null, destMarker: null,
   routeLayers: [], routeSources: [],
+  usingFallback: false,
 };
 
 // ── Open / Close ──
@@ -1304,7 +1304,8 @@ dirTimeNow.addEventListener('click', () => {
 });
 
 // ── Polyline decoder ──
-function decodePolyline(encoded) {
+function decodePolyline(encoded, precision) {
+  const factor = Math.pow(10, precision || 5);
   const coords = []; let i = 0, lat = 0, lng = 0;
   while (i < encoded.length) {
     let b, shift = 0, result = 0;
@@ -1313,7 +1314,7 @@ function decodePolyline(encoded) {
     shift = 0; result = 0;
     do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
     lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-    coords.push([lng / 1e5, lat / 1e5]);
+    coords.push([lng / factor, lat / factor]);
   }
   return coords;
 }
@@ -1362,15 +1363,90 @@ async function findRoutes() {
 }`;
 
   try {
-    const res = await fetch(DIGITRANSIT_URL, { method: 'POST', headers: { 'Content-Type': 'application/graphql', 'digitransit-subscription-key': DT_API_KEY }, body: query });
-    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Invalid API key' : `API error ${res.status}`);
+    const res = await fetch(DIGITRANSIT_URL, { method: 'POST', headers: { 'Content-Type': 'application/graphql', 'digitransit-subscription-key': DT_API_KEY }, body: query, signal: AbortSignal.timeout(12000) });
+    if (!res.ok) throw new Error(`dt_${res.status}`);
     const json = await res.json();
-    if (json.errors) throw new Error(json.errors[0]?.message || 'Query error');
+    if (json.errors) throw new Error('dt_query');
     const edges = json.data?.planConnection?.edges;
-    if (!edges || !edges.length) { showDirError('No routes found'); return; }
+    if (!edges || !edges.length) throw new Error('dt_empty');
+    dir.usingFallback = false;
     dir.itineraries = edges.map(e => e.node);
     renderItineraries();
-  } catch (err) { showDirError(err.message || 'Failed to fetch routes'); }
+  } catch (err) {
+    // Any Digitransit failure → try Transitous community fallback
+    console.warn('[Transit] Digitransit unavailable (' + (err.message || err) + '), trying Transitous…');
+    await findRoutesTransitous();
+  }
+}
+
+// ── Transitous (MOTIS v2) fallback ──
+
+// Encode two lat/lon points as a Google-polyline string (precision 1e-5)
+function _encPolyline2Pts(lat1, lon1, lat2, lon2) {
+  function enc(val) {
+    let v = Math.round(val * 1e5);
+    v = v < 0 ? ~(v << 1) : (v << 1);
+    let s = '';
+    while (v >= 0x20) { s += String.fromCharCode(((v & 0x1f) | 0x20) + 63); v >>>= 5; }
+    return s + String.fromCharCode(v + 63);
+  }
+  return enc(lat1) + enc(lon1) + enc(lat2 - lat1) + enc(lon2 - lon1);
+}
+
+function normalizeMOTISItinerary(itin) {
+  const stopCode = id => id ? id.split(':').pop() : null;
+  return {
+    start: itin.startTime,
+    end:   itin.endTime,
+    legs: itin.legs.map(leg => ({
+      mode:     leg.mode,
+      duration: leg.duration,
+      distance: leg.distance || 0,
+      start:    { scheduledTime: leg.scheduledStartTime },
+      end:      { scheduledTime: leg.scheduledEndTime },
+      from:     { name: leg.from?.name || '', stop: leg.from?.stopId ? { code: stopCode(leg.from.stopId), zoneId: null } : null },
+      to:       { name: leg.to?.name   || '', stop: leg.to?.stopId   ? { code: stopCode(leg.to.stopId),   zoneId: null } : null },
+      intermediateStops: (leg.intermediateStops || []).map(s => ({ name: s.name || '', code: stopCode(s.stopId), zoneId: null })),
+      trip: (leg.routeShortName || leg.headsign) ? {
+        routeShortName: leg.routeShortName || null,
+        tripHeadsign:   leg.headsign       || null,
+        route: { type: leg.routeType || 0 },
+      } : null,
+      legGeometry: (leg.legGeometry?.points)
+        ? { points: leg.legGeometry.points, precision: leg.legGeometry.precision || 6 }
+        : { points: _encPolyline2Pts(leg.from?.lat ?? 0, leg.from?.lon ?? 0, leg.to?.lat ?? 0, leg.to?.lon ?? 0), precision: 5 },
+    }))
+  };
+}
+
+async function findRoutesTransitous() {
+  const arriveBy = dirTimeMode === 'arrive';
+  const time = dirUseNow ? new Date().toISOString() : new Date(`${getDateValue()}T${getTimeValue()}`).toISOString();
+  const params = new URLSearchParams({
+    fromPlace:      `${dir.origin.lat},${dir.origin.lng}`,
+    toPlace:        `${dir.dest.lat},${dir.dest.lng}`,
+    time,
+    arriveBy:       arriveBy ? 'true' : 'false',
+    numItineraries: '5',
+    transitModes:   'TRANSIT',
+  });
+  try {
+    const res = await fetch(`${TRANSITOUS_URL}?${params}`, {
+      headers: { 'Referer': 'https://halal-map.pages.dev/' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const itins = json.itineraries;
+    if (!itins || !itins.length) { showDirError('No routes found'); return; }
+    dir.usingFallback = true;
+    dir.itineraries = itins.map(normalizeMOTISItinerary);
+  } catch (err) {
+    showDirError('No routes found');
+    console.error('[Transitous] Failed:', err.message);
+    return;
+  }
+  renderItineraries();
 }
 
 // ── OSRM direct routing (walk / cycle / drive) with turn-by-turn ──
@@ -1585,6 +1661,9 @@ async function findRoutesDirect(mode) {
 function renderItineraries() {
   dirEmpty.classList.add('hide'); dirLoad.classList.add('hide'); dirErr.classList.add('hide');
   dirItins.innerHTML = ''; dir.activeIdx = -1;
+  if (dir.usingFallback) {
+    dirItins.insertAdjacentHTML('afterbegin', '<div class="fallback-notice">⚠ HSL routing unavailable — showing community transit data (Transitous). Times may be less accurate.</div>');
+  }
   enterResultsMode();
 
   dir.itineraries.forEach((itin, idx) => {
@@ -1808,7 +1887,7 @@ function drawRoute(itin) {
   clearRoute();
   const bounds = new maplibregl.LngLatBounds();
   itin.legs.forEach((leg, i) => {
-    const coords = decodePolyline(leg.legGeometry.points); if (!coords.length) return;
+    const coords = decodePolyline(leg.legGeometry.points, leg.legGeometry.precision); if (!coords.length) return;
     coords.forEach(c => bounds.extend(c));
     const srcId = `dir-src-${i}`, casingId = `dir-cas-${i}`, lineId = `dir-ln-${i}`;
     const isWalk = leg.mode === 'WALK';
@@ -1935,7 +2014,7 @@ map.on('load', () => {
 async function loadTransitCache() {
   console.log('[Transit] Loading cached stops…');
   try {
-    const resp = await fetch('transit-cache.json', { signal: AbortSignal.timeout(10000) });
+    const resp = await fetch('../scripts/transit-cache.json', { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const cache = await resp.json();
     console.log(`[Transit] Cache v${cache.version}, ${cache.stopCount} stops, generated ${cache.generated}`);
