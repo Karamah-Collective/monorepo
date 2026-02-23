@@ -359,6 +359,10 @@ function showPlacePopup(place) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             Directions
           </button>
+          <button class="pp-edit-btn" data-place-id="${place.id}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Suggest Edit
+          </button>
         </div>
       </div>
     </div>`;
@@ -372,18 +376,28 @@ function showPlacePopup(place) {
     .addTo(map);
 
   popup.getElement().addEventListener('click', (e) => {
-    const btn = e.target.closest('.pp-dir-btn');
-    if (!btn) return;
-    e.stopPropagation();
-    const lat = +btn.dataset.lat, lng = +btn.dataset.lng, name = btn.dataset.name;
-    dir.dest = { lat, lng, name };
-    dirTo.value = name;
-    placeDestMarker(lng, lat);
-    updateGoButton();
-    popup.remove();
-    // Close places sheet, open directions panel
-    placesSheet.classList.add('shut');
-    openDirPanel();
+    const dirBtn = e.target.closest('.pp-dir-btn');
+    if (dirBtn) {
+      e.stopPropagation();
+      const lat = +dirBtn.dataset.lat, lng = +dirBtn.dataset.lng, name = dirBtn.dataset.name;
+      dir.dest = { lat, lng, name };
+      dirTo.value = name;
+      placeDestMarker(lng, lat);
+      updateGoButton();
+      popup.remove();
+      // Close places sheet, open directions panel
+      placesSheet.classList.add('shut');
+      openDirPanel();
+      return;
+    }
+    const editBtn = e.target.closest('.pp-edit-btn');
+    if (editBtn) {
+      e.stopPropagation();
+      const placeId = +editBtn.dataset.placeId;
+      const p = placesData.find(x => x.id === placeId);
+      if (p) openEditOverlay(p);
+      return;
+    }
   });
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
@@ -768,6 +782,77 @@ document.getElementById('suggest-form').addEventListener('submit', e => {
   document.getElementById('suggest-form').reset();
   renderSuggestTags();
   document.getElementById('suggest-overlay').classList.add('hide');
+});
+
+// ── Suggest Edit ──
+const edTypeSelect = document.getElementById('ed-type');
+const edTagsContainer = document.getElementById('ed-tags');
+
+function renderEditTags(type, existingTags) {
+  const tags = tagsData[type] || [];
+  edTagsContainer.innerHTML = tags.map(t => {
+    const existingVal = existingTags?.[t.id];
+    const state = existingVal === true ? 'yes' : existingVal === false ? 'no' : 'neutral';
+    return `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}">` +
+      `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
+      `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
+      `${t.label}</button>`;
+  }).join('');
+}
+
+function openEditOverlay(place) {
+  document.getElementById('ed-place-id').value = place.id;
+  document.getElementById('ed-name').value = place.name || '';
+  document.getElementById('ed-address').value = place.address || '';
+  document.getElementById('ed-notes').value = place.notes || '';
+  edTypeSelect.value = place.type || 'mosque';
+  renderEditTags(place.type, place.tags || {});
+  document.getElementById('edit-overlay').classList.remove('hide');
+}
+
+edTypeSelect.addEventListener('change', () => renderEditTags(edTypeSelect.value, {}));
+
+edTagsContainer.addEventListener('click', e => {
+  const btn = e.target.closest('.sg-tag');
+  if (!btn) return;
+  const states = ['neutral', 'yes', 'no'];
+  const cur = states.indexOf(btn.dataset.state);
+  btn.dataset.state = states[(cur + 1) % 3];
+});
+
+document.getElementById('edit-close').addEventListener('click', () => {
+  document.getElementById('edit-overlay').classList.add('hide');
+});
+document.getElementById('edit-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('edit-overlay').classList.add('hide');
+});
+
+document.getElementById('edit-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const placeId = document.getElementById('ed-place-id').value;
+  const name = document.getElementById('ed-name').value.trim();
+  const type = edTypeSelect.value;
+  const address = document.getElementById('ed-address').value.trim();
+  const notes = document.getElementById('ed-notes').value.trim();
+  const typeLabel = PLACE_CONFIG[type]?.label || type;
+
+  const yesTags = [], noTags = [];
+  edTagsContainer.querySelectorAll('.sg-tag').forEach(btn => {
+    const label = btn.textContent.trim();
+    if (btn.dataset.state === 'yes') yesTags.push(label);
+    else if (btn.dataset.state === 'no') noTags.push(label);
+  });
+  let tagInfo = '';
+  if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
+  if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
+
+  const subject = encodeURIComponent(`Edit Suggestion: ${name} (ID: ${placeId})`);
+  const body = encodeURIComponent(
+    `Place ID: ${placeId}\nPlace Name: ${name}\nType: ${typeLabel}\nAddress: ${address}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
+  );
+  const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-edit`;
+  window.open(ghUrl, '_blank');
+  document.getElementById('edit-overlay').classList.add('hide');
 });
 
 // ═══════════════════════════════════════

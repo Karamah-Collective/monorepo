@@ -309,6 +309,47 @@
     </div>
   </div>
 
+  <!-- ─── Suggest Edit Overlay ─── -->
+  <div id="edit-overlay" class="hide">
+    <div id="edit-card">
+      <div class="suggest-head">
+        <h3>Suggest Edit</h3>
+        <button id="edit-close" class="sheet-x" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="edit-form" autocomplete="off">
+        <input type="hidden" id="ed-place-id" />
+        <label class="sg-label"><span>Place Name <span class="sg-req">*</span></span>
+          <input id="ed-name" type="text" required placeholder="e.g. Halal Kitchen" />
+        </label>
+        <label class="sg-label"><span>Type <span class="sg-req">*</span></span>
+          <select id="ed-type">
+            <option value="mosque">Mosque</option>
+            <option value="prayer_room">Prayer Room</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="shop">Shop</option>
+          </select>
+        </label>
+        <div class="sg-label">
+          <span>Tags</span>
+          <div id="ed-tags" class="sg-tags"></div>
+          <span class="sg-hint">tap to confirm · tap again to mark as missing</span>
+        </div>
+        <label class="sg-label">Address
+          <input id="ed-address" type="text" placeholder="Street, city" />
+        </label>
+        <label class="sg-label">Additional Notes
+          <textarea id="ed-notes" rows="3" placeholder="Any details about this place…"></textarea>
+        </label>
+        <button type="submit" id="ed-submit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Submit Edit Suggestion
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- ─── Route Snackbar ─── -->
   <div id="route-snackbar" class="hide">
     <div id="snackbar-body">

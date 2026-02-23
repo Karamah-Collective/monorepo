@@ -671,21 +671,31 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 /* ── Actions ── */
 .pp-actions {
-  display: flex; gap: 6px;
-  padding-top: 6px; border-top: 1px solid var(--border-light);
+  display: flex; gap: 8px;
+  padding-top: 10px; border-top: 1px solid var(--border-light);
 }
-.pp-dir-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 14px; border: none;
-  background: var(--accent); color: #fff;
+.pp-dir-btn, .pp-edit-btn {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 12px; border: none;
   border-radius: var(--r-sm);
   font-family: inherit; font-size: 12.5px; font-weight: 700;
   line-height: 1; letter-spacing: .01em;
-  cursor: pointer;
+  cursor: pointer; white-space: nowrap;
   transition: filter .15s;
 }
-.pp-dir-btn svg { flex-shrink: 0; vertical-align: middle; }
-.pp-dir-btn:hover { filter: brightness(1.12); }
+.pp-dir-btn {
+  background: var(--accent); color: #fff;
+}
+.pp-dir-btn svg { flex-shrink: 0; }
+.pp-dir-btn:hover { filter: brightness(1.1); }
+
+.pp-edit-btn {
+  background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
+  transition: color .15s;
+}
+.pp-edit-btn svg { flex-shrink: 0; }
+.pp-edit-btn:hover { color: var(--text); }
 
 /* ═══════════════════════════════════════════════════════
    SUGGEST PLACE OVERLAY
@@ -790,6 +800,45 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   transition: filter .15s;
 }
 #sg-submit:hover { filter: brightness(1.12); }
+
+/* ═══════════════════════════════════════════════════════
+   SUGGEST EDIT OVERLAY
+   ═══════════════════════════════════════════════════════ */
+#edit-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(9,9,11,.4);
+  padding: 20px;
+}
+#edit-overlay.hide { display: none; }
+
+#edit-card {
+  width: 100%; max-width: 400px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  max-height: min(600px, 85vh);
+  display: flex;
+  flex-direction: column;
+}
+
+#edit-form {
+  padding: 16px 16px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+
+#ed-submit {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 24px;
+  background: var(--accent); color: #fff; border: none;
+  border-radius: var(--r-sm);
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+  transition: filter .15s;
+}
+#ed-submit:hover { filter: brightness(1.12); }
 
 /* ═══════════════════════════════════════════════════════
    DIRECTIONS PANEL CONTENT
