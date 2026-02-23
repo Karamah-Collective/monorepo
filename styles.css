@@ -1221,6 +1221,20 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #dir-error::before { content: '⚠ '; }
 
 /* ─── Itinerary Cards ─── */
+.fallback-notice {
+  margin: 10px 16px 2px;
+  padding: 9px 12px;
+  font-size: 12px; line-height: 1.4;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: var(--r-sm);
+}
+.dark .fallback-notice {
+  color: #fcd34d;
+  background: rgba(253,211,77,.1);
+  border-color: rgba(253,211,77,.3);
+}
 .itin-card {
   margin: 8px 16px; padding: 14px 16px;
   background: var(--surface); border: 1px solid var(--border);
