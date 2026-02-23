@@ -14,6 +14,9 @@ scripts/transit-cache.json
 scripts/cache/
 *.cache
 
+# Local development documentation
+GIT_TRACKING.md
+
 # ════════════════════════════════════════════════════════════════
 # BUILD & DEPENDENCIES
 # ════════════════════════════════════════════════════════════════
