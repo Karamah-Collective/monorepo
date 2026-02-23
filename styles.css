@@ -345,8 +345,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   position: absolute; inset: 0; z-index: 11;
   background: rgba(9,9,11,.12);
   transition: opacity .3s;
+  pointer-events: none;
 }
-#scrim.hide { opacity: 0; pointer-events: none; }
+#scrim.hide { opacity: 0; }
 
 /* ═══════════════════════════════════════════════════════
    PLACES SHEET CONTENT
@@ -844,7 +845,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
    DIRECTIONS PANEL CONTENT
    ═══════════════════════════════════════════════════════ */
 #dir-inputs {
-  padding: 12px 16px 6px; display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px 0; display: flex; align-items: center; gap: 8px;
   flex-shrink: 0;
 }
 .dir-fields-col {
@@ -918,7 +919,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 /* Go button */
 #dir-go {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin: 4px 16px 8px; height: 46px; min-height: 46px; padding: 0 24px;
+  margin: 0 16px 14px; height: 46px; min-height: 46px; padding: 0 24px;
   background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm);
   font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
   flex-shrink: 0;
@@ -927,10 +928,100 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #dir-go:hover:not(:disabled) { filter: brightness(1.12); }
 #dir-go:disabled { opacity: .35; cursor: not-allowed; }
 
+/* ── Transport mode selector ── */
+/* Time bar hidden for non-transit modes */
+#dir-panel:not([data-travel-mode="transit"]) #dir-time-bar { display: none !important; }
+
+#dir-mode-bar {
+  padding: 12px 16px 12px;
+  flex-shrink: 0;
+}
+#dir-mode-toggle {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: 3px;
+  gap: 2px;
+}
+.mode-opt {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px 4px; border: none; background: transparent;
+  border-radius: calc(var(--r-sm) - 3px);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  color: var(--text-3); cursor: pointer; white-space: nowrap;
+  transition: color .15s, background .15s, box-shadow .15s;
+}
+.mode-opt svg { flex-shrink: 0; }
+.mode-opt:hover:not(.active) { color: var(--text-2); }
+.mode-opt.active {
+  background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Direct route result card (drive / cycle / walk) ── */
+.direct-card { cursor: default; }
+.direct-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.direct-mode-icon {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--dc) 12%, transparent);
+  color: var(--dc);
+  border-radius: var(--r-sm);
+}
+.direct-summary {
+  display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
+}
+.direct-dur {
+  font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.2;
+}
+.direct-meta {
+  font-size: 12px; color: var(--text-3); font-weight: 500;
+}
+.direct-endpoints {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  max-width: 120px; overflow: hidden;
+}
+.direct-ep {
+  font-size: 11px; color: var(--text-2); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48px;
+}
+
+/* ── Turn-by-turn step list ── */
+.direct-steps {
+  display: flex; flex-direction: column;
+}
+.direct-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.direct-step { cursor: pointer; transition: background-color .15s; }
+.direct-step:hover { background-color: var(--surface-2); }
+.direct-step.selected { background-color: var(--accent-soft); }
+.direct-step.selected .step-inst { color: var(--accent); }
+.direct-step:last-child { border-bottom: none; }
+.step-icon-wrap {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text-2);
+  border-radius: var(--r-sm);
+}
+.step-icon-wrap.step-depart,
+.step-icon-wrap.step-arrive  { background: var(--accent-soft); color: var(--accent); }
+.step-icon-wrap.step-roundabout { background: rgba(140,71,153,.12); color: #8C4799; }
+.step-text-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.step-inst { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; }
+.step-meta { font-size: 11.5px; font-weight: 500; color: var(--text-3); }
+
 /* ── Time Picker ── */
 #dir-time-bar {
   display: flex; flex-direction: column; gap: 6px;
-  padding: 4px 16px 6px;
+  padding: 0 16px 12px;
   flex-shrink: 0;
 }
 .time-row {
@@ -1159,6 +1250,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .leg-badge.tram { background: var(--hsl-tram); }
 .leg-badge.rail, .leg-badge.train { background: var(--hsl-rail); }
 .leg-badge.subway, .leg-badge.metro { background: var(--hsl-metro); }
+.leg-badge.mode-drive  { background: #FF6319; }
+.leg-badge.mode-cycle  { background: #1FA86A; }
+.leg-badge.mode-walk   { background: #52525b; }
 .leg-badge.ferry { background: var(--hsl-ferry); }
 .leg-badge.funicular { background: #71717a; }
 .leg-arrow { color: var(--text-3); font-size: 11px; font-weight: 700; }
@@ -1168,16 +1262,17 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .itin-card.active .itin-legs { display: block; }
 
 /* Expand / focus button on itin header */
-.itin-expand {
+.itin-expand, .direct-expand {
   width: 30px; height: 30px; flex-shrink: 0;
   display: none; align-items: center; justify-content: center;
   background: var(--accent); border: none; border-radius: var(--r-sm);
   cursor: pointer; color: #fff; margin-top: 1px;
   transition: filter .15s;
 }
-.itin-expand:hover { filter: brightness(1.12); }
-.itin-expand svg { width: 14px; height: 14px; }
-.itin-card.active .itin-expand { display: flex; }
+.itin-expand:hover, .direct-expand:hover { filter: brightness(1.12); }
+.itin-expand svg, .direct-expand svg { width: 14px; height: 14px; }
+.itin-card.active .itin-expand, .direct-card .direct-expand { display: flex; }
+.itin-card.focused .itin-expand, .direct-card.focused .direct-expand { display: none; }
 
 /* ── Compact search summary bar (mobile, shown when results visible) ── */
 #dir-summary {
@@ -1212,6 +1307,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 @media (max-width: 768px) {
   #dir-panel.results-shown #dir-inputs,
   #dir-panel.results-shown #dir-time-bar,
+  #dir-panel.results-shown #dir-mode-bar,
   #dir-panel.results-shown #dir-go {
     display: none;
   }
@@ -1221,6 +1317,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   /* When editing, hide summary and show inputs */
   #dir-panel.results-shown.search-editing #dir-inputs,
   #dir-panel.results-shown.search-editing #dir-time-bar,
+  #dir-panel.results-shown.search-editing #dir-mode-bar,
   #dir-panel.results-shown.search-editing #dir-go {
     display: flex;
   }
@@ -1236,6 +1333,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 /* ── Focused route view ── */
 #dir-panel.route-focused #dir-inputs,
 #dir-panel.route-focused #dir-time-bar,
+#dir-panel.route-focused #dir-mode-bar,
 #dir-panel.route-focused #dir-go,
 #dir-panel.route-focused #dir-head,
 #dir-panel.route-focused #dir-summary {
@@ -1695,9 +1793,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
   /* ── Directions panel ── */
   .itin-card { margin: 6px 12px; padding: 14px; }
-  #dir-inputs { padding: 12px 12px 6px; gap: 6px; }
-  #dir-time-bar { padding: 4px 12px 8px; }
-  #dir-go { margin: 6px 12px 10px; height: 48px; font-size: 16px; }
+  #dir-inputs { padding: 12px 12px 0; gap: 6px; }
+  #dir-mode-bar { padding: 10px 12px 10px; }
+  #dir-time-bar { padding: 0 12px 10px; }
+  #dir-go { margin: 0 12px 12px; height: 48px; font-size: 16px; }
   .dir-suggest { max-height: 180px; }
 
   /* ── Sheet drag handle ── visual indicator only on mobile ── */

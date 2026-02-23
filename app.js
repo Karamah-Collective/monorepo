@@ -527,7 +527,6 @@ function closePlacesSheet() { placesSheet.classList.add('shut'); placesSheet.cla
 
 document.getElementById('places-btn').addEventListener('click', () => placesSheet.classList.contains('shut') ? openPlacesSheet() : closePlacesSheet());
 document.getElementById('places-close').addEventListener('click', closePlacesSheet);
-scrim.addEventListener('click', closePlacesSheet);
 
 let pty = 0;
 
@@ -881,9 +880,22 @@ const snackbarTitle = document.getElementById('snackbar-title');
 const snackbarSub = document.getElementById('snackbar-sub');
 const dirClearBtn = document.getElementById('dir-clear-route');
 
+let dirTravelMode = 'drive';
+// Each mode uses its own dedicated OSM routing server (routing.openstreetmap.de)
+// router.project-osrm.org only hosts driving — walking/cycling profiles live on separate servers
+const OSRM_URLS = {
+  drive: 'https://routing.openstreetmap.de/routed-car/route/v1/driving',
+  cycle: 'https://routing.openstreetmap.de/routed-bike/route/v1/bike',
+  walk:  'https://routing.openstreetmap.de/routed-foot/route/v1/foot',
+};
+const OSRM_COLORS   = { walk: '#52525b', cycle: '#1FA86A', drive: '#FF6319' };
+const OSRM_LABELS     = { walk: 'Walking', cycle: 'Cycling', drive: 'Driving' };
+const OSRM_ALT_COLORS = { walk: '#94A3B8', cycle: '#34D399', drive: '#FBBF24' };
+
 const dir = {
   origin: null, dest: null, pickField: null,
   itineraries: [], activeIdx: -1,
+  directInfo: null,
   originMarker: null, destMarker: null,
   routeLayers: [], routeSources: [],
 };
@@ -909,6 +921,24 @@ function fullCloseDirPanel() { unfocusRoute(); closeDirPanel(); clearRoute(); ex
 document.getElementById('dir-btn').addEventListener('click', () => dirPanel.classList.contains('shut') ? openDirPanel() : closeDirPanel());
 document.getElementById('dir-close').addEventListener('click', closeDirPanel);
 
+// ── Travel mode toggle ──
+dirPanel.dataset.travelMode = 'drive'; // default
+document.querySelectorAll('.mode-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    dirTravelMode = btn.dataset.mode;
+    dirPanel.dataset.travelMode = dirTravelMode;
+    clearRoute();
+    dir.itineraries = []; dir.activeIdx = -1; dir.directInfo = null;
+    dirItins.innerHTML = '';
+    dirEmpty.classList.remove('hide');
+    dirLoad.classList.add('hide');
+    dirErr.classList.add('hide');
+    exitResultsMode();
+  });
+});
+
 // ── Snackbar ──
 document.getElementById('snackbar-body').addEventListener('click', () => { if (dirPanel.classList.contains('shut')) openDirPanel(); });
 document.getElementById('snackbar-close').addEventListener('click', (e) => {
@@ -927,14 +957,32 @@ document.getElementById('snackbar-close').addEventListener('click', (e) => {
 dirClearBtn.addEventListener('click', () => {
   unfocusRoute();
   clearRoute();
-  dir.itineraries = []; dir.activeIdx = -1;
+  dir.itineraries = []; dir.activeIdx = -1; dir.origin = null; dir.dest = null;
+  dirFrom.value = ''; dirTo.value = '';
+  if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; }
+  if (dir.destMarker)   { dir.destMarker.remove();   dir.destMarker   = null; }
   dirItins.innerHTML = '';
   dirEmpty.classList.remove('hide');
   exitResultsMode();
+  startPick('from');
+});
+
+// Delegated handler for direct route interactions (expand button + step click)
+dirItins.addEventListener('click', e => {
+  if (e.target.closest('.direct-expand')) {
+    e.stopPropagation();
+    if (dir.directInfo) focusDirectRoute();
+    return;
+  }
+  const stepEl = e.target.closest('.direct-step');
+  if (stepEl && dir.directInfo?.stepGeometries) {
+    const idx = parseInt(stepEl.dataset.stepIdx, 10);
+    if (!isNaN(idx)) highlightDirectStep(idx, stepEl);
+  }
 });
 
 scrim.removeEventListener('click', closePlacesSheet);
-scrim.addEventListener('click', () => { if (!dirPanel.classList.contains('shut')) closeDirPanel(); else closePlacesSheet(); });
+scrim.addEventListener('click', () => {}); // scrim is pointer-events:none; close handled by map.on('click')
 
 let dirTy = 0;
 const dirDrag = document.getElementById('dir-drag');
@@ -944,6 +992,7 @@ if (dirHead) initSheetDrag(dirHead, dirPanel, closeDirPanel);
 
 // ── Pick mode ──
 function startPick(field) {
+  if (dir.activeIdx >= 0) return; // route active — don't allow re-picking points
   dir.pickField = field;
   document.querySelectorAll('.dir-field').forEach(f => f.classList.remove('picking'));
   (field === 'from' ? dirFrom.parentElement : dirTo.parentElement).classList.add('picking');
@@ -1007,7 +1056,18 @@ setupDirAutocomplete(dirTo, dirToSuggest, 'to');
 
 document.addEventListener('click', e => { if (!e.target.closest('.dir-field-wrap')) { dirFromSuggest.classList.add('hide'); dirToSuggest.classList.add('hide'); } });
 
-// ── Map click ──
+// ── Map interaction — close open panels ──
+// Fires on ANY map canvas interaction (click, hold, drag) unless in pick mode.
+// Scroll/wheel does NOT fire mousedown, so zooming never closes a panel.
+function closeOpenPanelOnMapInteract() {
+  if (dir.pickField) return; // actively picking a coordinate — keep panel open
+  if (!dirPanel.classList.contains('shut')) { closeDirPanel(); return; }
+  if (!placesSheet.classList.contains('shut')) closePlacesSheet();
+}
+map.on('mousedown', closeOpenPanelOnMapInteract);
+map.getCanvas().addEventListener('touchstart', closeOpenPanelOnMapInteract, { passive: true });
+
+// ── Map click (pick mode only) ──
 map.on('click', async (e) => {
   if (!dir.pickField) return;
   const { lng, lat } = e.lngLat;
@@ -1278,6 +1338,8 @@ async function findRoutes() {
   if (!dir.origin) { showDirError('Select an origin on the map or type a place'); return; }
   if (!dir.dest) { showDirError('Select a destination on the map or type a place'); return; }
 
+  if (dirTravelMode !== 'transit') { await findRoutesDirect(dirTravelMode); return; }
+
   showDirLoading();
   dirPanel.classList.remove('search-editing');
   const selectedTime = dirUseNow ? new Date().toISOString() : new Date(`${getDateValue()}T${getTimeValue()}`).toISOString();
@@ -1309,6 +1371,214 @@ async function findRoutes() {
     dir.itineraries = edges.map(e => e.node);
     renderItineraries();
   } catch (err) { showDirError(err.message || 'Failed to fetch routes'); }
+}
+
+// ── OSRM direct routing (walk / cycle / drive) with turn-by-turn ──
+
+function dirModeIconSvg(mode, size = 20) {
+  const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`;
+  if (mode === 'walk')  return `<svg ${s}>${MODE_PATHS.WALK}</svg>`;
+  if (mode === 'cycle') return `<svg ${s}><circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5"/><circle cx="13.5" cy="7" r="2" fill="currentColor" stroke="none"/></svg>`;
+  if (mode === 'drive') return `<svg ${s}><path d="M3 17V12.5l2.5-6h13l2.5 6V17a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/><path d="M3 13h18"/></svg>`;
+  return modeIcon('BUS', size);
+}
+
+// Bearing to compass direction
+function bearingName(deg) {
+  const d = ['north','north-east','east','south-east','south','south-west','west','north-west'];
+  return d[Math.round((deg || 0) / 45) % 8];
+}
+
+// Format step distance
+function fmtDist(m) {
+  if (m >= 1000) return (m / 1000).toFixed(1) + ' km';
+  if (m >= 100) return (Math.round(m / 10) * 10) + ' m';
+  return Math.round(m) + ' m';
+}
+
+// Human-readable instruction for an OSRM step
+function stepInstruction(step) {
+  const type = step.maneuver.type;
+  const mod  = step.maneuver.modifier || '';
+  const road = step.name || step.ref || '';
+  const on   = road ? ` on ${road}` : '';
+  const onto = road ? ` onto ${road}` : '';
+  const modText = {
+    'sharp left': 'sharp left', 'left': 'left', 'slight left': 'slightly left',
+    'straight': 'straight', 'slight right': 'slightly right', 'right': 'right',
+    'sharp right': 'sharp right', 'uturn': 'U-turn'
+  }[mod] || mod;
+  const exitNum = step.maneuver.exit ? ` exit ${step.maneuver.exit}` : '';
+  switch (type) {
+    case 'depart':          return `Head ${bearingName(step.maneuver.bearing_after)}${on}`;
+    case 'arrive':          return mod === 'left' ? 'Destination is on the left' : mod === 'right' ? 'Destination is on the right' : 'Arrive at destination';
+    case 'turn':            return `Turn ${modText}${onto}`;
+    case 'new name':        return `Continue${onto}`;
+    case 'continue':        return `Continue ${modText}${on}`;
+    case 'merge':           return `Merge ${modText}${onto}`;
+    case 'on ramp':         return `Take the ramp${modText ? ' ' + modText : ''}${on}`;
+    case 'off ramp':        return `Take exit${step.destinations ? ' towards ' + step.destinations : ''}${onto}`;
+    case 'fork':            return `Keep ${modText} at the fork${onto}`;
+    case 'end of road':     return `Turn ${modText} at end of road${onto}`;
+    case 'roundabout':
+    case 'rotary':          return `At the roundabout, take${exitNum} exit${onto}`;
+    case 'roundabout turn': return `At the roundabout, turn ${modText}`;
+    case 'exit roundabout':
+    case 'exit rotary':     return `Exit the roundabout${onto}`;
+    case 'use lane':        return `Use lane to go ${modText}${onto}`;
+    default:                return road ? `Continue${on}` : type;
+  }
+}
+
+// Maneuver icon SVG
+function maneuverIconSvg(type, mod) {
+  const a = `width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
+  if (type === 'depart')   return `<svg ${a}><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>`;
+  if (type === 'arrive')   return `<svg ${a}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/></svg>`;
+  if (type === 'roundabout' || type === 'rotary' || type === 'roundabout turn' || type === 'exit roundabout' || type === 'exit rotary')
+    return `<svg ${a}><path d="M12 5a7 7 0 1 0 7 7"/><path d="M15 2l4 3-4 3"/></svg>`;
+  if (type === 'merge')    return `<svg ${a}><path d="M12 21V8M5 3l7 5 7-5"/></svg>`;
+  if (type === 'fork') {
+    if (mod && mod.includes('left')) return `<svg ${a}><path d="M12 21V8M5 3l7 5"/><path d="M5 3v6h5"/></svg>`;
+    return `<svg ${a}><path d="M12 21V8M19 3l-7 5"/><path d="M19 3v6h-5"/></svg>`;
+  }
+  if (type === 'on ramp' || type === 'off ramp') return `<svg ${a}><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+  if (mod === 'uturn')       return `<svg ${a}><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>`;
+  if (mod === 'sharp left')  return `<svg ${a}><path d="M18 18l-9-9m0 0v7m0-7h7"/></svg>`;
+  if (mod === 'left')        return `<svg ${a}><path d="M17 12H5M11 6l-6 6 6 6"/></svg>`;
+  if (mod === 'slight left') return `<svg ${a}><path d="M7 17l9-9M7 9v8h8"/></svg>`;
+  if (mod === 'slight right')return `<svg ${a}><path d="M17 17l-9-9M17 9v8h-8"/></svg>`;
+  if (mod === 'right')       return `<svg ${a}><path d="M7 12h12M13 6l6 6-6 6"/></svg>`;
+  if (mod === 'sharp right') return `<svg ${a}><path d="M6 18l9-9m0 0v7m0-7h-7"/></svg>`;
+  return `<svg ${a}><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+}
+
+// Segment type for map coloring
+function stepSegType(manType) {
+  if (manType === 'roundabout' || manType === 'rotary') return 'roundabout';
+  if (manType === 'depart' || manType === 'arrive')     return 'endpoint';
+  return 'normal';
+}
+
+async function findRoutesDirect(mode) {
+  showDirLoading();
+  dirPanel.classList.remove('search-editing');
+  const color    = OSRM_COLORS[mode];
+  const altColor = OSRM_ALT_COLORS[mode];
+  const url = `${OSRM_URLS[mode]}/${dir.origin.lng},${dir.origin.lat};${dir.dest.lng},${dir.dest.lat}?overview=full&geometries=geojson&steps=true`;
+  try {
+    const res  = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`Routing error ${res.status}`);
+    const json = await res.json();
+    if (json.code !== 'Ok' || !json.routes?.length) { showDirError('No route found'); return; }
+
+    const route  = json.routes[0];
+    const steps  = route.legs[0]?.steps || [];
+    const durMin = Math.round(route.duration / 60);
+    const distKm = (route.distance / 1000).toFixed(1);
+
+    // ── Draw segmented route on map ──────────────────────────────
+    clearRoute();
+    let segIdx = 0;
+    const stepFeatures = steps
+      .filter(s => s.geometry?.coordinates?.length > 1)
+      .map(s => ({
+        type: 'Feature',
+        geometry: s.geometry,
+        properties: { segType: stepSegType(s.maneuver.type), idx: segIdx++ }
+      }));
+
+    // Fallback: use full overview geometry if no step geometries
+    const srcData = stepFeatures.length
+      ? { type: 'FeatureCollection', features: stepFeatures }
+      : route.geometry;
+
+    map.addSource('dir-direct-src', { type: 'geojson', data: srcData });
+    map.addLayer({ id: 'dir-direct-cas', type: 'line', source: 'dir-direct-src',
+      paint: { 'line-color': '#ffffff', 'line-width': mode === 'walk' ? 8 : 9, 'line-opacity': 0.95 },
+      layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    map.addLayer({ id: 'dir-direct-ln', type: 'line', source: 'dir-direct-src',
+      paint: {
+        'line-color': stepFeatures.length
+          ? ['case',
+              ['==', ['get', 'segType'], 'roundabout'], '#8C4799',
+              ['==', ['%', ['get', 'idx'], 2], 0], color,
+              altColor
+            ]
+          : color,
+        'line-width': mode === 'walk' ? 4 : 5,
+        'line-dasharray': mode === 'walk' ? [1.5, 2] : [1],
+        'line-opacity': 0.9
+      },
+      layout: { 'line-cap': 'round', 'line-join': 'round' } });
+
+    // ── Highlight layer (lit on step click) ──────────────────────
+    map.addSource('dir-highlight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'dir-highlight-ln', type: 'line', source: 'dir-highlight-src',
+      paint: { 'line-color': color, 'line-width': mode === 'walk' ? 10 : 12, 'line-opacity': 0.45 },
+      layout: { 'line-cap': 'round', 'line-join': 'round' } });
+
+    dir.routeSources.push('dir-direct-src', 'dir-highlight-src');
+    dir.routeLayers.push('dir-direct-cas', 'dir-direct-ln', 'dir-highlight-ln');
+
+    // Fit bounds
+    const bounds = new maplibregl.LngLatBounds();
+    route.geometry.coordinates.forEach(c => bounds.extend(c));
+    const mob = window.innerWidth <= 768;
+    map.fitBounds(bounds, { padding: mob ? { top: 80, bottom: 240, left: 30, right: 30 } : { top: 80, bottom: 300, left: 60, right: 60 }, duration: 600 });
+
+    // ── Build turn-by-turn step rows ──────────────────────────────
+    const stepsHTML = steps.map((step, stepIdx) => {
+      const stype = step.maneuver.type;
+      const smod  = step.maneuver.modifier || '';
+      const iconClass = (stype === 'roundabout' || stype === 'rotary' || stype === 'exit roundabout' || stype === 'exit rotary')
+        ? 'step-roundabout'
+        : (stype === 'arrive' ? 'step-arrive' : (stype === 'depart' ? 'step-depart' : ''));
+      const dist = step.distance > 5 ? fmtDist(step.distance) : '';
+      const dur  = step.duration >= 30 ? Math.round(step.duration / 60) + ' min' : '';
+      const meta = [dist, dur].filter(Boolean).join(' · ');
+      return `
+        <div class="direct-step" data-step-idx="${stepIdx}">
+          <div class="step-icon-wrap ${iconClass}">${maneuverIconSvg(stype, smod)}</div>
+          <div class="step-text-col">
+            <div class="step-inst">${esc(stepInstruction(step))}</div>
+            ${meta ? `<div class="step-meta">${meta}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    // ── Result card ─────────────────────────────────────────────
+    dir.directInfo = { mode, durMin, distKm, stepGeometries: steps.map(s => s.geometry) };
+    dir.activeIdx  = 0;
+    const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
+    dirEmpty.classList.add('hide'); dirLoad.classList.add('hide'); dirErr.classList.add('hide');
+    dirItins.innerHTML = `
+      <div class="itin-card direct-card active" style="--dc:${color}">
+        <div class="direct-header">
+          <div class="direct-mode-icon">${dirModeIconSvg(mode, 20)}</div>
+          <div class="direct-summary">
+            <span class="direct-dur">${durLabel}</span>
+            <span class="direct-meta">${OSRM_LABELS[mode]} · ${distKm} km</span>
+          </div>
+          <div class="direct-endpoints">
+            <span class="direct-ep">${esc(dir.origin.name)}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <span class="direct-ep">${esc(dir.dest.name)}</span>
+          </div>
+          <button class="direct-expand" title="Full screen directions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+        <div class="direct-steps">${stepsHTML}</div>
+      </div>`;
+
+    document.getElementById('dir-btn').classList.add('route-active');
+    dirClearBtn.classList.remove('hide');
+    enterResultsMode();
+    updateSnackbar();
+  } catch (err) {
+    showDirError(err.message || 'Could not find route');
+  }
 }
 
 // ── Render itineraries ──
@@ -1451,6 +1721,44 @@ function unfocusRoute() {
   });
 }
 
+function focusDirectRoute() {
+  if (!dir.directInfo) return;
+  const { mode, durMin, distKm } = dir.directInfo;
+  document.getElementById('focused-origin').textContent = dir.origin?.name || 'Origin';
+  document.getElementById('focused-dest').textContent   = dir.dest?.name   || 'Destination';
+  // Mode badge in chain
+  const chainEl = document.getElementById('focused-chain');
+  chainEl.innerHTML = '';
+  const badge = document.createElement('span');
+  badge.className = `leg-badge mode-${mode}`;
+  badge.innerHTML = dirModeIconSvg(mode, 12);
+  chainEl.appendChild(badge);
+  // Meta row
+  const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
+  document.getElementById('focused-meta').innerHTML =
+    `<span>${OSRM_LABELS[mode]}</span><span>·</span><span>${durLabel}</span><span>·</span><span>${distKm} km</span>`;
+  document.getElementById('dir-focused-title').textContent = `${OSRM_LABELS[mode]} Directions`;
+  dirPanel.classList.add('route-focused');
+  document.querySelectorAll('.itin-card').forEach(c => {
+    if (c.classList.contains('direct-card')) { c.classList.add('focused', 'active'); c.style.display = ''; }
+    else { c.style.display = 'none'; }
+  });
+}
+
+function highlightDirectStep(idx, stepEl) {
+  document.querySelectorAll('.direct-step.selected').forEach(el => el.classList.remove('selected'));
+  stepEl.classList.add('selected');
+  const geom = dir.directInfo?.stepGeometries?.[idx];
+  if (!geom || !map.getSource('dir-highlight-src')) return;
+  map.getSource('dir-highlight-src').setData({ type: 'Feature', geometry: geom });
+  if (geom?.coordinates?.length >= 2) {
+    // Find midpoint coordinate of the segment
+    const coords = geom.coordinates;
+    const mid = coords[Math.floor(coords.length / 2)];
+    map.easeTo({ center: mid, duration: 400 });
+  }
+}
+
 document.getElementById('dir-focused-back').addEventListener('click', unfocusRoute);
 document.getElementById('dir-focused-close').addEventListener('click', () => { unfocusRoute(); closeDirPanel(); });
 
@@ -1459,22 +1767,31 @@ function clearRoute() {
   dir.routeLayers.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
   dir.routeSources.forEach(id => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = [];
+  dir.directInfo = null;
   document.getElementById('dir-btn').classList.remove('route-active');
   routeSnackbar.classList.add('hide');
   dirClearBtn.classList.add('hide');
 }
 
 function updateSnackbar() {
-  if (dir.activeIdx >= 0 && dir.itineraries[dir.activeIdx] && dirPanel.classList.contains('shut')) {
-    const itin = dir.itineraries[dir.activeIdx];
-    const startT = new Date(itin.start), endT = new Date(itin.end);
-    const durMin = Math.round((endT - startT) / 60000);
+  if (dir.activeIdx >= 0 && dirPanel.classList.contains('shut')) {
     const originName = dir.origin?.name || 'Origin';
     const destName = dir.dest?.name || 'Destination';
     snackbarTitle.textContent = `${originName} → ${destName}`;
-    const modes = itin.legs.filter(l => l.mode !== 'WALK').map(l => l.trip?.routeShortName || l.mode.charAt(0) + l.mode.slice(1).toLowerCase()).join(' → ');
-    snackbarSub.textContent = modes ? `${durMin} min · ${modes}` : `${durMin} min walk`;
-    routeSnackbar.classList.remove('hide');
+    if (dir.directInfo) {
+      const { mode, durMin, distKm } = dir.directInfo;
+      snackbarSub.textContent = `${OSRM_LABELS[mode]} · ${durMin} min · ${distKm} km`;
+      routeSnackbar.classList.remove('hide');
+    } else if (dir.itineraries[dir.activeIdx]) {
+      const itin = dir.itineraries[dir.activeIdx];
+      const startT = new Date(itin.start), endT = new Date(itin.end);
+      const durMin = Math.round((endT - startT) / 60000);
+      const modes = itin.legs.filter(l => l.mode !== 'WALK').map(l => l.trip?.routeShortName || l.mode.charAt(0) + l.mode.slice(1).toLowerCase()).join(' → ');
+      snackbarSub.textContent = modes ? `${durMin} min · ${modes}` : `${durMin} min walk`;
+      routeSnackbar.classList.remove('hide');
+    } else {
+      routeSnackbar.classList.add('hide');
+    }
   } else {
     routeSnackbar.classList.add('hide');
   }
