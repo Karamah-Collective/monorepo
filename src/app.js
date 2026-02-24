@@ -2008,7 +2008,141 @@ map.on('load', () => {
   console.log('[Map] Style loaded');
   loadPlacesData();
   loadTransitCache();
+  initPrayerTimes();
 });
+
+// ═══════════════════════════════════════════════════════════════
+// PRAYER TIMES  –  Aladhan API (free, no API key required)
+// https://aladhan.com/prayer-times-api
+// ═══════════════════════════════════════════════════════════════
+const PRAYER_NAMES  = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+const HELSINKI_LAT  = 60.1699;
+const HELSINKI_LNG  = 24.9384;
+
+let prayerTimesToday      = null; // { Fajr: Date, Dhuhr: Date, … }
+let prayerWatchInterval   = null;
+let lastAlertedPrayer     = null;
+
+// ─── Fetch timings from Aladhan ───
+async function fetchPrayerTimes(lat, lng) {
+  const ts  = Math.floor(Date.now() / 1000);
+  // method=3 = Muslim World League (works well for Northern Europe)
+  const url = `https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=3`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!resp.ok) throw new Error(`Aladhan HTTP ${resp.status}`);
+  const json = await resp.json();
+  return json.data.timings; // { Fajr: "04:42", Dhuhr: "12:02", … }
+}
+
+// ─── Parse HH:MM strings into today's Date objects ───
+function parsePrayerTimings(raw) {
+  const today  = new Date();
+  const result = {};
+  for (const name of PRAYER_NAMES) {
+    const [h, m] = raw[name].split(':').map(Number);
+    result[name] = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
+  }
+  return result;
+}
+
+// ─── Find the next upcoming prayer ───
+function getNextPrayer() {
+  if (!prayerTimesToday) return null;
+  const now = new Date();
+  for (const name of PRAYER_NAMES) {
+    if (prayerTimesToday[name] > now) return { name, time: prayerTimesToday[name] };
+  }
+  return null; // all five prayers passed for today
+}
+
+// ─── Human-readable countdown ───
+function formatPrayerCountdown(date) {
+  const diffMin = Math.round((date - new Date()) / 60000);
+  if (diffMin <  1)  return 'in less than a minute';
+  if (diffMin < 60)  return `in ${diffMin} min`;
+  const h = Math.floor(diffMin / 60), m = diffMin % 60;
+  return m === 0 ? `in ${h}h` : `in ${h}h ${m}m`;
+}
+
+// ─── Show prayer snackbar ───
+function showPrayerSnack(title, sub = '', autoHide = false) {
+  const el = document.getElementById('prayer-snack');
+  document.getElementById('prayer-snack-title').textContent = title;
+  document.getElementById('prayer-snack-sub').textContent   = sub;
+  el.classList.remove('hide', 'prayer-snack-out');
+  if (autoHide) setTimeout(() => dismissPrayerSnack(), 2500);
+}
+
+// ─── Slide out then hide ───
+function dismissPrayerSnack() {
+  const el = document.getElementById('prayer-snack');
+  if (el.classList.contains('hide')) return;
+  el.classList.add('prayer-snack-out');
+  setTimeout(() => el.classList.add('hide'), 340);
+}
+
+// ─── Per-30s watcher: fire prayer alerts + keep countdown fresh ───
+function startPrayerWatcher() {
+  if (prayerWatchInterval) clearInterval(prayerWatchInterval);
+  prayerWatchInterval = setInterval(() => {
+    if (!prayerTimesToday) return;
+    const now = new Date();
+
+    // Check if any prayer time just arrived (within a 1-minute window)
+    for (const name of PRAYER_NAMES) {
+      const diffMin = (now - prayerTimesToday[name]) / 60000;
+      if (diffMin >= 0 && diffMin < 1 && lastAlertedPrayer !== name) {
+        lastAlertedPrayer = name;
+        showPrayerSnack(`🕌 Time for ${name}`, '', /* autoHide */ true);
+        return;
+      }
+    }
+
+    // While the next-prayer card is visible, refresh the countdown text
+    const snackEl = document.getElementById('prayer-snack');
+    if (!snackEl.classList.contains('hide') && !snackEl.classList.contains('prayer-snack-out')) {
+      const next = getNextPrayer();
+      if (next) {
+        const timeStr = next.time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('prayer-snack-title').textContent = `Next prayer: ${next.name}`;
+        document.getElementById('prayer-snack-sub').textContent   = `${timeStr} — ${formatPrayerCountdown(next.time)}`;
+      }
+    }
+  }, 30000);
+}
+
+// ─── Entry point: get location → fetch → display ───
+async function initPrayerTimes() {
+  let lat = HELSINKI_LAT, lng = HELSINKI_LNG;
+
+  // Try the user's real location silently (no UI prompt, just opportunistic)
+  if (navigator.geolocation) {
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject,
+          { timeout: 5000, maximumAge: 120000 })
+      );
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch (_) { /* fall back to Helsinki */ }
+  }
+
+  try {
+    const raw        = await fetchPrayerTimes(lat, lng);
+    prayerTimesToday = parsePrayerTimings(raw);
+    const next       = getNextPrayer();
+    if (next) {
+      const timeStr = next.time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      showPrayerSnack(`Next prayer: ${next.name}`, `${timeStr} — ${formatPrayerCountdown(next.time)}`);
+    }
+    startPrayerWatcher();
+  } catch (err) {
+    console.warn('[Prayer] Could not fetch prayer times:', err.message);
+  }
+}
+
+// Wire snackbar close button
+document.getElementById('prayer-snack-close').addEventListener('click', dismissPrayerSnack);
 
 // ─── Primary: load from pre-built cache file ───
 async function loadTransitCache() {
