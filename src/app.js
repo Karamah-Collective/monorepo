@@ -2020,6 +2020,7 @@ const HELSINKI_LAT  = 60.1699;
 const HELSINKI_LNG  = 24.9384;
 
 let prayerTimesToday      = null; // { Fajr: Date, Dhuhr: Date, … }
+let sunriseTime           = null; // Fajr ends at sunrise
 let prayerWatchInterval   = null;
 let lastAlertedPrayer     = null;
 
@@ -2042,7 +2043,36 @@ function parsePrayerTimings(raw) {
     const [h, m] = raw[name].split(':').map(Number);
     result[name] = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
   }
+  
+  // Also parse sunrise time (Fajr is only valid until sunrise)
+  if (raw.Sunrise) {
+    const [h, m] = raw.Sunrise.split(':').map(Number);
+    sunriseTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
+  }
+  
   return result;
+}
+
+// ─── Find the current prayer period (which prayer time has passed) ───
+function getCurrentPrayer() {
+  if (!prayerTimesToday) return null;
+  const now = new Date();
+  let current = null;
+  
+  for (const name of PRAYER_NAMES) {
+    if (prayerTimesToday[name] <= now) {
+      current = { name, time: prayerTimesToday[name] };
+    } else {
+      break;
+    }
+  }
+  
+  // Special case: Fajr is only valid until sunrise
+  if (current && current.name === 'Fajr' && sunriseTime && now >= sunriseTime) {
+    return null; // Past sunrise, Fajr is no longer current
+  }
+  
+  return current;
 }
 
 // ─── Find the next upcoming prayer ───
@@ -2077,8 +2107,9 @@ function showPrayerSnack(title, sub = '', autoHide = false) {
 function dismissPrayerSnack() {
   const el = document.getElementById('prayer-snack');
   if (el.classList.contains('hide')) return;
+  el.classList.remove('expanded'); // Collapse if expanded
   el.classList.add('prayer-snack-out');
-  setTimeout(() => el.classList.add('hide'), 340);
+  setTimeout(() => el.classList.add('hide'), 420);
 }
 
 // ─── Per-30s watcher: fire prayer alerts + keep countdown fresh ───
@@ -2141,8 +2172,64 @@ async function initPrayerTimes() {
   }
 }
 
+// ─── Toggle expanded prayer times view ───
+function togglePrayerExpanded() {
+  const el = document.getElementById('prayer-snack');
+  const header = document.querySelector('.prayer-snack-clickable');
+  const isExpanded = el.classList.toggle('expanded');
+  
+  if (isExpanded) {
+    // Populate the list
+    const listEl = document.getElementById('prayer-times-list');
+    listEl.classList.remove('hide');
+    listEl.innerHTML = '';
+    
+    if (prayerTimesToday) {
+      const now = new Date();
+      const current = getCurrentPrayer();
+      const next = getNextPrayer();
+      
+      for (const name of PRAYER_NAMES) {
+        const time = prayerTimesToday[name];
+        const timeStr = time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        
+        // Current prayer is the one whose time has passed but next hasn't
+        const isCurrent = current && current.name === name;
+        const isNext = next && next.name === name;
+        
+        const item = document.createElement('div');
+        item.className = 'prayer-time-item';
+        if (isCurrent) item.classList.add('current');
+        if (isNext) item.classList.add('next');
+        
+        const nameEl = document.createElement('div');
+        nameEl.className = 'prayer-time-name';
+        nameEl.textContent = name;
+        
+        const timeEl = document.createElement('div');
+        timeEl.className = 'prayer-time-value';
+        timeEl.textContent = timeStr;
+        
+        item.appendChild(nameEl);
+        item.appendChild(timeEl);
+        listEl.appendChild(item);
+      }
+    }
+  } else {
+    document.getElementById('prayer-times-list').classList.add('hide');
+    // Remove focus/active state on mobile after collapse
+    header.blur();
+  }
+}
+
 // Wire snackbar close button
-document.getElementById('prayer-snack-close').addEventListener('click', dismissPrayerSnack);
+document.getElementById('prayer-snack-close').addEventListener('click', (e) => {
+  e.stopPropagation();
+  dismissPrayerSnack();
+});
+
+// Wire snackbar expand/collapse
+document.querySelector('.prayer-snack-clickable').addEventListener('click', togglePrayerExpanded);
 
 // ─── Primary: load from pre-built cache file ───
 async function loadTransitCache() {

@@ -389,18 +389,29 @@
 
   <!-- ─── Prayer Times Snackbar ─── -->
   <div id="prayer-snack" class="hide">
-    <div class="prayer-snack-body">
-      <svg class="prayer-snack-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
-        <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
-      </svg>
-      <div class="prayer-snack-content">
-        <div id="prayer-snack-title">Next prayer</div>
-        <div id="prayer-snack-sub"></div>
+    <div id="prayer-snack-header" class="prayer-snack-clickable">
+      <div class="prayer-snack-body">
+        <div class="prayer-icon-wrap">
+          <svg class="prayer-snack-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <div class="prayer-snack-content">
+          <div id="prayer-snack-title">Next prayer</div>
+          <div id="prayer-snack-sub"></div>
+        </div>
       </div>
+      <svg class="prayer-expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+      <button id="prayer-snack-close" aria-label="Close prayer notification">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
-    <button id="prayer-snack-close" aria-label="Close prayer notification">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button>
+    <div id="prayer-times-list" class="hide">
+      <!-- Prayer times will be populated here -->
+    </div>
   </div>
 
   <!-- Scrim -->
