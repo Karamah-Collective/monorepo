@@ -74,17 +74,12 @@ An interactive map application for discovering halal-friendly locations across H
 
 ```
 Maps/
-├── public/                          # Static web assets & deployment files
-│   ├── index.html                   # Application entry point
-│   ├── styles.css                   # Complete application styling (71 KB)
-│   └── data/                        # Pre-built data files
-│       ├── places.json              # Halal location database (100+ places)
-│       └── tags.json                # Place attribute definitions
+├── data/                            # Pre-built data files
+│   ├── places.json                  # Halal location database (100+ places)
+│   └── tags.json                    # Place attribute definitions
 │
-├── src/                             # Source code & configuration
-│   ├── app.js                       # Main application logic (2230 lines)
-│   ├── config.local.js              # Local secrets (git-ignored with API keys)
-│   └── config.template.js           # Reference template for configuration
+├── docs/                            # Project documentation
+│   └── SECRETS_SETUP.md             # Security & deployment configuration guide
 │
 ├── scripts/                         # Build & utility scripts
 │   ├── build-secrets.js             # Environment variable injection for Cloudflare
@@ -92,16 +87,21 @@ Maps/
 │   ├── check_places_osm.py          # Python utility for OSM validation
 │   └── transit-cache.json           # Generated transit stop cache (3.1 MB, git-ignored)
 │
-├── docs/                            # Project documentation
-│   └── SECRETS_SETUP.md             # Security & deployment configuration guide
+├── src/                             # Source code & configuration
+│   ├── styles/                      # Stylesheets
+│   │   └── styles.css               # Complete application styling (71 KB)
+│   ├── app.js                       # Main application logic (2230 lines)
+│   ├── config.local.js              # Local secrets (git-ignored with API keys)
+│   └── config.template.js           # Reference template for configuration
 │
 ├── .gitignore                       # Git configuration (secrets, caches, IDE files)
 ├── GIT_TRACKING.md                  # Git strategy reference (local-only)
+├── index.html                       # Application entry point
 └── README.md                        # This file
 
 **File Sizes:**
 - app.js: 2230 lines, ~75 KB
-- styles.css: 71 KB
+- src/styles/styles.css: 71 KB
 - transit-cache.json: ~3.1 MB (local only)
 - index.html: ~398 lines, ~15 KB
 ```
