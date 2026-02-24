@@ -1726,7 +1726,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #prayer-snack:not(.collapsed) {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  width: min(80vw, 260px);
+  width: min(80vw, 240px);
 }
 
 /* ── Header ── */
@@ -1777,7 +1777,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .prayer-time-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px;
+  padding: 7px 12px;
   transition: background .12s;
   position: relative;
 }
