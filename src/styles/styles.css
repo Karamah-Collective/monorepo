@@ -100,7 +100,6 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   opacity: 0; pointer-events: none; position: absolute;
 }
 #search-box:focus-within {
-  box-shadow: inset 0 0 0 2px var(--accent-muted);
   border-radius: var(--r-xl);
 }
 
@@ -719,6 +718,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .place-mk-wrap {
   cursor: pointer;
 }
+/* Force markers to stay fully visible during MapLibre layer transitions */
+.maplibregl-marker { opacity: 1 !important; transition: none !important; }
 .place-mk {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px;
@@ -1619,55 +1620,54 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .zone-badge.zone-inline { width: auto; height: 16px; padding: 0 5px; border-radius: 4px; font-size: 10px; vertical-align: middle; margin-left: 2px; }
 
 /* ═══════════════════════════════════════════════════════
-   ROUTE SNACKBAR
+   ROUTE SNACKBAR (pill style)
    ═══════════════════════════════════════════════════════ */
 #route-snackbar {
   position: absolute; z-index: 10;
   bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
   left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px;
-  background: var(--accent); color: #fff;
-  padding: 11px 10px 11px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  box-shadow: 0 4px 20px rgba(26,115,184,.32);
+  box-shadow: var(--shadow-lg);
+  padding: 8px 8px 8px 12px;
   cursor: pointer;
   animation: snackUp .3s ease-out;
   max-width: min(92vw, 400px);
 }
 @keyframes snackUp {
   from { opacity: 0; transform: translateX(-50%) translateY(16px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 #snackbar-body {
   display: flex; align-items: center; gap: 10px;
   flex: 1; min-width: 0;
 }
-.snackbar-icon { flex-shrink: 0; opacity: .7; }
+.snackbar-icon-wrap {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft);
+  border-radius: var(--r-xs);
+  color: var(--accent);
+}
 #snackbar-content { flex: 1; min-width: 0; line-height: 1.3; }
 #snackbar-title {
-  font-size: 14px; font-weight: 700;
+  font-size: 13px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #snackbar-sub {
-  font-size: 12px; font-weight: 500; opacity: .75;
+  font-size: 11.5px; font-weight: 500; color: var(--text-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
 }
 #snackbar-sub:empty { display: none; }
-#snackbar-close {
-  width: 28px; height: 28px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,.18); border: none; border-radius: 50%;
-  cursor: pointer; color: #fff;
-  transition: filter .15s;
-}
-#snackbar-close:hover { filter: brightness(1.3); }
 
 /* ═══════════════════════════════════════════════════════
    PRAYER TIMES CARD
    ═══════════════════════════════════════════════════════ */
 #prayer-snack {
-  position: absolute; z-index: 12;
+  position: absolute; z-index: 9;
   top: calc(var(--safe-t) + 14px);
   left: 16px;
   background: var(--surface);
@@ -2096,7 +2096,6 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   .clear-btn { width: 36px; height: 36px; }
   .dir-field-btn { width: 40px; height: 40px; }
   .cal-nav { width: 38px; height: 38px; }
-  #snackbar-close { width: 34px; height: 34px; }
   #dir-swap { width: 40px; height: 40px; }
 
   /* ── Inputs: 16px prevents iOS auto-zoom ── */

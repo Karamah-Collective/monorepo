@@ -404,13 +404,15 @@
   <!-- ─── Route Snackbar ─── -->
   <div id="route-snackbar" class="hide">
     <div id="snackbar-body">
-      <svg class="snackbar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18l4-4 4 4 4-8 4 4"/></svg>
+      <div class="snackbar-icon-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18l4-4 4 4 4-8 4 4"/></svg>
+      </div>
       <div id="snackbar-content">
         <div id="snackbar-title">Route active</div>
         <div id="snackbar-sub"></div>
       </div>
     </div>
-    <button id="snackbar-close" aria-label="Clear route">
+    <button id="snackbar-close" class="sheet-x" aria-label="Clear route">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   </div>

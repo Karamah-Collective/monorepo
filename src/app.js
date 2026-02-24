@@ -170,6 +170,9 @@ const map = new maplibregl.Map({
   attributionControl: true, doubleClickZoom: false,
 });
 
+// Start in 2D mode — lock pitch to 0 so no tilt is possible (desktop Ctrl+drag or mobile two-finger)
+map.setMaxPitch(0);
+
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
 // ─── Place marker helper ───
@@ -2106,6 +2109,7 @@ function enable3D() {
   } else {
     map.setLayoutProperty('building-3d', 'visibility', 'visible');
   }
+  map.setMaxPitch(85);
   map.easeTo({ pitch: 55, duration: 600 });
 }
 
@@ -2117,7 +2121,8 @@ function disable3D() {
   map.setLayoutProperty('building', 'visibility', 'visible');
   map.setLayoutProperty('building_shadow', 'visibility', 'visible');
   map.setLayoutProperty('building_outline', 'visibility', 'visible');
-  map.easeTo({ pitch: 0, duration: 600 });
+  map.easeTo({ pitch: 0, duration: 600 }, { noMoveStart: true });
+  setTimeout(() => map.setMaxPitch(0), 620);
 }
 
 function setMapStyle(mode) {
