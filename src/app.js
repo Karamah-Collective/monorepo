@@ -3,6 +3,9 @@
    MapLibre GL + HSL transit + Directions + Places
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Import secrets from local config (git-ignored in production) ──
+import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_REV, NOMINATIM_VB } from './config.local.js';
+
 // ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('gesturechange', e => e.preventDefault());
@@ -14,11 +17,6 @@ document.addEventListener('touchmove', e => {
 const HELSINKI = [24.9384, 60.1699];
 const FINLAND_SW = [19.5, 59.5];
 const FINLAND_NE = [32.0, 70.5];
-const DIGITRANSIT_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const TRANSITOUS_URL  = 'https://api.transitous.org/api/v5/plan';
-const DT_API_KEY = '67e7adc2e4fe4d649753b3b8eb872c23';
-const NOMINATIM_REV = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1';
-const NOMINATIM_VB = '24.0,60.8,25.8,59.8';
 
 const TRANSIT_COLORS = {
   bus:   '#1A73B8',
@@ -275,8 +273,8 @@ function clearSearchMarker() { if (searchMarkerPopup) { searchMarkerPopup.remove
 async function loadPlacesData() {
   try {
     const [pRes, tRes] = await Promise.all([
-      fetch('places.json'),
-      fetch('tags.json'),
+      fetch('../public/data/places.json'),
+      fetch('../public/data/tags.json'),
     ]);
     placesData = await pRes.json();
     tagsData = await tRes.json();
@@ -2016,7 +2014,7 @@ map.on('load', () => {
 async function loadTransitCache() {
   console.log('[Transit] Loading cached stops…');
   try {
-    const resp = await fetch('transit-cache.json', { signal: AbortSignal.timeout(10000) });
+    const resp = await fetch('../scripts/transit-cache.json', { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const cache = await resp.json();
     console.log(`[Transit] Cache v${cache.version}, ${cache.stopCount} stops, generated ${cache.generated}`);
