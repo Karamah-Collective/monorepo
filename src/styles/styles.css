@@ -62,7 +62,11 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 /* ═══ MAP ═══ */
 #map { position: absolute; inset: 0; z-index: 0; }
-.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { display: none !important; }
+.maplibregl-ctrl-bottom-right { display: none !important; }
+.maplibregl-ctrl-bottom-left {
+  bottom: calc(var(--tab-h) + var(--safe-b) + 8px) !important;
+  left: 12px !important;
+}
 .maplibregl-ctrl-attrib { font-size: 9px !important; background: rgba(255,255,255,.6) !important; border-radius: 4px; }
 
 /* ═══════════════════════════════════════════════════════
@@ -171,6 +175,80 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .r-addr { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ═══════════════════════════════════════════════════════
+   SCALE BAR (bottom-left) – Google Maps geometric style
+   ═══════════════════════════════════════════════════════ */
+.maplibregl-ctrl-scale {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1.5px solid rgba(0,0,0,.25) !important;
+  border-left: 1.5px solid rgba(0,0,0,.25) !important;
+  border-right: 1.5px solid rgba(0,0,0,.25) !important;
+  border-radius: 0 !important;
+  font-size: 9px !important;
+  font-weight: 400 !important;
+  color: rgba(0,0,0,.35) !important;
+  padding: 0 3px 1px !important;
+  line-height: 12px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STYLE PICKER (above zoom pill)
+   ═══════════════════════════════════════════════════════ */
+#style-picker {
+  position: absolute; z-index: 6;
+  right: 16px; bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
+}
+#style-picker-btn {
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  color: var(--text-3);
+  transition: color .15s, background .15s;
+}
+#style-picker-btn:hover { color: var(--text-2); }
+#style-picker-btn:active { color: var(--accent); }
+#style-picker-btn.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+#style-panel {
+  position: absolute;
+  right: 52px; bottom: -4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 20px rgba(0,0,0,.14);
+  padding: 8px;
+  display: flex; gap: 8px;
+  white-space: nowrap;
+}
+#style-panel.hide { display: none; }
+
+.style-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: none; border: 2px solid transparent;
+  border-radius: 10px; padding: 6px 8px; cursor: pointer;
+  transition: border-color .15s;
+}
+.style-opt:hover { border-color: var(--border); }
+.style-opt.active { border-color: var(--accent); }
+.style-opt span {
+  font-size: 11px; font-weight: 600; color: var(--text-2);
+}
+.style-thumb {
+  width: 52px; height: 52px; border-radius: 8px;
+}
+.thumb-default  { background: linear-gradient(135deg, #ddeacd 25%, #bee4f8 50%, #f0f1f2 75%); }
+.thumb-satellite { background: linear-gradient(135deg, #1a3a1e 20%, #1a3a5c 50%, #2d5a3a 80%); }
+.thumb-3d       { background: linear-gradient(135deg, #b8c6d0 10%, #dfe1e8 40%, #a8b4c0 70%); background-image: linear-gradient(135deg, #b8c6d0 10%, #dfe1e8 40%, #a8b4c0 70%), repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,.06) 4px, rgba(0,0,0,.06) 5px); }
+
+/* ═══════════════════════════════════════════════════════
    ZOOM PILL (bottom-right, always visible)
    ═══════════════════════════════════════════════════════ */
 #zoom-pill {
@@ -274,7 +352,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   }
   .badge { top: 4px; right: 8px; }
   #zoom-pill { bottom: 24px; }
+  #style-picker { bottom: 172px; }
   #search-card { bottom: 119px; }
+  .maplibregl-ctrl-bottom-left { bottom: 12px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1594,11 +1674,11 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md);
+  width: 44px;
   overflow: hidden;
   transition: width .3s cubic-bezier(.32,.72,0,1),
               border-radius .3s ease,
               box-shadow .3s ease;
-  width: 44px;
 }
 
 /* ── Collapsed pill ── */
@@ -1612,13 +1692,15 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #prayer-pill:hover  { color: var(--text-2); }
 #prayer-pill:active { color: var(--accent); }
 #prayer-snack:not(.collapsed) #prayer-pill {
-  opacity: 0; pointer-events: none; position: absolute;
+  position: absolute; top: 0; left: 0;
+  pointer-events: none;
 }
 
 /* Expand / collapse animation */
 #prayer-expanded {
   opacity: 1;
-  transition: opacity .25s ease .08s;
+  transition: opacity .2s ease .08s;
+  white-space: nowrap;
 }
 #prayer-snack.collapsed #prayer-expanded {
   opacity: 0;
@@ -1630,25 +1712,20 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #prayer-snack:not(.collapsed) {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  width: min(86vw, 280px);
+  width: min(80vw, 260px);
 }
 
 /* ── Header ── */
 #prayer-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 10px 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 6px 0 42px;
+  height: 44px;
 }
 .prayer-snack-clickable {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.prayer-hdr-icon {
-  width: 30px; height: 30px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--accent-soft);
-  border-radius: var(--r-xs);
-  color: var(--accent);
-}
+
 .prayer-hdr-text {
   flex: 1; min-width: 0;
 }
@@ -1656,23 +1733,17 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   font-size: 13px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-#prayer-snack-sub {
-  font-size: 11.5px; font-weight: 500; color: var(--text-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 1px;
-}
-#prayer-snack-sub:empty { display: none; }
 
 /* Header action buttons */
 .prayer-hdr-btn {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: none; border: none; border-radius: 50%;
+  background: var(--surface-2); border: none; border-radius: 50%;
   cursor: pointer; color: var(--text-3);
-  transition: color .15s, background .15s;
+  transition: color .15s;
 }
 .prayer-hdr-btn:hover {
-  color: var(--text-2); background: var(--surface-2);
+  color: var(--text-2);
 }
 #prayer-chevron {
   transition: transform .25s ease, color .15s, background .15s;
@@ -1738,13 +1809,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .prayer-time-item.current .prayer-time-name { font-weight: 600; color: var(--gold); }
 .prayer-time-item.next .prayer-time-name    { font-weight: 600; color: var(--accent); }
 
-.prayer-time-label {
-  font-size: 9.5px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .5px;
-  padding: 1px 6px; border-radius: var(--r-pill); line-height: 1.5;
-}
-.prayer-time-item.current .prayer-time-label { background: var(--gold-soft); color: var(--gold); }
-.prayer-time-item.next .prayer-time-label    { background: var(--accent-soft); color: var(--accent); }
+
 
 /* Prayer time value */
 .prayer-time-value {
@@ -2016,6 +2081,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
   /* ── Controls ── */
   #zoom-pill { right: 12px; bottom: 80px; }
+  #style-picker { right: 12px; bottom: 224px; }
 
   /* ── Tab bar with safe area ── */
   #tab-bar {

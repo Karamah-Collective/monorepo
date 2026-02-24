@@ -92,6 +92,13 @@ const HSL_STYLE = {
       type: 'vector',
       url: 'https://tiles.openfreemap.org/planet',
       attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>'
+    },
+    'terrain-dem': {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding: 'terrarium',
+      tileSize: 256,
+      maxzoom: 15
     }
   },
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -156,6 +163,8 @@ const map = new maplibregl.Map({
   minZoom: 5, maxZoom: 19, maxBounds: [FINLAND_SW, FINLAND_NE],
   attributionControl: true, doubleClickZoom: false,
 });
+
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
 // ─── Place marker helper ───
 function makePlaceMarkerHTML(type) {
@@ -858,7 +867,11 @@ document.getElementById('edit-form').addEventListener('submit', e => {
 //  ACTION BUTTONS
 // ═══════════════════════════════════════
 
-document.getElementById('home-btn').addEventListener('click', () => map.flyTo({ center: HELSINKI, zoom: 13, duration: 600 }));
+document.getElementById('home-btn').addEventListener('click', () => {
+  if (currentStyleMode !== 'default') setMapStyle('default');
+  else if (is3DActive) disable3D();
+  map.flyTo({ center: HELSINKI, zoom: 13, bearing: 0, pitch: 0, duration: 600 });
+});
 document.getElementById('zoomin-btn').addEventListener('click', () => map.zoomIn({ duration: 300 }));
 document.getElementById('zoomout-btn').addEventListener('click', () => map.zoomOut({ duration: 300 }));
 document.getElementById('locate-btn').addEventListener('click', showCurrentLocation);
@@ -2035,6 +2048,164 @@ const OVERPASS_SERVERS = [
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
+// ─── Unified Map Style Switcher (Default / Satellite / 3D) ───
+let currentStyleMode = 'default';
+let is3DActive = false;
+
+const VECTOR_BASE_IDS = [
+  'background','landcover_grass','landcover_wood','landcover_farmland',
+  'landcover_sand','landcover_ice','landuse_residential','landuse_industrial',
+  'landuse_hospital','landuse_school','landuse_cemetery','landuse_pitch',
+  'park','waterway','water','aeroway_fill','aeroway_runway',
+  'building_shadow','building','building_outline',
+  'tunnel_path','tunnel_minor','tunnel_major',
+  'road_path','road_service','road_secondary_casing','road_secondary',
+  'road_primary_casing','road_primary','road_trunk_casing','road_trunk',
+  'road_motorway_casing','road_motorway','rail',
+  'bridge_minor_casing','bridge_minor','bridge_major_casing','bridge_major',
+  'admin_sub','admin_country'
+];
+const LABEL_IDS = [
+  'label_road','label_water','label_park','label_poi',
+  'label_place_village','label_place_town','label_place_city','label_country'
+];
+const origLabelPaint = {};
+
+function enable3D() {
+  is3DActive = true;
+  map.setTerrain({ source: 'terrain-dem', exaggeration: 1.3 });
+  if (!map.getLayer('sky-layer')) {
+    map.addLayer({
+      id: 'sky-layer', type: 'sky', paint: {
+        'sky-type': 'atmosphere',
+        'sky-atmosphere-sun': [0, 0],
+        'sky-atmosphere-sun-intensity': 15
+      }
+    });
+  }
+  // Hide flat buildings, show 3D extrusions
+  map.setLayoutProperty('building', 'visibility', 'none');
+  map.setLayoutProperty('building_shadow', 'visibility', 'none');
+  map.setLayoutProperty('building_outline', 'visibility', 'none');
+  if (!map.getLayer('building-3d')) {
+    map.addLayer({
+      id: 'building-3d', type: 'fill-extrusion',
+      source: 'openmaptiles', 'source-layer': 'building', minzoom: 13,
+      paint: {
+        'fill-extrusion-color': '#dfe1e8',
+        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.85
+      }
+    }, 'label_road');
+  } else {
+    map.setLayoutProperty('building-3d', 'visibility', 'visible');
+  }
+  map.easeTo({ pitch: 55, duration: 600 });
+}
+
+function disable3D() {
+  is3DActive = false;
+  map.setTerrain(null);
+  if (map.getLayer('sky-layer')) map.removeLayer('sky-layer');
+  if (map.getLayer('building-3d')) map.setLayoutProperty('building-3d', 'visibility', 'none');
+  map.setLayoutProperty('building', 'visibility', 'visible');
+  map.setLayoutProperty('building_shadow', 'visibility', 'visible');
+  map.setLayoutProperty('building_outline', 'visibility', 'visible');
+  map.easeTo({ pitch: 0, duration: 600 });
+}
+
+function setMapStyle(mode) {
+  if (mode === currentStyleMode) return;
+
+  // Save original label paint on first switch
+  if (!origLabelPaint.label_road) {
+    LABEL_IDS.forEach(id => {
+      origLabelPaint[id] = {
+        color: map.getPaintProperty(id, 'text-color'),
+        halo:  map.getPaintProperty(id, 'text-halo-color'),
+        haloW: map.getPaintProperty(id, 'text-halo-width'),
+      };
+    });
+  }
+
+  // --- Tear down previous mode ---
+  // Remove raster overlay if present
+  if (map.getLayer('style-raster')) map.removeLayer('style-raster');
+  // Disable 3D if leaving 3D mode
+  if (is3DActive) disable3D();
+
+  // --- Set up new mode ---
+  if (mode === 'default') {
+    // Restore all vector layers + original labels
+    VECTOR_BASE_IDS.forEach(id => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
+    });
+    LABEL_IDS.forEach(id => {
+      const o = origLabelPaint[id];
+      if (o) {
+        map.setPaintProperty(id, 'text-color', o.color);
+        map.setPaintProperty(id, 'text-halo-color', o.halo);
+        map.setPaintProperty(id, 'text-halo-width', o.haloW);
+      }
+    });
+  } else if (mode === 'satellite') {
+    // Hide vector geometry, show satellite raster
+    VECTOR_BASE_IDS.forEach(id => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    });
+    if (!map.getSource('esri-satellite')) {
+      map.addSource('esri-satellite', {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256, maxzoom: 19,
+        attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics'
+      });
+    }
+    map.addLayer({ id: 'style-raster', type: 'raster', source: 'esri-satellite', paint: { 'raster-opacity': 1 } }, 'label_road');
+    LABEL_IDS.forEach(id => {
+      map.setPaintProperty(id, 'text-color', '#ffffff');
+      map.setPaintProperty(id, 'text-halo-color', 'rgba(0,0,0,0.75)');
+      map.setPaintProperty(id, 'text-halo-width', 1.5);
+    });
+  } else if (mode === '3d') {
+    // Keep default vector style + add 3D terrain & buildings
+    VECTOR_BASE_IDS.forEach(id => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
+    });
+    LABEL_IDS.forEach(id => {
+      const o = origLabelPaint[id];
+      if (o) {
+        map.setPaintProperty(id, 'text-color', o.color);
+        map.setPaintProperty(id, 'text-halo-color', o.halo);
+        map.setPaintProperty(id, 'text-halo-width', o.haloW);
+      }
+    });
+    enable3D();
+  }
+
+  currentStyleMode = mode;
+  document.querySelectorAll('.style-opt').forEach(el =>
+    el.classList.toggle('active', el.dataset.style === mode));
+  document.getElementById('style-picker-btn')?.classList.toggle('active', mode !== 'default');
+  document.getElementById('style-panel')?.classList.add('hide');
+  console.log(`[Style] Switched to ${mode}`);
+}
+
+// Wire style picker
+document.getElementById('style-picker-btn')?.addEventListener('click', () => {
+  document.getElementById('style-panel')?.classList.toggle('hide');
+});
+document.querySelectorAll('.style-opt').forEach(btn => {
+  btn.addEventListener('click', () => setMapStyle(btn.dataset.style));
+});
+document.addEventListener('click', e => {
+  const picker = document.getElementById('style-picker');
+  if (picker && !picker.contains(e.target)) {
+    document.getElementById('style-panel')?.classList.add('hide');
+  }
+});
+
 map.on('load', () => {
   console.log('[Map] Style loaded');
   loadPlacesData();
@@ -2084,36 +2255,53 @@ function parsePrayerTimings(raw) {
   return result;
 }
 
-// ─── Find the current prayer period (which prayer time has passed) ───
+// ─── Find the current prayer period (cyclic) ───
+// Each prayer lasts until the next one starts. Fajr ends at sunrise.
+// After Isha, we are still in Isha time until Fajr tomorrow.
 function getCurrentPrayer() {
   if (!prayerTimesToday) return null;
   const now = new Date();
-  let current = null;
-  
-  for (const name of PRAYER_NAMES) {
-    if (prayerTimesToday[name] <= now) {
-      current = { name, time: prayerTimesToday[name] };
-    } else {
-      break;
+
+  // Between Fajr and sunrise → current is Fajr
+  if (prayerTimesToday.Fajr <= now && sunriseTime && now < sunriseTime) {
+    return { name: 'Fajr', time: prayerTimesToday.Fajr };
+  }
+
+  // Between sunrise and Dhuhr → no active prayer (Fajr ended, Dhuhr hasn't started)
+  if (sunriseTime && now >= sunriseTime && now < prayerTimesToday.Dhuhr) {
+    return null;
+  }
+
+  // Walk backwards: last prayer whose time has passed is the current one
+  for (let i = PRAYER_NAMES.length - 1; i >= 0; i--) {
+    if (prayerTimesToday[PRAYER_NAMES[i]] <= now) {
+      return { name: PRAYER_NAMES[i], time: prayerTimesToday[PRAYER_NAMES[i]] };
     }
   }
-  
-  // Special case: Fajr is only valid until sunrise
-  if (current && current.name === 'Fajr' && sunriseTime && now >= sunriseTime) {
-    return null; // Past sunrise, Fajr is no longer current
-  }
-  
-  return current;
+
+  // Before Fajr today → still in last night's Isha
+  return { name: 'Isha', time: prayerTimesToday.Isha };
 }
 
-// ─── Find the next upcoming prayer ───
+// ─── Find the next upcoming prayer (cyclic) ───
+// After Isha → next is Fajr (tomorrow). Before Fajr → next is Fajr (today).
 function getNextPrayer() {
   if (!prayerTimesToday) return null;
   const now = new Date();
+
+  // Special case: between Fajr and sunrise, next prayer is Dhuhr
+  if (prayerTimesToday.Fajr <= now && sunriseTime && now < sunriseTime) {
+    return { name: 'Dhuhr', time: prayerTimesToday.Dhuhr };
+  }
+
   for (const name of PRAYER_NAMES) {
     if (prayerTimesToday[name] > now) return { name, time: prayerTimesToday[name] };
   }
-  return null; // all five prayers passed for today
+
+  // All prayers passed → next is Fajr tomorrow
+  const tomorrow = new Date(prayerTimesToday.Fajr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return { name: 'Fajr', time: tomorrow };
 }
 
 // ─── Human-readable countdown ───
@@ -2126,12 +2314,11 @@ function formatPrayerCountdown(date) {
 }
 
 // ─── Show prayer snackbar ───
-function showPrayerSnack(title, sub = '', autoHide = false) {
+function showPrayerSnack(text, autoHide = false) {
   const el = document.getElementById('prayer-snack');
-  document.getElementById('prayer-snack-title').textContent = title;
-  document.getElementById('prayer-snack-sub').textContent   = sub;
+  document.getElementById('prayer-snack-title').textContent = text;
   el.classList.remove('hide', 'collapsed');
-  if (autoHide) setTimeout(() => dismissPrayerSnack(), 2500);
+  if (autoHide) setTimeout(() => dismissPrayerSnack(), 4000);
 }
 
 // ─── Collapse to icon-only pill (like search button) ───
@@ -2154,7 +2341,7 @@ function startPrayerWatcher() {
       const diffMin = (now - prayerTimesToday[name]) / 60000;
       if (diffMin >= 0 && diffMin < 1 && lastAlertedPrayer !== name) {
         lastAlertedPrayer = name;
-        showPrayerSnack(`🕌 Time for ${name}`, '', /* autoHide */ true);
+        showPrayerSnack(`🕌 Time for ${name}`, /* autoHide */ true);
         return;
       }
     }
@@ -2164,9 +2351,7 @@ function startPrayerWatcher() {
     if (!snackEl.classList.contains('hide')) {
       const next = getNextPrayer();
       if (next) {
-        const timeStr = next.time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('prayer-snack-title').textContent = `Next prayer: ${next.name}`;
-        document.getElementById('prayer-snack-sub').textContent   = `${timeStr} — ${formatPrayerCountdown(next.time)}`;
+        document.getElementById('prayer-snack-title').textContent = `${next.name} ${formatPrayerCountdown(next.time)}`;
       }
     }
   }, 30000);
@@ -2193,8 +2378,7 @@ async function initPrayerTimes() {
     prayerTimesToday = parsePrayerTimings(raw);
     const next       = getNextPrayer();
     if (next) {
-      const timeStr = next.time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      showPrayerSnack(`Next prayer: ${next.name}`, `${timeStr} — ${formatPrayerCountdown(next.time)}`);
+      showPrayerSnack(`${next.name} ${formatPrayerCountdown(next.time)}`);
     }
     startPrayerWatcher();
   } catch (err) {
@@ -2211,7 +2395,14 @@ function togglePrayerExpanded() {
     const listEl = document.getElementById('prayer-times-list');
     listEl.innerHTML = '';
     
-    if (prayerTimesToday) {
+    if (!prayerTimesToday) {
+      const item = document.createElement('div');
+      item.className = 'prayer-time-item';
+      item.style.justifyContent = 'center';
+      item.style.opacity = '0.6';
+      item.textContent = 'Loading prayer times…';
+      listEl.appendChild(item);
+    } else if (prayerTimesToday) {
       const current = getCurrentPrayer();
       const next = getNextPrayer();
       
@@ -2231,14 +2422,6 @@ function togglePrayerExpanded() {
         const nameEl = document.createElement('div');
         nameEl.className = 'prayer-time-name';
         nameEl.textContent = name;
-        
-        // Add label badge for current/next
-        if (isCurrent || isNext) {
-          const label = document.createElement('span');
-          label.className = 'prayer-time-label';
-          label.textContent = isCurrent ? 'Now' : 'Next';
-          nameEl.appendChild(label);
-        }
         
         const timeEl = document.createElement('div');
         timeEl.className = 'prayer-time-value';
