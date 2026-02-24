@@ -252,6 +252,7 @@ function showSearchMarker(lng, lat) {
         dir.origin = { lat: pLat, lng: pLng, name };
         dirFrom.value = name;
         placeOriginMarker(pLng, pLat);
+        autoSetNearestMosque(pLat, pLng);
         updateGoButton();
         searchMarkerPopup.remove(); searchMarkerPopup = null;
         clearSearchMarker();
@@ -951,6 +952,7 @@ document.getElementById('snackbar-close').addEventListener('click', (e) => {
   dirEmpty.classList.remove('hide');
   exitResultsMode();
   updateGoButton();
+  findingNearestMosque = false;
 });
 
 // ── Clear route in dir panel ──
@@ -965,6 +967,7 @@ dirClearBtn.addEventListener('click', () => {
   dirEmpty.classList.remove('hide');
   exitResultsMode();
   startPick('from');
+  findingNearestMosque = false;
 });
 
 // Delegated handler for direct route interactions (expand button + step click)
@@ -1008,7 +1011,11 @@ function stopPick() {
 function updateGoButton() { dirGo.disabled = !(dir.origin && dir.dest); }
 
 dirFrom.addEventListener('focus', () => startPick('from'));
-dirTo.addEventListener('focus', () => startPick('to'));
+dirTo.addEventListener('focus', () => { 
+  startPick('to'); 
+  // Cancel auto-mosque finding if user manually sets destination
+  findingNearestMosque = false;
+});
 
 // ── Autocomplete ──
 const dirFromSuggest = document.getElementById('dir-from-suggest');
@@ -1032,7 +1039,12 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
     const li = e.target.closest('li[data-lat]'); if (!li) return;
     const lat = +li.dataset.lat, lng = +li.dataset.lng, name = li.dataset.name;
     inputEl.value = name; suggestEl.classList.add('hide');
-    if (field === 'from') { dir.origin = { lat, lng, name }; placeOriginMarker(lng, lat); if (!dir.dest) startPick('to'); }
+    if (field === 'from') { 
+      dir.origin = { lat, lng, name }; 
+      placeOriginMarker(lng, lat); 
+      autoSetNearestMosque(lat, lng);
+      if (!dir.dest) startPick('to'); 
+    }
     else { dir.dest = { lat, lng, name }; placeDestMarker(lng, lat); stopPick(); }
     updateGoButton();
   });
@@ -1073,7 +1085,13 @@ map.on('click', async (e) => {
   const { lng, lat } = e.lngLat;
   const field = dir.pickField;
   const name = await reverseGeocode(lat, lng);
-  if (field === 'from') { dir.origin = { lat, lng, name }; dirFrom.value = name; placeOriginMarker(lng, lat); startPick('to'); }
+  if (field === 'from') { 
+    dir.origin = { lat, lng, name }; 
+    dirFrom.value = name; 
+    placeOriginMarker(lng, lat); 
+    autoSetNearestMosque(lat, lng);
+    startPick('to'); 
+  }
   else { dir.dest = { lat, lng, name }; dirTo.value = name; placeDestMarker(lng, lat); stopPick(); }
   updateGoButton();
 });
@@ -1092,7 +1110,11 @@ document.querySelector('.dir-my-loc').addEventListener('click', () => {
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lng } = pos.coords;
     const name = await reverseGeocode(lat, lng);
-    dir.origin = { lat, lng, name }; dirFrom.value = name; placeOriginMarker(lng, lat); updateGoButton();
+    dir.origin = { lat, lng, name }; 
+    dirFrom.value = name; 
+    placeOriginMarker(lng, lat); 
+    autoSetNearestMosque(lat, lng);
+    updateGoButton();
     if (!dir.dest) startPick('to');
   }, () => showDirError('Location access denied'));
 });
@@ -1333,7 +1355,16 @@ async function autoResolveLocation(inputEl) {
 dirGo.addEventListener('click', findRoutes);
 
 async function findRoutes() {
-  if (!dir.origin && dirFrom.value.trim()) { showDirLoading(); const r = await autoResolveLocation(dirFrom); if (r) { dir.origin = r; dirFrom.value = r.name; placeOriginMarker(r.lng, r.lat); } }
+  if (!dir.origin && dirFrom.value.trim()) { 
+    showDirLoading(); 
+    const r = await autoResolveLocation(dirFrom); 
+    if (r) { 
+      dir.origin = r; 
+      dirFrom.value = r.name; 
+      placeOriginMarker(r.lng, r.lat); 
+      autoSetNearestMosque(r.lat, r.lng);
+    } 
+  }
   if (!dir.dest && dirTo.value.trim()) { showDirLoading(); const r = await autoResolveLocation(dirTo); if (r) { dir.dest = r; dirTo.value = r.name; placeDestMarker(r.lng, r.lat); } }
   updateGoButton();
   if (!dir.origin) { showDirError('Select an origin on the map or type a place'); return; }
@@ -2099,17 +2130,16 @@ function showPrayerSnack(title, sub = '', autoHide = false) {
   const el = document.getElementById('prayer-snack');
   document.getElementById('prayer-snack-title').textContent = title;
   document.getElementById('prayer-snack-sub').textContent   = sub;
-  el.classList.remove('hide', 'prayer-snack-out');
+  el.classList.remove('hide', 'collapsed');
   if (autoHide) setTimeout(() => dismissPrayerSnack(), 2500);
 }
 
-// ─── Slide out then hide ───
+// ─── Collapse to icon-only pill (like search button) ───
 function dismissPrayerSnack() {
   const el = document.getElementById('prayer-snack');
-  if (el.classList.contains('hide')) return;
-  el.classList.remove('expanded'); // Collapse if expanded
-  el.classList.add('prayer-snack-out');
-  setTimeout(() => el.classList.add('hide'), 420);
+  if (el.classList.contains('collapsed')) return;
+  el.classList.remove('expanded');
+  el.classList.add('collapsed');
 }
 
 // ─── Per-30s watcher: fire prayer alerts + keep countdown fresh ───
@@ -2129,9 +2159,9 @@ function startPrayerWatcher() {
       }
     }
 
-    // While the next-prayer card is visible, refresh the countdown text
+    // While the prayer card is visible (not hidden), refresh the countdown text
     const snackEl = document.getElementById('prayer-snack');
-    if (!snackEl.classList.contains('hide') && !snackEl.classList.contains('prayer-snack-out')) {
+    if (!snackEl.classList.contains('hide')) {
       const next = getNextPrayer();
       if (next) {
         const timeStr = next.time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -2175,17 +2205,13 @@ async function initPrayerTimes() {
 // ─── Toggle expanded prayer times view ───
 function togglePrayerExpanded() {
   const el = document.getElementById('prayer-snack');
-  const header = document.querySelector('.prayer-snack-clickable');
   const isExpanded = el.classList.toggle('expanded');
   
   if (isExpanded) {
-    // Populate the list
     const listEl = document.getElementById('prayer-times-list');
-    listEl.classList.remove('hide');
     listEl.innerHTML = '';
     
     if (prayerTimesToday) {
-      const now = new Date();
       const current = getCurrentPrayer();
       const next = getNextPrayer();
       
@@ -2206,6 +2232,14 @@ function togglePrayerExpanded() {
         nameEl.className = 'prayer-time-name';
         nameEl.textContent = name;
         
+        // Add label badge for current/next
+        if (isCurrent || isNext) {
+          const label = document.createElement('span');
+          label.className = 'prayer-time-label';
+          label.textContent = isCurrent ? 'Now' : 'Next';
+          nameEl.appendChild(label);
+        }
+        
         const timeEl = document.createElement('div');
         timeEl.className = 'prayer-time-value';
         timeEl.textContent = timeStr;
@@ -2216,20 +2250,247 @@ function togglePrayerExpanded() {
       }
     }
   } else {
-    document.getElementById('prayer-times-list').classList.add('hide');
-    // Remove focus/active state on mobile after collapse
-    header.blur();
+    document.getElementById('prayer-times-list').innerHTML = '';
   }
 }
 
-// Wire snackbar close button
+// ─── Find nearest mosque and navigate to it ───
+function findNearestMosque() {
+  // Enable mosque finding mode
+  findingNearestMosque = true;
+  
+  // If geolocation is not supported, open directions panel
+  if (!navigator.geolocation) {
+    dismissPrayerSnack();
+    placesSheet.classList.add('shut');
+    openDirPanel();
+    return;
+  }
+  
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const userLat = pos.coords.latitude;
+    const userLng = pos.coords.longitude;
+    
+    // Filter mosques with active tag filters
+    let mosques = placesData.filter(p => p.type === 'mosque');
+    
+    if (activeTagFilters.size) {
+      mosques = mosques.filter(p =>
+        [...activeTagFilters].every(tagId => p.tags?.[tagId] === true)
+      );
+    }
+    
+    if (mosques.length === 0) {
+      const filterMsg = activeTagFilters.size 
+        ? 'No mosques match the active filters.' 
+        : 'No mosques found in the database.';
+      alert(filterMsg);
+      findingNearestMosque = false;
+      return;
+    }
+    
+    // Calculate distances and find nearest
+    let nearest = null;
+    let minDist = Infinity;
+    
+    for (const mosque of mosques) {
+      const dist = haversineDistance(userLat, userLng, mosque.lat, mosque.lng);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = mosque;
+      }
+    }
+    
+    if (nearest) {
+      // Set user location as origin
+      const originName = await reverseGeocode(userLat, userLng);
+      dir.origin = { lat: userLat, lng: userLng, name: originName };
+      dirFrom.value = originName;
+      placeOriginMarker(userLng, userLat);
+      
+      // Set nearest mosque as destination
+      dir.dest = { lat: nearest.lat, lng: nearest.lng, name: nearest.name };
+      dirTo.value = nearest.name;
+      placeDestMarker(nearest.lng, nearest.lat);
+      
+      updateGoButton();
+      
+      // Close prayer snackbar and places sheet
+      dismissPrayerSnack();
+      placesSheet.classList.add('shut');
+      
+      // Open directions panel and auto-trigger routing
+      openDirPanel();
+      
+      // Reset mosque finding mode
+      findingNearestMosque = false;
+      
+      // Zoom to show both points
+      const bounds = new maplibregl.LngLatBounds();
+      bounds.extend([userLng, userLat]);
+      bounds.extend([nearest.lng, nearest.lat]);
+      map.fitBounds(bounds, { padding: 80, duration: 600 });
+    }
+  }, (error) => {
+    console.error('Geolocation error:', error);
+    // Close prayer snackbar and places sheet
+    dismissPrayerSnack();
+    placesSheet.classList.add('shut');
+    // Open directions panel
+    openDirPanel();
+  });
+}
+
+// Find nearest mosque from given origin
+function findNearestMosqueFromOrigin(originLat, originLng) {
+  // Filter mosques with active tag filters
+  let mosques = placesData.filter(p => p.type === 'mosque');
+  
+  if (activeTagFilters.size) {
+    mosques = mosques.filter(p =>
+      [...activeTagFilters].every(tagId => p.tags?.[tagId] === true)
+    );
+  }
+  
+  if (mosques.length === 0) {
+    const filterMsg = activeTagFilters.size 
+      ? 'No mosques match the active filters.' 
+      : 'No mosques found in the database.';
+    alert(filterMsg);
+    return;
+  }
+  
+  // Calculate distances and find nearest
+  let nearest = null;
+  let minDist = Infinity;
+  
+  for (const mosque of mosques) {
+    const dist = haversineDistance(originLat, originLng, mosque.lat, mosque.lng);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = mosque;
+    }
+  }
+  
+  if (nearest) {
+    // Set nearest mosque as destination
+    dir.dest = { lat: nearest.lat, lng: nearest.lng, name: nearest.name };
+    dirTo.value = nearest.name;
+    placeDestMarker(nearest.lng, nearest.lat);
+    updateGoButton();
+    
+    // Zoom to show both points
+    if (dir.origin) {
+      const bounds = new maplibregl.LngLatBounds()
+        .extend([dir.origin.lng, dir.origin.lat])
+        .extend([nearest.lng, nearest.lat]);
+      map.fitBounds(bounds, { padding: 80, duration: 600 });
+    }
+  }
+}
+
+
+// Auto-find nearest mosque when origin is set in mosque navigation mode
+async function autoSetNearestMosque(originLat, originLng) {
+  if (!findingNearestMosque) return;
+  
+  // Filter mosques with active tag filters
+  let mosques = placesData.filter(p => p.type === 'mosque');
+  
+  if (activeTagFilters.size) {
+    mosques = mosques.filter(p =>
+      [...activeTagFilters].every(tagId => p.tags?.[tagId] === true)
+    );
+  }
+  
+  if (mosques.length === 0) return;
+  
+  // Find nearest mosque
+  let nearest = null;
+  let minDist = Infinity;
+  
+  for (const mosque of mosques) {
+    const dist = haversineDistance(originLat, originLng, mosque.lat, mosque.lng);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = mosque;
+    }
+  }
+  
+  if (nearest) {
+    // Set nearest mosque as destination
+    dir.dest = { lat: nearest.lat, lng: nearest.lng, name: nearest.name };
+    dirTo.value = nearest.name;
+    placeDestMarker(nearest.lng, nearest.lat);
+    updateGoButton();
+    
+    // Reset mosque finding mode
+    findingNearestMosque = false;
+  }
+}
+
+// ─── Haversine distance formula (km) ───
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Wire snackbar close → collapse to pill
 document.getElementById('prayer-snack-close').addEventListener('click', (e) => {
   e.stopPropagation();
   dismissPrayerSnack();
 });
 
-// Wire snackbar expand/collapse
-document.querySelector('.prayer-snack-clickable').addEventListener('click', togglePrayerExpanded);
+// Wire pill → expand from collapsed
+document.getElementById('prayer-pill').addEventListener('click', () => {
+  document.getElementById('prayer-snack').classList.remove('collapsed');
+});
+
+// Wire chevron → toggle prayer-times dropdown
+document.getElementById('prayer-chevron').addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePrayerExpanded();
+});
+
+// Wire header area → toggle prayer-times dropdown
+document.querySelector('.prayer-snack-clickable').addEventListener('click', (e) => {
+  // Only toggle if click wasn't on a button (chevron / close handle themselves)
+  if (e.target.closest('.prayer-hdr-btn')) return;
+  togglePrayerExpanded();
+});
+
+// Wire mosque icon in destination field
+const mosqueDestBtn = document.querySelector('.dir-mosque-dest');
+if (mosqueDestBtn) {
+  mosqueDestBtn.addEventListener('click', () => {
+    if (dir.origin) {
+      findNearestMosqueFromOrigin(dir.origin.lat, dir.origin.lng);
+    } else {
+      // Flash origin field red to signal it's required
+      const originField = document.getElementById('dir-field-from');
+      const wasPicking = originField.classList.contains('picking');
+      if (wasPicking) originField.classList.remove('picking');
+      originField.classList.remove('origin-needed');
+      void originField.offsetWidth;
+      originField.classList.add('origin-needed');
+      originField.addEventListener('animationend', () => {
+        originField.classList.remove('origin-needed');
+        if (wasPicking) originField.classList.add('picking');
+      }, { once: true });
+      // Also focus the origin input so user can type
+      document.getElementById('dir-from').focus();
+    }
+  });
+}
+
+// Track mosque navigation mode
+let findingNearestMosque = false;
 
 // ─── Primary: load from pre-built cache file ───
 async function loadTransitCache() {

@@ -76,6 +76,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md);
+  width: 44px;
+  transition: width .3s cubic-bezier(.32,.72,0,1),
+              border-radius .3s ease,
+              box-shadow .3s ease;
 }
 
 /* ── Collapsed pill ── */
@@ -84,16 +88,28 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
   color: var(--text-3);
-  transition: color .15s;
+  transition: color .15s, opacity .2s ease;
 }
 #search-pill:hover { color: var(--text-2); }
 #search-pill:active { color: var(--accent); }
-#search-card.collapsed #search-expanded { display: none; }
+#search-card:not(.collapsed) #search-pill {
+  opacity: 0; pointer-events: none; position: absolute;
+}
 #search-box:focus-within {
   box-shadow: inset 0 0 0 2px var(--accent-muted);
   border-radius: var(--r-xl);
 }
-#search-card:not(.collapsed) #search-pill { display: none; }
+
+/* ── Expand / collapse animation ── */
+#search-expanded {
+  opacity: 1;
+  transition: opacity .2s ease .08s;
+}
+#search-card.collapsed #search-expanded {
+  opacity: 0;
+  pointer-events: none;
+  height: 0; overflow: hidden;
+}
 
 /* ── Expanded card ── */
 #search-card:not(.collapsed) {
@@ -307,6 +323,42 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .sheet-action-btn:hover { filter: brightness(1.12); }
 
+.sheet-action-btn-subtle {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border: none; border-radius: 50%;
+  cursor: pointer; color: var(--text-2);
+  transition: background .15s, color .15s;
+}
+.sheet-action-btn-subtle:hover { 
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Mosque navigation button - labeled style */
+.mosque-nav-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1.5px solid var(--success);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.mosque-nav-btn:hover {
+  background: var(--success);
+  color: #fff;
+}
+.mosque-nav-btn:hover svg {
+  stroke: #fff;
+}
+.mosque-nav-btn svg {
+  transition: stroke .15s;
+}
 .sheet-x {
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   background: var(--surface-2); border: none; border-radius: 50%;
@@ -1532,145 +1584,184 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #snackbar-close:hover { filter: brightness(1.3); }
 
 /* ═══════════════════════════════════════════════════════
-   PRAYER TIMES SNACKBAR (top-left)
+   PRAYER TIMES CARD
    ═══════════════════════════════════════════════════════ */
 #prayer-snack {
   position: absolute; z-index: 12;
   top: calc(var(--safe-t) + 14px);
   left: 16px;
-  display: flex; flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: width .3s cubic-bezier(.32,.72,0,1),
+              border-radius .3s ease,
+              box-shadow .3s ease;
+  width: 44px;
+}
+
+/* ── Collapsed pill ── */
+#prayer-pill {
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3);
+  transition: color .15s, opacity .2s ease;
+}
+#prayer-pill:hover  { color: var(--text-2); }
+#prayer-pill:active { color: var(--accent); }
+#prayer-snack:not(.collapsed) #prayer-pill {
+  opacity: 0; pointer-events: none; position: absolute;
+}
+
+/* Expand / collapse animation */
+#prayer-expanded {
+  opacity: 1;
+  transition: opacity .25s ease .08s;
+}
+#prayer-snack.collapsed #prayer-expanded {
+  opacity: 0;
+  pointer-events: none;
+  height: 0; overflow: hidden;
+}
+
+/* ── Expanded card ── */
+#prayer-snack:not(.collapsed) {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  max-width: min(88vw, 340px);
-  opacity: 1;
-  transform: translateX(0);
-  transition: transform .4s cubic-bezier(.32,.72,0,1), opacity .3s ease;
+  width: min(86vw, 280px);
 }
-#prayer-snack.prayer-snack-out {
-  transform: translateX(-50px);
-  opacity: 0;
-}
-#prayer-snack-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 14px;
-  position: relative;
+
+/* ── Header ── */
+#prayer-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px 10px 14px;
 }
 .prayer-snack-clickable {
   cursor: pointer;
-  transition: background .15s;
   -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) {
-  .prayer-snack-clickable:hover {
-    background: var(--surface-2);
-    border-radius: var(--r-xl);
-  }
-  #prayer-snack.expanded .prayer-snack-clickable:hover {
-    border-radius: var(--r-xl) var(--r-xl) 0 0;
-  }
-}
-.prayer-snack-body {
-  display: flex; align-items: center; gap: 12px;
-  flex: 1; min-width: 0;
-}
-.prayer-icon-wrap {
-  width: 36px; height: 36px;
-  border-radius: var(--r-sm);
-  background: var(--accent-soft);
+.prayer-hdr-icon {
+  width: 30px; height: 30px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.prayer-snack-icon { 
+  background: var(--accent-soft);
+  border-radius: var(--r-xs);
   color: var(--accent);
 }
-.prayer-snack-content { flex: 1; min-width: 0; line-height: 1.35; }
+.prayer-hdr-text {
+  flex: 1; min-width: 0;
+}
 #prayer-snack-title {
-  font-size: 13.5px; font-weight: 600;
-  color: var(--text);
+  font-size: 13px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #prayer-snack-sub {
-  font-size: 12px; font-weight: 500;
-  color: var(--text-2);
+  font-size: 11.5px; font-weight: 500; color: var(--text-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 #prayer-snack-sub:empty { display: none; }
-.prayer-expand-icon {
-  color: var(--text-3);
-  flex-shrink: 0;
-  transition: transform .2s ease;
-}
-#prayer-snack.expanded .prayer-expand-icon {
-  transform: rotate(180deg);
-}
-#prayer-snack-close {
+
+/* Header action buttons */
+.prayer-hdr-btn {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; border-radius: 50%;
   cursor: pointer; color: var(--text-3);
   transition: color .15s, background .15s;
-  z-index: 1;
 }
-#prayer-snack-close:hover { 
-  color: var(--text-2);
-  background: var(--surface-2);
+.prayer-hdr-btn:hover {
+  color: var(--text-2); background: var(--surface-2);
+}
+#prayer-chevron {
+  transition: transform .25s ease, color .15s, background .15s;
+}
+#prayer-snack.expanded #prayer-chevron {
+  transform: rotate(180deg);
 }
 
-/* Expanded prayer times list */
+/* ── Prayer times list ── */
 #prayer-times-list {
-  border-top: 1px solid var(--border-light);
-  padding: 8px 0;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height .25s ease;
+  max-height: 0; overflow: hidden;
+  transition: max-height .3s cubic-bezier(.32,.72,0,1);
 }
 #prayer-snack.expanded #prayer-times-list {
-  max-height: 280px;
+  max-height: 320px;
+  border-top: 1px solid var(--border);
 }
 .prayer-time-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px;
-  transition: background .15s;
+  padding: 10px 14px;
+  transition: background .12s;
+  position: relative;
 }
-.prayer-time-item:hover {
-  background: var(--surface-2);
+.prayer-time-item + .prayer-time-item {
+  border-top: 1px solid var(--border-light);
 }
+.prayer-time-item:last-child {
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
+@media (hover: hover) {
+  .prayer-time-item:hover { background: var(--surface-2); }
+}
+
+/* Current prayer — gold accent */
 .prayer-time-item.current {
   background: var(--gold-soft);
 }
-.prayer-time-item.current:hover {
-  background: #f7f1e3;
+.prayer-time-item.current::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--gold);
+  border-radius: 0 2px 2px 0;
 }
+.prayer-time-item.current:hover { background: #f0eadb; }
+
+/* Next prayer — accent */
 .prayer-time-item.next {
   background: var(--accent-soft);
 }
-.prayer-time-item.next:hover {
-  background: #dae8f3;
+.prayer-time-item.next::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--accent);
+  border-radius: 0 2px 2px 0;
 }
+.prayer-time-item.next:hover { background: #dae8f3; }
+
+/* Prayer name + label */
 .prayer-time-name {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text);
+  font-size: 13px; font-weight: 500; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
 }
-.prayer-time-item.current .prayer-time-name {
-  font-weight: 600;
-  color: var(--gold);
+.prayer-time-item.current .prayer-time-name { font-weight: 600; color: var(--gold); }
+.prayer-time-item.next .prayer-time-name    { font-weight: 600; color: var(--accent); }
+
+.prayer-time-label {
+  font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  padding: 1px 6px; border-radius: var(--r-pill); line-height: 1.5;
 }
-.prayer-time-item.next .prayer-time-name {
-  font-weight: 600;
-  color: var(--accent);
-}
+.prayer-time-item.current .prayer-time-label { background: var(--gold-soft); color: var(--gold); }
+.prayer-time-item.next .prayer-time-label    { background: var(--accent-soft); color: var(--accent); }
+
+/* Prayer time value */
 .prayer-time-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
+  font-size: 13px; font-weight: 600; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
-.prayer-time-item.current .prayer-time-value,
-.prayer-time-item.next .prayer-time-value {
-  color: var(--text);
+
+/* ── Origin-needed flash (mosque icon, no origin) ── */
+@keyframes origin-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(214,69,69,.5); }
+  60%  { box-shadow: 0 0 0 6px rgba(214,69,69,.08); }
+  100% { box-shadow: 0 0 0 8px rgba(214,69,69, 0); }
+}
+#dir-field-from.origin-needed {
+  border-color: var(--danger) !important;
+  background: var(--danger-soft) !important;
+  animation: origin-pulse .65s ease-out 2 !important;
 }
 
 /* Clear route button in dir header */
