@@ -274,8 +274,8 @@ function clearSearchMarker() { if (searchMarkerPopup) { searchMarkerPopup.remove
 async function loadPlacesData() {
   try {
     const [pRes, tRes] = await Promise.all([
-      fetch('../public/data/places.json'),
-      fetch('../public/data/tags.json'),
+      fetch('data/places.json'),
+      fetch('data/tags.json'),
     ]);
     placesData = await pRes.json();
     tagsData = await tRes.json();
@@ -2496,7 +2496,7 @@ let findingNearestMosque = false;
 async function loadTransitCache() {
   console.log('[Transit] Loading cached stops…');
   try {
-    const resp = await fetch('../scripts/transit-cache.json', { signal: AbortSignal.timeout(10000) });
+    const resp = await fetch('scripts/transit-cache.json', { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const cache = await resp.json();
     console.log(`[Transit] Cache v${cache.version}, ${cache.stopCount} stops, generated ${cache.generated}`);

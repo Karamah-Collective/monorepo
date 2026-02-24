@@ -9,6 +9,7 @@
 */
 
 const fs = require('fs');
+const path = require('path');
 
 const config = `/* Auto-generated from environment variables - do not commit */
 
@@ -19,6 +20,7 @@ export const NOMINATIM_REV = '${process.env.NOMINATIM_REV || 'https://nominatim.
 export const NOMINATIM_VB = '${process.env.NOMINATIM_VB || '24.0,60.8,25.8,59.8'}';
 `;
 
-fs.writeFileSync('./config.js', config);
-console.log('✓ Generated config.js from environment variables');
+const outPath = path.join(__dirname, '../src/config.local.js');
+fs.writeFileSync(outPath, config);
+console.log('✓ Generated src/config.local.js from environment variables');
 
