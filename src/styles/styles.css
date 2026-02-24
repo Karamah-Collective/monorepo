@@ -1627,14 +1627,16 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
   left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--accent);
+  border: 1px solid transparent;
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   padding: 8px 8px 8px 12px;
   cursor: pointer;
   animation: snackUp .3s ease-out;
-  max-width: min(92vw, 400px);
+  /* Stay narrow enough to never overlap side pills */
+  max-width: min(calc(100vw - 128px), 360px);
+  min-width: 0;
 }
 @keyframes snackUp {
   from { opacity: 0; transform: translateX(-50%) translateY(16px); }
@@ -1647,21 +1649,33 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .snackbar-icon-wrap {
   width: 30px; height: 30px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--accent-soft);
+  background: rgba(255,255,255,.18);
   border-radius: var(--r-xs);
-  color: var(--accent);
+  color: #fff;
 }
 #snackbar-content { flex: 1; min-width: 0; line-height: 1.3; }
 #snackbar-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 13px; font-weight: 600; color: #fff;
+  display: flex; align-items: baseline; overflow: hidden;
+  white-space: nowrap;
 }
+#snackbar-from, #snackbar-to {
+  flex: 1 1 0; min-width: 0; max-width: max-content;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.snack-arrow { flex-shrink: 0; }
 #snackbar-sub {
-  font-size: 11.5px; font-weight: 500; color: var(--text-2);
+  font-size: 11.5px; font-weight: 500; color: rgba(255,255,255,.78);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
 }
 #snackbar-sub:empty { display: none; }
+/* Close button on blue background */
+#snackbar-close.sheet-x {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+#snackbar-close.sheet-x:hover { background: rgba(255,255,255,.28); color: #fff; }
 
 /* ═══════════════════════════════════════════════════════
    PRAYER TIMES CARD

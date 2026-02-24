@@ -1649,11 +1649,17 @@ async function findRoutesDirect(mode) {
     dir.routeSources.push('dir-direct-src', 'dir-highlight-src');
     dir.routeLayers.push('dir-direct-cas', 'dir-direct-ln', 'dir-highlight-ln');
 
-    // Fit bounds
+    // Fit bounds — account for bottom sheet (55 vh on mobile) and side panel (400 px on desktop)
     const bounds = new maplibregl.LngLatBounds();
     route.geometry.coordinates.forEach(c => bounds.extend(c));
     const mob = window.innerWidth <= 768;
-    map.fitBounds(bounds, { padding: mob ? { top: 80, bottom: 240, left: 30, right: 30 } : { top: 80, bottom: 300, left: 60, right: 60 }, duration: 600 });
+    const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
+    map.fitBounds(bounds, {
+      padding: mob
+        ? { top: 90, bottom: sheetPad, left: 40, right: 40 }
+        : { top: 80, bottom: 80,       left: 60, right: 540 },
+      duration: 600
+    });
 
     // ── Build turn-by-turn step rows ──────────────────────────────
     const stepsHTML = steps.map((step, stepIdx) => {
@@ -1915,7 +1921,8 @@ function updateSnackbar() {
   if (dir.activeIdx >= 0 && dirPanel.classList.contains('shut')) {
     const originName = dir.origin?.name || 'Origin';
     const destName = dir.dest?.name || 'Destination';
-    snackbarTitle.textContent = `${originName} → ${destName}`;
+    document.getElementById('snackbar-from').textContent = originName;
+    document.getElementById('snackbar-to').textContent = destName;
     if (dir.directInfo) {
       const { mode, durMin, distKm } = dir.directInfo;
       snackbarSub.textContent = `${OSRM_LABELS[mode]} · ${durMin} min · ${distKm} km`;
@@ -1953,7 +1960,13 @@ function drawRoute(itin) {
   });
   if (!bounds.isEmpty()) {
     const mob = window.innerWidth <= 768;
-    map.fitBounds(bounds, { padding: mob ? { top: 80, bottom: 240, left: 30, right: 30 } : { top: 80, bottom: 300, left: 60, right: 60 }, duration: 600 });
+    const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
+    map.fitBounds(bounds, {
+      padding: mob
+        ? { top: 90, bottom: sheetPad, left: 40, right: 40 }
+        : { top: 80, bottom: 80,       left: 60, right: 540 },
+      duration: 600
+    });
   }
   document.getElementById('dir-btn').classList.add('route-active');
   dirClearBtn.classList.remove('hide');
