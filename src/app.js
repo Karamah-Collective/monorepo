@@ -3,8 +3,14 @@
    MapLibre GL + HSL transit + Directions + Places
    ═══════════════════════════════════════════════════════════════ */
 
-// ── Import secrets from local config (git-ignored in production) ──
-import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_REV, NOMINATIM_VB } from './config.local.js';
+// ── Load config: try local file first, fall back to safe defaults ──
+let _cfg = {};
+try { _cfg = await import('./config.local.js'); } catch { /* file missing – use defaults */ }
+const DIGITRANSIT_URL = _cfg.DIGITRANSIT_URL || 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
+const TRANSITOUS_URL  = _cfg.TRANSITOUS_URL  || 'https://api.transitous.org/api/v5/plan';
+const DT_API_KEY      = _cfg.DT_API_KEY      || '';
+const NOMINATIM_REV   = _cfg.NOMINATIM_REV   || 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1';
+const NOMINATIM_VB    = _cfg.NOMINATIM_VB    || '24.0,60.8,25.8,59.8';
 
 // ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
 document.addEventListener('gesturestart', e => e.preventDefault());
