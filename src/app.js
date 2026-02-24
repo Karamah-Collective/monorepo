@@ -1632,7 +1632,6 @@ async function findRoutesDirect(mode) {
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' } });
 
-    // ── Highlight layer (lit on step click) ──────────────────────
     map.addSource('dir-highlight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({ id: 'dir-highlight-ln', type: 'line', source: 'dir-highlight-src',
       paint: { 'line-color': color, 'line-width': mode === 'walk' ? 10 : 12, 'line-opacity': 0.45 },
