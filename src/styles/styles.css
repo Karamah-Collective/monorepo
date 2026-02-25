@@ -248,9 +248,15 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .style-thumb {
   width: 52px; height: 52px; border-radius: 8px;
 }
-.thumb-default  { background: linear-gradient(135deg, #ddeacd 25%, #bee4f8 50%, #f0f1f2 75%); }
-.thumb-satellite { background: linear-gradient(135deg, #1a3a1e 20%, #1a3a5c 50%, #2d5a3a 80%); }
-.thumb-3d       { background: linear-gradient(135deg, #b8c6d0 10%, #dfe1e8 40%, #a8b4c0 70%); background-image: linear-gradient(135deg, #b8c6d0 10%, #dfe1e8 40%, #a8b4c0 70%), repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,.06) 4px, rgba(0,0,0,.06) 5px); }
+.thumb-default {
+  background: url('../../data/thumbs/default.png') center/cover no-repeat;
+}
+.thumb-satellite {
+  background: url('../../data/thumbs/satellite.jpg') center/cover no-repeat;
+}
+.thumb-3d {
+  background: url('../../data/thumbs/3d.png') center/cover no-repeat;
+}
 
 /* ═══════════════════════════════════════════════════════
    ZOOM PILL (bottom-right, always visible)
