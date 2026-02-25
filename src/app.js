@@ -374,17 +374,14 @@ function showPlacePopup(place) {
         ${tagsHTML}
         ${notesHTML}
         <div class="pp-actions">
-          <button class="pp-dir-btn" data-lat="${place.lat}" data-lng="${place.lng}" data-name="${escA(place.name)}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Directions
+          <button class="pp-dir-btn" title="Get directions" aria-label="Get directions" data-lat="${place.lat}" data-lng="${place.lng}" data-name="${escA(place.name)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           </button>
-          <button class="pp-share-btn" data-place-id="${place.id}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Share
+          <button class="pp-share-btn" title="Share this place" aria-label="Share this place" data-place-id="${place.id}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
-          <button class="pp-edit-btn" data-place-id="${place.id}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Suggest Edit
+          <button class="pp-edit-btn" title="Suggest an edit" aria-label="Suggest an edit" data-place-id="${place.id}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
         </div>
       </div>
@@ -393,7 +390,7 @@ function showPlacePopup(place) {
   // Close existing popups
   document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
 
-  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: true, maxWidth: '300px', className: 'place-popup-wrap' })
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: '300px', className: 'place-popup-wrap' })
     .setLngLat([place.lng, place.lat])
     .setHTML(html)
     .addTo(map);
@@ -416,11 +413,18 @@ function showPlacePopup(place) {
     const shareBtn = e.target.closest('.pp-share-btn');
     if (shareBtn) {
       e.stopPropagation();
-      const placeId = shareBtn.dataset.placeId;
-      const url = `${location.origin}${location.pathname}?place=${placeId}`;
-      navigator.clipboard.writeText(url)
-        .then(() => showToast('Link copied!'))
-        .catch(() => showToast('Copy failed'));
+      const p = placesData.find(x => x.id === +shareBtn.dataset.placeId);
+      if (!p) return;
+      const url = buildShareUrl(p);
+      if (navigator.share) {
+        // Mobile: trigger native share sheet (WhatsApp, Messenger, etc.)
+        navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url }).catch(() => {});
+      } else {
+        // Desktop: copy to clipboard
+        navigator.clipboard.writeText(url)
+          .then(() => showToast('Link copied!'))
+          .catch(() => showToast('Copy failed'));
+      }
       return;
     }
     const editBtn = e.target.closest('.pp-edit-btn');
@@ -434,6 +438,22 @@ function showPlacePopup(place) {
   });
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+}
+
+// ── Place share token (base64-encoded payload, URL-safe) ──
+function encodePlaceToken(place) {
+  const raw = JSON.stringify({ n: place.name, t: place.type, a: place.lat, o: place.lng });
+  return btoa(raw).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+function decodePlaceToken(token) {
+  try {
+    const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    return JSON.parse(atob(pad ? b64 + '='.repeat(4 - pad) : b64));
+  } catch { return null; }
+}
+function buildShareUrl(place) {
+  return `${location.origin}${location.pathname}?p=${encodePlaceToken(place)}`;
 }
 
 // ── Toast notification ──
@@ -457,9 +477,29 @@ function showToast(msg) {
 // ── Open place from URL (?place=ID) ──
 function checkShareUrl() {
   const params = new URLSearchParams(location.search);
-  const id = +params.get('place');
-  if (!id) return;
-  const place = placesData.find(p => p.id === id);
+  let place = null;
+
+  const token = params.get('p');
+  if (token) {
+    const data = decodePlaceToken(token);
+    if (data) {
+      // Primary: exact name + type match (survives ID reshuffling)
+      place = placesData.find(p => p.name === data.n && p.type === data.t);
+      // Fallback: nearest coordinates in case name changes slightly
+      if (!place && placesData.length) {
+        place = placesData.reduce((best, p) => {
+          const d  = (p.lat - data.a) ** 2 + (p.lng - data.o) ** 2;
+          const bd = (best.lat - data.a) ** 2 + (best.lng - data.o) ** 2;
+          return d < bd ? p : best;
+        });
+      }
+    }
+  } else {
+    // Legacy links: ?place=ID
+    const id = +params.get('place');
+    if (id) place = placesData.find(p => p.id === id);
+  }
+
   if (!place) return;
   map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
   map.once('moveend', () => showPlacePopup(place));

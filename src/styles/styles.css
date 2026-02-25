@@ -746,11 +746,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   box-shadow: 0 8px 30px rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.08) !important;
   background: var(--surface) !important;
 }
-.place-popup-wrap .maplibregl-popup-close-button {
-  color: #fff !important; z-index: 2;
-  font-size: 20px !important; top: 8px !important; right: 10px !important;
-}
-.place-popup-wrap .maplibregl-popup-close-button:hover { color: rgba(255,255,255,.7) !important; }
+.place-popup-wrap .maplibregl-popup-close-button { display: none !important; }
 
 .pp { display: flex; flex-direction: column; }
 
@@ -805,37 +801,30 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 /* ── Actions ── */
 .pp-actions {
-  display: flex; gap: 8px;
+  display: flex; gap: 6px;
   padding-top: 10px; border-top: 1px solid var(--border-light);
 }
 .pp-dir-btn, .pp-share-btn, .pp-edit-btn {
   flex: 1;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 32px; padding: 0 12px; border: none;
-  border-radius: var(--r-sm);
-  font-family: inherit; font-size: 13px; font-weight: 700;
-  line-height: 1; letter-spacing: .01em;
-  cursor: pointer; white-space: nowrap;
-  transition: filter .15s;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 34px; padding: 0;
+  border: none; border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: filter .15s, color .15s;
 }
 .pp-dir-btn {
   background: var(--accent); color: #fff;
 }
-.pp-dir-btn svg { flex-shrink: 0; }
 .pp-dir-btn:hover { filter: brightness(1.1); }
 
 .pp-share-btn {
   background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
-  transition: color .15s;
 }
-.pp-share-btn svg { flex-shrink: 0; }
 .pp-share-btn:hover { color: var(--text); }
 
 .pp-edit-btn {
   background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
-  transition: color .15s;
 }
-.pp-edit-btn svg { flex-shrink: 0; }
 .pp-edit-btn:hover { color: var(--text); }
 
 /* ── Share toast ── */
