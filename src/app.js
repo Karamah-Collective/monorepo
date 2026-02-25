@@ -2845,8 +2845,6 @@ document.getElementById('prayer-pill').addEventListener('click', (e) => {
 document.getElementById('prayer-chevron').addEventListener('click', (e) => {
   e.stopPropagation();
   togglePrayerExpanded();
-  // TEST: show geo notice on chevron click — remove once approved
-  showGeoNotice();
 });
 
 // Wire header area → collapse pill (chevron is the only dropdown toggle; pill handles itself)
