@@ -808,7 +808,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   display: flex; gap: 8px;
   padding-top: 10px; border-top: 1px solid var(--border-light);
 }
-.pp-dir-btn, .pp-edit-btn {
+.pp-dir-btn, .pp-share-btn, .pp-edit-btn {
   flex: 1;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 32px; padding: 0 12px; border: none;
@@ -824,12 +824,37 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .pp-dir-btn svg { flex-shrink: 0; }
 .pp-dir-btn:hover { filter: brightness(1.1); }
 
+.pp-share-btn {
+  background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
+  transition: color .15s;
+}
+.pp-share-btn svg { flex-shrink: 0; }
+.pp-share-btn:hover { color: var(--text); }
+
 .pp-edit-btn {
   background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
   transition: color .15s;
 }
 .pp-edit-btn svg { flex-shrink: 0; }
 .pp-edit-btn:hover { color: var(--text); }
+
+/* ── Share toast ── */
+.share-toast {
+  position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(6px);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 16px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.share-toast.share-toast-show {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 
 /* ═══════════════════════════════════════════════════════
    SUGGEST PLACE OVERLAY

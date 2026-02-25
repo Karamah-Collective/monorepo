@@ -301,6 +301,7 @@ async function loadPlacesData() {
     addPlaceMarkers();
     renderPlacesList();
     updatePlacesBadge();
+    checkShareUrl();
   } catch (err) {
     console.warn('[Places] Failed to load:', err.message);
   }
@@ -377,6 +378,10 @@ function showPlacePopup(place) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             Directions
           </button>
+          <button class="pp-share-btn" data-place-id="${place.id}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+          </button>
           <button class="pp-edit-btn" data-place-id="${place.id}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Suggest Edit
@@ -408,6 +413,16 @@ function showPlacePopup(place) {
       openDirPanel();
       return;
     }
+    const shareBtn = e.target.closest('.pp-share-btn');
+    if (shareBtn) {
+      e.stopPropagation();
+      const placeId = shareBtn.dataset.placeId;
+      const url = `${location.origin}${location.pathname}?place=${placeId}`;
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('Link copied!'))
+        .catch(() => showToast('Copy failed'));
+      return;
+    }
     const editBtn = e.target.closest('.pp-edit-btn');
     if (editBtn) {
       e.stopPropagation();
@@ -419,6 +434,35 @@ function showPlacePopup(place) {
   });
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+}
+
+// ── Toast notification ──
+function showToast(msg) {
+  const existing = document.getElementById('share-toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'share-toast';
+  t.className = 'share-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => {
+    t.classList.add('share-toast-show');
+    setTimeout(() => {
+      t.classList.remove('share-toast-show');
+      setTimeout(() => t.remove(), 300);
+    }, 2200);
+  });
+}
+
+// ── Open place from URL (?place=ID) ──
+function checkShareUrl() {
+  const params = new URLSearchParams(location.search);
+  const id = +params.get('place');
+  if (!id) return;
+  const place = placesData.find(p => p.id === id);
+  if (!place) return;
+  map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
+  map.once('moveend', () => showPlacePopup(place));
 }
 
 function updatePlacesBadge() {
