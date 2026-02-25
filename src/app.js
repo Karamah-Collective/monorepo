@@ -173,7 +173,7 @@ const map = new maplibregl.Map({
 // Start in 2D mode — lock pitch to 0 so no tilt is possible (desktop Ctrl+drag or mobile two-finger)
 map.setMaxPitch(0);
 
-map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: 'metric' }), 'top-right');
 
 // ─── Place marker helper ───
 function makePlaceMarkerHTML(type) {
