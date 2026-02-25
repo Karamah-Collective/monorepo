@@ -416,14 +416,18 @@ function showPlacePopup(place) {
       const p = placesData.find(x => x.id === +shareBtn.dataset.placeId);
       if (!p) return;
       const url = buildShareUrl(p);
-      if (navigator.share) {
-        // Mobile: trigger native share sheet (WhatsApp, Messenger, etc.)
-        navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url }).catch(() => {});
-      } else {
-        // Desktop: copy to clipboard
+      const copyFallback = () =>
         navigator.clipboard.writeText(url)
           .then(() => showToast('Link copied!'))
           .catch(() => showToast('Copy failed'));
+      if (navigator.share) {
+        navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url })
+          .catch(err => {
+            // AbortError = user dismissed the sheet — don't copy in that case
+            if (err?.name !== 'AbortError') copyFallback();
+          });
+      } else {
+        copyFallback();
       }
       return;
     }
