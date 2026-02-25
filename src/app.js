@@ -415,13 +415,18 @@ function showPlacePopup(place) {
     openDirPanel();
   });
 
-  // Share button — listener attached HERE, before DOM insertion, so iOS gesture token is preserved
+  // Share button
+  // iOS Safari: MapLibre calls preventDefault on touchstart at the map level, which
+  // kills the "user activation" flag before 'click' fires. Using 'touchend' on the
+  // button itself fires BEFORE MapLibre's map-level handler, keeping the gesture alive.
   const shareBtn = document.createElement('button');
   shareBtn.className = 'pp-share-btn';
   shareBtn.title = 'Share this place';
   shareBtn.setAttribute('aria-label', 'Share this place');
   shareBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
-  shareBtn.addEventListener('click', (e) => {
+
+  function doShare(e) {
+    e.preventDefault();    // prevent the follow-up click from double-firing on touch devices
     e.stopPropagation();
     const url = buildShareUrl(place);
     if (navigator.share) {
@@ -433,7 +438,9 @@ function showPlacePopup(place) {
       copyToClipboard(url);
       showToast('Link copied!');
     }
-  });
+  }
+  shareBtn.addEventListener('touchend', doShare);   // iOS: fires before MapLibre consumes gesture
+  shareBtn.addEventListener('click',    doShare);   // desktop fallback (touchend not fired)
 
   // Edit button
   const editBtn = document.createElement('button');
