@@ -344,7 +344,31 @@ function showPlacePopup(place) {
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const typeTags = tagsData[place.type] || [];
 
-  let tagsHTML = '';
+  // ── Build popup DOM (use setDOMContent so event listeners survive iOS gesture tracking) ──
+  const root = document.createElement('div');
+  root.className = 'pp';
+  root.style.setProperty('--pc', cfg.color);
+
+  // Head
+  const head = document.createElement('div');
+  head.className = 'pp-head';
+  head.innerHTML =
+    `<span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>` +
+    `<div class="pp-title">${esc(place.name)}</div>` +
+    `<div class="pp-sub">${cfg.label}</div>`;
+  root.appendChild(head);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'pp-body';
+
+  // Address
+  const addr = document.createElement('div');
+  addr.className = 'pp-addr';
+  addr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(place.address)}`;
+  body.appendChild(addr);
+
+  // Tag chips
   if (typeTags.length) {
     const chips = typeTags
       .filter(tag => place.tags?.[tag.id] !== undefined)
@@ -354,49 +378,50 @@ function showPlacePopup(place) {
         const icon = val === true ? '✓' : '✗';
         return `<span class="pp-chip ${cls}">${icon} ${esc(tag.label)}</span>`;
       }).join('');
-    if (chips) tagsHTML = `<div class="pp-tags">${chips}</div>`;
+    if (chips) {
+      const tagsEl = document.createElement('div');
+      tagsEl.className = 'pp-tags';
+      tagsEl.innerHTML = chips;
+      body.appendChild(tagsEl);
+    }
   }
 
-  const notesHTML = place.notes ? `<div class="pp-notes">${esc(place.notes)}</div>` : '';
+  // Notes
+  if (place.notes) {
+    const notes = document.createElement('div');
+    notes.className = 'pp-notes';
+    notes.textContent = place.notes;
+    body.appendChild(notes);
+  }
 
-  const html = `
-    <div class="pp" style="--pc:${cfg.color}">
-      <div class="pp-head">
-        <span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-        <div class="pp-title">${esc(place.name)}</div>
-        <div class="pp-sub">${cfg.label}</div>
-      </div>
-      <div class="pp-body">
-        <div class="pp-addr">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${esc(place.address)}
-        </div>
-        ${tagsHTML}
-        ${notesHTML}
-        <div class="pp-actions">
-          <button class="pp-dir-btn" title="Get directions" aria-label="Get directions" data-lat="${place.lat}" data-lng="${place.lng}" data-name="${escA(place.name)}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-          </button>
-          <button class="pp-share-btn" title="Share this place" aria-label="Share this place" data-place-id="${place.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          </button>
-          <button class="pp-edit-btn" title="Suggest an edit" aria-label="Suggest an edit" data-place-id="${place.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>`;
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'pp-actions';
 
-  // Close existing popups
-  document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+  // Directions button
+  const dirBtn = document.createElement('button');
+  dirBtn.className = 'pp-dir-btn';
+  dirBtn.title = 'Get directions';
+  dirBtn.setAttribute('aria-label', 'Get directions');
+  dirBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>`;
+  dirBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dir.dest = { lat: place.lat, lng: place.lng, name: place.name };
+    dirTo.value = place.name;
+    placeDestMarker(place.lng, place.lat);
+    updateGoButton();
+    popup.remove();
+    placesSheet.classList.add('shut');
+    openDirPanel();
+  });
 
-  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: '300px', className: 'place-popup-wrap' })
-    .setLngLat([place.lng, place.lat])
-    .setHTML(html)
-    .addTo(map);
-
-  // ── Direct listener on share button (iOS Safari requires gesture on the exact element) ──
-  popup.getElement().querySelector('.pp-share-btn')?.addEventListener('click', (e) => {
+  // Share button — listener attached HERE, before DOM insertion, so iOS gesture token is preserved
+  const shareBtn = document.createElement('button');
+  shareBtn.className = 'pp-share-btn';
+  shareBtn.title = 'Share this place';
+  shareBtn.setAttribute('aria-label', 'Share this place');
+  shareBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+  shareBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const url = buildShareUrl(place);
     if (navigator.share) {
@@ -410,30 +435,30 @@ function showPlacePopup(place) {
     }
   });
 
-  popup.getElement().addEventListener('click', (e) => {
-    const dirBtn = e.target.closest('.pp-dir-btn');
-    if (dirBtn) {
-      e.stopPropagation();
-      const lat = +dirBtn.dataset.lat, lng = +dirBtn.dataset.lng, name = dirBtn.dataset.name;
-      dir.dest = { lat, lng, name };
-      dirTo.value = name;
-      placeDestMarker(lng, lat);
-      updateGoButton();
-      popup.remove();
-      // Close places sheet, open directions panel
-      placesSheet.classList.add('shut');
-      openDirPanel();
-      return;
-    }
-    const editBtn = e.target.closest('.pp-edit-btn');
-    if (editBtn) {
-      e.stopPropagation();
-      const placeId = +editBtn.dataset.placeId;
-      const p = placesData.find(x => x.id === placeId);
-      if (p) openEditOverlay(p);
-      return;
-    }
+  // Edit button
+  const editBtn = document.createElement('button');
+  editBtn.className = 'pp-edit-btn';
+  editBtn.title = 'Suggest an edit';
+  editBtn.setAttribute('aria-label', 'Suggest an edit');
+  editBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openEditOverlay(place);
   });
+
+  actions.appendChild(dirBtn);
+  actions.appendChild(shareBtn);
+  actions.appendChild(editBtn);
+  body.appendChild(actions);
+  root.appendChild(body);
+
+  // Close existing popups
+  document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove());
+
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: '300px', className: 'place-popup-wrap' })
+    .setLngLat([place.lng, place.lat])
+    .setDOMContent(root)
+    .addTo(map);
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
 }
