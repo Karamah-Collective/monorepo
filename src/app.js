@@ -508,26 +508,27 @@ function buildShareUrl(place) {
 }
 
 // ── Toast / snackbar notification ──
-// icon: true = default checkmark, false = no icon, or pass an SVG string
-// type: 'default' = blue accent bar, 'prayer' = gold accent bar
-function showToast(msg, icon = true, type = 'default') {
+// ── Toast / snackbar notification ──
+const _TOAST_SVG = {
+  check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
+  clock: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+};
+function showToast(msg, icon = 'check') {
   const existing = document.getElementById('share-toast');
   if (existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'share-toast';
   t.className = 'share-toast';
-  t.dataset.type = type;
-  const checkmark = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-  const iconHTML = icon === true ? checkmark : (icon || '');
-  t.innerHTML = `${iconHTML}<span>${esc(msg)}</span>`;
+  const svg = _TOAST_SVG[icon] || '';
+  t.innerHTML = `${svg}${esc(msg)}`;
   document.body.appendChild(t);
-  // Double rAF ensures transition fires after insertion
+  // Double rAF ensures the transition fires after insertion
   requestAnimationFrame(() => requestAnimationFrame(() => {
     t.classList.add('share-toast-show');
     setTimeout(() => {
       t.classList.remove('share-toast-show');
-      setTimeout(() => t.remove(), 300);
-    }, 2800);
+      setTimeout(() => t.remove(), 250);
+    }, 2400);
   }));
 }
 
@@ -2478,10 +2479,9 @@ function formatPrayerCountdown(date) {
 }
 
 // ─── Show prayer snackbar ───
-// ── Prayer time toast (gold accent, crescent icon) ──
+// ── Prayer time toast (no icon, plain snackbar) ──
 function showPrayerToast(name) {
-  const icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-  showToast(`Time for ${name}`, icon, 'prayer');
+  showToast(`Time for ${name}`, 'clock');
 }
 
 function showPrayerSnack(text, autoHide = false) {
