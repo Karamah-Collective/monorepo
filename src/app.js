@@ -416,20 +416,15 @@ function showPlacePopup(place) {
       const p = placesData.find(x => x.id === +shareBtn.dataset.placeId);
       if (!p) return;
       const url = buildShareUrl(p);
-      if (navigator.share) {
-        // Mobile: fire native share sheet — this is a direct user-gesture call
+
+      // Always copy to clipboard immediately (works on all browsers without async permissions)
+      const copied = copyToClipboard(url);
+      showToast(copied ? 'Link copied!' : 'Copy failed');
+
+      // Also try native share sheet on mobile (bonus — clipboard already done)
+      if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url })
-          .then(() => { /* shared successfully */ })
-          .catch(err => {
-            if (err?.name === 'AbortError') return; // user dismissed — do nothing
-            // Share failed for another reason — copy instead and notify
-            copyToClipboard(url).then(() => showToast('Link copied!'));
-          });
-      } else {
-        // Desktop: copy + toast (still inside the gesture context)
-        copyToClipboard(url).then(ok =>
-          showToast(ok ? 'Link copied!' : 'Copy failed')
-        );
+          .catch(() => {}); // dismissing the sheet is fine, clipboard already copied
       }
       return;
     }
@@ -444,6 +439,27 @@ function showPlacePopup(place) {
   });
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+}
+
+// ── Clipboard copy (works on all browsers without async permissions) ──
+function copyToClipboard(text) {
+  // Modern async API (desktop Chrome/Firefox/Edge)
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+  // Universal fallback: textarea + execCommand (works on iOS Safari, Android WebView, etc.)
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length); // iOS Safari requires this
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch { return false; }
 }
 
 // ── Place share token (base64-encoded payload, URL-safe) ──
@@ -462,42 +478,24 @@ function buildShareUrl(place) {
   return `${location.origin}${location.pathname}?p=${encodePlaceToken(place)}`;
 }
 
-// ── Reliable clipboard copy (works inside promise catch / iOS Safari) ──
-function copyToClipboard(text) {
-  // Try modern async API first
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text).then(() => true).catch(() => {
-      // Async API failed — fall through to execCommand
-      return _execCopy(text);
-    });
-  }
-  return Promise.resolve(_execCopy(text));
-}
-function _execCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  try { return document.execCommand('copy'); }
-  catch { return false; }
-  finally { ta.remove(); }
-}
-
+// ── Toast / snackbar notification ──
+function showToast(msg, icon = true) {
   const existing = document.getElementById('share-toast');
   if (existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'share-toast';
   t.className = 'share-toast';
-  t.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> ${msg}`;
+  if (icon) t.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>${esc(msg)}`;
+  else t.textContent = msg;
   document.body.appendChild(t);
-  requestAnimationFrame(() => {
+  // Double rAF ensures the transition fires after insertion
+  requestAnimationFrame(() => requestAnimationFrame(() => {
     t.classList.add('share-toast-show');
     setTimeout(() => {
       t.classList.remove('share-toast-show');
-      setTimeout(() => t.remove(), 300);
-    }, 2200);
-  });
+      setTimeout(() => t.remove(), 250);
+    }, 2400);
+  }));
 }
 
 // ── Open place from URL (?place=ID) ──
