@@ -417,14 +417,20 @@ function showPlacePopup(place) {
       if (!p) return;
       const url = buildShareUrl(p);
 
-      // Always copy to clipboard immediately (works on all browsers without async permissions)
-      const copied = copyToClipboard(url);
-      showToast(copied ? 'Link copied!' : 'Copy failed');
-
-      // Also try native share sheet on mobile (bonus — clipboard already done)
-      if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      if (navigator.share) {
+        // Native share sheet on all platforms (Android, iOS, Windows, macOS)
         navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url })
-          .catch(() => {}); // dismissing the sheet is fine, clipboard already copied
+          .catch(err => {
+            // Only fall back to clipboard if the share itself failed (not user-dismissed)
+            if (err?.name !== 'AbortError') {
+              copyToClipboard(url);
+              showToast('Link copied!');
+            }
+          });
+      } else {
+        // Browser doesn't support Web Share API — copy to clipboard
+        copyToClipboard(url);
+        showToast('Link copied!');
       }
       return;
     }
