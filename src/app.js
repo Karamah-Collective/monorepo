@@ -416,18 +416,20 @@ function showPlacePopup(place) {
       const p = placesData.find(x => x.id === +shareBtn.dataset.placeId);
       if (!p) return;
       const url = buildShareUrl(p);
-      const copyFallback = () =>
-        navigator.clipboard.writeText(url)
-          .then(() => showToast('Link copied!'))
-          .catch(() => showToast('Copy failed'));
       if (navigator.share) {
+        // Mobile: fire native share sheet — this is a direct user-gesture call
         navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url })
+          .then(() => { /* shared successfully */ })
           .catch(err => {
-            // AbortError = user dismissed the sheet — don't copy in that case
-            if (err?.name !== 'AbortError') copyFallback();
+            if (err?.name === 'AbortError') return; // user dismissed — do nothing
+            // Share failed for another reason — copy instead and notify
+            copyToClipboard(url).then(() => showToast('Link copied!'));
           });
       } else {
-        copyFallback();
+        // Desktop: copy + toast (still inside the gesture context)
+        copyToClipboard(url).then(ok =>
+          showToast(ok ? 'Link copied!' : 'Copy failed')
+        );
       }
       return;
     }
@@ -460,14 +462,34 @@ function buildShareUrl(place) {
   return `${location.origin}${location.pathname}?p=${encodePlaceToken(place)}`;
 }
 
-// ── Toast notification ──
-function showToast(msg) {
+// ── Reliable clipboard copy (works inside promise catch / iOS Safari) ──
+function copyToClipboard(text) {
+  // Try modern async API first
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => {
+      // Async API failed — fall through to execCommand
+      return _execCopy(text);
+    });
+  }
+  return Promise.resolve(_execCopy(text));
+}
+function _execCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { return document.execCommand('copy'); }
+  catch { return false; }
+  finally { ta.remove(); }
+}
+
   const existing = document.getElementById('share-toast');
   if (existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'share-toast';
   t.className = 'share-toast';
-  t.textContent = msg;
+  t.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> ${msg}`;
   document.body.appendChild(t);
   requestAnimationFrame(() => {
     t.classList.add('share-toast-show');

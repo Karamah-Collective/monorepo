@@ -829,15 +829,16 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 /* ── Share toast ── */
 .share-toast {
-  position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(6px);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 8px 16px;
-  font-size: 13px; font-weight: 600; color: var(--text);
-  box-shadow: var(--shadow-md);
+  position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%) translateY(10px);
+  display: inline-flex; align-items: center; gap: 7px;
+  background: #1a1a1a; color: #fff;
+  border-radius: var(--r-pill);
+  padding: 10px 18px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.28);
   pointer-events: none;
   opacity: 0;
-  transition: opacity .2s ease, transform .2s ease;
+  transition: opacity .22s ease, transform .22s ease;
   z-index: 9999;
   white-space: nowrap;
 }
