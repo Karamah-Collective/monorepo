@@ -1768,7 +1768,6 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-md);
   width: 44px;
-  overflow: hidden;
   transition: width .3s cubic-bezier(.32,.72,0,1),
               border-radius .3s ease,
               box-shadow .3s ease;
@@ -1786,31 +1785,19 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #prayer-pill:active { color: var(--text-2); }
 #prayer-snack:not(.collapsed) #prayer-pill {
   position: absolute; top: 0; left: 0;
-  pointer-events: auto; z-index: 1;
+  opacity: 1; pointer-events: auto; z-index: 1;
 }
 
-/* Expand / collapse animation — grid wrapper handles height */
-#prayer-expanded-wrap {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1);
-  overflow: hidden;
-}
-#prayer-snack.collapsed #prayer-expanded-wrap {
-  grid-template-rows: 0fr;
-}
-
+/* Expand / collapse animation */
 #prayer-expanded {
-  overflow: hidden;
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity .3s ease, transform .4s cubic-bezier(.32,.72,0,1);
+  transition: opacity .2s ease .08s;
   white-space: nowrap;
 }
 #prayer-snack.collapsed #prayer-expanded {
   opacity: 0;
-  transform: translateY(-6px);
   pointer-events: none;
+  height: 0; overflow: hidden;
 }
 
 /* ── Expanded card ── */
