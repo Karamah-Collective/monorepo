@@ -503,8 +503,15 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   flex-shrink: 0;
 }
 #places-type-chips {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(52px, 1fr);
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+#places-type-chips::-webkit-scrollbar { display: none; }
 
 .pf-chip {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -606,7 +613,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 #places-list li {
   display: grid;
-  grid-template: "icon name meta" auto "icon addr meta" auto / auto 1fr auto;
+  grid-template: "icon name meta fav" auto "icon addr meta fav" auto / auto 1fr auto auto;
   align-items: center; column-gap: 12px;
   cursor: pointer;
   transition: background-color .15s;
@@ -650,6 +657,19 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   font-size: 11px; font-weight: 600;
   color: var(--text-3); white-space: nowrap; line-height: 1.3;
 }
+
+/* Favourite star button on list item */
+.pl-fav-btn {
+  grid-area: fav; align-self: center;
+  background: none; border: none; padding: 6px 2px 6px 6px;
+  cursor: pointer; color: var(--text-3);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-xs);
+  transition: color .15s, background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pl-fav-btn:hover { color: #F59E0B; }
+.pl-fav-btn.active { color: #F59E0B; }
 @supports (background: color-mix(in srgb, red 10%, transparent)) {
   .pl-type-badge {
     background: color-mix(in srgb, var(--type-c, var(--accent)) 10%, transparent);
@@ -762,10 +782,12 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .pp { display: flex; flex-direction: column; }
 
 .pp-head {
-  display: grid; grid-template: "icon title" auto "icon sub" auto / auto 1fr;
+  display: grid;
+  grid-template: "icon title fav" auto "icon sub  fav" auto / auto 1fr auto;
   gap: 0 8px; padding: 10px 12px;
   background: var(--pc);
   color: #fff;
+  position: relative;
 }
 .pp-type-icon {
   grid-area: icon; align-self: center;
@@ -780,6 +802,18 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   grid-area: sub; font-size: 11px; font-weight: 600;
   opacity: .75; line-height: 1.4;
 }
+/* Star in popup header */
+.pp-fav-btn {
+  grid-area: fav; align-self: center;
+  background: none; border: none; padding: 4px;
+  cursor: pointer; border-radius: 6px;
+  color: rgba(255,255,255,.55);
+  display: flex; align-items: center; justify-content: center;
+  transition: color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pp-fav-btn:hover { color: rgba(255,255,255,.9); }
+.pp-fav-btn.active { color: #FCD34D; }
 
 .pp-body { padding: 10px 12px; }
 
@@ -839,6 +873,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   transition: border-color .15s, color .15s;
 }
 .pp-edit-btn:hover { color: var(--text); border-color: var(--surface-3); }
+
+/* pp-fav-btn lives in .pp-head — styles defined there */
 
 /* ── Share toast ── */
 .share-toast {

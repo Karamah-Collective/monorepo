@@ -115,6 +115,9 @@ export const TRANSITOUS_URL = 'https://api.transitous.org/api/v5/plan';
 export const NOMINATIM_REV = 'https://nominatim.openstreetmap.org/reverse';
 export const NOMINATIM_VB = '24.0,60.8,25.8,59.8'; // Helsinki bounding box
 
+// Share-link encryption key (keep this secret — used to sign & encrypt place share tokens)
+export const HF_TOKEN_KEY = 'your-strong-random-key-here'; // generate with: openssl rand -base64 24
+
 // Map Styling
 export const MAP_STYLE = 'https://tiles.openfreetiles.org/styles/positron_modified/style.json';
 
@@ -198,6 +201,7 @@ This is critical - these tell your build script what values to inject.
    | `DT_API_KEY` | Your actual key | From digitransit.fi |
    | `NOMINATIM_REV` | `https://nominatim.openstreetmap.org/reverse` | Standard |
    | `NOMINATIM_VB` | `24.0,60.8,25.8,59.8` | Helsinki bounds |
+   | `HF_TOKEN_KEY` | A strong random string | `openssl rand -base64 24` |
 
 3. **Important:** Do NOT put these values in your git repository
 

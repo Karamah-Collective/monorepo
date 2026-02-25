@@ -11,6 +11,8 @@ const TRANSITOUS_URL  = _cfg.TRANSITOUS_URL  || 'https://api.transitous.org/api/
 const DT_API_KEY      = _cfg.DT_API_KEY      || '';
 const NOMINATIM_REV   = _cfg.NOMINATIM_REV   || 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1';
 const NOMINATIM_VB    = _cfg.NOMINATIM_VB    || '24.0,60.8,25.8,59.8';
+// Share-link key: injected at build time via CF Pages env var HF_TOKEN_KEY, fallback for local dev
+const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || 'Hf#K4r@m@h_2O26!';
 
 // ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
 document.addEventListener('gesturestart', e => e.preventDefault());
@@ -46,6 +48,16 @@ let tagsData = {};
 let placeMarkers = [];
 let activeTypeFilter = 'all';
 let activeTagFilters = new Set();
+
+// ─── Favourites (localStorage) ───
+let favourites = new Set(JSON.parse(localStorage.getItem('hf_favs') || '[]'));
+function saveFavourites() { localStorage.setItem('hf_favs', JSON.stringify([...favourites])); }
+function isFavourite(id) { return favourites.has(id); }
+function toggleFavourite(id) {
+  if (favourites.has(id)) favourites.delete(id);
+  else favourites.add(id);
+  saveFavourites();
+}
 
 // ─── SVG Icon Library ───
 function _svg(paths, size = 16, sw = '2') {
@@ -314,7 +326,9 @@ function addPlaceMarkers() {
 
   let filtered = activeTypeFilter === 'all'
     ? placesData
-    : placesData.filter(p => p.type === activeTypeFilter);
+    : activeTypeFilter === 'saved'
+      ? placesData.filter(p => isFavourite(p.id))
+      : placesData.filter(p => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
     filtered = filtered.filter(p =>
@@ -352,10 +366,30 @@ function showPlacePopup(place) {
   // Head
   const head = document.createElement('div');
   head.className = 'pp-head';
+  const _isFavHead = isFavourite(place.id);
+  const _starSVGHead = (filled) =>
+    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? 'currentColor' : 'none'}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
   head.innerHTML =
     `<span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>` +
     `<div class="pp-title">${esc(place.name)}</div>` +
-    `<div class="pp-sub">${cfg.label}</div>`;
+    `<div class="pp-sub">${cfg.label}</div>` +
+    `<button class="pp-fav-btn${_isFavHead ? ' active' : ''}" aria-label="${_isFavHead ? 'Remove from saved' : 'Save place'}">${_starSVGHead(_isFavHead)}</button>`;
+  // Wire up head star after insertion
+  const headFavBtn = head.querySelector('.pp-fav-btn');
+  headFavBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFavourite(place.id);
+    const saved = isFavourite(place.id);
+    headFavBtn.classList.toggle('active', saved);
+    headFavBtn.setAttribute('aria-label', saved ? 'Remove from saved' : 'Save place');
+    headFavBtn.innerHTML = _starSVGHead(saved);
+    const listBtn = document.querySelector(`.pl-fav-btn[data-fav-id="${place.id}"]`);
+    if (listBtn) {
+      listBtn.classList.toggle('active', saved);
+      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? 'currentColor' : 'none'}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    }
+    if (activeTypeFilter === 'saved' && !saved) { addPlaceMarkers(); renderPlacesList(); }
+  });
   root.appendChild(head);
 
   // Body
@@ -491,20 +525,86 @@ function copyToClipboard(text) {
   } catch { return false; }
 }
 
-// ── Place share token (base64-encoded payload, URL-safe) ──
-function encodePlaceToken(place) {
-  const raw = JSON.stringify({ n: place.name, t: place.type, a: place.lat, o: place.lng });
-  return btoa(raw).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+// ── Share token v3: 8-byte binary → 11 base64url chars ──
+// Layout (plaintext): [id_hi, id_lo, lat_hi, lat_lo, lng_hi, lng_lo, mac_hi, mac_lo]
+// lat_packed = round((lat − 58.0) × 10000)  → uint16  (~11 m precision, covers all Finland)
+// lng_packed = round((lng − 23.0) × 10000)  → uint16
+// mac = low 16 bits of FNV-1a-32 keyed over (key_bytes ⊕ payload_bytes)
+// Whole payload XOR’d byte-by-byte with key before base64url encoding
+const _LAT_BASE = 58.0, _LNG_BASE = 23.0, _GEO_SCALE = 10000;
+function _keyBuf() {
+  return Array.from(_CRYPTO_KEY, c => c.charCodeAt(0));
 }
-function decodePlaceToken(token) {
+function _fnv1a16(bytes) {
+  let h = 2166136261;
+  for (const b of bytes) h = Math.imul(h ^ b, 16777619) >>> 0;
+  // fold 32→16
+  return ((h >>> 16) ^ (h & 0xFFFF)) & 0xFFFF;
+}
+function _b64url(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+function _b64decode(token) {
+  const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4;
+  const raw = atob(pad ? b64 + '='.repeat(4 - pad) : b64);
+  return Array.from(raw, c => c.charCodeAt(0));
+}
+
+function encryptToken(place) {
+  const kb   = _keyBuf();
+  const id   = place.id & 0xFFFF;
+  const lat16 = Math.round((place.lat - _LAT_BASE) * _GEO_SCALE) & 0xFFFF;
+  const lng16 = Math.round((place.lng - _LNG_BASE) * _GEO_SCALE) & 0xFFFF;
+  const data  = [id >> 8, id & 0xFF, lat16 >> 8, lat16 & 0xFF, lng16 >> 8, lng16 & 0xFF];
+  const mac   = _fnv1a16([...kb, ...data]);
+  const plain = [...data, mac >> 8, mac & 0xFF];
+  const xored = plain.map((b, i) => b ^ kb[i % kb.length]);
+  return _b64url(xored);
+}
+function decryptToken(token) {
+  try {
+    const raw = _b64decode(token);
+    if (raw.length !== 8) return null;
+    const kb    = _keyBuf();
+    const plain = raw.map((b, i) => b ^ kb[i % kb.length]);
+    const [ih, il, lah, lal, loh, lol, mh, ml] = plain;
+    const mac   = (mh << 8) | ml;
+    const data  = [ih, il, lah, lal, loh, lol];
+    if (_fnv1a16([...kb, ...data]) !== mac) return null; // MAC mismatch — reject
+    return {
+      id: (ih << 8) | il,
+      a: _LAT_BASE + ((lah << 8) | lal) / _GEO_SCALE,
+      o: _LNG_BASE + ((loh << 8) | lol) / _GEO_SCALE,
+    };
+  } catch { return null; }
+}
+// Legacy: try v2 XOR-JSON ({n,t,a,o}), then v0 plain-base64 JSON
+function _decodeLegacyToken(token) {
+  // v2: XOR’d JSON string
+  try {
+    const LEGACY_KEY = 'Hf#K4r@m@h_2O26!';
+    const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    const raw = atob(pad ? b64 + '='.repeat(4 - pad) : b64);
+    const plain = Array.from(raw, (c, i) =>
+      String.fromCharCode(c.charCodeAt(0) ^ LEGACY_KEY.charCodeAt(i % LEGACY_KEY.length))
+    ).join('');
+    const obj = JSON.parse(plain);
+    if (obj && obj.n) return obj;
+  } catch {}
+  // v0: plain base64 JSON
   try {
     const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
     const pad = b64.length % 4;
     return JSON.parse(atob(pad ? b64 + '='.repeat(4 - pad) : b64));
-  } catch { return null; }
+  } catch {}
+  return null;
 }
 function buildShareUrl(place) {
-  return `${location.origin}${location.pathname}?p=${encodePlaceToken(place)}`;
+  const { lat, lng } = map.getCenter();
+  const z = map.getZoom().toFixed(1);
+  return `${location.origin}${location.pathname}#${z}/${lat.toFixed(4)}/${lng.toFixed(4)}&p=${encryptToken(place)}`;
 }
 
 // ── Toast / snackbar notification ──
@@ -567,35 +667,80 @@ async function checkGeoNotice() {
   } catch { /* silent — don't bother users if geo check fails */ }
 }
 
-// ── Open place from URL (?place=ID) ──
-function checkShareUrl() {
-  const params = new URLSearchParams(location.search);
-  let place = null;
+// ── Hash-based deep-link: #zoom/lat/lng  or  #zoom/lat/lng&p=TOKEN ──
+function updateUrlHash() {
+  const { lat, lng } = map.getCenter();
+  const z = map.getZoom().toFixed(1);
+  history.replaceState(null, '', `#${z}/${lat.toFixed(4)}/${lng.toFixed(4)}`);
+}
 
-  const token = params.get('p');
-  if (token) {
-    const data = decodePlaceToken(token);
-    if (data) {
-      // Primary: exact name + type match (survives ID reshuffling)
-      place = placesData.find(p => p.name === data.n && p.type === data.t);
-      // Fallback: nearest coordinates in case name changes slightly
-      if (!place && placesData.length) {
-        place = placesData.reduce((best, p) => {
-          const d  = (p.lat - data.a) ** 2 + (p.lng - data.o) ** 2;
-          const bd = (best.lat - data.a) ** 2 + (best.lng - data.o) ** 2;
-          return d < bd ? p : best;
-        });
-      }
+function checkShareUrl() {
+  // 1. Parse hash: #zoom/lat/lng  or  #zoom/lat/lng&p=TOKEN
+  const hash = location.hash.slice(1);
+  let mapView = null, placeToken = null;
+
+  if (hash) {
+    const ampIdx = hash.indexOf('&');
+    const viewStr = ampIdx >= 0 ? hash.slice(0, ampIdx) : hash;
+    const rest    = ampIdx >= 0 ? hash.slice(ampIdx + 1) : '';
+    const parts   = viewStr.split('/');
+    if (parts.length === 3) {
+      const [z, la, lo] = parts.map(Number);
+      if (!isNaN(z) && !isNaN(la) && !isNaN(lo)) mapView = { zoom: z, lat: la, lng: lo };
     }
-  } else {
-    // Legacy links: ?place=ID
-    const id = +params.get('place');
-    if (id) place = placesData.find(p => p.id === id);
+    for (const seg of rest.split('&')) {
+      if (seg.startsWith('p=')) placeToken = seg.slice(2);
+    }
   }
 
-  if (!place) return;
-  map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
-  map.once('moveend', () => showPlacePopup(place));
+  // 2. Fallback: legacy query-param links (?p=TOKEN or ?place=ID)
+  if (!placeToken && !mapView) {
+    const params = new URLSearchParams(location.search);
+    placeToken = params.get('p') || null;
+    if (!placeToken) {
+      const id = +params.get('place');
+      if (id) {
+        const place = placesData.find(p => p.id === id);
+        if (place) {
+          map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
+          map.once('moveend', () => showPlacePopup(place));
+        }
+        return;
+      }
+    }
+  }
+
+  // 3. Apply map view only (no place token)
+  if (mapView && !placeToken) {
+    map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom });
+    return;
+  }
+
+  // 4. Decode & open place
+  if (placeToken) {
+    const data = decryptToken(placeToken) || _decodeLegacyToken(placeToken);
+    if (!data) return;
+    // v2 token has {id,a,o}; legacy tokens have {n,t,a,o}
+    let place = data.id != null
+      ? placesData.find(p => p.id === data.id)
+      : placesData.find(p => p.name === data.n && p.type === data.t);
+    // Coord fallback: nearest place to encoded lat/lng
+    if (!place && placesData.length) {
+      place = placesData.reduce((best, p) => {
+        const d  = (p.lat - data.a) ** 2 + (p.lng - data.o) ** 2;
+        const bd = (best.lat - data.a) ** 2 + (best.lng - data.o) ** 2;
+        return d < bd ? p : best;
+      });
+    }
+    if (!place) return;
+    if (mapView) {
+      map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom });
+      showPlacePopup(place);
+    } else {
+      map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
+      map.once('moveend', () => showPlacePopup(place));
+    }
+  }
 }
 
 function updatePlacesBadge() {
@@ -803,7 +948,7 @@ function renderTagFilterBar() {
   const typePlaces = activeTypeFilter === 'all'
     ? placesData
     : placesData.filter(p => p.type === activeTypeFilter);
-  if (activeTypeFilter === 'all' || !typePlaces.length) {
+  if (activeTypeFilter === 'all' || activeTypeFilter === 'saved' || !typePlaces.length) {
     row.classList.add('hide');
     tfToggle.classList.remove('open');
     tfChips.classList.add('shut');
@@ -861,7 +1006,9 @@ function renderPlacesList() {
 
   let filtered = activeTypeFilter === 'all'
     ? placesData
-    : placesData.filter(p => p.type === activeTypeFilter);
+    : activeTypeFilter === 'saved'
+      ? placesData.filter(p => isFavourite(p.id))
+      : placesData.filter(p => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
     filtered = filtered.filter(p =>
@@ -879,12 +1026,13 @@ function renderPlacesList() {
   empty.classList.add('hide');
   ct.textContent = `${filtered.length} place${filtered.length > 1 ? 's' : ''}`;
 
+  const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
   list.innerHTML = filtered.map((p, i) => {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
     const typeTags = tagsData[p.type] || [];
-    // Count positive tags
     const posCount = typeTags.filter(t => p.tags?.[t.id] === true).length;
     const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? 's' : ''}` : '';
+    const faved = isFavourite(p.id);
     return `<li data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
       <span class="pl-dot" style="background:${cfg.color}">
         <svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg>
@@ -895,6 +1043,9 @@ function renderPlacesList() {
         <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
         ${tagSummary ? `<span class="pl-tags-summary">${tagSummary}</span>` : ''}
       </div>
+      <button class="pl-fav-btn${faved ? ' active' : ''}" data-fav-id="${p.id}" aria-label="${faved ? 'Remove from saved' : 'Save place'}">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? 'currentColor' : 'none'}">${_starPath}</svg>
+      </button>
     </li>`;
   }).join('');
 }
@@ -905,6 +1056,22 @@ document.getElementById('suggest-place-btn').addEventListener('click', openSugge
 document.getElementById('suggest-place-btn-empty').addEventListener('click', openSuggestOverlay);
 // Delegate for places list clicks
 document.getElementById('places-list').addEventListener('click', e => {
+  // Fav star — toggle without opening popup
+  const favBtn = e.target.closest('.pl-fav-btn');
+  if (favBtn) {
+    e.stopPropagation();
+    const id = +favBtn.dataset.favId;
+    toggleFavourite(id);
+    const saved = isFavourite(id);
+    favBtn.classList.toggle('active', saved);
+    favBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? 'currentColor' : 'none'}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    // If viewing Saved filter and item was un-starred, remove it
+    if (activeTypeFilter === 'saved' && !saved) {
+      addPlaceMarkers();
+      renderPlacesList();
+    }
+    return;
+  }
   const li = e.target.closest('li[data-place-id]');
   if (!li) return;
   const placeId = +li.dataset.placeId;
@@ -2413,6 +2580,9 @@ map.on('load', () => {
   initPrayerTimes();
   checkGeoNotice();
 });
+
+// Keep URL hash in sync with the current map view
+map.on('moveend', updateUrlHash);
 
 // ═══════════════════════════════════════════════════════════════
 // PRAYER TIMES  –  Aladhan API (free, no API key required)

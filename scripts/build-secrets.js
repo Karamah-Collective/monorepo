@@ -21,6 +21,7 @@ const vars = {
   DT_API_KEY:      process.env.DT_API_KEY      || '',
   NOMINATIM_REV:   process.env.NOMINATIM_REV   || 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1',
   NOMINATIM_VB:    process.env.NOMINATIM_VB    || '24.0,60.8,25.8,59.8',
+  HF_TOKEN_KEY:    process.env.HF_TOKEN_KEY    || '', // share-link encryption key
 };
 
 // Log which vars came from env vs defaults
@@ -37,6 +38,7 @@ export const TRANSITOUS_URL  = '${vars.TRANSITOUS_URL}';
 export const DT_API_KEY      = '${vars.DT_API_KEY}';
 export const NOMINATIM_REV   = '${vars.NOMINATIM_REV}';
 export const NOMINATIM_VB    = '${vars.NOMINATIM_VB}';
+export const HF_TOKEN_KEY    = '${vars.HF_TOKEN_KEY}';
 `;
 
 fs.writeFileSync(outPath, config, 'utf8');
