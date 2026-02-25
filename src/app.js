@@ -395,6 +395,21 @@ function showPlacePopup(place) {
     .setHTML(html)
     .addTo(map);
 
+  // ── Direct listener on share button (iOS Safari requires gesture on the exact element) ──
+  popup.getElement().querySelector('.pp-share-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const url = buildShareUrl(place);
+    if (navigator.share) {
+      navigator.share({ title: place.name, text: `${place.name} – Halal Finder Helsinki`, url })
+        .catch(err => {
+          if (err?.name !== 'AbortError') { copyToClipboard(url); showToast('Link copied!'); }
+        });
+    } else {
+      copyToClipboard(url);
+      showToast('Link copied!');
+    }
+  });
+
   popup.getElement().addEventListener('click', (e) => {
     const dirBtn = e.target.closest('.pp-dir-btn');
     if (dirBtn) {
@@ -408,30 +423,6 @@ function showPlacePopup(place) {
       // Close places sheet, open directions panel
       placesSheet.classList.add('shut');
       openDirPanel();
-      return;
-    }
-    const shareBtn = e.target.closest('.pp-share-btn');
-    if (shareBtn) {
-      e.stopPropagation();
-      const p = placesData.find(x => x.id === +shareBtn.dataset.placeId);
-      if (!p) return;
-      const url = buildShareUrl(p);
-
-      if (navigator.share) {
-        // Native share sheet on all platforms (Android, iOS, Windows, macOS)
-        navigator.share({ title: p.name, text: `${p.name} – Halal Finder Helsinki`, url })
-          .catch(err => {
-            // Only fall back to clipboard if the share itself failed (not user-dismissed)
-            if (err?.name !== 'AbortError') {
-              copyToClipboard(url);
-              showToast('Link copied!');
-            }
-          });
-      } else {
-        // Browser doesn't support Web Share API — copy to clipboard
-        copyToClipboard(url);
-        showToast('Link copied!');
-      }
       return;
     }
     const editBtn = e.target.closest('.pp-edit-btn');
