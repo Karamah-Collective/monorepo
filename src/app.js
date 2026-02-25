@@ -2562,7 +2562,7 @@ function togglePrayerExpanded() {
   const isExpanded = el.classList.toggle('expanded');
   
   if (isExpanded) {
-    const listEl = document.getElementById('prayer-times-list');
+    const listEl = document.getElementById('prayer-times-inner');
     listEl.innerHTML = '';
     
     if (!prayerTimesToday) {
@@ -2603,7 +2603,7 @@ function togglePrayerExpanded() {
       }
     }
   } else {
-    document.getElementById('prayer-times-list').innerHTML = '';
+    document.getElementById('prayer-times-inner').innerHTML = '';
   }
 }
 
@@ -2794,17 +2794,15 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Wire snackbar close → collapse to pill
-document.getElementById('prayer-snack-close').addEventListener('click', (e) => {
+// Wire pill → expand when collapsed, collapse when expanded
+document.getElementById('prayer-pill').addEventListener('click', (e) => {
   e.stopPropagation();
-  dismissPrayerSnack();
-  // TEST: show prayer toast on close — remove this line once approved
-  showPrayerToast(getNextPrayer()?.name || 'Dhuhr');
-});
-
-// Wire pill → expand from collapsed
-document.getElementById('prayer-pill').addEventListener('click', () => {
-  document.getElementById('prayer-snack').classList.remove('collapsed');
+  const snack = document.getElementById('prayer-snack');
+  if (snack.classList.contains('collapsed')) {
+    snack.classList.remove('collapsed');
+  } else {
+    dismissPrayerSnack();
+  }
 });
 
 // Wire chevron → toggle prayer-times dropdown
@@ -2813,11 +2811,10 @@ document.getElementById('prayer-chevron').addEventListener('click', (e) => {
   togglePrayerExpanded();
 });
 
-// Wire header area → toggle prayer-times dropdown
+// Wire header area → collapse pill (chevron is the only dropdown toggle; pill handles itself)
 document.querySelector('.prayer-snack-clickable').addEventListener('click', (e) => {
-  // Only toggle if click wasn't on a button (chevron / close handle themselves)
-  if (e.target.closest('.prayer-hdr-btn')) return;
-  togglePrayerExpanded();
+  if (e.target.closest('.prayer-hdr-btn') || e.target.closest('#prayer-pill')) return;
+  dismissPrayerSnack();
 });
 
 // Wire mosque icon in destination field

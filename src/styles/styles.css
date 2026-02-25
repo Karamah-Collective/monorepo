@@ -536,9 +536,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   background: var(--surface); border-radius: var(--r-pill);
   font-family: inherit; font-size: 12px; font-weight: 600;
   color: var(--text-2); cursor: pointer;
-  transition: color .15s;
+  transition: color .15s, border-color .15s;
 }
-#tf-toggle:hover { color: var(--text); }
+#tf-toggle:hover { color: var(--text); border-color: var(--surface-3); }
 #tf-toggle.open { background: var(--accent); color: #fff; border-color: var(--accent); }
 #tf-toggle.open svg { stroke: #fff; }
 .tf-arrow { transition: transform .2s; }
@@ -566,9 +566,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   background: var(--surface); border-radius: var(--r-pill);
   font-family: inherit; font-size: 12px; font-weight: 600;
   color: var(--text-2); cursor: pointer;
-  white-space: nowrap; transition: color .15s;
+  white-space: nowrap; transition: color .15s, border-color .15s;
 }
-.tf-chip:hover { color: var(--text); }
+.tf-chip:hover { color: var(--text); border-color: var(--surface-3); }
 .tf-chip.active {
   background: var(--accent); color: #fff;
   border-color: var(--accent);
@@ -1204,10 +1204,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   font-family: inherit; font-size: 13px; font-weight: 700;
   color: var(--text-2); cursor: pointer;
   flex-shrink: 0; white-space: nowrap;
-  transition: color .15s;
+  transition: color .15s, border-color .15s;
 }
 .time-chip svg { flex-shrink: 0; }
-.time-chip:not(.active):hover { color: var(--text); }
+.time-chip:not(.active):hover { color: var(--text); border-color: var(--surface-3); }
 .time-chip.active {
   background: var(--accent); color: #fff; border-color: var(--accent);
 }
@@ -1721,29 +1721,41 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   transition: color .15s, opacity .2s ease;
 }
 #prayer-pill:hover  { color: var(--text-2); }
-#prayer-pill:active { color: var(--accent); }
+#prayer-pill:active { color: var(--text-2); }
 #prayer-snack:not(.collapsed) #prayer-pill {
   position: absolute; top: 0; left: 0;
-  pointer-events: none;
+  pointer-events: auto; z-index: 1;
 }
 
-/* Expand / collapse animation */
+/* Expand / collapse animation — grid wrapper handles height */
+#prayer-expanded-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1);
+  overflow: hidden;
+}
+#prayer-snack.collapsed #prayer-expanded-wrap {
+  grid-template-rows: 0fr;
+}
+
 #prayer-expanded {
+  overflow: hidden;
   opacity: 1;
-  transition: opacity .2s ease .08s;
+  transform: translateY(0);
+  transition: opacity .3s ease, transform .4s cubic-bezier(.32,.72,0,1);
   white-space: nowrap;
 }
 #prayer-snack.collapsed #prayer-expanded {
   opacity: 0;
+  transform: translateY(-6px);
   pointer-events: none;
-  height: 0; overflow: hidden;
 }
 
 /* ── Expanded card ── */
 #prayer-snack:not(.collapsed) {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  width: min(80vw, 240px);
+  width: min(80vw, 210px);
 }
 
 /* ── Header ── */
@@ -1769,12 +1781,12 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .prayer-hdr-btn {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: 1.5px solid transparent; border-radius: 50%;
+  background: var(--surface-2); border: none; border-radius: 50%;
   cursor: pointer; color: var(--text-3);
-  transition: border-color .15s, color .15s;
+  transition: color .15s;
 }
 .prayer-hdr-btn:hover {
-  color: var(--text-2); border-color: var(--border);
+  color: var(--text-2);
 }
 #prayer-chevron {
   transition: transform .25s ease, color .15s, background .15s;
@@ -1785,12 +1797,24 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 
 /* ── Prayer times list ── */
 #prayer-times-list {
-  max-height: 0; overflow: hidden;
-  transition: max-height .3s cubic-bezier(.32,.72,0,1);
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1),
+              opacity .3s ease;
 }
 #prayer-snack.expanded #prayer-times-list {
-  max-height: 320px;
+  grid-template-rows: 1fr;
+  opacity: 1;
   border-top: 1px solid var(--border);
+}
+#prayer-times-inner {
+  overflow: hidden;
+  transform: translateY(-10px);
+  transition: transform .4s cubic-bezier(.32,.72,0,1);
+}
+#prayer-snack.expanded #prayer-times-inner {
+  transform: translateY(0);
 }
 .prayer-time-item {
   display: flex; align-items: center; justify-content: space-between;
