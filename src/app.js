@@ -2474,6 +2474,11 @@ function formatPrayerCountdown(date) {
 }
 
 // ─── Show prayer snackbar ───
+// ── Prayer time toast (no icon, plain snackbar) ──
+function showPrayerToast(name) {
+  showToast(`Time for ${name}`, false);
+}
+
 function showPrayerSnack(text, autoHide = false) {
   const el = document.getElementById('prayer-snack');
   document.getElementById('prayer-snack-title').textContent = text;
@@ -2501,7 +2506,7 @@ function startPrayerWatcher() {
       const diffMin = (now - prayerTimesToday[name]) / 60000;
       if (diffMin >= 0 && diffMin < 1 && lastAlertedPrayer !== name) {
         lastAlertedPrayer = name;
-        showPrayerSnack(`🕌 Time for ${name}`, /* autoHide */ true);
+        showPrayerToast(name);
         return;
       }
     }
@@ -2788,6 +2793,8 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 document.getElementById('prayer-snack-close').addEventListener('click', (e) => {
   e.stopPropagation();
   dismissPrayerSnack();
+  // TEST: show prayer toast on close — remove this line once approved
+  showPrayerToast(getNextPrayer()?.name || 'Dhuhr');
 });
 
 // Wire pill → expand from collapsed
