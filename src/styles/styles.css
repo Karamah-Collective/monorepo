@@ -860,6 +860,57 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 
 /* ═══════════════════════════════════════════════════════
+   GEO NOTICE (non-Finland visitors)
+   ═══════════════════════════════════════════════════════ */
+#geo-notice {
+  position: fixed;
+  bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
+  left: 50%; transform: translateX(-50%) translateY(20px);
+  z-index: 9998;
+  width: min(calc(100vw - 32px), 360px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 12px 14px 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease, transform .4s cubic-bezier(.32,.72,0,1);
+}
+#geo-notice.geo-notice-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.geo-notice-icon {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); border-radius: var(--r-sm);
+  color: var(--accent);
+}
+.geo-notice-body {
+  flex: 1; min-width: 0;
+}
+.geo-notice-title {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  margin-bottom: 3px; letter-spacing: -.01em;
+}
+.geo-notice-msg {
+  font-size: 12px; font-weight: 500; color: var(--text-2); line-height: 1.55;
+}
+.geo-notice-close {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); border: none; border-radius: 50%;
+  cursor: pointer; color: var(--text-3);
+  transition: color .15s;
+}
+.geo-notice-close:hover { color: var(--text-2); }
+
+/* ═══════════════════════════════════════════════════════
    SUGGEST PLACE OVERLAY
    ═══════════════════════════════════════════════════════ */
 #suggest-overlay {

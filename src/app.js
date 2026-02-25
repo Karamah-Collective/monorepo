@@ -532,6 +532,41 @@ function showToast(msg, icon = 'check') {
   }));
 }
 
+// ─── Geo notice for non-Finland visitors ───
+function showGeoNotice() {
+  if (document.getElementById('geo-notice')) return; // already shown
+  const el = document.createElement('div');
+  el.id = 'geo-notice';
+  el.innerHTML = `
+    <div class="geo-notice-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <div class="geo-notice-body">
+      <div class="geo-notice-title">Welcome, traveller! 🌍</div>
+      <div class="geo-notice-msg">Great to have you here. This app is built specifically for Finland — places, prayer times, and transit are all Finland-based. Feel free to look around!</div>
+    </div>
+    <button class="geo-notice-close" aria-label="Dismiss">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  `;
+  el.querySelector('.geo-notice-close').addEventListener('click', () => {
+    el.classList.remove('geo-notice-show');
+    setTimeout(() => el.remove(), 350);
+  });
+  document.body.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('geo-notice-show')));
+}
+
+async function checkGeoNotice() {
+  try {
+    const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    if (data.country_code && data.country_code !== 'FI') showGeoNotice();
+  } catch { /* silent — don't bother users if geo check fails */ }
+}
+
 // ── Open place from URL (?place=ID) ──
 function checkShareUrl() {
   const params = new URLSearchParams(location.search);
@@ -2376,6 +2411,7 @@ map.on('load', () => {
   loadPlacesData();
   loadTransitCache();
   initPrayerTimes();
+  checkGeoNotice();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2809,6 +2845,8 @@ document.getElementById('prayer-pill').addEventListener('click', (e) => {
 document.getElementById('prayer-chevron').addEventListener('click', (e) => {
   e.stopPropagation();
   togglePrayerExpanded();
+  // TEST: show geo notice on chevron click — remove once approved
+  showGeoNotice();
 });
 
 // Wire header area → collapse pill (chevron is the only dropdown toggle; pill handles itself)
