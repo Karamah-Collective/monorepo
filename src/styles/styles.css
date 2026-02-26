@@ -32,9 +32,9 @@
   top: calc(var(--safe-t) + 8px) !important;
   right: 12px !important;
 }
+/* zero MapLibre's internal right margin so scale edge aligns with pills */
+.maplibregl-ctrl-top-right .maplibregl-ctrl { margin-right: 0 !important; }
 .maplibregl-ctrl-attrib { font-size: 9px !important; background: rgba(255,255,255,.6) !important; border-radius: 4px; }
-/* hide reCAPTCHA floating badge — attribution kept in ToS-compliant form text */
-.grecaptcha-badge { visibility: hidden !important; }
 /* hide reCAPTCHA floating badge — attribution kept in ToS-compliant form text */
 .grecaptcha-badge { visibility: hidden !important; }
 
@@ -46,7 +46,7 @@
 /* .pill-expand-body → content fade-in + height:0 + overflow:hidden when collapsed           */
 #search-card {
   position: absolute; z-index: 10;
-  right: 16px;
+  right: 12px;
   bottom: calc(var(--tab-h) + var(--safe-b) + 111px);
 }
 
@@ -134,7 +134,7 @@
    ═══════════════════════════════════════════════════════ */
 #style-picker {
   position: absolute; z-index: 6;
-  right: 16px; bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
+  right: 12px; bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
 }
 /* Template: .btn-icon-card — .active state covered by template */
 /* No unique overrides needed for #style-picker-btn. */
@@ -174,7 +174,7 @@
    ═══════════════════════════════════════════════════════ */
 #zoom-pill {
   position: absolute; z-index: 5;
-  right: 16px; bottom: calc(var(--tab-h) + var(--safe-b) + 16px);
+  right: 12px; bottom: calc(var(--tab-h) + var(--safe-b) + 16px);
   display: flex; flex-direction: column; align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1756,6 +1756,7 @@
 }
 #prayer-times-inner {
   overflow: hidden;
+  border-radius: 0 0 var(--r-xl) var(--r-xl); /* clips ::before bar at rounded bottom corners */
   transform: translateY(-10px);
   /* ← COLLAPSE: slides up in sync with opacity */
   transition: transform .22s ease 0s;
