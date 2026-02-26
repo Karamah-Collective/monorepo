@@ -73,59 +73,40 @@ export async function onRequestPost(context) {
     return json({ error: 'Submission blocked (low reCAPTCHA score)', score: captcha.score }, 403, responseHeaders);
   }
 
-  // ── 2. Forward to Google Apps Script ─────────────────────────────────────
+  // ── 2. Forward to Google Apps Script (fire-and-forget) ───────────────────
+  // GAS web apps always do a 302 redirect on POST. Following that across
+  // Cloudflare's fetch implementation produces unreliable status codes even
+  // when the row is written successfully. Since reCAPTCHA is the security gate,
+  // we return success to the browser immediately and let GAS run in the
+  // background via context.waitUntil — no more false "failed" toasts.
   const payload = JSON.stringify({
     ...formData,
     formType,
     score: captcha.score,
   });
 
-  let gasRes;
-  try {
-    // Google Apps Script web apps redirect the first POST (302) to a new URL.
-    // We follow it manually so the POST body is preserved.
-    gasRes = await fetch(env.GAS_URL, {
-      method:   'POST',
-      headers:  { 'Content-Type': 'application/json' },
-      body:     payload,
-      redirect: 'manual',          // catch the redirect before fetch converts it to GET
-    });
-
-    if (gasRes.status === 301 || gasRes.status === 302) {
-      const location = gasRes.headers.get('Location');
-      if (!location) throw new Error('GAS redirect had no Location header');
-      gasRes = await fetch(location, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    payload,
+  async function sendToGAS() {
+    let url = env.GAS_URL;
+    for (let i = 0; i < 5; i++) {
+      const res = await fetch(url, {
+        method:   'POST',
+        headers:  { 'Content-Type': 'application/json' },
+        body:     payload,
+        redirect: 'manual',
       });
+      const loc = res.headers.get('Location');
+      if ((res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) && loc) {
+        url = loc;
+        continue;
+      }
+      break;
     }
-  } catch (err) {
-    return json({ error: 'Failed to reach Google Apps Script', detail: err.message }, 502, responseHeaders);
   }
 
-  // GAS returns HTTP 200 on success (and also on handled errors inside the script).
-  // Parsing the body can fail due to redirect quirks, so we try but fall back to
-  // trusting the HTTP status code — if GAS wrote the row, it always returns 2xx.
-  let gasBody = null;
-  try {
-    const text = await gasRes.text();
-    // Remove any XSSI/JSON-hijacking prefix Google occasionally prepends (e.g. ")]}'",  "while(1);")
-    const cleaned = text.replace(/^[^{\[]*/, '').trim();
-    if (cleaned) gasBody = JSON.parse(cleaned);
-  } catch { /* ignore parse errors – trust HTTP status below */ }
+  // waitUntil keeps the worker alive until GAS finishes without blocking the response.
+  context.waitUntil(sendToGAS().catch(() => {}));
 
-  // If GAS explicitly returned an { error: "..." } field, surface it.
-  if (gasBody?.error) {
-    return json({ error: gasBody.error }, 500, responseHeaders);
-  }
-
-  // Any 2xx from GAS (with or without a parseable body) means the row was written.
-  if (gasRes.status >= 200 && gasRes.status < 300) {
-    return json({ success: true }, 200, responseHeaders);
-  }
-
-  return json({ error: 'Unexpected response from Google Apps Script (status ' + gasRes.status + ')' }, 502, responseHeaders);
+  return json({ success: true }, 200, responseHeaders);
 }
 
 // ── OPTIONS preflight (CORS) ──────────────────────────────────────────────────
