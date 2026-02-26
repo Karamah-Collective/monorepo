@@ -8,6 +8,8 @@ src/config.js
 .env
 .env.local
 .env.*.local
+apps-script/Code.gs
+
 
 # Generated/cached files
 scripts/transit-cache.json
@@ -16,6 +18,7 @@ scripts/cache/
 
 # Local development documentation
 GIT_TRACKING.md
+docs/FORMS_SHEETS_SETUP.md
 
 # ════════════════════════════════════════════════════════════════
 # BUILD & DEPENDENCIES

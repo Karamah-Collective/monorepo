@@ -13,6 +13,8 @@ const NOMINATIM_REV   = _cfg.NOMINATIM_REV   || 'https://nominatim.openstreetmap
 const NOMINATIM_VB    = _cfg.NOMINATIM_VB    || '24.0,60.8,25.8,59.8';
 // Share-link key: injected at build time via CF Pages env var HF_TOKEN_KEY, fallback for local dev
 const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || 'Hf#K4r@m@h_2O26!';
+// reCAPTCHA v3 site key (public – safe to embed in frontend)
+const RECAPTCHA_SITE_KEY = '6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v';
 
 // ── Prevent pinch-zoom on UI (iOS Safari ignores meta/CSS) ──
 document.addEventListener('gesturestart', e => e.preventDefault());
@@ -1120,13 +1122,19 @@ sgTagsContainer.addEventListener('click', e => {
   btn.dataset.state = states[(cur + 1) % 3];
 });
 
-document.getElementById('suggest-form').addEventListener('submit', e => {
+document.getElementById('suggest-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const name = document.getElementById('sg-name').value.trim();
-  const type = sgTypeSelect.value;
+
+  const submitBtn = document.getElementById('sg-submit');
+  const btnOriginal = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
+  const name    = document.getElementById('sg-name').value.trim();
+  const type    = sgTypeSelect.value;
   const address = document.getElementById('sg-address').value.trim();
-  const notes = document.getElementById('sg-notes').value.trim();
-  const typeLabel = PLACE_CONFIG[type]?.label || type;
+  const notes   = document.getElementById('sg-notes').value.trim();
+  const gmaps   = document.getElementById('sg-gmaps').value.trim();
 
   // Collect tag selections
   const yesTags = [], noTags = [];
@@ -1135,21 +1143,38 @@ document.getElementById('suggest-form').addEventListener('submit', e => {
     if (btn.dataset.state === 'yes') yesTags.push(label);
     else if (btn.dataset.state === 'no') noTags.push(label);
   });
-  let tagInfo = '';
-  if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
-  if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
+  const tagsStr = [
+    yesTags.length ? `Has: ${yesTags.join(', ')}` : '',
+    noTags.length  ? `Missing: ${noTags.join(', ')}` : '',
+  ].filter(Boolean).join(' | ');
 
-  const gmaps = document.getElementById('sg-gmaps').value.trim();
-  const subject = encodeURIComponent(`New Place Suggestion: ${name}`);
-  const body = encodeURIComponent(
-    `Place Name: ${name}\nType: ${typeLabel}\nAddress: ${address}\nGoogle Maps: ${gmaps}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
-  );
-  // Open GitHub issue as primary method
-  const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-suggestion`;
-  window.open(ghUrl, '_blank');
-  document.getElementById('suggest-form').reset();
-  renderSuggestTags();
-  document.getElementById('suggest-overlay').classList.add('hide');
+  try {
+    const token = await new Promise(resolve =>
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'suggest_place' }).then(resolve))
+    );
+
+    const res = await fetch('/api/submit', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, formType: 'new', name, type, address, tags: tagsStr, gmaps, notes }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('suggest-form').reset();
+      renderSuggestTags();
+      document.getElementById('suggest-overlay').classList.add('hide');
+      showToast('Thank you! Your suggestion has been submitted.');
+    } else {
+      showToast('Submission failed: ' + (data.error || 'Please try again.'), 'error');
+    }
+  } catch (err) {
+    console.error('Suggest form error:', err);
+    showToast('Submission failed. Please check your connection and try again.', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+  }
 });
 
 // ── Suggest Edit ──
@@ -1195,14 +1220,20 @@ document.getElementById('edit-overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) document.getElementById('edit-overlay').classList.add('hide');
 });
 
-document.getElementById('edit-form').addEventListener('submit', e => {
+document.getElementById('edit-form').addEventListener('submit', async e => {
   e.preventDefault();
+
+  const submitBtn = document.getElementById('ed-submit');
+  const btnOriginal = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+
   const placeId = document.getElementById('ed-place-id').value;
-  const name = document.getElementById('ed-name').value.trim();
-  const type = edTypeSelect.value;
+  const name    = document.getElementById('ed-name').value.trim();
+  const type    = edTypeSelect.value;
   const address = document.getElementById('ed-address').value.trim();
-  const notes = document.getElementById('ed-notes').value.trim();
-  const typeLabel = PLACE_CONFIG[type]?.label || type;
+  const notes   = document.getElementById('ed-notes').value.trim();
+  const gmaps   = document.getElementById('ed-gmaps').value.trim();
 
   const yesTags = [], noTags = [];
   edTagsContainer.querySelectorAll('.sg-tag').forEach(btn => {
@@ -1210,18 +1241,36 @@ document.getElementById('edit-form').addEventListener('submit', e => {
     if (btn.dataset.state === 'yes') yesTags.push(label);
     else if (btn.dataset.state === 'no') noTags.push(label);
   });
-  let tagInfo = '';
-  if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
-  if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
+  const tagsStr = [
+    yesTags.length ? `Has: ${yesTags.join(', ')}` : '',
+    noTags.length  ? `Missing: ${noTags.join(', ')}` : '',
+  ].filter(Boolean).join(' | ');
 
-  const gmaps = document.getElementById('ed-gmaps').value.trim();
-  const subject = encodeURIComponent(`Edit Suggestion: ${name} (ID: ${placeId})`);
-  const body = encodeURIComponent(
-    `Place ID: ${placeId}\nPlace Name: ${name}\nType: ${typeLabel}\nAddress: ${address}\nGoogle Maps: ${gmaps || '(not provided)'}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
-  );
-  const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-edit`;
-  window.open(ghUrl, '_blank');
-  document.getElementById('edit-overlay').classList.add('hide');
+  try {
+    const token = await new Promise(resolve =>
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'edit_place' }).then(resolve))
+    );
+
+    const res = await fetch('/api/submit', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, formType: 'edit', placeId, name, type, address, tags: tagsStr, gmaps, notes }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('edit-overlay').classList.add('hide');
+      showToast('Edit suggestion submitted – thank you!');
+    } else {
+      showToast('Submission failed: ' + (data.error || 'Please try again.'), 'error');
+    }
+  } catch (err) {
+    console.error('Edit form error:', err);
+    showToast('Submission failed. Please check your connection and try again.', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+  }
 });
 
 // ═══════════════════════════════════════

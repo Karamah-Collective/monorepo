@@ -1650,7 +1650,7 @@
 #prayer-header {
   display: flex; align-items: center; gap: 8px;
   padding: 0 6px 0 42px;
-  height: 44px;
+  height: var(--btn-icon-size); /* match collapsed pill height — no height shift on expand */
 }
 .prayer-snack-clickable {
   cursor: pointer;
