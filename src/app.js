@@ -50,6 +50,7 @@ let tagsData = {};
 let placeMarkers = [];
 let activeTypeFilter = 'all';
 let activeTagFilters = new Set();
+let _editOriginalPlace = null; // snapshot of the place when the edit overlay opens
 
 // ─── Favourites (localStorage) ───
 let favourites = new Set(JSON.parse(localStorage.getItem('hf_favs') || '[]'));
@@ -1195,6 +1196,7 @@ function renderEditTags(type, existingTags) {
 }
 
 function openEditOverlay(place) {
+  _editOriginalPlace = place; // snapshot for diff
   document.getElementById('ed-place-id').value = place.id;
   document.getElementById('ed-name').value = place.name || '';
   document.getElementById('ed-address').value = place.address || '';
@@ -1247,6 +1249,52 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
     noTags.length  ? `Missing: ${noTags.join(', ')}` : '',
   ].filter(Boolean).join(' | ');
 
+  // ── Build a human-readable diff for the sheet ──
+  const orig  = _editOriginalPlace || {};
+  const diffs = [];
+
+  if (name && name !== orig.name)
+    diffs.push(`Name: "${orig.name || ''}" → "${name}"`);
+
+  if (type !== orig.type) {
+    const oL = PLACE_CONFIG[orig.type]?.label || orig.type;
+    const nL = PLACE_CONFIG[type]?.label      || type;
+    diffs.push(`Type: ${oL} → ${nL}`);
+  }
+
+  if (address && address !== orig.address)
+    diffs.push(`Address: "${orig.address || ''}" → "${address}"`);
+
+  if (gmaps)
+    diffs.push('Maps link: added/updated');
+
+  if (notes !== (orig.notes || '')) {
+    if (!orig.notes && notes)       diffs.push(`Notes added: "${notes}"`);
+    else if (orig.notes && !notes)  diffs.push('Notes removed');
+    else if (notes)                 diffs.push(`Notes: "${orig.notes}" → "${notes}"`);
+  }
+
+  // Tags diff (only meaningful when type hasn’t changed)
+  if (type === orig.type) {
+    const tagDiffs = [];
+    (tagsData[type] || []).forEach(t => {
+      const origVal   = orig.tags?.[t.id];
+      const origState = origVal === true ? 'yes' : origVal === false ? 'no' : 'neutral';
+      const newState  = yesTags.includes(t.label) ? 'yes'
+                      : noTags.includes(t.label)  ? 'no'
+                      : 'neutral';
+      if (origState !== newState) {
+        const icon = { yes: '✓ has', no: '✗ missing', neutral: '? unset' };
+        tagDiffs.push(`${t.label}: ${icon[origState]} → ${icon[newState]}`);
+      }
+    });
+    if (tagDiffs.length) diffs.push(`Tags: ${tagDiffs.join(' | ')}`);
+  } else if (yesTags.length || noTags.length) {
+    diffs.push(`Tags (new type): ${tagsStr}`);
+  }
+
+  const changesSummary = diffs.length ? diffs.join('\n') : '(no changes detected)';
+
   try {
     const token = await new Promise(resolve =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'edit_place' }).then(resolve))
@@ -1255,7 +1303,7 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
     const res = await fetch('/api/submit', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, formType: 'edit', placeId, name, type, address, tags: tagsStr, gmaps, notes }),
+      body: JSON.stringify({ token, formType: 'edit', placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary }),
     });
     const data = await res.json();
 
