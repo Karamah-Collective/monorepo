@@ -331,24 +331,28 @@
         </button>
       </div>
       <form id="suggest-form" autocomplete="off">
-        <label class="sg-label"><span>Place Name <span class="sg-req">*</span></span>
-          <input id="sg-name" type="text" required placeholder="e.g. Halal Kitchen" />
+        <label class="sg-label">Place Name
+          <input id="sg-name" type="text" placeholder="e.g. Halal Kitchen" />
         </label>
         <label class="sg-label"><span>Type <span class="sg-req">*</span></span>
-          <select id="sg-type">
+          <select id="sg-type" required>
+            <option value="" disabled selected>Select a type…</option>
             <option value="mosque">Mosque</option>
             <option value="prayer_room">Prayer Room</option>
             <option value="restaurant">Restaurant</option>
             <option value="shop">Shop</option>
           </select>
         </label>
-        <div class="sg-label">
+        <div id="sg-tags-section" class="sg-label">
           <span>Tags</span>
           <div id="sg-tags" class="sg-tags"></div>
           <span class="sg-hint">tap to confirm · tap again to mark as missing</span>
         </div>
         <label class="sg-label">Address
           <input id="sg-address" type="text" placeholder="Street, city" />
+        </label>
+        <label class="sg-label"><span>Google Maps Link <span class="sg-req">*</span></span>
+          <input id="sg-gmaps" type="url" required placeholder="https://maps.google.com/…" />
         </label>
         <label class="sg-label">Additional Notes
           <textarea id="sg-notes" rows="3" placeholder="Any details about this place…"></textarea>
@@ -372,10 +376,10 @@
       </div>
       <form id="edit-form" autocomplete="off">
         <input type="hidden" id="ed-place-id" />
-        <label class="sg-label"><span>Place Name <span class="sg-req">*</span></span>
-          <input id="ed-name" type="text" required placeholder="e.g. Halal Kitchen" />
+        <label class="sg-label">Place Name
+          <input id="ed-name" type="text" placeholder="e.g. Halal Kitchen" />
         </label>
-        <label class="sg-label"><span>Type <span class="sg-req">*</span></span>
+        <label class="sg-label">Type
           <select id="ed-type">
             <option value="mosque">Mosque</option>
             <option value="prayer_room">Prayer Room</option>
@@ -390,6 +394,9 @@
         </div>
         <label class="sg-label">Address
           <input id="ed-address" type="text" placeholder="Street, city" />
+        </label>
+        <label class="sg-label">Google Maps Link
+          <input id="ed-gmaps" type="url" placeholder="https://maps.google.com/…" />
         </label>
         <label class="sg-label">Additional Notes
           <textarea id="ed-notes" rows="3" placeholder="Any details about this place…"></textarea>

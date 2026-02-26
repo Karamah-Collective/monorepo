@@ -1093,6 +1093,13 @@ const sgTagsContainer = document.getElementById('sg-tags');
 
 function renderSuggestTags() {
   const type = sgTypeSelect.value;
+  const tagsSection = document.getElementById('sg-tags-section');
+  if (!type) {
+    tagsSection.style.display = 'none';
+    sgTagsContainer.innerHTML = '';
+    return;
+  }
+  tagsSection.style.display = '';
   const tags = tagsData[type] || [];
   sgTagsContainer.innerHTML = tags.map(t =>
     `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral">` +
@@ -1132,9 +1139,10 @@ document.getElementById('suggest-form').addEventListener('submit', e => {
   if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
   if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
 
+  const gmaps = document.getElementById('sg-gmaps').value.trim();
   const subject = encodeURIComponent(`New Place Suggestion: ${name}`);
   const body = encodeURIComponent(
-    `Place Name: ${name}\nType: ${typeLabel}\nAddress: ${address}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
+    `Place Name: ${name}\nType: ${typeLabel}\nAddress: ${address}\nGoogle Maps: ${gmaps}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
   );
   // Open GitHub issue as primary method
   const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-suggestion`;
@@ -1206,9 +1214,10 @@ document.getElementById('edit-form').addEventListener('submit', e => {
   if (yesTags.length) tagInfo += `\nHas: ${yesTags.join(', ')}`;
   if (noTags.length) tagInfo += `\nDoesn't have: ${noTags.join(', ')}`;
 
+  const gmaps = document.getElementById('ed-gmaps').value.trim();
   const subject = encodeURIComponent(`Edit Suggestion: ${name} (ID: ${placeId})`);
   const body = encodeURIComponent(
-    `Place ID: ${placeId}\nPlace Name: ${name}\nType: ${typeLabel}\nAddress: ${address}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
+    `Place ID: ${placeId}\nPlace Name: ${name}\nType: ${typeLabel}\nAddress: ${address}\nGoogle Maps: ${gmaps || '(not provided)'}${tagInfo}\nNotes: ${notes}\n\n---\nSent from Halal Finder Helsinki`
   );
   const ghUrl = `https://github.com/moontasirsoumik/halal-finder/issues/new?title=${subject}&body=${body}&labels=place-edit`;
   window.open(ghUrl, '_blank');
