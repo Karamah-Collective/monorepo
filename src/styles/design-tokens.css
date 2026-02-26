@@ -26,6 +26,7 @@
    §4  Typography Templates
    §5  Input / Field Templates
    §6  Chip & Badge Templates
+   §7  Pill Component Templates
    ═══════════════════════════════════════════════════════════════════════════ */
 
 
@@ -643,3 +644,96 @@ html, body {
   color: var(--danger);
 }
 .tag-chip[data-state="no"] .tag-icon.tag-no { display: inline-block; }
+
+
+/* ═══════════════════════════════════════════════════════
+   §7  PILL COMPONENT TEMPLATES
+   ═══════════════════════════════════════════════════════
+
+   Three reusable patterns for pill UI elements:
+
+   pill-expand        Collapsible pill that widens into a full card.
+                      Animates width / border-radius / box-shadow.
+                      Collapsed = one icon wide (44 px).
+                      Expanded width is component-specific (styles.css).
+
+   pill-expand-icon   Icon button inside a pill-expand.
+                      Default behaviour: fades out when pill opens
+                      (search style — icon reappears inside body).
+                      Override with opacity:1 + pointer-events:auto
+                      to keep it anchored when expanded (prayer style).
+
+   pill-expand-body   Content region of a pill-expand.
+                      Fades in on expand; height:0 + hidden when collapsed.
+
+   pill-panel         Floating card that slides out to the left of its
+                      position:relative/absolute pill parent.
+                      Vertically centred on the pill.
+                      Toggle .hide to animate open/close.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── pill-expand ────────────────────────────────────── */
+.pill-expand {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow:    var(--shadow-md);
+  width: 44px;   /* collapsed = one icon wide */
+  transition: width          .3s cubic-bezier(.32,.72,0,1),
+              border-radius  .3s ease,
+              box-shadow     .3s ease;
+}
+.pill-expand:not(.collapsed) {
+  border-radius: var(--r-xl);
+  box-shadow:    var(--shadow-lg);
+}
+
+/* ── pill-expand-icon ───────────────────────────────── */
+/* Default: icon disappears when the pill opens.         */
+/* Override for prayer style: opacity:1; pointer-events:auto */
+.pill-expand-icon {
+  transition: color var(--t-fast), opacity .2s ease;
+}
+.pill-expand:not(.collapsed) .pill-expand-icon {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* ── pill-expand-body ───────────────────────────────── */
+.pill-expand-body {
+  opacity: 1;
+  transition: opacity .2s ease .08s;
+}
+.pill-expand.collapsed .pill-expand-body {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ── pill-panel ─────────────────────────────────────── */
+/* Floating card opening to the left of its pill parent. */
+/* Parent must be position:relative / absolute / fixed.  */
+.pill-panel {
+  position: absolute;
+  top:   50%;
+  right: calc(100% + 8px);  /* 8 px gap from pill edge  */
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow:    var(--shadow-lg);
+  display: flex;
+  transform-origin: right center;
+  transform: translateY(-50%);  /* vertically centred on pill */
+  transition: opacity   .3s cubic-bezier(.32,.72,0,1),
+              transform .3s cubic-bezier(.32,.72,0,1);
+}
+/* Keep in DOM while hidden so the transition can play.  */
+/* Specificity 0,2,0 beats .hide { display:none } 0,1,0  */
+.pill-panel.hide {
+  display: flex !important;
+  opacity: 0 !important;
+  transform: translateY(-50%) translateX(12px) scale(0.96);
+  pointer-events: none;
+}

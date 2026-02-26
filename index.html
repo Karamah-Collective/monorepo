@@ -14,11 +14,11 @@
 
   <div id="map"></div>
 
-  <div id="search-card" class="collapsed">
-    <button id="search-pill" class="btn-icon" aria-label="Search">
+  <div id="search-card" class="pill-expand collapsed">
+    <button id="search-pill" class="btn-icon pill-expand-icon" aria-label="Search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
     </button>
-    <div id="search-expanded">
+    <div id="search-expanded" class="pill-expand-body">
       <div id="search-box">
         <svg class="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
         <input id="search-input" type="text" placeholder="Search Helsinki…" autocomplete="off" spellcheck="false" />
@@ -41,7 +41,7 @@
         <path d="M2 13l10 6 10-6"/>
       </svg>
     </button>
-    <div id="style-panel" class="hide">
+    <div id="style-panel" class="pill-panel hide">
       <button class="style-opt active" data-style="default">
         <div class="style-thumb thumb-default"></div>
         <span>Default</span>
@@ -49,10 +49,6 @@
       <button class="style-opt" data-style="satellite">
         <div class="style-thumb thumb-satellite"></div>
         <span>Satellite</span>
-      </button>
-      <button class="style-opt" data-style="3d">
-        <div class="style-thumb thumb-3d"></div>
-        <span>3D</span>
       </button>
     </div>
   </div>
@@ -425,14 +421,14 @@
   </div>
 
   <!-- ─── Prayer Times Card ─── -->
-  <div id="prayer-snack" class="collapsed">
-      <button id="prayer-pill" class="btn-icon" aria-label="Prayer times">
+  <div id="prayer-snack" class="pill-expand collapsed">
+      <button id="prayer-pill" class="btn-icon pill-expand-icon" aria-label="Prayer times">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     </button>
     <div id="prayer-expanded-wrap">
-    <div id="prayer-expanded">
+    <div id="prayer-expanded" class="pill-expand-body">
       <div id="prayer-header" class="prayer-snack-clickable">
         <div class="prayer-hdr-text">
           <div id="prayer-snack-title"></div>
@@ -443,6 +439,24 @@
       </div>
       <div id="prayer-times-list"><div id="prayer-times-inner"></div></div>
     </div>
+    </div>
+
+    <!-- Ramadan card: separate floating card just below the prayer dropdown -->
+    <div id="ramadan-card">
+      <div id="ramadan-inner">
+        <div class="ramadan-header">
+          <svg class="ramadan-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <span class="ramadan-title">Ramadan Kareem</span>
+        </div>
+        <div class="ramadan-row">
+          <span class="ramadan-label">Suhoor ends</span>
+          <span id="ramadan-suhoor" class="ramadan-time">--:--</span>
+        </div>
+        <div class="ramadan-row">
+          <span class="ramadan-label">Iftar</span>
+          <span id="ramadan-iftar" class="ramadan-time">--:--</span>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -182,8 +182,8 @@ const map = new maplibregl.Map({
   attributionControl: true, doubleClickZoom: false,
 });
 
-// Start in 2D mode — lock pitch to 0 so no tilt is possible (desktop Ctrl+drag or mobile two-finger)
-map.setMaxPitch(0);
+// Default mode allows pitch — user tilts to enter 3D, satellite will lock pitch to 0
+map.setMaxPitch(85);
 
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: 'metric' }), 'top-right');
 
@@ -244,10 +244,9 @@ function showSearchMarker(lng, lat) {
   if (searchMarker) searchMarker.remove();
   if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
   const el = document.createElement('div');
-  el.className = 'pin-marker';
-  el.innerHTML = `<div class="pin-outer" style="--pin-c:var(--accent,#1A73B8)">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A73B8" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-    <div class="pin-arrow"></div>
+  el.className = 'place-mk-wrap';
+  el.innerHTML = `<div class="search-mk">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent,#1A73B8)"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
   </div>`;
   searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(map);
 
@@ -1222,7 +1221,7 @@ document.getElementById('edit-form').addEventListener('submit', e => {
 
 document.getElementById('home-btn').addEventListener('click', () => {
   if (currentStyleMode !== 'default') setMapStyle('default');
-  else if (is3DActive) disable3D();
+  if (is3DActive) disable3D();
   map.flyTo({ center: HELSINKI, zoom: 13, bearing: 0, pitch: 0, duration: 600 });
 });
 document.getElementById('zoomin-btn').addEventListener('click', () => map.zoomIn({ duration: 300 }));
@@ -2466,8 +2465,7 @@ function enable3D() {
   } else {
     map.setLayoutProperty('building-3d', 'visibility', 'visible');
   }
-  map.setMaxPitch(85);
-  map.easeTo({ pitch: 55, duration: 600 });
+  // Pitch is user-controlled — no automatic tilt here
 }
 
 function disable3D() {
@@ -2478,8 +2476,7 @@ function disable3D() {
   map.setLayoutProperty('building', 'visibility', 'visible');
   map.setLayoutProperty('building_shadow', 'visibility', 'visible');
   map.setLayoutProperty('building_outline', 'visibility', 'visible');
-  map.easeTo({ pitch: 0, duration: 600 }, { noMoveStart: true });
-  setTimeout(() => map.setMaxPitch(0), 620);
+  // Pitch is user-controlled — caller is responsible for resetting pitch if needed
 }
 
 function setMapStyle(mode) {
@@ -2516,6 +2513,8 @@ function setMapStyle(mode) {
         map.setPaintProperty(id, 'text-halo-width', o.haloW);
       }
     });
+    // Unlock pitch so the user can tilt into 3D
+    map.setMaxPitch(85);
   } else if (mode === 'satellite') {
     // Hide vector geometry, show satellite raster
     VECTOR_BASE_IDS.forEach(id => {
@@ -2535,20 +2534,9 @@ function setMapStyle(mode) {
       map.setPaintProperty(id, 'text-halo-color', 'rgba(0,0,0,0.75)');
       map.setPaintProperty(id, 'text-halo-width', 1.5);
     });
-  } else if (mode === '3d') {
-    // Keep default vector style + add 3D terrain & buildings
-    VECTOR_BASE_IDS.forEach(id => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
-    });
-    LABEL_IDS.forEach(id => {
-      const o = origLabelPaint[id];
-      if (o) {
-        map.setPaintProperty(id, 'text-color', o.color);
-        map.setPaintProperty(id, 'text-halo-color', o.halo);
-        map.setPaintProperty(id, 'text-halo-width', o.haloW);
-      }
-    });
-    enable3D();
+    // Lock pitch flat — no 3D on satellite
+    map.setMaxPitch(0);
+    map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
   }
 
   currentStyleMode = mode;
@@ -2584,6 +2572,19 @@ map.on('load', () => {
 // Keep URL hash in sync with the current map view
 map.on('moveend', updateUrlHash);
 
+// ─── Auto 3D: activate when user tilts default map, deactivate when back to flat ───
+// Ctrl+drag on desktop or two-finger drag (z-axis / pitch) on mobile triggers this.
+// Satellite mode keeps pitch locked to 0, so 3D never activates there.
+map.on('pitchend', () => {
+  if (currentStyleMode !== 'default') return;
+  const p = map.getPitch();
+  if (p > 10 && !is3DActive) {
+    enable3D();
+  } else if (p <= 10 && is3DActive) {
+    disable3D();
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // PRAYER TIMES  –  Aladhan API (free, no API key required)
 // https://aladhan.com/prayer-times-api
@@ -2594,6 +2595,7 @@ const HELSINKI_LNG  = 24.9384;
 
 let prayerTimesToday      = null; // { Fajr: Date, Dhuhr: Date, … }
 let sunriseTime           = null; // Fajr ends at sunrise
+let isRamadan             = false; // true during Hijri month 9
 let prayerWatchInterval   = null;
 let lastAlertedPrayer     = null;
 
@@ -2605,7 +2607,8 @@ async function fetchPrayerTimes(lat, lng) {
   const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!resp.ok) throw new Error(`Aladhan HTTP ${resp.status}`);
   const json = await resp.json();
-  return json.data.timings; // { Fajr: "04:42", Dhuhr: "12:02", … }
+  // Return full data so callers can inspect hijri month, sunrise, etc.
+  return json.data;
 }
 
 // ─── Parse HH:MM strings into today's Date objects ───
@@ -2750,8 +2753,23 @@ async function initPrayerTimes() {
   }
 
   try {
-    const raw        = await fetchPrayerTimes(lat, lng);
-    prayerTimesToday = parsePrayerTimings(raw);
+    const data       = await fetchPrayerTimes(lat, lng);
+    prayerTimesToday = parsePrayerTimings(data.timings);
+
+    // Detect Ramadan from the Hijri calendar returned by the API
+    isRamadan = Number(data.date?.hijri?.month?.number) === 9;
+    const snackEl = document.getElementById('prayer-snack');
+    if (isRamadan) {
+      snackEl.classList.add('ramadan-active');
+      // Pre-populate times so they're ready when the card opens
+      const suhoorStr = prayerTimesToday.Fajr.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const iftarStr  = prayerTimesToday.Maghrib.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('ramadan-suhoor').textContent = suhoorStr;
+      document.getElementById('ramadan-iftar').textContent  = iftarStr;
+    } else {
+      snackEl.classList.remove('ramadan-active');
+    }
+
     const next       = getNextPrayer();
     if (next) {
       showPrayerSnack(`${next.name} ${formatPrayerCountdown(next.time)}`);

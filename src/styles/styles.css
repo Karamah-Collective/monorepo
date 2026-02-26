@@ -37,48 +37,22 @@
 /* ═══════════════════════════════════════════════════════
    SEARCH PILL (above zoom pill)
    ═══════════════════════════════════════════════════════ */
+/* .pill-expand → background, border, border-radius, box-shadow, width, transition          */
+/* .pill-expand-icon → icon opacity transition + hidden-when-expanded                        */
+/* .pill-expand-body → content fade-in + height:0 + overflow:hidden when collapsed           */
 #search-card {
   position: absolute; z-index: 10;
   right: 16px;
   bottom: calc(var(--tab-h) + var(--safe-b) + 111px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-md);
-  width: 44px;
-  transition: width .3s cubic-bezier(.32,.72,0,1),
-              border-radius .3s ease,
-              box-shadow .3s ease;
 }
 
-/* ── Collapsed pill ── */
-/* Template: .btn-icon — kept: extra opacity transition for expand/collapse */
-#search-pill {
-  transition: color var(--t-fast), opacity .2s ease;
-}
-#search-card:not(.collapsed) #search-pill {
-  opacity: 0; pointer-events: none; position: absolute;
-}
 #search-box:focus-within {
   border-radius: var(--r-xl);
 }
 
-/* ── Expand / collapse animation ── */
-#search-expanded {
-  opacity: 1;
-  transition: opacity .2s ease .08s;
-}
-#search-card.collapsed #search-expanded {
-  opacity: 0;
-  pointer-events: none;
-  height: 0; overflow: hidden;
-}
-
-/* ── Expanded card ── */
+/* ── Expanded card: component-specific width only ── */
 #search-card:not(.collapsed) {
   width: min(92vw, 360px);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
 }
 
 #search-box {
@@ -161,18 +135,14 @@
 /* Template: .btn-icon-card — .active state covered by template */
 /* No unique overrides needed for #style-picker-btn. */
 
+/* .pill-panel → position, top, right, background, border, border-radius,                   */
+/* box-shadow, display:flex, transform-origin, transform, transition, .hide animation        */
 #style-panel {
-  position: absolute;
-  right: 52px; bottom: -4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: 0 4px 20px rgba(0,0,0,.14);
   padding: 8px;
-  display: flex; gap: 8px;
+  gap: 8px;
   white-space: nowrap;
 }
-#style-panel.hide { display: none; }
+
 
 .style-opt {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -193,9 +163,6 @@
 }
 .thumb-satellite {
   background: url('../../data/thumbs/satellite.jpg') center/cover no-repeat;
-}
-.thumb-3d {
-  background: url('../../data/thumbs/3d.png') center/cover no-repeat;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -638,6 +605,22 @@
   flex-shrink: 0;
 }
 .place-mk-tip { display: none; }
+
+/* Search result pin — same diamond shape, white body + accent border */
+.search-mk {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--surface);
+  border: 2.5px solid var(--accent);
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  position: relative;
+}
+.search-mk svg {
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
 
 /* ═══════════════════════════════════════════════════════
    PLACE DETAIL POPUP
@@ -1628,47 +1611,28 @@
 /* ═══════════════════════════════════════════════════════
    PRAYER TIMES CARD
    ═══════════════════════════════════════════════════════ */
+/* .pill-expand → background, border, border-radius, box-shadow, width, transition          */
+/* .pill-expand-icon → opacity transition + hidden-when-expanded (default)                   */
+/* .pill-expand-body → content fade-in + height:0 + overflow:hidden when collapsed           */
 #prayer-snack {
   position: absolute; z-index: 9;
   top: calc(var(--safe-t) + 14px);
   left: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-md);
-  width: 44px;
-  transition: width .3s cubic-bezier(.32,.72,0,1),
-              border-radius .3s ease,
-              box-shadow .3s ease;
 }
 
 /* ── Collapsed pill ── */
-/* Template: .btn-icon — kept: opacity transition + intentionally muted active */
-#prayer-pill {
-  transition: color var(--t-fast), opacity .2s ease;
-}
-#prayer-pill:active { color: var(--text-2); } /* muted: prayer pill does not jump to accent */
+#prayer-pill:active { color: var(--text-2); } /* override: stays muted, not accent */
 #prayer-snack:not(.collapsed) #prayer-pill {
+  /* override .pill-expand default: keep icon visible + anchor top-left */
   position: absolute; top: 0; left: 0;
   opacity: 1; pointer-events: auto; z-index: 1;
 }
 
-/* Expand / collapse animation */
-#prayer-expanded {
-  opacity: 1;
-  transition: opacity .2s ease .08s;
-  white-space: nowrap;
-}
-#prayer-snack.collapsed #prayer-expanded {
-  opacity: 0;
-  pointer-events: none;
-  height: 0; overflow: hidden;
-}
+/* prayer-specific: content must not wrap */
+#prayer-expanded { white-space: nowrap; }
 
-/* ── Expanded card ── */
+/* ── Expanded card: component-specific width only ── */
 #prayer-snack:not(.collapsed) {
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
   width: min(80vw, 210px);
 }
 
@@ -1709,26 +1673,102 @@
   transform: rotate(180deg);
 }
 
+/* ── Ramadan card (floats below dropdown, same animation cadence) ── */
+#ramadan-card {
+  position: absolute;
+  top: calc(100% + 6px); left: 0; width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+  /* ← COLLAPSE: content fades first, then grid springs shut (same curve as open) */
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) .22s,
+              opacity             .22s ease                     0s;
+}
+#prayer-snack.expanded.ramadan-active #ramadan-card {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
+  /* ← EXPAND: grid springs open first, content fades in behind */
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) 0s,
+              opacity             .3s  ease                     .1s;
+}
+#ramadan-inner {
+  overflow: hidden;
+  transform: translateY(-8px);
+  /* ← COLLAPSE: slides up in sync with opacity */
+  transition: transform .22s ease 0s;
+}
+#prayer-snack.expanded.ramadan-active #ramadan-inner {
+  transform: translateY(0);
+  /* ← EXPAND: slides into place as grid opens */
+  transition: transform .35s cubic-bezier(.32,.72,0,1) .06s;
+}
+.ramadan-header {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px 7px;
+  border-bottom: 1px solid var(--border-light);
+}
+.ramadan-moon { color: var(--gold); flex-shrink: 0; }
+.ramadan-title {
+  font-size: 12px; font-weight: 700;
+  color: var(--gold); letter-spacing: .02em;
+}
+/* Mirror .prayer-time-item exactly */
+.ramadan-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 12px;
+  font-size: 13px;
+  position: relative;
+  transition: background .12s;
+}
+.ramadan-row + .ramadan-row { border-top: 1px solid var(--border-light); }
+.ramadan-row:last-child { border-radius: 0 0 var(--r-lg) var(--r-lg); }
+@media (hover: hover) {
+  .ramadan-row:hover { background: var(--surface-2); }
+}
+/* Mirror .prayer-time-name */
+.ramadan-label { font-size: 13px; font-weight: 500; color: var(--text); }
+/* Mirror .prayer-time-value but keep gold accent */
+.ramadan-time {
+  font-size: 13px; font-weight: 600; color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Prayer times list ── */
 #prayer-times-list {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1),
-              opacity .3s ease;
+  border-top: 1px solid transparent; /* always in DOM — transition colour, no jump */
+  /* ← COLLAPSE: content fades first, then grid springs shut (same curve as open) */
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) .22s,
+              opacity             .22s ease                     0s,
+              border-color        .1s  ease                     .55s;
 }
 #prayer-snack.expanded #prayer-times-list {
   grid-template-rows: 1fr;
   opacity: 1;
-  border-top: 1px solid var(--border);
+  border-color: var(--border);
+  /* ← EXPAND: grid springs open first, content fades in behind */
+  transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) 0s,
+              opacity             .3s  ease                     .1s,
+              border-color        .1s  ease                     0s;
 }
 #prayer-times-inner {
   overflow: hidden;
   transform: translateY(-10px);
-  transition: transform .4s cubic-bezier(.32,.72,0,1);
+  /* ← COLLAPSE: slides up in sync with opacity */
+  transition: transform .22s ease 0s;
 }
 #prayer-snack.expanded #prayer-times-inner {
   transform: translateY(0);
+  /* ← EXPAND: slides into place as grid opens */
+  transition: transform .35s cubic-bezier(.32,.72,0,1) .06s;
 }
 .prayer-time-item {
   display: flex; align-items: center; justify-content: space-between;
@@ -1848,30 +1888,7 @@
   100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
 }
 
-.pin-marker {
-  cursor: pointer;
-}
-@keyframes markerDrop {
-  0% { transform: translateY(-16px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-.pin-outer {
-  display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px;
-  background: var(--surface); border: 2px solid var(--pin-c, var(--accent));
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-md);
-  position: relative;
-}
-.pin-outer svg { flex-shrink: 0; }
-.pin-arrow {
-  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-  width: 10px; height: 10px; background: var(--surface);
-  border-right: 2px solid var(--pin-c, var(--accent));
-  border-bottom: 2px solid var(--pin-c, var(--accent));
-  border-radius: 0 0 2px 0;
-  transform: translateX(-50%) rotate(45deg);
-}
+/* .pin-marker, .pin-outer, .pin-arrow removed — search pin now uses .place-mk teardrop design */
 
 /* ═══════════════════════════════════════════════════════
    POPUPS
