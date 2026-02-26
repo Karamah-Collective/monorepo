@@ -1,62 +1,23 @@
+@import './design-tokens.css';
+
 /* ═══════════════════════════════════════════════════════
-   Helsinki Map — Flat UI
-   Brand: #1A73B8 · #1FA86A · #E6EBEF · #D8B56A
+   Helsinki Map — Component Styles
+   ───────────────────────────────────────────────────────
+   All design tokens (colours, radii, shadows, type scale,
+   spacing, transitions) and reusable template classes
+   (.btn-*, .t-*, .t-field-*, .tag-chip) live in
+   design-tokens.css, loaded above via @import.
+
+   This file contains ONLY:
+   • Component layout & positioning
+   • Unique visual overrides that differ from a template
+   • Animation keyframes scoped to one component
+
+   Building a new feature?
+   1. Pick the matching .btn-* / .t-* template class
+   2. Add it to the element in index.html (or in JS)
+   3. Add rules here only for layout / unique overrides
    ═══════════════════════════════════════════════════════ */
-
-:root {
-  /* ── Brand ── */
-  --accent: #1A73B8;
-  --accent-soft: #e8f1f8;
-  --accent-muted: #6da8d2;
-  --gold: #D8B56A;
-  --gold-soft: #faf5eb;
-  --success: #1FA86A;
-  --success-soft: #e8f6ee;
-  --danger: #d64545;
-  --danger-soft: #fce8e8;
-
-  /* Transit */
-  --hsl-bus: #1A73B8;
-  --hsl-trunk: #FF6319;
-  --hsl-tram: #1FA86A;
-  --hsl-metro: #FF6319;
-  --hsl-rail: #8C4799;
-  --hsl-ferry: #00B9E4;
-
-  /* ── Surfaces ── */
-  --surface: #ffffff;
-  --surface-2: #E6EBEF;
-  --surface-3: #cdd5dc;
-  --text: #1a2433;
-  --text-2: #506070;
-  --text-3: #8d99a5;
-  --border: #d5dce3;
-  --border-light: #E6EBEF;
-
-  /* ── Geometry ── */
-  --r-xs: 6px;
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-xl: 24px;
-  --r-pill: 999px;
-
-  /* ── Elevation (minimal for flat) ── */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
-  --shadow-md: 0 2px 8px rgba(0,0,0,.07);
-  --shadow-lg: 0 4px 16px rgba(0,0,0,.08);
-
-  /* ── Safe Areas ── */
-  --safe-t: env(safe-area-inset-top, 0px);
-  --safe-b: env(safe-area-inset-bottom, 0px);
-  --tab-h: 56px;
-
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-button { border: none; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; line-height: 1.5; touch-action: pan-x pan-y; -ms-touch-action: pan-x pan-y; }
 #app { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: pan-x pan-y; }
 .hide { display: none !important; }
 
@@ -91,15 +52,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 
 /* ── Collapsed pill ── */
+/* Template: .btn-icon — kept: extra opacity transition for expand/collapse */
 #search-pill {
-  width: 42px; height: 42px;
-  display: flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer;
-  color: var(--text-3);
-  transition: color .15s, opacity .2s ease;
+  transition: color var(--t-fast), opacity .2s ease;
 }
-#search-pill:hover { color: var(--text-2); }
-#search-pill:active { color: var(--accent); }
 #search-card:not(.collapsed) #search-pill {
   opacity: 0; pointer-events: none; position: absolute;
 }
@@ -202,24 +158,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   position: absolute; z-index: 6;
   right: 16px; bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
 }
-#style-picker-btn {
-  width: 42px; height: 42px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  color: var(--text-3);
-  transition: color .15s, background .15s;
-}
-#style-picker-btn:hover { color: var(--text-2); }
-#style-picker-btn:active { color: var(--accent); }
-#style-picker-btn.active {
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
-}
+/* Template: .btn-icon-card — .active state covered by template */
+/* No unique overrides needed for #style-picker-btn. */
 
 #style-panel {
   position: absolute;
@@ -271,15 +211,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
-#zoom-pill button {
-  width: 42px; height: 42px;
-  display: flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer;
-  color: var(--text-3);
-  transition: color .15s;
-}
-#zoom-pill button:hover { color: var(--text-2); }
-#zoom-pill button:active { color: var(--accent); }
+/* Template: .btn-icon handles all visual styles for zoom-in/zoom-out buttons */
 .zp-div { width: 24px; height: 1px; background: var(--border); }
 
 /* ═══════════════════════════════════════════════════════
@@ -298,20 +230,10 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   padding: 0 8px;
 }
 
-.tab {
-  flex: 0 0 auto; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px;
-  padding: 0 16px;
-  background: none; border: none; outline: none; cursor: pointer;
-  color: var(--text-3); font-family: inherit;
-  font-size: 11px; font-weight: 600; letter-spacing: .01em;
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-  transition: color .15s;
-}
+/* Template: .btn-tab (design-tokens.css) provides all base visual styles.
+   .tab is retained as the JS/CSS state selector class. */
+.tab { -webkit-tap-highlight-color: transparent; }
 .tab svg { width: 20px; height: 20px; }
-.tab:hover { color: var(--text-2); }
-.tab:active { color: var(--accent); }
 .tab:focus, .tab:focus-visible { outline: none; box-shadow: none; }
 
 /* ── Active Tab Indicators ── */
@@ -405,57 +327,12 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 .sheet-head h2 { flex: 1; font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
 
-.sheet-action-btn {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: var(--accent); border: none; border-radius: 50%;
-  cursor: pointer; color: #fff;
-  transition: filter .15s;
-}
-.sheet-action-btn:hover { filter: brightness(1.12); }
+/* .sheet-action-btn        → Template: .btn-roundel-accent (design-tokens.css) */
+/* .sheet-action-btn-subtle → Template: .btn-roundel-subtle (design-tokens.css) */
 
-.sheet-action-btn-subtle {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: none; border-radius: 50%;
-  cursor: pointer; color: var(--text-2);
-  transition: background .15s, color .15s;
-}
-.sheet-action-btn-subtle:hover { 
-  background: var(--surface-3);
-  color: var(--text);
-}
-
-/* Mosque navigation button - labeled style */
-.mosque-nav-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px;
-  background: var(--success-soft);
-  color: var(--success);
-  border: 1.5px solid var(--success);
-  border-radius: var(--r-pill);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-  white-space: nowrap;
-}
-.mosque-nav-btn:hover {
-  background: var(--success);
-  color: #fff;
-}
-.mosque-nav-btn:hover svg {
-  stroke: #fff;
-}
-.mosque-nav-btn svg {
-  transition: stroke .15s;
-}
-.sheet-x {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: none; border-radius: 50%;
-  cursor: pointer; color: var(--text-3);
-  transition: color .15s;
-}
-.sheet-x:hover { color: var(--text-2); }
+/* .mosque-nav-btn → Template: .btn-success-pill (design-tokens.css) */
+/* .sheet-x → Template: .btn-roundel (design-tokens.css)
+   Class retained as a JS selector and for the snackbar-close variant override below. */
 
 /* Desktop: emerge from tab bar */
 @media (min-width: 769px) {
@@ -548,15 +425,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   display: flex; justify-content: flex-start;
   padding: 4px 16px 2px;
 }
-#tf-toggle {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 11px; border: 1.5px solid var(--border);
-  background: var(--surface); border-radius: var(--r-pill);
-  font-family: inherit; font-size: 12px; font-weight: 600;
-  color: var(--text-2); cursor: pointer;
-  transition: color .15s, border-color .15s;
-}
-#tf-toggle:hover { color: var(--text); border-color: var(--surface-3); }
+/* #tf-toggle → Template: .btn-chip (design-tokens.css)
+   JS uses .open instead of .active — override below keeps the open state. */
 #tf-toggle.open { background: var(--accent); color: #fff; border-color: var(--accent); }
 #tf-toggle.open svg { stroke: #fff; }
 .tf-arrow { transition: transform .2s; }
@@ -578,6 +448,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 #tag-filter-chips.shut {
   max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; pointer-events: none;
 }
+/* .tf-chip → Implements .btn-chip pattern (design-tokens.css).
+   JS-generated — add class="btn-chip" in app.js if migrating. */
 .tf-chip {
   display: inline-flex; align-items: center;
   padding: 5px 11px; border: 1.5px solid var(--border);
@@ -990,6 +862,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .sg-tags {
   display: flex; flex-wrap: wrap; gap: 6px;
 }
+/* .sg-tag → Implements .tag-chip pattern (design-tokens.css).
+   JS-generated — add class="tag-chip" in app.js if migrating.
+   Note: icon sub-classes differ (.sg-tag-icon.sg-yes vs .tag-icon.tag-yes) */
 .sg-tag {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 5px 12px;
@@ -1039,16 +914,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   padding-right: 32px;
 }
 
-#sg-submit {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  height: 44px; padding: 0 24px;
-  background: var(--accent); color: #fff; border: none;
-  border-radius: var(--r-sm);
-  font-family: inherit; font-size: 15px; font-weight: 700;
-  cursor: pointer;
-  transition: filter .15s;
-}
-#sg-submit:hover { filter: brightness(1.12); }
+/* #sg-submit → Template: .btn-primary (design-tokens.css) */
+#sg-submit { display: flex; height: 44px; }
 
 /* ═══════════════════════════════════════════════════════
    SUGGEST EDIT OVERLAY
@@ -1078,16 +945,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   overflow-y: auto;
 }
 
-#ed-submit {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  height: 44px; padding: 0 24px;
-  background: var(--accent); color: #fff; border: none;
-  border-radius: var(--r-sm);
-  font-family: inherit; font-size: 15px; font-weight: 700;
-  cursor: pointer; flex-shrink: 0;
-  transition: filter .15s;
-}
-#ed-submit:hover { filter: brightness(1.12); }
+/* #ed-submit → Template: .btn-primary (design-tokens.css) */
+#ed-submit { display: flex; height: 44px; flex-shrink: 0; }
 
 /* ═══════════════════════════════════════════════════════
    DIRECTIONS PANEL CONTENT
@@ -1164,17 +1023,14 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 .ds-addr { font-size: 12px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-none { padding: 16px; text-align: center; color: var(--text-3); font-size: 14px; cursor: default; }
 
-/* Go button */
+/* Go button — Template: .btn-primary (design-tokens.css) */
 #dir-go {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin: 0 16px 14px; height: 46px; min-height: 46px; padding: 0 24px;
-  background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm);
-  font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; /* stretch to full width inside column flex parent */
+  margin: 0 16px 14px;
+  height: 46px; min-height: 46px;
   flex-shrink: 0;
-  transition: filter .15s;
 }
-#dir-go:hover:not(:disabled) { filter: brightness(1.12); }
-#dir-go:disabled { opacity: .35; cursor: not-allowed; }
+/* hover + disabled handled by .btn-primary */
 
 /* ── Transport mode selector ── */
 /* Time bar hidden for non-transit modes */
@@ -1192,21 +1048,8 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   padding: 3px;
   gap: 2px;
 }
-.mode-opt {
-  flex: 1;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 8px 4px; border: none; background: transparent;
-  border-radius: calc(var(--r-sm) - 2px);
-  font-family: inherit; font-size: 13px; font-weight: 700;
-  color: var(--text-3); cursor: pointer; white-space: nowrap;
-  transition: color .15s, background .15s, box-shadow .15s;
-}
+/* .mode-opt → Template: .btn-segment (design-tokens.css) */
 .mode-opt svg { flex-shrink: 0; }
-.mode-opt:hover:not(.active) { color: var(--text-2); }
-.mode-opt.active {
-  background: var(--surface); color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
 
 /* ── Direct route result card (drive / cycle / walk) ── */
 .direct-card { cursor: default; }
@@ -1281,16 +1124,9 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   background: var(--surface-2); border-radius: var(--r-sm);
   padding: 3px; gap: 2px;
 }
-.time-opt {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 8px 10px; border: none; background: none;
-  font-family: inherit; font-size: 13px; font-weight: 700;
-  color: var(--text-3); cursor: pointer;
-  border-radius: calc(var(--r-sm) - 2px);
-  transition: color .15s;
-}
+/* .time-opt → Template: .btn-segment (design-tokens.css) */
+/* Override: active colour is accent (not --text) for time selectors */
 .time-opt svg { flex-shrink: 0; }
-.time-opt:not(.active):hover { color: var(--text-2); }
 .time-opt.active {
   background: var(--surface); color: var(--accent);
   box-shadow: var(--shadow-sm);
@@ -1555,16 +1391,13 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   max-width: 120px;
 }
 .dir-sum-arrow { flex-shrink: 0; color: var(--text-3); }
+/* #dir-sum-edit → Template: .btn-primary (design-tokens.css) */
+/* Override: compact 13px font (smaller than standard 15px primary) */
 #dir-sum-edit {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 14px; flex-shrink: 0;
-  background: var(--accent); color: #fff;
-  border-radius: var(--r-sm);
-  font-family: inherit; font-size: 13px; font-weight: 700;
-  cursor: pointer;
-  transition: filter .15s;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  font-size: var(--txt-base);
 }
-#dir-sum-edit:hover { filter: brightness(1.12); }
 
 /* ── Mobile: collapse search when results shown ── */
 @media (max-width: 768px) {
@@ -1810,15 +1643,11 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
 }
 
 /* ── Collapsed pill ── */
+/* Template: .btn-icon — kept: opacity transition + intentionally muted active */
 #prayer-pill {
-  width: 42px; height: 42px;
-  display: flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer;
-  color: var(--text-3);
-  transition: color .15s, opacity .2s ease;
+  transition: color var(--t-fast), opacity .2s ease;
 }
-#prayer-pill:hover  { color: var(--text-2); }
-#prayer-pill:active { color: var(--text-2); }
+#prayer-pill:active { color: var(--text-2); } /* muted: prayer pill does not jump to accent */
 #prayer-snack:not(.collapsed) #prayer-pill {
   position: absolute; top: 0; left: 0;
   opacity: 1; pointer-events: auto; z-index: 1;
@@ -1969,17 +1798,7 @@ html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transp
   animation: origin-pulse .65s ease-out 2 !important;
 }
 
-/* Clear route button in dir header */
-.dir-clear-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; border: 1.5px solid var(--danger);
-  background: var(--danger-soft); color: var(--danger);
-  border-radius: var(--r-pill);
-  font-family: inherit; font-size: 12px; font-weight: 700;
-  cursor: pointer; white-space: nowrap;
-  transition: color .15s;
-}
-.dir-clear-btn:hover { color: #b33636; }
+/* .dir-clear-btn → Template: .btn-danger-pill (design-tokens.css) */
 
 @media (min-width: 769px) {
   #route-snackbar { bottom: 24px; }
