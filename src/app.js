@@ -651,7 +651,7 @@ function showGeoNotice() {
     </span>
     <span class="snack-body">
       <span class="snack-label">Welcome, traveller! 🌍</span>
-      <span class="snack-sub">This app is built for Finland — places, prayer times, and transit are all Finland-based.</span>
+      <span class="snack-sub">This app is built for Finland — places, prayer times, and transit are all Finland-based. Feel free to look around!</span>
     </span>
     <button class="geo-notice-close" aria-label="Dismiss">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
