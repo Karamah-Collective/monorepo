@@ -50,7 +50,7 @@ let tagsData = {};
 let placeMarkers = [];
 let activeTypeFilter = 'all';
 let activeTagFilters = new Set();
-let _editOriginalPlace = null; // snapshot of the place when the edit overlay opens
+let _editOriginalPlace = null; 
 
 // ─── Favourites (localStorage) ───
 let favourites = new Set(JSON.parse(localStorage.getItem('hf_favs') || '[]'));
