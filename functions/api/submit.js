@@ -104,18 +104,28 @@ export async function onRequestPost(context) {
     return json({ error: 'Failed to reach Google Apps Script', detail: err.message }, 502, responseHeaders);
   }
 
-  let gasData;
+  // GAS returns HTTP 200 on success (and also on handled errors inside the script).
+  // Parsing the body can fail due to redirect quirks, so we try but fall back to
+  // trusting the HTTP status code — if GAS wrote the row, it always returns 2xx.
+  let gasBody = null;
   try {
-    gasData = await gasRes.json();
-  } catch {
-    return json({ error: 'Non-JSON response from Google Apps Script', status: gasRes.status }, 502, responseHeaders);
+    const text = await gasRes.text();
+    // Remove any XSSI/JSON-hijacking prefix Google occasionally prepends (e.g. ")]}'",  "while(1);")
+    const cleaned = text.replace(/^[^{\[]*/, '').trim();
+    if (cleaned) gasBody = JSON.parse(cleaned);
+  } catch { /* ignore parse errors – trust HTTP status below */ }
+
+  // If GAS explicitly returned an { error: "..." } field, surface it.
+  if (gasBody?.error) {
+    return json({ error: gasBody.error }, 500, responseHeaders);
   }
 
-  if (gasData.error) {
-    return json({ error: gasData.error }, 500, responseHeaders);
+  // Any 2xx from GAS (with or without a parseable body) means the row was written.
+  if (gasRes.status >= 200 && gasRes.status < 300) {
+    return json({ success: true }, 200, responseHeaders);
   }
 
-  return json({ success: true }, 200, responseHeaders);
+  return json({ error: 'Unexpected response from Google Apps Script (status ' + gasRes.status + ')' }, 502, responseHeaders);
 }
 
 // ── OPTIONS preflight (CORS) ──────────────────────────────────────────────────
