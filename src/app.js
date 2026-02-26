@@ -468,11 +468,11 @@ function showPlacePopup(place) {
     if (navigator.share) {
       navigator.share({ title: place.name, text: `${place.name} – Halal Finder Helsinki`, url })
         .catch(err => {
-          if (err?.name !== 'AbortError') { copyToClipboard(url); showToast('Link copied!'); }
+          if (err?.name !== 'AbortError') { copyToClipboard(url); showToast('Link copied'); }
         });
     } else {
       copyToClipboard(url);
-      showToast('Link copied!');
+      showToast('Link copied');
     }
   }
   shareBtn.addEventListener('touchend', doShare);   // iOS: fires before MapLibre consumes gesture
@@ -610,20 +610,22 @@ function buildShareUrl(place) {
 }
 
 // ── Toast / snackbar notification ──
-// ── Toast / snackbar notification ──
 const _TOAST_SVG = {
-  check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
-  clock: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
-  error: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
+  check: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
+  clock: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+  error: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
 };
-function showToast(msg, icon = 'check') {
+const _TOAST_ICON_CLASS = { check: 'snack-icon--success', clock: 'snack-icon--clock', error: 'snack-icon--error' };
+function showToast(label, icon = 'check', sub = null) {
   const existing = document.getElementById('share-toast');
   if (existing) existing.remove();
   const t = document.createElement('div');
   t.id = 'share-toast';
-  t.className = 'share-toast';
+  t.className = 'share-toast snack';
   const svg = _TOAST_SVG[icon] || '';
-  t.innerHTML = `${svg}${esc(msg)}`;
+  const iconClass = _TOAST_ICON_CLASS[icon] || 'snack-icon--success';
+  const subHtml = sub ? `<span class="snack-sub">${esc(sub)}</span>` : '';
+  t.innerHTML = `${svg ? `<span class="snack-icon ${iconClass}">${svg}</span>` : ''}<span class="snack-body"><span class="snack-label">${esc(label)}</span>${subHtml}</span>`;
   document.body.appendChild(t);
   // Double rAF ensures the transition fires after insertion
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -640,16 +642,17 @@ function showGeoNotice() {
   if (document.getElementById('geo-notice')) return; // already shown
   const el = document.createElement('div');
   el.id = 'geo-notice';
+  el.className = 'snack';
   el.innerHTML = `
-    <div class="geo-notice-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <span class="snack-icon snack-icon--info">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-    </div>
-    <div class="geo-notice-body">
-      <div class="geo-notice-title">Welcome, traveller! 🌍</div>
-      <div class="geo-notice-msg">Great to have you here. This app is built specifically for Finland — places, prayer times, and transit are all Finland-based. Feel free to look around!</div>
-    </div>
+    </span>
+    <span class="snack-body">
+      <span class="snack-label">Welcome, traveller! 🌍</span>
+      <span class="snack-sub">This app is built for Finland — places, prayer times, and transit are all Finland-based.</span>
+    </span>
     <button class="geo-notice-close" aria-label="Dismiss">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
@@ -1166,13 +1169,13 @@ document.getElementById('suggest-form').addEventListener('submit', async e => {
       document.getElementById('suggest-form').reset();
       renderSuggestTags();
       document.getElementById('suggest-overlay').classList.add('hide');
-      showToast('Thank you! Your suggestion has been submitted.');
+      showToast('Suggestion submitted.', 'check', 'Thanks!');
     } else {
-      showToast('Submission failed: ' + (data.error || 'Please try again.'), 'error');
+      showToast('Submission failed', 'error', data.error || 'Please try again.');
     }
   } catch (err) {
     console.error('Suggest form error:', err);
-    showToast('Submission failed. Please check your connection and try again.', 'error');
+    showToast('Submission failed', 'error', 'Check your connection.');
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = btnOriginal;
@@ -1309,13 +1312,13 @@ document.getElementById('edit-form').addEventListener('submit', async e => {
 
     if (data.success) {
       document.getElementById('edit-overlay').classList.add('hide');
-      showToast('Edit suggestion submitted – thank you!');
+      showToast('Edit submitted.', 'check', 'Thanks!');
     } else {
-      showToast('Submission failed: ' + (data.error || 'Please try again.'), 'error');
+      showToast('Submission failed', 'error', data.error || 'Please try again.');
     }
   } catch (err) {
     console.error('Edit form error:', err);
-    showToast('Submission failed. Please check your connection and try again.', 'error');
+    showToast('Submission failed', 'error', 'Check your connection.');
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = btnOriginal;

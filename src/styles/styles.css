@@ -33,6 +33,10 @@
   right: 12px !important;
 }
 .maplibregl-ctrl-attrib { font-size: 9px !important; background: rgba(255,255,255,.6) !important; border-radius: 4px; }
+/* hide reCAPTCHA floating badge — attribution kept in ToS-compliant form text */
+.grecaptcha-badge { visibility: hidden !important; }
+/* hide reCAPTCHA floating badge — attribution kept in ToS-compliant form text */
+.grecaptcha-badge { visibility: hidden !important; }
 
 /* ═══════════════════════════════════════════════════════
    SEARCH PILL (above zoom pill)
@@ -731,26 +735,22 @@
 
 /* pp-fav-btn lives in .pp-head — styles defined there */
 
-/* ── Share toast ── */
+/* ── Toast / snackbar ────────────────────────────────────────── */
+/* Card chrome from .snack (§8 design-tokens.css). Only position, sizing & animation here. */
 .share-toast {
-  position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%) translateY(10px);
-  background: #1a1a1a; color: #fff;
-  border-radius: var(--r-pill);
-  padding: 10px 18px;
-  font-size: 13px; font-weight: 600; line-height: 1.4;
-  box-shadow: 0 4px 20px rgba(0,0,0,.25);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .18s ease, transform .18s ease;
+  position: fixed;
+  bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+  left: 50%; transform: translateX(-50%) translateY(12px);
+  padding-right: 14px; /* extra right spacing — no close button */
+  pointer-events: none; opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
   z-index: 9999;
-  white-space: normal;
-  word-break: break-word;
-  max-width: min(calc(100vw - 32px), 360px);
-  width: max-content;
-  text-align: center;
-  display: flex; align-items: center; gap: 8px;
+  width: fit-content;
+  max-width: min(calc(100vw - 24px), 380px);
 }
-.share-toast svg { flex-shrink: 0; }
+/* Compact toasts never wrap */
+.share-toast .snack-label,
+.share-toast .snack-sub { white-space: nowrap; }
 .share-toast.share-toast-show {
   opacity: 1; transform: translateX(-50%) translateY(0);
 }
@@ -758,53 +758,33 @@
 /* ═══════════════════════════════════════════════════════
    GEO NOTICE (non-Finland visitors)
    ═══════════════════════════════════════════════════════ */
+/* Card chrome from .snack (§8 design-tokens.css). Only position, sizing & animation here. */
 #geo-notice {
   position: fixed;
-  bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
-  left: 50%; transform: translateX(-50%) translateY(20px);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+  left: 50%; transform: translateX(-50%) translateY(12px);
   z-index: 9998;
-  width: min(calc(100vw - 32px), 360px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 12px 14px 16px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .3s ease, transform .4s cubic-bezier(.32,.72,0,1);
+  width: fit-content;
+  min-width: 280px;
+  max-width: min(calc(100vw - 24px), 480px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
 }
 #geo-notice.geo-notice-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
-.geo-notice-icon {
-  flex-shrink: 0;
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--accent-soft); border-radius: var(--r-sm);
-  color: var(--accent);
-}
-.geo-notice-body {
-  flex: 1; min-width: 0;
-}
-.geo-notice-title {
-  font-size: 14px; font-weight: 700; color: var(--text);
-  margin-bottom: 3px; letter-spacing: -.01em;
-}
-.geo-notice-msg {
-  font-size: 12px; font-weight: 500; color: var(--text-2); line-height: 1.55;
-}
+/* close button — extends .btn-roundel visuals, scoped here as it is unique to geo notice */
 .geo-notice-close {
   flex-shrink: 0;
-  width: 26px; height: 26px;
+  width: var(--btn-roundel-size); height: var(--btn-roundel-size);
   display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: none; border-radius: 50%;
-  cursor: pointer; color: var(--text-3);
-  transition: color .15s;
+  background: var(--surface-2); border: none;
+  border-radius: 50%; cursor: pointer; color: var(--text-3);
+  transition: background var(--t-fast), color var(--t-fast);
 }
-.geo-notice-close:hover { color: var(--text-2); }
+.geo-notice-close:hover { background: var(--surface-3); color: var(--text-2); }
 
 /* ═══════════════════════════════════════════════════════
    SUGGEST PLACE OVERLAY
@@ -1666,7 +1646,7 @@
   flex: 1; min-width: 0;
 }
 #prayer-snack-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
+  font-size: var(--txt-base); font-weight: var(--fw-semibold); color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 

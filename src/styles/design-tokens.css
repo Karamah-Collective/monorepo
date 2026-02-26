@@ -737,3 +737,62 @@ html, body {
   transform: translateY(-50%) translateX(12px) scale(0.96);
   pointer-events: none;
 }
+
+/* ═══════════════════════════════════════════════════════
+   §8  SNACK / TOAST TEMPLATE
+   ───────────────────────────────────────────────────────
+   Base chrome shared by all in-app notifications:
+     .share-toast     (JS-injected toast)
+     #geo-notice      (visitor banner)
+
+   Use-case rules:
+   • Add .snack to the element for card chrome.
+   • Add .snack-icon + .snack-icon--{variant} for the badge.
+   • Add .snack-body > .snack-label + .snack-sub for text.
+   • Position, width, opacity/transition stay in styles.css.
+   • white-space overrides (nowrap for compact toasts) stay
+     in styles.css scoped to the component.
+
+   Icon colour variants
+   ───────────────────
+   .snack-icon--success  Green  (submitted / confirmed)
+   .snack-icon--error    Red    (failure)
+   .snack-icon--clock    Blue   (prayer / time-based)
+   .snack-icon--info     Blue   (informational banner)
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Card chrome ────────────────────────────────── */
+.snack {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* ── Icon badge ───────────────────────────────── */
+.snack-icon {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.snack-icon--success { background: var(--success-soft); color: var(--success); }
+.snack-icon--error   { background: var(--danger-soft);  color: var(--danger); }
+.snack-icon--clock   { background: var(--accent-soft);  color: var(--accent); }
+.snack-icon--info    { background: var(--accent-soft);  color: var(--accent); }
+
+/* ── Text column ──────────────────────────────── */
+.snack-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.snack-label {
+  font-size: var(--txt-md); font-weight: var(--fw-semibold);
+  color: var(--text); line-height: 1.3;
+}
+.snack-sub {
+  font-size: var(--txt-sm); font-weight: var(--fw-medium);
+  color: var(--text-2); line-height: 1.3;
+}
