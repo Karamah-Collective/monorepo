@@ -6,6 +6,7 @@ import { loadPlacesData } from "./places.js";
 import "./search.js";
 import { initPrayerTimes } from "./prayer.js";
 import { loadTransitCache } from "./transit-stops.js";
+import { initTutorial } from "./tutorial.js";
 
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("gesturechange", (e) => e.preventDefault());
@@ -18,4 +19,6 @@ map.on("load", () => {
   loadTransitCache();
   initPrayerTimes();
   checkGeoNotice();
+  // Show first-run tutorial after a short delay so the UI has settled
+  setTimeout(initTutorial, 800);
 });
