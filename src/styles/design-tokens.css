@@ -95,8 +95,9 @@
   --z-top:    9999;
 
   /* — overlay / scrim — */
-  --overlay-bg: rgba(9,9,11,.4);
-  --scrim-bg:   rgba(9,9,11,.12);
+  --overlay-bg:  rgba(9,9,11,.4);
+  --overlay-dim: rgba(9,9,11,.55);  /* stronger focus overlay (tutorial, modals) */
+  --scrim-bg:    rgba(9,9,11,.12);
 
   /* — border-radius extensions — */
   --r-2xs:   4px;    /* micro: inline badges, code chips */
@@ -646,3 +647,20 @@ html, body {
 #suggest-form::-webkit-scrollbar-thumb,
 #edit-form::-webkit-scrollbar-thumb,
 .sp-routes::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ─── Step / Stepper Progress Dots ─────────────────────────────────────────── */
+/* Reusable in any multi-step flow: tutorial, wizards, onboarding cards.        */
+.step-dots {
+  display: flex; align-items: center; gap: var(--sp-1);
+}
+.step-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  transition: background var(--t-med), width var(--t-med);
+}
+.step-dot.active {
+  background: var(--accent);
+  width: 14px;
+  border-radius: var(--r-pill);
+}
