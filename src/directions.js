@@ -296,7 +296,13 @@ function closeOpenPanelOnMapInteract() {
   if (dir.pickField) return;
   const placesSheet = document.getElementById("places-sheet");
   if (!dirPanel.classList.contains("shut")) { closeDirPanel(); return; }
-  if (!placesSheet.classList.contains("shut")) placesSheet.classList.add("shut");
+  if (!placesSheet.classList.contains("shut")) {
+    placesSheet.classList.add("shut");
+    placesSheet.classList.remove("full");
+    placesSheet.style.height = "";
+    document.getElementById("scrim").classList.add("hide");
+    setActiveTab(null);
+  }
 }
 map.on("mousedown", closeOpenPanelOnMapInteract);
 map.getCanvas().addEventListener("touchstart", closeOpenPanelOnMapInteract, { passive: true });

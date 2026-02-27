@@ -80,6 +80,38 @@
   --safe-t: env(safe-area-inset-top,    0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
 
+  /* — z-index layer system — */
+  --z-map:       0;
+  --z-ctrl-lo:   5;
+  --z-ctrl-mid:  6;
+  --z-prayer:    9;
+  --z-bar:      10;
+  --z-float:    20;  /* floating dropdown within a panel */
+  --z-scrim:    11;
+  --z-sheet:    12;
+  --z-overlay: 100;
+  --z-picker:  999;
+  --z-sub-ui: 9998;
+  --z-top:    9999;
+
+  /* — overlay / scrim — */
+  --overlay-bg: rgba(9,9,11,.4);
+  --scrim-bg:   rgba(9,9,11,.12);
+
+  /* — border-radius extensions — */
+  --r-2xs:   4px;    /* micro: inline badges, code chips */
+  --r-inner: 8px;    /* inner icon / thumbnail containers */
+
+  /* — icon & component sizes — */
+  --icon-md:    36px;  /* medium content-icon container    */
+  --h-field:    46px;  /* direction / date input row       */
+  --h-submit:   44px;  /* form submit button               */
+  --h-search:   48px;  /* search box                       */
+
+  /* — layout — */
+  --map-edge: 12px;   /* map-control inset from viewport edges */
+  --sheet-h:  55vh;   /* default bottom-sheet height           */
+
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui,
                Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -91,6 +123,7 @@
 button {
   border: none; outline: none; background: none;
   -webkit-appearance: none; -moz-appearance: none; appearance: none;
+
   font-family: inherit;
   cursor: pointer;
 }
@@ -317,6 +350,7 @@ html, body {
 .btn-inline,
 .empty-suggest {
   display: inline;
+
   font-family: inherit;
   font-size: inherit;
   font-weight: var(--fw-semibold);
@@ -437,6 +471,7 @@ html, body {
 .t-field-input {
   flex: 1; min-width: 0;
   border: none; outline: none; background: transparent;
+
   font-family: inherit;
   font-size: var(--txt-lg);
   font-weight: var(--fw-medium);
@@ -455,6 +490,7 @@ html, body {
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-pill);
+
   font-family: inherit;
   font-size: var(--txt-sm);
   font-weight: var(--fw-semibold);

@@ -4,7 +4,7 @@ An interactive map application for discovering halal-friendly locations across H
 
 **Live Demo:** [Deploy to your own instance](#deployment) via Cloudflare Pages  
 **Version:** 1.0.0  
-**Last Updated:** 2024
+**Last Updated:** 2025
 
 ---
 
@@ -89,8 +89,19 @@ Maps/
 │
 ├── src/                             # Source code & configuration
 │   ├── styles/                      # Stylesheets
-│   │   └── styles.css               # Complete application styling (71 KB)
-│   ├── app.js                       # Main application logic (2230 lines)
+│   │   ├── design-tokens.css        # CSS custom property tokens (single source of truth)
+│   │   └── styles.css               # Component styles — references tokens, special cases only
+│   ├── app.js                       # Entry point (21 lines) — bootstraps map + gesture listeners
+│   ├── map-init.js                  # Singleton MapLibre map instance
+│   ├── map-controls.js              # Locate, style switcher, 3D terrain, URL hash
+│   ├── map-style.js                 # MapLibre GL vector tile style data (~870 lines)
+│   ├── icons.js                     # SVG helpers, place/transit configs, marker HTML
+│   ├── utils.js                     # Shared utilities (toast, sheet drag, haversine, crypto)
+│   ├── places.js                    # Places data, markers, sheet UI, favourites, tag filters
+│   ├── search.js                    # Nominatim search bar, search pin, double-click handler
+│   ├── directions.js                # All routing — transit, OSRM, panel UI, step rendering
+│   ├── prayer.js                    # Prayer times (al-adhan), Ramadan detection, snack UI
+│   ├── transit-stops.js             # Transit stop layer (cache or Overpass API)
 │   ├── config.local.js              # Local secrets (git-ignored with API keys)
 │   └── config.template.js           # Reference template for configuration
 │
@@ -104,6 +115,7 @@ Maps/
 - src/directions.js: ~1,130 lines (largest module)
 - src/places.js: ~630 lines
 - src/map-style.js: ~870 lines (static style data)
+- src/styles/design-tokens.css: ~650 lines (all design tokens)
 - src/styles/styles.css: ~71 KB
 - transit-cache.json: ~3.1 MB (local only)
 - index.html: ~1,170 lines, ~45 KB
@@ -705,7 +717,7 @@ console.log('Request payload:', {
 
 ### Adding New Places
 
-Edit `public/data/places.json` with structure:
+Edit `data/places.json` with structure:
 ```json
 {
   "id": "place-unique-id",
