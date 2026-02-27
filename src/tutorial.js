@@ -177,7 +177,7 @@ function show(index) {
     </div>
     <p class="tut-body">${s.body}</p>
     <div class="tut-foot">
-      <div class="step-dots">${dots}</div>
+      ${!isCenter ? `<div class="step-dots">${dots}</div>` : ""}
       <div class="tut-nav">${backBtn}${nextBtn}</div>
     </div>
   `;
