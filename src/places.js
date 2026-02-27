@@ -1,0 +1,628 @@
+import { map } from "./map-init.js";
+import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
+import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag } from "./utils.js";
+import { RECAPTCHA_SITE_KEY } from "./config.js";
+import { setActiveTab } from "./map-controls.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
+
+export let placesData = [];
+export let tagsData = {};
+let placeMarkers = [];
+export let activeTypeFilter = "all";
+export let activeTagFilters = new Set();
+let _editOriginalPlace = null;
+
+let favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
+function saveFavourites() { localStorage.setItem("hf_favs", JSON.stringify([...favourites])); }
+export function isFavourite(id) { return favourites.has(id); }
+export function toggleFavourite(id) {
+  if (favourites.has(id)) favourites.delete(id); else favourites.add(id);
+  saveFavourites();
+}
+
+export async function loadPlacesData() {
+  try {
+    const [pRes, tRes] = await Promise.all([fetch("data/places.json"), fetch("data/tags.json")]);
+    placesData = await pRes.json();
+    tagsData = await tRes.json();
+    console.log(`[Places] Loaded ${placesData.length} places, ${Object.keys(tagsData).length} tag categories`);
+    addPlaceMarkers();
+    renderPlacesList();
+    updatePlacesBadge();
+    checkShareUrl();
+  } catch (err) {
+    console.warn("[Places] Failed to load:", err.message);
+  }
+}
+
+export function addPlaceMarkers() {
+  placeMarkers.forEach((m) => m.remove());
+  placeMarkers = [];
+
+  let filtered =
+    activeTypeFilter === "all"
+      ? placesData
+      : activeTypeFilter === "saved"
+        ? placesData.filter((p) => isFavourite(p.id))
+        : placesData.filter((p) => p.type === activeTypeFilter);
+
+  if (activeTagFilters.size) {
+    filtered = filtered.filter((p) =>
+      [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true),
+    );
+  }
+
+  filtered.forEach((place) => {
+    const el = document.createElement("div");
+    el.className = "place-mk-wrap";
+    el.innerHTML = makePlaceMarkerHTML(place.type);
+    const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([place.lng, place.lat]).addTo(map);
+    el.addEventListener("click", (e) => { e.stopPropagation(); showPlacePopup(place); });
+    placeMarkers.push(marker);
+  });
+}
+
+export function showPlacePopup(place) {
+  const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
+  const typeTags = tagsData[place.type] || [];
+
+  const root = document.createElement("div");
+  root.className = "pp";
+  root.style.setProperty("--pc", cfg.color);
+
+  const head = document.createElement("div");
+  head.className = "pp-head";
+  const _isFavHead = isFavourite(place.id);
+  const _starSVGHead = (filled) =>
+    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+  head.innerHTML =
+    `<span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>` +
+    `<div class="pp-title">${esc(place.name)}</div>` +
+    `<div class="pp-sub">${cfg.label}</div>` +
+    `<button class="pp-fav-btn${_isFavHead ? " active" : ""}" aria-label="${_isFavHead ? "Remove from saved" : "Save place"}">${_starSVGHead(_isFavHead)}</button>`;
+
+  const headFavBtn = head.querySelector(".pp-fav-btn");
+  headFavBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleFavourite(place.id);
+    const saved = isFavourite(place.id);
+    headFavBtn.classList.toggle("active", saved);
+    headFavBtn.setAttribute("aria-label", saved ? "Remove from saved" : "Save place");
+    headFavBtn.innerHTML = _starSVGHead(saved);
+    const listBtn = document.querySelector(`.pl-fav-btn[data-fav-id="${place.id}"]`);
+    if (listBtn) {
+      listBtn.classList.toggle("active", saved);
+      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    }
+    if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
+  });
+  root.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "pp-body";
+
+  const addr = document.createElement("div");
+  addr.className = "pp-addr";
+  addr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(place.address)}`;
+  body.appendChild(addr);
+
+  if (typeTags.length) {
+    const chips = typeTags
+      .filter((tag) => place.tags?.[tag.id] !== undefined)
+      .map((tag) => {
+        const val = place.tags[tag.id];
+        const cls = val === true ? "pp-chip-yes" : "pp-chip-no";
+        const icon = val === true ? "✓" : "✗";
+        return `<span class="pp-chip ${cls}">${icon} ${esc(tag.label)}</span>`;
+      })
+      .join("");
+    if (chips) {
+      const tagsEl = document.createElement("div");
+      tagsEl.className = "pp-tags";
+      tagsEl.innerHTML = chips;
+      body.appendChild(tagsEl);
+    }
+  }
+
+  if (place.notes) {
+    const notes = document.createElement("div");
+    notes.className = "pp-notes";
+    notes.textContent = place.notes;
+    body.appendChild(notes);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "pp-actions";
+
+  const dirBtn = document.createElement("button");
+  dirBtn.className = "pp-dir-btn";
+  dirBtn.title = "Get directions";
+  dirBtn.setAttribute("aria-label", "Get directions");
+  dirBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>`;
+  dirBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dir.dest = { lat: place.lat, lng: place.lng, name: place.name };
+    document.getElementById("dir-to").value = place.name;
+    placeDestMarker(place.lng, place.lat);
+    updateGoButton();
+    popup.remove();
+    document.getElementById("places-sheet").classList.add("shut");
+    openDirPanel();
+  });
+
+  const shareBtn = document.createElement("button");
+  shareBtn.className = "pp-share-btn";
+  shareBtn.title = "Share this place";
+  shareBtn.setAttribute("aria-label", "Share this place");
+  shareBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+
+  function doShare(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = buildShareUrl(place);
+    if (navigator.share) {
+      navigator.share({ title: place.name, text: `${place.name} – Halal Finder Helsinki`, url })
+        .catch((err) => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
+    } else {
+      copyToClipboard(url);
+      showToast("Link copied");
+    }
+  }
+  shareBtn.addEventListener("touchend", doShare);
+  shareBtn.addEventListener("click", doShare);
+
+  const editBtn = document.createElement("button");
+  editBtn.className = "pp-edit-btn";
+  editBtn.title = "Suggest an edit";
+  editBtn.setAttribute("aria-label", "Suggest an edit");
+  editBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  editBtn.addEventListener("click", (e) => { e.stopPropagation(); openEditOverlay(place); });
+
+  actions.appendChild(dirBtn);
+  actions.appendChild(shareBtn);
+  actions.appendChild(editBtn);
+  body.appendChild(actions);
+  root.appendChild(body);
+
+  document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
+
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "300px", className: "place-popup-wrap" })
+    .setLngLat([place.lng, place.lat])
+    .setDOMContent(root)
+    .addTo(map);
+
+  map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+}
+
+export function checkShareUrl() {
+  const hash = location.hash.slice(1);
+  let mapView = null, placeToken = null;
+
+  if (hash) {
+    const ampIdx = hash.indexOf("&");
+    const viewStr = ampIdx >= 0 ? hash.slice(0, ampIdx) : hash;
+    const rest = ampIdx >= 0 ? hash.slice(ampIdx + 1) : "";
+    const parts = viewStr.split("/");
+    if (parts.length === 3) {
+      const [z, la, lo] = parts.map(Number);
+      if (!isNaN(z) && !isNaN(la) && !isNaN(lo)) mapView = { zoom: z, lat: la, lng: lo };
+    }
+    for (const seg of rest.split("&")) {
+      if (seg.startsWith("p=")) placeToken = seg.slice(2);
+    }
+  }
+
+  if (!placeToken && !mapView) {
+    const params = new URLSearchParams(location.search);
+    placeToken = params.get("p") || null;
+    if (!placeToken) {
+      const id = +params.get("place");
+      if (id) {
+        const place = placesData.find((p) => p.id === id);
+        if (place) {
+          map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
+          map.once("moveend", () => showPlacePopup(place));
+        }
+        return;
+      }
+    }
+  }
+
+  if (mapView && !placeToken) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); return; }
+
+  if (placeToken) {
+    const data = decryptToken(placeToken) || _decodeLegacyToken(placeToken);
+    if (!data) return;
+    let place = data.id != null
+      ? placesData.find((p) => p.id === data.id)
+      : placesData.find((p) => p.name === data.n && p.type === data.t);
+    if (!place && placesData.length) {
+      place = placesData.reduce((best, p) => {
+        const d = (p.lat - data.a) ** 2 + (p.lng - data.o) ** 2;
+        const bd = (best.lat - data.a) ** 2 + (best.lng - data.o) ** 2;
+        return d < bd ? p : best;
+      });
+    }
+    if (!place) return;
+    if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); showPlacePopup(place); }
+    else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => showPlacePopup(place)); }
+  }
+}
+
+export function updatePlacesBadge() {
+  const b = document.getElementById("places-badge");
+  if (placesData.length) { b.textContent = placesData.length; b.classList.remove("hide"); }
+  else { b.classList.add("hide"); }
+}
+
+const placesSheet = document.getElementById("places-sheet");
+const scrim = document.getElementById("scrim");
+
+export function openPlacesSheet() {
+  document.getElementById("dir-panel").classList.add("shut");
+  stopPick();
+  placesSheet.classList.remove("shut", "full");
+  placesSheet.style.height = "";
+  scrim.classList.remove("hide");
+  setActiveTab("places-btn");
+  renderTagFilterBar();
+  renderPlacesList();
+  requestAnimationFrame(() => {
+    if (!placesSheet.classList.contains("shut") && !placesSheet.classList.contains("full")) {
+      placesSheet.style.height = placesSheet.offsetHeight + "px";
+    }
+  });
+}
+
+export function closePlacesSheet() {
+  placesSheet.classList.add("shut");
+  placesSheet.classList.remove("full");
+  placesSheet.style.height = "";
+  scrim.classList.add("hide");
+  setActiveTab(null);
+}
+
+document.getElementById("places-btn").addEventListener("click", () =>
+  placesSheet.classList.contains("shut") ? openPlacesSheet() : closePlacesSheet(),
+);
+document.getElementById("places-close").addEventListener("click", closePlacesSheet);
+
+initSheetDrag(document.getElementById("places-drag"), placesSheet, closePlacesSheet);
+const placesHead = placesSheet.querySelector(".sheet-head");
+if (placesHead) initSheetDrag(placesHead, placesSheet, closePlacesSheet);
+
+document.getElementById("places-type-chips").addEventListener("click", (e) => {
+  const chip = e.target.closest(".pf-chip");
+  if (!chip) return;
+  document.querySelectorAll(".pf-chip").forEach((c) => c.classList.remove("active"));
+  chip.classList.add("active");
+  activeTypeFilter = chip.dataset.type;
+  activeTagFilters.clear();
+  renderTagFilterBar();
+  addPlaceMarkers();
+  renderPlacesList();
+});
+
+const tfToggle = document.getElementById("tf-toggle");
+const tfChips = document.getElementById("tag-filter-chips");
+const tfCount = document.getElementById("tf-count");
+
+function renderTagFilterBar() {
+  const row = document.getElementById("tf-row");
+  const typePlaces =
+    activeTypeFilter === "all" ? placesData : placesData.filter((p) => p.type === activeTypeFilter);
+  if (activeTypeFilter === "all" || activeTypeFilter === "saved" || !typePlaces.length) {
+    row.classList.add("hide");
+    tfToggle.classList.remove("open");
+    tfChips.classList.add("shut");
+    return;
+  }
+  const tags = tagsData[activeTypeFilter] || [];
+  if (!tags.length) { row.classList.add("hide"); return; }
+  row.classList.remove("hide");
+  tfToggle.classList.remove("open");
+  tfChips.classList.add("shut");
+  updateTagCount();
+  tfChips.innerHTML = tags
+    .map((t) => `<button class="tf-chip${activeTagFilters.has(t.id) ? " active" : ""}" data-tag="${t.id}">${esc(t.label)}</button>`)
+    .join("");
+}
+
+function updateTagCount() {
+  if (activeTagFilters.size) { tfCount.textContent = activeTagFilters.size; tfCount.classList.remove("hide"); }
+  else { tfCount.classList.add("hide"); }
+}
+
+tfToggle.addEventListener("click", () => {
+  const isOpen = !tfChips.classList.contains("shut");
+  tfChips.classList.toggle("shut", isOpen);
+  tfToggle.classList.toggle("open", !isOpen);
+});
+
+document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
+  const chip = e.target.closest(".tf-chip");
+  if (!chip) return;
+  const tagId = chip.dataset.tag;
+  if (activeTagFilters.has(tagId)) { activeTagFilters.delete(tagId); chip.classList.remove("active"); }
+  else { activeTagFilters.add(tagId); chip.classList.add("active"); }
+  updateTagCount();
+  addPlaceMarkers();
+  renderPlacesList();
+});
+
+function renderPlacesList() {
+  const list = document.getElementById("places-list");
+  const empty = document.getElementById("places-empty");
+  const ct = document.getElementById("places-ct");
+
+  let filtered =
+    activeTypeFilter === "all"
+      ? placesData
+      : activeTypeFilter === "saved"
+        ? placesData.filter((p) => isFavourite(p.id))
+        : placesData.filter((p) => p.type === activeTypeFilter);
+
+  if (activeTagFilters.size) {
+    filtered = filtered.filter((p) =>
+      [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true),
+    );
+  }
+
+  if (!filtered.length) { list.innerHTML = ""; empty.classList.remove("hide"); ct.textContent = ""; return; }
+
+  empty.classList.add("hide");
+  ct.textContent = `${filtered.length} place${filtered.length > 1 ? "s" : ""}`;
+
+  const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
+  list.innerHTML = filtered
+    .map((p, i) => {
+      const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+      const typeTags = tagsData[p.type] || [];
+      const posCount = typeTags.filter((t) => p.tags?.[t.id] === true).length;
+      const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "";
+      const faved = isFavourite(p.id);
+      return `<li data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
+      <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
+      <span class="pl-name">${esc(p.name)}</span>
+      <span class="pl-addr">${esc(p.address)}</span>
+      <div class="pl-meta">
+        <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
+        ${tagSummary ? `<span class="pl-tags-summary">${tagSummary}</span>` : ""}
+      </div>
+      <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
+      </button>
+    </li>`;
+    })
+    .join("");
+}
+
+function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
+document.getElementById("suggest-place-btn").addEventListener("click", openSuggestOverlay);
+document.getElementById("suggest-place-btn-empty").addEventListener("click", openSuggestOverlay);
+
+document.getElementById("places-list").addEventListener("click", (e) => {
+  const favBtn = e.target.closest(".pl-fav-btn");
+  if (favBtn) {
+    e.stopPropagation();
+    const id = +favBtn.dataset.favId;
+    toggleFavourite(id);
+    const saved = isFavourite(id);
+    favBtn.classList.toggle("active", saved);
+    favBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
+    return;
+  }
+  const li = e.target.closest("li[data-place-id]");
+  if (!li) return;
+  const placeId = +li.dataset.placeId;
+  const place = placesData.find((p) => p.id === placeId);
+  if (place) { closePlacesSheet(); showPlacePopup(place); }
+});
+
+document.getElementById("suggest-close").addEventListener("click", () => {
+  document.getElementById("suggest-overlay").classList.add("hide");
+});
+document.getElementById("suggest-overlay").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) document.getElementById("suggest-overlay").classList.add("hide");
+});
+
+const sgTypeSelect = document.getElementById("sg-type");
+const sgTagsContainer = document.getElementById("sg-tags");
+
+function renderSuggestTags() {
+  const type = sgTypeSelect.value;
+  const tagsSection = document.getElementById("sg-tags-section");
+  if (!type) { tagsSection.style.display = "none"; sgTagsContainer.innerHTML = ""; return; }
+  tagsSection.style.display = "";
+  const tags = tagsData[type] || [];
+  sgTagsContainer.innerHTML = tags
+    .map((t) =>
+      `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral">` +
+      `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
+      `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
+      `${t.label}</button>`,
+    ).join("");
+}
+
+sgTypeSelect.addEventListener("change", renderSuggestTags);
+renderSuggestTags();
+
+sgTagsContainer.addEventListener("click", (e) => {
+  const btn = e.target.closest(".sg-tag");
+  if (!btn) return;
+  const states = ["neutral", "yes", "no"];
+  btn.dataset.state = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+});
+
+document.getElementById("suggest-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById("sg-submit");
+  const btnOriginal = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting…";
+
+  const name = document.getElementById("sg-name").value.trim();
+  const type = sgTypeSelect.value;
+  const address = document.getElementById("sg-address").value.trim();
+  const notes = document.getElementById("sg-notes").value.trim();
+  const gmaps = document.getElementById("sg-gmaps").value.trim();
+
+  const yesTags = [], noTags = [];
+  sgTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
+    const label = btn.textContent.trim();
+    if (btn.dataset.state === "yes") yesTags.push(label);
+    else if (btn.dataset.state === "no") noTags.push(label);
+  });
+  const tagsStr = [yesTags.length ? `Has: ${yesTags.join(", ")}` : "", noTags.length ? `Missing: ${noTags.join(", ")}` : ""].filter(Boolean).join(" | ");
+
+  try {
+    const token = await new Promise((resolve) =>
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "suggest_place" }).then(resolve)),
+    );
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, formType: "new", name, type, address, tags: tagsStr, gmaps, notes }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("suggest-form").reset();
+      renderSuggestTags();
+      document.getElementById("suggest-overlay").classList.add("hide");
+      showToast("Suggestion submitted.", "check", "Thanks!");
+    } else {
+      showToast("Submission failed", "error", data.error || "Please try again.");
+    }
+  } catch (err) {
+    console.error("Suggest form error:", err);
+    showToast("Submission failed", "error", "Check your connection.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+  }
+});
+
+const edTypeSelect = document.getElementById("ed-type");
+const edTagsContainer = document.getElementById("ed-tags");
+
+function renderEditTags(type, existingTags) {
+  const tags = tagsData[type] || [];
+  edTagsContainer.innerHTML = tags
+    .map((t) => {
+      const existingVal = existingTags?.[t.id];
+      const state = existingVal === true ? "yes" : existingVal === false ? "no" : "neutral";
+      return (
+        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}">` +
+        `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
+        `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
+        `${t.label}</button>`
+      );
+    }).join("");
+}
+
+function openEditOverlay(place) {
+  _editOriginalPlace = place;
+  document.getElementById("ed-place-id").value = place.id;
+  document.getElementById("ed-name").value = place.name || "";
+  document.getElementById("ed-address").value = place.address || "";
+  document.getElementById("ed-notes").value = place.notes || "";
+  edTypeSelect.value = place.type || "mosque";
+  renderEditTags(place.type, place.tags || {});
+  document.getElementById("edit-overlay").classList.remove("hide");
+}
+
+edTypeSelect.addEventListener("change", () => renderEditTags(edTypeSelect.value, {}));
+
+edTagsContainer.addEventListener("click", (e) => {
+  const btn = e.target.closest(".sg-tag");
+  if (!btn) return;
+  const states = ["neutral", "yes", "no"];
+  btn.dataset.state = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+});
+
+document.getElementById("edit-close").addEventListener("click", () => {
+  document.getElementById("edit-overlay").classList.add("hide");
+});
+document.getElementById("edit-overlay").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) document.getElementById("edit-overlay").classList.add("hide");
+});
+
+document.getElementById("edit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById("ed-submit");
+  const btnOriginal = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting…";
+
+  const placeId = document.getElementById("ed-place-id").value;
+  const name = document.getElementById("ed-name").value.trim();
+  const type = edTypeSelect.value;
+  const address = document.getElementById("ed-address").value.trim();
+  const notes = document.getElementById("ed-notes").value.trim();
+  const gmaps = document.getElementById("ed-gmaps").value.trim();
+
+  const yesTags = [], noTags = [];
+  edTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
+    const label = btn.textContent.trim();
+    if (btn.dataset.state === "yes") yesTags.push(label);
+    else if (btn.dataset.state === "no") noTags.push(label);
+  });
+  const tagsStr = [yesTags.length ? `Has: ${yesTags.join(", ")}` : "", noTags.length ? `Missing: ${noTags.join(", ")}` : ""].filter(Boolean).join(" | ");
+
+  const orig = _editOriginalPlace || {};
+  const diffs = [];
+  if (name && name !== orig.name) diffs.push(`Name: "${orig.name || ""}" → "${name}"`);
+  if (type !== orig.type) {
+    const oL = PLACE_CONFIG[orig.type]?.label || orig.type;
+    const nL = PLACE_CONFIG[type]?.label || type;
+    diffs.push(`Type: ${oL} → ${nL}`);
+  }
+  if (address && address !== orig.address) diffs.push(`Address: "${orig.address || ""}" → "${address}"`);
+  if (gmaps) diffs.push("Maps link: added/updated");
+  if (notes !== (orig.notes || "")) {
+    if (!orig.notes && notes) diffs.push(`Notes added: "${notes}"`);
+    else if (orig.notes && !notes) diffs.push("Notes removed");
+    else if (notes) diffs.push(`Notes: "${orig.notes}" → "${notes}"`);
+  }
+  if (type === orig.type) {
+    const tagDiffs = [];
+    (tagsData[type] || []).forEach((t) => {
+      const origVal = orig.tags?.[t.id];
+      const origState = origVal === true ? "yes" : origVal === false ? "no" : "neutral";
+      const newState = yesTags.includes(t.label) ? "yes" : noTags.includes(t.label) ? "no" : "neutral";
+      if (origState !== newState) {
+        const icon = { yes: "✓ has", no: "✗ missing", neutral: "? unset" };
+        tagDiffs.push(`${t.label}: ${icon[origState]} → ${icon[newState]}`);
+      }
+    });
+    if (tagDiffs.length) diffs.push(`Tags: ${tagDiffs.join(" | ")}`);
+  } else if (yesTags.length || noTags.length) {
+    diffs.push(`Tags (new type): ${tagsStr}`);
+  }
+  const changesSummary = diffs.length ? diffs.join("\n") : "(no changes detected)";
+
+  try {
+    const token = await new Promise((resolve) =>
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
+    );
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("edit-overlay").classList.add("hide");
+      showToast("Edit submitted.", "check", "Thanks!");
+    } else {
+      showToast("Submission failed", "error", data.error || "Please try again.");
+    }
+  } catch (err) {
+    console.error("Edit form error:", err);
+    showToast("Submission failed", "error", "Check your connection.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+  }
+});

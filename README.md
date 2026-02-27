@@ -100,10 +100,13 @@ Maps/
 └── README.md                        # This file
 
 **File Sizes:**
-- app.js: 2230 lines, ~75 KB
-- src/styles/styles.css: 71 KB
+- src/app.js: 21 lines (entry point only)
+- src/directions.js: ~1,130 lines (largest module)
+- src/places.js: ~630 lines
+- src/map-style.js: ~870 lines (static style data)
+- src/styles/styles.css: ~71 KB
 - transit-cache.json: ~3.1 MB (local only)
-- index.html: ~398 lines, ~15 KB
+- index.html: ~1,170 lines, ~45 KB
 ```
 
 ---
@@ -190,76 +193,52 @@ See [docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md) for detailed configuration in
 ```
 User Interaction
     ↓
-Application Event Handler (app.js)
-    ↓
-    ├─ Search → Nominatim API → Results → Display on Map
-    ├─ Place Selection → Filter/Display Place Details
-    ├─ Directions Request → Route API Selection
-    │   ├─ Transit → Digitransit (+ Transitous fallback) → Itineraries
-    │   ├─ Walk/Cycle → OSRM → Route with Steps
-    │   └─ Drive → OSRM → Route with Maneuvers
-    └─ Location Request → Geolocation API → Update Map Center
+    ├─ search.js      → Nominatim API → pin on map
+    ├─ places.js      → places.json / tags.json → markers & sheet UI
+    ├─ directions.js  → Digitransit (+ Transitous fallback) → transit itineraries
+    │                → OSRM (walk/cycle/drive) → route + turn-by-turn steps
+    ├─ prayer.js      → al-adhan API → prayer snack, nearest-mosque routing
+    └─ transit-stops.js → transit-cache.json / Overpass API → stop layer
 
-Map State
+Map State  (map instance shared via map-init.js)
     ↓
-GeoJSON Markers & Layers (synchronized with app state)
+GeoJSON sources & layers (each module manages its own)
     ↓
-MapLibre GL Rendering
+MapLibre GL rendering
     ↓
-User sees updated map with results/routes/markers
+User sees updated map
 ```
 
 ### Module Organization
 
-**app.js (2230 lines, 8 major sections):**
+The application is split into focused ES modules. `index.html` loads `src/app.js` as `type="module"`; all other modules are imported from there or from each other.
 
-1. **Initialization (Lines 1-150)**
-   - Configuration imports
-   - DOM element queries
-   - Map initialization with HSL styling
-   - Event listeners setup
+| Module | Purpose | Key Exports |
+|---|---|---|
+| `config.js` | API URLs, keys, geo constants | `DIGITRANSIT_URL`, `DT_API_KEY`, `HELSINKI`, … |
+| `map-style.js` | MapLibre GL vector tile style (static data) | `HSL_STYLE` |
+| `map-init.js` | Singleton MapLibre map instance | `map` |
+| `icons.js` | SVG helpers, place/transit configs, marker HTML | `PLACE_CONFIG`, `modeIcon()`, `makePlaceMarkerHTML()` |
+| `utils.js` | Shared utilities | `esc`, `showToast`, `initSheetDrag`, `haversineDistance`, `encryptToken`, … |
+| `map-controls.js` | Locate button, style switcher, 3D terrain, URL hash | `showCurrentLocation`, `setActiveTab`, `setMapStyle` |
+| `places.js` | Places data, map markers, popups, sheet UI, favourites, tag filters | `placesData`, `loadPlacesData`, `showPlacePopup`, `activeTagFilters` |
+| `search.js` | Nominatim search bar, search pin, double-click handler | `showSearchMarker`, `clearSearchMarker` |
+| `directions.js` | All routing — transit (Digitransit + Transitous fallback), OSRM direct, panel UI, step rendering, date/time pickers, mosque-nav helpers | `dir`, `openDirPanel`, `reverseGeocode`, `startPick`, `autoSetNearestMosque`, … |
+| `prayer.js` | Prayer times (al-adhan API), Ramadan detection, prayer snack UI, nearest-mosque from device location | `initPrayerTimes` |
+| `transit-stops.js` | Transit stop layer loaded from cache or Overpass API, click popups with live route chips | `loadTransitCache` |
+| `app.js` | Entry point — gesture listeners + `map.on("load")` bootstrap | *(none)* |
 
-2. **Map & Layers (Lines 151-400)**
-   - Place markers and GeoJSON sources
-   - Layer styling for different place types
-   - Interactive layer effects (hover/click)
-   - Popup management
+**Dependency graph (simplified):**
+```
+config.js ◄── map-init.js ◄── map-controls.js ◄── places.js
+               │                                    ▲
+               └── icons.js ◄── utils.js ◄── directions.js ◄── prayer.js
+                                              ▲
+                                         transit-stops.js
+                                         search.js
+```
 
-3. **Search Functionality (Lines 401-700)**
-   - Nominatim integration
-   - Autocomplete suggestion rendering
-   - Result highlighting
-   - Bounding box constraints
-
-4. **Place Management (Lines 701-950)**
-   - Place data loading from JSON
-   - Filtering by type and attributes
-   - Place card rendering
-   - Detail view population
-
-5. **Direction Planning (Lines 951-1400)**
-   - UI controls for direction inputs
-   - Time picker for scheduling
-   - Route mode selection (transit/walk/cycle/drive)
-   - API request composition
-
-6. **Transit Routing (Lines 1401-1800)**
-   - Digitransit GraphQL API integration
-   - Transitous fallback mechanism
-   - Itinerary parsing and rendering
-   - Leg detail expansion
-
-7. **Direct Routing (Lines 1801-2050)**
-   - OSRM API integration for walk/cycle/drive
-   - Step-by-step direction formatting
-   - Turn-by-turn maneuver display
-   - Route polyline rendering
-
-8. **Utilities & Helpers (Lines 2051-2230)**
-   - Geolocation handling
-   - Time formatting utilities
-   - Error handling and user notifications
-   - Performance optimization functions
+**Circular dependency note:** `places.js` imports from `directions.js` and `directions.js` imports from `places.js`. This is safe because all cross-module calls happen inside event-handler bodies (not at module evaluation time), so ES module live bindings resolve correctly.
 
 ---
 

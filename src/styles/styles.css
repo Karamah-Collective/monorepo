@@ -1,27 +1,8 @@
 @import './design-tokens.css';
 
-/* ═══════════════════════════════════════════════════════
-   Helsinki Map — Component Styles
-   ───────────────────────────────────────────────────────
-   All design tokens (colours, radii, shadows, type scale,
-   spacing, transitions) and reusable template classes
-   (.btn-*, .t-*, .t-field-*, .tag-chip) live in
-   design-tokens.css, loaded above via @import.
-
-   This file contains ONLY:
-   • Component layout & positioning
-   • Unique visual overrides that differ from a template
-   • Animation keyframes scoped to one component
-
-   Building a new feature?
-   1. Pick the matching .btn-* / .t-* template class
-   2. Add it to the element in index.html (or in JS)
-   3. Add rules here only for layout / unique overrides
-   ═══════════════════════════════════════════════════════ */
 #app { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: pan-x pan-y; }
 .hide { display: none !important; }
 
-/* ═══ MAP ═══ */
 #map { position: absolute; inset: 0; z-index: 0; }
 .maplibregl-ctrl-bottom-right { display: none !important; }
 .maplibregl-ctrl-bottom-left {
@@ -32,18 +13,12 @@
   top: calc(var(--safe-t) + 8px) !important;
   right: 12px !important;
 }
-/* zero MapLibre's internal right margin so scale edge aligns with pills */
+
 .maplibregl-ctrl-top-right .maplibregl-ctrl { margin-right: 0 !important; }
 .maplibregl-ctrl-attrib { font-size: 9px !important; background: rgba(255,255,255,.6) !important; border-radius: 4px; }
-/* hide reCAPTCHA floating badge — attribution kept in ToS-compliant form text */
+
 .grecaptcha-badge { visibility: hidden !important; }
 
-/* ═══════════════════════════════════════════════════════
-   SEARCH PILL (above zoom pill)
-   ═══════════════════════════════════════════════════════ */
-/* .pill-expand → background, border, border-radius, box-shadow, width, transition          */
-/* .pill-expand-icon → icon opacity transition + hidden-when-expanded                        */
-/* .pill-expand-body → content fade-in + height:0 + overflow:hidden when collapsed           */
 #search-card {
   position: absolute; z-index: 10;
   right: 12px;
@@ -54,7 +29,6 @@
   border-radius: var(--r-xl);
 }
 
-/* ── Expanded card: component-specific width only ── */
 #search-card:not(.collapsed) {
   width: min(92vw, 360px);
 }
@@ -80,7 +54,6 @@
 }
 .clear-btn:hover { color: var(--text-2); }
 
-/* Results (dropdown grows upward) */
 #search-drop {
   position: absolute; bottom: 100%; left: 0; right: 0;
   margin-bottom: 6px;
@@ -108,12 +81,9 @@
   flex-shrink: 0; color: var(--accent); background: var(--accent-soft);
 }
 .r-body { flex: 1; min-width: 0; }
-.r-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.r-addr { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ═══════════════════════════════════════════════════════
-   SCALE BAR (bottom-left) – Google Maps geometric style
-   ═══════════════════════════════════════════════════════ */
+.r-addr { margin-top: 2px; }
+
 .maplibregl-ctrl-scale {
   background: transparent !important;
   border: none !important;
@@ -129,24 +99,16 @@
   text-align: right !important;
 }
 
-/* ═══════════════════════════════════════════════════════
-   STYLE PICKER (above zoom pill)
-   ═══════════════════════════════════════════════════════ */
 #style-picker {
   position: absolute; z-index: 6;
   right: 12px; bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
 }
-/* Template: .btn-icon-card — .active state covered by template */
-/* No unique overrides needed for #style-picker-btn. */
 
-/* .pill-panel → position, top, right, background, border, border-radius,                   */
-/* box-shadow, display:flex, transform-origin, transform, transition, .hide animation        */
 #style-panel {
   padding: 8px;
   gap: 8px;
   white-space: nowrap;
 }
-
 
 .style-opt {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -169,9 +131,6 @@
   background: url('../../data/thumbs/satellite.jpg') center/cover no-repeat;
 }
 
-/* ═══════════════════════════════════════════════════════
-   ZOOM PILL (bottom-right, always visible)
-   ═══════════════════════════════════════════════════════ */
 #zoom-pill {
   position: absolute; z-index: 5;
   right: 12px; bottom: calc(var(--tab-h) + var(--safe-b) + 16px);
@@ -182,12 +141,9 @@
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
-/* Template: .btn-icon handles all visual styles for zoom-in/zoom-out buttons */
+
 .zp-div { width: 24px; height: 1px; background: var(--border); }
 
-/* ═══════════════════════════════════════════════════════
-   TAB BAR — bottom on mobile, right side on desktop
-   ═══════════════════════════════════════════════════════ */
 #tab-bar {
   position: absolute; z-index: 10;
   bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -201,13 +157,10 @@
   padding: 0 8px;
 }
 
-/* Template: .btn-tab (design-tokens.css) provides all base visual styles.
-   .tab is retained as the JS/CSS state selector class. */
 .tab { -webkit-tap-highlight-color: transparent; }
 .tab svg { width: 20px; height: 20px; }
 .tab:focus, .tab:focus-visible { outline: none; box-shadow: none; }
 
-/* ── Active Tab Indicators ── */
 .tab.tracking { color: var(--accent); animation: tabTrackPulse 2s ease-in-out infinite; }
 .tab.route-active { color: var(--accent); }
 .tab.active-tab { color: var(--accent); }
@@ -230,7 +183,6 @@
   pointer-events: none;
 }
 
-/* Desktop: vertical strip on right edge */
 @media (min-width: 769px) {
   #tab-bar {
     top: 50%; bottom: auto; left: auto; right: 16px;
@@ -260,9 +212,6 @@
   .maplibregl-ctrl-bottom-left { bottom: 12px !important; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   SHEETS (shared base — bottom sheets on all screens)
-   ═══════════════════════════════════════════════════════ */
 .sheet {
   position: absolute; z-index: 12;
   left: 0; right: 0; bottom: 0;
@@ -277,13 +226,11 @@
 .sheet.dragging { transition: none; will-change: transform, height; }
 .sheet.full { height: calc(100vh - 24px); border-radius: var(--r-xl); }
 
-/* Directions panel: content-height until results arrive */
 #dir-panel { height: auto; max-height: 55vh; }
 #dir-panel.results-shown,
 #dir-panel.route-focused { height: 55vh; max-height: none; }
 #dir-panel.full { height: calc(100vh - 24px); max-height: none; }
 
-/* Places panel: content-height, grows with list */
 #places-sheet { height: auto; max-height: 55vh; }
 #places-sheet.full { height: calc(100vh - 24px); max-height: none; }
 
@@ -298,14 +245,6 @@
 }
 .sheet-head h2 { flex: 1; font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
 
-/* .sheet-action-btn        → Template: .btn-roundel-accent (design-tokens.css) */
-/* .sheet-action-btn-subtle → Template: .btn-roundel-subtle (design-tokens.css) */
-
-/* .mosque-nav-btn → Template: .btn-success-pill (design-tokens.css) */
-/* .sheet-x → Template: .btn-roundel (design-tokens.css)
-   Class retained as a JS selector and for the snackbar-close variant override below. */
-
-/* Desktop: emerge from tab bar */
 @media (min-width: 769px) {
   .sheet {
     left: auto; right: 92px;
@@ -328,9 +267,6 @@
   .sheet-drag { display: none; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   SCRIM
-   ═══════════════════════════════════════════════════════ */
 #scrim {
   position: absolute; inset: 0; z-index: 11;
   background: rgba(9,9,11,.12);
@@ -339,12 +275,8 @@
 }
 #scrim.hide { opacity: 0; }
 
-/* ═══════════════════════════════════════════════════════
-   PLACES SHEET CONTENT
-   ═══════════════════════════════════════════════════════ */
 #places-ct { font-size: 13px; font-weight: 600; color: var(--text-3); }
 
-/* ── Type filter chips ── */
 #places-filters {
   padding: 12px 16px 6px;
   border-bottom: 1px solid var(--border-light);
@@ -385,19 +317,16 @@
 }
 .pf-chip.active .pf-label { color: var(--text); font-weight: 700; }
 
-/* Fallback for browsers without color-mix */
 @supports not (background: color-mix(in srgb, red 10%, transparent)) {
   .pf-icon { background: var(--surface-2); }
   .pf-chip.active .pf-icon { background: var(--pf-c); }
 }
 
-/* ── Tag filter ── */
 #tf-row {
   display: flex; justify-content: flex-start;
   padding: 4px 16px 2px;
 }
-/* #tf-toggle → Template: .btn-chip (design-tokens.css)
-   JS uses .open instead of .active — override below keeps the open state. */
+
 #tf-toggle.open { background: var(--accent); color: #fff; border-color: var(--accent); }
 #tf-toggle.open svg { stroke: #fff; }
 .tf-arrow { transition: transform .2s; }
@@ -419,32 +348,12 @@
 #tag-filter-chips.shut {
   max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; pointer-events: none;
 }
-/* .tf-chip → Implements .btn-chip pattern (design-tokens.css).
-   JS-generated — add class="btn-chip" in app.js if migrating. */
-.tf-chip {
-  display: inline-flex; align-items: center;
-  padding: 5px 11px; border: 1.5px solid var(--border);
-  background: var(--surface); border-radius: var(--r-pill);
-  font-family: inherit; font-size: 12px; font-weight: 600;
-  color: var(--text-2); cursor: pointer;
-  white-space: nowrap; transition: color .15s, border-color .15s;
-}
-.tf-chip:hover { color: var(--text); border-color: var(--surface-3); }
-.tf-chip.active {
-  background: var(--accent); color: #fff;
-  border-color: var(--accent);
-}
 
-/* ── Places list ── */
 #places-scroll {
-  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  flex: 1; min-height: 0;
+
   scroll-behavior: smooth;
 }
-#places-scroll::-webkit-scrollbar { width: 3px; }
-#places-scroll::-webkit-scrollbar-track { background: transparent; }
-#places-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 #places-list { list-style: none; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
 #places-list:empty { padding: 0; }
@@ -471,16 +380,14 @@
   color: #fff;
 }
 .pl-dot svg { width: 14px; height: 14px; }
+
 .pl-name {
   grid-area: name; align-self: end;
-  font-size: 15px; font-weight: 600; color: var(--text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.3; min-width: 0;
+  min-width: 0;
 }
+
 .pl-addr {
   grid-area: addr; align-self: start;
-  font-size: 12px; color: var(--text-3); line-height: 1.3;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-width: 0;
 }
 .pl-meta {
@@ -501,7 +408,6 @@
   color: var(--text-3); white-space: nowrap; line-height: 1.3;
 }
 
-/* Favourite star button on list item */
 .pl-fav-btn {
   grid-area: fav; align-self: center;
   background: none; border: none; padding: 6px 2px 6px 6px;
@@ -554,16 +460,7 @@
 .empty-sub {
   font-size: 12px; color: var(--text-3); font-weight: 500;
 }
-.empty-suggest {
-  background: none; border: none; padding: 0;
-  font-family: inherit; font-size: 12px; font-weight: 600;
-  color: var(--accent); cursor: pointer;
-  text-decoration: underline; text-decoration-color: transparent;
-  transition: text-decoration-color .15s;
-}
-.empty-suggest:hover { text-decoration-color: var(--accent); }
 
-/* ── Skeleton loading ── */
 .pl-skeleton {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 16px;
@@ -586,13 +483,10 @@
   to { opacity: .45; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   PLACE MARKERS
-   ═══════════════════════════════════════════════════════ */
 .place-mk-wrap {
   cursor: pointer;
 }
-/* Force markers to stay fully visible during MapLibre layer transitions */
+
 .maplibregl-marker { opacity: 1 !important; transition: none !important; }
 .place-mk {
   display: flex; align-items: center; justify-content: center;
@@ -610,7 +504,6 @@
 }
 .place-mk-tip { display: none; }
 
-/* Search result pin — same diamond shape, white body + accent border */
 .search-mk {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px;
@@ -626,9 +519,6 @@
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════════════════
-   PLACE DETAIL POPUP
-   ═══════════════════════════════════════════════════════ */
 .place-popup-wrap .maplibregl-popup-content {
   padding: 0 !important; overflow: hidden;
   border-radius: var(--r-md) !important;
@@ -661,7 +551,7 @@
   grid-area: sub; font-size: 11px; font-weight: 600;
   opacity: .75; line-height: 1.4;
 }
-/* Star in popup header */
+
 .pp-fav-btn {
   grid-area: fav; align-self: center;
   background: none; border: none; padding: 4px;
@@ -683,7 +573,6 @@
 }
 .pp-addr svg { flex-shrink: 0; color: var(--text-3); }
 
-/* ── Tag chips ── */
 .pp-tags {
   display: flex; flex-wrap: wrap; gap: 4px;
   margin-bottom: 10px;
@@ -703,62 +592,36 @@
   border-top: 1px solid var(--border-light);
 }
 
-/* ── Actions ── */
 .pp-actions {
   display: flex; gap: 6px;
   padding-top: 10px; border-top: 1px solid var(--border-light);
 }
+
 .pp-dir-btn, .pp-share-btn, .pp-edit-btn {
+
   flex: 1;
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 34px; padding: 0;
-  border: none; border-radius: var(--r-sm);
-  cursor: pointer;
-  transition: filter .15s, color .15s;
+  height: 34px;
+  padding: 0;
 }
-.pp-dir-btn {
-  background: var(--accent); color: #fff;
-}
-.pp-dir-btn:hover { filter: brightness(1.1); }
 
-.pp-share-btn {
-  background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
-  transition: border-color .15s, color .15s;
-}
-.pp-share-btn:hover { color: var(--text); border-color: var(--surface-3); }
-
-.pp-edit-btn {
-  background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2);
-  transition: border-color .15s, color .15s;
-}
-.pp-edit-btn:hover { color: var(--text); border-color: var(--surface-3); }
-
-/* pp-fav-btn lives in .pp-head — styles defined there */
-
-/* ── Toast / snackbar ────────────────────────────────────────── */
-/* Card chrome from .snack (§8 design-tokens.css). Only position, sizing & animation here. */
 .share-toast {
   position: fixed;
   bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
   left: 50%; transform: translateX(-50%) translateY(12px);
-  padding-right: 14px; /* extra right spacing — no close button */
+  padding-right: 14px;
   pointer-events: none; opacity: 0;
   transition: opacity .2s ease, transform .2s ease;
   z-index: 9999;
   width: fit-content;
   max-width: min(calc(100vw - 24px), 380px);
 }
-/* Compact toasts never wrap */
+
 .share-toast .snack-label,
 .share-toast .snack-sub { white-space: nowrap; }
 .share-toast.share-toast-show {
   opacity: 1; transform: translateX(-50%) translateY(0);
 }
 
-/* ═══════════════════════════════════════════════════════
-   GEO NOTICE (non-Finland visitors)
-   ═══════════════════════════════════════════════════════ */
-/* Card chrome from .snack (§8 design-tokens.css). Only position, sizing & animation here. */
 #geo-notice {
   position: fixed;
   bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
@@ -775,7 +638,7 @@
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
-/* close button — extends .btn-roundel visuals, scoped here as it is unique to geo notice */
+
 .geo-notice-close {
   flex-shrink: 0;
   width: var(--btn-roundel-size); height: var(--btn-roundel-size);
@@ -786,9 +649,6 @@
 }
 .geo-notice-close:hover { background: var(--surface-3); color: var(--text-2); }
 
-/* ═══════════════════════════════════════════════════════
-   SUGGEST PLACE OVERLAY
-   ═══════════════════════════════════════════════════════ */
 #suggest-overlay {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
@@ -820,47 +680,18 @@
 #suggest-form {
   padding: 16px 16px 20px;
   display: flex; flex-direction: column; gap: 14px;
-  flex: 1; overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  flex: 1;
+
 }
-#suggest-form::-webkit-scrollbar { width: 3px; }
-#suggest-form::-webkit-scrollbar-track { background: transparent; }
-#suggest-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .sg-label {
   display: flex; flex-direction: column; gap: 5px;
   font-size: 13px; font-weight: 700; color: var(--text-2);
 }
 .sg-req { color: var(--danger); margin-left: 1px; }
 
-/* ── Suggest tag chips (tri-state: neutral → yes → no) ── */
 .sg-tags {
   display: flex; flex-wrap: wrap; gap: 6px;
 }
-/* .sg-tag → Implements .tag-chip pattern (design-tokens.css).
-   JS-generated — add class="tag-chip" in app.js if migrating.
-   Note: icon sub-classes differ (.sg-tag-icon.sg-yes vs .tag-icon.tag-yes) */
-.sg-tag {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 12px;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--r-pill);
-  font-family: inherit; font-size: 12px; font-weight: 600;
-  color: var(--text-2); cursor: pointer;
-  white-space: nowrap;
-  transition: background-color .15s, border-color .15s, color .15s;
-  -webkit-user-select: none; user-select: none;
-}
-.sg-tag:hover { border-color: var(--surface-3); }
-.sg-tag .sg-tag-icon { display: none; width: 12px; height: 12px; flex-shrink: 0; }
-.sg-tag[data-state="yes"] {
-  background: var(--success-soft); border-color: var(--success); color: var(--success);
-}
-.sg-tag[data-state="yes"] .sg-tag-icon.sg-yes { display: inline-block; }
-.sg-tag[data-state="no"] {
-  background: var(--danger-soft); border-color: var(--danger); color: var(--danger);
-}
-.sg-tag[data-state="no"] .sg-tag-icon.sg-no { display: inline-block; }
 
 .sg-hint {
   font-size: 11px; font-weight: 500; color: var(--text-3);
@@ -888,12 +719,8 @@
   padding-right: 32px;
 }
 
-/* #sg-submit → Template: .btn-primary (design-tokens.css) */
 #sg-submit { display: flex; height: 44px; flex-shrink: 0; }
 
-/* ═══════════════════════════════════════════════════════
-   SUGGEST EDIT OVERLAY
-   ═══════════════════════════════════════════════════════ */
 #edit-overlay {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
@@ -916,19 +743,12 @@
 #edit-form {
   padding: 16px 16px 20px;
   display: flex; flex-direction: column; gap: 14px;
-  flex: 1; overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-}
-#edit-form::-webkit-scrollbar { width: 3px; }
-#edit-form::-webkit-scrollbar-track { background: transparent; }
-#edit-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  flex: 1;
 
-/* #ed-submit → Template: .btn-primary (design-tokens.css) */
+}
+
 #ed-submit { display: flex; height: 44px; flex-shrink: 0; }
 
-/* ═══════════════════════════════════════════════════════
-   DIRECTIONS PANEL CONTENT
-   ═══════════════════════════════════════════════════════ */
 #dir-inputs {
   padding: 12px 16px 0; display: flex; align-items: center; gap: 8px;
   flex-shrink: 0;
@@ -973,7 +793,6 @@
 }
 #dir-swap:hover { color: var(--text); }
 
-/* Autocomplete suggestions */
 .dir-suggest {
   position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
   list-style: none; background: var(--surface); border: 1px solid var(--border);
@@ -997,21 +816,17 @@
 }
 .ds-icon svg { width: 14px; height: 14px; }
 .ds-text { flex: 1; min-width: 0; }
-.ds-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-addr { font-size: 12px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ds-addr { margin-top: 1px; }
 .ds-none { padding: 16px; text-align: center; color: var(--text-3); font-size: 14px; cursor: default; }
 
-/* Go button — Template: .btn-primary (design-tokens.css) */
 #dir-go {
-  display: flex; /* stretch to full width inside column flex parent */
+  display: flex;
   margin: 0 16px 14px;
   height: 46px; min-height: 46px;
   flex-shrink: 0;
 }
-/* hover + disabled handled by .btn-primary */
 
-/* ── Transport mode selector ── */
-/* Time bar hidden for non-transit modes */
 #dir-panel:not([data-travel-mode="transit"]) #dir-time-bar { display: none !important; }
 
 #dir-mode-bar {
@@ -1026,10 +841,9 @@
   padding: 3px;
   gap: 2px;
 }
-/* .mode-opt → Template: .btn-segment (design-tokens.css) */
+
 .mode-opt svg { flex-shrink: 0; }
 
-/* ── Direct route result card (drive / cycle / walk) ── */
 .direct-card { cursor: default; }
 .direct-header {
   display: flex; align-items: center; gap: 12px;
@@ -1061,7 +875,6 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48px;
 }
 
-/* ── Turn-by-turn step list ── */
 .direct-steps {
   display: flex; flex-direction: column;
 }
@@ -1088,7 +901,6 @@
 .step-inst { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; }
 .step-meta { font-size: 12px; font-weight: 500; color: var(--text-3); }
 
-/* ── Time Picker ── */
 #dir-time-bar {
   display: flex; flex-direction: column; gap: 6px;
   padding: 0 16px 12px;
@@ -1102,8 +914,7 @@
   background: var(--surface-2); border-radius: var(--r-sm);
   padding: 3px; gap: 2px;
 }
-/* .time-opt → Template: .btn-segment (design-tokens.css) */
-/* Override: active colour is accent (not --text) for time selectors */
+
 .time-opt svg { flex-shrink: 0; }
 .time-opt.active {
   background: var(--surface); color: var(--accent);
@@ -1158,7 +969,6 @@
   cursor: pointer;
 }
 
-/* ── Custom Picker Overlays ── */
 .picker-overlay {
   position: fixed; z-index: 999;
   background: var(--surface); border: 1px solid var(--border);
@@ -1178,7 +988,6 @@
   }
 }
 
-/* Calendar */
 .cal-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
@@ -1186,23 +995,13 @@
 .cal-head span {
   font-size: 14px; font-weight: 600; color: var(--text);
 }
-.cal-nav {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: none; border-radius: 50%;
-  cursor: pointer; color: var(--text-3);
-  transition: color .15s;
-}
-.cal-nav:hover { color: var(--text-2); }
 
 .cal-weekdays {
   display: grid; grid-template-columns: repeat(7, 1fr);
   text-align: center; margin-bottom: 4px;
 }
-.cal-weekdays span {
-  font-size: 11px; font-weight: 700; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .04em;
-  padding: 4px 0;
-}
+
+.cal-weekdays span { padding: 4px 0; }
 .cal-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
 }
@@ -1221,15 +1020,11 @@
 .cal-day.other-month { color: var(--text-3); opacity: .5; }
 .cal-day.other-month:hover { opacity: .7; background: var(--surface-2); }
 
-/* Time picker */
 .tp-wheels {
   display: flex; align-items: flex-start; gap: 8px;
 }
 .tp-wheel-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.tp-wheel-label {
-  font-size: 11px; font-weight: 700; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .04em;
-}
+
 .tp-colon {
   font-size: 18px; font-weight: 700; color: var(--text-3);
   margin-top: 26px; flex-shrink: 0;
@@ -1253,15 +1048,10 @@
 .tp-cell.selected { background: var(--accent); color: #fff; }
 .tp-cell.selected:hover { opacity: .88; }
 
-/* Results area */
 #dir-results {
-  flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  padding-bottom: 16px;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  flex: 1; padding-bottom: 16px;
+
 }
-#dir-results::-webkit-scrollbar { width: 3px; }
-#dir-results::-webkit-scrollbar-track { background: transparent; }
-#dir-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 #dir-empty {
   display: none;
 }
@@ -1282,7 +1072,6 @@
 }
 #dir-error::before { content: '⚠ '; }
 
-/* ─── Itinerary Cards ─── */
 .fallback-notice {
   margin: 10px 16px 2px;
   padding: 9px 12px;
@@ -1334,11 +1123,9 @@
 .leg-badge.funicular { background: #71717a; }
 .leg-arrow { color: var(--text-3); font-size: 11px; font-weight: 700; }
 
-/* Leg detail (expanded) */
 .itin-legs { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-light); }
 .itin-card.active .itin-legs { display: block; }
 
-/* Expand / focus button on itin header */
 .itin-expand, .direct-expand {
   width: 30px; height: 30px; flex-shrink: 0;
   display: none; align-items: center; justify-content: center;
@@ -1351,7 +1138,6 @@
 .itin-card.active .itin-expand, .direct-card .direct-expand { display: flex; }
 .itin-card.focused .itin-expand, .direct-card.focused .direct-expand { display: none; }
 
-/* ── Compact search summary bar (mobile, shown when results visible) ── */
 #dir-summary {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px;
@@ -1369,15 +1155,13 @@
   max-width: 120px;
 }
 .dir-sum-arrow { flex-shrink: 0; color: var(--text-3); }
-/* #dir-sum-edit → Template: .btn-primary (design-tokens.css) */
-/* Override: compact 13px font (smaller than standard 15px primary) */
+
 #dir-sum-edit {
   flex-shrink: 0;
   padding: 7px 14px;
   font-size: var(--txt-base);
 }
 
-/* ── Mobile: collapse search when results shown ── */
 @media (max-width: 768px) {
   #dir-panel.results-shown #dir-inputs,
   #dir-panel.results-shown #dir-time-bar,
@@ -1388,7 +1172,7 @@
   #dir-panel.results-shown #dir-summary {
     display: flex !important;
   }
-  /* When editing, hide summary and show inputs */
+
   #dir-panel.results-shown.search-editing #dir-inputs,
   #dir-panel.results-shown.search-editing #dir-time-bar,
   #dir-panel.results-shown.search-editing #dir-mode-bar,
@@ -1399,12 +1183,11 @@
     display: none !important;
   }
 }
-/* Desktop: never show summary, always show full inputs */
+
 @media (min-width: 769px) {
   #dir-summary { display: none !important; }
 }
 
-/* ── Focused route view ── */
 #dir-panel.route-focused #dir-inputs,
 #dir-panel.route-focused #dir-time-bar,
 #dir-panel.route-focused #dir-mode-bar,
@@ -1437,14 +1220,8 @@
   max-width: 100px;
 }
 .focused-od-arrow { flex-shrink: 0; color: var(--text-3); }
-#dir-focused-back {
-  width: 30px; height: 30px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2); border: none; border-radius: 50%;
-  cursor: pointer; color: var(--text-3);
-  transition: color .15s;
-}
-#dir-focused-back:hover { color: var(--text-2); }
+
+#dir-focused-back { flex-shrink: 0; }
 
 .focused-info-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -1475,7 +1252,6 @@
 }
 .itin-card.focused .itin-expand { display: none; }
 
-/* Focused leg rows get more breathing room */
 .itin-card.focused .leg-row { padding: 8px 0; }
 .itin-card.focused .leg-icon { width: 26px; height: 26px; }
 .itin-card.focused .leg-icon svg { width: 14px; height: 14px; }
@@ -1507,7 +1283,6 @@
 .leg-stop-time { font-size: 12px; color: var(--text-3); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 38px; }
 .leg-dist { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
-/* ── Expandable transit legs ── */
 .leg-expandable { cursor: pointer; border-radius: var(--r-xs); margin: -2px -6px; padding: 8px 6px; transition: background-color .15s; }
 .leg-expandable:hover { background: var(--surface-2); }
 .leg-expandable.leg-open { background: var(--accent-soft); }
@@ -1522,16 +1297,12 @@
 .leg-inter-name { font-size: 12px; color: var(--text-2); }
 .leg-inter-name small { color: var(--text-3); }
 
-/* ── Zone badges ── */
 .itin-zones {
   display: flex; align-items: center; gap: 5px;
   margin-top: 6px; padding-top: 6px;
   border-top: 1px solid var(--border-light);
 }
-.itin-zones-label {
-  font-size: 11px; font-weight: 700; color: var(--text-3);
-  text-transform: uppercase; letter-spacing: .04em;
-}
+
 .zone-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: var(--r-xs);
@@ -1545,9 +1316,6 @@
 .zone-badge.zone-default { background: #8d99a5; }
 .zone-badge.zone-inline { width: auto; height: 16px; padding: 0 5px; border-radius: 4px; font-size: 10px; vertical-align: middle; margin-left: 2px; }
 
-/* ═══════════════════════════════════════════════════════
-   ROUTE SNACKBAR (pill style)
-   ═══════════════════════════════════════════════════════ */
 #route-snackbar {
   position: absolute; z-index: 10;
   bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
@@ -1560,7 +1328,7 @@
   padding: 8px 8px 8px 12px;
   cursor: pointer;
   animation: snackUp .3s ease-out;
-  /* Stay narrow enough to never overlap side pills */
+
   max-width: min(calc(100vw - 128px), 360px);
   min-width: 0;
 }
@@ -1596,46 +1364,36 @@
   margin-top: 1px;
 }
 #snackbar-sub:empty { display: none; }
-/* Close button on blue background */
+
 #snackbar-close.sheet-x {
   background: rgba(255,255,255,.18);
   color: #fff;
 }
 #snackbar-close.sheet-x:hover { background: rgba(255,255,255,.28); color: #fff; }
 
-/* ═══════════════════════════════════════════════════════
-   PRAYER TIMES CARD
-   ═══════════════════════════════════════════════════════ */
-/* .pill-expand → background, border, border-radius, box-shadow, width, transition          */
-/* .pill-expand-icon → opacity transition + hidden-when-expanded (default)                   */
-/* .pill-expand-body → content fade-in + height:0 + overflow:hidden when collapsed           */
 #prayer-snack {
   position: absolute; z-index: 9;
   top: calc(var(--safe-t) + 14px);
   left: 16px;
 }
 
-/* ── Collapsed pill ── */
-#prayer-pill:active { color: var(--text-2); } /* override: stays muted, not accent */
+#prayer-pill:active { color: var(--text-2); }
 #prayer-snack:not(.collapsed) #prayer-pill {
-  /* override .pill-expand default: keep icon visible + anchor top-left */
+
   position: absolute; top: 0; left: 0;
   opacity: 1; pointer-events: auto; z-index: 1;
 }
 
-/* prayer-specific: content must not wrap */
 #prayer-expanded { white-space: nowrap; }
 
-/* ── Expanded card: component-specific width only ── */
 #prayer-snack:not(.collapsed) {
   width: min(80vw, 210px);
 }
 
-/* ── Header ── */
 #prayer-header {
   display: flex; align-items: center; gap: 8px;
   padding: 0 6px 0 42px;
-  height: var(--btn-icon-size); /* match collapsed pill height — no height shift on expand */
+  height: var(--btn-icon-size);
 }
 .prayer-snack-clickable {
   cursor: pointer;
@@ -1650,7 +1408,6 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Header action buttons */
 .prayer-hdr-btn {
   width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -1668,7 +1425,6 @@
   transform: rotate(180deg);
 }
 
-/* ── Ramadan card (floats below dropdown, same animation cadence) ── */
 #ramadan-card {
   position: absolute;
   top: calc(100% + 6px); left: 0; width: 100%;
@@ -1680,7 +1436,7 @@
   grid-template-rows: 0fr;
   opacity: 0;
   pointer-events: none;
-  /* ← COLLAPSE: content fades first, then grid springs shut (same curve as open) */
+
   transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) .22s,
               opacity             .22s ease                     0s;
 }
@@ -1688,19 +1444,19 @@
   grid-template-rows: 1fr;
   opacity: 1;
   pointer-events: auto;
-  /* ← EXPAND: grid springs open first, content fades in behind */
+
   transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) 0s,
               opacity             .3s  ease                     .1s;
 }
 #ramadan-inner {
   overflow: hidden;
   transform: translateY(-8px);
-  /* ← COLLAPSE: slides up in sync with opacity */
+
   transition: transform .22s ease 0s;
 }
 #prayer-snack.expanded.ramadan-active #ramadan-inner {
   transform: translateY(0);
-  /* ← EXPAND: slides into place as grid opens */
+
   transition: transform .35s cubic-bezier(.32,.72,0,1) .06s;
 }
 .ramadan-header {
@@ -1713,7 +1469,7 @@
   font-size: 12px; font-weight: 700;
   color: var(--gold); letter-spacing: .02em;
 }
-/* Mirror .prayer-time-item exactly */
+
 .ramadan-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 12px;
@@ -1726,21 +1482,20 @@
 @media (hover: hover) {
   .ramadan-row:hover { background: var(--surface-2); }
 }
-/* Mirror .prayer-time-name */
+
 .ramadan-label { font-size: 13px; font-weight: 500; color: var(--text); }
-/* Mirror .prayer-time-value but keep gold accent */
+
 .ramadan-time {
   font-size: 13px; font-weight: 600; color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Prayer times list ── */
 #prayer-times-list {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  border-top: 1px solid transparent; /* always in DOM — transition colour, no jump */
-  /* ← COLLAPSE: content fades first, then grid springs shut (same curve as open) */
+  border-top: 1px solid transparent;
+
   transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) .22s,
               opacity             .22s ease                     0s,
               border-color        .1s  ease                     .55s;
@@ -1749,21 +1504,21 @@
   grid-template-rows: 1fr;
   opacity: 1;
   border-color: var(--border);
-  /* ← EXPAND: grid springs open first, content fades in behind */
+
   transition: grid-template-rows .4s cubic-bezier(.32,.72,0,1) 0s,
               opacity             .3s  ease                     .1s,
               border-color        .1s  ease                     0s;
 }
 #prayer-times-inner {
   overflow: hidden;
-  border-radius: 0 0 var(--r-xl) var(--r-xl); /* clips ::before bar at rounded bottom corners */
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
   transform: translateY(-10px);
-  /* ← COLLAPSE: slides up in sync with opacity */
+
   transition: transform .22s ease 0s;
 }
 #prayer-snack.expanded #prayer-times-inner {
   transform: translateY(0);
-  /* ← EXPAND: slides into place as grid opens */
+
   transition: transform .35s cubic-bezier(.32,.72,0,1) .06s;
 }
 .prayer-time-item {
@@ -1782,7 +1537,6 @@
   .prayer-time-item:hover { background: var(--surface-2); }
 }
 
-/* Current prayer — gold accent */
 .prayer-time-item.current {
   background: var(--gold-soft);
 }
@@ -1794,7 +1548,6 @@
 }
 .prayer-time-item.current:hover { background: #f0eadb; }
 
-/* Next prayer — accent */
 .prayer-time-item.next {
   background: var(--accent-soft);
 }
@@ -1806,7 +1559,6 @@
 }
 .prayer-time-item.next:hover { background: #dae8f3; }
 
-/* Prayer name + label */
 .prayer-time-name {
   font-size: 13px; font-weight: 500; color: var(--text);
   display: flex; align-items: center; gap: 8px;
@@ -1814,15 +1566,11 @@
 .prayer-time-item.current .prayer-time-name { font-weight: 600; color: var(--gold); }
 .prayer-time-item.next .prayer-time-name    { font-weight: 600; color: var(--accent); }
 
-
-
-/* Prayer time value */
 .prayer-time-value {
   font-size: 13px; font-weight: 600; color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Origin-needed flash (mosque icon, no origin) ── */
 @keyframes origin-pulse {
   0%   { box-shadow: 0 0 0 0   rgba(214,69,69,.5); }
   60%  { box-shadow: 0 0 0 6px rgba(214,69,69,.08); }
@@ -1834,15 +1582,10 @@
   animation: origin-pulse .65s ease-out 2 !important;
 }
 
-/* .dir-clear-btn → Template: .btn-danger-pill (design-tokens.css) */
-
 @media (min-width: 769px) {
   #route-snackbar { bottom: 24px; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   MARKERS
-   ═══════════════════════════════════════════════════════ */
 .dir-origin-marker {
   width: 16px; height: 16px; border-radius: 50%;
   background: var(--success); border: 3px solid #fff;
@@ -1884,18 +1627,12 @@
   100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
 }
 
-/* .pin-marker, .pin-outer, .pin-arrow removed — search pin now uses .place-mk teardrop design */
-
-/* ═══════════════════════════════════════════════════════
-   POPUPS
-   ═══════════════════════════════════════════════════════ */
 .maplibregl-popup-content {
   border-radius: var(--r-lg) !important; padding: 16px 18px !important;
   box-shadow: var(--shadow-lg) !important;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
 }
 
-/* Pin action popup */
 .pin-action-popup .maplibregl-popup-content {
   padding: 10px 10px !important;
   border-radius: var(--r-md) !important;
@@ -1934,7 +1671,6 @@
 }
 .pop-del:hover { filter: brightness(1.12); }
 
-/* ── Stop popup ── */
 .stop-popup-wrap .maplibregl-popup-content {
   padding: 0 !important; overflow: hidden;
   border-radius: var(--r-md) !important;
@@ -1948,7 +1684,6 @@
 
 .sp { display: flex; flex-direction: column; }
 
-/* Head ── colored band with icon, name, sub */
 .sp-head {
   display: grid; grid-template: "icon title" auto "icon sub" auto / auto 1fr;
   gap: 0 8px; padding: 10px 12px;
@@ -1977,18 +1712,14 @@
   letter-spacing: .3px; opacity: 1; line-height: 1;
 }
 
-/* Route chips area */
 .sp-routes {
   display: flex; flex-wrap: wrap; gap: 4px;
   padding: 8px 12px;
-  max-height: 150px; overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  max-height: 150px;
+
 }
-.sp-routes::-webkit-scrollbar { width: 3px; }
-.sp-routes::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .sp-routes:empty { display: none; }
 
-/* Route chip ── outlined style with color accent */
 .sp-chip {
   display: inline-flex; align-items: center; gap: 3px;
   height: 24px; padding: 0 8px; border-radius: var(--r-xs);
@@ -2004,14 +1735,12 @@
   max-width: 80px; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Mode separator */
 .sp-sep {
   width: 3px; height: 3px; border-radius: 50%;
   background: var(--border); align-self: center;
   margin: 0 1px;
 }
 
-/* Tooltip */
 .sp-tip {
   position: fixed; z-index: 9999;
   background: var(--text); color: #fff;
@@ -2025,7 +1754,6 @@
 }
 .sp-tip.visible { opacity: 1; }
 
-/* Loading & empty */
 .sp-loading {
   display: flex; align-items: center; gap: 6px;
   font-size: 11px; color: var(--text-3); padding: 6px 10px;
@@ -2040,22 +1768,17 @@
   display: block;
 }
 
-/* ═══════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  /* ── Search ── */
+
   #search-card { right: 12px; bottom: 172px; }
   #search-card:not(.collapsed) { width: min(94vw, 360px); }
   #search-box { height: 48px; padding: 0 14px; }
-  #search-input { font-size: 16px; } /* ≥16px prevents iOS zoom */
+  #search-input { font-size: 16px; }
   #search-drop { max-height: 44vh; }
 
-  /* ── Controls ── */
   #zoom-pill { right: 12px; bottom: 80px; }
   #style-picker { right: 12px; bottom: 224px; }
 
-  /* ── Tab bar with safe area ── */
   #tab-bar {
     height: 56px;
     bottom: calc(12px + var(--safe-b));
@@ -2063,19 +1786,16 @@
   .tab { font-size: 11px; }
   .tab svg { width: 20px; height: 20px; }
 
-  /* ── Touch target minimums (44px recommended by Apple/Google) ── */
   .sheet-x { width: 36px; height: 36px; }
   .clear-btn { width: 36px; height: 36px; }
   .dir-field-btn { width: 40px; height: 40px; }
   .cal-nav { width: 38px; height: 38px; }
   #dir-swap { width: 40px; height: 40px; }
 
-  /* ── Inputs: 16px prevents iOS auto-zoom ── */
   .dir-field input { font-size: 16px; }
   .sg-label input, .sg-label select, .sg-label textarea { font-size: 16px; }
   #dir-date, #dir-time { font-size: 16px; }
 
-  /* ── Directions panel ── */
   .itin-card { margin: 6px 12px; padding: 14px; }
   #dir-inputs { padding: 12px 12px 0; gap: 6px; }
   #dir-mode-bar { padding: 10px 12px 10px; }
@@ -2083,31 +1803,25 @@
   #dir-go { margin: 0 12px 12px; height: 48px; font-size: 16px; }
   .dir-suggest { max-height: 180px; }
 
-  /* ── Sheet drag handle ── visual indicator only on mobile ── */
   .sheet-drag { padding: 6px 0 0; }
   .sheet-drag span { width: 32px; height: 3px; }
 
-  /* ── Sheet header ── compact on mobile ── */
   .sheet-head { padding: 6px 12px 10px; gap: 10px; }
   .sheet-action-btn { width: 28px; height: 28px; }
   .sheet-action-btn svg { width: 14px; height: 14px; }
   .sheet-x { width: 30px; height: 30px; }
 
-  /* ── Filter chips ── */
   #tf-toggle { padding: 7px 14px; font-size: 13px; }
   .tf-chip { padding: 7px 14px; font-size: 13px; }
 
-  /* ── Places list touch targets ── */
   #places-list li,
   #places-empty { padding: 12px; }
   #places-empty { margin: 8px 12px 12px; }
 
-  /* ── Snackbar safe area ── */
   #route-snackbar { bottom: calc(var(--tab-h) + var(--safe-b) + 20px); }
 
-  /* ── Suggest / Edit overlays: bottom sheet on phone ── */
   #suggest-overlay, #edit-overlay { padding: 0; align-items: flex-end; }
-  /* Keep overlays rendered so we can animate — display:none can't transition */
+
   #suggest-overlay.hide, #edit-overlay.hide { display: flex !important; opacity: 0; pointer-events: none; }
   #suggest-overlay, #edit-overlay { transition: opacity .25s ease; }
   #suggest-card, #edit-card {
@@ -2119,23 +1833,19 @@
   }
   #suggest-overlay.hide #suggest-card,
   #edit-overlay.hide #edit-card { transform: translateY(100%); }
-  #suggest-card { padding-bottom: 0; } /* safe-b handled by form padding */
+  #suggest-card { padding-bottom: 0; }
   #suggest-form { padding-bottom: calc(20px + var(--safe-b)); -webkit-overflow-scrolling: touch; }
   #edit-form { padding-bottom: calc(20px + var(--safe-b)); -webkit-overflow-scrolling: touch; }
   .sg-label input, .sg-label select, .sg-label textarea { font-size: 16px; }
 
-  /* ── Sheet safe area for bottom padding ── */
   .sheet { padding-bottom: var(--safe-b); }
 
-  /* ── Place popup mobile sizing ── */
   .place-popup-wrap .maplibregl-popup-content {
     max-width: min(300px, 90vw);
   }
 
-  /* ── Pin action popup: horizontal buttons still ── */
   .pin-act-btn { padding: 9px 16px; font-size: 13px; }
 
-  /* ── Remove sticky hover on touch devices ── */
   .tab:hover { color: var(--text-3); }
   .tab:active { color: var(--accent); }
   #zoom-pill button:hover { color: var(--text-3); }

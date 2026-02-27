@@ -1,479 +1,1169 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#1A73B8" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>Halal Finder Helsinki</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
-  <link rel="stylesheet" href="src/styles/styles.css" />
-</head>
-<body>
-<div id="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#1A73B8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Halal Finder Helsinki</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+    />
+    <link rel="stylesheet" href="src/styles/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
 
-  <div id="map"></div>
-
-  <div id="search-card" class="pill-expand collapsed">
-    <button id="search-pill" class="btn-icon pill-expand-icon" aria-label="Search">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-    </button>
-    <div id="search-expanded" class="pill-expand-body">
-      <div id="search-box">
-        <svg class="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input id="search-input" type="text" placeholder="Search Helsinki…" autocomplete="off" spellcheck="false" />
-        <button id="clear-input" class="clear-btn hide" aria-label="Clear">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <div id="search-card" class="pill-expand collapsed">
+        <button
+          id="search-pill"
+          class="btn-icon pill-expand-icon"
+          aria-label="Search"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
         </button>
-      </div>
-      <div id="search-drop" class="hide">
-        <ul id="results-list"></ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── Style Picker (above zoom pill) ─── -->
-  <div id="style-picker">
-    <button id="style-picker-btn" class="btn-icon-card" aria-label="Map style">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3L2 9l10 6 10-6-10-6z"/>
-        <path d="M2 17l10 6 10-6"/>
-        <path d="M2 13l10 6 10-6"/>
-      </svg>
-    </button>
-    <div id="style-panel" class="pill-panel hide">
-      <button class="style-opt active" data-style="default">
-        <div class="style-thumb thumb-default"></div>
-        <span>Default</span>
-      </button>
-      <button class="style-opt" data-style="satellite">
-        <div class="style-thumb thumb-satellite"></div>
-        <span>Satellite</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- ─── Zoom Pill (bottom-right, always visible) ─── -->
-  <div id="zoom-pill">
-    <button id="zoomin-btn" class="btn-icon" aria-label="Zoom in">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-    <div class="zp-div"></div>
-    <button id="zoomout-btn" class="btn-icon" aria-label="Zoom out">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
-    </button>
-  </div>
-
-  <!-- ─── Tab Bar + Zoom ─── -->
-  <nav id="tab-bar">
-    <button id="home-btn" class="tab btn-tab" aria-label="Home">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8"/><path d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-      </svg>
-      <span>Home</span>
-    </button>
-    <button id="dir-btn" class="tab btn-tab" aria-label="Directions">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 18l4-4 4 4 4-8 4 4"/>
-        <circle cx="7" cy="14" r="1.5" fill="currentColor" stroke="none"/>
-        <circle cx="19" cy="14" r="1.5" fill="currentColor" stroke="none"/>
-      </svg>
-      <span>Routes</span>
-    </button>
-    <button id="places-btn" class="tab btn-tab" aria-label="Places">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-        <circle cx="12" cy="9" r="2.5"/>
-      </svg>
-      <span>Places</span>
-      <span id="places-badge" class="badge hide">0</span>
-    </button>
-    <button id="locate-btn" class="tab btn-tab" aria-label="My location">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-      </svg>
-      <span>Locate</span>
-    </button>
-  </nav>
-
-  <!-- ─── Directions Sheet (bottom) ─── -->
-  <div id="dir-panel" class="sheet shut">
-    <div id="dir-drag" class="sheet-drag"><span></span></div>
-    <div id="dir-head" class="sheet-head">
-      <h2>Directions</h2>
-      <button id="dir-clear-route" class="dir-clear-btn btn-danger-pill hide" aria-label="Clear route">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        Clear
-      </button>
-      <button id="dir-close" class="sheet-x btn-roundel" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-
-    <!-- Compact route summary (shown when search is collapsed on mobile) -->
-    <div id="dir-summary" class="hide">
-      <div class="dir-sum-route">
-        <span class="dir-dot origin"></span>
-        <span id="dir-sum-from" class="dir-sum-text">Origin</span>
-        <svg class="dir-sum-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        <span class="dir-dot dest"></span>
-        <span id="dir-sum-to" class="dir-sum-text">Destination</span>
-      </div>
-      <button id="dir-sum-edit" class="btn-primary" aria-label="Edit search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        Edit
-      </button>
-    </div>
-
-    <!-- Focused route header (shown in focus mode) -->
-    <div id="dir-focused-head">
-      <div class="focused-top-row">
-        <button id="dir-focused-back" class="btn-roundel" aria-label="Back to results">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
-        <div class="focused-od">
-          <span class="dir-dot origin"></span>
-          <span id="focused-origin" class="focused-od-text">Origin</span>
-          <svg class="focused-od-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <span class="dir-dot dest"></span>
-          <span id="focused-dest" class="focused-od-text">Destination</span>
+        <div id="search-expanded" class="pill-expand-body">
+          <div id="search-box">
+            <svg
+              class="sb-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search Helsinki…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="clear-input" class="clear-btn hide" aria-label="Clear">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div id="search-drop" class="hide">
+            <ul id="results-list"></ul>
+          </div>
         </div>
-        <button id="dir-focused-close" class="sheet-x btn-roundel" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </div>
+
+      <!-- ─── Style Picker (above zoom pill) ─── -->
+      <div id="style-picker">
+        <button
+          id="style-picker-btn"
+          class="btn-icon-card"
+          aria-label="Map style"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 3L2 9l10 6 10-6-10-6z" />
+            <path d="M2 17l10 6 10-6" />
+            <path d="M2 13l10 6 10-6" />
+          </svg>
+        </button>
+        <div id="style-panel" class="pill-panel hide">
+          <button class="style-opt active" data-style="default">
+            <div class="style-thumb thumb-default"></div>
+            <span>Default</span>
+          </button>
+          <button class="style-opt" data-style="satellite">
+            <div class="style-thumb thumb-satellite"></div>
+            <span>Satellite</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Zoom Pill (bottom-right, always visible) ─── -->
+      <div id="zoom-pill">
+        <button id="zoomin-btn" class="btn-icon" aria-label="Zoom in">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        <div class="zp-div"></div>
+        <button id="zoomout-btn" class="btn-icon" aria-label="Zoom out">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <path d="M5 12h14" />
+          </svg>
         </button>
       </div>
-      <div class="focused-info-bar">
-        <div id="focused-chain" class="itin-chain"></div>
-        <div id="focused-meta" class="focused-meta"></div>
-      </div>
-    </div>
 
-    <div id="dir-inputs">
-      <div class="dir-fields-col">
-        <div class="dir-field-wrap">
-          <div class="dir-field" id="dir-field-from">
+      <!-- ─── Tab Bar + Zoom ─── -->
+      <nav id="tab-bar">
+        <button id="home-btn" class="tab btn-tab" aria-label="Home">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8" />
+            <path
+              d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button id="dir-btn" class="tab btn-tab" aria-label="Directions">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 18l4-4 4 4 4-8 4 4" />
+            <circle cx="7" cy="14" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="19" cy="14" r="1.5" fill="currentColor" stroke="none" />
+          </svg>
+          <span>Routes</span>
+        </button>
+        <button id="places-btn" class="tab btn-tab" aria-label="Places">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+            />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
+          <span>Places</span>
+          <span id="places-badge" class="badge hide">0</span>
+        </button>
+        <button id="locate-btn" class="tab btn-tab" aria-label="My location">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 11l19-9-9 19-2-8-8-2z" />
+          </svg>
+          <span>Locate</span>
+        </button>
+      </nav>
+
+      <!-- ─── Directions Sheet (bottom) ─── -->
+      <div id="dir-panel" class="sheet shut">
+        <div id="dir-drag" class="sheet-drag"><span></span></div>
+        <div id="dir-head" class="sheet-head">
+          <h2>Directions</h2>
+          <button
+            id="dir-clear-route"
+            class="dir-clear-btn btn-danger-pill hide"
+            aria-label="Clear route"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+            Clear
+          </button>
+          <button id="dir-close" class="sheet-x btn-roundel" aria-label="Close">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Compact route summary (shown when search is collapsed on mobile) -->
+        <div id="dir-summary" class="hide">
+          <div class="dir-sum-route">
             <span class="dir-dot origin"></span>
-            <input id="dir-from" type="text" placeholder="Origin — tap map or type" autocomplete="off" />
-            <button class="dir-field-btn dir-my-loc" title="Use my location">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-            </button>
-          </div>
-          <ul id="dir-from-suggest" class="dir-suggest hide"></ul>
-        </div>
-        <div class="dir-field-wrap">
-          <div class="dir-field" id="dir-field-to">
+            <span id="dir-sum-from" class="dir-sum-text">Origin</span>
+            <svg
+              class="dir-sum-arrow"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
             <span class="dir-dot dest"></span>
-            <input id="dir-to" type="text" placeholder="Destination — tap map or type" autocomplete="off" />
-            <button class="dir-field-btn dir-mosque-dest" title="Nearest mosque">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l-4 6H4v11h16V9h-4L12 3zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+            <span id="dir-sum-to" class="dir-sum-text">Destination</span>
+          </div>
+          <button
+            id="dir-sum-edit"
+            class="btn-primary"
+            aria-label="Edit search"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit
+          </button>
+        </div>
+
+        <!-- Focused route header (shown in focus mode) -->
+        <div id="dir-focused-head">
+          <div class="focused-top-row">
+            <button
+              id="dir-focused-back"
+              class="btn-roundel"
+              aria-label="Back to results"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="focused-od">
+              <span class="dir-dot origin"></span>
+              <span id="focused-origin" class="focused-od-text">Origin</span>
+              <svg
+                class="focused-od-arrow"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+              <span class="dir-dot dest"></span>
+              <span id="focused-dest" class="focused-od-text">Destination</span>
+            </div>
+            <button
+              id="dir-focused-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           </div>
-          <ul id="dir-to-suggest" class="dir-suggest hide"></ul>
-        </div>
-      </div>
-      <button id="dir-swap" title="Swap origin &amp; destination">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 16V4M7 4l-4 4M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- ─── Transport Mode Selector ─── -->
-    <div id="dir-mode-bar">
-      <div id="dir-mode-toggle">
-        <button class="mode-opt btn-segment active" data-mode="drive">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V12.5l2.5-6h13l2.5 6V17a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/><path d="M3 13h18"/></svg>
-          Drive
-        </button>
-        <button class="mode-opt btn-segment" data-mode="transit">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg>
-          Transit
-        </button>
-        <button class="mode-opt btn-segment" data-mode="cycle">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5"/><circle cx="13.5" cy="7" r="1.8" fill="currentColor" stroke="none"/></svg>
-          Cycle
-        </button>
-        <button class="mode-opt btn-segment" data-mode="walk">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="2.5" stroke-width="1.8"/><path d="M7 21l3-9M16 21l-2-3-2.5-4 3.5-4"/><path d="M10 14l-1.5-5.5 4-1"/></svg>
-          Walk
-        </button>
-      </div>
-    </div>
-
-    <div id="dir-time-bar">
-      <div class="time-row">
-        <div id="dir-time-toggle">
-          <button class="time-opt btn-segment active" data-mode="depart">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            Depart
-          </button>
-          <button class="time-opt btn-segment" data-mode="arrive">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Arrive
-          </button>
-        </div>
-        <button id="dir-time-now" class="time-chip btn-chip active">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          Now
-        </button>
-      </div>
-      <div id="dir-custom-time-row">
-        <div class="custom-date-wrap" id="date-trigger">
-          <svg class="field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          <input type="text" id="dir-date" readonly />
-        </div>
-        <div class="custom-time-wrap" id="time-trigger">
-          <svg class="field-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <input type="text" id="dir-time" readonly />
-        </div>
-      </div>
-    </div>
-
-    <button id="dir-go" class="btn-primary" disabled>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      Find Routes
-    </button>
-
-    <div id="dir-results">
-      <div id="dir-empty"></div>
-      <div id="dir-loading" class="hide">
-        <div class="spinner"></div>
-        <span>Finding routes…</span>
-      </div>
-      <div id="dir-error" class="hide"></div>
-      <div id="dir-itineraries"></div>
-    </div>
-  </div>
-
-  <!-- ─── Places Sheet (bottom) ─── -->
-  <div id="places-sheet" class="sheet shut">
-    <div id="places-drag" class="sheet-drag"><span></span></div>
-    <div class="sheet-head">
-      <h2>Places</h2>
-      <span id="places-ct"></span>
-      <button id="suggest-place-btn" class="sheet-action-btn btn-roundel-accent" aria-label="Suggest a place" title="Suggest a place">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-      <button id="places-close" class="sheet-x btn-roundel" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div id="places-filters">
-      <div id="places-type-chips">
-        <button class="pf-chip active" data-type="all">
-          <span class="pf-icon" style="--pf-c:var(--accent)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
-          </span>
-          <span class="pf-label">All</span>
-        </button>
-        <button class="pf-chip" data-type="mosque">
-          <span class="pf-icon" style="--pf-c:#1FA86A">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
-          </span>
-          <span class="pf-label">Mosques</span>
-        </button>
-        <button class="pf-chip" data-type="prayer_room">
-          <span class="pf-icon" style="--pf-c:#00B9E4">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a2 2 0 100 4 2 2 0 000-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-          </span>
-          <span class="pf-label">Prayer</span>
-        </button>
-        <button class="pf-chip" data-type="restaurant">
-          <span class="pf-icon" style="--pf-c:#FF6319">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
-          </span>
-          <span class="pf-label">Food</span>
-        </button>
-        <button class="pf-chip" data-type="shop">
-          <span class="pf-icon" style="--pf-c:#8C4799">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg>
-          </span>
-          <span class="pf-label">Shops</span>
-        </button>
-        <button class="pf-chip" data-type="saved">
-          <span class="pf-icon" style="--pf-c:#F59E0B">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          </span>
-          <span class="pf-label">Saved</span>
-        </button>
-      </div>
-      <div id="tf-row" class="hide">
-        <button id="tf-toggle" class="btn-chip">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          Filter<span id="tf-count" class="hide">0</span>
-          <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-      </div>
-      <div id="tag-filter-chips" class="shut"></div>
-    </div>
-    <div id="places-scroll">
-      <ul id="places-list"></ul>
-      <div id="places-empty" class="hide">
-        <div class="empty-anim">
-          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-          <div class="empty-ping"></div>
-        </div>
-        <div class="empty-text">
-          <span class="empty-title">No places found</span>
-          <span class="empty-sub">Try different filters · <button id="suggest-place-btn-empty" class="empty-suggest btn-inline">Suggest one</button></span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── Suggest Place Overlay ─── -->
-  <div id="suggest-overlay" class="hide">
-    <div id="suggest-card">
-      <div class="suggest-head">
-        <h3>Suggest a Place</h3>
-        <button id="suggest-close" class="sheet-x btn-roundel" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <form id="suggest-form" autocomplete="off">
-        <label class="sg-label">Place Name
-          <input id="sg-name" type="text" placeholder="e.g. Halal Kitchen" />
-        </label>
-        <label class="sg-label"><span>Google Maps Link <span class="sg-req">*</span></span>
-          <input id="sg-gmaps" type="url" required placeholder="https://maps.google.com/…" />
-        </label>
-        <label class="sg-label"><span>Type <span class="sg-req">*</span></span>
-          <select id="sg-type" required>
-            <option value="" disabled selected>Select a type…</option>
-            <option value="mosque">Mosque</option>
-            <option value="prayer_room">Prayer Room</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="shop">Shop</option>
-          </select>
-        </label>
-        <div id="sg-tags-section" class="sg-label">
-          <span>Tags</span>
-          <div id="sg-tags" class="sg-tags"></div>
-          <span class="sg-hint">tap to confirm · tap again to mark as missing</span>
-        </div>
-        <label class="sg-label">Address
-          <input id="sg-address" type="text" placeholder="Street, city" />
-        </label>
-        <label class="sg-label">Additional Notes
-          <textarea id="sg-notes" rows="3" placeholder="Any details about this place…"></textarea>
-        </label>
-        <button type="submit" id="sg-submit" class="btn-primary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          Submit Suggestion
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ─── Suggest Edit Overlay ─── -->
-  <div id="edit-overlay" class="hide">
-    <div id="edit-card">
-      <div class="suggest-head">
-        <h3>Suggest Edit</h3>
-        <button id="edit-close" class="sheet-x btn-roundel" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <form id="edit-form" autocomplete="off">
-        <input type="hidden" id="ed-place-id" />
-        <label class="sg-label">Place Name
-          <input id="ed-name" type="text" placeholder="e.g. Halal Kitchen" />
-        </label>
-        <label class="sg-label">Type
-          <select id="ed-type">
-            <option value="mosque">Mosque</option>
-            <option value="prayer_room">Prayer Room</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="shop">Shop</option>
-          </select>
-        </label>
-        <div class="sg-label">
-          <span>Tags</span>
-          <div id="ed-tags" class="sg-tags"></div>
-          <span class="sg-hint">tap to confirm · tap again to mark as missing</span>
-        </div>
-        <label class="sg-label">Address
-          <input id="ed-address" type="text" placeholder="Street, city" />
-        </label>
-        <label class="sg-label">Google Maps Link
-          <input id="ed-gmaps" type="url" placeholder="https://maps.google.com/…" />
-        </label>
-        <label class="sg-label">Additional Notes
-          <textarea id="ed-notes" rows="3" placeholder="Any details about this place…"></textarea>
-        </label>
-        <button type="submit" id="ed-submit" class="btn-primary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          Submit Edit Suggestion
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ─── Route Snackbar ─── -->
-  <div id="route-snackbar" class="hide">
-    <div id="snackbar-body">
-      <div class="snackbar-icon-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18l4-4 4 4 4-8 4 4"/></svg>
-      </div>
-      <div id="snackbar-content">
-        <div id="snackbar-title">
-            <span id="snackbar-from"></span><span class="snack-arrow"> → </span><span id="snackbar-to"></span>
+          <div class="focused-info-bar">
+            <div id="focused-chain" class="itin-chain"></div>
+            <div id="focused-meta" class="focused-meta"></div>
           </div>
-        <div id="snackbar-sub"></div>
-      </div>
-    </div>
-    <button id="snackbar-close" class="sheet-x btn-roundel" aria-label="Clear route">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button>
-  </div>
-
-  <!-- ─── Prayer Times Card ─── -->
-  <div id="prayer-snack" class="pill-expand collapsed">
-      <button id="prayer-pill" class="btn-icon pill-expand-icon" aria-label="Prayer times">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-      </svg>
-    </button>
-    <div id="prayer-expanded-wrap">
-    <div id="prayer-expanded" class="pill-expand-body">
-      <div id="prayer-header" class="prayer-snack-clickable">
-        <div class="prayer-hdr-text">
-          <div id="prayer-snack-title"></div>
         </div>
-        <button class="prayer-hdr-btn btn-roundel" id="prayer-chevron" aria-label="Show prayer times">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+
+        <div id="dir-inputs">
+          <div class="dir-fields-col">
+            <div class="dir-field-wrap">
+              <div class="dir-field" id="dir-field-from">
+                <span class="dir-dot origin"></span>
+                <input
+                  id="dir-from"
+                  type="text"
+                  placeholder="Origin — tap map or type"
+                  autocomplete="off"
+                />
+                <button
+                  class="dir-field-btn dir-my-loc"
+                  title="Use my location"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                  >
+                    <path d="M3 11l19-9-9 19-2-8-8-2z" />
+                  </svg>
+                </button>
+              </div>
+              <ul id="dir-from-suggest" class="dir-suggest hide"></ul>
+            </div>
+            <div class="dir-field-wrap">
+              <div class="dir-field" id="dir-field-to">
+                <span class="dir-dot dest"></span>
+                <input
+                  id="dir-to"
+                  type="text"
+                  placeholder="Destination — tap map or type"
+                  autocomplete="off"
+                />
+                <button
+                  class="dir-field-btn dir-mosque-dest"
+                  title="Nearest mosque"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                  >
+                    <path
+                      d="M12 3l-4 6H4v11h16V9h-4L12 3zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <ul id="dir-to-suggest" class="dir-suggest hide"></ul>
+            </div>
+          </div>
+          <button id="dir-swap" title="Swap origin &amp; destination">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M7 16V4M7 4l-4 4M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- ─── Transport Mode Selector ─── -->
+        <div id="dir-mode-bar">
+          <div id="dir-mode-toggle">
+            <button class="mode-opt btn-segment active" data-mode="drive">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M3 17V12.5l2.5-6h13l2.5 6V17a1 1 0 01-1 1H4a1 1 0 01-1-1z"
+                />
+                <circle cx="7.5" cy="17.5" r="2.5" />
+                <circle cx="16.5" cy="17.5" r="2.5" />
+                <path d="M3 13h18" />
+              </svg>
+              Drive
+            </button>
+            <button class="mode-opt btn-segment" data-mode="transit">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="3" width="16" height="17" rx="3" />
+                <path d="M4 11h16" />
+                <circle
+                  cx="8.5"
+                  cy="16"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx="15.5"
+                  cy="16"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <path d="M7 20v2M17 20v2" />
+              </svg>
+              Transit
+            </button>
+            <button class="mode-opt btn-segment" data-mode="cycle">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5.5" cy="17.5" r="3" />
+                <circle cx="18.5" cy="17.5" r="3" />
+                <path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5" />
+                <circle
+                  cx="13.5"
+                  cy="7"
+                  r="1.8"
+                  fill="currentColor"
+                  stroke="none"
+                />
+              </svg>
+              Cycle
+            </button>
+            <button class="mode-opt btn-segment" data-mode="walk">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="13" cy="4.5" r="2.5" stroke-width="1.8" />
+                <path d="M7 21l3-9M16 21l-2-3-2.5-4 3.5-4" />
+                <path d="M10 14l-1.5-5.5 4-1" />
+              </svg>
+              Walk
+            </button>
+          </div>
+        </div>
+
+        <div id="dir-time-bar">
+          <div class="time-row">
+            <div id="dir-time-toggle">
+              <button class="time-opt btn-segment active" data-mode="depart">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                Depart
+              </button>
+              <button class="time-opt btn-segment" data-mode="arrive">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+                Arrive
+              </button>
+            </div>
+            <button id="dir-time-now" class="time-chip btn-chip active">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Now
+            </button>
+          </div>
+          <div id="dir-custom-time-row">
+            <div class="custom-date-wrap" id="date-trigger">
+              <svg
+                class="field-icon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              <input type="text" id="dir-date" readonly />
+            </div>
+            <div class="custom-time-wrap" id="time-trigger">
+              <svg
+                class="field-icon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              <input type="text" id="dir-time" readonly />
+            </div>
+          </div>
+        </div>
+
+        <button id="dir-go" class="btn-primary" disabled>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          Find Routes
+        </button>
+
+        <div id="dir-results">
+          <div id="dir-empty"></div>
+          <div id="dir-loading" class="hide">
+            <div class="spinner"></div>
+            <span>Finding routes…</span>
+          </div>
+          <div id="dir-error" class="hide"></div>
+          <div id="dir-itineraries"></div>
+        </div>
+      </div>
+
+      <!-- ─── Places Sheet (bottom) ─── -->
+      <div id="places-sheet" class="sheet shut">
+        <div id="places-drag" class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2>Places</h2>
+          <span id="places-ct"></span>
+          <button
+            id="suggest-place-btn"
+            class="sheet-action-btn btn-roundel-accent"
+            aria-label="Suggest a place"
+            title="Suggest a place"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+          <button
+            id="places-close"
+            class="sheet-x btn-roundel"
+            aria-label="Close"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="places-filters">
+          <div id="places-type-chips">
+            <button class="pf-chip active" data-type="all">
+              <span class="pf-icon" style="--pf-c: var(--accent)">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">All</span>
+            </button>
+            <button class="pf-chip" data-type="mosque">
+              <span class="pf-icon" style="--pf-c: #1fa86a">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Mosques</span>
+            </button>
+            <button class="pf-chip" data-type="prayer_room">
+              <span class="pf-icon" style="--pf-c: #00b9e4">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 4a2 2 0 100 4 2 2 0 000-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Prayer</span>
+            </button>
+            <button class="pf-chip" data-type="restaurant">
+              <span class="pf-icon" style="--pf-c: #ff6319">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Food</span>
+            </button>
+            <button class="pf-chip" data-type="shop">
+              <span class="pf-icon" style="--pf-c: #8c4799">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Shops</span>
+            </button>
+            <button class="pf-chip" data-type="saved">
+              <span class="pf-icon" style="--pf-c: #f59e0b">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Saved</span>
+            </button>
+          </div>
+          <div id="tf-row" class="hide">
+            <button id="tf-toggle" class="btn-chip">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filter<span id="tf-count" class="hide">0</span>
+              <svg
+                class="tf-arrow"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
+          <div id="tag-filter-chips" class="shut"></div>
+        </div>
+        <div id="places-scroll">
+          <ul id="places-list"></ul>
+          <div id="places-empty" class="hide">
+            <div class="empty-anim">
+              <svg
+                class="empty-pin"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                />
+                <circle cx="12" cy="9" r="2.5" />
+              </svg>
+              <div class="empty-ping"></div>
+            </div>
+            <div class="empty-text">
+              <span class="empty-title">No places found</span>
+              <span class="empty-sub"
+                >Try different filters ·
+                <button
+                  id="suggest-place-btn-empty"
+                  class="empty-suggest btn-inline"
+                >
+                  Suggest one
+                </button></span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Suggest Place Overlay ─── -->
+      <div id="suggest-overlay" class="hide">
+        <div id="suggest-card">
+          <div class="suggest-head">
+            <h3>Suggest a Place</h3>
+            <button
+              id="suggest-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form id="suggest-form" autocomplete="off">
+            <label class="sg-label"
+              >Place Name
+              <input
+                id="sg-name"
+                type="text"
+                placeholder="e.g. Halal Kitchen"
+              />
+            </label>
+            <label class="sg-label"
+              ><span>Google Maps Link <span class="sg-req">*</span></span>
+              <input
+                id="sg-gmaps"
+                type="url"
+                required
+                placeholder="https://maps.google.com/…"
+              />
+            </label>
+            <label class="sg-label"
+              ><span>Type <span class="sg-req">*</span></span>
+              <select id="sg-type" required>
+                <option value="" disabled selected>Select a type…</option>
+                <option value="mosque">Mosque</option>
+                <option value="prayer_room">Prayer Room</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="shop">Shop</option>
+              </select>
+            </label>
+            <div id="sg-tags-section" class="sg-label">
+              <span>Tags</span>
+              <div id="sg-tags" class="sg-tags"></div>
+              <span class="sg-hint"
+                >tap to confirm · tap again to mark as missing</span
+              >
+            </div>
+            <label class="sg-label"
+              >Address
+              <input id="sg-address" type="text" placeholder="Street, city" />
+            </label>
+            <label class="sg-label"
+              >Additional Notes
+              <textarea
+                id="sg-notes"
+                rows="3"
+                placeholder="Any details about this place…"
+              ></textarea>
+            </label>
+            <button type="submit" id="sg-submit" class="btn-primary">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+              Submit Suggestion
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Suggest Edit Overlay ─── -->
+      <div id="edit-overlay" class="hide">
+        <div id="edit-card">
+          <div class="suggest-head">
+            <h3>Suggest Edit</h3>
+            <button
+              id="edit-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form id="edit-form" autocomplete="off">
+            <input type="hidden" id="ed-place-id" />
+            <label class="sg-label"
+              >Place Name
+              <input
+                id="ed-name"
+                type="text"
+                placeholder="e.g. Halal Kitchen"
+              />
+            </label>
+            <label class="sg-label"
+              >Type
+              <select id="ed-type">
+                <option value="mosque">Mosque</option>
+                <option value="prayer_room">Prayer Room</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="shop">Shop</option>
+              </select>
+            </label>
+            <div class="sg-label">
+              <span>Tags</span>
+              <div id="ed-tags" class="sg-tags"></div>
+              <span class="sg-hint"
+                >tap to confirm · tap again to mark as missing</span
+              >
+            </div>
+            <label class="sg-label"
+              >Address
+              <input id="ed-address" type="text" placeholder="Street, city" />
+            </label>
+            <label class="sg-label"
+              >Google Maps Link
+              <input
+                id="ed-gmaps"
+                type="url"
+                placeholder="https://maps.google.com/…"
+              />
+            </label>
+            <label class="sg-label"
+              >Additional Notes
+              <textarea
+                id="ed-notes"
+                rows="3"
+                placeholder="Any details about this place…"
+              ></textarea>
+            </label>
+            <button type="submit" id="ed-submit" class="btn-primary">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+              Submit Edit Suggestion
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Route Snackbar ─── -->
+      <div id="route-snackbar" class="hide">
+        <div id="snackbar-body">
+          <div class="snackbar-icon-wrap">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 18l4-4 4 4 4-8 4 4" />
+            </svg>
+          </div>
+          <div id="snackbar-content">
+            <div id="snackbar-title">
+              <span id="snackbar-from"></span
+              ><span class="snack-arrow"> → </span
+              ><span id="snackbar-to"></span>
+            </div>
+            <div id="snackbar-sub"></div>
+          </div>
+        </div>
+        <button
+          id="snackbar-close"
+          class="sheet-x btn-roundel"
+          aria-label="Clear route"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
-      <div id="prayer-times-list"><div id="prayer-times-inner"></div></div>
-    </div>
-    </div>
 
-    <!-- Ramadan card: separate floating card just below the prayer dropdown -->
-    <div id="ramadan-card">
-      <div id="ramadan-inner">
-        <div class="ramadan-header">
-          <svg class="ramadan-moon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <span class="ramadan-title">Ramadan Kareem</span>
+      <!-- ─── Prayer Times Card ─── -->
+      <div id="prayer-snack" class="pill-expand collapsed">
+        <button
+          id="prayer-pill"
+          class="btn-icon pill-expand-icon"
+          aria-label="Prayer times"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </button>
+        <div id="prayer-expanded-wrap">
+          <div id="prayer-expanded" class="pill-expand-body">
+            <div id="prayer-header" class="prayer-snack-clickable">
+              <div class="prayer-hdr-text">
+                <div id="prayer-snack-title"></div>
+              </div>
+              <button
+                class="prayer-hdr-btn btn-roundel"
+                id="prayer-chevron"
+                aria-label="Show prayer times"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="prayer-times-list">
+              <div id="prayer-times-inner"></div>
+            </div>
+          </div>
         </div>
-        <div class="ramadan-row">
-          <span class="ramadan-label">Suhoor ends</span>
-          <span id="ramadan-suhoor" class="ramadan-time">--:--</span>
-        </div>
-        <div class="ramadan-row">
-          <span class="ramadan-label">Iftar</span>
-          <span id="ramadan-iftar" class="ramadan-time">--:--</span>
+
+        <!-- Ramadan card: separate floating card just below the prayer dropdown -->
+        <div id="ramadan-card">
+          <div id="ramadan-inner">
+            <div class="ramadan-header">
+              <svg
+                class="ramadan-moon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              <span class="ramadan-title">Ramadan Kareem</span>
+            </div>
+            <div class="ramadan-row">
+              <span class="ramadan-label">Suhoor ends</span>
+              <span id="ramadan-suhoor" class="ramadan-time">--:--</span>
+            </div>
+            <div class="ramadan-row">
+              <span class="ramadan-label">Iftar</span>
+              <span id="ramadan-iftar" class="ramadan-time">--:--</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Scrim -->
+      <div id="scrim" class="hide"></div>
     </div>
-  </div>
 
-  <!-- Scrim -->
-  <div id="scrim" class="hide"></div>
-</div>
-
-<!-- reCAPTCHA v3 – site key is intentionally public (never use the secret key here) -->
-<script src="https://www.google.com/recaptcha/api.js?render=6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v" async defer></script>
-<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script type="module" src="src/app.js"></script>
-</body>
+    <!-- reCAPTCHA v3 – site key is intentionally public (never use the secret key here) -->
+    <script
+      src="https://www.google.com/recaptcha/api.js?render=6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v"
+      async
+      defer
+    ></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script type="module" src="src/app.js"></script>
+  </body>
 </html>

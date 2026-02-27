@@ -1,55 +1,20 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   HALAL FINDER — DESIGN SYSTEM
-   design-tokens.css
-
-   This is the single source of truth for all visual design decisions.
-   Every colour, radius, shadow, font size, spacing value and transition
-   is defined here as a CSS custom property, and every repeating UI
-   pattern is expressed as a reusable template class.
-
-   RULES
-   ─────
-   • New components must use a template class for their button / text /
-     input type.  Never hard-code hex colours or pixel values directly.
-   • To add a new design variant, add a new template class here first,
-     then reference it in the component; never write a one-off block.
-   • Template classes handle visual design only (colour, typography,
-     border, shadow, interaction states, spacing internal to the element).
-     Layout / positioning (position, top/right/bottom/left, z-index,
-     margins in parent context, flex-grow) lives in styles.css.
-
-   FILE STRUCTURE
-   ──────────────
-   §1  Design Tokens  (:root custom properties)
-   §2  Base Reset
-   §3  Button Templates
-   §4  Typography Templates
-   §5  Input / Field Templates
-   §6  Chip & Badge Templates
-   §7  Pill Component Templates
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 
-/* ═══════════════════════════════════════════════════════
-   §1  DESIGN TOKENS
-   ═══════════════════════════════════════════════════════ */
 :root {
 
-  /* ── Brand palette ───────────────────────────────── */
-  --accent:         #1A73B8;   /* primary blue */
-  --accent-soft:    #e8f1f8;   /* blue tint surface */
-  --accent-muted:   #6da8d2;   /* de-emphasised blue */
+  --accent:         #1A73B8;
+  --accent-soft:    #e8f1f8;
+  --accent-muted:   #6da8d2;
 
-  --gold:           #D8B56A;   /* prayer / current highlight */
+  --gold:           #D8B56A;
   --gold-soft:      #faf5eb;
 
-  --success:        #1FA86A;   /* green — mosques, confirmed */
+  --success:        #1FA86A;
   --success-soft:   #e8f6ee;
 
-  --danger:         #d64545;   /* red — errors, clear actions */
+  --danger:         #d64545;
   --danger-soft:    #fce8e8;
 
-  /* ── Transit colours (HSL) ───────────────────────── */
   --hsl-bus:    #1A73B8;
   --hsl-trunk:  #FF6319;
   --hsl-tram:   #1FA86A;
@@ -57,19 +22,17 @@
   --hsl-rail:   #8C4799;
   --hsl-ferry:  #00B9E4;
 
-  /* ── Surface palette ─────────────────────────────── */
-  --surface:        #ffffff;   /* primary card / sheet */
-  --surface-2:      #E6EBEF;   /* secondary fill, disabled bg */
-  --surface-3:      #cdd5dc;   /* stronger fill, hover border */
+  --surface:        #ffffff;
+  --surface-2:      #E6EBEF;
+  --surface-3:      #cdd5dc;
 
-  --text:           #1a2433;   /* primary text */
-  --text-2:         #506070;   /* secondary text */
-  --text-3:         #8d99a5;   /* placeholder / muted */
+  --text:           #1a2433;
+  --text-2:         #506070;
+  --text-3:         #8d99a5;
 
-  --border:         #d5dce3;   /* default border */
-  --border-light:   #E6EBEF;   /* separator / divider */
+  --border:         #d5dce3;
+  --border-light:   #E6EBEF;
 
-  /* ── Border radii ───────────────────────────────── */
   --r-xs:   6px;
   --r-sm:   10px;
   --r-md:   14px;
@@ -77,13 +40,10 @@
   --r-xl:   24px;
   --r-pill: 999px;
 
-  /* ── Elevation (keep flat — shadows are subtle) ─── */
   --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
   --shadow-md: 0 2px 8px rgba(0,0,0,.07);
   --shadow-lg: 0 4px 16px rgba(0,0,0,.08);
 
-  /* ── Typography scale ───────────────────────────── */
-  /* Size tokens */
   --txt-xs:   11px;
   --txt-sm:   12px;
   --txt-base: 13px;
@@ -93,13 +53,11 @@
   --txt-2xl:  18px;
   --txt-3xl:  22px;
 
-  /* Weight tokens */
   --fw-regular:  400;
   --fw-medium:   500;
   --fw-semibold: 600;
   --fw-bold:     700;
 
-  /* ── Spacing scale ──────────────────────────────── */
   --sp-1:  4px;
   --sp-2:  6px;
   --sp-3:  8px;
@@ -110,36 +68,26 @@
   --sp-8:  20px;
   --sp-9:  24px;
 
-  /* ── Transition speeds ──────────────────────────── */
-  /* Use these consistently so every hover/active feels identical */
-  --t-fast:   .15s ease;                          /* hover colour swap */
-  --t-med:    .25s ease;                          /* subtle open/close */
-  --t-spring: .35s cubic-bezier(.32,.72,0,1);     /* sheet / slide-in */
+  --t-fast:   .15s ease;
+  --t-med:    .25s ease;
+  --t-spring: .35s cubic-bezier(.32,.72,0,1);
 
-  /* ── Component size constants ───────────────────── */
-  --btn-icon-size:    42px;   /* map control icon buttons */
-  --btn-roundel-size: 32px;   /* header / close roundel buttons */
-  --tab-h:            56px;   /* tab bar height */
+  --btn-icon-size:       42px;
+  --btn-roundel-size:    32px;
+  --btn-roundel-sm-size: 30px;
+  --tab-h:               56px;
 
-  /* ── Safe areas ─────────────────────────────────── */
   --safe-t: env(safe-area-inset-top,    0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
 
-  /* ── Base font ──────────────────────────────────── */
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui,
                Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
-
-
-/* ═══════════════════════════════════════════════════════
-   §2  BASE RESET
-   ═══════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
 }
 
-/* Strip all native button chrome; component templates add it back */
 button {
   border: none; outline: none; background: none;
   -webkit-appearance: none; -moz-appearance: none; appearance: none;
@@ -156,53 +104,6 @@ html, body {
   -ms-touch-action: pan-x pan-y;
 }
 
-
-/* ═══════════════════════════════════════════════════════
-   §3  BUTTON TEMPLATES
-   ═══════════════════════════════════════════════════════
-
-   Naming convention: .btn-<type>[-<variant>]
-   Each template is self-contained: colour, font, border,
-   padding, hover, active, focus states — fully specified.
-   Layout (margin, flex-grow, position) is left to the caller.
-
-   Map of templates → use-cases in this app
-   ─────────────────────────────────────────────────────
-   btn-icon           Bare icon button (inside a surface container)
-                      → zoom-in, zoom-out, search-pill, prayer-pill
-   btn-icon-card      Icon button that IS its own floating surface card
-                      → style-picker-btn
-   btn-primary        Filled accent CTA (full action)
-                      → dir-go, sg-submit, ed-submit, dir-sum-edit,
-                        pp-dir-btn, pin-act-dir
-   btn-secondary      Ghost / outline — secondary actions
-                      → pp-share-btn, pp-edit-btn
-   btn-danger-pill    Danger-coloured outline pill (destructive)
-                      → dir-clear-btn
-   btn-danger-filled  Filled danger (hard destructive)
-                      → pin-act-rm, pop-del
-   btn-success-pill   Success-coloured outline pill (navigation / go)
-                      → mosque-nav-btn
-   btn-roundel        Neutral 32 px circle icon (dismiss / navigate)
-                      → sheet-x (close buttons), geo-notice-close,
-                        cal-nav, dir-focused-back, prayer-hdr-btn
-   btn-roundel-accent Accent 32 px circle (positive action)
-                      → sheet-action-btn (+ add)
-   btn-roundel-subtle Subtle 32 px circle (secondary positive action)
-                      → sheet-action-btn-subtle
-   btn-segment        Option inside a segmented-control container
-                      → mode-opt (drive/transit/cycle/walk)
-                        time-opt (depart/arrive)
-   btn-chip           Toggle pill chip (filter, single toggle)
-                      → tf-chip (tag filter list)
-   btn-inline         Inline text-link style action
-                      → empty-suggest
-   btn-tab            Bottom / side navigation tab
-                      → .tab (home, routes, places, locate)
-   ═══════════════════════════════════════════════════════ */
-
-/* ── btn-icon ─────────────────────────────────────────── */
-/* Bare icon button, lives inside a parent surface card.   */
 .btn-icon {
   width:  var(--btn-icon-size);
   height: var(--btn-icon-size);
@@ -213,8 +114,6 @@ html, body {
 .btn-icon:hover  { color: var(--text-2); }
 .btn-icon:active { color: var(--accent); }
 
-/* ── btn-icon-card ───────────────────────────────────── */
-/* A floating icon button that provides its own card look. */
 .btn-icon-card {
   width:  var(--btn-icon-size);
   height: var(--btn-icon-size);
@@ -228,17 +127,15 @@ html, body {
 }
 .btn-icon-card:hover  { color: var(--text-2); }
 .btn-icon-card:active { color: var(--accent); }
-/* Active/locked state (e.g. panel open) */
+
 .btn-icon-card.active {
   background:    var(--accent);
   border-color:  var(--accent);
   color: #fff;
 }
 
-/* ── btn-primary ─────────────────────────────────────── */
-/* Filled accent CTA. Use for the single strongest action  */
-/* on any given screen/card.                               */
-.btn-primary {
+.btn-primary,
+.pp-dir-btn {
   display: inline-flex; align-items: center; justify-content: center;
   gap: var(--sp-3);
   padding: 0 var(--sp-9);
@@ -248,18 +145,18 @@ html, body {
   font-size: var(--txt-lg);
   font-weight: var(--fw-bold);
   transition: filter var(--t-fast);
-  /* height is set by the component (usually 44–48 px) */
+
 }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.btn-primary:hover:not(:disabled),
+.pp-dir-btn:hover { filter: brightness(1.12); }
 .btn-primary:disabled {
   opacity: .35;
   cursor: not-allowed;
 }
 
-/* ── btn-secondary ───────────────────────────────────── */
-/* Outline / ghost button. Use for secondary actions       */
-/* alongside a primary button.                             */
-.btn-secondary {
+.btn-secondary,
+.pp-share-btn,
+.pp-edit-btn {
   display: inline-flex; align-items: center; justify-content: center;
   gap: var(--sp-2);
   padding: 0 var(--sp-5);
@@ -271,11 +168,10 @@ html, body {
   font-weight: var(--fw-semibold);
   transition: border-color var(--t-fast), color var(--t-fast);
 }
-.btn-secondary:hover { color: var(--text); border-color: var(--surface-3); }
+.btn-secondary:hover,
+.pp-share-btn:hover,
+.pp-edit-btn:hover { color: var(--text); border-color: var(--surface-3); }
 
-/* ── btn-danger-pill ─────────────────────────────────── */
-/* Danger-coloured outline pill. Destructive but          */
-/* recoverable (e.g. "Clear route").                      */
 .btn-danger-pill {
   display: inline-flex; align-items: center;
   gap: var(--sp-1);
@@ -291,9 +187,6 @@ html, body {
 }
 .btn-danger-pill:hover { color: #b33636; }
 
-/* ── btn-danger-filled ───────────────────────────────── */
-/* Filled danger. Use only for hard-destructive actions   */
-/* with no easy undo (e.g. "Remove pin").                 */
 .btn-danger-filled {
   display: inline-flex; align-items: center; justify-content: center;
   gap: var(--sp-1);
@@ -307,10 +200,6 @@ html, body {
 }
 .btn-danger-filled:hover { filter: brightness(1.12); }
 
-/* ── btn-success-pill ────────────────────────────────── */
-/* Success-coloured outline pill. Use for a go / navigate */
-/* type action that is positive but not the primary CTA   */
-/* on the screen (where btn-primary would be used).       */
 .btn-success-pill {
   display: inline-flex; align-items: center;
   gap: 5px;
@@ -331,9 +220,6 @@ html, body {
 .btn-success-pill:hover svg { stroke: #fff; }
 .btn-success-pill svg { transition: stroke var(--t-fast); }
 
-/* ── btn-roundel ─────────────────────────────────────── */
-/* 32 px circular icon button — neutral / dismiss.        */
-/* Default state: ghost on surface-2 background.          */
 .btn-roundel {
   width:  var(--btn-roundel-size);
   height: var(--btn-roundel-size);
@@ -345,8 +231,6 @@ html, body {
 }
 .btn-roundel:hover { color: var(--text-2); }
 
-/* ── btn-roundel-accent ──────────────────────────────── */
-/* 32 px circular icon button — accent / add / positive.  */
 .btn-roundel-accent {
   width:  var(--btn-roundel-size);
   height: var(--btn-roundel-size);
@@ -358,9 +242,6 @@ html, body {
 }
 .btn-roundel-accent:hover { filter: brightness(1.12); }
 
-/* ── btn-roundel-subtle ──────────────────────────────── */
-/* 32 px circular icon button — subtle / edit / secondary */
-/* positive action. Slightly elevated from btn-roundel.   */
 .btn-roundel-subtle {
   width:  var(--btn-roundel-size);
   height: var(--btn-roundel-size);
@@ -375,9 +256,21 @@ html, body {
   color: var(--text);
 }
 
-/* ── btn-segment ─────────────────────────────────────── */
-/* One option inside a segmented-control container.       */
-/* The container provides: surface-2 bg, r-sm, 3px pad.   */
+.btn-roundel-sm,
+.cal-nav,
+#dir-focused-back {
+  width:  var(--btn-roundel-sm-size);
+  height: var(--btn-roundel-sm-size);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: color var(--t-fast);
+}
+.btn-roundel-sm:hover,
+.cal-nav:hover,
+#dir-focused-back:hover { color: var(--text-2); }
+
 .btn-segment {
   flex: 1;
   display: flex; align-items: center; justify-content: center;
@@ -399,10 +292,8 @@ html, body {
   box-shadow: var(--shadow-sm);
 }
 
-/* ── btn-chip ────────────────────────────────────────── */
-/* Standalone toggle pill chip (filter, tag selection).   */
-/* Default = inactive outline; .active = filled accent.   */
-.btn-chip {
+.btn-chip,
+.tf-chip {
   display: inline-flex; align-items: center;
   padding: 5px 11px;
   border: 1.5px solid var(--border);
@@ -414,17 +305,17 @@ html, body {
   white-space: nowrap;
   transition: color var(--t-fast), border-color var(--t-fast);
 }
-.btn-chip:hover { color: var(--text); border-color: var(--surface-3); }
-.btn-chip.active {
+.btn-chip:hover,
+.tf-chip:hover { color: var(--text); border-color: var(--surface-3); }
+.btn-chip.active,
+.tf-chip.active {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
 }
 
-/* ── btn-inline ──────────────────────────────────────── */
-/* Inline text action; looks like a link inside a         */
-/* sentence. No border or background.                     */
-.btn-inline {
+.btn-inline,
+.empty-suggest {
   display: inline;
   font-family: inherit;
   font-size: inherit;
@@ -434,10 +325,9 @@ html, body {
   text-decoration-color: transparent;
   transition: text-decoration-color var(--t-fast);
 }
-.btn-inline:hover { text-decoration-color: var(--accent); }
+.btn-inline:hover,
+.empty-suggest:hover { text-decoration-color: var(--accent); }
 
-/* ── btn-tab ─────────────────────────────────────────── */
-/* Bottom / side navigation tab item.                     */
 .btn-tab {
   flex: 0 0 auto;
   display: flex; flex-direction: column;
@@ -458,7 +348,6 @@ html, body {
 .btn-tab:focus,
 .btn-tab:focus-visible { color: var(--accent); outline: none; box-shadow: none; }
 
-/* Active tab: accent colour + underline indicator */
 .btn-tab.active-tab { color: var(--accent); }
 .btn-tab.active-tab::after {
   content: '';
@@ -467,7 +356,7 @@ html, body {
   border-radius: 2px;
   background: var(--accent);
 }
-/* Tracking pulse animation */
+
 .btn-tab.tracking {
   color: var(--accent);
   animation: tab-track-pulse 2s ease-in-out infinite;
@@ -478,34 +367,6 @@ html, body {
   50%       { color: var(--accent-muted); }
 }
 
-
-/* ═══════════════════════════════════════════════════════
-   §4  TYPOGRAPHY TEMPLATES
-   ═══════════════════════════════════════════════════════
-
-   Naming convention: .t-<role>
-   These classes define the font-size, weight, colour, and
-   text-overflow behaviour for a text role.  Apply directly
-   to the element that renders the text.
-
-   Map of templates → use-cases
-   ─────────────────────────────────────────────────────
-   t-panel-heading   Sheet / modal / overlay primary title
-                     → .sheet-head h2, .suggest-head h3,
-                       #edit-card h3
-   t-item-title      Primary label inside a list item or card
-                     → .r-name, .pl-name, .ds-name, .pp-title
-   t-item-sub        Secondary/address line below a title
-                     → .r-addr, .pl-addr, .ds-addr, .pp-sub
-   t-micro-label     Small ALL-CAPS section/column header
-                     → .cal-weekdays span, .tp-wheel-label
-   t-caption         Metadata — distance, time, count, etc.
-                     → .itin-time, .pl-tags-summary, .leg-dist
-   t-body-sm         Standard small body copy
-                     → inline descriptions, dir-sum text
-   ═══════════════════════════════════════════════════════ */
-
-/* ── t-panel-heading ───────────────────────────────── */
 .t-panel-heading {
   font-size: var(--txt-2xl);
   font-weight: var(--fw-semibold);
@@ -514,8 +375,10 @@ html, body {
   line-height: 1.25;
 }
 
-/* ── t-item-title ──────────────────────────────────── */
-.t-item-title {
+.t-item-title,
+.r-name,
+.pl-name,
+.ds-name {
   font-size: var(--txt-lg);
   font-weight: var(--fw-semibold);
   color: var(--text);
@@ -525,8 +388,10 @@ html, body {
   text-overflow: ellipsis;
 }
 
-/* ── t-item-sub ────────────────────────────────────── */
-.t-item-sub {
+.t-item-sub,
+.r-addr,
+.pl-addr,
+.ds-addr {
   font-size: var(--txt-sm);
   color: var(--text-3);
   line-height: 1.3;
@@ -535,8 +400,10 @@ html, body {
   text-overflow: ellipsis;
 }
 
-/* ── t-micro-label ─────────────────────────────────── */
-.t-micro-label {
+.t-micro-label,
+.cal-weekdays span,
+.tp-wheel-label,
+.itin-zones-label {
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
   color: var(--text-3);
@@ -544,7 +411,6 @@ html, body {
   letter-spacing: .04em;
 }
 
-/* ── t-caption ─────────────────────────────────────── */
 .t-caption {
   font-size: var(--txt-sm);
   font-weight: var(--fw-medium);
@@ -552,25 +418,12 @@ html, body {
   line-height: 1.4;
 }
 
-/* ── t-body-sm ─────────────────────────────────────── */
 .t-body-sm {
   font-size: var(--txt-base);
   color: var(--text-2);
   line-height: 1.5;
 }
 
-
-/* ═══════════════════════════════════════════════════════
-   §5  INPUT / FIELD TEMPLATES
-   ═══════════════════════════════════════════════════════
-
-   t-field-wrap   Bordered container for a text/date/select
-                  input (the visible box the user clicks).
-   t-field-input  The <input>, <select>, or <textarea> inside
-                  any field wrapper.
-   ═══════════════════════════════════════════════════════ */
-
-/* ── t-field-wrap ──────────────────────────────────── */
 .t-field-wrap {
   display: flex; align-items: center; gap: var(--sp-3);
   background: var(--surface);
@@ -581,7 +434,6 @@ html, body {
 .t-field-wrap:focus-within { border-color: var(--accent); }
 .t-field-wrap:hover:not(:focus-within) { border-color: var(--surface-3); }
 
-/* ── t-field-input ─────────────────────────────────── */
 .t-field-input {
   flex: 1; min-width: 0;
   border: none; outline: none; background: transparent;
@@ -595,19 +447,8 @@ html, body {
   font-weight: var(--fw-regular);
 }
 
-
-/* ═══════════════════════════════════════════════════════
-   §6  CHIP & BADGE TEMPLATES
-   ═══════════════════════════════════════════════════════
-
-   tag-chip       Tri-state chip: neutral → yes (✓) → no (✗).
-                  Used in suggest/edit forms for feature tags
-                  (halal-certified, prayer-room, etc.)
-                  State is driven by [data-state] attribute.
-   ═══════════════════════════════════════════════════════ */
-
-/* ── tag-chip (neutral default) ───────────────────── */
-.tag-chip {
+.tag-chip,
+.sg-tag {
   display: inline-flex; align-items: center;
   gap: var(--sp-1);
   padding: 5px var(--sp-5);
@@ -624,61 +465,36 @@ html, body {
               border-color var(--t-fast),
               color var(--t-fast);
 }
-.tag-chip:hover { border-color: var(--surface-3); }
+.tag-chip:hover,
+.sg-tag:hover { border-color: var(--surface-3); }
 
-/* State icons (hidden unless state is set) */
-.tag-chip .tag-icon { display: none; width: 12px; height: 12px; flex-shrink: 0; }
+.tag-chip .tag-icon,
+.sg-tag .sg-tag-icon { display: none; width: 12px; height: 12px; flex-shrink: 0; }
 
-/* ── tag-chip[data-state="yes"] — confirmed ─────────── */
-.tag-chip[data-state="yes"] {
+.tag-chip[data-state="yes"],
+.sg-tag[data-state="yes"] {
   background: var(--success-soft);
   border-color: var(--success);
   color: var(--success);
 }
-.tag-chip[data-state="yes"] .tag-icon.tag-yes { display: inline-block; }
+.tag-chip[data-state="yes"] .tag-icon.tag-yes,
+.sg-tag[data-state="yes"] .sg-tag-icon.sg-yes { display: inline-block; }
 
-/* ── tag-chip[data-state="no"] — negated ────────────── */
-.tag-chip[data-state="no"] {
+.tag-chip[data-state="no"],
+.sg-tag[data-state="no"] {
   background: var(--danger-soft);
   border-color: var(--danger);
   color: var(--danger);
 }
-.tag-chip[data-state="no"] .tag-icon.tag-no { display: inline-block; }
+.tag-chip[data-state="no"] .tag-icon.tag-no,
+.sg-tag[data-state="no"] .sg-tag-icon.sg-no { display: inline-block; }
 
-
-/* ═══════════════════════════════════════════════════════
-   §7  PILL COMPONENT TEMPLATES
-   ═══════════════════════════════════════════════════════
-
-   Three reusable patterns for pill UI elements:
-
-   pill-expand        Collapsible pill that widens into a full card.
-                      Animates width / border-radius / box-shadow.
-                      Collapsed = one icon wide (44 px).
-                      Expanded width is component-specific (styles.css).
-
-   pill-expand-icon   Icon button inside a pill-expand.
-                      Default behaviour: fades out when pill opens
-                      (search style — icon reappears inside body).
-                      Override with opacity:1 + pointer-events:auto
-                      to keep it anchored when expanded (prayer style).
-
-   pill-expand-body   Content region of a pill-expand.
-                      Fades in on expand; height:0 + hidden when collapsed.
-
-   pill-panel         Floating card that slides out to the left of its
-                      position:relative/absolute pill parent.
-                      Vertically centred on the pill.
-                      Toggle .hide to animate open/close.
-   ═══════════════════════════════════════════════════════ */
-
-/* ── pill-expand ────────────────────────────────────── */
 .pill-expand {
   background:    var(--surface);
   border:        1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow:    var(--shadow-md);
-  width: 44px;   /* collapsed = one icon wide */
+  width: 44px;
   transition: width          .3s cubic-bezier(.32,.72,0,1),
               border-radius  .3s ease,
               box-shadow     .3s ease;
@@ -688,9 +504,6 @@ html, body {
   box-shadow:    var(--shadow-lg);
 }
 
-/* ── pill-expand-icon ───────────────────────────────── */
-/* Default: icon disappears when the pill opens.         */
-/* Override for prayer style: opacity:1; pointer-events:auto */
 .pill-expand-icon {
   transition: color var(--t-fast), opacity .2s ease;
 }
@@ -700,7 +513,6 @@ html, body {
   position: absolute;
 }
 
-/* ── pill-expand-body ───────────────────────────────── */
 .pill-expand-body {
   opacity: 1;
   transition: opacity .2s ease .08s;
@@ -712,25 +524,21 @@ html, body {
   overflow: hidden;
 }
 
-/* ── pill-panel ─────────────────────────────────────── */
-/* Floating card opening to the left of its pill parent. */
-/* Parent must be position:relative / absolute / fixed.  */
 .pill-panel {
   position: absolute;
   top:   50%;
-  right: calc(100% + 8px);  /* 8 px gap from pill edge  */
+  right: calc(100% + 8px);
   background:    var(--surface);
   border:        1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow:    var(--shadow-lg);
   display: flex;
   transform-origin: right center;
-  transform: translateY(-50%);  /* vertically centred on pill */
+  transform: translateY(-50%);
   transition: opacity   .3s cubic-bezier(.32,.72,0,1),
               transform .3s cubic-bezier(.32,.72,0,1);
 }
-/* Keep in DOM while hidden so the transition can play.  */
-/* Specificity 0,2,0 beats .hide { display:none } 0,1,0  */
+
 .pill-panel.hide {
   display: flex !important;
   opacity: 0 !important;
@@ -738,30 +546,6 @@ html, body {
   pointer-events: none;
 }
 
-/* ═══════════════════════════════════════════════════════
-   §8  SNACK / TOAST TEMPLATE
-   ───────────────────────────────────────────────────────
-   Base chrome shared by all in-app notifications:
-     .share-toast     (JS-injected toast)
-     #geo-notice      (visitor banner)
-
-   Use-case rules:
-   • Add .snack to the element for card chrome.
-   • Add .snack-icon + .snack-icon--{variant} for the badge.
-   • Add .snack-body > .snack-label + .snack-sub for text.
-   • Position, width, opacity/transition stay in styles.css.
-   • white-space overrides (nowrap for compact toasts) stay
-     in styles.css scoped to the component.
-
-   Icon colour variants
-   ───────────────────
-   .snack-icon--success  Green  (submitted / confirmed)
-   .snack-icon--error    Red    (failure)
-   .snack-icon--clock    Blue   (prayer / time-based)
-   .snack-icon--info     Blue   (informational banner)
-   ═══════════════════════════════════════════════════════ */
-
-/* ── Card chrome ────────────────────────────────── */
 .snack {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -771,7 +555,6 @@ html, body {
   display: flex; align-items: center; gap: 10px;
 }
 
-/* ── Icon badge ───────────────────────────────── */
 .snack-icon {
   flex-shrink: 0;
   width: 30px; height: 30px;
@@ -783,7 +566,6 @@ html, body {
 .snack-icon--clock   { background: var(--accent-soft);  color: var(--accent); }
 .snack-icon--info    { background: var(--accent-soft);  color: var(--accent); }
 
-/* ── Text column ──────────────────────────────── */
 .snack-body {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; gap: 1px;
@@ -796,3 +578,35 @@ html, body {
   font-size: var(--txt-sm); font-weight: var(--fw-medium);
   color: var(--text-2); line-height: 1.3;
 }
+
+.t-scroll,
+#places-scroll,
+#dir-results,
+#suggest-form,
+#edit-form,
+.sp-routes {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.t-scroll::-webkit-scrollbar,
+#places-scroll::-webkit-scrollbar,
+#dir-results::-webkit-scrollbar,
+#suggest-form::-webkit-scrollbar,
+#edit-form::-webkit-scrollbar,
+.sp-routes::-webkit-scrollbar { width: 3px; }
+
+.t-scroll::-webkit-scrollbar-track,
+#places-scroll::-webkit-scrollbar-track,
+#dir-results::-webkit-scrollbar-track,
+#suggest-form::-webkit-scrollbar-track,
+#edit-form::-webkit-scrollbar-track { background: transparent; }
+
+.t-scroll::-webkit-scrollbar-thumb,
+#places-scroll::-webkit-scrollbar-thumb,
+#dir-results::-webkit-scrollbar-thumb,
+#suggest-form::-webkit-scrollbar-thumb,
+#edit-form::-webkit-scrollbar-thumb,
+.sp-routes::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
