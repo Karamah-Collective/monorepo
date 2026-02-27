@@ -4,7 +4,7 @@
 
 # Configuration files with actual keys
 src/config.local.js
-src/config.js
+# src/config.js is tracked — it contains no secrets (reads from /api/config at runtime)
 .env
 .env.local
 .env.*.local
