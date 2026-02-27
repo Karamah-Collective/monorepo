@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
-import { esc, escA } from "./utils.js";
-import { NOMINATIM_VB } from "./config.js";
+import { esc } from "./utils.js";
+import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 
 let searchMarker = null;
@@ -78,29 +78,63 @@ async function search(q) {
   q = q.trim();
   if (!q) { hideDrop(); return; }
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`,
-      { headers: { "Accept-Language": "en" } },
-    );
-    showResults(await r.json());
+    // Digitransit geocoding (Pelias) supports partial/prefix matching; fall back to Nominatim
+    let items = await _dtGeoSearch(q);
+    if (!items.length) items = await _nominatimSearch(q);
+    showResults(items);
   } catch {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">Search failed.</li>';
     showDrop();
   }
 }
 
-function showResults(results) {
-  if (!results.length) {
+async function _dtGeoSearch(q) {
+  try {
+    const url = `${DIGITRANSIT_GEO_URL}?text=${encodeURIComponent(q)}&focus.point.lat=60.1699&focus.point.lon=24.9384&size=6&lang=en&boundary.country=FIN`;
+    const res = await fetch(url, {
+      headers: DT_API_KEY ? { "digitransit-subscription-key": DT_API_KEY } : {},
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.features || []).map((f) => {
+      const parts = (f.properties.label || "").split(",");
+      const layer = f.properties.layer || "";
+      return {
+        lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
+        name: f.properties.name || parts[0].trim(),
+        addr: parts.slice(1, 3).join(",").trim(),
+        type: layer === "venue" ? "amenity" : layer === "address" ? "house" : "road",
+        cls:  layer === "venue" ? "amenity" : layer === "address" ? "building" : layer === "street" ? "highway" : "place",
+      };
+    });
+  } catch { return []; }
+}
+
+async function _nominatimSearch(q) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`,
+      { headers: { "Accept-Language": "en" } },
+    );
+    if (!res.ok) return [];
+    return (await res.json()).map((r) => ({
+      lat: +r.lat, lng: +r.lon,
+      name: r.display_name.split(",")[0],
+      addr: r.display_name.split(",").slice(1, 3).join(", ").trim(),
+      type: r.type, cls: r.class,
+    }));
+  } catch { return []; }
+}
+
+function showResults(items) {
+  if (!items.length) {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">No results found.</li>';
     showDrop();
     return;
   }
-  rList.innerHTML = results
-    .map((r) => {
-      const nm = r.display_name.split(",")[0];
-      const addr = r.display_name.split(",").slice(1, 3).join(", ").trim();
-      return `<li data-lat="${r.lat}" data-lng="${r.lon}" data-nm="${escA(r.display_name)}"><span class="r-icon">${typeIcon(r.type, r.class)}</span><div class="r-body"><div class="r-name">${esc(nm)}</div><div class="r-addr">${esc(addr)}</div></div></li>`;
-    })
+  rList.innerHTML = items
+    .map((r) => `<li data-lat="${r.lat}" data-lng="${r.lng}"><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`)
     .join("");
   showDrop();
 }
