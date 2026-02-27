@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL } from "./config.js";
+import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
 import { esc, escA, showToast, initSheetDrag, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
@@ -94,6 +94,8 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
     dirLoad.classList.add("hide");
     dirErr.classList.add("hide");
     exitResultsMode();
+    // Auto-reload if a route was already shown
+    if (dir.origin && dir.dest) findRoutes();
   });
 });
 
@@ -321,6 +323,22 @@ map.on("click", async (e) => {
 
 // --- Geocoding ---
 export async function reverseGeocode(lat, lng) {
+  // Digitransit reverse geocoding (Pelias) — primary; Nominatim fallback
+  try {
+    const res = await fetch(`${DIGITRANSIT_REV_URL}?point.lat=${lat}&point.lon=${lng}&size=1&lang=en`, {
+      headers: DT_API_KEY ? { "digitransit-subscription-key": DT_API_KEY } : {},
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const p = data.features?.[0]?.properties;
+      if (p) {
+        const road = p.street || p.name || "";
+        const num = p.housenumber || "";
+        return road ? (num ? `${road} ${num}` : road) : p.label?.split(",")[0] || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      }
+    }
+  } catch {}
   try {
     const res = await fetch(`${NOMINATIM_REV}&lat=${lat}&lon=${lng}`, { headers: { "Accept-Language": "en" } });
     const data = await res.json();
@@ -591,6 +609,9 @@ function decodePolyline(encoded, precision) {
 async function autoResolveLocation(inputEl) {
   const q = inputEl.value.trim();
   if (!q) return null;
+  // Digitransit Pelias primary (partial match); Nominatim fallback
+  const items = await _dtGeoSearch(q);
+  if (items.length) return { lat: items[0].lat, lng: items[0].lng, name: items[0].name };
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`,
@@ -793,60 +814,160 @@ function stepSegType(manType) {
   return "normal";
 }
 
+// --- OTP step helpers (Digitransit direct routing) ---
+function _otpStepInstruction(step, isFirst, isLast) {
+  const road = step.streetName && step.streetName !== "road" && step.streetName !== "Track" ? step.streetName : "";
+  const on = road ? ` on ${road}` : "", onto = road ? ` onto ${road}` : "";
+  const rd = step.relativeDirection;
+  if (isFirst) return `Head ${(step.absoluteDirection || "NORTH").toLowerCase().replace("_", "-")}${on}`;
+  if (isLast) return "Arrive at destination";
+  if (!rd || rd === "CONTINUE") return `Continue${on}`;
+  if (rd === "ELEVATOR") return `Take elevator${on}`;
+  if (rd === "ENTER_STATION") return `Enter station${on}`;
+  if (rd === "EXIT_STATION") return `Exit station${on}`;
+  if (rd === "LEFT") return `Turn left${onto}`;
+  if (rd === "RIGHT") return `Turn right${onto}`;
+  if (rd === "SLIGHTLY_LEFT") return `Turn slightly left${onto}`;
+  if (rd === "SLIGHTLY_RIGHT") return `Turn slightly right${onto}`;
+  if (rd === "HARD_LEFT") return `Turn sharp left${onto}`;
+  if (rd === "HARD_RIGHT") return `Turn sharp right${onto}`;
+  if (rd === "UTURN_LEFT" || rd === "UTURN_RIGHT") return `Make a U-turn${on}`;
+  if (rd === "CIRCLE_CLOCKWISE" || rd === "CIRCLE_COUNTERCLOCKWISE") return `At the roundabout, continue${on}`;
+  return `Continue${on}`;
+}
+
+function _otpManeuverIcon(step, isFirst, isLast) {
+  const rd = step.relativeDirection;
+  if (isFirst) return maneuverIconSvg("depart", "");
+  if (isLast) return maneuverIconSvg("arrive", "");
+  if (!rd || rd === "CONTINUE" || rd === "ELEVATOR" || rd === "ENTER_STATION" || rd === "EXIT_STATION") return maneuverIconSvg("new name", "straight");
+  if (rd === "LEFT") return maneuverIconSvg("turn", "left");
+  if (rd === "RIGHT") return maneuverIconSvg("turn", "right");
+  if (rd === "SLIGHTLY_LEFT") return maneuverIconSvg("turn", "slight left");
+  if (rd === "SLIGHTLY_RIGHT") return maneuverIconSvg("turn", "slight right");
+  if (rd === "HARD_LEFT") return maneuverIconSvg("turn", "sharp left");
+  if (rd === "HARD_RIGHT") return maneuverIconSvg("turn", "sharp right");
+  if (rd === "UTURN_LEFT" || rd === "UTURN_RIGHT") return maneuverIconSvg("turn", "uturn");
+  if (rd === "CIRCLE_CLOCKWISE" || rd === "CIRCLE_COUNTERCLOCKWISE") return maneuverIconSvg("roundabout", "");
+  return maneuverIconSvg("continue", "straight");
+}
+
+async function _dtDirectRoute(mode) {
+  const dtMode = { walk: "WALK", cycle: "BICYCLE", drive: "CAR" }[mode];
+  const query = `{ planConnection(
+    origin: {location: {coordinate: {latitude: ${dir.origin.lat}, longitude: ${dir.origin.lng}}}}
+    destination: {location: {coordinate: {latitude: ${dir.dest.lat}, longitude: ${dir.dest.lng}}}}
+    first: 1 transportModes: [{mode: ${dtMode}}]
+  ) { edges { node { start end legs {
+    mode duration distance legGeometry { points }
+    steps { streetName absoluteDirection relativeDirection distance lon lat }
+  } } } } }`;
+  const res = await fetch(DIGITRANSIT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/graphql", "digitransit-subscription-key": DT_API_KEY },
+    body: query,
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!res.ok) throw new Error(`dt_${res.status}`);
+  const json = await res.json();
+  if (json.errors) throw new Error("dt_query");
+  const node = json.data?.planConnection?.edges?.[0]?.node;
+  if (!node) throw new Error("dt_empty");
+  const allCoords = [];
+  node.legs.forEach((leg) => decodePolyline(leg.legGeometry.points, 5).forEach((c) => allCoords.push(c)));
+  const totalDuration = node.legs.reduce((s, l) => s + l.duration, 0);
+  const totalDistance = node.legs.reduce((s, l) => s + l.distance, 0);
+  const allSteps = node.legs.flatMap((leg) => leg.steps || []);
+  const stepsHTML = allSteps.map((step, i) => {
+    const isFirst = i === 0, isLast = i === allSteps.length - 1;
+    const inst = _otpStepInstruction(step, isFirst, isLast);
+    const icon = _otpManeuverIcon(step, isFirst, isLast);
+    const iconClass = isFirst ? "step-depart" : isLast ? "step-arrive"
+      : (step.relativeDirection === "CIRCLE_CLOCKWISE" || step.relativeDirection === "CIRCLE_COUNTERCLOCKWISE") ? "step-roundabout" : "";
+    const dist = step.distance > 5 ? fmtDist(step.distance) : "";
+    return `<div class="direct-step" data-step-idx="${i}"><div class="step-icon-wrap ${iconClass}">${icon}</div><div class="step-text-col"><div class="step-inst">${esc(inst)}</div>${dist ? `<div class="step-meta">${dist}</div>` : ""}</div></div>`;
+  }).join("");
+  return {
+    coords: allCoords, duration: totalDuration, distance: totalDistance, stepsHTML,
+    stepGeometries: null, stepFeatures: null,
+    srcData: { type: "Feature", geometry: { type: "LineString", coordinates: allCoords } },
+  };
+}
+
+async function _osrmDirectRoute(mode) {
+  const url = `${OSRM_URLS[mode]}/${dir.origin.lng},${dir.origin.lat};${dir.dest.lng},${dir.dest.lat}?overview=full&geometries=geojson&steps=true`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`Routing error ${res.status}`);
+  const json = await res.json();
+  if (json.code !== "Ok" || !json.routes?.length) throw new Error("No route found");
+  const route = json.routes[0];
+  const steps = route.legs[0]?.steps || [];
+  const altColor = OSRM_ALT_COLORS[mode];
+  let segIdx = 0;
+  const stepFeatures = steps.filter((s) => s.geometry?.coordinates?.length > 1)
+    .map((s) => ({ type: "Feature", geometry: s.geometry, properties: { segType: stepSegType(s.maneuver.type), idx: segIdx++ } }));
+  const srcData = stepFeatures.length ? { type: "FeatureCollection", features: stepFeatures } : route.geometry;
+  const stepsHTML = steps.map((step, si) => {
+    const stype = step.maneuver.type, smod = step.maneuver.modifier || "";
+    const iconClass = stype === "roundabout" || stype === "rotary" || stype === "exit roundabout" || stype === "exit rotary" ? "step-roundabout" : stype === "arrive" ? "step-arrive" : stype === "depart" ? "step-depart" : "";
+    const dist = step.distance > 5 ? fmtDist(step.distance) : "";
+    const dur = step.duration >= 30 ? Math.round(step.duration / 60) + " min" : "";
+    const meta = [dist, dur].filter(Boolean).join(" · ");
+    return `<div class="direct-step" data-step-idx="${si}"><div class="step-icon-wrap ${iconClass}">${maneuverIconSvg(stype, smod)}</div><div class="step-text-col"><div class="step-inst">${esc(stepInstruction(step))}</div>${meta ? `<div class="step-meta">${meta}</div>` : ""}</div></div>`;
+  }).join("");
+  return {
+    coords: route.geometry.coordinates, duration: route.duration, distance: route.distance, stepsHTML,
+    stepGeometries: steps.map((s) => s.geometry), stepFeatures, altColor, srcData,
+  };
+}
+
 async function findRoutesDirect(mode) {
   showDirLoading();
   dirPanel.classList.remove("search-editing");
-  const color = OSRM_COLORS[mode], altColor = OSRM_ALT_COLORS[mode];
-  const url = `${OSRM_URLS[mode]}/${dir.origin.lng},${dir.origin.lat};${dir.dest.lng},${dir.dest.lat}?overview=full&geometries=geojson&steps=true`;
+  // Digitransit OTP (WALK/BICYCLE/CAR) primary — OSRM demo server fallback
+  let data;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) throw new Error(`Routing error ${res.status}`);
-    const json = await res.json();
-    if (json.code !== "Ok" || !json.routes?.length) { showDirError("No route found"); return; }
-    const route = json.routes[0];
-    const steps = route.legs[0]?.steps || [];
-    const durMin = Math.round(route.duration / 60);
-    const distKm = (route.distance / 1000).toFixed(1);
-    clearRoute();
-    let segIdx = 0;
-    const stepFeatures = steps
-      .filter((s) => s.geometry?.coordinates?.length > 1)
-      .map((s) => ({ type: "Feature", geometry: s.geometry, properties: { segType: stepSegType(s.maneuver.type), idx: segIdx++ } }));
-    const srcData = stepFeatures.length ? { type: "FeatureCollection", features: stepFeatures } : route.geometry;
-    map.addSource("dir-direct-src", { type: "geojson", data: srcData });
-    map.addLayer({ id: "dir-direct-cas", type: "line", source: "dir-direct-src", paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 8 : 9, "line-opacity": 0.95 }, layout: { "line-cap": "round", "line-join": "round" } });
-    map.addLayer({
-      id: "dir-direct-ln", type: "line", source: "dir-direct-src",
-      paint: {
-        "line-color": stepFeatures.length ? ["case", ["==", ["get", "segType"], "roundabout"], "#8C4799", ["==", ["%", ["get", "idx"], 2], 0], color, altColor] : color,
-        "line-width": mode === "walk" ? 4 : 5, "line-dasharray": mode === "walk" ? [1.5, 2] : [1], "line-opacity": 0.9,
-      },
-      layout: { "line-cap": "round", "line-join": "round" },
-    });
-    map.addSource("dir-highlight-src", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-    map.addLayer({ id: "dir-highlight-ln", type: "line", source: "dir-highlight-src", paint: { "line-color": color, "line-width": mode === "walk" ? 10 : 12, "line-opacity": 0.45 }, layout: { "line-cap": "round", "line-join": "round" } });
-    dir.routeSources.push("dir-direct-src", "dir-highlight-src");
-    dir.routeLayers.push("dir-direct-cas", "dir-direct-ln", "dir-highlight-ln");
-    const bounds = new maplibregl.LngLatBounds();
-    route.geometry.coordinates.forEach((c) => bounds.extend(c));
-    const mob = window.innerWidth <= 768;
-    const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
-    map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
-    const stepsHTML = steps.map((step, stepIdx) => {
-      const stype = step.maneuver.type, smod = step.maneuver.modifier || "";
-      const iconClass = stype === "roundabout" || stype === "rotary" || stype === "exit roundabout" || stype === "exit rotary" ? "step-roundabout" : stype === "arrive" ? "step-arrive" : stype === "depart" ? "step-depart" : "";
-      const dist = step.distance > 5 ? fmtDist(step.distance) : "";
-      const dur = step.duration >= 30 ? Math.round(step.duration / 60) + " min" : "";
-      const meta = [dist, dur].filter(Boolean).join(" · ");
-      return `<div class="direct-step" data-step-idx="${stepIdx}"><div class="step-icon-wrap ${iconClass}">${maneuverIconSvg(stype, smod)}</div><div class="step-text-col"><div class="step-inst">${esc(stepInstruction(step))}</div>${meta ? `<div class="step-meta">${meta}</div>` : ""}</div></div>`;
-    }).join("");
-    dir.directInfo = { mode, durMin, distKm, stepGeometries: steps.map((s) => s.geometry) };
-    dir.activeIdx = 0;
-    const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
-    dirEmpty.classList.add("hide");
-    dirLoad.classList.add("hide");
-    dirErr.classList.add("hide");
-    dirItins.innerHTML = `
+    data = await _dtDirectRoute(mode);
+  } catch (err) {
+    console.warn("[Direct] Digitransit failed (" + (err.message || err) + "), trying OSRM…");
+    try {
+      data = await _osrmDirectRoute(mode);
+    } catch (err2) {
+      showDirError(err2.message || "Could not find route");
+      return;
+    }
+  }
+  const { coords, duration, distance, stepsHTML, stepGeometries, srcData, stepFeatures } = data;
+  const color = OSRM_COLORS[mode], altColor = data.altColor || OSRM_ALT_COLORS[mode];
+  const durMin = Math.round(duration / 60);
+  const distKm = (distance / 1000).toFixed(1);
+  clearRoute();
+  map.addSource("dir-direct-src", { type: "geojson", data: srcData });
+  map.addLayer({ id: "dir-direct-cas", type: "line", source: "dir-direct-src", paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 8 : 9, "line-opacity": 0.95 }, layout: { "line-cap": "round", "line-join": "round" } });
+  map.addLayer({
+    id: "dir-direct-ln", type: "line", source: "dir-direct-src",
+    paint: {
+      "line-color": stepFeatures?.length ? ["case", ["==", ["get", "segType"], "roundabout"], "#8C4799", ["==", ["%", ["get", "idx"], 2], 0], color, altColor] : color,
+      "line-width": mode === "walk" ? 4 : 5, "line-dasharray": mode === "walk" ? [1.5, 2] : [1], "line-opacity": 0.9,
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
+  map.addSource("dir-highlight-src", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({ id: "dir-highlight-ln", type: "line", source: "dir-highlight-src", paint: { "line-color": color, "line-width": mode === "walk" ? 10 : 12, "line-opacity": 0.45 }, layout: { "line-cap": "round", "line-join": "round" } });
+  dir.routeSources.push("dir-direct-src", "dir-highlight-src");
+  dir.routeLayers.push("dir-direct-cas", "dir-direct-ln", "dir-highlight-ln");
+  const bounds = new maplibregl.LngLatBounds();
+  coords.forEach((c) => bounds.extend(c));
+  const mob = window.innerWidth <= 768;
+  const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
+  map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
+  dir.directInfo = { mode, durMin, distKm, stepGeometries };
+  dir.activeIdx = 0;
+  const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
+  dirEmpty.classList.add("hide");
+  dirLoad.classList.add("hide");
+  dirErr.classList.add("hide");
+  dirItins.innerHTML = `
       <div class="itin-card direct-card active" style="--dc:${color}">
         <div class="direct-header">
           <div class="direct-mode-icon">${dirModeIconSvg(mode, 20)}</div>
@@ -865,13 +986,10 @@ async function findRoutesDirect(mode) {
         </div>
         <div class="direct-steps">${stepsHTML}</div>
       </div>`;
-    document.getElementById("dir-btn").classList.add("route-active");
-    dirClearBtn.classList.remove("hide");
-    enterResultsMode();
-    updateSnackbar();
-  } catch (err) {
-    showDirError(err.message || "Could not find route");
-  }
+  document.getElementById("dir-btn").classList.add("route-active");
+  dirClearBtn.classList.remove("hide");
+  enterResultsMode();
+  updateSnackbar();
 }
 
 function renderItineraries() {

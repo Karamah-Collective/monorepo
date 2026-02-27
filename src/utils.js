@@ -1,4 +1,4 @@
-import { _CRYPTO_KEY } from "./config.js";
+import { _CRYPTO_KEY, FINLAND_SW, FINLAND_NE } from "./config.js";
 import { map } from "./map-init.js";
 
 // --- HTML escaping ---
@@ -108,10 +108,27 @@ export function showGeoNotice() {
 }
 
 export async function checkGeoNotice() {
+  // navigator.geolocation — no network, no rate limit (primary); IP-based fallback if denied/unavailable
+  const inFinland = (lat, lng) =>
+    lat >= FINLAND_SW[1] && lat <= FINLAND_NE[1] && lng >= FINLAND_SW[0] && lng <= FINLAND_NE[0];
+  if (navigator.geolocation) {
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000, maximumAge: 300000 })
+      );
+      if (!inFinland(pos.coords.latitude, pos.coords.longitude)) showGeoNotice();
+      return;
+    } catch {}
+  }
+  // Fallback: ipwho.is (no rate limits) then ipapi.co (1k req/day)
   try {
-    const res = await fetch("https://ipapi.co/json/", {
-      signal: AbortSignal.timeout(5000),
-    });
+    const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    if (data.country_code && data.country_code !== "FI") showGeoNotice();
+    return;
+  } catch {}
+  try {
+    const res = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(4000) });
     const data = await res.json();
     if (data.country_code && data.country_code !== "FI") showGeoNotice();
   } catch {}
