@@ -108,9 +108,18 @@ export function showGeoNotice() {
 }
 
 export async function checkGeoNotice() {
-  // Detect visitors connecting from outside Finland via IP — the right signal
-  // for "tourist / visitor" regardless of physical GPS location.
-  // ipwho.is (no rate limits) → ipapi.co (1k req/day) fallback.
+  // Primary: /api/geo reads Cloudflare's CF-IPCountry header — built-in, no
+  // rate limits, works with VPNs (returns VPN server's country).
+  // Fallback: ipwho.is → ipapi.co for local dev where the Pages Function isn't available.
+  try {
+    const res = await fetch("/api/geo", { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const { country } = await res.json();
+      if (country && country !== "FI" && country !== "XX") { showGeoNotice(); return; }
+      if (country && country === "FI") return; // confirmed Finland, skip fallbacks
+    }
+  } catch {}
+  // Fallback for local dev (no Pages Function)
   try {
     const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(4000) });
     const data = await res.json();
