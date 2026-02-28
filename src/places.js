@@ -434,7 +434,7 @@ function renderPlacesList() {
       const posCount = typeTags.filter((t) => p.tags?.[t.id] === true).length;
       const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "";
       const faved = isFavourite(p.id);
-      return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
+      return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
       <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
       <span class="pl-name">${esc(p.name)}</span>
       <span class="pl-addr">${esc(p.address)}</span>
@@ -450,7 +450,7 @@ function renderPlacesList() {
     .join("");
 
   const pinHTML = customPins
-    .map((pin) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent)">
+    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${filtered.length + pi}">
       <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>
       <span class="pl-name">${esc(pin.name)}</span>
       <span class="pl-addr">${esc(pin.id)}</span>

@@ -1,12 +1,13 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, showToast, initSheetDrag, haversineDistance } from "./utils.js";
+import { esc, escA, showToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
-import { placesData, activeTagFilters } from "./places.js";
+import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 
 // --- State ---
 let dirTravelMode = "drive";
+let routeRequested = false;
 export let findingNearestMosque = false;
 export function setFindingNearestMosque(v) { findingNearestMosque = v; }
 
@@ -82,12 +83,22 @@ document.getElementById("dir-close").addEventListener("click", closeDirPanel);
 const dirSnap = initSheetDrag(dirPanel, closeDirPanel);
 
 dirPanel.dataset.travelMode = "drive";
+
+// Sliding pill highlight for transport mode
+const moveModePill = initSegPill(document.getElementById("dir-mode-toggle"));
+
 document.querySelectorAll(".mode-opt").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".mode-opt").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    moveModePill(btn);
     dirTravelMode = btn.dataset.mode;
     dirPanel.dataset.travelMode = dirTravelMode;
+    // Time bar just became visible — place the time pill instantly
+    if (dirTravelMode === "transit") {
+      const activeTime = document.querySelector("#dir-time-toggle .time-opt.active");
+      if (activeTime) moveTimePill(activeTime);
+    }
     clearRoute();
     dir.itineraries = [];
     dir.activeIdx = -1;
@@ -97,8 +108,9 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
     dirLoad.classList.add("hide");
     dirErr.classList.add("hide");
     exitResultsMode();
-    // Auto-reload if a route was already shown
-    if (dir.origin && dir.dest) findRoutes();
+    dirSnap.remeasure();
+    // Auto-reload only if routes were already shown (user clicked Find Routes)
+    if (dir.origin && dir.dest && routeRequested) findRoutes();
   });
 });
 
@@ -118,6 +130,7 @@ document.getElementById("snackbar-close").addEventListener("click", (e) => {
   dirEmpty.classList.remove("hide");
   exitResultsMode();
   updateGoButton();
+  routeRequested = false;
   findingNearestMosque = false;
 });
 
@@ -136,6 +149,7 @@ dirClearBtn.addEventListener("click", () => {
   dirEmpty.classList.remove("hide");
   exitResultsMode();
   startPick("from");
+  routeRequested = false;
   findingNearestMosque = false;
 });
 
@@ -152,8 +166,11 @@ dirItins.addEventListener("click", (e) => {
   }
 });
 
-// Override scrim to not close anything (handled per-panel)
-document.getElementById("scrim").addEventListener("click", () => {});
+// Scrim click — dismiss whichever panel is open
+document.getElementById("scrim").addEventListener("click", () => {
+  if (!dirPanel.classList.contains("shut")) closeDirPanel();
+  else closePlacesSheet();
+});
 
 // --- Pick mode ---
 export function startPick(field) {
@@ -186,6 +203,7 @@ let dirSugDebounce = null;
 function setupDirAutocomplete(inputEl, suggestEl, field) {
   inputEl.addEventListener("input", () => {
     if (field === "from") dir.origin = null; else dir.dest = null;
+    routeRequested = false;
     updateGoButton();
     clearTimeout(dirSugDebounce);
     const q = inputEl.value.trim();
@@ -445,7 +463,7 @@ function formatDisplayDate(iso) {
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
-function renderCalendar() {
+function renderCalendar(slideDir) {
   calTitle.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
   calGrid.innerHTML = "";
   const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -465,6 +483,12 @@ function renderCalendar() {
   for (let d = 1; d <= remaining; d++) {
     const nm = calMonth === 11 ? 1 : calMonth + 2, ny = calMonth === 11 ? calYear + 1 : calYear;
     calGrid.appendChild(makeCalDay(d, `${ny}-${String(nm).padStart(2, "0")}-${String(d).padStart(2, "0")}`, "other-month", todayStr));
+  }
+  if (slideDir) {
+    calGrid.classList.remove("cal-slide-left", "cal-slide-right");
+    void calGrid.offsetHeight;
+    calGrid.classList.add(slideDir === "left" ? "cal-slide-left" : "cal-slide-right");
+    calGrid.addEventListener("animationend", () => calGrid.classList.remove("cal-slide-left", "cal-slide-right"), { once: true });
   }
 }
 
@@ -487,10 +511,10 @@ function makeCalDay(label, iso, extraClass, todayStr) {
 }
 
 document.getElementById("cal-prev").addEventListener("click", () => {
-  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar();
+  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar("right");
 });
 document.getElementById("cal-next").addEventListener("click", () => {
-  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar();
+  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar("left");
 });
 
 function renderTimePicker() {
@@ -578,10 +602,14 @@ timeOverlay.addEventListener("click", (e) => e.stopPropagation());
 
 setDefaultDatetime();
 
+// Sliding pill highlight for depart/arrive toggle
+const moveTimePill = initSegPill(document.getElementById("dir-time-toggle"));
+
 dirTimeToggles.forEach((btn) => {
   btn.addEventListener("click", () => {
     dirTimeToggles.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    moveTimePill(btn);
     dirTimeMode = btn.dataset.mode;
   });
 });
@@ -633,6 +661,7 @@ async function autoResolveLocation(inputEl) {
 dirGo.addEventListener("click", findRoutes);
 
 async function findRoutes() {
+  routeRequested = true;
   if (!dir.origin && dirFrom.value.trim()) {
     showDirLoading();
     const r = await autoResolveLocation(dirFrom);
@@ -1004,6 +1033,7 @@ function renderItineraries() {
   dir.itineraries.forEach((itin, idx) => {
     const card = document.createElement("div");
     card.className = "itin-card"; card.dataset.idx = idx;
+    card.style.setProperty("--i", idx);
     const startT = new Date(itin.start), endT = new Date(itin.end);
     const durMin = Math.round((endT - startT) / 60000);
     const walkSec = itin.legs.filter((l) => l.mode === "WALK").reduce((s, l) => s + l.duration, 0);
@@ -1020,6 +1050,7 @@ function renderItineraries() {
       chain.appendChild(badge);
     });
     const legsDiv = document.createElement("div"); legsDiv.className = "itin-legs";
+    const legsInner = document.createElement("div"); legsInner.className = "itin-legs-inner";
     itin.legs.forEach((leg) => {
       const isTransit = leg.mode !== "WALK";
       const stops = isTransit && leg.intermediateStops ? leg.intermediateStops : [];
@@ -1033,7 +1064,7 @@ function renderItineraries() {
       const expandHint = hasStops ? ` <span class="leg-expand-hint">${stops.length} stop${stops.length > 1 ? "s" : ""} <span class="leg-chevron">›</span></span>` : "";
       let interHtml = "";
       if (hasStops) {
-        interHtml = '<div class="leg-intermediate">' + stops.map((s) => `<div class="leg-inter-stop"><span class="leg-inter-dot" style="background:${color}"></span><span class="leg-inter-name">${esc(s.name || "Stop")}${s.code ? " <small>(" + esc(s.code) + ")</small>" : ""}${s.zoneId ? ' <span class="zone-badge zone-' + s.zoneId.toLowerCase() + ' zone-inline">' + esc(s.zoneId) + "</span>" : ""}</span></div>`).join("") + "</div>";
+        interHtml = '<div class="leg-intermediate"><div class="leg-inter-inner">' + stops.map((s) => `<div class="leg-inter-stop"><span class="leg-inter-dot" style="background:${color}"></span><span class="leg-inter-name">${esc(s.name || "Stop")}${s.code ? " <small>(" + esc(s.code) + ")</small>" : ""}${s.zoneId ? ' <span class="zone-badge zone-' + s.zoneId.toLowerCase() + ' zone-inline">' + esc(s.zoneId) + "</span>" : ""}</span></div>`).join("") + "</div></div>";
       }
       row.innerHTML = `<div class="leg-timeline"><span class="leg-icon" style="background:${color}">${modeIcon(leg.mode, 12)}</span><div class="leg-line" style="background:${color}"></div></div><div class="leg-info"><div class="leg-mode-name">${esc(modeName)}${expandHint}</div><div class="leg-stops"><span class="leg-stop-time">${fromTime}</span> ${esc(leg.from.name)}${leg.from.stop?.code ? " <small>(" + esc(leg.from.stop.code) + ")</small>" : ""}${leg.from.stop?.zoneId ? ' <span class="zone-badge zone-' + leg.from.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.from.stop.zoneId) + "</span>" : ""}</div>${interHtml}<div class="leg-stops"><span class="leg-stop-time">${toTime}</span> ${esc(leg.to.name)}${leg.to.stop?.code ? " <small>(" + esc(leg.to.stop.code) + ")</small>" : ""}${leg.to.stop?.zoneId ? ' <span class="zone-badge zone-' + leg.to.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.to.stop.zoneId) + "</span>" : ""}</div><div class="leg-dist">${durL} min</div></div>`;
       if (hasStops) {
@@ -1043,8 +1074,9 @@ function renderItineraries() {
           row.classList.toggle("leg-open");
         });
       }
-      legsDiv.appendChild(row);
+      legsInner.appendChild(row);
     });
+    legsDiv.appendChild(legsInner);
     const zones = new Set();
     itin.legs.forEach((leg) => {
       if (leg.from.stop?.zoneId) zones.add(leg.from.stop.zoneId);
@@ -1095,15 +1127,15 @@ function focusRoute(idx) {
   document.getElementById("focused-meta").innerHTML = `<span>${durMin} min</span><span>·</span><span>${fmtTime(startT)} → ${fmtTime(endT)}</span><span>·</span><span>${transfers}</span><span>·</span><span>${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk</span>`;
   dirPanel.classList.add("route-focused");
   document.querySelectorAll(".itin-card").forEach((c, i) => {
-    if (i === idx) { c.classList.add("focused", "active"); c.style.display = ""; }
-    else { c.style.display = "none"; }
+    if (i === idx) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
+    else { c.classList.add("card-hidden"); }
   });
   dirSnap.remeasure();
 }
 
 function unfocusRoute() {
   dirPanel.classList.remove("route-focused");
-  document.querySelectorAll(".itin-card").forEach((c) => { c.classList.remove("focused"); c.style.display = ""; });
+  document.querySelectorAll(".itin-card").forEach((c) => { c.classList.remove("focused", "card-hidden"); });
   dirSnap.remeasure();
 }
 
@@ -1119,8 +1151,8 @@ function focusDirectRoute() {
   document.getElementById("focused-meta").innerHTML = `<span>${OSRM_LABELS[mode]}</span><span>·</span><span>${durLabel}</span><span>·</span><span>${distKm} km</span>`;
   dirPanel.classList.add("route-focused");
   document.querySelectorAll(".itin-card").forEach((c) => {
-    if (c.classList.contains("direct-card")) { c.classList.add("focused", "active"); c.style.display = ""; }
-    else { c.style.display = "none"; }
+    if (c.classList.contains("direct-card")) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
+    else { c.classList.add("card-hidden"); }
   });
   dirSnap.remeasure();
 }

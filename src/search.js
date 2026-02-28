@@ -237,9 +237,14 @@ rList.addEventListener("click", (e) => {
 });
 
 const searchCard = document.getElementById("search-card");
-document.getElementById("search-pill").addEventListener("click", () => {
-  searchCard.classList.remove("collapsed");
-  setTimeout(() => inp.focus(), 60);
+document.getElementById("search-pill").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (searchCard.classList.contains("collapsed")) {
+    searchCard.classList.remove("collapsed");
+    setTimeout(() => inp.focus(), 60);
+  } else {
+    collapseSearch();
+  }
 });
 
 function collapseSearch() {

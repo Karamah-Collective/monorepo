@@ -316,15 +316,14 @@ html, body {
   font-weight: var(--fw-bold);
   color: var(--text-3);
   white-space: nowrap;
-  transition: color var(--t-fast), background var(--t-fast),
-              box-shadow var(--t-fast);
+  position: relative; z-index: 1;
+  transition: color var(--t-fast);
 }
 .btn-segment svg { flex-shrink: 0; }
 .btn-segment:hover:not(.active) { color: var(--text-2); }
 .btn-segment.active {
-  background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-sm);
+  /* background + shadow now on .seg-pill */
 }
 
 .btn-chip,
@@ -338,7 +337,7 @@ html, body {
   font-weight: var(--fw-semibold);
   color: var(--text-2);
   white-space: nowrap;
-  transition: color var(--t-fast), border-color var(--t-fast);
+  transition: color var(--t-fast), border-color var(--t-fast), background-color var(--t-fast);
 }
 .btn-chip:hover,
 .tf-chip:hover { color: var(--text); border-color: var(--surface-3); }
@@ -385,12 +384,17 @@ html, body {
 .btn-tab:focus-visible { color: var(--accent); outline: none; box-shadow: none; }
 
 .btn-tab.active-tab { color: var(--accent); }
-.btn-tab.active-tab::after {
+.btn-tab::after {
   content: '';
   position: absolute; bottom: 4px;
   width: 16px; height: 3px;
   border-radius: 2px;
   background: var(--accent);
+  transform: scaleX(0);
+  transition: transform .25s cubic-bezier(.32,.72,0,1);
+}
+.btn-tab.active-tab::after {
+  transform: scaleX(1);
 }
 
 .btn-tab.tracking {

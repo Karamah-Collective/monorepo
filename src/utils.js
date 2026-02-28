@@ -152,6 +152,42 @@ export async function checkGeoNotice() {
   } catch {}
 }
 
+// --- Segmented-control sliding pill ---
+//
+// Creates an absolutely-positioned highlight that glides to the active button.
+// Returns `moveTo(btn)` to reposition the pill.
+
+export function initSegPill(container) {
+  const pill = document.createElement("span");
+  pill.className = "seg-pill";
+  container.appendChild(pill);
+  let placed = false;                              // true once pill has a real position
+
+  function moveTo(btn) {
+    if (!btn) return;
+    // If container is hidden (display:none), dimensions are 0 — skip
+    if (!btn.offsetWidth) return;
+    if (!placed) {
+      // First visible positioning — no transition
+      pill.style.transition = "none";
+      pill.style.left  = btn.offsetLeft + "px";
+      pill.style.width = btn.offsetWidth + "px";
+      void pill.offsetHeight;
+      pill.style.transition = "";
+      placed = true;
+    } else {
+      pill.style.left  = btn.offsetLeft + "px";
+      pill.style.width = btn.offsetWidth + "px";
+    }
+  }
+
+  // Try initial placement (works if container is visible)
+  const first = container.querySelector(".active");
+  if (first) requestAnimationFrame(() => moveTo(first));
+
+  return moveTo;
+}
+
 // --- Sheet drag-to-resize/dismiss (mobile snap system) ---
 //
 // Algorithm per content-to-viewport ratio:
@@ -289,7 +325,12 @@ export function initSheetDrag(sheet, closeFn) {
      * Briefly remove .shut → measure → re-add .shut → rAF remove = smooth reveal.
      */
     open() {
-      if (!isMobile()) return;
+      if (!isMobile()) {
+        // Desktop: just reveal — CSS handles height via fit-content
+        sheet.classList.remove("shut", "full");
+        sheet.style.height = "";
+        return;
+      }
       sheet.classList.remove("full");
 
       // 1. height:auto + remove .shut so children lay out at natural sizes
@@ -320,9 +361,11 @@ export function initSheetDrag(sheet, closeFn) {
       cached = freshCalc();
       sheet.style.height = prev;                   // restore before transition
 
-      // Use the *larger* of current height and new initial so content growth
-      // always expands the sheet (e.g. route results loading).
-      const cur = Math.max(sheet.offsetHeight, cached.initial);
+      // If new content is shorter than the current sheet, allow shrinking;
+      // otherwise grow to fit.
+      const curH = sheet.offsetHeight;
+      const cur = curH > cached.cap ? cached.initial          // content shrank
+                : Math.max(curH, cached.initial);              // content grew
       const target = snapTarget(cur, cached.mode, cached.cap);
       if (target === "full") {
         sheet.classList.add("full");
