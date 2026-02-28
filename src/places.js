@@ -69,7 +69,7 @@ export function addPlaceMarkers() {
     getSavedPins().forEach((pin) => {
       const el = document.createElement("div");
       el.className = "place-mk-wrap";
-      el.innerHTML = `<div class="search-mk"><svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent,#1A73B8)"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>`;
+      el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
       el.dataset.pinId = pin.id;
       const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
       el.addEventListener("click", (e) => {
@@ -258,7 +258,12 @@ export function checkShareUrl() {
     }
   }
 
-  if (mapView && !placeToken) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); return; }
+  if (mapView && !placeToken) {
+    map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom });
+    // Show a dropped-pin marker so the shared location is visible
+    window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: mapView.lng, lat: mapView.lat } }));
+    return;
+  }
 
   if (placeToken) {
     const data = decryptToken(placeToken) || _decodeLegacyToken(placeToken);
@@ -450,12 +455,13 @@ function renderPlacesList() {
     .join("");
 
   const pinHTML = customPins
-    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${filtered.length + pi}">
-      <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>
+    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent,#1A73B8);--i:${filtered.length + pi}">
+      <span class="pl-dot" style="background:var(--accent,#1A73B8)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
       <span class="pl-name">${esc(pin.name)}</span>
       <span class="pl-addr">${esc(pin.id)}</span>
       <div class="pl-meta">
-        <span class="pl-type-badge" style="--type-c:var(--accent)">Dropped Pin</span>
+        <span class="pl-type-badge" style="--type-c:var(--accent,#1A73B8)">Dropped Pin</span>
+        <span class="pl-tags-summary" style="visibility:hidden" aria-hidden="true">&nbsp;</span>
       </div>
       <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>

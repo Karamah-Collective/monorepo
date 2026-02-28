@@ -6,133 +6,207 @@ import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPa
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
-// Allow places.js to call showSearchMarker without a direct import (breaks circular dep)
-window.addEventListener("hf:show-search-marker", (e) => { showSearchMarker(e.detail.lng, e.detail.lat); });
+// Allow places.js to call showDroppedPin without a direct import (breaks circular dep)
+window.addEventListener("hf:show-search-marker", (e) => { showDroppedPin(e.detail.lng, e.detail.lat); });
 function _buildPinShareUrl(lat, lng) {
   const z = map.getZoom().toFixed(1);
   return `${location.origin}${location.pathname}#${z}/${(+lat).toFixed(4)}/${(+lng).toFixed(4)}`;
 }
 const _starSVG = (filled) =>
   `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+// ─── Pin SVG icons ──────────────────────────────────────────────────────────────
+const _searchPinSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
+const _droppedPinSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
+const _popupPinSVG   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
+const _popupSearchSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
+
+// ─── Single search-result marker (replaced on each new search) ──────────────────
 let searchMarker = null;
 let searchMarkerPopup = null;
-let _addrCache = null;
+let _searchAddrCache = null;
 
 export function showSearchMarker(lng, lat) {
   if (searchMarker) searchMarker.remove();
   if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
-  _addrCache = null;
+  _searchAddrCache = null;
   const el = document.createElement("div");
   el.className = "place-mk-wrap";
-  el.innerHTML = `<div class="search-mk">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent,#1A73B8)"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-  </div>`;
+  el.innerHTML = `<div class="search-mk">${_searchPinSVG}</div>`;
   searchMarker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([lng, lat]).addTo(map);
 
-  // Pre-fetch address the moment the pin lands so it's ready when the popup opens
-  reverseGeocode(lat, lng).then(name => { _addrCache = name || ""; }).catch(() => { _addrCache = ""; });
+  reverseGeocode(lat, lng).then(n => { _searchAddrCache = n || ""; }).catch(() => { _searchAddrCache = ""; });
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; return; }
-    const saved = isPinSaved(lat, lng);
-    searchMarkerPopup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "300px", className: "place-popup-wrap" })
-      .setLngLat([lng, lat])
-      .setHTML(`
-        <div class="pp" style="--pc: var(--accent, #1A73B8)">
-          <div class="pp-head">
-            <span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M21 10c0 6-9 13-9 13S3 16 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
-            <div class="pp-title">Dropped Pin</div>
-            <div class="pp-sub">Custom location</div>
-            <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
-          </div>
-          <div class="pp-body">
-            <div class="pp-addr">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span class="pin-addr-text pin-addr-text--loading">Finding address…</span>
-            </div>
-            <div class="pp-actions">
-              <button class="pp-dir-btn" data-lng="${lng}" data-lat="${lat}" title="Directions" aria-label="Directions">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-              </button>
-              <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-              </button>
-              <button class="pp-rm-btn" title="Remove pin" aria-label="Remove pin">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      `)
-      .addTo(map);
-
-    // Resolve address into the popup
-    const addrEl = searchMarkerPopup.getElement()?.querySelector(".pin-addr-text");
-    const applyAddr = (name) => {
-      if (!addrEl) return;
-      addrEl.textContent = name || "Unknown location";
-      addrEl.classList.remove("pin-addr-text--loading");
-    };
-    if (_addrCache !== null) {
-      applyAddr(_addrCache);
-    } else {
-      reverseGeocode(lat, lng)
-        .then(name => { _addrCache = name || ""; applyAddr(_addrCache); })
-        .catch(() => { _addrCache = ""; applyAddr(""); });
-    }
-
-    searchMarkerPopup.on("close", () => { searchMarkerPopup = null; });
-
-    searchMarkerPopup.getElement().addEventListener("click", async (ev) => {
-      const dirBtn = ev.target.closest(".pp-dir-btn");
-      const rmBtn  = ev.target.closest(".pp-rm-btn");
-      const favBtn = ev.target.closest(".pp-fav-btn");
-      const shrBtn = ev.target.closest(".pp-share-btn");
-      if (dirBtn) {
-        const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
-        const name = _addrCache !== null ? (_addrCache || `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`) : await reverseGeocode(pLat, pLng);
-        dir.origin = { lat: pLat, lng: pLng, name };
-        document.getElementById("dir-from").value = name;
-        placeOriginMarker(pLng, pLat);
-        autoSetNearestMosque(pLat, pLng);
-        updateGoButton();
-        searchMarkerPopup.remove();
-        searchMarkerPopup = null;
-        clearSearchMarker();
-        openDirPanel();
-        if (!dir.dest) startPick("to");
-      } else if (favBtn) {
-        const pinName = _addrCache || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
-        const nowSaved = !isPinSaved(lat, lng);
-        toggleSavedPin(lat, lng, pinName);
-        favBtn.classList.toggle("active", nowSaved);
-        favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save pin");
-        favBtn.innerHTML = _starSVG(nowSaved);
-        showToast(nowSaved ? "Pin saved" : "Pin removed", "check");
-      } else if (shrBtn) {
-        const url = _buildPinShareUrl(lat, lng);
-        if (navigator.share) {
-          navigator.share({ title: "Dropped Pin", text: `Dropped pin – Halal Finder`, url })
-            .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-        } else {
-          copyToClipboard(url);
-          showToast("Link copied");
-        }
-      } else if (rmBtn) {
-        searchMarkerPopup.remove();
-        searchMarkerPopup = null;
-        clearSearchMarker();
-        // Also remove any stacked savedPinMarker from places.js at the same coords
-        window.dispatchEvent(new CustomEvent("hf:remove-saved-pin-marker", { detail: { id: pinId(lat, lng) } }));
-      }
-    });
+    _openPinPopup(lng, lat, "search");
   });
 }
 
 export function clearSearchMarker() {
   if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
   if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+}
+
+// ─── Multiple dropped-pin markers (custom pins) ────────────────────────────────
+let _droppedPins = []; // [{marker, popup, lat, lng, addrCache}]
+
+export function showDroppedPin(lng, lat) {
+  // If a pin already exists at these exact coordinates, just re-open its popup
+  // instead of stacking a duplicate — this happens when re-opening saved pins.
+  const existing = _droppedPins.find(e => e.lng === lng && e.lat === lat);
+  if (existing) { _openPinPopup(lng, lat, "custom", existing); return; }
+
+  const entry = { marker: null, popup: null, lat, lng, addrCache: null };
+  const el = document.createElement("div");
+  el.className = "place-mk-wrap";
+  el.innerHTML = `<div class="custom-mk">${_droppedPinSVG}</div>`;
+  entry.marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([lng, lat]).addTo(map);
+  _droppedPins.push(entry);
+
+  reverseGeocode(lat, lng).then(n => { entry.addrCache = n || ""; }).catch(() => { entry.addrCache = ""; });
+
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _openPinPopup(lng, lat, "custom", entry);
+  });
+}
+
+function _removeDroppedPin(entry) {
+  if (entry.popup) entry.popup.remove();
+  if (entry.marker) entry.marker.remove();
+  _droppedPins = _droppedPins.filter(e => e !== entry);
+}
+
+export function clearDroppedPins() {
+  _droppedPins.forEach(e => { if (e.popup) e.popup.remove(); e.marker.remove(); });
+  _droppedPins = [];
+}
+
+// ─── Shared popup builder for both pin types ────────────────────────────────────
+function _openPinPopup(lng, lat, kind, entry) {
+  document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
+  if (searchMarkerPopup) searchMarkerPopup = null;
+  _droppedPins.forEach(e => { e.popup = null; });
+
+  const isSearch = kind === "search";
+  const title = isSearch ? "Searched Location" : "Dropped Pin";
+  const subtitle = isSearch ? "Search result" : "Custom location";
+  const popupColor = isSearch ? "var(--accent, #1A73B8)" : "var(--accent, #1A73B8)";
+  const saved = isPinSaved(lat, lng);
+
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "260px", className: "place-popup-wrap pin-popup-wrap" })
+    .setLngLat([lng, lat])
+    .setHTML(`
+      <div class="pp pp--pin" style="--pc: ${popupColor}">
+        <div class="pp-head">
+          <span class="pp-type-icon">${isSearch ? _popupSearchSVG : _popupPinSVG}</span>
+          <div class="pp-title">${title}</div>
+          <div class="pp-sub">${subtitle}</div>
+          <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
+        </div>
+        <div class="pp-body">
+          <div class="pp-addr">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="pin-addr-text pin-addr-text--loading">Finding address…</span>
+          </div>
+          <div class="pp-actions">
+            <button class="pp-dir-btn" data-lng="${lng}" data-lat="${lat}" title="Directions" aria-label="Directions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            </button>
+            <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button class="pp-rm-btn" title="Remove pin" aria-label="Remove pin">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    `)
+    .addTo(map);
+
+  if (isSearch) {
+    searchMarkerPopup = popup;
+  } else if (entry) {
+    entry.popup = popup;
+  }
+
+  // Resolve address into the popup
+  const addrEl = popup.getElement()?.querySelector(".pin-addr-text");
+  const applyAddr = (name) => {
+    if (!addrEl) return;
+    addrEl.textContent = name || "Unknown location";
+    addrEl.classList.remove("pin-addr-text--loading");
+  };
+  const cachedAddr = isSearch ? _searchAddrCache : entry?.addrCache;
+  if (cachedAddr !== null && cachedAddr !== undefined) {
+    applyAddr(cachedAddr);
+  } else {
+    reverseGeocode(lat, lng)
+      .then(name => {
+        const addr = name || "";
+        if (isSearch) _searchAddrCache = addr;
+        else if (entry) entry.addrCache = addr;
+        applyAddr(addr);
+      })
+      .catch(() => {
+        if (isSearch) _searchAddrCache = "";
+        else if (entry) entry.addrCache = "";
+        applyAddr("");
+      });
+  }
+
+  popup.on("close", () => {
+    if (isSearch) searchMarkerPopup = null;
+    else if (entry) entry.popup = null;
+  });
+
+  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+
+  popup.getElement().addEventListener("click", async (ev) => {
+    const dirBtn = ev.target.closest(".pp-dir-btn");
+    const rmBtn  = ev.target.closest(".pp-rm-btn");
+    const favBtn = ev.target.closest(".pp-fav-btn");
+    const shrBtn = ev.target.closest(".pp-share-btn");
+    const resolvedAddr = isSearch ? _searchAddrCache : entry?.addrCache;
+    if (dirBtn) {
+      const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
+      const name = resolvedAddr != null ? (resolvedAddr || `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`) : await reverseGeocode(pLat, pLng);
+      dir.origin = { lat: pLat, lng: pLng, name };
+      document.getElementById("dir-from").value = name;
+      placeOriginMarker(pLng, pLat);
+      autoSetNearestMosque(pLat, pLng);
+      updateGoButton();
+      popup.remove();
+      if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
+      else if (entry) { _removeDroppedPin(entry); }
+      openDirPanel();
+      if (!dir.dest) startPick("to");
+    } else if (favBtn) {
+      const pinName = resolvedAddr || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+      const nowSaved = !isPinSaved(lat, lng);
+      toggleSavedPin(lat, lng, pinName);
+      favBtn.classList.toggle("active", nowSaved);
+      favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save pin");
+      favBtn.innerHTML = _starSVG(nowSaved);
+      showToast(nowSaved ? "Pin saved" : "Pin removed", "check");
+    } else if (shrBtn) {
+      const url = _buildPinShareUrl(lat, lng);
+      if (navigator.share) {
+        navigator.share({ title, text: `${title} – Halal Finder`, url })
+          .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
+      } else {
+        copyToClipboard(url);
+        showToast("Link copied");
+      }
+    } else if (rmBtn) {
+      popup.remove();
+      if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
+      else if (entry) { _removeDroppedPin(entry); }
+      window.dispatchEvent(new CustomEvent("hf:remove-saved-pin-marker", { detail: { id: pinId(lat, lng) } }));
+    }
+  });
 }
 
 const inp = document.getElementById("search-input");
@@ -267,25 +341,21 @@ map.doubleClickZoom.disable();
 
 map.on("dblclick", async (e) => {
   const { lat, lng } = e.lngLat;
-  showSearchMarker(lng, lat);
+  showDroppedPin(lng, lat);
 });
 
-// Mobile: double-tap drops a search pin (MapLibre's dblclick may not fire reliably on touch)
+// Mobile: double-tap drops a custom pin (MapLibre's dblclick may not fire reliably on touch)
 let _lastTapTime = 0, _lastTapLng = 0, _lastTapLat = 0;
 map.on("touchend", (e) => {
   if (e.originalEvent.changedTouches.length !== 1) return;
   const now = Date.now();
   const { lng, lat } = e.lngLat;
   if (now - _lastTapTime < 350 && Math.abs(lng - _lastTapLng) < 0.0015 && Math.abs(lat - _lastTapLat) < 0.0015) {
-    showSearchMarker(lng, lat);
+    showDroppedPin(lng, lat);
     _lastTapTime = 0;
   } else {
     _lastTapTime = now;
     _lastTapLng = lng;
     _lastTapLat = lat;
   }
-});
-
-map.on("dragstart", () => {
-  if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
 });
