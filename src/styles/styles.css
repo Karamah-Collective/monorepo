@@ -226,15 +226,13 @@
 }
 .sheet.shut { transform: translateY(100%); }
 .sheet.dragging { transition: none; will-change: transform, height; }
-.sheet.full { height: calc(100vh - 24px); border-radius: var(--r-xl); }
+.sheet.full { height: 100vh !important; height: 100dvh !important; border-radius: 0; }
 
-#dir-panel { height: auto; max-height: var(--sheet-h); }
+#dir-panel { height: auto; }
 #dir-panel.results-shown,
-#dir-panel.route-focused { height: var(--sheet-h); max-height: none; }
-#dir-panel.full { height: calc(100vh - 24px); max-height: none; }
+#dir-panel.route-focused { height: auto; }
 
-#places-sheet { height: auto; max-height: var(--sheet-h); }
-#places-sheet.full { height: calc(100vh - 24px); max-height: none; }
+#places-sheet { height: auto; }
 
 .sheet-drag { display: flex; justify-content: center; padding: 10px 0 4px; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
 .sheet-drag span { width: 36px; height: 4px; background: var(--surface-3); border-radius: var(--r-pill); }
@@ -353,18 +351,13 @@
 
 #places-scroll {
   flex: 1; min-height: 0;
-
+  overflow-y: auto;
   scroll-behavior: smooth;
 }
 
 #places-list { list-style: none; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
 #places-list:empty { padding: 0; }
-#places-list li,
-#places-empty {
-  padding: 14px 16px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-}
+/* Both the regular li cards and the empty-state card extend .pl-card (design-tokens.css) */
 #places-list li {
   display: grid;
   grid-template: "icon name meta fav" auto "icon addr meta fav" auto / auto 1fr auto auto;
@@ -385,11 +378,13 @@
 
 .pl-name {
   grid-area: name; align-self: end;
+  font-size: var(--pl-row1);
   min-width: 0;
 }
 
 .pl-addr {
   grid-area: addr; align-self: start;
+  font-size: var(--pl-row2);
   min-width: 0;
 }
 .pl-meta {
@@ -428,10 +423,15 @@
 }
 
 #places-empty {
-  display: flex; align-items: center; gap: var(--sp-5);
+  /* Same grid as #places-list li — guarantees identical row sizing */
+  display: grid;
+  grid-template: "icon name" auto "icon addr" auto / auto 1fr;
+  align-items: center; column-gap: var(--sp-5);
   margin: 8px 16px 16px;
+  /* box styles from .pl-card */
 }
 .empty-anim {
+  grid-area: icon; align-self: center;
   position: relative; width: 28px; height: 28px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
@@ -454,13 +454,18 @@
   50% { width: 12px; opacity: .3; }
 }
 .empty-text {
-  display: flex; flex-direction: column; gap: 1px; min-width: 0;
+  /* Become invisible to the grid — children land directly in the parent grid tracks */
+  display: contents;
 }
 .empty-title {
-  font-size: var(--txt-md); font-weight: var(--fw-semibold); color: var(--text-2);
+  grid-area: name; align-self: end;
+  font-size: var(--pl-row1); font-weight: var(--fw-semibold); color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .empty-sub {
-  font-size: var(--txt-sm); color: var(--text-3); font-weight: var(--fw-medium);
+  grid-area: addr; align-self: start;
+  font-size: var(--pl-row2); color: var(--text-3); font-weight: var(--fw-medium);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
 }
 
 .pl-skeleton {
@@ -599,8 +604,7 @@
   padding-top: 10px; border-top: 1px solid var(--border-light);
 }
 
-.pp-dir-btn, .pp-share-btn, .pp-edit-btn {
-
+.pp-dir-btn, .pp-share-btn, .pp-edit-btn, .pp-rm-btn {
   flex: 1;
   height: 34px;
   padding: 0;
@@ -1051,7 +1055,8 @@
 .tp-cell.selected:hover { opacity: .88; }
 
 #dir-results {
-  flex: 1;
+  flex: 1; min-height: 0;
+  overflow-y: auto;
 }
 #dir-panel.results-shown #dir-results { padding-bottom: 16px; }
 #dir-empty {
@@ -1199,7 +1204,8 @@
   display: none !important;
 }
 #dir-panel.route-focused #dir-results {
-  flex: 1;
+  flex: 1; min-height: 0;
+  overflow-y: auto;
 }
 #dir-focused-head {
   display: none; flex-direction: column;
@@ -1266,8 +1272,6 @@
 
 @media (max-width: 768px) {
   #dir-panel.route-focused {
-    height: 100dvh;
-    max-height: 100dvh;
     border-radius: 0;
     top: 0;
   }
@@ -1635,26 +1639,8 @@
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
 }
 
-.pin-action-popup .maplibregl-popup-content {
-  padding: 10px 10px !important;
-  border-radius: var(--r-md) !important;
-  min-width: 0;
-}
-.pin-action-popup .maplibregl-popup-close-button { display: none !important; }
-.pin-actions { display: flex; gap: var(--sp-2); }
-.pin-act-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 14px;
-  font-family: inherit; font-size: var(--txt-base); font-weight: var(--fw-bold);
-  color: #fff;
-  border-radius: var(--r-sm); cursor: pointer;
-  transition: filter .15s;
-  white-space: nowrap;
-}
-.pin-act-btn:hover { filter: brightness(1.12); }
-.pin-act-btn svg { flex-shrink: 0; }
-.pin-act-dir { background: var(--accent); }
-.pin-act-rm { background: var(--danger, #d93025); }
+/* .pin-addr-text — address row inside the dropped-pin popup */
+.pin-addr-text--loading { color: var(--text-3); font-style: italic; }
 .maplibregl-popup-close-button {
   font-size: var(--txt-2xl) !important; top: 10px !important; right: var(--map-edge) !important;
   color: var(--text-3) !important; width: 24px !important; height: 24px !important;
@@ -1846,8 +1832,6 @@
     max-width: min(300px, 90vw);
   }
 
-  .pin-act-btn { padding: 9px 16px; font-size: var(--txt-base); }
-
   .tab:hover { color: var(--text-3); }
   .tab:active { color: var(--accent); }
   #zoom-pill button:hover { color: var(--text-3); }
@@ -1865,8 +1849,7 @@
   #search-box { gap: var(--sp-2); }
   .pf-icon { width: 34px; height: 34px; }
   .pf-label { font-size: var(--txt-xs); }
-  .pin-actions { flex-direction: column; }
-  .pin-act-btn { width: 100%; justify-content: center; }
+  /* pin-action icon buttons stay in a row on small screens */
 }
 
 /* ─── First-Run Tutorial ────────────────────────────────────────────────────── */
@@ -1931,20 +1914,20 @@
 /* Center variant */
 .tut-card--center {
   text-align: center;
-  padding: var(--sp-8) var(--sp-7) var(--sp-6);
+  padding: var(--sp-6) var(--sp-7) var(--sp-5);
 }
 .tut-card--center .tut-head {
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
 .tut-card--center .tut-title { text-align: center; }
 .tut-card--center .tut-body {
   text-align: center;
   font-size: var(--txt-base);
   font-weight: var(--fw-regular);
-  margin-bottom: var(--sp-5);
+  margin-bottom: var(--sp-3);
 }
 .tut-card--center .tut-foot { justify-content: center; }
 .tut-card--center .tut-dots { display: none; }
@@ -2107,6 +2090,6 @@
 
 @media (max-width: 480px) {
   .tut-card { padding: var(--sp-4) var(--sp-5) var(--sp-3); }
-  .tut-card--center { padding: var(--sp-7) var(--sp-6) var(--sp-7); }
+  .tut-card--center { padding: var(--sp-5) var(--sp-5) var(--sp-4); }
   .tut-card--center .tut-title { font-size: var(--txt-md); }
 }

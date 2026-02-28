@@ -1,6 +1,25 @@
 import { _CRYPTO_KEY, FINLAND_SW, FINLAND_NE } from "./config.js";
 import { map } from "./map-init.js";
 
+// ─── Saved custom pins ─────────────────────────────────────────────────────────────
+const SAVED_PINS_KEY = "hf_saved_pins";
+export function pinId(lat, lng) { return `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
+function _loadPins() { try { return JSON.parse(localStorage.getItem(SAVED_PINS_KEY) || "[]"); } catch { return []; } }
+export function getSavedPins() { return _loadPins(); }
+export function isPinSaved(lat, lng) { return _loadPins().some(p => p.id === pinId(lat, lng)); }
+export function toggleSavedPin(lat, lng, name) {
+  const id = pinId(lat, lng);
+  let pins = _loadPins();
+  const exists = pins.some(p => p.id === id);
+  pins = exists ? pins.filter(p => p.id !== id) : [...pins, { id, lat: +lat, lng: +lng, name: name || id }];
+  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
+  return !exists; // returns new saved state (true = now saved)
+}
+export function removeSavedPin(id) {
+  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(_loadPins().filter(p => p.id !== id)));
+}
+// ─────────────────────────────────────────────────────────────
+
 // --- HTML escaping ---
 
 export function esc(s) {
@@ -133,64 +152,207 @@ export async function checkGeoNotice() {
   } catch {}
 }
 
-// --- Sheet drag-to-resize/dismiss ---
+// --- Sheet drag-to-resize/dismiss (mobile snap system) ---
+//
+// Algorithm per content-to-viewport ratio:
+//
+//   content < 50 vh  → opens at content height, always snaps back (unless
+//                      pulled below 5 % → dismiss)
+//
+//   50–75 vh         → opens at *content* height (no wasted whitespace).
+//                      Snaps to: dismiss | 50 % | content
+//
+//   ≥ 75 vh          → opens at 75 % (leave room for the map).
+//                      Snaps to: dismiss | 50 % | 75 % | full (100 %)
+//
+// During drag the sheet follows the finger with zero resistance.
+// On release it gracefully animates to the nearest snap point.
 
-export function initSheetDrag(dragEl, sheet, closeFn) {
-  let startY = 0,
-    startH = 0,
-    dragging = false;
-  const SNAP_MIN = 180;
+export function initSheetDrag(sheet, closeFn) {
+  const isMobile = () => window.innerWidth <= 768;
+  let startY = 0, startH = 0, dragging = false;
+  let cached = null;                               // snap-mode cache (survives tab switches)
 
+  /* ── measure true content height ── */
+  /* Called only from freshCalc() which first sets height:auto so flex-1
+     children report their natural scrollHeight, not flex-expanded size. */
+  function contentHeight() {
+    let h = 0;
+    for (const c of sheet.children) {
+      if (!c.offsetWidth && !c.offsetHeight) continue;   // skip display:none
+      const cs = getComputedStyle(c);
+      const own = parseFloat(cs.flexGrow) > 0 ? c.scrollHeight : c.offsetHeight;
+      h += own + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    }
+    return h;
+  }
+
+  /* ── fresh calculation (always re-measures) ── */
+  function freshCalc() {
+    const vh = window.innerHeight;
+    const ch = contentHeight();
+    const r  = ch / vh;
+    if (r < 0.5)  return { mode: "small",  initial: ch,         cap: ch };
+    if (r < 0.75) return { mode: "medium", initial: ch,         cap: ch };
+    /*   large  */ return { mode: "large",  initial: vh * 0.75,  cap: vh };
+  }
+
+  /* ── pick snap target from current height ── */
+  function snapTarget(currentH, mode, cap) {
+    const vh = window.innerHeight;
+    const r  = currentH / vh;
+
+    if (mode === "small") {
+      if (r < 0.25) return 0;              // dismiss
+      // snap to content height or 50 %, whichever is closer
+      const mid = (cap + vh * 0.5) / 2;
+      return currentH >= mid ? vh * 0.5 : cap;
+    }
+
+    if (mode === "medium") {
+      if (r < 0.25) return 0;              // dismiss
+      // midpoint between 50 % and the content cap
+      const mid = (vh * 0.5 + cap) / 2;
+      return currentH >= mid ? cap : vh * 0.5;
+    }
+
+    // large
+    if (r < 0.25) return 0;                // dismiss
+    if (r >= 0.76) return "full";           // 100 %
+    // midpoint between 50 % and 75 %
+    return r >= 0.625 ? vh * 0.75 : vh * 0.5;
+  }
+
+  /* ── drag handlers ── */
   function onStart(y) {
+    if (!isMobile()) return;
+    // If currently in .full state, commit actual height as inline px and drop the
+    // class so the drag isn't fighting the !important CSS rule
+    if (sheet.classList.contains("full")) {
+      sheet.style.height = sheet.offsetHeight + "px";
+      sheet.classList.remove("full");
+    }
     startY = y;
     startH = sheet.offsetHeight;
     dragging = true;
     sheet.classList.add("dragging");
   }
+
   function onMove(y) {
     if (!dragging) return;
-    const dy = startY - y;
-    const newH = Math.max(100, Math.min(startH + dy, window.innerHeight - 12));
+    const vh = window.innerHeight;
+    const newH = Math.max(40, Math.min(startH + (startY - y), vh));
     sheet.style.height = newH + "px";
   }
-  function onEnd(y) {
+
+  function onEnd() {
     if (!dragging) return;
     dragging = false;
-    sheet.classList.remove("dragging");
-    sheet.style.height = "";
-    const finalH = sheet.offsetHeight + (startY - y);
-    const vh = window.innerHeight;
-    if (finalH < SNAP_MIN) {
+
+    const currentH = sheet.offsetHeight;
+    const { mode, cap } = cached || freshCalc();
+    // Clamp to content cap — if user dragged above it, snap back down
+    const effective = Math.min(currentH, cap);
+    const target = snapTarget(effective, mode, cap);
+
+    // Commit current height so the transition has a known start value
+    sheet.style.height = currentH + "px";
+    void sheet.offsetHeight;                       // force reflow
+
+    sheet.classList.remove("dragging");            // re-enable CSS transition
+
+    if (target === 0) {
       closeFn();
-      sheet.classList.remove("full");
-    } else if (finalH > vh * 0.78) {
+    } else if (target === "full") {
       sheet.classList.add("full");
+      sheet.style.height = "";
     } else {
       sheet.classList.remove("full");
+      sheet.style.height = target + "px";
     }
   }
 
-  dragEl.addEventListener("touchstart", (e) => onStart(e.touches[0].clientY), {
-    passive: true,
+  /* ── bind drag handles (start on handle, move/end on document) ── */
+  sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
+    handle.addEventListener("touchstart", (e) => onStart(e.touches[0].clientY), { passive: true });
+    handle.addEventListener("mousedown",  (e) => { onStart(e.clientY); e.preventDefault(); });
   });
-  dragEl.addEventListener("touchmove", (e) => onMove(e.touches[0].clientY), {
-    passive: true,
-  });
-  dragEl.addEventListener(
-    "touchend",
-    (e) => onEnd(e.changedTouches[0].clientY),
-    { passive: true },
-  );
-  dragEl.addEventListener("mousedown", (e) => {
-    onStart(e.clientY);
-    e.preventDefault();
-  });
-  document.addEventListener("mousemove", (e) => {
-    if (dragging) onMove(e.clientY);
-  });
-  document.addEventListener("mouseup", (e) => {
-    if (dragging) onEnd(e.clientY);
-  });
+  document.addEventListener("touchmove", (e) => { if (dragging) onMove(e.touches[0].clientY); }, { passive: true });
+  document.addEventListener("touchend",  ()  => { if (dragging) onEnd(); }, { passive: true });
+  document.addEventListener("mousemove", (e) => { if (dragging) onMove(e.clientY); });
+  document.addEventListener("mouseup",   ()  => { if (dragging) onEnd(); });
+
+  /* ── public controller ── */
+  return {
+    /**
+     * Open the sheet at its correct initial snap height.
+     * Briefly remove .shut → measure → re-add .shut → rAF remove = smooth reveal.
+     */
+    open() {
+      if (!isMobile()) return;
+      sheet.classList.remove("full");
+
+      // 1. height:auto + remove .shut so children lay out at natural sizes
+      sheet.style.height = "auto";
+      sheet.classList.remove("shut");
+      void sheet.offsetHeight;                     // force layout
+
+      // 2. Fresh measure (children now at natural height)
+      cached = freshCalc();
+
+      // 3. Commit the height and re-add .shut in the same frame (no paint yet)
+      sheet.style.height = cached.initial + "px";
+      sheet.classList.add("shut");
+      void sheet.offsetHeight;                     // force layout with .shut
+
+      // 4. Remove .shut in next frame → CSS transition slides up
+      requestAnimationFrame(() => {
+        sheet.classList.remove("shut");
+      });
+    },
+    /** Re-measure after content changes (e.g. results loaded) & re-snap */
+    remeasure() {
+      if (!isMobile() || sheet.classList.contains("shut")) return;
+      // Temporarily auto so flex-1 children report natural content height
+      const prev = sheet.style.height;
+      sheet.style.height = "auto";
+      void sheet.offsetHeight;
+      cached = freshCalc();
+      sheet.style.height = prev;                   // restore before transition
+
+      // Use the *larger* of current height and new initial so content growth
+      // always expands the sheet (e.g. route results loading).
+      const cur = Math.max(sheet.offsetHeight, cached.initial);
+      const target = snapTarget(cur, cached.mode, cached.cap);
+      if (target === "full") {
+        sheet.classList.add("full");
+        sheet.style.height = "";
+      } else if (target === 0) {
+        // Content grew but would dismiss — open at initial instead
+        sheet.classList.remove("full");
+        sheet.style.height = cached.initial + "px";
+      } else {
+        sheet.classList.remove("full");
+        sheet.style.height = Math.max(target, cached.initial) + "px";
+      }
+    },
+    /** Update cached cap (e.g. after a tab switch).
+     *  Only updates the drag cap — never changes the current height. */
+    softRemeasure() {
+      if (!isMobile() || sheet.classList.contains("shut")) return;
+      const prev = sheet.style.height;
+      sheet.style.height = "auto";
+      void sheet.offsetHeight;
+      cached = freshCalc();
+      sheet.style.height = prev;
+    },
+    /** Mark as closing — inline height is kept so the slide-down
+     *  transition doesn't jump.  open() clears it next time. */
+    close() {
+      sheet.classList.remove("full");
+      cached = null;
+    }
+  };
 }
 
 // --- Pure math ---

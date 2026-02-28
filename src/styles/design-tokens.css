@@ -205,7 +205,6 @@ html, body {
 .btn-secondary:hover,
 .pp-share-btn:hover,
 .pp-edit-btn:hover { color: var(--text); border-color: var(--surface-3); }
-
 .btn-danger-pill {
   display: inline-flex; align-items: center;
   gap: var(--sp-1);
@@ -221,7 +220,8 @@ html, body {
 }
 .btn-danger-pill:hover { color: #b33636; }
 
-.btn-danger-filled {
+.btn-danger-filled,
+.pp-rm-btn {
   display: inline-flex; align-items: center; justify-content: center;
   gap: var(--sp-1);
   padding: 7px var(--sp-6);
@@ -232,7 +232,8 @@ html, body {
   font-weight: var(--fw-bold);
   transition: filter var(--t-fast);
 }
-.btn-danger-filled:hover { filter: brightness(1.12); }
+.btn-danger-filled:hover,
+.pp-rm-btn:hover { filter: brightness(1.12); }
 
 .btn-success-pill {
   display: inline-flex; align-items: center;
@@ -663,4 +664,16 @@ html, body {
   background: var(--accent);
   width: 14px;
   border-radius: var(--r-pill);
+}
+
+/* ─── Place list card ───────────────────────────────────────────────────────── */
+/* Shared base for every card in the places list: regular li AND the empty state */
+.pl-card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  /* Font-size tokens used by both row types so they stay in sync */
+  --pl-row1: var(--txt-base); /* name row  / empty title */
+  --pl-row2: var(--txt-sm);   /* addr row  / empty sub   */
 }

@@ -42,18 +42,19 @@ const dirClearBtn = document.getElementById("dir-clear-route");
 // --- Panel open/close ---
 export function openDirPanel() {
   document.getElementById("places-sheet").classList.add("shut");
-  dirPanel.classList.remove("shut", "full");
+  dirPanel.style.height = "";
   document.getElementById("scrim").classList.remove("hide");
   routeSnackbar.classList.add("hide");
   setActiveTab("dir-btn");
   if (dir.originMarker) dir.originMarker.getElement().style.display = "";
   if (dir.destMarker) dir.destMarker.getElement().style.display = "";
   if (!dir.pickField) startPick("from");
+  dirSnap.open();
 }
 
 export function closeDirPanel() {
   dirPanel.classList.add("shut");
-  dirPanel.classList.remove("full");
+  dirSnap.close();
   document.getElementById("scrim").classList.add("hide");
   stopPick();
   updateSnackbar();
@@ -77,6 +78,8 @@ document.getElementById("dir-btn").addEventListener("click", () =>
   dirPanel.classList.contains("shut") ? openDirPanel() : closeDirPanel(),
 );
 document.getElementById("dir-close").addEventListener("click", closeDirPanel);
+
+const dirSnap = initSheetDrag(dirPanel, closeDirPanel);
 
 dirPanel.dataset.travelMode = "drive";
 document.querySelectorAll(".mode-opt").forEach((btn) => {
@@ -151,11 +154,6 @@ dirItins.addEventListener("click", (e) => {
 
 // Override scrim to not close anything (handled per-panel)
 document.getElementById("scrim").addEventListener("click", () => {});
-
-const dirDrag = document.getElementById("dir-drag");
-initSheetDrag(dirDrag, dirPanel, closeDirPanel);
-const dirHead = document.getElementById("dir-head");
-if (dirHead) initSheetDrag(dirHead, dirPanel, closeDirPanel);
 
 // --- Pick mode ---
 export function startPick(field) {
@@ -1100,11 +1098,13 @@ function focusRoute(idx) {
     if (i === idx) { c.classList.add("focused", "active"); c.style.display = ""; }
     else { c.style.display = "none"; }
   });
+  dirSnap.remeasure();
 }
 
 function unfocusRoute() {
   dirPanel.classList.remove("route-focused");
   document.querySelectorAll(".itin-card").forEach((c) => { c.classList.remove("focused"); c.style.display = ""; });
+  dirSnap.remeasure();
 }
 
 function focusDirectRoute() {
@@ -1122,6 +1122,7 @@ function focusDirectRoute() {
     if (c.classList.contains("direct-card")) { c.classList.add("focused", "active"); c.style.display = ""; }
     else { c.style.display = "none"; }
   });
+  dirSnap.remeasure();
 }
 
 function highlightDirectStep(idx, stepEl) {
@@ -1208,6 +1209,7 @@ function enterResultsMode() {
   dirSumTo.textContent = dir.dest?.name || "Destination";
   dirPanel.classList.add("results-shown");
   dirPanel.classList.remove("search-editing");
+  dirSnap.remeasure();
 }
 function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
 dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); });

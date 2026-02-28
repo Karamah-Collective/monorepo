@@ -9,7 +9,10 @@
     <meta name="theme-color" content="#1A73B8" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Halal Finder Helsinki</title>
-    <link rel="stylesheet" href="lib/maplibre-gl.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+    />
     <link rel="stylesheet" href="src/styles/styles.css" />
   </head>
   <body>
@@ -814,7 +817,7 @@
         </div>
         <div id="places-scroll">
           <ul id="places-list"></ul>
-          <div id="places-empty" class="hide">
+          <div id="places-empty" class="pl-card hide">
             <div class="empty-anim">
               <svg
                 class="empty-pin"
@@ -1154,8 +1157,13 @@
       <div id="scrim" class="hide"></div>
     </div>
 
-    <!-- MapLibre GL – self-hosted, no third-party CDN tracking -->
-    <script src="lib/maplibre-gl.js"></script>
+    <!-- reCAPTCHA v3 – site key is intentionally public (never use the secret key here) -->
+    <script
+      src="https://www.google.com/recaptcha/api.js?render=6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v"
+      async
+      defer
+    ></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script type="module" src="src/app.js"></script>
   </body>
 </html>

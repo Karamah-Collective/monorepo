@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin } from "./utils.js";
 import { RECAPTCHA_SITE_KEY } from "./config.js";
 import { setActiveTab } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
@@ -8,6 +8,7 @@ import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./
 export let placesData = [];
 export let tagsData = {};
 let placeMarkers = [];
+let savedPinMarkers = [];
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 let _editOriginalPlace = null;
@@ -38,6 +39,8 @@ export async function loadPlacesData() {
 export function addPlaceMarkers() {
   placeMarkers.forEach((m) => m.remove());
   placeMarkers = [];
+  savedPinMarkers.forEach((m) => m.remove());
+  savedPinMarkers = [];
 
   let filtered =
     activeTypeFilter === "all"
@@ -60,7 +63,34 @@ export function addPlaceMarkers() {
     el.addEventListener("click", (e) => { e.stopPropagation(); showPlacePopup(place); });
     placeMarkers.push(marker);
   });
+
+  // Show saved custom pins as map markers when on the saved tab
+  if (activeTypeFilter === "saved") {
+    getSavedPins().forEach((pin) => {
+      const el = document.createElement("div");
+      el.className = "place-mk-wrap";
+      el.innerHTML = `<div class="search-mk"><svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent,#1A73B8)"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>`;
+      el.dataset.pinId = pin.id;
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+      });
+      savedPinMarkers.push(marker);
+    });
+  }
 }
+
+// Remove a single savedPinMarker from the map when user dismisses the popup
+// (pin stays in hf_saved_pins — only the visual dot is cleared until next render)
+window.addEventListener("hf:remove-saved-pin-marker", (e) => {
+  const { id } = e.detail;
+  const idx = savedPinMarkers.findIndex(m => m.getElement()?.dataset?.pinId === id);
+  if (idx !== -1) {
+    savedPinMarkers[idx].remove();
+    savedPinMarkers.splice(idx, 1);
+  }
+});
 
 export function showPlacePopup(place) {
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
@@ -261,23 +291,17 @@ const scrim = document.getElementById("scrim");
 export function openPlacesSheet() {
   document.getElementById("dir-panel").classList.add("shut");
   stopPick();
-  placesSheet.classList.remove("shut", "full");
   placesSheet.style.height = "";
   scrim.classList.remove("hide");
   setActiveTab("places-btn");
   renderTagFilterBar();
   renderPlacesList();
-  requestAnimationFrame(() => {
-    if (!placesSheet.classList.contains("shut") && !placesSheet.classList.contains("full")) {
-      placesSheet.style.height = placesSheet.offsetHeight + "px";
-    }
-  });
+  placesSnap.open();                           // measure content → set initial snap height → reveal
 }
 
 export function closePlacesSheet() {
   placesSheet.classList.add("shut");
-  placesSheet.classList.remove("full");
-  placesSheet.style.height = "";
+  placesSnap.close();
   scrim.classList.add("hide");
   setActiveTab(null);
 }
@@ -287,9 +311,7 @@ document.getElementById("places-btn").addEventListener("click", () =>
 );
 document.getElementById("places-close").addEventListener("click", closePlacesSheet);
 
-initSheetDrag(document.getElementById("places-drag"), placesSheet, closePlacesSheet);
-const placesHead = placesSheet.querySelector(".sheet-head");
-if (placesHead) initSheetDrag(placesHead, placesSheet, closePlacesSheet);
+const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
 
 document.getElementById("places-type-chips").addEventListener("click", (e) => {
   const chip = e.target.closest(".pf-chip");
@@ -301,6 +323,7 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   renderTagFilterBar();
   addPlaceMarkers();
   renderPlacesList();
+  placesSnap.softRemeasure();                    // update drag cap for new tab content
 });
 
 const tfToggle = document.getElementById("tf-toggle");
@@ -348,6 +371,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   updateTagCount();
   addPlaceMarkers();
   renderPlacesList();
+  placesSnap.softRemeasure();                    // update drag cap for filtered content
 });
 
 function renderPlacesList() {
@@ -368,20 +392,49 @@ function renderPlacesList() {
     );
   }
 
-  if (!filtered.length) { list.innerHTML = ""; empty.classList.remove("hide"); ct.textContent = ""; return; }
+  const customPins = activeTypeFilter === "saved" ? getSavedPins() : [];
+  const totalCount = filtered.length + customPins.length;
+
+  if (!totalCount) {
+    list.innerHTML = "";
+    ct.textContent = "";
+    empty.classList.remove("hide");
+    if (activeTypeFilter === "saved") {
+      empty.innerHTML = `
+        <div class="empty-anim">
+          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <div class="empty-ping"></div>
+        </div>
+        <div class="empty-text">
+          <span class="empty-title">Nothing saved yet</span>
+          <span class="empty-sub">Tap ★ on any place or pin to save it here</span>
+        </div>`;
+    } else {
+      empty.innerHTML = `
+        <div class="empty-anim">
+          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <div class="empty-ping"></div>
+        </div>
+        <div class="empty-text">
+          <span class="empty-title">No places found</span>
+          <span class="empty-sub">Try other filters · <button id="suggest-place-btn-empty" class="empty-suggest btn-inline">Suggest one</button></span>
+        </div>`;
+    }
+    return;
+  }
 
   empty.classList.add("hide");
-  ct.textContent = `${filtered.length} place${filtered.length > 1 ? "s" : ""}`;
+  ct.textContent = `${totalCount} place${totalCount > 1 ? "s" : ""}`;
 
   const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-  list.innerHTML = filtered
+  const regularHTML = filtered
     .map((p, i) => {
       const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
       const typeTags = tagsData[p.type] || [];
       const posCount = typeTags.filter((t) => p.tags?.[t.id] === true).length;
       const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "";
       const faved = isFavourite(p.id);
-      return `<li data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
+      return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color}">
       <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
       <span class="pl-name">${esc(p.name)}</span>
       <span class="pl-addr">${esc(p.address)}</span>
@@ -395,27 +448,42 @@ function renderPlacesList() {
     </li>`;
     })
     .join("");
+
+  const pinHTML = customPins
+    .map((pin) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent)">
+      <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>
+      <span class="pl-name">${esc(pin.name)}</span>
+      <span class="pl-addr">${esc(pin.id)}</span>
+      <div class="pl-meta">
+        <span class="pl-type-badge" style="--type-c:var(--accent)">Dropped Pin</span>
+      </div>
+      <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
+      </button>
+    </li>`)
+    .join("");
+
+  list.innerHTML = regularHTML + pinHTML;
 }
 
-// Lazy-load reCAPTCHA only when user opens the suggest form — avoids Google
-// tracking every visitor. Safe to call multiple times (script tag guard).
-function loadRecaptcha() {
-  if (document.getElementById("recaptcha-script")) return;
-  const s = document.createElement("script");
-  s.id = "recaptcha-script";
-  s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
-  s.async = true;
-  document.head.appendChild(s);
-}
-
-function openSuggestOverlay() {
-  loadRecaptcha();
-  document.getElementById("suggest-overlay").classList.remove("hide");
-}
+function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
 document.getElementById("suggest-place-btn").addEventListener("click", openSuggestOverlay);
-document.getElementById("suggest-place-btn-empty").addEventListener("click", openSuggestOverlay);
+// suggest-place-btn-empty is rendered dynamically, use delegation
+document.getElementById("places-scroll").addEventListener("click", (e) => {
+  if (e.target.closest("#suggest-place-btn-empty")) openSuggestOverlay();
+});
 
 document.getElementById("places-list").addEventListener("click", (e) => {
+  // Unsave a custom dropped pin
+  const unsaveBtn = e.target.closest(".pl-unsave-pin-btn");
+  if (unsaveBtn) {
+    e.stopPropagation();
+    removeSavedPin(unsaveBtn.dataset.pinId);
+    addPlaceMarkers();
+    renderPlacesList();
+    return;
+  }
+  // Toggle favourite on a regular place
   const favBtn = e.target.closest(".pl-fav-btn");
   if (favBtn) {
     e.stopPropagation();
@@ -427,6 +495,18 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
     return;
   }
+  // Click on a custom dropped pin row — fly to and open its popup
+  const pinLi = e.target.closest("li[data-custom-pin-id]");
+  if (pinLi) {
+    const pin = getSavedPins().find(p => p.id === pinLi.dataset.customPinId);
+    if (pin) {
+      closePlacesSheet();
+      window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+      map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+    }
+    return;
+  }
+  // Click on a regular place row
   const li = e.target.closest("li[data-place-id]");
   if (!li) return;
   const placeId = +li.dataset.placeId;
@@ -536,7 +616,6 @@ function renderEditTags(type, existingTags) {
 }
 
 function openEditOverlay(place) {
-  loadRecaptcha();
   _editOriginalPlace = place;
   document.getElementById("ed-place-id").value = place.id;
   document.getElementById("ed-name").value = place.name || "";
