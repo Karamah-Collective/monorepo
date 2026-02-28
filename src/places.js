@@ -397,7 +397,21 @@ function renderPlacesList() {
     .join("");
 }
 
-function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
+// Lazy-load reCAPTCHA only when user opens the suggest form — avoids Google
+// tracking every visitor. Safe to call multiple times (script tag guard).
+function loadRecaptcha() {
+  if (document.getElementById("recaptcha-script")) return;
+  const s = document.createElement("script");
+  s.id = "recaptcha-script";
+  s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+  s.async = true;
+  document.head.appendChild(s);
+}
+
+function openSuggestOverlay() {
+  loadRecaptcha();
+  document.getElementById("suggest-overlay").classList.remove("hide");
+}
 document.getElementById("suggest-place-btn").addEventListener("click", openSuggestOverlay);
 document.getElementById("suggest-place-btn-empty").addEventListener("click", openSuggestOverlay);
 
@@ -522,6 +536,7 @@ function renderEditTags(type, existingTags) {
 }
 
 function openEditOverlay(place) {
+  loadRecaptcha();
   _editOriginalPlace = place;
   document.getElementById("ed-place-id").value = place.id;
   document.getElementById("ed-name").value = place.name || "";
