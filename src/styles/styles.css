@@ -907,7 +907,7 @@
   padding-top: 0 !important; padding-bottom: 0 !important;
 }
 #dir-time-bar {
-  transition: grid-template-rows .3s cubic-bezier(.32,.72,0,1), padding .3s cubic-bezier(.32,.72,0,1);
+  transition: grid-template-rows .35s cubic-bezier(.32,.72,0,1), padding .35s cubic-bezier(.32,.72,0,1);
 }
 
 #dir-mode-bar {
@@ -1036,7 +1036,7 @@
 /* #9 — Custom time row animated expand */
 #dir-custom-time-row {
   display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows .25s cubic-bezier(.32,.72,0,1);
+  transition: grid-template-rows .35s cubic-bezier(.32,.72,0,1);
 }
 .custom-time-inner { display: flex; gap: var(--sp-2); overflow: hidden; }
 #dir-custom-time-row.show {

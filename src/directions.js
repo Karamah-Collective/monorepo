@@ -8,6 +8,7 @@ import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 // --- State ---
 let dirTravelMode = "drive";
 let routeRequested = false;
+let _syncingHeight = false;
 export let findingNearestMosque = false;
 export function setFindingNearestMosque(v) { findingNearestMosque = v; }
 
@@ -82,6 +83,17 @@ document.getElementById("dir-close").addEventListener("click", closeDirPanel);
 
 const dirSnap = initSheetDrag(dirPanel, closeDirPanel);
 
+// Auto-remeasure sheet height after animated sections finish transitioning
+// Skip if a pre-measured sync animation is already driving the sheet height.
+const dirTimeBar = document.getElementById("dir-time-bar");
+dirTimeBar.addEventListener("transitionend", (e) => {
+  if (e.propertyName === "grid-template-rows" && !_syncingHeight) dirSnap.remeasure();
+});
+const dirCustomRow_el = document.getElementById("dir-custom-time-row");
+dirCustomRow_el.addEventListener("transitionend", (e) => {
+  if (e.propertyName === "grid-template-rows" && !_syncingHeight) dirSnap.remeasure();
+});
+
 dirPanel.dataset.travelMode = "drive";
 
 // Sliding pill highlight for transport mode
@@ -92,7 +104,37 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
     document.querySelectorAll(".mode-opt").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     moveModePill(btn);
+    const oldMode = dirTravelMode;
     dirTravelMode = btn.dataset.mode;
+
+    // Pre-measure height delta for sync sheet animation (mobile only)
+    const isMobile = window.innerWidth <= 768;
+    const shouldSync = isMobile && !dirPanel.classList.contains("shut");
+    let afterH = 0;
+    if (shouldSync) {
+      const beforeH = dirPanel.offsetHeight;
+      // Disable transitions during measurement so no intermediate frame paints
+      dirTimeBar.style.transition = "none";
+      dirPanel.style.transition = "none";
+      dirPanel.dataset.travelMode = dirTravelMode;
+      dirItins.innerHTML = "";
+      dirEmpty.classList.remove("hide");
+      dirLoad.classList.add("hide");
+      dirErr.classList.add("hide");
+      dirPanel.classList.remove("results-shown", "search-editing");
+      dirPanel.style.height = "auto";
+      void dirPanel.offsetHeight;
+      afterH = dirPanel.scrollHeight;
+      // Revert mode so time bar animates from its old state
+      dirPanel.dataset.travelMode = oldMode;
+      dirPanel.style.height = beforeH + "px";
+      void dirPanel.offsetHeight;
+      // Restore transitions
+      dirPanel.style.transition = "";
+      dirTimeBar.style.transition = "";
+    }
+
+    // Apply real mode change — time bar CSS transition starts
     dirPanel.dataset.travelMode = dirTravelMode;
     // Time bar just became visible — place the time pill instantly
     if (dirTravelMode === "transit") {
@@ -108,7 +150,20 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
     dirLoad.classList.add("hide");
     dirErr.classList.add("hide");
     exitResultsMode();
-    dirSnap.remeasure();
+    // Animate sheet height in sync with time bar transition
+    if (shouldSync && afterH) {
+      _syncingHeight = true;
+      dirPanel.style.height = afterH + "px";
+      dirPanel.addEventListener("transitionend", function _ms(e) {
+        if (e.propertyName === "height") {
+          dirPanel.removeEventListener("transitionend", _ms);
+          _syncingHeight = false;
+          dirSnap.remeasure();
+        }
+      });
+    } else {
+      dirSnap.remeasure();
+    }
     // Auto-reload only if routes were already shown (user clicked Find Routes)
     if (dir.origin && dir.dest && routeRequested) findRoutes();
   });
@@ -617,8 +672,46 @@ dirTimeToggles.forEach((btn) => {
 dirTimeNow.addEventListener("click", () => {
   dirUseNow = !dirUseNow;
   dirTimeNow.classList.toggle("active", dirUseNow);
+
+  // Measure content delta before the CSS transition starts so we can animate
+  // the sheet height in sync rather than waiting for transitionend.
+  const isMobile = window.innerWidth <= 768;
+  const beforeH = isMobile ? dirPanel.offsetHeight : 0;
+
+  // Measure the target content height by temporarily applying end state
+  let afterH = 0;
+  if (isMobile && !dirPanel.classList.contains("shut")) {
+    // Disable transitions during measurement so no intermediate frame paints
+    dirCustomRow.style.transition = "none";
+    dirPanel.style.transition = "none";
+    dirCustomRow.classList.toggle("show", !dirUseNow);
+    dirPanel.style.height = "auto";
+    void dirPanel.offsetHeight;
+    afterH = dirPanel.scrollHeight;
+    // Revert to pre-toggle state
+    dirCustomRow.classList.toggle("show", dirUseNow);
+    dirPanel.style.height = beforeH + "px";
+    void dirPanel.offsetHeight;
+    dirPanel.style.transition = "";
+    dirCustomRow.style.transition = "";
+  }
+
+  // Now apply the real toggle — CSS transition starts
   dirCustomRow.classList.toggle("show", !dirUseNow);
   if (dirUseNow) { setDefaultDatetime(); closePickerOverlays(); }
+
+  // Animate sheet height to the pre-measured target in sync with the content
+  if (isMobile && afterH && !dirPanel.classList.contains("shut")) {
+    _syncingHeight = true;
+    dirPanel.style.height = afterH + "px";
+    dirPanel.addEventListener("transitionend", function _nt(e) {
+      if (e.propertyName === "height") {
+        dirPanel.removeEventListener("transitionend", _nt);
+        _syncingHeight = false;
+        dirSnap.remeasure();
+      }
+    });
+  }
 });
 
 // --- Routing ---
@@ -1125,18 +1218,49 @@ function focusRoute(idx) {
   });
   const transfers = transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "Direct";
   document.getElementById("focused-meta").innerHTML = `<span>${durMin} min</span><span>·</span><span>${fmtTime(startT)} → ${fmtTime(endT)}</span><span>·</span><span>${transfers}</span><span>·</span><span>${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk</span>`;
+  const isMobile_fr = window.innerWidth <= 768;
+  const shouldSync_fr = isMobile_fr && !dirPanel.classList.contains("shut");
+  const beforeH_fr = shouldSync_fr ? dirPanel.offsetHeight : 0;
   dirPanel.classList.add("route-focused");
   document.querySelectorAll(".itin-card").forEach((c, i) => {
     if (i === idx) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
     else { c.classList.add("card-hidden"); }
   });
-  dirSnap.remeasure();
+  if (shouldSync_fr) {
+    // Animate from current height to full viewport
+    dirPanel.style.transition = "none";
+    dirPanel.style.height = beforeH_fr + "px";
+    void dirPanel.offsetHeight;
+    dirPanel.style.transition = "";
+    dirPanel.style.height = window.innerHeight + "px";
+  } else {
+    dirSnap.remeasure();
+  }
 }
 
 function unfocusRoute() {
+  const isMobile_uf = window.innerWidth <= 768;
+  const shouldSync_uf = isMobile_uf && !dirPanel.classList.contains("shut");
+  const beforeH_uf = shouldSync_uf ? dirPanel.offsetHeight : 0;
   dirPanel.classList.remove("route-focused");
   document.querySelectorAll(".itin-card").forEach((c) => { c.classList.remove("focused", "card-hidden"); });
-  dirSnap.remeasure();
+  if (shouldSync_uf) {
+    // Measure target now that layout changes are applied (instant)
+    dirPanel.style.height = "auto";
+    void dirPanel.offsetHeight;
+    const afterH_uf = dirPanel.scrollHeight;
+    dirPanel.style.transition = "none";
+    dirPanel.style.height = beforeH_uf + "px";
+    void dirPanel.offsetHeight;
+    dirPanel.style.transition = "";
+    dirPanel.style.height = afterH_uf + "px";
+    // Final sync for drag system after transition completes
+    dirPanel.addEventListener("transitionend", function _ufSync(e) {
+      if (e.propertyName === "height") { dirPanel.removeEventListener("transitionend", _ufSync); dirSnap.remeasure(); }
+    });
+  } else {
+    dirSnap.remeasure();
+  }
 }
 
 function focusDirectRoute() {
@@ -1149,12 +1273,23 @@ function focusDirectRoute() {
   badge.innerHTML = dirModeIconSvg(mode, 12); chainEl.appendChild(badge);
   const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
   document.getElementById("focused-meta").innerHTML = `<span>${OSRM_LABELS[mode]}</span><span>·</span><span>${durLabel}</span><span>·</span><span>${distKm} km</span>`;
+  const isMobile_fd = window.innerWidth <= 768;
+  const shouldSync_fd = isMobile_fd && !dirPanel.classList.contains("shut");
+  const beforeH_fd = shouldSync_fd ? dirPanel.offsetHeight : 0;
   dirPanel.classList.add("route-focused");
   document.querySelectorAll(".itin-card").forEach((c) => {
     if (c.classList.contains("direct-card")) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
     else { c.classList.add("card-hidden"); }
   });
-  dirSnap.remeasure();
+  if (shouldSync_fd) {
+    dirPanel.style.transition = "none";
+    dirPanel.style.height = beforeH_fd + "px";
+    void dirPanel.offsetHeight;
+    dirPanel.style.transition = "";
+    dirPanel.style.height = window.innerHeight + "px";
+  } else {
+    dirSnap.remeasure();
+  }
 }
 
 function highlightDirectStep(idx, stepEl) {
@@ -1244,7 +1379,7 @@ function enterResultsMode() {
   dirSnap.remeasure();
 }
 function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
-dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); });
+dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); dirSnap.remeasure(); });
 
 function showDirLoading() { dirEmpty.classList.add("hide"); dirErr.classList.add("hide"); dirItins.innerHTML = ""; dirLoad.classList.remove("hide"); }
 function showDirError(msg) { dirLoad.classList.add("hide"); dirEmpty.classList.add("hide"); dirErr.textContent = msg; dirErr.classList.remove("hide"); }
