@@ -16,6 +16,10 @@ scripts/transit-cache.json
 scripts/cache/
 *.cache
 
+# Playwright generated output
+playwright-report/
+test-results/
+
 # Local development documentation
 GIT_TRACKING.md
 docs/FORMS_SHEETS_SETUP.md

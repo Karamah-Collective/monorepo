@@ -1,0 +1,35 @@
+{
+  "name": "maps",
+  "version": "1.0.0",
+  "description": "An interactive map application for discovering halal-friendly locations across Helsinki, including mosques, prayer rooms, restaurants, and shops. Built with MapLibre GL and modern web technologies for fast, responsive performance on desktop and mobile devices.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:ui": "npx playwright test --ui",
+    "test:desktop": "npx playwright test --project=\"Desktop Chrome\"",
+    "test:mobile": "npx playwright test --project=\"Pixel 7\"",
+    "test:android": "npx playwright test --project=\"Galaxy S24\"",
+    "test:iphone": "npx playwright test --project=\"iPhone 15 Pro\"",
+    "test:phones": "npx playwright test --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moontasirsoumik/halal-finder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/moontasirsoumik/halal-finder/issues"
+  },
+  "homepage": "https://github.com/moontasirsoumik/halal-finder#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "serve": "^14.2.5"
+  }
+}
