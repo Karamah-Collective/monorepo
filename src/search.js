@@ -21,6 +21,37 @@ const _droppedPinSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="no
 const _popupPinSVG   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
 const _popupSearchSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
 
+// ─── Local places cache (data/places.json) — loaded once at startup ───────────────
+let _localPlaces = null;
+fetch("data/places.json")
+  .then(r => r.json())
+  .then(data => { _localPlaces = data; })
+  .catch(() => { _localPlaces = []; });
+
+// Map our place types to icons compatible with typeIcon(type, cls)
+const _localTypeCls = {
+  mosque:      { type: "place_of_worship", cls: "amenity" },
+  prayer_room: { type: "place_of_worship", cls: "amenity" },
+  restaurant:  { type: "restaurant",       cls: "amenity" },
+  shop:        { type: "shop",             cls: "shop"    },
+};
+
+function _localPlaceSearch(q) {
+  if (!_localPlaces || !_localPlaces.length) return [];
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return _localPlaces
+    .filter(p => {
+      const hay = normalize(`${p.name} ${p.address} ${p.type}`);
+      return terms.every(t => hay.includes(normalize(t)));
+    })
+    .slice(0, 4)
+    .map(p => {
+      const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
+      return { lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true };
+    });
+}
+
 // ─── Single search-result marker (replaced on each new search) ──────────────────
 let searchMarker = null;
 let searchMarkerPopup = null;
@@ -219,10 +250,18 @@ async function search(q) {
   q = q.trim();
   if (!q) { hideDrop(); return; }
   try {
-    // Digitransit geocoding (Pelias) supports partial/prefix matching; fall back to Nominatim
-    let items = await _dtGeoSearch(q);
-    if (!items.length) items = await _nominatimSearch(q);
-    showResults(items);
+    // 1. Instant local results from our own data/places.json
+    const localItems = _localPlaceSearch(q);
+    const localNames = new Set(localItems.map(r => r.name.toLowerCase()));
+
+    // 2. API results (Digitransit first, Nominatim as fallback)
+    let apiItems = await _dtGeoSearch(q);
+    if (!apiItems.length) apiItems = await _nominatimSearch(q);
+
+    // De-duplicate: drop API results whose name matches a local result
+    const apiFiltered = apiItems.filter(r => !localNames.has(r.name.toLowerCase()));
+
+    showResults([...localItems, ...apiFiltered]);
   } catch {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">Search failed.</li>';
     showDrop();
@@ -275,7 +314,13 @@ function showResults(items) {
     return;
   }
   rList.innerHTML = items
-    .map((r) => `<li data-lat="${r.lat}" data-lng="${r.lng}"><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`)
+    .map((r) => `<li data-lat="${r.lat}" data-lng="${r.lng}"${r.local ? ' class="r-local"' : ''}>
+      <span class="r-icon">${typeIcon(r.type, r.cls)}</span>
+      <div class="r-body">
+        <div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div>
+        <div class="r-addr">${esc(r.addr)}</div>
+      </div>
+    </li>`)
     .join("");
   showDrop();
 }

@@ -99,6 +99,20 @@
 
 .r-addr { margin-top: 2px; }
 
+/* Local (from data/places.json) results — subtle left accent + verified badge */
+#results-list li.r-local {
+  border-left: 3px solid var(--accent);
+  padding-left: 15px;
+}
+.r-halal-badge {
+  display: inline-flex; align-items: center;
+  gap: 2px; margin-left: 6px;
+  font-size: 10px; font-weight: var(--fw-semi);
+  color: var(--accent); background: var(--accent-soft);
+  border-radius: 999px; padding: 1px 6px;
+  vertical-align: middle; white-space: nowrap;
+}
+
 .maplibregl-ctrl-scale {
   background: transparent !important;
   border: none !important;
