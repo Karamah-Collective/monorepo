@@ -1227,6 +1227,16 @@
   animation: spin .6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Inline button loading spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  flex-shrink: 0;
+}
 
 #dir-error {
   margin: 12px 16px; padding: 14px 16px; border-radius: var(--r-sm);
@@ -1355,20 +1365,26 @@
 
 @media (max-width: 768px) {
   #dir-panel.results-shown #dir-inputs,
-  #dir-panel.results-shown #dir-time-bar,
   #dir-panel.results-shown #dir-mode-bar,
   #dir-panel.results-shown #dir-go {
     display: none;
+  }
+  /* Time bar uses display:grid !important — need !important to override */
+  #dir-panel.results-shown #dir-time-bar {
+    display: none !important;
   }
   #dir-panel.results-shown #dir-summary {
     display: flex !important;
   }
 
   #dir-panel.results-shown.search-editing #dir-inputs,
-  #dir-panel.results-shown.search-editing #dir-time-bar,
   #dir-panel.results-shown.search-editing #dir-mode-bar,
   #dir-panel.results-shown.search-editing #dir-go {
     display: flex;
+  }
+  /* Restore grid layout for time bar when user opens search-editing */
+  #dir-panel.results-shown.search-editing #dir-time-bar {
+    display: grid !important;
   }
   #dir-panel.results-shown.search-editing #dir-summary {
     display: none !important;

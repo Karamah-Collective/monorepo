@@ -82,7 +82,7 @@ export function addPlaceMarkers() {
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
-// (pin stays in hf_saved_pins — only the visual dot is cleared until next render)
+// (also removes from hf_saved_pins so pin doesn't reappear on refresh)
 window.addEventListener("hf:remove-saved-pin-marker", (e) => {
   const { id } = e.detail;
   const idx = savedPinMarkers.findIndex(m => m.getElement()?.dataset?.pinId === id);
@@ -90,6 +90,8 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
     savedPinMarkers[idx].remove();
     savedPinMarkers.splice(idx, 1);
   }
+  // Refresh list if user is on the saved tab so the entry disappears
+  if (activeTypeFilter === "saved") renderPlacesList();
 });
 
 export function showPlacePopup(place) {
@@ -260,8 +262,8 @@ export function checkShareUrl() {
 
   if (mapView && !placeToken) {
     map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom });
-    // Show a dropped-pin marker so the shared location is visible
-    window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: mapView.lng, lat: mapView.lat } }));
+    // Clear hash so the view isn't re-applied on refresh
+    history.replaceState(null, "", location.pathname + location.search);
     return;
   }
 
@@ -281,6 +283,8 @@ export function checkShareUrl() {
     if (!place) return;
     if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); showPlacePopup(place); }
     else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => showPlacePopup(place)); }
+    // Clear hash so the popup isn't re-opened on refresh
+    history.replaceState(null, "", location.pathname + location.search);
   }
 }
 
@@ -560,7 +564,7 @@ document.getElementById("suggest-form").addEventListener("submit", async (e) => 
   const submitBtn = document.getElementById("sg-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting…";
+  submitBtn.innerHTML = '<span class="btn-spinner"></span><span>Sending…</span>';
 
   const name = document.getElementById("sg-name").value.trim();
   const type = sgTypeSelect.value;
@@ -653,7 +657,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const submitBtn = document.getElementById("ed-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting…";
+  submitBtn.innerHTML = '<span class="btn-spinner"></span><span>Sending…</span>';
 
   const placeId = document.getElementById("ed-place-id").value;
   const name = document.getElementById("ed-name").value.trim();

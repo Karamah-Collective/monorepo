@@ -351,31 +351,45 @@ export function initSheetDrag(sheet, closeFn) {
         sheet.classList.remove("shut");
       });
     },
-    /** Re-measure after content changes (e.g. results loaded) & re-snap */
+    /** Re-measure after content changes (e.g. results loaded) & re-snap.
+     *  Transitions are disabled during measurement so there is NEVER a
+     *  flash to content-height.  The flow is:
+     *    1. Capture current rendered height  (startH)
+     *    2. transition:none → height:auto  → reflow → freshCalc
+     *    3. Pin back to startH  → reflow  (no paint at auto)
+     *    4. Restore transition → set target  (smooth CSS animation)
+     */
     remeasure() {
       if (!isMobile() || sheet.classList.contains("shut")) return;
-      // Temporarily auto so flex-1 children report natural content height
-      const prev = sheet.style.height;
-      sheet.style.height = "auto";
-      void sheet.offsetHeight;
-      cached = freshCalc();
-      sheet.style.height = prev;                   // restore before transition
 
-      // If new content is shorter than the current sheet, allow shrinking;
-      // otherwise grow to fit.
-      const curH = sheet.offsetHeight;
-      const cur = curH > cached.cap ? cached.initial          // content shrank
-                : Math.max(curH, cached.initial);              // content grew
-      const target = snapTarget(cur, cached.mode, cached.cap);
+      // 1. Current visual height
+      const startH = sheet.offsetHeight;
+
+      // 2. Suppress transitions, remove .full, measure at natural height
+      sheet.style.transition = "none";
+      sheet.classList.remove("full");
+      sheet.style.height = "auto";
+      void sheet.offsetHeight;                     // sync reflow (no paint)
+      cached = freshCalc();
+
+      // 3. Pin back to startH so transition has a known numeric origin
+      sheet.style.height = startH + "px";
+      void sheet.offsetHeight;                     // commit with no transition
+
+      // 4. Re-enable transitions — next height set animates smoothly
+      sheet.style.transition = "";
+
+      // Always snap to the natural initial for the *new* content.
+      // Using startH would keep the panel at a stale size (e.g. 100 vh
+      // from route-focused) even though content changed.
+      const target = snapTarget(cached.initial, cached.mode, cached.cap);
+
       if (target === "full") {
         sheet.classList.add("full");
         sheet.style.height = "";
       } else if (target === 0) {
-        // Content grew but would dismiss — open at initial instead
-        sheet.classList.remove("full");
         sheet.style.height = cached.initial + "px";
       } else {
-        sheet.classList.remove("full");
         sheet.style.height = Math.max(target, cached.initial) + "px";
       }
     },

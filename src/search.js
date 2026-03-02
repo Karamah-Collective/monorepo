@@ -235,6 +235,8 @@ function _openPinPopup(lng, lat, kind, entry) {
       popup.remove();
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
       else if (entry) { _removeDroppedPin(entry); }
+      // Remove from saved storage so pin doesn't reappear on refresh
+      removeSavedPin(pinId(lat, lng));
       window.dispatchEvent(new CustomEvent("hf:remove-saved-pin-marker", { detail: { id: pinId(lat, lng) } }));
     }
   });
