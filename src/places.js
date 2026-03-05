@@ -200,7 +200,6 @@ export function showPlacePopup(place) {
       showToast("Link copied");
     }
   }
-  shareBtn.addEventListener("touchend", doShare);
   shareBtn.addEventListener("click", doShare);
 
   const editBtn = document.createElement("button");

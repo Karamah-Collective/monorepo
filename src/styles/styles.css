@@ -1459,10 +1459,12 @@
   display: block;
   margin-top: 0;
 }
+.itin-card.focused .itin-legs-inner { overflow: visible; }
 .itin-card.focused .itin-expand { display: none; }
 
 .itin-card.focused .leg-row { padding: 8px 0; }
 .itin-card.focused .leg-icon { width: 26px; height: 26px; }
+.itin-card.focused .leg-timeline { width: 28px; }
 .itin-card.focused .leg-icon svg { width: 14px; height: 14px; }
 .itin-card.focused .leg-mode-name { font-size: var(--txt-lg); }
 .itin-card.focused .leg-stops { font-size: var(--txt-md); }
