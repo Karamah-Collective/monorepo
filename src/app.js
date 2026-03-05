@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { checkGeoNotice } from "./utils.js";
+import { checkGeoNotice, showEarlyDevNotice } from "./utils.js";
 import "./map-controls.js";
 import "./directions.js";
 import { loadPlacesData } from "./places.js";
@@ -20,5 +20,6 @@ map.on("load", () => {
   initPrayerTimes();
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
-  setTimeout(initTutorial, 800);
+  // Early-dev notice shows after tutorial finishes (or immediately for returning users)
+  setTimeout(() => initTutorial(showEarlyDevNotice), 800);
 });

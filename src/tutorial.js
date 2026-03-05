@@ -73,10 +73,16 @@ const STEPS = [
 let step = 0;
 let overlayEl, spotlightEl, cardEl, resizeTimer;
 let firstShow = true;                // skip slide animation on the first render
+let _onComplete = null;
 
 // ─── Public API ───────────────────────────────────────────────────────────────
-export function initTutorial() {
-  if (localStorage.getItem(TUTORIAL_KEY)) return;
+// onComplete is called after the tutorial finishes or is skipped (returning user)
+export function initTutorial(onComplete) {
+  _onComplete = onComplete || null;
+  if (localStorage.getItem(TUTORIAL_KEY)) {
+    if (_onComplete) _onComplete();
+    return;
+  }
   build();
   show(0);
 }
@@ -309,6 +315,7 @@ function dismiss() {
   cardEl.classList.remove("visible");
   spotlightEl.style.opacity = "0";
   setTimeout(() => { overlayEl.remove(); cardEl.remove(); spotlightEl.remove(); }, 400);
+  if (_onComplete) setTimeout(_onComplete, 500);
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

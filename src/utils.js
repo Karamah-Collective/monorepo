@@ -95,6 +95,37 @@ export function showToast(label, icon = "check", sub = null) {
   );
 }
 
+// --- Early-development notice (shown to everyone, every visit) ---
+
+export function showEarlyDevNotice() {
+  if (document.getElementById("dev-notice")) return;
+  const el = document.createElement("div");
+  el.id = "dev-notice";
+  el.className = "snack";
+  el.innerHTML = `
+    <span class="snack-icon snack-icon--info">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 20h20L12 4 2 20z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </span>
+    <span class="snack-body">
+      <span class="snack-label">Early Development 🚧</span>
+      <span class="snack-sub">Halal Finder is still in its early stages. Some features may not work as expected, and places are being added gradually by the community. Thank you for your patience &mdash; we appreciate you being here!</span>
+    </span>
+    <button class="geo-notice-close" aria-label="Dismiss">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  `;
+  el.querySelector(".geo-notice-close").addEventListener("click", () => {
+    el.classList.remove("dev-notice-show");
+    setTimeout(() => el.remove(), 350);
+  });
+  document.body.appendChild(el);
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => el.classList.add("dev-notice-show")),
+  );
+}
+
 // --- Geo notice (shown to non-Finland visitors) ---
 
 export function showGeoNotice() {

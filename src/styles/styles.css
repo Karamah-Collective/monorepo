@@ -703,7 +703,8 @@
   opacity: 1; transform: translateX(-50%) translateY(0);
 }
 
-#geo-notice {
+#geo-notice,
+#dev-notice {
   position: fixed;
   bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
   left: 50%; transform: translateX(-50%) translateY(12px);
@@ -714,7 +715,8 @@
   opacity: 0; pointer-events: none;
   transition: opacity .2s ease, transform .2s ease;
 }
-#geo-notice.geo-notice-show {
+#geo-notice.geo-notice-show,
+#dev-notice.dev-notice-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
