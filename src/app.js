@@ -22,4 +22,10 @@ map.on("load", () => {
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
   setTimeout(() => initTutorial(showEarlyDevNotice), 800);
+
+  // Privacy overlay wiring
+  const privacyOverlay = document.getElementById("privacy-overlay");
+  document.getElementById("privacy-close").addEventListener("click", () => privacyOverlay.classList.add("hide"));
+  privacyOverlay.addEventListener("click", (e) => { if (e.target === privacyOverlay) privacyOverlay.classList.add("hide"); });
+  document.getElementById("privacy-link").addEventListener("click", (e) => { e.preventDefault(); privacyOverlay.classList.remove("hide"); });
 });

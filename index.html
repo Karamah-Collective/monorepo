@@ -233,6 +233,9 @@
         </button>
       </nav>
 
+      <!-- Privacy link -->
+      <a id="privacy-link" href="#" aria-label="Privacy Policy">Privacy</a>
+
       <!-- ─── Directions Sheet (bottom) ─── -->
       <div id="dir-panel" class="sheet shut">
         <div id="dir-drag" class="sheet-drag"><span></span></div>
@@ -957,6 +960,7 @@
               </svg>
               Submit Suggestion
             </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
           </form>
         </div>
       </div>
@@ -1045,6 +1049,7 @@
               </svg>
               Submit Edit Suggestion
             </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
           </form>
         </div>
       </div>
@@ -1168,6 +1173,74 @@
               <span class="ramadan-label">Iftar</span>
               <span id="ramadan-iftar" class="ramadan-time">--:--</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Privacy Overlay ─── -->
+      <div id="privacy-overlay" class="hide">
+        <div id="privacy-card">
+          <div class="suggest-head">
+            <h3>Privacy Policy</h3>
+            <button id="privacy-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="privacy-body">
+            <p class="privacy-updated">Last updated: March 2026</p>
+
+            <h4>1. Who We Are</h4>
+            <p><strong>Halal Finder Helsinki</strong> is a service by <a href="https://karamahcollective.com" target="_blank" rel="noopener">Karamah Collective</a>, a community organisation supporting Finnish Muslims through practical guidance and compassionate connections. This policy explains how we handle your information when you use this app.</p>
+
+            <h4>2. Information We Collect</h4>
+            <p>We collect information only when you voluntarily submit it through the <strong>Suggest a Place</strong> or <strong>Suggest Edit</strong> forms:</p>
+            <ul>
+              <li>Place name, type, address, Google Maps link, and tags</li>
+              <li>Additional notes you choose to include</li>
+            </ul>
+            <p>We do <strong>not</strong> collect your name, email, phone number, or any account information. Submissions are anonymous.</p>
+
+            <h4>3. What We Don't Do</h4>
+            <ul>
+              <li>No cookies or advertising pixels</li>
+              <li>No behavioural tracking or analytics</li>
+              <li>No location data stored — your position is used only in your browser for the map and is never sent to our servers</li>
+              <li>We will never sell or share personal information</li>
+            </ul>
+
+            <h4>4. Google reCAPTCHA</h4>
+            <p>We use Google reCAPTCHA v3 to protect forms from automated abuse. This service may collect hardware and software information. It is governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a>.</p>
+
+            <h4>5. Third-Party Services</h4>
+            <p>Halal Finder relies on the following external services. Each handles its own data independently:</p>
+            <ul>
+              <li><strong><a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransit / HSL</a></strong> — Our primary transit routing and geocoding API, provided by Helsinki Regional Transport Authority (HSL). Used to calculate public transport routes and search for addresses in Finland. Governed by the <a href="https://digitransit.fi/en/developers/apis/1-routing-api/0-graphql/" target="_blank" rel="noopener">Digitransit API terms</a>.</li>
+              <li><strong><a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a></strong> — Open-source community transit routing, used as a fallback when Digitransit is unavailable. Data sourced from GTFS feeds under open licences.</li>
+              <li><strong><a href="https://routing.openstreetmap.de" target="_blank" rel="noopener">OSRM (OpenStreetMap Routing Machine)</a></strong> — Used for walking, cycling, and driving route calculations. Powered by OpenStreetMap data under the <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL licence</a>.</li>
+              <li><strong><a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim / OpenStreetMap</a></strong> — Address search and reverse geocoding fallback. Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> under ODbL.</li>
+              <li><strong><a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a></strong> — Provides the map tiles and fonts powering the base map. Built on <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> and OpenStreetMap data.</li>
+              <li><strong><a href="https://services.arcgisonline.com" target="_blank" rel="noopener">Esri / ArcGIS</a></strong> — Satellite imagery layer, provided by Esri. Subject to <a href="https://www.esri.com/en-us/legal/terms/full-master-agreement" target="_blank" rel="noopener">Esri's terms of use</a>.</li>
+              <li><strong><a href="https://aladhan.com/prayer-times-api" target="_blank" rel="noopener">AlAdhan API</a></strong> — Prayer time calculations based on your device's location (using the Muslim World League method). No personal data is stored by this service.</li>
+              <li><strong><a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></strong> — Open-source map rendering library used to display the map.</li>
+              <li><strong>Google reCAPTCHA v3</strong> — Protects submission forms from automated abuse. Governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a>.</li>
+            </ul>
+
+            <h4>6. Data Storage &amp; Security</h4>
+            <p>Form submissions are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+
+            <h4>7. Your Rights (GDPR)</h4>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. Since submissions are anonymous, please include details that help us identify the relevant entry.</p>
+            <p>Contact: <a href="mailto:contact@karamahcollective.com">contact@karamahcollective.com</a></p>
+
+            <h4>8. Children's Privacy</h4>
+            <p>This service is not directed at children under 16. We do not knowingly collect personal data from anyone under 16.</p>
+
+            <h4>9. Changes to This Policy</h4>
+            <p>We may update this policy from time to time. The "Last updated" date above will be revised accordingly.</p>
+
+            <h4>10. Contact</h4>
+            <p>Questions about this policy? Reach us at <a href="mailto:contact@karamahcollective.com">contact@karamahcollective.com</a></p>
+            <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
           </div>
         </div>
       </div>
