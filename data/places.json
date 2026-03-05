@@ -182,8 +182,8 @@
     "name": "Alanya Market Itäkeskus",
     "type": "shop",
     "address": "Itäkatu 1-7, 00930 Helsinki",
-    "lat": 60.2101,
-    "lng": 25.0811,
+    "lat": 60.21411495366169,
+    "lng": 25.082330579947936,
     "tags": {
       "halal_meat": true,
       "halal_butchery": true,
@@ -230,8 +230,8 @@
     "name": "Beno Itäkeskus",
     "type": "shop",
     "address": "Kastelholmantie 2, 00900 Helsinki",
-    "lat": 60.2105,
-    "lng": 25.075,
+    "lat": 60.213836148425315,
+    "lng": 25.081753003963986,
     "tags": {
       "halal_meat": true,
       "halal_butchery": true,
