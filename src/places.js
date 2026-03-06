@@ -54,21 +54,25 @@ export async function loadPlacesData() {
     let loaded = false;
     placesLoaded = false;
 
-    // Primary: fetch live data from Google Sheets via Apps Script
-    if (SHEETS_URL) {
+    // Primary: fetch live data via CF edge-cached proxy (/api/places),
+    // falling back to direct Apps Script URL for local dev without wrangler.
+    const sheetsUrls = ['/api/places?action=all'];
+    if (SHEETS_URL) sheetsUrls.push(`${SHEETS_URL}?action=all`);
+    for (const url of sheetsUrls) {
       try {
-        const res = await fetch(`${SHEETS_URL}?action=all`);
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           if (data.places && Array.isArray(data.places) && data.places.length) {
             placesData = data.places;
             tagsData = data.tags || {};
             loaded = true;
-            console.log(`[Places] Loaded ${placesData.length} places from Sheets`);
+            console.log(`[Places] Loaded ${placesData.length} places from ${url}`);
+            break;
           }
         }
       } catch (err) {
-        console.warn("[Places] Sheets fetch failed, falling back to static JSON:", err.message);
+        console.warn(`[Places] Fetch from ${url} failed:`, err.message);
       }
     }
 

@@ -106,11 +106,27 @@ function normaliseMapsLink(url) {
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'status';
 
+  if (action === 'all') {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get('all_v1');
+    if (cached) {
+      Logger.log('doGet: cache hit');
+      return respondCORS(JSON.parse(cached));
+    }
+    var data = { places: getPlacesJSON(), tags: getTagsJSON() };
+    try { cache.put('all_v1', JSON.stringify(data), 300); } catch (_) {} // 5-min cache
+    return respondCORS(data);
+  }
+
   if (action === 'places') return respondCORS(getPlacesJSON());
   if (action === 'tags')   return respondCORS(getTagsJSON());
-  if (action === 'all')    return respondCORS({ places: getPlacesJSON(), tags: getTagsJSON() });
 
   return respondCORS({ status: 'alive' });
+}
+
+// Clears the Apps Script data cache (call after any Places sheet change).
+function invalidateCache() {
+  CacheService.getScriptCache().remove('all_v1');
 }
 
 // ── Read "Places" sheet → array identical to the old places.json structure ──
@@ -412,6 +428,7 @@ function copyNewRowToPlaces(srcSheet, row) {
   }
 
   places.appendRow([nextId, name, type, address, lat, lng, JSON.stringify(tags), notes]);
+  invalidateCache();
   Logger.log('Approved new place: "' + name + '" → Places row id=' + nextId);
 }
 
@@ -449,7 +466,7 @@ function applyEditToPlaces(srcSheet, row) {
     places.getRange(targetRow, 7).setValue(JSON.stringify(tags));
   }
   if (editNotes) places.getRange(targetRow, 8).setValue(editNotes);
-
+  invalidateCache();
   Logger.log('Applied edit to place id=' + editPlaceId + ' at row ' + targetRow);
 }
 
