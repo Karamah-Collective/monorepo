@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance } from "./utils.js";
 import { RECAPTCHA_SITE_KEY } from "./config.js";
 import { setActiveTab } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
@@ -11,7 +11,34 @@ let placeMarkers = [];
 let savedPinMarkers = [];
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
+let activeSortField = "default"; // "default" | "name" | "distance" | "date"
+let activeSortDir = "asc";       // "asc" | "desc"
+let userSortLat = null;
+let userSortLng = null;
 let _editOriginalPlace = null;
+
+const SORT_FIELD_LABELS = { name: "Name", distance: "Distance", date: "Date" };
+
+function applySort(arr) {
+  if (activeSortField === "default") return [...arr].sort((x, y) => x.name.localeCompare(y.name));
+  const a = [...arr];
+  switch (activeSortField) {
+    case "name":
+      return a.sort((x, y) => activeSortDir === "asc"
+        ? x.name.localeCompare(y.name)
+        : y.name.localeCompare(x.name));
+    case "distance":
+      if (userSortLat === null) return a;
+      return a.sort((x, y) => {
+        const da = haversineDistance(userSortLat, userSortLng, x.lat, x.lng);
+        const db = haversineDistance(userSortLat, userSortLng, y.lat, y.lng);
+        return activeSortDir === "asc" ? da - db : db - da;
+      });
+    case "date":
+      return a.sort((x, y) => activeSortDir === "asc" ? x.id - y.id : y.id - x.id);
+    default: return a;
+  }
+}
 
 let favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
 function saveFavourites() { localStorage.setItem("hf_favs", JSON.stringify([...favourites])); }
@@ -337,26 +364,114 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
 const tfToggle = document.getElementById("tf-toggle");
 const tfChips = document.getElementById("tag-filter-chips");
 const tfCount = document.getElementById("tf-count");
+const sortToggle = document.getElementById("sort-toggle");
+const sortDropdown = document.getElementById("sort-dropdown");
+const sortLabel = document.getElementById("sort-label");
+
+function updateSortButton() {
+  const isActive = activeSortField !== "default";
+  const arrowChar = activeSortDir === "asc" ? "\u2191" : "\u2193";
+  sortLabel.textContent = isActive ? `${SORT_FIELD_LABELS[activeSortField]} ${arrowChar}` : "Sort";
+  sortToggle.classList.toggle("open", isActive);
+  sortDropdown.querySelectorAll("[data-sort-field]").forEach((btn) =>
+    btn.classList.toggle("active", btn.dataset.sortField === activeSortField),
+  );
+  sortDropdown.querySelectorAll("[data-sort-dir]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.sortDir === activeSortDir);
+    btn.disabled = activeSortField === "default";
+  });
+}
+
+function closeSortDropdown() {
+  sortDropdown.classList.add("shut");
+}
+
+function positionSortDropdown() {
+  const r = sortToggle.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - r.bottom - 12;
+  const dh = sortDropdown.offsetHeight || 200;
+  if (spaceBelow >= dh) {
+    sortDropdown.style.top = `${r.bottom + 6}px`;
+    sortDropdown.style.bottom = "";
+  } else {
+    sortDropdown.style.bottom = `${window.innerHeight - r.top + 6}px`;
+    sortDropdown.style.top = "";
+  }
+  sortDropdown.style.left = `${r.left}px`;
+}
+
+sortToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const isOpen = !sortDropdown.classList.contains("shut");
+  if (!isOpen) positionSortDropdown();
+  sortDropdown.classList.toggle("shut", isOpen);
+});
+
+sortDropdown.addEventListener("click", (e) => {
+  const opt = e.target.closest(".sort-opt");
+  if (!opt || opt.disabled) return;
+
+  if (opt.dataset.sortField !== undefined) {
+    const field = opt.dataset.sortField;
+    if (field === "distance") {
+      if (!navigator.geolocation) {
+        showToast("Location not available", "loc", "Your browser doesn't support location");
+        return;
+      }
+      if (userSortLat === null) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userSortLat = pos.coords.latitude;
+            userSortLng = pos.coords.longitude;
+            activeSortField = "distance";
+            updateSortButton();
+            renderPlacesList();
+          },
+          () => showToast("Location is off", "loc", "Enable location to sort by distance"),
+          { enableHighAccuracy: false, timeout: 6000 },
+        );
+        return;
+      }
+    }
+    activeSortField = field;
+    updateSortButton();
+    renderPlacesList();
+    if (field === "default") closeSortDropdown();
+  } else if (opt.dataset.sortDir !== undefined) {
+    activeSortDir = opt.dataset.sortDir;
+    updateSortButton();
+    renderPlacesList();
+    closeSortDropdown();
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#sort-wrap")) closeSortDropdown();
+  if (!e.target.closest(".pl-tags-summary") && !e.target.closest(".pl-tag-tip")) hideTagTip();
+});
 
 function renderTagFilterBar() {
-  const row = document.getElementById("tf-row");
   const typePlaces =
     activeTypeFilter === "all" ? placesData : placesData.filter((p) => p.type === activeTypeFilter);
-  if (activeTypeFilter === "all" || activeTypeFilter === "saved" || !typePlaces.length) {
-    row.classList.add("hide");
+  const count = typePlaces.length;
+  const tags = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? (tagsData[activeTypeFilter] || []) : [];
+
+  // Filter: show when tags exist and at least 1 place
+  const showFilter = tags.length > 0 && count > 0;
+  tfToggle.classList.toggle("hide", !showFilter);
+  if (!showFilter) {
     tfToggle.classList.remove("open");
     tfChips.classList.add("shut");
-    return;
+  } else {
+    updateTagCount();
+    tfChips.innerHTML = tags
+      .map((t) => `<button class="tf-chip${activeTagFilters.has(t.id) ? " active" : ""}" data-tag="${t.id}">${esc(t.label)}</button>`)
+      .join("");
   }
-  const tags = tagsData[activeTypeFilter] || [];
-  if (!tags.length) { row.classList.add("hide"); return; }
-  row.classList.remove("hide");
-  tfToggle.classList.remove("open");
-  tfChips.classList.add("shut");
-  updateTagCount();
-  tfChips.innerHTML = tags
-    .map((t) => `<button class="tf-chip${activeTagFilters.has(t.id) ? " active" : ""}" data-tag="${t.id}">${esc(t.label)}</button>`)
-    .join("");
+
+  // Sort: show only when 2+ places
+  sortToggle.classList.toggle("hide", count < 2);
+  if (count < 2) closeSortDropdown();
 }
 
 function updateTagCount() {
@@ -400,8 +515,9 @@ function renderPlacesList() {
     );
   }
 
+  const sorted = applySort(filtered);
   const customPins = activeTypeFilter === "saved" ? getSavedPins() : [];
-  const totalCount = filtered.length + customPins.length;
+  const totalCount = sorted.length + customPins.length;
 
   if (!totalCount) {
     list.innerHTML = "";
@@ -435,12 +551,14 @@ function renderPlacesList() {
   ct.textContent = `${totalCount} place${totalCount > 1 ? "s" : ""}`;
 
   const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-  const regularHTML = filtered
+  const regularHTML = sorted
     .map((p, i) => {
       const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
       const typeTags = tagsData[p.type] || [];
-      const posCount = typeTags.filter((t) => p.tags?.[t.id] === true).length;
+      const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
+      const posCount = posTags.length;
       const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "";
+      const tagNames = posTags.map((t) => t.label);
       const faved = isFavourite(p.id);
       return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
       <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
@@ -448,7 +566,7 @@ function renderPlacesList() {
       <span class="pl-addr">${esc(p.address)}</span>
       <div class="pl-meta">
         <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
-        ${tagSummary ? `<span class="pl-tags-summary">${tagSummary}</span>` : ""}
+        ${tagSummary ? `<span class="pl-tags-summary" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>` : ""}
       </div>
       <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
@@ -458,7 +576,7 @@ function renderPlacesList() {
     .join("");
 
   const pinHTML = customPins
-    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent,#1A73B8);--i:${filtered.length + pi}">
+    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent,#1A73B8);--i:${sorted.length + pi}">
       <span class="pl-dot" style="background:var(--accent,#1A73B8)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
       <span class="pl-name">${esc(pin.name)}</span>
       <span class="pl-addr">${esc(pin.id)}</span>
@@ -482,7 +600,68 @@ document.getElementById("places-scroll").addEventListener("click", (e) => {
   if (e.target.closest("#suggest-place-btn-empty")) openSuggestOverlay();
 });
 
+/* ── Floating tag tooltip ── */
+const tagTip = document.createElement("div");
+tagTip.className = "pl-tag-tip";
+document.getElementById("places-sheet").appendChild(tagTip);
+let tagTipTarget = null;
+let tagTipShowTime = 0;
+
+function showTagTip(el) {
+  const raw = el.dataset.tags;
+  if (!raw) return;
+  tagTipTarget = el;
+  tagTipShowTime = Date.now();
+  try {
+    const tags = JSON.parse(raw);
+    tagTip.innerHTML = tags.map(t => `<span class="pl-tag-chip">${esc(t)}</span>`).join("");
+  } catch { tagTip.textContent = raw; }
+  tagTip.classList.add("show");
+  const r = el.getBoundingClientRect();
+  const tipW = tagTip.offsetWidth;
+  let left = r.right - tipW;
+  if (left < 8) left = 8;
+  if (left + tipW > window.innerWidth - 8) left = window.innerWidth - 8 - tipW;
+  const spaceBelow = window.innerHeight - r.bottom - 12;
+  if (spaceBelow >= tagTip.offsetHeight + 6) {
+    tagTip.style.top = `${r.bottom + 6}px`;
+    tagTip.style.bottom = "";
+  } else {
+    tagTip.style.top = "";
+    tagTip.style.bottom = `${window.innerHeight - r.top + 6}px`;
+  }
+  tagTip.style.left = `${left}px`;
+}
+
+function hideTagTip() {
+  tagTipTarget = null;
+  tagTip.classList.remove("show");
+}
+
+/* Hover listeners — use mouse events (not pointer) so touch doesn't double-fire with click */
+document.getElementById("places-list").addEventListener("mouseenter", (e) => {
+  const el = e.target.closest(".pl-tags-summary");
+  if (el) showTagTip(el);
+}, true);
+document.getElementById("places-list").addEventListener("mouseleave", (e) => {
+  const el = e.target.closest(".pl-tags-summary");
+  if (el && el === tagTipTarget) hideTagTip();
+}, true);
+document.getElementById("places-scroll").addEventListener("scroll", hideTagTip, { passive: true });
+
 document.getElementById("places-list").addEventListener("click", (e) => {
+  // Toggle tag tooltip on tap (mobile)
+  const tagEl = e.target.closest(".pl-tags-summary");
+  if (tagEl) {
+    e.stopPropagation();
+    // If mouseenter just showed it (within 400ms), ignore this click — it's the synthetic mouse event from a tap
+    if (tagTipTarget === tagEl && Date.now() - tagTipShowTime < 400) return;
+    if (tagTipTarget === tagEl) { hideTagTip(); } else { showTagTip(tagEl); }
+    return;
+  }
+  // Dismiss any open tag tooltip
+  hideTagTip();
+
   // Unsave a custom dropped pin
   const unsaveBtn = e.target.closest(".pl-unsave-pin-btn");
   if (unsaveBtn) {

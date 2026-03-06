@@ -423,7 +423,10 @@ export function placeDestMarker(lng, lat) {
 }
 
 document.querySelector(".dir-my-loc").addEventListener("click", () => {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    showToast("Location not available", "loc", "Your browser doesn't support location");
+    return;
+  }
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       const { latitude: lat, longitude: lng } = pos.coords;
@@ -435,7 +438,10 @@ document.querySelector(".dir-my-loc").addEventListener("click", () => {
       updateGoButton();
       if (!dir.dest) startPick("to");
     },
-    () => showDirError("Location access denied"),
+    () => {
+      showDirError("Location access denied");
+      showToast("Location is off", "loc", "Enable location to use this feature");
+    },
   );
 });
 

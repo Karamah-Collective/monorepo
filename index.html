@@ -805,35 +805,34 @@
               <span class="pf-label">Saved</span>
             </button>
           </div>
-          <div id="tf-row" class="hide">
-            <button id="tf-toggle" class="btn-chip">
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-              </svg>
+          <div id="tf-row">
+            <button id="tf-toggle" class="btn-chip hide">
+              <span class="btn-chip-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+              </span>
               Filter<span id="tf-count" class="hide">0</span>
-              <svg
-                class="tf-arrow"
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
+            <div id="sort-wrap">
+              <button id="sort-toggle" class="btn-chip">
+                <span class="btn-chip-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+                </span>
+                <span id="sort-label">Sort</span>
+                <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+              </button>
+              <div id="sort-dropdown" class="sort-dropdown shut">
+                <div class="sort-section-label">Sort by</div>
+                <button class="sort-opt active" data-sort-field="default">Default</button>
+                <button class="sort-opt" data-sort-field="name">Name</button>
+                <button class="sort-opt" data-sort-field="distance">Distance</button>
+                <button class="sort-opt" data-sort-field="date">Date added</button>
+                <div class="sort-divider"></div>
+                <div class="sort-section-label">Order</div>
+                <button class="sort-opt active" data-sort-dir="asc">Ascending</button>
+                <button class="sort-opt" data-sort-dir="desc">Descending</button>
+              </div>
+            </div>
           </div>
           <div id="tag-filter-chips" class="shut"></div>
         </div>
