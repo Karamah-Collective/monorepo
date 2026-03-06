@@ -119,6 +119,9 @@ function getPlacesJSON() {
   var sheet = ss.getSheetByName('Places');
   if (!sheet) return [];
 
+  // Build label→tag_id reverse lookup from Tags sheet
+  var labelToId = buildLabelToIdMap(ss);
+
   var rows = sheet.getDataRange().getValues();
   var places = [];
   for (var i = 1; i < rows.length; i++) {   // skip header row
@@ -143,6 +146,7 @@ function getPlacesJSON() {
           if (t) tags[t] = true;
         });
       }
+      tags = normaliseTags(tags, labelToId);
     }
 
     places.push({ id: Number(id), name: name, type: type, address: address, lat: lat, lng: lng, tags: tags, notes: notes });
@@ -167,6 +171,87 @@ function getTagsJSON() {
     if (!tags[type]) tags[type] = [];
     tags[type].push({ id: tagId, label: label });
   }
+  return tags;
+}
+
+// ── Tag normalisation helpers ─────────────────────────────────────────────────
+
+// Builds a lowercase label → tag_id lookup from the Tags sheet.
+function buildLabelToIdMap(ss) {
+  var sheet = ss.getSheetByName('Tags');
+  if (!sheet) return {};
+  var rows = sheet.getDataRange().getValues();
+  var map = {};
+  for (var i = 1; i < rows.length; i++) {
+    var tagId = (rows[i][1] || '').toString().trim();
+    var label = (rows[i][2] || '').toString().trim();
+    if (tagId && label) map[label.toLowerCase()] = tagId;
+  }
+  return map;
+}
+
+// Converts label-keyed tags to tag_id-keyed tags.
+// Handles: "Has: Label", "Missing: Label", plain "Label", and already-correct "tag_id".
+function normaliseTags(tags, labelToId) {
+  var out = {};
+  for (var key in tags) {
+    if (!tags.hasOwnProperty(key)) continue;
+    var val = tags[key];
+    var k = key.trim();
+    var positive = true;
+
+    // Strip "Has: " or "Missing: " prefix
+    if (k.toLowerCase().indexOf('has: ') === 0) {
+      k = k.substring(5).trim();
+      positive = true;
+    } else if (k.toLowerCase().indexOf('missing: ') === 0) {
+      k = k.substring(9).trim();
+      positive = false;
+    }
+
+    // Look up by label → tag_id
+    var resolved = labelToId[k.toLowerCase()];
+    if (resolved) {
+      out[resolved] = positive;
+    } else {
+      // Already a tag_id or unknown — keep as-is
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
+// Parses a comma-separated tag string into { tag_id: true/false }.
+// Format: "tag1,tag2,!tag3" where ! prefix means false (missing).
+// Also handles legacy "Has: Label, Missing: Label | ..." format.
+function parseTagString(raw) {
+  var tags = {};
+  if (!raw) return tags;
+
+  // Legacy format: "Has: A, B | Missing: C, D"
+  if (raw.indexOf('Has: ') !== -1 || raw.indexOf('Missing: ') !== -1) {
+    var parts = raw.split('|');
+    for (var p = 0; p < parts.length; p++) {
+      var seg = parts[p].trim();
+      if (seg.indexOf('Has: ') === 0) {
+        seg.substring(5).split(',').forEach(function(t) { t = t.trim(); if (t) tags[t] = true; });
+      } else if (seg.indexOf('Missing: ') === 0) {
+        seg.substring(9).split(',').forEach(function(t) { t = t.trim(); if (t) tags[t] = false; });
+      }
+    }
+    return tags;
+  }
+
+  // New format: "tag1,tag2,!tag3"
+  raw.split(',').forEach(function(t) {
+    t = t.trim();
+    if (!t) return;
+    if (t.charAt(0) === '!') {
+      tags[t.substring(1)] = false;
+    } else {
+      tags[t] = true;
+    }
+  });
   return tags;
 }
 
@@ -284,11 +369,8 @@ function copyNewRowToPlaces(srcSheet, row) {
 
   if (!name || !lat || !lng) { Logger.log('Row ' + row + ': missing name/lat/lng, skipping.'); return; }
 
-  // Build tags JSON: { "tag_id": true, ... }
-  var tags = {};
-  if (tagsRaw) {
-    tagsRaw.split(',').forEach(function(t) { t = t.trim(); if (t) tags[t] = true; });
-  }
+  // Build tags JSON: { "tag_id": true/false }
+  var tags = parseTagString(tagsRaw);
 
   // Generate next ID: max existing ID + 1
   var nextId = 1;
@@ -332,8 +414,7 @@ function applyEditToPlaces(srcSheet, row) {
   if (editType)    places.getRange(targetRow, 3).setValue(editType);
   if (editAddr)    places.getRange(targetRow, 4).setValue(editAddr);
   if (editTagsRaw) {
-    var tags = {};
-    editTagsRaw.split(',').forEach(function(t) { t = t.trim(); if (t) tags[t] = true; });
+    var tags = parseTagString(editTagsRaw);
     places.getRange(targetRow, 7).setValue(JSON.stringify(tags));
   }
   if (editNotes) places.getRange(targetRow, 8).setValue(editNotes);

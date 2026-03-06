@@ -781,11 +781,11 @@ document.getElementById("suggest-form").addEventListener("submit", async (e) => 
 
   const yesTags = [], noTags = [];
   sgTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
-    const label = btn.textContent.trim();
-    if (btn.dataset.state === "yes") yesTags.push(label);
-    else if (btn.dataset.state === "no") noTags.push(label);
+    const tagId = btn.dataset.tag;
+    if (btn.dataset.state === "yes") yesTags.push(tagId);
+    else if (btn.dataset.state === "no") noTags.push(tagId);
   });
-  const tagsStr = [yesTags.length ? `Has: ${yesTags.join(", ")}` : "", noTags.length ? `Missing: ${noTags.join(", ")}` : ""].filter(Boolean).join(" | ");
+  const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
   try {
     const token = await new Promise((resolve) =>
@@ -875,11 +875,11 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
 
   const yesTags = [], noTags = [];
   edTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
-    const label = btn.textContent.trim();
-    if (btn.dataset.state === "yes") yesTags.push(label);
-    else if (btn.dataset.state === "no") noTags.push(label);
+    const tagId = btn.dataset.tag;
+    if (btn.dataset.state === "yes") yesTags.push(tagId);
+    else if (btn.dataset.state === "no") noTags.push(tagId);
   });
-  const tagsStr = [yesTags.length ? `Has: ${yesTags.join(", ")}` : "", noTags.length ? `Missing: ${noTags.join(", ")}` : ""].filter(Boolean).join(" | ");
+  const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
   const orig = _editOriginalPlace || {};
   const diffs = [];
@@ -901,7 +901,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     (tagsData[type] || []).forEach((t) => {
       const origVal = orig.tags?.[t.id];
       const origState = origVal === true ? "yes" : origVal === false ? "no" : "neutral";
-      const newState = yesTags.includes(t.label) ? "yes" : noTags.includes(t.label) ? "no" : "neutral";
+      const newState = yesTags.includes(t.id) ? "yes" : noTags.includes(t.id) ? "no" : "neutral";
       if (origState !== newState) {
         const icon = { yes: "✓ has", no: "✗ missing", neutral: "? unset" };
         tagDiffs.push(`${t.label}: ${icon[origState]} → ${icon[newState]}`);
