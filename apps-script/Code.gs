@@ -278,6 +278,37 @@ function setupApprovalTrigger() {
   Logger.log('Approval onEdit trigger created.');
 }
 
+// Run ONCE to migrate existing Places sheet tags from label-keyed
+// (e.g. {"Has: 5 Daily":true,"Missing: Eid Prayer":true})
+// to tag_id-keyed (e.g. {"daily_prayers":true,"eid_prayer":false}).
+// Safe to re-run — already-correct rows are left unchanged.
+function migrateTagsToIds() {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Places');
+  if (!sheet) { Logger.log('"Places" sheet not found.'); return; }
+
+  var labelToId = buildLabelToIdMap(ss);
+  var rows = sheet.getDataRange().getValues();
+  var fixed = 0;
+
+  for (var i = 1; i < rows.length; i++) {
+    var tagsRaw = (rows[i][6] || '').toString().trim();
+    if (!tagsRaw) continue;
+
+    var tags;
+    try { tags = JSON.parse(tagsRaw); } catch (_) { continue; }
+
+    var normalised = normaliseTags(tags, labelToId);
+    var newJson = JSON.stringify(normalised);
+    if (newJson !== tagsRaw) {
+      sheet.getRange(i + 1, 7).setValue(newJson);  // col G = tags
+      fixed++;
+      Logger.log('Row ' + (i + 1) + ': ' + tagsRaw + ' → ' + newJson);
+    }
+  }
+  Logger.log('migrateTagsToIds: fixed ' + fixed + ' of ' + (rows.length - 1) + ' rows.');
+}
+
 // Run ONCE to copy all existing "New" rows into "Draft" as a backup.
 // Creates the "Draft" sheet if it doesn't exist. Safe to re-run (appends).
 function backupNewToDraft() {
