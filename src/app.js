@@ -1,8 +1,8 @@
 import { map } from "./map-init.js";
-import { checkGeoNotice, showEarlyDevNotice } from "./utils.js";
+import { checkGeoNotice, showEarlyDevNotice, showLoadingToast, hideLoadingToast } from "./utils.js";
 import "./map-controls.js";
 import "./directions.js";
-import { loadPlacesData } from "./places.js";
+import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
 import { initPrayerTimes } from "./prayer.js";
 import { loadTransitCache } from "./transit-stops.js";
@@ -15,13 +15,20 @@ document.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 map.on("load", () => {
-  loadPlacesData();
+  const loadPromise = loadPlacesData();
   loadTransitCache();
   initPrayerTimes();
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
-  setTimeout(() => initTutorial(showEarlyDevNotice), 800);
+  setTimeout(() => initTutorial(() => {
+    showEarlyDevNotice();
+    // Show loading toast only after tutorial/intro finishes, if places still loading
+    if (!placesLoaded) {
+      showLoadingToast("Loading places…", "Fetching latest data");
+      loadPromise.then(() => hideLoadingToast());
+    }
+  }), 800);
 
   // Privacy overlay wiring
   const privacyOverlay = document.getElementById("privacy-overlay");

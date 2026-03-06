@@ -75,6 +75,23 @@ const _TOAST_ICON_CLASS = {
   loc:   "snack-icon--error",
 };
 
+/* ── Persistent loading toast (stays until hideLoadingToast is called) ──── */
+export function showLoadingToast(label, sub = null) {
+  if (document.getElementById("loading-toast")) return;
+  const t = document.createElement("div");
+  t.id = "loading-toast";
+  t.className = "share-toast snack loading-toast";
+  t.innerHTML = `<span class="snack-icon snack-icon--clock"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><span class="snack-body"><span class="snack-label">${esc(label)}</span>${sub ? `<span class="snack-sub">${esc(sub)}</span>` : ""}</span>`;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("share-toast-show")));
+}
+export function hideLoadingToast() {
+  const t = document.getElementById("loading-toast");
+  if (!t) return;
+  t.classList.remove("share-toast-show");
+  setTimeout(() => t.remove(), 250);
+}
+
 export function showToast(label, icon = "check", sub = null) {
   const existing = document.getElementById("share-toast");
   if (existing) existing.remove();

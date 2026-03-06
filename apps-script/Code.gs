@@ -36,7 +36,8 @@ function doPost(e) {
       if (!newSheet) return respond({ error: 'Sheet "New" not found' });
 
       var mapsLink = (data.gmaps || '').toString().trim();
-      if (!mapsLink || !isDuplicateInNew(newSheet, mapsLink)) {
+      var submittedName = (data.name || '').toString().trim().toLowerCase();
+      if (!isDuplicateInPlaces(ss, mapsLink, submittedName) && (!mapsLink || !isDuplicateInNew(newSheet, mapsLink))) {
         newSheet.appendRow(newRow);
       }
 
@@ -65,6 +66,26 @@ function isDuplicateInNew(newSheet, mapsLink) {
     // Check Maps link match (col F = index 5)
     var existingLink = normaliseMapsLink((rows[i][5] || '').toString().trim());
     if (normLink && existingLink && normLink === existingLink) return true;
+  }
+  return false;
+}
+
+// Checks if a place already exists in the "Places" sheet by name match or
+// by comparing the Maps link against known data.
+function isDuplicateInPlaces(ss, mapsLink, submittedName) {
+  var sheet = ss.getSheetByName('Places');
+  if (!sheet) return false;
+  var rows = sheet.getDataRange().getValues();
+  var normLink = normaliseMapsLink(mapsLink);
+
+  for (var i = 1; i < rows.length; i++) {
+    // Name match (col B = index 1)
+    var existingName = (rows[i][1] || '').toString().trim().toLowerCase();
+    if (submittedName && existingName && submittedName === existingName) return true;
+
+    // Address match (col D = index 3) — compare against submitted name in case user typed address as name
+    var existingAddr = (rows[i][3] || '').toString().trim().toLowerCase();
+    if (submittedName && existingAddr && existingAddr.indexOf(submittedName) !== -1) return true;
   }
   return false;
 }

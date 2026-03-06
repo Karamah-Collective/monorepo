@@ -1,12 +1,13 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
 import { setActiveTab } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
 
 export let placesData = [];
 export let tagsData = {};
+export let placesLoaded = false;
 let placeMarkers = [];
 let savedPinMarkers = [];
 export let activeTypeFilter = "all";
@@ -51,6 +52,7 @@ export function toggleFavourite(id) {
 export async function loadPlacesData() {
   try {
     let loaded = false;
+    placesLoaded = false;
 
     // Primary: fetch live data from Google Sheets via Apps Script
     if (SHEETS_URL) {
@@ -77,12 +79,16 @@ export async function loadPlacesData() {
       tagsData = await tRes.json();
       console.log(`[Places] Loaded ${placesData.length} places from static JSON (fallback)`);
     }
+    placesLoaded = true;
+    hideLoadingToast();
     addPlaceMarkers();
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
   } catch (err) {
     console.warn("[Places] Failed to load:", err.message);
+    placesLoaded = true;
+    hideLoadingToast();
   }
 }
 
