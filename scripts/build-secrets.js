@@ -44,6 +44,7 @@ export const DT_API_KEY          = '${vars.DT_API_KEY}';
 export const NOMINATIM_REV       = '${vars.NOMINATIM_REV}';
 export const NOMINATIM_VB        = '${vars.NOMINATIM_VB}';
 export const HF_TOKEN_KEY        = '${vars.HF_TOKEN_KEY}';
+export const SHEETS_URL          = '${vars.SHEETS_URL}';
 `;
 
 fs.writeFileSync(outPath, config, 'utf8');
