@@ -27,6 +27,7 @@ export const DIGITRANSIT_REV_URL =
 export const NOMINATIM_VB = _cfg.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
 export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
 export const RECAPTCHA_SITE_KEY = "6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v";
+export const SHEETS_URL = _cfg.SHEETS_URL || "";
 
 export const HELSINKI = [24.9384, 60.1699];
 export const FINLAND_SW = [19.5, 59.5];

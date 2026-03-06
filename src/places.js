@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance } from "./utils.js";
-import { RECAPTCHA_SITE_KEY } from "./config.js";
+import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
 import { setActiveTab } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
 
@@ -50,10 +50,33 @@ export function toggleFavourite(id) {
 
 export async function loadPlacesData() {
   try {
-    const [pRes, tRes] = await Promise.all([fetch("data/places.json"), fetch("data/tags.json")]);
-    placesData = await pRes.json();
-    tagsData = await tRes.json();
-    console.log(`[Places] Loaded ${placesData.length} places, ${Object.keys(tagsData).length} tag categories`);
+    let loaded = false;
+
+    // Primary: fetch live data from Google Sheets via Apps Script
+    if (SHEETS_URL) {
+      try {
+        const res = await fetch(`${SHEETS_URL}?action=all`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.places && Array.isArray(data.places) && data.places.length) {
+            placesData = data.places;
+            tagsData = data.tags || {};
+            loaded = true;
+            console.log(`[Places] Loaded ${placesData.length} places from Sheets`);
+          }
+        }
+      } catch (err) {
+        console.warn("[Places] Sheets fetch failed, falling back to static JSON:", err.message);
+      }
+    }
+
+    // Fallback: static JSON files
+    if (!loaded) {
+      const [pRes, tRes] = await Promise.all([fetch("data/places.json"), fetch("data/tags.json")]);
+      placesData = await pRes.json();
+      tagsData = await tRes.json();
+      console.log(`[Places] Loaded ${placesData.length} places from static JSON (fallback)`);
+    }
     addPlaceMarkers();
     renderPlacesList();
     updatePlacesBadge();
