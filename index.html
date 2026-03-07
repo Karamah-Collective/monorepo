@@ -95,6 +95,16 @@
         </div>
       </div>
 
+      <!-- ─── Contact Pill (above search pill) ─── -->
+      <div id="contact-pill-wrap">
+        <button id="contact-pill" class="btn-icon-card" aria-label="Contact us">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </button>
+      </div>
+
       <!-- ─── Style Picker (above zoom pill) ─── -->
       <div id="style-picker">
         <button
@@ -897,7 +907,7 @@
               </svg>
             </button>
           </div>
-          <form id="suggest-form" autocomplete="off">
+          <form id="suggest-form" autocomplete="off" novalidate>
             <label class="sg-label"
               >Place Name
               <input
@@ -987,7 +997,7 @@
               </svg>
             </button>
           </div>
-          <form id="edit-form" autocomplete="off">
+          <form id="edit-form" autocomplete="off" novalidate>
             <input type="hidden" id="ed-place-id" />
             <label class="sg-label"
               >Place Name
@@ -1192,12 +1202,19 @@
             <p><strong>Halal Finder Helsinki</strong> is a service by <a href="https://karamahcollective.com" target="_blank" rel="noopener">Karamah Collective</a>, a community organisation supporting Finnish Muslims through practical guidance and compassionate connections. This policy explains how we handle your information when you use this app.</p>
 
             <h4>2. Information We Collect</h4>
-            <p>We collect information only when you voluntarily submit it through the <strong>Suggest a Place</strong> or <strong>Suggest Edit</strong> forms:</p>
+            <p>We collect information only when you voluntarily submit it through our forms:</p>
+            <p><strong>Suggest a Place / Suggest Edit forms:</strong></p>
             <ul>
               <li>Place name, type, address, Google Maps link, and tags</li>
               <li>Additional notes you choose to include</li>
             </ul>
-            <p>We do <strong>not</strong> collect your name, email, phone number, or any account information. Submissions are anonymous.</p>
+            <p><strong>Contact form:</strong></p>
+            <ul>
+              <li>Your name and email address (required)</li>
+              <li>Phone number (optional)</li>
+              <li>Your message</li>
+            </ul>
+            <p>Place suggestions are anonymous. Contact form submissions include the personal details you provide so we can respond to your enquiry.</p>
 
             <h4>3. What We Don't Do</h4>
             <ul>
@@ -1205,6 +1222,7 @@
               <li>No behavioural tracking or analytics</li>
               <li>No location data stored — your position is used only in your browser for the map and is never sent to our servers</li>
               <li>We will never sell or share personal information</li>
+              <li>Contact details (name, email, phone) are used solely to respond to your enquiry and are never shared with third parties</li>
             </ul>
 
             <h4>4. Google reCAPTCHA</h4>
@@ -1224,10 +1242,10 @@
             </ul>
 
             <h4>6. Data Storage &amp; Security</h4>
-            <p>Form submissions are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+            <p>Form submissions (place suggestions and contact messages) are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
             <h4>7. Your Rights (GDPR)</h4>
-            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. Since submissions are anonymous, please include details that help us identify the relevant entry.</p>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form submissions, we can locate your data using the email address you provided.</p>
             <p>Contact: <a href="mailto:contact@karamahcollective.com">contact@karamahcollective.com</a></p>
 
             <h4>8. Children's Privacy</h4>
@@ -1240,6 +1258,45 @@
             <p>Questions about this policy? Reach us at <a href="mailto:contact@karamahcollective.com">contact@karamahcollective.com</a></p>
             <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── Contact Overlay ─── -->
+      <div id="contact-overlay" class="hide">
+        <div id="contact-card">
+          <div class="suggest-head">
+            <h3>Contact Us</h3>
+            <button id="contact-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <form id="contact-form" autocomplete="off" novalidate>
+            <label class="sg-label">
+              <span>Name <span class="sg-req">*</span></span>
+              <input id="ct-name" type="text" required placeholder="Your name"/>
+            </label>
+            <label class="sg-label">
+              <span>Email <span class="sg-req">*</span></span>
+              <input id="ct-email" type="email" required placeholder="you@example.com"/>
+            </label>
+            <label class="sg-label">
+              Phone
+              <input id="ct-phone" type="tel" placeholder="Optional"/>
+            </label>
+            <label class="sg-label">
+              <span>Message <span class="sg-req">*</span></span>
+              <textarea id="ct-message" rows="4" required placeholder="How can we help?"></textarea>
+            </label>
+            <button type="submit" id="ct-submit" class="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              Send Message
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
         </div>
       </div>
 

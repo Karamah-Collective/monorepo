@@ -770,8 +770,22 @@ sgTagsContainer.addEventListener("click", (e) => {
   btn.dataset.state = states[(states.indexOf(btn.dataset.state) + 1) % 3];
 });
 
-document.getElementById("suggest-form").addEventListener("submit", async (e) => {
+const suggestForm = document.getElementById("suggest-form");
+suggestForm.querySelectorAll("[required]").forEach((el) => {
+  el.addEventListener("input", () => el.classList.remove("invalid"));
+  if (el.tagName === "SELECT") el.addEventListener("change", () => el.classList.remove("invalid"));
+});
+
+suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  let hasEmpty = false;
+  suggestForm.querySelectorAll("[required]").forEach((el) => {
+    if (!el.value || !el.value.trim()) { el.classList.add("invalid"); hasEmpty = true; }
+    else el.classList.remove("invalid");
+  });
+  if (hasEmpty) return;
+
   const submitBtn = document.getElementById("sg-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
@@ -805,7 +819,7 @@ document.getElementById("suggest-form").addEventListener("submit", async (e) => 
       document.getElementById("suggest-form").reset();
       renderSuggestTags();
       document.getElementById("suggest-overlay").classList.add("hide");
-      showToast("Suggestion submitted.", "check", "Thanks!");
+      showToast("Suggestion submitted.", "check", "JazakAllah Khair!");
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
@@ -929,7 +943,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     const data = await res.json();
     if (data.success) {
       document.getElementById("edit-overlay").classList.add("hide");
-      showToast("Edit submitted.", "check", "Thanks!");
+      showToast("Edit submitted.", "check", "JazakAllah Khair!");
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }

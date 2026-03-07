@@ -9,6 +9,7 @@ import "./map-controls.js";
 import "./directions.js";
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
+import "./contact.js";
 import { initPrayerTimes } from "./prayer.js";
 import { loadTransitCache } from "./transit-stops.js";
 import { initTutorial } from "./tutorial.js";

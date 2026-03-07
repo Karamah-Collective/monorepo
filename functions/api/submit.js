@@ -46,8 +46,8 @@ export async function onRequestPost(context) {
   if (!token) {
     return json({ error: 'Missing reCAPTCHA token' }, 400, responseHeaders);
   }
-  if (!formType || !['new', 'edit'].includes(formType)) {
-    return json({ error: 'formType must be "new" or "edit"' }, 400, responseHeaders);
+  if (!formType || !['new', 'edit', 'contact'].includes(formType)) {
+    return json({ error: 'formType must be "new", "edit", or "contact"' }, 400, responseHeaders);
   }
 
   // ── 1. Verify reCAPTCHA v3 ────────────────────────────────────────────────

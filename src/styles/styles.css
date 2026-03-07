@@ -224,6 +224,71 @@
   bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
 }
 
+/* ─── Contact Pill ─── */
+#contact-pill-wrap {
+  position: absolute;
+  z-index: var(--z-ctrl-mid);
+  right: var(--map-edge);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 215px);
+}
+
+/* ─── Contact Overlay ─── */
+#contact-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: 20px;
+  transition: opacity 0.25s ease;
+}
+#contact-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+#contact-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  max-height: min(600px, 85vh);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease;
+}
+#contact-overlay.hide #contact-card {
+  transform: scale(0.96);
+}
+
+#contact-form {
+  padding: 16px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#contact-form::-webkit-scrollbar { width: 3px; }
+#contact-form::-webkit-scrollbar-track { background: transparent; }
+#contact-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+#ct-submit {
+  display: flex;
+  height: var(--h-submit);
+  flex-shrink: 0;
+}
+
 #style-panel {
   padding: 8px;
   gap: var(--sp-3);
@@ -432,6 +497,10 @@
   #style-picker {
     right: 16px;
     bottom: 172px;
+  }
+  #contact-pill-wrap {
+    right: 16px;
+    bottom: 224px;
   }
   #search-card {
     right: 16px;
@@ -1466,17 +1535,13 @@
 }
 /* #16 — Desktop suggest overlay fade+scale */
 #suggest-overlay.hide {
+  display: flex !important;
   opacity: 0;
-  transform: scale(0.96);
   pointer-events: none;
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 #suggest-overlay {
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 #suggest-card {
@@ -1488,6 +1553,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: transform 0.25s ease;
+}
+#suggest-overlay.hide #suggest-card {
+  transform: scale(0.96);
 }
 .suggest-head {
   display: flex;
@@ -1558,6 +1627,16 @@
   outline: none;
   border-color: var(--accent);
 }
+.sg-label input.invalid,
+.sg-label select.invalid,
+.sg-label textarea.invalid {
+  border-color: #e05252;
+}
+.sg-label input.invalid:focus,
+.sg-label select.invalid:focus,
+.sg-label textarea.invalid:focus {
+  border-color: #e05252;
+}
 .sg-label textarea {
   resize: vertical;
   min-height: 60px;
@@ -1589,17 +1668,13 @@
 }
 /* #16 — Desktop edit overlay fade+scale */
 #edit-overlay.hide {
+  display: flex !important;
   opacity: 0;
-  transform: scale(0.96);
   pointer-events: none;
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 #edit-overlay {
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 #edit-card {
@@ -1612,6 +1687,10 @@
   max-height: min(600px, 85vh);
   display: flex;
   flex-direction: column;
+  transition: transform 0.25s ease;
+}
+#edit-overlay.hide #edit-card {
+  transform: scale(0.96);
 }
 
 #edit-form {
@@ -3796,6 +3875,10 @@
     right: var(--map-edge);
     bottom: 224px;
   }
+  #contact-pill-wrap {
+    right: var(--map-edge);
+    bottom: 276px;
+  }
 
   #tab-bar {
     height: var(--tab-h);
@@ -3914,23 +3997,27 @@
   }
 
   #suggest-overlay,
-  #edit-overlay {
+  #edit-overlay,
+  #contact-overlay {
     padding: 0;
     align-items: flex-end;
   }
 
   #suggest-overlay.hide,
-  #edit-overlay.hide {
+  #edit-overlay.hide,
+  #contact-overlay.hide {
     display: flex !important;
     opacity: 0;
     pointer-events: none;
   }
   #suggest-overlay,
-  #edit-overlay {
+  #edit-overlay,
+  #contact-overlay {
     transition: opacity 0.25s ease;
   }
   #suggest-card,
-  #edit-card {
+  #edit-card,
+  #contact-card {
     max-width: 100%;
     max-height: calc(100vh - 40px);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -3938,7 +4025,8 @@
     transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   }
   #suggest-overlay.hide #suggest-card,
-  #edit-overlay.hide #edit-card {
+  #edit-overlay.hide #edit-card,
+  #contact-overlay.hide #contact-card {
     transform: translateY(100%);
   }
   #suggest-card {
@@ -3949,6 +4037,10 @@
     -webkit-overflow-scrolling: touch;
   }
   #edit-form {
+    padding-bottom: calc(20px + var(--safe-b));
+    -webkit-overflow-scrolling: touch;
+  }
+  #contact-form {
     padding-bottom: calc(20px + var(--safe-b));
     -webkit-overflow-scrolling: touch;
   }
@@ -4360,17 +4452,13 @@
   padding: 20px;
 }
 #privacy-overlay.hide {
+  display: flex !important;
   opacity: 0;
-  transform: scale(0.96);
   pointer-events: none;
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 #privacy-overlay {
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 #privacy-card {
@@ -4383,6 +4471,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: transform 0.25s ease;
+}
+#privacy-overlay.hide #privacy-card {
+  transform: scale(0.96);
 }
 
 #privacy-body {

@@ -7,6 +7,7 @@
 //                      I=Name(Google) J=Address(Google) K=Lat L=Lng M=PlaceID N=Website O=EnrichedAt P=Approved
 //                      (deduplicated – only unique entries make it here from Draft)
 // Sheet "Edit" cols:   A=Timestamp B=PlaceID C=Name D=Type E=Address F=Tags G=MapsLink H=Notes I=Score J=ChangesSummary K=Approved
+// Sheet "Contact" cols: A=Timestamp B=Name C=Email D=Phone E=Message F=Score
 // Sheet "Places" cols: A=id B=name C=type D=address E=lat F=lng G=tags(JSON) H=notes
 // Sheet "Tags" cols:   A=type B=tag_id C=label
 //
@@ -45,6 +46,11 @@ function doPost(e) {
       var editSheet = ss.getSheetByName('Edit');
       if (!editSheet) return respond({ error: 'Sheet "Edit" not found' });
       editSheet.appendRow([ts, data.placeId||'', data.name||'', data.type||'', data.address||'', data.tags||'', data.gmaps||'', data.notes||'', score, data.changesSummary||'']);
+
+    } else if (data.formType === 'contact') {
+      var contactSheet = ss.getSheetByName('Contact');
+      if (!contactSheet) return respond({ error: 'Sheet "Contact" not found' });
+      contactSheet.appendRow([ts, data.name||'', data.email||'', data.phone||'', data.message||'', score]);
 
     } else {
       return respond({ error: 'Unknown formType: ' + data.formType });

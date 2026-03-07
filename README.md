@@ -38,6 +38,7 @@
 - Granular **tag filtering** per type (e.g. halal-certified, cash-only, delivery, etc.)
 - **Favourites** — saved locally via `localStorage`
 - **Suggest a place** or **suggest an edit** with a built-in form (powered by Google Apps Script + Sheets)
+- **Contact form** — reach the team directly with name, email, and message (reCAPTCHA-protected, stored in Google Sheets)
 - **One-tap directions** from any place card or popup
 
 ### Search
@@ -93,6 +94,7 @@ halal-finder/
 │   ├── utils.js                   # Toast, sheet drag, clipboard, haversine, crypto helpers
 │   ├── places.js                  # Places: markers, popups, sheet UI, favourites, tag filters
 │   ├── search.js                  # Search bar, geocoding, dropped pins, search markers
+│   ├── contact.js                 # Contact form overlay, reCAPTCHA submit
 │   ├── directions.js              # All routing: transit + OSRM + panel UI + step rendering
 │   ├── prayer.js                  # Prayer times, Ramadan detection, snack UI
 │   ├── transit-stops.js           # Transit stop layer (cache -> Overpass API fallback)
@@ -131,8 +133,8 @@ halal-finder/
 │   ├── maplibre-gl.js             # MapLibre GL 3 (local copy)
 │   └── maplibre-gl.css            # MapLibre GL styles
 │
-└── apps-script/                   # Google Apps Script backend (place submissions)
-    ├── Code.gs                    # Handles form submissions -> Google Sheets
+└── apps-script/                   # Google Apps Script backend (place submissions + contact)
+    ├── Code.gs                    # Handles form submissions -> Google Sheets (new, edit, contact)
     └── appsscript.json            # Apps Script manifest
 ```
 
@@ -353,6 +355,8 @@ index.html
         │     └── directions.js  (cross-import — see note below)
         ├── search.js          search bar, geocoding, pins
         │     ├── map-init.js, config.js, utils.js
+        ├── contact.js         contact form overlay + submit
+        │     └── config.js, utils.js
         ├── directions.js      all routing + panel UI
         │     ├── map-init.js, config.js, utils.js, icons.js
         │     └── places.js  (cross-import — see note below)
