@@ -49,40 +49,85 @@ export function toggleFavourite(id) {
   saveFavourites();
 }
 
+const CACHE_KEY = 'hf_places_v1';
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (c.places?.length) return c;
+  } catch { /* corrupted */ }
+  return null;
+}
+
+function writeCache(places, tags) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ places, tags })); }
+  catch { /* quota exceeded — ignore */ }
+}
+
+async function fetchFresh() {
+  const urls = ['/api/places?action=all'];
+  if (SHEETS_URL) urls.push(`${SHEETS_URL}?action=all`);
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.places?.length) {
+          console.log(`[Places] Fetched ${data.places.length} places from ${url}`);
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Places] Fetch from ${url} failed:`, err.message);
+    }
+  }
+  return null;
+}
+
 export async function loadPlacesData() {
   try {
-    let loaded = false;
     placesLoaded = false;
 
-    // Primary: fetch live data via CF edge-cached proxy (/api/places),
-    // falling back to direct Apps Script URL for local dev without wrangler.
-    const sheetsUrls = ['/api/places?action=all'];
-    if (SHEETS_URL) sheetsUrls.push(`${SHEETS_URL}?action=all`);
-    for (const url of sheetsUrls) {
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.places && Array.isArray(data.places) && data.places.length) {
-            placesData = data.places;
-            tagsData = data.tags || {};
-            loaded = true;
-            console.log(`[Places] Loaded ${placesData.length} places from ${url}`);
-            break;
-          }
+    // 1. Instant load from localStorage cache (returning visitors)
+    const cached = readCache();
+    if (cached) {
+      placesData = cached.places;
+      tagsData = cached.tags || {};
+      placesLoaded = true;
+      hideLoadingToast();
+      addPlaceMarkers();
+      renderPlacesList();
+      updatePlacesBadge();
+      checkShareUrl();
+      console.log(`[Places] Instant load: ${placesData.length} places from cache`);
+
+      // 2. Background refresh — update only if data changed
+      fetchFresh().then(data => {
+        if (!data) return;
+        if (data.places.length !== placesData.length ||
+            JSON.stringify(data.places) !== JSON.stringify(placesData)) {
+          placesData = data.places;
+          tagsData = data.tags || {};
+          addPlaceMarkers();
+          renderPlacesList();
+          updatePlacesBadge();
+          console.log(`[Places] Background update: ${placesData.length} places`);
         }
-      } catch (err) {
-        console.warn(`[Places] Fetch from ${url} failed:`, err.message);
-      }
+        writeCache(data.places, data.tags || {});
+      });
+      return;
     }
 
-    // Fallback: static JSON files
-    if (!loaded) {
-      const [pRes, tRes] = await Promise.all([fetch("data/places.json"), fetch("data/tags.json")]);
-      placesData = await pRes.json();
-      tagsData = await tRes.json();
-      console.log(`[Places] Loaded ${placesData.length} places from static JSON (fallback)`);
+    // 3. First visit — no cache, fetch and wait
+    const data = await fetchFresh();
+    if (data) {
+      placesData = data.places;
+      tagsData = data.tags || {};
+      writeCache(placesData, tagsData);
     }
+
     placesLoaded = true;
     hideLoadingToast();
     addPlaceMarkers();

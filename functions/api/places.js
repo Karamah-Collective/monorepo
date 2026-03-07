@@ -36,7 +36,7 @@ export async function onRequestGet(context) {
       status: upstream.status,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
         'Access-Control-Allow-Origin': '*',
       },
     });
