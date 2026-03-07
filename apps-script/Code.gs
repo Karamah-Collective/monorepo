@@ -19,6 +19,12 @@
 var SPREADSHEET_ID = '1rixpqkzB-msw_whxJpPXIb4Y75o3h9_G_AgWoTYT2jA';
 
 function doPost(e) {
+  // Self-contained helper — never depends on outer scope, can never be undefined.
+  function respond(data) {
+    return ContentService.createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   try {
     var data  = JSON.parse(e.postData.contents);
     var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -28,9 +34,13 @@ function doPost(e) {
     if (data.formType === 'new') {
       var newRow = [ts, data.name||'', data.type||'', data.address||'', data.tags||'', data.gmaps||'', data.notes||'', score];
 
-      // 1. Always archive to Draft
+      // 1. Always archive to Draft — auto-create sheet if missing
       var draft = ss.getSheetByName('Draft');
-      if (draft) draft.appendRow(newRow);
+      if (!draft) {
+        draft = ss.insertSheet('Draft');
+        draft.appendRow(['Timestamp', 'Name (User)', 'Type', 'Address (User)', 'Tags', 'Maps Link', 'Notes', 'Score']);
+      }
+      draft.appendRow(newRow);
 
       // 2. Deduplicate: only add to "New" if not already present
       var newSheet = ss.getSheetByName('New');
@@ -42,9 +52,8 @@ function doPost(e) {
         newSheet.appendRow(newRow);
       }
 
-      // Schedule enrichment to run ~15 s from now (appendRow never fires onEdit triggers)
+      // Schedule enrichment ~15 s from now (appendRow never fires onEdit triggers)
       try {
-        // Delete any pending one-shot enrichment triggers to avoid accumulation
         ScriptApp.getProjectTriggers().forEach(function(t) {
           if (t.getHandlerFunction() === 'enrichPendingRows' &&
               t.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
@@ -57,13 +66,21 @@ function doPost(e) {
       }
 
     } else if (data.formType === 'edit') {
+      // Auto-create Edit sheet if missing
       var editSheet = ss.getSheetByName('Edit');
-      if (!editSheet) return respond({ error: 'Sheet "Edit" not found' });
+      if (!editSheet) {
+        editSheet = ss.insertSheet('Edit');
+        editSheet.appendRow(['Timestamp', 'PlaceID', 'Name', 'Type', 'Address', 'Tags', 'Maps Link', 'Notes', 'Score', 'Changes Summary', 'Approved']);
+      }
       editSheet.appendRow([ts, data.placeId||'', data.name||'', data.type||'', data.address||'', data.tags||'', data.gmaps||'', data.notes||'', score, data.changesSummary||'']);
 
     } else if (data.formType === 'contact') {
+      // Auto-create Contact sheet if missing
       var contactSheet = ss.getSheetByName('Contact');
-      if (!contactSheet) return respond({ error: 'Sheet "Contact" not found' });
+      if (!contactSheet) {
+        contactSheet = ss.insertSheet('Contact');
+        contactSheet.appendRow(['Timestamp', 'Name', 'Email', 'Phone', 'Message', 'Score']);
+      }
       contactSheet.appendRow([ts, data.name||'', data.email||'', data.phone||'', data.message||'', score]);
 
     } else {
@@ -289,11 +306,6 @@ function parseTagString(raw) {
     }
   });
   return tags;
-}
-
-function respond(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function respondCORS(data) {
