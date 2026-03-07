@@ -10,6 +10,8 @@
  * Required Cloudflare Pages Environment Variables (set in Pages → Settings → Variables):
  *   RECAPTCHA_SECRET   – reCAPTCHA v3 secret key
  *   GAS_URL            – Google Apps Script web app URL (https://script.google.com/macros/s/…/exec)
+ * 
+ * Updated GAS_URL to new deployment: AKfycby46l_-jABRg6ePKjDPbooFPcQYBnGrV_WtoSBWcxjk4e5MP4SX7qA3dAJWvur1Amt-SA
  */
 
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
