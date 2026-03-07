@@ -87,8 +87,9 @@ export async function onRequestPost(context) {
 
   async function sendToGAS() {
     let url = env.GAS_URL;
+    let res;
     for (let i = 0; i < 5; i++) {
-      const res = await fetch(url, {
+      res = await fetch(url, {
         method:   'POST',
         headers:  { 'Content-Type': 'application/json' },
         body:     payload,
@@ -101,12 +102,21 @@ export async function onRequestPost(context) {
       }
       break;
     }
+    return res;
   }
 
-  // waitUntil keeps the worker alive until GAS finishes without blocking the response.
-  context.waitUntil(sendToGAS().catch(() => {}));
-
-  return json({ success: true }, 200, responseHeaders);
+  try {
+    const gasRes = await sendToGAS();
+    const gasText = gasRes ? await gasRes.text() : 'no response';
+    let gasData;
+    try { gasData = JSON.parse(gasText); } catch { gasData = { raw: gasText }; }
+    if (gasData.error) {
+      return json({ success: false, error: gasData.error }, 200, responseHeaders);
+    }
+    return json({ success: true }, 200, responseHeaders);
+  } catch (err) {
+    return json({ success: false, error: 'GAS request failed: ' + err.message }, 200, responseHeaders);
+  }
 }
 
 // ── OPTIONS preflight (CORS) ──────────────────────────────────────────────────
