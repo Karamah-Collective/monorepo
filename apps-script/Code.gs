@@ -52,19 +52,6 @@ function doPost(e) {
         newSheet.appendRow(newRow);
       }
 
-      // Schedule enrichment ~15 s from now (appendRow never fires onEdit triggers)
-      try {
-        ScriptApp.getProjectTriggers().forEach(function(t) {
-          if (t.getHandlerFunction() === 'enrichPendingRows' &&
-              t.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
-            ScriptApp.deleteTrigger(t);
-          }
-        });
-        ScriptApp.newTrigger('enrichPendingRows').timeBased().after(15000).create();
-      } catch (trigErr) {
-        Logger.log('Enrichment trigger error: ' + trigErr.message);
-      }
-
     } else if (data.formType === 'edit') {
       // Auto-create Edit sheet if missing
       var editSheet = ss.getSheetByName('Edit');
@@ -313,13 +300,14 @@ function respondCORS(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Run once from the editor to install the 5-minute recurring trigger.
+// Run once from the editor to install the 1-minute recurring enrichment trigger.
+// 1 min is the minimum GAS allows — new submissions are enriched within ~60 s.
 function setupEnrichmentTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'enrichPendingRows') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('enrichPendingRows').timeBased().everyMinutes(5).create();
-  Logger.log('Trigger created.');
+  ScriptApp.newTrigger('enrichPendingRows').timeBased().everyMinutes(1).create();
+  Logger.log('Enrichment trigger created (every 1 min).');
 }
 
 // Run once from the editor to install the onEdit trigger for approval workflow.
