@@ -73,12 +73,10 @@ export async function onRequestPost(context) {
     return json({ error: 'Submission blocked (low reCAPTCHA score)', score: captcha.score }, 403, responseHeaders);
   }
 
-  // ── 2. Forward to Google Apps Script (fire-and-forget) ───────────────────
-  // GAS web apps always do a 302 redirect on POST. Following that across
-  // Cloudflare's fetch implementation produces unreliable status codes even
-  // when the row is written successfully. Since reCAPTCHA is the security gate,
-  // we return success to the browser immediately and let GAS run in the
-  // background via context.waitUntil — no more false "failed" toasts.
+  // ── 2. Forward to Google Apps Script ───────────────────────────────────────
+  // GAS web apps return a 302 redirect after POST. The redirect target must be
+  // fetched with GET (per HTTP spec). We follow the chain manually so we can
+  // read the final JSON response and surface any errors to the user.
   const payload = JSON.stringify({
     ...formData,
     formType,
@@ -86,18 +84,19 @@ export async function onRequestPost(context) {
   });
 
   async function sendToGAS() {
-    let url = env.GAS_URL;
-    let res;
+    // 1. Initial POST to GAS exec URL
+    let res = await fetch(env.GAS_URL, {
+      method:   'POST',
+      headers:  { 'Content-Type': 'application/json' },
+      body:     payload,
+      redirect: 'manual',
+    });
+
+    // 2. Follow redirect chain with GET (302 switches POST → GET)
     for (let i = 0; i < 5; i++) {
-      res = await fetch(url, {
-        method:   'POST',
-        headers:  { 'Content-Type': 'application/json' },
-        body:     payload,
-        redirect: 'manual',
-      });
       const loc = res.headers.get('Location');
       if ((res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) && loc) {
-        url = loc;
+        res = await fetch(loc, { redirect: 'manual' });
         continue;
       }
       break;
@@ -111,8 +110,7 @@ export async function onRequestPost(context) {
     let gasData = null;
     try { gasData = JSON.parse(gasText); } catch { /* not JSON */ }
     if (!gasData) {
-      // GAS returned HTML error page or empty response — surface it
-      const preview = gasText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 150);
+      const preview = gasText.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().substring(0, 200);
       return json({ success: false, error: 'GAS error: ' + (preview || 'empty response') }, 200, responseHeaders);
     }
     if (gasData.error) {
