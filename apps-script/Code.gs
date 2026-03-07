@@ -50,6 +50,8 @@ function doPost(e) {
       var submittedName = (data.name || '').toString().trim().toLowerCase();
       if (!isDuplicateInPlaces(ss, mapsLink, submittedName) && (!mapsLink || !isDuplicateInNew(newSheet, mapsLink))) {
         newSheet.appendRow(newRow);
+        // Enrich immediately — no timer needed
+        if (mapsLink) enrichPendingRows();
       }
 
     } else if (data.formType === 'edit') {
@@ -300,24 +302,22 @@ function respondCORS(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Run once from the editor to install the 1-minute recurring enrichment trigger.
-// 1 min is the minimum GAS allows — new submissions are enriched within ~60 s.
-function setupEnrichmentTrigger() {
+// Run ONCE from the editor after deploying.
+// Sets up the onEdit trigger for: approval workflow + manual re-enrichment (clearing col O).
+// No time-based trigger needed — new submissions are enriched immediately inside doPost.
+function setupTriggers() {
+  // Remove any stale triggers
   ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'enrichPendingRows') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('enrichPendingRows').timeBased().everyMinutes(1).create();
-  Logger.log('Enrichment trigger created (every 1 min).');
-}
-
-// Run once from the editor to install the onEdit trigger for approval workflow.
-function setupApprovalTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'onSheetEdit') ScriptApp.deleteTrigger(t);
+    var fn = t.getHandlerFunction();
+    if (fn === 'onSheetEdit' || fn === 'enrichPendingRows') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('onSheetEdit').forSpreadsheet(SPREADSHEET_ID).onEdit().create();
-  Logger.log('Approval onEdit trigger created.');
+  Logger.log('Triggers set up: onSheetEdit (onEdit).');
 }
+
+// Legacy aliases — safe to call, both now delegate to setupTriggers().
+function setupEnrichmentTrigger() { setupTriggers(); }
+function setupApprovalTrigger()   { setupTriggers(); }
 
 // Run ONCE to migrate existing Places sheet tags from label-keyed
 // (e.g. {"Has: 5 Daily":true,"Missing: Eid Prayer":true})
