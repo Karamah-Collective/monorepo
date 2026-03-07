@@ -549,6 +549,14 @@ function enrichPendingRows() {
         }
       }
 
+      // Only mark enriched if we got at least one useful piece of data.
+      // If all empty, skip so the 1-min trigger retries on the next run.
+      var hasData = lat !== '' || lng !== '' || googleAddress || googleName || placeId;
+      if (!hasData) {
+        Logger.log('Row ' + (i + 1) + ': enrichment returned no data, will retry next run');
+        continue;
+      }
+
       var ts = new Date().toLocaleString('en-FI', { timeZone: 'Europe/Helsinki' });
       sheet.getRange(i + 1, 9, 1, 7).setValues([[googleName, googleAddress, lat, lng, placeId, website, ts]]);
       count++;
@@ -635,7 +643,11 @@ function resolveUrl(url) {
   var current = url;
   for (var hop = 1; hop <= 8; hop++) {
     try {
-      var resp = UrlFetchApp.fetch(current, { followRedirects: false, muteHttpExceptions: true });
+      var resp = UrlFetchApp.fetch(current, {
+        followRedirects: false,
+        muteHttpExceptions: true,
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' }
+      });
       var code = resp.getResponseCode();
       Logger.log('resolveUrl hop ' + hop + ': HTTP ' + code + ' – ' + current);
 
