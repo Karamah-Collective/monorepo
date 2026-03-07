@@ -120,13 +120,15 @@ export async function loadPlacesData() {
       return;
     }
 
-    // 3. First visit — no cache, fetch and wait
-    const data = await fetchFresh();
-    if (data) {
-      placesData = data.places;
-      tagsData = data.tags || {};
-      writeCache(placesData, tagsData);
-    }
+    // 3. First visit — load bundled static JSON instantly (served from CF CDN edge)
+    try {
+      const [pRes, tRes] = await Promise.all([fetch('data/places.json'), fetch('data/tags.json')]);
+      if (pRes.ok && tRes.ok) {
+        placesData = await pRes.json();
+        tagsData = await tRes.json();
+        console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);
+      }
+    } catch { /* static files missing — fall through */ }
 
     placesLoaded = true;
     hideLoadingToast();
@@ -134,6 +136,21 @@ export async function loadPlacesData() {
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
+
+    // 4. Background refresh from API — update cache + UI if data changed
+    fetchFresh().then(data => {
+      if (!data) return;
+      if (data.places.length !== placesData.length ||
+          JSON.stringify(data.places) !== JSON.stringify(placesData)) {
+        placesData = data.places;
+        tagsData = data.tags || {};
+        addPlaceMarkers();
+        renderPlacesList();
+        updatePlacesBadge();
+        console.log(`[Places] Background update: ${placesData.length} places`);
+      }
+      writeCache(data.places, data.tags || {});
+    });
   } catch (err) {
     console.warn("[Places] Failed to load:", err.message);
     placesLoaded = true;
