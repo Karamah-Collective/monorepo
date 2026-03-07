@@ -410,8 +410,8 @@ function onSheetEdit(e) {
   if (sheetName === 'New' && col === 16 && val === 'yes') {
     copyNewRowToPlaces(sheet, row);
   }
-  // "New" sheet: data edit in cols A–H → trigger enrichment for unenriched rows
-  if (sheetName === 'New' && col <= 8 && row > 1) {
+  // "New" sheet: data edit in cols A–H, or col O manually cleared → trigger enrichment
+  if (sheetName === 'New' && row > 1 && (col <= 8 || (col === 15 && !val))) {
     enrichPendingRows();
   }
   // "Edit" sheet: Approved is col K (11)
