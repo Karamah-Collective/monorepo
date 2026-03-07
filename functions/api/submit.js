@@ -107,9 +107,14 @@ export async function onRequestPost(context) {
 
   try {
     const gasRes = await sendToGAS();
-    const gasText = gasRes ? await gasRes.text() : 'no response';
-    let gasData;
-    try { gasData = JSON.parse(gasText); } catch { gasData = { raw: gasText }; }
+    const gasText = gasRes ? await gasRes.text() : '';
+    let gasData = null;
+    try { gasData = JSON.parse(gasText); } catch { /* not JSON */ }
+    if (!gasData) {
+      // GAS returned HTML error page or empty response — surface it
+      const preview = gasText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 150);
+      return json({ success: false, error: 'GAS error: ' + (preview || 'empty response') }, 200, responseHeaders);
+    }
     if (gasData.error) {
       return json({ success: false, error: gasData.error }, 200, responseHeaders);
     }

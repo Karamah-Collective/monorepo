@@ -42,6 +42,20 @@ function doPost(e) {
         newSheet.appendRow(newRow);
       }
 
+      // Schedule enrichment to run ~15 s from now (appendRow never fires onEdit triggers)
+      try {
+        // Delete any pending one-shot enrichment triggers to avoid accumulation
+        ScriptApp.getProjectTriggers().forEach(function(t) {
+          if (t.getHandlerFunction() === 'enrichPendingRows' &&
+              t.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
+            ScriptApp.deleteTrigger(t);
+          }
+        });
+        ScriptApp.newTrigger('enrichPendingRows').timeBased().after(15000).create();
+      } catch (trigErr) {
+        Logger.log('Enrichment trigger error: ' + trigErr.message);
+      }
+
     } else if (data.formType === 'edit') {
       var editSheet = ss.getSheetByName('Edit');
       if (!editSheet) return respond({ error: 'Sheet "Edit" not found' });
@@ -764,4 +778,4 @@ function getPlaceDetails(placeId) {
 }
 
 
-var respond = respondCORS;  // legacy alias used by doPost
+
