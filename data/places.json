@@ -505,5 +505,104 @@
       "no_alcohol": true
     },
     "notes": ""
+  },
+  {
+    "id": "j13ysd",
+    "name": "Al-Aqsa Market",
+    "type": "shop",
+    "address": "Kauppakaarre 1, 00700 Helsinki, Finland",
+    "lat": 60.2509391,
+    "lng": 25.0088526,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "f54kwd",
+    "name": "Al-Fateh Market Malmi ( Afro & Asian and Caribbean Super Market )",
+    "type": "shop",
+    "address": "Kirkonkyläntie 3, 00700 Helsinki, Finland",
+    "lat": 60.2515864,
+    "lng": 25.0084111,
+    "tags": {
+      "halal_meat": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "11mlq9",
+    "name": "Bangla Bazaar Oy",
+    "type": "shop",
+    "address": "Kirkonkyläntie 9, 00700 Helsinki, Finland",
+    "lat": 60.2525787,
+    "lng": 25.0066934,
+    "tags": {
+      "halal_meat": true,
+      "halal_groceries": true,
+      "asian_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "7dn24u",
+    "name": "Al Madina Market",
+    "type": "shop",
+    "address": "Malmin kauppatie 18, 00700 Helsinki, Finland",
+    "lat": 60.2517475,
+    "lng": 25.0095205,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "c3ecup",
+    "name": "Pizza Kuningas Malmi",
+    "type": "restaurant",
+    "address": "Latokartanontie 3, 00700 Helsinki, Finland",
+    "lat": 60.2489018,
+    "lng": 25.008901,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "8j7scl",
+    "name": "Chitir Chicken Malmi",
+    "type": "restaurant",
+    "address": "Latokartanontie 5, 00700 Helsinki, Finland",
+    "lat": 60.2484813,
+    "lng": 25.0094426,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "l4pclo",
+    "name": "Nondon Ravintola",
+    "type": "restaurant",
+    "address": "Malmin asematie 6, 00700 Helsinki, Finland",
+    "lat": 60.2483098,
+    "lng": 25.0068875,
+    "tags": {
+      "fully_halal": true
+    },
+    "notes": ""
   }
 ]
