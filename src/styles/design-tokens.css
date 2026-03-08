@@ -148,8 +148,10 @@ button {
 
 html,
 body {
-  height: 100%;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
+  background: #f0f1f2;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;

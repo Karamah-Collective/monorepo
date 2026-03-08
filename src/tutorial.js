@@ -2,72 +2,180 @@
 // Shows an interactive spotlight tour for new users on their first visit.
 // Persists completion state in localStorage so it only shows once.
 // The card physically animates between positions for a fluid experience.
+// Steps adapt to the current layout: desktop / tablet / phone.
 
 const TUTORIAL_KEY = "hf_tutorial_v1";
 
+// ─── Layout detection ─────────────────────────────────────────────────────────
+function getLayout() {
+  const w = window.innerWidth;
+  if (w >= 1200) return "desktop";
+  if (w >= 769)  return "tablet";
+  return "phone";
+}
+
 // ─── Step Definitions ─────────────────────────────────────────────────────────
-const STEPS = [
+// Each step can include a `layout` array to restrict it to certain breakpoints.
+// If omitted the step appears on all layouts.
+// `before` — an optional callback run before the step displays (e.g. open menu).
+const ALL_STEPS = [
+  // phoneOrder controls the sequence on phone (lower = earlier); default order
+  // is used for desktop and tablet.
   {
     target: null,
     title: "Assalamu Alaikum!",
-    body: "Discover mosques, prayer rooms, halal restaurants &amp; shops across Helsinki.<br>Let\u2019s take a quick tour of the key features.",
+    body: "Discover mosques, prayer rooms, halal restaurants &amp; shops across Helsinki.<br>Let\u2019s take a quick tour of the key features",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
+    phoneOrder: 0,
   },
   {
     target: "#home-btn",
     title: "Home",
-    body: "Tap <b>Home</b> to reset the map and clear any active route or selection.",
+    body: "Tap <b>Home</b> to reset the map and clear any active route or selection",
     icon: '<path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8"/><path d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
+    phoneOrder: 1,
   },
   {
     target: "#dir-btn",
     title: "Routes",
-    body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times.",
+    body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times",
     icon: '<path d="M3 18l4-4 4 4 4-8 4 4"/><circle cx="7" cy="14" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="14" r="1.5" fill="currentColor" stroke="none"/>',
+    phoneOrder: 2,
   },
   {
     target: "#places-btn",
     title: "Places",
-    body: "Browse mosques, prayer rooms, halal restaurants &amp; shops. Filter by category and save favourites.",
+    body: "Browse mosques, prayer rooms, halal restaurants &amp; shops \u2014 filter by category and save favourites",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
+    phoneOrder: 3,
   },
   {
     target: "#locate-btn",
     title: "My Location",
-    body: "Centre the map on your position and keep it tracking as you move.",
+    body: "Centre the map on your position and keep it tracking as you move",
     icon: '<path d="M3 11l19-9-9 19-2-8-8-2z"/>',
+    phoneOrder: 4,
+  },
+
+  // ─── Desktop-only: pills are always visible ─────────────────────────
+  {
+    target: "#contact-pill",
+    title: "Contact",
+    body: "Have feedback or a question? Reach us directly from the map",
+    icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+    layout: ["desktop"],
   },
   {
     target: "#style-picker-btn",
     title: "Map Style",
-    body: "Switch between the street map and satellite imagery.",
+    body: "Switch between the street map and satellite imagery",
     icon: '<path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>',
+    layout: ["desktop"],
   },
   {
     target: "#search-pill",
     title: "Search",
-    body: "Find any address or place in Helsinki \u2014 just start typing.",
+    body: "Find any address or place in Helsinki \u2014 just start typing",
     icon: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
+    layout: ["desktop"],
   },
+
+  // ─── Phone + Tablet: tools toggle groups search / style / contact ───
+  {
+    target: "#tools-toggle",
+    title: "Tools",
+    body: "Tap to reveal <b>Search</b>, <b>Map Style</b> and <b>Contact</b> \u2014 all tucked away to save space",
+    icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    layout: ["phone", "tablet"],
+    before() { return closeToolsMenu(); },
+    phoneOrder: 6,
+  },
+  {
+    target: "#search-pill",
+    title: "Search",
+    body: "Find any address or place in Helsinki \u2014 just start typing",
+    icon: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
+    layout: ["phone", "tablet"],
+    before() { return openToolsMenu(); },
+    phoneOrder: 7,
+  },
+  {
+    target: "#style-picker-btn",
+    title: "Map Style",
+    body: "Switch between the street map and satellite imagery",
+    icon: '<path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>',
+    layout: ["phone", "tablet"],
+    phoneOrder: 8,
+  },
+  {
+    target: "#contact-pill",
+    title: "Contact",
+    body: "Have feedback or a question? Reach us directly from the map",
+    icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+    layout: ["phone", "tablet"],
+    phoneOrder: 9,
+  },
+
+  // ─── Shared: always visible on all layouts ──────────────────────────
   {
     target: "#zoom-pill",
     title: "Zoom",
-    body: "Use <b>+</b> and <b>\u2212</b> to zoom, or pinch on a touch screen.",
+    body: "Use <b>+</b> and <b>\u2212</b> to zoom, or pinch on a touch screen",
     icon: '<path d="M12 5v14M5 12h14"/>',
+    before() { return closeToolsMenu(); },
+    phoneOrder: 5,
   },
   {
     target: "#prayer-pill",
     title: "Prayer Times",
-    body: "Today\u2019s prayer schedule with a live countdown. Ramadan times appear automatically.",
+    body: "Today\u2019s prayer schedule with a live countdown \u2014 Ramadan times appear automatically",
     icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    phoneOrder: 10,
   },
   {
     target: null,
     title: "You\u2019re all set!",
-    body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to suggest one \u2014 the community keeps the map accurate.",
+    body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to suggest one \u2014 the community keeps the map accurate",
     icon: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
+    phoneOrder: 99,
   },
 ];
+
+// ─── Helpers: open / close the tools toggle ───────────────────────────────────
+function openToolsMenu() {
+  const app = document.getElementById("app");
+  if (app && !app.classList.contains("tools-open")) {
+    app.classList.add("tools-open");
+    const grid = document.getElementById("tools-icon-grid");
+    const x    = document.getElementById("tools-icon-x");
+    if (grid) grid.style.display = "none";
+    if (x)    x.style.display = "";
+    return true;
+  }
+  return false;
+}
+function closeToolsMenu() {
+  const app = document.getElementById("app");
+  if (app && app.classList.contains("tools-open")) {
+    app.classList.remove("tools-open");
+    const grid = document.getElementById("tools-icon-grid");
+    const x    = document.getElementById("tools-icon-x");
+    if (grid) grid.style.display = "";
+    if (x)    x.style.display = "none";
+    return true;
+  }
+  return false;
+}
+
+// ─── Build the filtered step list for the current layout ──────────────────────
+let STEPS = [];
+function buildSteps() {
+  const layout = getLayout();
+  STEPS = ALL_STEPS.filter(s => !s.layout || s.layout.includes(layout));
+  if (layout === "phone") {
+    STEPS.sort((a, b) => (a.phoneOrder ?? 50) - (b.phoneOrder ?? 50));
+  }
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let step = 0;
@@ -83,6 +191,7 @@ export function initTutorial(onComplete) {
     if (_onComplete) _onComplete();
     return;
   }
+  buildSteps();
   build();
   show(0);
 }
@@ -101,7 +210,11 @@ function build() {
 
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => show(step), 100);
+    resizeTimer = setTimeout(() => {
+      buildSteps();
+      if (step >= STEPS.length) step = STEPS.length - 1;
+      show(step);
+    }, 100);
   });
 }
 
@@ -113,6 +226,7 @@ function resolveTarget(selector) {
   if (!selector) return null;
   const el = document.querySelector(selector);
   if (!el) return null;
+
   const pill = el.closest(".pill-expand");
   if (pill && !pill.classList.contains("collapsed")) return pill;
   return el;
@@ -121,6 +235,20 @@ function resolveTarget(selector) {
 // ─── Show a step ─────────────────────────────────────────────────────────────
 function show(index) {
   step = index;
+  const s = STEPS[index];
+
+  // Run any pre-step hook (e.g. open/close the tools menu)
+  const needsDelay = s.before ? s.before() : false;
+
+  // Only wait for CSS transitions if the hook actually changed something
+  if (needsDelay) {
+    setTimeout(() => _render(index), 300);
+  } else {
+    _render(index);
+  }
+}
+
+function _render(index) {
   const s       = STEPS[index];
   const isFirst = index === 0;
   const isLast  = index === STEPS.length - 1;
@@ -311,6 +439,7 @@ function retreat() {
 
 function dismiss() {
   localStorage.setItem(TUTORIAL_KEY, "1");
+  closeToolsMenu();
   overlayEl.classList.remove("visible");
   cardEl.classList.remove("visible");
   spotlightEl.style.opacity = "0";

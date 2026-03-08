@@ -56,4 +56,35 @@ map.on("load", () => {
     e.preventDefault();
     privacyOverlay.classList.remove("hide");
   });
+
+  // ─── Tools Toggle (tablet: collapsible pill group) ─── 
+  const toolsBtn = document.getElementById("tools-toggle");
+  const iconDots = document.getElementById("tools-icon-grid");
+  const iconX    = document.getElementById("tools-icon-x");
+  const appEl    = document.getElementById("app");
+
+  toolsBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const opening = !appEl.classList.contains("tools-open");
+    appEl.classList.toggle("tools-open");
+    iconDots.style.display = opening ? "none" : "";
+    iconX.style.display    = opening ? "" : "none";
+
+    // If closing, also collapse search if it was open
+    if (!opening) {
+      const sc = document.getElementById("search-card");
+      if (sc && !sc.classList.contains("collapsed")) {
+        sc.classList.add("collapsed");
+        const inp = document.getElementById("search-input");
+        if (inp) { inp.value = ""; inp.blur(); }
+        const sd = document.getElementById("search-drop");
+        if (sd) sd.classList.add("hide");
+        const cb = document.getElementById("clear-input");
+        if (cb) cb.classList.add("hide");
+      }
+      // Close style panel if open
+      const sp = document.getElementById("style-panel");
+      if (sp) sp.classList.add("hide");
+    }
+  });
 });

@@ -1,12 +1,40 @@
 ﻿@import "./design-tokens.css";
 
 #app {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   touch-action: pan-x pan-y;
 }
+/* ─── Global thin scrollbar ─── */
+#search-drop,
+#contact-form,
+#places-scroll,
+#dir-results,
+#privacy-body,
+.dir-auto-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#search-drop::-webkit-scrollbar,
+#contact-form::-webkit-scrollbar,
+#places-scroll::-webkit-scrollbar,
+#dir-results::-webkit-scrollbar,
+#privacy-body::-webkit-scrollbar,
+.dir-auto-list::-webkit-scrollbar { width: 3px; }
+#search-drop::-webkit-scrollbar-track,
+#contact-form::-webkit-scrollbar-track,
+#places-scroll::-webkit-scrollbar-track,
+#dir-results::-webkit-scrollbar-track,
+#privacy-body::-webkit-scrollbar-track,
+.dir-auto-list::-webkit-scrollbar-track { background: transparent; }
+#search-drop::-webkit-scrollbar-thumb,
+#contact-form::-webkit-scrollbar-thumb,
+#places-scroll::-webkit-scrollbar-thumb,
+#dir-results::-webkit-scrollbar-thumb,
+#privacy-body::-webkit-scrollbar-thumb,
+.dir-auto-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
 .hide {
   display: none !important;
 }
@@ -15,6 +43,7 @@
   position: absolute;
   inset: 0;
   z-index: var(--z-map);
+  background: #f0f1f2;
 }
 .maplibregl-ctrl-bottom-right {
   display: none !important;
@@ -276,12 +305,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
-#contact-form::-webkit-scrollbar { width: 3px; }
-#contact-form::-webkit-scrollbar-track { background: transparent; }
-#contact-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 #ct-submit {
   display: flex;
@@ -491,26 +515,140 @@
     right: 8px;
   }
   #zoom-pill {
-    right: 16px;
+    right: 26px;
     bottom: 24px;
   }
   #style-picker {
-    right: 16px;
+    right: 26px;
     bottom: 172px;
   }
   #contact-pill-wrap {
-    right: 16px;
+    right: 26px;
     bottom: 224px;
   }
   #search-card {
-    right: 16px;
+    right: 26px;
     bottom: 119px;
   }
   .maplibregl-ctrl-top-right {
-    right: 16px !important;
+    right: 26px !important;
   }
   .maplibregl-ctrl-bottom-left {
     bottom: 24px !important;
+  }
+}
+
+/* ─── Tools Toggle: visible on phone + tablet, hidden on desktop ─── */
+#tools-toggle {
+  display: flex;
+  position: absolute;
+  z-index: var(--z-ctrl-mid);
+  right: var(--map-edge);
+  bottom: 165px;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+
+/* ─── Shared: hide pills behind toggle on phone + tablet ─── */
+@media (max-width: 1199px) {
+  #search-card,
+  #contact-pill-wrap,
+  #style-picker {
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+      width 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      border-radius 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  #app.tools-open #search-card,
+  #app.tools-open #contact-pill-wrap,
+  #app.tools-open #style-picker {
+    opacity: 1;
+    pointer-events: auto;
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+      width 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      border-radius 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  /* Stagger reveal */
+  #app.tools-open #search-card       { transition-delay: 0s; }
+  #app.tools-open #style-picker      { transition-delay: 0.06s; }
+  #app.tools-open #contact-pill-wrap { transition-delay: 0.12s; }
+
+  /* Stagger hide (reverse) */
+  #app:not(.tools-open) #contact-pill-wrap { transition-delay: 0s; }
+  #app:not(.tools-open) #style-picker      { transition-delay: 0.04s; }
+  #app:not(.tools-open) #search-card       { transition-delay: 0.08s; }
+
+  /* Active state for toggle */
+  #app.tools-open #tools-toggle {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+}
+
+/* ─── Phone: pills fan out vertically above toggle ─── */
+@media (max-width: 768px) {
+  #tools-toggle {
+    right: var(--map-edge);
+    bottom: 165px; /* sits just above zoom pill top (~157px) */
+  }
+
+  /* Stack pills above the toggle: 165 + 52 = 217, +52 = 269, +52 = 321 */
+  #search-card       { right: var(--map-edge); bottom: 217px; }
+  #style-picker      { right: var(--map-edge); bottom: 269px; }
+  #contact-pill-wrap { right: var(--map-edge); bottom: 321px; }
+
+  #search-card       { transform: translateY(8px) scale(0.92); }
+  #style-picker      { transform: translateY(8px) scale(0.92); }
+  #contact-pill-wrap { transform: translateY(8px) scale(0.92); }
+
+  #app.tools-open #search-card,
+  #app.tools-open #style-picker,
+  #app.tools-open #contact-pill-wrap {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Tablet: pills fan out horizontally left of toggle ─── */
+@media (min-width: 769px) and (max-width: 1199px) {
+  #tools-toggle {
+    right: 26px;
+    bottom: 119px;
+  }
+
+  /* Horizontal row left of toggle */
+  #search-card       { right: 82px;  bottom: 119px; }
+  #style-picker      { right: 138px; bottom: 119px; }
+  #contact-pill-wrap { right: 194px; bottom: 119px; }
+
+  /* Search expands leftward */
+  #search-card:not(.collapsed) {
+    width: min(50vw, 360px);
+  }
+
+  #search-card       { transform: translateX(12px) scale(0.92); }
+  #style-picker      { transform: translateX(12px) scale(0.92); }
+  #contact-pill-wrap { transform: translateX(12px) scale(0.92); }
+
+  #app.tools-open #search-card,
+  #app.tools-open #style-picker,
+  #app.tools-open #contact-pill-wrap {
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ─── Desktop (≥1200px): toggle hidden, pills always visible ─── */
+@media (min-width: 1200px) {
+  #tools-toggle {
+    display: none;
   }
 }
 
@@ -3540,6 +3678,11 @@
   #route-snackbar {
     bottom: 24px;
   }
+  .share-toast,
+  #geo-notice,
+  #dev-notice {
+    bottom: calc(var(--safe-b) + 24px);
+  }
 }
 
 .dir-origin-marker {
@@ -3849,10 +3992,6 @@
 }
 
 @media (max-width: 768px) {
-  #search-card {
-    right: var(--map-edge);
-    bottom: 172px;
-  }
   #search-card:not(.collapsed) {
     width: min(94vw, 360px);
   }
@@ -3865,19 +4004,6 @@
   }
   #search-drop {
     max-height: calc(100dvh - 240px);
-  }
-
-  #zoom-pill {
-    right: var(--map-edge);
-    bottom: 80px;
-  }
-  #style-picker {
-    right: var(--map-edge);
-    bottom: 224px;
-  }
-  #contact-pill-wrap {
-    right: var(--map-edge);
-    bottom: 276px;
   }
 
   #tab-bar {
@@ -4314,7 +4440,7 @@
 /* Body — matches .snack-sub */
 .tut-body {
   font-size: var(--txt-sm);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-regular);
   color: var(--text-2);
   line-height: 1.3;
   margin: 0 0 var(--sp-4);
@@ -4431,13 +4557,21 @@
   bottom: 5px;
   left: 6px;
   font-size: 9px;
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.65);
   text-decoration: none;
   line-height: 1;
 }
 #privacy-link:hover {
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(0, 0, 0, 1);
   text-decoration: underline;
+}
+.privacy-full {
+  display: none;
+}
+@media (min-width: 769px) {
+  .privacy-full {
+    display: inline;
+  }
 }
 
 /* ─── Privacy Overlay ─── */
