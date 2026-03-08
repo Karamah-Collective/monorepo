@@ -881,7 +881,7 @@ suggestForm.addEventListener("submit", async (e) => {
       document.getElementById("suggest-form").reset();
       renderSuggestTags();
       document.getElementById("suggest-overlay").classList.add("hide");
-      showToast("Suggestion submitted.", "check", "JazakAllah Khair!");
+      showToast("Suggestion submitted", "check", "JazakAllah Khair!");
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
@@ -1005,7 +1005,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     const data = await res.json();
     if (data.success) {
       document.getElementById("edit-overlay").classList.add("hide");
-      showToast("Edit submitted.", "check", "JazakAllah Khair!");
+      showToast("Edit submitted", "check", "JazakAllah Khair!");
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
