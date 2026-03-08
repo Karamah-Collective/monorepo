@@ -30,5 +30,6 @@ export const RECAPTCHA_SITE_KEY = "6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v";
 export const SHEETS_URL = _cfg.SHEETS_URL || "";
 
 export const HELSINKI = [24.9384, 60.1699];
-export const FINLAND_SW = [19.5, 59.5];
-export const FINLAND_NE = [32.0, 70.5];
+// Keep panning focused on the Nordic/Baltic region while allowing wider zoom-out.
+export const FINLAND_SW = [14.0, 54.5];
+export const FINLAND_NE = [36.0, 72.5];

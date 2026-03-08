@@ -68,7 +68,7 @@ export function showCurrentLocation() {
       showToast("Location is off", "loc", "Enable location permission");
       locBtn.classList.remove("tracking");
       locWatchId = null;
-      map.flyTo({ center: HELSINKI, zoom: 13, duration: 600 });
+      map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
     },
     { enableHighAccuracy: true, timeout: 8000 },
   );
@@ -211,7 +211,7 @@ document.addEventListener("click", (e) => {
 document.getElementById("home-btn").addEventListener("click", () => {
   if (currentStyleMode !== "default") setMapStyle("default");
   if (is3DActive) disable3D();
-  map.flyTo({ center: HELSINKI, zoom: 13, bearing: 0, pitch: 0, duration: 600 });
+  map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
 });
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));
 document.getElementById("zoomout-btn").addEventListener("click", () => map.zoomOut({ duration: 300 }));

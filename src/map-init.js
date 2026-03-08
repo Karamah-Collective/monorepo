@@ -6,8 +6,10 @@ export const map = new maplibregl.Map({
   container: "map",
   style: HSL_STYLE,
   center: HELSINKI,
-  zoom: 13,
-  minZoom: 5,
+  // Wider default framing to include Greater Helsinki.
+  zoom: 12.2,
+  // Allow a much broader Finland/Nordics overview when zooming out.
+  minZoom: 3.4,
   maxZoom: 19,
   maxBounds: [FINLAND_SW, FINLAND_NE],
   attributionControl: true,
@@ -17,6 +19,6 @@ export const map = new maplibregl.Map({
 map.setMaxPitch(85);
 
 map.addControl(
-  new maplibregl.ScaleControl({ maxWidth: 80, unit: "metric" }),
+  new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }),
   "top-right",
 );
