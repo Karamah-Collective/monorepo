@@ -191,7 +191,7 @@ function getPlacesJSON() {
       tags = normaliseTags(tags, labelToId);
     }
 
-    places.push({ id: Number(id), name: name, type: type, address: address, lat: lat, lng: lng, tags: tags, notes: notes });
+    places.push({ id: (id || '').toString().trim(), name: name, type: type, address: address, lat: lat, lng: lng, tags: tags, notes: notes });
   }
   return places;
 }
@@ -420,6 +420,24 @@ function deduplicateNewSheet() {
   Logger.log('Removed ' + toDelete.length + ' duplicate rows from "New".');
 }
 
+// Generates a random 6-char alphanumeric place ID (e.g. "k4x9m2").
+// Mix of lowercase letters and digits — non-sequential, not guessable.
+function generatePlaceId(existingIds) {
+  var CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  var LEN = 6;
+  var id;
+  var attempts = 0;
+  do {
+    id = '';
+    for (var c = 0; c < LEN; c++) {
+      id += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+    }
+    attempts++;
+    if (attempts > 1000) throw new Error('Could not generate unique place ID after 1000 attempts');
+  } while (existingIds.indexOf(id) !== -1);
+  return id;
+}
+
 // ── Approval workflow: copies row to "Places" when Approved = Yes ───────────
 function onSheetEdit(e) {
   if (!e || !e.range) return;
@@ -474,13 +492,13 @@ function copyNewRowToPlaces(srcSheet, row) {
   // Build tags JSON: { "tag_id": true/false }
   var tags = parseTagString(tagsRaw);
 
-  // Generate next ID: max existing ID + 1
-  var nextId = 1;
+  // Generate random unique alphanumeric ID
   var existingRows = places.getDataRange().getValues();
+  var existingIds = [];
   for (var i = 1; i < existingRows.length; i++) {
-    var eid = Number(existingRows[i][0]);
-    if (eid >= nextId) nextId = eid + 1;
+    existingIds.push((existingRows[i][0] || '').toString().trim());
   }
+  var nextId = generatePlaceId(existingIds);
 
   places.appendRow([nextId, name, type, address, lat, lng, JSON.stringify(tags), notes]);
   invalidateCache();
@@ -496,13 +514,13 @@ function applyEditToPlaces(srcSheet, row) {
   var r = srcSheet.getRange(row, 1, 1, 11).getValues()[0];
   // Edit cols: 0=Timestamp 1=PlaceID 2=Name 3=Type 4=Address 5=Tags 6=MapsLink 7=Notes 8=Score 9=ChangesSummary 10=Approved
 
-  var editPlaceId = Number(r[1]);
+  var editPlaceId = (r[1] || '').toString().trim();
   if (!editPlaceId) { Logger.log('Edit row ' + row + ': no PlaceID.'); return; }
 
   var pRows = places.getDataRange().getValues();
   var targetRow = -1;
   for (var i = 1; i < pRows.length; i++) {
-    if (Number(pRows[i][0]) === editPlaceId) { targetRow = i + 1; break; }
+    if ((pRows[i][0] || '').toString().trim() === editPlaceId) { targetRow = i + 1; break; }
   }
   if (targetRow === -1) { Logger.log('Place id=' + editPlaceId + ' not found in Places sheet.'); return; }
 
@@ -668,6 +686,78 @@ function testUrlParsing() {
   });
 }
 
+
+// ── Deduplication & ID migration ──────────────────────────────────────────────
+
+// Run from the editor to remove duplicate places.
+// Duplicates = same name (case-insensitive) AND coordinates within ~50 m.
+// Keeps the earliest (topmost) row, deletes later duplicates.
+function deduplicatePlacesSheet() {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Places');
+  if (!sheet) { Logger.log('"Places" sheet not found.'); return; }
+
+  var rows = sheet.getDataRange().getValues();
+  var seen = [];       // array of { name, lat, lng }
+  var toDelete = [];
+  var THRESHOLD = 0.0005; // ~50 m
+
+  for (var i = 1; i < rows.length; i++) {
+    var name = (rows[i][1] || '').toString().trim().toLowerCase();
+    var lat  = parseFloat(rows[i][4]);
+    var lng  = parseFloat(rows[i][5]);
+    if (!name || isNaN(lat) || isNaN(lng)) continue;
+
+    var isDupe = false;
+    for (var s = 0; s < seen.length; s++) {
+      if (seen[s].name === name &&
+          Math.abs(seen[s].lat - lat) < THRESHOLD &&
+          Math.abs(seen[s].lng - lng) < THRESHOLD) {
+        isDupe = true;
+        break;
+      }
+    }
+
+    if (isDupe) {
+      toDelete.push(i + 1); // 1-indexed sheet row
+      Logger.log('Duplicate row ' + (i + 1) + ': "' + name + '" at ' + lat + ',' + lng);
+    } else {
+      seen.push({ name: name, lat: lat, lng: lng });
+    }
+  }
+
+  // Delete from bottom to top so indices stay valid
+  for (var j = toDelete.length - 1; j >= 0; j--) {
+    sheet.deleteRow(toDelete[j]);
+  }
+
+  invalidateCache();
+  Logger.log('deduplicatePlacesSheet: removed ' + toDelete.length + ' of ' + (rows.length - 1) + ' rows.');
+}
+
+// Run ONCE to replace sequential/numeric IDs with random alphanumeric IDs.
+// Safe to re-run — existing IDs are simply re-randomised.
+function reEncryptPlaceIds() {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Places');
+  if (!sheet) { Logger.log('"Places" sheet not found.'); return; }
+
+  var rows = sheet.getDataRange().getValues();
+  var newIds = [];   // track newly assigned IDs to avoid collisions
+  var migrated = 0;
+
+  for (var i = 1; i < rows.length; i++) {
+    var oldId = (rows[i][0] || '').toString().trim();
+    var newId = generatePlaceId(newIds);
+    newIds.push(newId);
+    sheet.getRange(i + 1, 1).setValue(newId);
+    Logger.log('Row ' + (i + 1) + ': id "' + oldId + '" → "' + newId + '"');
+    migrated++;
+  }
+
+  invalidateCache();
+  Logger.log('reEncryptPlaceIds: migrated ' + migrated + ' IDs.');
+}
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
 

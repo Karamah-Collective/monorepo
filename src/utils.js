@@ -553,7 +553,9 @@ function _b64decode(token) {
 
 export function encryptToken(place) {
   const kb = _keyBuf();
-  const id = place.id & 0xffff;
+  // Hash string ID to 16 bits for compact token encoding
+  const idBytes = Array.from(String(place.id), (c) => c.charCodeAt(0));
+  const id = _fnv1a16(idBytes);
   const lat16 = Math.round((place.lat - _LAT_BASE) * _GEO_SCALE) & 0xffff;
   const lng16 = Math.round((place.lng - _LNG_BASE) * _GEO_SCALE) & 0xffff;
   const data = [
@@ -581,7 +583,7 @@ export function decryptToken(token) {
     const data = [ih, il, lah, lal, loh, lol];
     if (_fnv1a16([...kb, ...data]) !== mac) return null;
     return {
-      id: (ih << 8) | il,
+      id: null, // ID is a hash — resolve via lat/lng proximity
       a: _LAT_BASE + ((lah << 8) | lal) / _GEO_SCALE,
       o: _LNG_BASE + ((loh << 8) | lol) / _GEO_SCALE,
     };

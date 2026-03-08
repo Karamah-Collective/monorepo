@@ -1,6 +1,6 @@
 [
   {
-    "id": 1,
+    "id": "8k2rzi",
     "name": "Bangladesh Islamic Cultural Center (BICC)",
     "type": "mosque",
     "address": "Malminkaari 9 A, 00700 Helsinki",
@@ -16,7 +16,7 @@
     "notes": "Updated female_wudu to true based on external mosque listings."
   },
   {
-    "id": 2,
+    "id": "cxjnht",
     "name": "Suomen Islamilainen Yhdyskunta",
     "type": "mosque",
     "address": "Lönnrotinkatu 22, 00180 Helsinki",
@@ -32,7 +32,7 @@
     "notes": "Rabita central mosque."
   },
   {
-    "id": 3,
+    "id": "0v9lwu",
     "name": "Yalla Malmi",
     "type": "shop",
     "address": "Hietakummuntie 19, 00700 Helsinki",
@@ -48,7 +48,7 @@
     "notes": ""
   },
   {
-    "id": 4,
+    "id": "9m5ck3",
     "name": "KFC Kamppi",
     "type": "restaurant",
     "address": "Urho Kekkosen katu 1, 00100 Helsinki",
@@ -61,7 +61,7 @@
     "notes": "KFC branch in Kamppi centre."
   },
   {
-    "id": 5,
+    "id": "m90m87",
     "name": "KFC Itäkeskus",
     "type": "restaurant",
     "address": "Itäkatu 1-7, 00930 Helsinki",
@@ -74,7 +74,7 @@
     "notes": "Inside Itis shopping centre."
   },
   {
-    "id": 6,
+    "id": "hdgwe2",
     "name": "KFC Tripla",
     "type": "restaurant",
     "address": "Fredikanterassi 1, 00520 Helsinki",
@@ -87,7 +87,7 @@
     "notes": "Mall of Tripla branch."
   },
   {
-    "id": 8,
+    "id": "7gp6mz",
     "name": "KFC Sello",
     "type": "restaurant",
     "address": "Leppävaarankatu 3-9, 02600 Espoo",
@@ -100,7 +100,7 @@
     "notes": "Sello mall branch in Espoo."
   },
   {
-    "id": 9,
+    "id": "eyvteo",
     "name": "Burger King Kamppi",
     "type": "restaurant",
     "address": "Urho Kekkosen katu 1, 00100 Helsinki",
@@ -113,7 +113,7 @@
     "notes": "Located in Kamppi centre."
   },
   {
-    "id": 10,
+    "id": "t87tko",
     "name": "Burger King Forum",
     "type": "restaurant",
     "address": "Mannerheimintie 20, 00100 Helsinki",
@@ -126,7 +126,7 @@
     "notes": "City-centre Burger King near Forum."
   },
   {
-    "id": 11,
+    "id": "ets6od",
     "name": "Burger King Itäkeskus",
     "type": "restaurant",
     "address": "Itäkatu 1, 00930 Helsinki",
@@ -139,7 +139,7 @@
     "notes": "Inside Itis area."
   },
   {
-    "id": 12,
+    "id": "zneup4",
     "name": "Burger King Tripla",
     "type": "restaurant",
     "address": "Fredikanterassi 1, 00520 Helsinki",
@@ -152,7 +152,7 @@
     "notes": "Mall of Tripla branch."
   },
   {
-    "id": 13,
+    "id": "xnc8up",
     "name": "Burger King Redi",
     "type": "restaurant",
     "address": "Hermannin rantatie 5, 00580 Helsinki",
@@ -165,7 +165,7 @@
     "notes": "Redi shopping centre."
   },
   {
-    "id": 14,
+    "id": "z7k66e",
     "name": "Burger King Jumbo",
     "type": "restaurant",
     "address": "Vantaanportinkatu 7, 01510 Vantaa",
@@ -178,7 +178,7 @@
     "notes": "Burger King in Jumbo shopping centre."
   },
   {
-    "id": 24,
+    "id": "lf5l20",
     "name": "Alanya Market Itäkeskus",
     "type": "shop",
     "address": "Itäkatu 1-7, 00930 Helsinki",
@@ -194,7 +194,7 @@
     "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address."
   },
   {
-    "id": 27,
+    "id": "rztqwm",
     "name": "Yalla Koivukylä",
     "type": "shop",
     "address": "Koivukylän alue, 01360/01300 Vantaa",
@@ -210,7 +210,7 @@
     "notes": "Yalla store in Tikkurila/Koivukylä area; exact door address can be set to Peltolantie 5 when you want to be precise."
   },
   {
-    "id": 28,
+    "id": "8uaffs",
     "name": "Bangladesh Kendrio Masjid",
     "type": "mosque",
     "address": "Laippatie 13, 00880 Helsinki, Finland",
@@ -228,7 +228,7 @@
     "notes": ""
   },
   {
-    "id": 29,
+    "id": "kv7blx",
     "name": "Beno Itäkeskus",
     "type": "shop",
     "address": "Kastelholmantie 2, 00900 Helsinki",
@@ -244,7 +244,7 @@
     "notes": "Beno's main Helsinki branch near Itis metro."
   },
   {
-    "id": 30,
+    "id": "9mr44x",
     "name": "Yalla Columbus",
     "type": "shop",
     "address": "Vuotie 45, Kauppakeskus Columbus, 00980 Helsinki",
@@ -260,7 +260,7 @@
     "notes": "Yalla branch in Columbus mall, Vuosaari – fresh butcher counter and ethnic groceries. Phone: 041 3122479."
   },
   {
-    "id": 31,
+    "id": "pa61kp",
     "name": "Espoo Muslim Center",
     "type": "mosque",
     "address": "Maapallonkatu 8, 02210 Espoo, Finland",
@@ -276,7 +276,7 @@
     "notes": ""
   },
   {
-    "id": 32,
+    "id": "1m0auf",
     "name": "Albanian Mosque",
     "type": "mosque",
     "address": "Asemakuja 3, 02770 Espoo, Finland",
@@ -290,7 +290,7 @@
     "notes": ""
   },
   {
-    "id": 33,
+    "id": "7rbzu8",
     "name": "King Kebab Tikkurila",
     "type": "restaurant",
     "address": "Tikkuraitti 15, 01300 Vantaa, Finland",
@@ -302,7 +302,7 @@
     "notes": ""
   },
   {
-    "id": 34,
+    "id": "pnznbn",
     "name": "Ahaan Tam Sang Forum",
     "type": "restaurant",
     "address": "Mannerheimintie 14-20, 00100 Helsinki, Finland",
@@ -314,7 +314,7 @@
     "notes": "All chicken halal since it is imported from Thailand. Inside the Forum foodcourt"
   },
   {
-    "id": 35,
+    "id": "yua29z",
     "name": "Uyghur Noodle House",
     "type": "restaurant",
     "address": "Siltasaarenkatu 13, 00530 Helsinki, Finland",
@@ -327,19 +327,7 @@
     "notes": "Pls add a cuisine tag. this is uighur. Everything halal, beef and all"
   },
   {
-    "id": 36,
-    "name": "King Kebab Tikkurila",
-    "type": "restaurant",
-    "address": "Tikkuraitti 15, 01300 Vantaa, Finland",
-    "lat": 60.2935895,
-    "lng": 25.0351338,
-    "tags": {
-      "fully_halal": true
-    },
-    "notes": ""
-  },
-  {
-    "id": 37,
+    "id": "ofmcd6",
     "name": "Chingu Korean BBQ Helsinki Kalasatama",
     "type": "restaurant",
     "address": "Tukkutorinkuja 2, 00580 Helsinki, Finland",
@@ -352,7 +340,7 @@
     "notes": "Korean BBQ place. halal beef, chicken and also seafood\n\nOutside of Redi"
   },
   {
-    "id": 38,
+    "id": "tsatr6",
     "name": "Masjid Al-Huda (Helsinki Islamic Center)",
     "type": "mosque",
     "address": "Veturitori 2, 00520 Helsinki, Finland",
@@ -371,7 +359,7 @@
     "notes": ""
   },
   {
-    "id": 39,
+    "id": "4vxx5n",
     "name": "Taqwa Cultural Centre, Läkkisepänkuja 3, 02650 Espoo",
     "type": "mosque",
     "address": "Läkkisepänkuja 3, 02650 Espoo, Finland",
@@ -386,66 +374,7 @@
     "notes": ""
   },
   {
-    "id": 40,
-    "name": "Espoo Muslim Center",
-    "type": "mosque",
-    "address": "Maapallonkatu 8, 02210 Espoo, Finland",
-    "lat": 60.1709733,
-    "lng": 24.7268367,
-    "tags": {
-      "daily_prayers": true,
-      "jummah": true,
-      "taraweeh": true,
-      "female_prayer": true,
-      "female_wudu": true
-    },
-    "notes": ""
-  },
-  {
-    "id": 41,
-    "name": "Ahaan Tam Sang Forum",
-    "type": "restaurant",
-    "address": "Mannerheimintie 14-20, 00100 Helsinki, Finland",
-    "lat": 60.1693055,
-    "lng": 24.9382082,
-    "tags": {
-      "partially_halal": true
-    },
-    "notes": "All chicken halal since it is imported from Thailand. Inside the Forum foodcourt"
-  },
-  {
-    "id": 41,
-    "name": "Bangladesh Kendrio Masjid",
-    "type": "mosque",
-    "address": "Laippatie 13, 00880 Helsinki, Finland",
-    "lat": 60.2104776,
-    "lng": 25.050148,
-    "tags": {
-      "daily_prayers": true,
-      "jummah": true,
-      "taraweeh": true,
-      "eid_prayer": true,
-      "quran_classes": true,
-      "female_prayer": true,
-      "female_wudu": true
-    },
-    "notes": ""
-  },
-  {
-    "id": 42,
-    "name": "Uyghur Noodle House",
-    "type": "restaurant",
-    "address": "Siltasaarenkatu 13, 00530 Helsinki, Finland",
-    "lat": 60.1816695,
-    "lng": 24.9498207,
-    "tags": {
-      "fully_halal": true,
-      "no_alcohol": true
-    },
-    "notes": "Pls add a cuisine tag. this is uighur. Everything halal, beef and all"
-  },
-  {
-    "id": 43,
+    "id": "s2v6t3",
     "name": "UniCafe Kaisa-talo",
     "type": "prayer_room",
     "address": "Vuorikatu 7, 00100 Helsinki, Finland",
@@ -457,7 +386,7 @@
     "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor"
   },
   {
-    "id": 44,
+    "id": "j74tjs",
     "name": "Olari Mosque",
     "type": "mosque",
     "address": "Kuunkehrä 4 A, 02210 Espoo, Finland",
@@ -473,21 +402,7 @@
     "notes": ""
   },
   {
-    "id": 45,
-    "name": "Albanian Mosque",
-    "type": "mosque",
-    "address": "Asemakuja 3, 02770 Espoo, Finland",
-    "lat": 60.2052773,
-    "lng": 24.6612704,
-    "tags": {
-      "jummah": true,
-      "taraweeh": true,
-      "female_prayer": true
-    },
-    "notes": ""
-  },
-  {
-    "id": 46,
+    "id": "oq2wi2",
     "name": "Kilo Mosque",
     "type": "mosque",
     "address": "Kutojantie 3, 02630 Espoo, Finland",
@@ -501,7 +416,7 @@
     "notes": "I don't knwo much of the details tbh , no sisters side for jummah"
   },
   {
-    "id": 47,
+    "id": "anzxjj",
     "name": "Malacca Iso Omena",
     "type": "restaurant",
     "address": "Piispansilta 11, 02230 Espoo, Finland",
@@ -514,7 +429,7 @@
     "notes": "Has alcohol to drink/order, everything else is fully halal food wise. Malaysian buffet."
   },
   {
-    "id": 48,
+    "id": "3yqkym",
     "name": "Seoul Good Iso Omena",
     "type": "restaurant",
     "address": "Piispansilta 11, 02230 Espoo, Finland",
@@ -527,7 +442,7 @@
     "notes": "It is on the bus terminal floor of Iso Omena, only selected fried chicken are halal, please ask the counter"
   },
   {
-    "id": 49,
+    "id": "l8wj1i",
     "name": "Hungry Hub Kontula",
     "type": "restaurant",
     "address": "Kontula Shopping Center, Kontulankaari 1, 00940 Helsinki, Finland",
@@ -540,7 +455,7 @@
     "notes": ""
   },
   {
-    "id": 50,
+    "id": "1dshyj",
     "name": "Hungry Hub Vuosaari",
     "type": "restaurant",
     "address": "Vuotie 47b, 00990 Helsinki, Finland",
@@ -553,12 +468,38 @@
     "notes": ""
   },
   {
-    "id": 51,
+    "id": "ntho35",
     "name": "Hungry Hub Myyrmäki",
     "type": "restaurant",
     "address": "Liesikuja 4, 01600 Vantaa, Finland",
     "lat": 60.2625384,
     "lng": 24.8537577,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "89bg9y",
+    "name": "Hungry Hub Keskusta",
+    "type": "restaurant",
+    "address": "Töölönlahdenkatu 3, 00100 Helsinki, Finland",
+    "lat": 60.1743189,
+    "lng": 24.9388954,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "l5kwds",
+    "name": "Hungry Hub Korso",
+    "type": "restaurant",
+    "address": "Urpiaisentie 6, 01450 Vantaa, Finland",
+    "lat": 60.3498804,
+    "lng": 25.076831,
     "tags": {
       "fully_halal": true,
       "no_alcohol": true

@@ -36,7 +36,7 @@ function applySort(arr) {
         return activeSortDir === "asc" ? da - db : db - da;
       });
     case "date":
-      return a.sort((x, y) => activeSortDir === "asc" ? x.id - y.id : y.id - x.id);
+      return a.sort((x, y) => activeSortDir === "asc" ? String(x.id).localeCompare(String(y.id)) : String(y.id).localeCompare(String(x.id)));
     default: return a;
   }
 }
@@ -369,9 +369,9 @@ export function checkShareUrl() {
     const params = new URLSearchParams(location.search);
     placeToken = params.get("p") || null;
     if (!placeToken) {
-      const id = +params.get("place");
+      const id = params.get("place");
       if (id) {
-        const place = placesData.find((p) => p.id === id);
+        const place = placesData.find((p) => String(p.id) === id);
         if (place) {
           map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
           map.once("moveend", () => showPlacePopup(place));
@@ -792,8 +792,8 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   // Click on a regular place row
   const li = e.target.closest("li[data-place-id]");
   if (!li) return;
-  const placeId = +li.dataset.placeId;
-  const place = placesData.find((p) => p.id === placeId);
+  const placeId = li.dataset.placeId;
+  const place = placesData.find((p) => String(p.id) === placeId);
   if (place) { closePlacesSheet(); showPlacePopup(place); }
 });
 
