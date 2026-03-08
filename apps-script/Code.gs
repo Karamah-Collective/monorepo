@@ -319,6 +319,29 @@ function setupTriggers() {
 function setupEnrichmentTrigger() { setupTriggers(); }
 function setupApprovalTrigger()   { setupTriggers(); }
 
+// Forces re-enrichment of ALL rows in "New" that have a Maps link.
+// Run manually from the editor when rows are stuck (e.g. col O cleared but not re-enriched).
+function forceEnrichAll() {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('New');
+  if (!sheet) { Logger.log('Sheet "New" not found.'); return; }
+  var rows = sheet.getDataRange().getValues();
+  var cleared = 0;
+  for (var i = 1; i < rows.length; i++) {
+    var mapsUrl    = (rows[i][5] || '').toString().trim();
+    var enrichedAt = (rows[i][14] || '').toString().trim();
+    // Clear col O for rows that have a Maps link but bad/empty enrichment data
+    var hasGoodData = rows[i][10] && rows[i][11]; // lat + lng populated
+    if (mapsUrl && (!hasGoodData || !enrichedAt)) {
+      sheet.getRange(i + 1, 15).clearContent();
+      cleared++;
+      Logger.log('Cleared row ' + (i + 1) + ' for re-enrichment');
+    }
+  }
+  Logger.log('forceEnrichAll: cleared ' + cleared + ' rows. Running enrichment now...');
+  enrichPendingRows();
+}
+
 // Run ONCE to migrate existing Places sheet tags from label-keyed
 // (e.g. {"Has: 5 Daily":true,"Missing: Eid Prayer":true})
 // to tag_id-keyed (e.g. {"daily_prayers":true,"eid_prayer":false}).
@@ -410,9 +433,16 @@ function onSheetEdit(e) {
   if (sheetName === 'New' && col === 16 && val === 'yes') {
     copyNewRowToPlaces(sheet, row);
   }
-  // "New" sheet: data edit in cols A–H, or col O manually cleared → trigger enrichment
-  if (sheetName === 'New' && row > 1 && (col <= 8 || (col === 15 && !val))) {
-    enrichPendingRows();
+  // "New" sheet: col O (15) cleared (single cell or range delete) → re-enrich
+  // Also triggers on edits to cols A–H (data change)
+  if (sheetName === 'New' && row > 1) {
+    var endCol = col + e.range.getNumColumns() - 1;
+    var colOCleared = col <= 15 && endCol >= 15 && !val;
+    var dataChanged  = col <= 8;
+    if (colOCleared || dataChanged) {
+      Logger.log('onSheetEdit: triggering enrichment (col=' + col + ' val="' + val + '")');
+      enrichPendingRows();
+    }
   }
   // "Edit" sheet: Approved is col K (11)
   if (sheetName === 'Edit' && col === 11 && val === 'yes') {
@@ -504,12 +534,15 @@ function enrichPendingRows() {
   var rows    = sheet.getDataRange().getValues();
   var count   = 0;
   var MAX_RUN = 10;
+  Logger.log('enrichPendingRows: scanning ' + (rows.length - 1) + ' rows...');
 
   for (var i = 1; i < rows.length; i++) {
     if (count >= MAX_RUN) break;
     var mapsUrl    = (rows[i][5] || '').toString().trim(); // col F
-    var enrichedAt = rows[i][14];                          // col O
-    if (!mapsUrl || enrichedAt) continue;
+    var enrichedAt = (rows[i][14] || '').toString().trim(); // col O
+    if (!mapsUrl) { Logger.log('  Row ' + (i+1) + ': no Maps URL, skipping'); continue; }
+    if (enrichedAt) { Logger.log('  Row ' + (i+1) + ': already enriched (' + enrichedAt + '), skipping'); continue; }
+    Logger.log('  Row ' + (i+1) + ': enriching → ' + mapsUrl);
 
     try {
       var resolved = resolveUrl(mapsUrl);
@@ -640,6 +673,29 @@ function resolveUrl(url) {
   url = normaliseUrl(url);
   if (url.indexOf('google.com/maps') !== -1 || url.indexOf('maps.google.com') !== -1) return url;
 
+  // Try letting GAS follow all redirects automatically first (simplest path)
+  try {
+    var autoResp = UrlFetchApp.fetch(url, {
+      followRedirects: true,
+      muteHttpExceptions: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' }
+    });
+    var finalUrl = autoResp.getHeaders()['X-Final-Url'] || '';
+    if (!finalUrl) {
+      // Try to extract Maps URL from the response body
+      var bodyText = autoResp.getContentText();
+      var bodyMatch = bodyText.match(/https?:\/\/(?:www\.)?google\.com\/maps[^"'\s<>]*/i);
+      if (bodyMatch) { Logger.log('resolveUrl: found in body → ' + bodyMatch[0]); return bodyMatch[0]; }
+    }
+    if (finalUrl && (finalUrl.indexOf('google.com/maps') !== -1 || finalUrl.indexOf('maps.google.com') !== -1)) {
+      Logger.log('resolveUrl: auto-resolved → ' + finalUrl);
+      return finalUrl;
+    }
+  } catch (autoErr) {
+    Logger.log('resolveUrl auto-follow failed: ' + autoErr.message);
+  }
+
+  // Manual hop-by-hop fallback
   var current = url;
   for (var hop = 1; hop <= 8; hop++) {
     try {
