@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, showToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
+import { esc, escA, showToast, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -427,8 +427,10 @@ document.querySelector(".dir-my-loc").addEventListener("click", () => {
     showToast("Location not available", "loc", "Your browser doesn't support location");
     return;
   }
+  showLoadingToast("Finding your location\u2026");
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
+      hideLoadingToast();
       const { latitude: lat, longitude: lng } = pos.coords;
       const name = await reverseGeocode(lat, lng);
       dir.origin = { lat, lng, name };
@@ -439,9 +441,11 @@ document.querySelector(".dir-my-loc").addEventListener("click", () => {
       if (!dir.dest) startPick("to");
     },
     () => {
+      hideLoadingToast();
       showDirError("Location access denied");
       showToast("Location is off", "loc", "Enable location to use this feature");
     },
+    { enableHighAccuracy: true, timeout: 10000 },
   );
 });
 
@@ -1343,7 +1347,7 @@ function enterResultsMode() {
 function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
 dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); dirSnap.remeasure(); });
 
-function showDirLoading() { dirEmpty.classList.add("hide"); dirErr.classList.add("hide"); dirItins.innerHTML = ""; dirLoad.classList.remove("hide"); }
+function showDirLoading() { dirEmpty.classList.add("hide"); dirErr.classList.add("hide"); dirItins.innerHTML = ""; }
 function showDirError(msg) { setGoLoading(false); dirLoad.classList.add("hide"); dirEmpty.classList.add("hide"); dirErr.textContent = msg; dirErr.classList.remove("hide"); }
 
 // --- Nearest mosque from origin ---

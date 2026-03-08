@@ -759,6 +759,26 @@
   }
 }
 
+@media (min-width: 769px) and (max-width: 1199px) {
+  /* Tablet: use one scroll container (the sheet) so fit-content can size naturally. */
+  .sheet,
+  #places-sheet,
+  #dir-panel {
+    display: block;
+    overflow-y: auto;
+  }
+  #places-scroll,
+  #dir-results {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+  #dir-go {
+    display: flex;
+    width: calc(100% - 32px);
+  }
+}
+
 /* #6 — Scrim uses opacity fade instead of display:none */
 #scrim {
   position: absolute;

@@ -376,7 +376,7 @@ export function initSheetDrag(sheet, closeFn) {
      */
     open() {
       if (!isMobile()) {
-        // Desktop: just reveal — CSS handles height via fit-content
+        // Desktop/tablet: just reveal — CSS handles height via fit-content
         sheet.classList.remove("shut", "full");
         sheet.style.height = "";
         return;

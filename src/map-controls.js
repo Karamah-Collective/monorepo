@@ -1,5 +1,6 @@
 import { map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
+import { showToast, showLoadingToast, hideLoadingToast } from "./utils.js";
 
 let locMarker = null;
 let locWatchId = null;
@@ -27,7 +28,10 @@ const LABEL_IDS = [
 const origLabelPaint = {};
 
 export function showCurrentLocation() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    showToast("Location not available", "loc", "Your browser doesn't support location");
+    return;
+  }
   const locBtn = document.getElementById("locate-btn");
 
   if (locWatchId !== null) {
@@ -39,11 +43,13 @@ export function showCurrentLocation() {
   }
 
   locBtn.classList.add("tracking");
+  showLoadingToast("Finding your location\u2026");
   let firstFix = true;
 
   locWatchId = navigator.geolocation.watchPosition(
     (pos) => {
       const { latitude: lat, longitude: lng } = pos.coords;
+      if (firstFix) hideLoadingToast();
       if (!locMarker) {
         const el = document.createElement("div");
         el.className = "loc-marker";
@@ -58,6 +64,8 @@ export function showCurrentLocation() {
       }
     },
     () => {
+      hideLoadingToast();
+      showToast("Location is off", "loc", "Enable location permission");
       locBtn.classList.remove("tracking");
       locWatchId = null;
       map.flyTo({ center: HELSINKI, zoom: 13, duration: 600 });
