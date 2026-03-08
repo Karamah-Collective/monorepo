@@ -358,6 +358,52 @@ export function initSheetDrag(sheet, closeFn) {
     }
   }
 
+  /* ── Desktop: smooth height animation via ResizeObserver ── */
+  let prevDesktopH = null;
+  let desktopTransitioning = false;
+  let desktopEndFn = null;
+  let desktopFallback = null;
+
+  function cleanupDesktopFlip() {
+    clearTimeout(desktopFallback);
+    sheet.removeEventListener("transitionend", desktopEndFn);
+    desktopEndFn = null;
+    desktopFallback = null;
+    sheet.style.removeProperty("height");
+    desktopTransitioning = false;
+    prevDesktopH = sheet.offsetHeight; // re-sync with CSS fit-content
+  }
+
+  const desktopRO = new ResizeObserver(() => {
+    if (isMobile() || sheet.classList.contains("shut") || sheet.classList.contains("dragging")) {
+      prevDesktopH = null;
+      desktopTransitioning = false;
+      return;
+    }
+    if (desktopTransitioning) return;  // ignore changes driven by our own animation
+
+    const newH = sheet.offsetHeight;
+    if (prevDesktopH === null) { prevDesktopH = newH; return; }
+    if (prevDesktopH === newH) return;
+
+    const oldH = prevDesktopH;
+    prevDesktopH = newH;
+
+    // FLIP: pin to old height (overrides fit-content !important), then transition to new
+    sheet.style.setProperty("height", oldH + "px", "important");
+    void sheet.offsetHeight;             // commit start value before transition fires
+
+    desktopTransitioning = true;
+    sheet.style.setProperty("height", newH + "px", "important");
+
+    desktopEndFn = (e) => { if (e.propertyName === "height") cleanupDesktopFlip(); };
+    sheet.addEventListener("transitionend", desktopEndFn);
+    // Fallback: if transitionend for height never fires (e.g. prefers-reduced-motion,
+    // near-zero delta, panel hidden mid-transition), always unblock after transition ends.
+    desktopFallback = setTimeout(cleanupDesktopFlip, 500);
+  });
+  desktopRO.observe(sheet);
+
   /* ── bind drag handles (start on handle, move/end on document) ── */
   sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
     handle.addEventListener("touchstart", (e) => onStart(e.touches[0].clientY), { passive: true });
@@ -379,6 +425,7 @@ export function initSheetDrag(sheet, closeFn) {
         // Desktop/tablet: just reveal — CSS handles height via fit-content
         sheet.classList.remove("shut", "full");
         sheet.style.height = "";
+        prevDesktopH = sheet.offsetHeight; // prime so first RO callback can animate immediately
         return;
       }
       sheet.classList.remove("full");
