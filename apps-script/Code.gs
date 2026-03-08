@@ -582,6 +582,24 @@ function enrichPendingRows() {
         }
       }
 
+      // Last resort: geocode using user-submitted name/address from the sheet row
+      // Handles ftid= URLs, app-share links, and any other unresolvable formats
+      if (lat === '' && lng === '' && !placeId) {
+        var userName    = (rows[i][1] || '').toString().trim();  // col B
+        var userAddress = (rows[i][3] || '').toString().trim();  // col D
+        if (userName || userAddress) {
+          var qFallback = [userName, userAddress].filter(Boolean).join(', ');
+          Logger.log('  Row ' + (i+1) + ': fallback geocoding via user data: "' + qFallback + '"');
+          var geoFb = forwardGeocode(qFallback);
+          if (geoFb) {
+            lat = geoFb.lat;
+            lng = geoFb.lng;
+            if (!googleAddress) googleAddress = geoFb.address;
+            if (!googleName)    googleName    = userName;
+          }
+        }
+      }
+
       // Only mark enriched if we got at least one useful piece of data.
       // If all empty, skip so the 1-min trigger retries on the next run.
       var hasData = lat !== '' || lng !== '' || googleAddress || googleName || placeId;
@@ -685,7 +703,18 @@ function resolveUrl(url) {
       // Try to extract Maps URL from the response body
       var bodyText = autoResp.getContentText();
       var bodyMatch = bodyText.match(/https?:\/\/(?:www\.)?google\.com\/maps[^"'\s<>]*/i);
-      if (bodyMatch) { Logger.log('resolveUrl: found in body → ' + bodyMatch[0]); return bodyMatch[0]; }
+      if (bodyMatch) {
+        var extracted = bodyMatch[0];
+        // Body URLs are often percent-encoded (%3F=?, %26=&, %3D==)
+        if (extracted.indexOf('%') !== -1) {
+          try { extracted = decodeURIComponent(extracted); } catch(e) {}
+        }
+        // Trim at unicode/HTML entity junk appended by sharing UI
+        var junkIdx = extracted.search(/\\u0026|&amp;/i);
+        if (junkIdx !== -1) extracted = extracted.substring(0, junkIdx);
+        Logger.log('resolveUrl: found in body → ' + extracted);
+        return extracted;
+      }
     }
     if (finalUrl && (finalUrl.indexOf('google.com/maps') !== -1 || finalUrl.indexOf('maps.google.com') !== -1)) {
       Logger.log('resolveUrl: auto-resolved → ' + finalUrl);
