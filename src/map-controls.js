@@ -88,46 +88,168 @@ function updateUrlHash() {
   history.replaceState(null, "", `#${z}/${lat.toFixed(4)}/${lng.toFixed(4)}`);
 }
 
+// ── 3D building helpers ────────────────────────────────────────────
+// Feature-ID hash used for pseudo-random per-building variation
+const _idHash = ["%", ["+", ["coalesce", ["to-number", ["id"]], 0], 37], 9];
+
+// Height: render_height → levels×3.5 → conservative 5 m fallback
+// A low default prevents random heights from masking real OSM data
+// for well-mapped structures (cathedrals, towers, building:parts).
+const _bldgHeight = [
+  "case",
+  ["has", "render_height"], ["to-number", ["get", "render_height"]],
+  ["has", "levels"],        ["*", ["to-number", ["get", "levels"]], 3.5],
+  5,
+];
+
+// Base height: critical for stacked building:parts (e.g. cathedral dome on drum)
+const _bldgBase = [
+  "case",
+  ["has", "render_min_height"], ["to-number", ["get", "render_min_height"]],
+  0,
+];
+
+// Per-building wall colour: OSM colour → 9-bucket Nordic palette keyed by ID
+const _wallColor = [
+  "case",
+  ["has", "colour"], ["get", "colour"],
+  ["match", _idHash,
+    0, "#eae5db",   // warm cream plaster
+    1, "#e0e2ea",   // cool blue-grey concrete
+    2, "#ede7dd",   // light sandstone
+    3, "#dbe0ea",   // steel blue modern
+    4, "#e7e2d6",   // warm stone
+    5, "#dfe4e0",   // sage painted concrete
+    6, "#ebe6e0",   // warm linen
+    7, "#d8dee8",   // slate grey
+    /* 8 */ "#e5ddd5", // light terracotta
+  ],
+];
+
+// Roof shade: slightly darker / cooler than the matching wall bucket
+const _roofColor = [
+  "case",
+  ["has", "colour"], ["get", "colour"],
+  ["match", _idHash,
+    0, "#d8d3c9",
+    1, "#ced1d8",
+    2, "#dbd5cb",
+    3, "#c9ced8",
+    4, "#d5d0c4",
+    5, "#cdd2ce",
+    6, "#d9d4ce",
+    7, "#c6ccd6",
+    /* 8 */ "#d3cbc3",
+  ],
+];
+
+const _3D_LAYER_IDS = ["building-3d-shadow", "building-3d", "building-3d-roof"];
+// Show all building geometry; hide_3d outlines are filtered out
+const _bldgFilter = ["!=", ["get", "hide_3d"], true];
+
 export function enable3D() {
   is3DActive = true;
-  map.setTerrain({ source: "terrain-dem", exaggeration: 1.3 });
+
+  // Low warm sun → deep face shadows, highlights on sunlit walls
+  map.setLight({
+    anchor: "map",
+    color: "#fdf6e8",
+    intensity: 0.6,
+    position: [1.5, 195, 25],
+  });
+
   if (!map.getLayer("sky-layer")) {
     map.addLayer({
       id: "sky-layer",
       type: "sky",
-      paint: { "sky-type": "atmosphere", "sky-atmosphere-sun": [0, 0], "sky-atmosphere-sun-intensity": 15 },
+      paint: {
+        "sky-type": "atmosphere",
+        "sky-atmosphere-sun": [195, 25],
+        "sky-atmosphere-sun-intensity": 10,
+      },
     });
   }
+
   map.setLayoutProperty("building", "visibility", "none");
   map.setLayoutProperty("building_shadow", "visibility", "none");
   map.setLayoutProperty("building_outline", "visibility", "none");
-  if (!map.getLayer("building-3d")) {
-    map.addLayer(
-      {
-        id: "building-3d",
-        type: "fill-extrusion",
-        source: "openmaptiles",
-        "source-layer": "building",
-        minzoom: 13,
-        paint: {
-          "fill-extrusion-color": "#dfe1e8",
-          "fill-extrusion-height": ["coalesce", ["get", "render_height"], 10],
-          "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-          "fill-extrusion-opacity": 0.85,
-        },
+
+  // ── Layer 1: ground contact shadow ──
+  if (!map.getLayer("building-3d-shadow")) {
+    map.addLayer({
+      id: "building-3d-shadow",
+      type: "fill",
+      source: "openmaptiles",
+      "source-layer": "building",
+      minzoom: 15,
+      filter: _bldgFilter,
+      paint: {
+        "fill-color": "#000",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.5, 0.06, 17, 0.12],
+        "fill-translate": [2, 3],
+        "fill-translate-anchor": "viewport",
       },
-      "label_road",
-    );
+    }, "label_road");
+  } else {
+    map.setLayoutProperty("building-3d-shadow", "visibility", "visible");
+  }
+
+  // ── Layer 2: main building walls ──
+  if (!map.getLayer("building-3d")) {
+    map.addLayer({
+      id: "building-3d",
+      type: "fill-extrusion",
+      source: "openmaptiles",
+      "source-layer": "building",
+      minzoom: 13,
+      filter: _bldgFilter,
+      paint: {
+        "fill-extrusion-color": _wallColor,
+        "fill-extrusion-height": _bldgHeight,
+        "fill-extrusion-base": _bldgBase,
+        "fill-extrusion-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          13, 0, 13.5, 0.65, 15, 0.92,
+        ],
+        "fill-extrusion-vertical-gradient": true,
+      },
+    }, "label_road");
   } else {
     map.setLayoutProperty("building-3d", "visibility", "visible");
+  }
+
+  // ── Layer 3: roof cap (thin slab, distinct shade) ──
+  if (!map.getLayer("building-3d-roof")) {
+    map.addLayer({
+      id: "building-3d-roof",
+      type: "fill-extrusion",
+      source: "openmaptiles",
+      "source-layer": "building",
+      minzoom: 14.5,
+      filter: _bldgFilter,
+      paint: {
+        "fill-extrusion-color": _roofColor,
+        "fill-extrusion-height": _bldgHeight,
+        "fill-extrusion-base": ["-", _bldgHeight, 0.8],
+        "fill-extrusion-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          14.5, 0, 15.5, 0.95,
+        ],
+        "fill-extrusion-vertical-gradient": false,
+      },
+    }, "label_road");
+  } else {
+    map.setLayoutProperty("building-3d-roof", "visibility", "visible");
   }
 }
 
 export function disable3D() {
   is3DActive = false;
-  map.setTerrain(null);
+  map.setLight({ anchor: "viewport", color: "#fff", intensity: 0, position: [1.15, 210, 30] });
   if (map.getLayer("sky-layer")) map.removeLayer("sky-layer");
-  if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d", "visibility", "none");
+  _3D_LAYER_IDS.forEach((id) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+  });
   map.setLayoutProperty("building", "visibility", "visible");
   map.setLayoutProperty("building_shadow", "visibility", "visible");
   map.setLayoutProperty("building_outline", "visibility", "visible");

@@ -374,18 +374,6 @@
     "notes": ""
   },
   {
-    "id": "s2v6t3",
-    "name": "UniCafe Kaisa-talo",
-    "type": "prayer_room",
-    "address": "Vuorikatu 7, 00100 Helsinki, Finland",
-    "lat": 60.1713071,
-    "lng": 24.9477437,
-    "tags": {
-      "quran_available": true
-    },
-    "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor"
-  },
-  {
     "id": "j74tjs",
     "name": "Olari Mosque",
     "type": "mosque",
@@ -602,6 +590,31 @@
     "lng": 25.0068875,
     "tags": {
       "fully_halal": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "lxtmd9",
+    "name": "Kaisa-talo Prayer Space",
+    "type": "prayer_room",
+    "address": "Vuorikatu 7, 00100 Helsinki, Finland",
+    "lat": 60.1713071,
+    "lng": 24.9477437,
+    "tags": {
+      "quran_available": true
+    },
+    "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor"
+  },
+  {
+    "id": "13tova",
+    "name": "King Kebab Malmi",
+    "type": "restaurant",
+    "address": "Kirkonkyläntie 14, 00700 Helsinki, Finland",
+    "lat": 60.252433,
+    "lng": 25.0046472,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
     },
     "notes": ""
   }
