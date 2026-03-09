@@ -194,22 +194,6 @@
     "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address."
   },
   {
-    "id": "rztqwm",
-    "name": "Yalla Koivukylä",
-    "type": "shop",
-    "address": "Koivukylän alue, 01360/01300 Vantaa",
-    "lat": 60.294,
-    "lng": 25.048,
-    "tags": {
-      "halal_meat": true,
-      "halal_butchery": true,
-      "asian_products": true,
-      "african_products": true,
-      "arab_products": true
-    },
-    "notes": "Yalla store in Tikkurila/Koivukylä area; exact door address can be set to Peltolantie 5 when you want to be precise."
-  },
-  {
     "id": "8uaffs",
     "name": "Bangladesh Kendrio Masjid",
     "type": "mosque",
@@ -615,6 +599,23 @@
     "tags": {
       "fully_halal": true,
       "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "trjf07",
+    "name": "Yalla",
+    "type": "shop",
+    "address": "Koivukylän puistotie 1, 01360 Vantaa, Finland",
+    "lat": 60.3232247,
+    "lng": 25.0625794,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
     },
     "notes": ""
   }
