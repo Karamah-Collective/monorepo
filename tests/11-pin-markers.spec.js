@@ -130,7 +130,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
     await expect(page.locator(".pp--pin .pp-title")).toContainText("Dropped Pin");
   });
 
-  test("pin popup has directions, share, and remove buttons", async ({ page }) => {
+  test("pin popup has directions, add place, share, and remove buttons", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
     await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     await page.waitForTimeout(800);
@@ -138,6 +138,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
     await page.locator(".custom-mk").first().click();
     await page.waitForTimeout(600);
     await expect(page.locator(".pp--pin .pp-dir-btn")).toBeVisible();
+    await expect(page.locator(".pp--pin .pp-add-place-btn")).toBeVisible();
     await expect(page.locator(".pp--pin .pp-share-btn")).toBeVisible();
     await expect(page.locator(".pp--pin .pp-rm-btn")).toBeVisible();
   });

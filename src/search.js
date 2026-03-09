@@ -145,6 +145,9 @@ function _openPinPopup(lng, lat, kind, entry) {
             <button class="pp-dir-btn" data-lng="${lng}" data-lat="${lat}" title="Directions" aria-label="Directions">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
             </button>
+            <button class="pp-add-place-btn" data-lng="${lng}" data-lat="${lat}" title="Add as place" aria-label="Add as place">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
             <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
@@ -197,11 +200,17 @@ function _openPinPopup(lng, lat, kind, entry) {
 
   popup.getElement().addEventListener("click", async (ev) => {
     const dirBtn = ev.target.closest(".pp-dir-btn");
+    const addBtn = ev.target.closest(".pp-add-place-btn");
     const rmBtn  = ev.target.closest(".pp-rm-btn");
     const favBtn = ev.target.closest(".pp-fav-btn");
     const shrBtn = ev.target.closest(".pp-share-btn");
     const resolvedAddr = isSearch ? _searchAddrCache : entry?.addrCache;
-    if (dirBtn) {
+    if (addBtn) {
+      const pLng = +addBtn.dataset.lng, pLat = +addBtn.dataset.lat;
+      const addr = resolvedAddr || "";
+      popup.remove();
+      window.dispatchEvent(new CustomEvent("hf:add-place-from-pin", { detail: { lat: pLat, lng: pLng, address: addr } }));
+    } else if (dirBtn) {
       const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
       const name = resolvedAddr != null ? (resolvedAddr || `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`) : await reverseGeocode(pLat, pLng);
       dir.origin = { lat: pLat, lng: pLng, name };

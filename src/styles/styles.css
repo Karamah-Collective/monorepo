@@ -1754,6 +1754,30 @@
   margin-left: 1px;
 }
 
+.sg-pin-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--r-sm);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+}
+.sg-pin-badge svg { flex-shrink: 0; stroke: var(--accent); }
+.sg-pin-badge span { flex: 1; }
+.sg-pin-clear {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
 .sg-tags {
   display: flex;
   flex-wrap: wrap;

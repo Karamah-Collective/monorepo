@@ -843,6 +843,34 @@ document.getElementById("places-scroll").addEventListener("click", (e) => {
   if (e.target.closest("#suggest-place-btn-empty")) openSuggestOverlay();
 });
 
+/* ── Add Place from dropped pin ── */
+const sgPinBadge = document.getElementById("sg-pin-badge");
+const sgLatInput = document.getElementById("sg-lat");
+const sgLngInput = document.getElementById("sg-lng");
+
+function setPinLocation(lat, lng, address) {
+  sgLatInput.value = lat;
+  sgLngInput.value = lng;
+  sgPinBadge.classList.remove("hide");
+  if (address) document.getElementById("sg-address").value = address;
+}
+
+function clearPinLocation() {
+  sgLatInput.value = "";
+  sgLngInput.value = "";
+  sgPinBadge.classList.add("hide");
+}
+
+document.getElementById("sg-pin-clear").addEventListener("click", clearPinLocation);
+
+window.addEventListener("hf:add-place-from-pin", (e) => {
+  const { lat, lng, address } = e.detail;
+  document.getElementById("suggest-form").reset();
+  renderSuggestTags();
+  setPinLocation(lat, lng, address);
+  openSuggestOverlay();
+});
+
 /* ── Floating tag tooltip ── */
 const tagTip = document.createElement("div");
 tagTip.className = "pl-tag-tip";
@@ -956,9 +984,10 @@ document.getElementById("places-list").addEventListener("click", (e) => {
 
 document.getElementById("suggest-close").addEventListener("click", () => {
   document.getElementById("suggest-overlay").classList.add("hide");
+  clearPinLocation();
 });
 document.getElementById("suggest-overlay").addEventListener("click", (e) => {
-  if (e.target === e.currentTarget) document.getElementById("suggest-overlay").classList.add("hide");
+  if (e.target === e.currentTarget) { document.getElementById("suggest-overlay").classList.add("hide"); clearPinLocation(); }
 });
 
 const sgTypeSelect = document.getElementById("sg-type");
@@ -1005,6 +1034,15 @@ suggestForm.addEventListener("submit", async (e) => {
   });
   if (hasEmpty) return;
 
+  // Must have either a Google Maps link or pin coordinates
+  const gmaps = document.getElementById("sg-gmaps").value.trim();
+  const pinLat = sgLatInput.value.trim();
+  const pinLng = sgLngInput.value.trim();
+  if (!gmaps && !pinLat) {
+    showToast("Location needed", "error", "Drop a pin or paste a Google Maps link.");
+    return;
+  }
+
   const submitBtn = document.getElementById("sg-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
@@ -1014,7 +1052,6 @@ suggestForm.addEventListener("submit", async (e) => {
   const type = sgTypeSelect.value;
   const address = document.getElementById("sg-address").value.trim();
   const notes = document.getElementById("sg-notes").value.trim();
-  const gmaps = document.getElementById("sg-gmaps").value.trim();
 
   const yesTags = [], noTags = [];
   sgTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
@@ -1024,19 +1061,28 @@ suggestForm.addEventListener("submit", async (e) => {
   });
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
+  // Build payload — include pin lat/lng when available
+  const payload = { token: null, formType: "new", name, type, address, tags: tagsStr, gmaps, notes };
+  if (pinLat && pinLng) {
+    payload.pinLat = parseFloat(pinLat);
+    payload.pinLng = parseFloat(pinLng);
+  }
+
   try {
     await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "suggest_place" }).then(resolve)),
     );
+    payload.token = token;
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, formType: "new", name, type, address, tags: tagsStr, gmaps, notes }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (data.success) {
       document.getElementById("suggest-form").reset();
+      clearPinLocation();
       renderSuggestTags();
       document.getElementById("suggest-overlay").classList.add("hide");
       showToast("Suggestion submitted", "check", "JazakAllah Khair!");

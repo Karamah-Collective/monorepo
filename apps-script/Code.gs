@@ -48,10 +48,37 @@ function doPost(e) {
 
       var mapsLink = (data.gmaps || '').toString().trim();
       var submittedName = (data.name || '').toString().trim().toLowerCase();
-      if (!isDuplicateInPlaces(ss, mapsLink, submittedName) && (!mapsLink || !isDuplicateInNew(newSheet, mapsLink))) {
+      var pinLat = data.pinLat != null ? parseFloat(data.pinLat) : null;
+      var pinLng = data.pinLng != null ? parseFloat(data.pinLng) : null;
+      var hasPin = pinLat != null && pinLng != null && !isNaN(pinLat) && !isNaN(pinLng);
+
+      // Check proximity-based duplicates when we have coordinates
+      var isDupe = isDuplicateInPlaces(ss, mapsLink, submittedName);
+      if (!isDupe && hasPin) isDupe = isDuplicateByProximity(ss, pinLat, pinLng);
+      if (!isDupe && mapsLink) isDupe = isDuplicateInNew(newSheet, mapsLink);
+
+      if (!isDupe) {
         newSheet.appendRow(newRow);
-        // Enrich immediately — no timer needed
-        if (mapsLink) enrichPendingRows();
+        var newRowIdx = newSheet.getLastRow();
+
+        if (hasPin) {
+          // Pin submission: pre-fill enrichment columns directly
+          var googleAddress = '';
+          try { googleAddress = reverseGeocode(pinLat, pinLng) || ''; } catch(_) {}
+          var enrichTs = new Date().toLocaleString('en-FI', { timeZone: 'Europe/Helsinki' });
+          // Cols I–O: Name(Google), Address(Google), Lat, Lng, PlaceID, Website, EnrichedAt
+          newSheet.getRange(newRowIdx, 9, 1, 7).setValues([[
+            data.name || '',           // Use submitted name (no Google name available)
+            googleAddress || data.address || '',
+            pinLat,
+            pinLng,
+            '',                        // No placeId
+            '',                        // No website
+            'pin:' + enrichTs          // Mark source as pin
+          ]]);
+        } else if (mapsLink) {
+          enrichPendingRows();
+        }
       }
 
     } else if (data.formType === 'edit') {
@@ -92,6 +119,21 @@ function isDuplicateInNew(newSheet, mapsLink) {
     // Check Maps link match (col F = index 5)
     var existingLink = normaliseMapsLink((rows[i][5] || '').toString().trim());
     if (normLink && existingLink && normLink === existingLink) return true;
+  }
+  return false;
+}
+
+// Checks if any place in "Places" sheet is within ~50m of given coordinates.
+function isDuplicateByProximity(ss, lat, lng) {
+  var sheet = ss.getSheetByName('Places');
+  if (!sheet) return false;
+  var THRESHOLD = 0.0005; // ~50m
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var pLat = parseFloat(rows[i][4]);
+    var pLng = parseFloat(rows[i][5]);
+    if (isNaN(pLat) || isNaN(pLng)) continue;
+    if (Math.abs(pLat - lat) < THRESHOLD && Math.abs(pLng - lng) < THRESHOLD) return true;
   }
   return false;
 }

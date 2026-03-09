@@ -193,10 +193,15 @@ test.describe("Suggest Form Structure", () => {
     await expect(page.locator("#sg-address")).toBeAttached();
     await expect(page.locator("#sg-notes")).toBeAttached();
     await expect(page.locator("#sg-submit")).toBeAttached();
+    await expect(page.locator("#sg-lat")).toBeAttached();
+    await expect(page.locator("#sg-lng")).toBeAttached();
+    await expect(page.locator("#sg-pin-badge")).toBeAttached();
   });
 
-  test("sg-gmaps field is required", async ({ page }) => {
-    await expect(page.locator("#sg-gmaps")).toHaveAttribute("required", "");
+  test("sg-gmaps field is optional (pin or link required)", async ({ page }) => {
+    const gmaps = page.locator("#sg-gmaps");
+    const hasRequired = await gmaps.evaluate(el => el.hasAttribute("required"));
+    expect(hasRequired).toBe(false);
   });
 
   test("sg-type dropdown has all place types", async ({ page }) => {

@@ -935,13 +935,19 @@
                 placeholder="e.g. Halal Kitchen"
               />
             </label>
+            <div id="sg-pin-badge" class="sg-pin-badge hide">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Location set from pin</span>
+              <button type="button" id="sg-pin-clear" class="sg-pin-clear" aria-label="Clear pin location">&times;</button>
+            </div>
+            <input type="hidden" id="sg-lat" />
+            <input type="hidden" id="sg-lng" />
             <label class="sg-label"
-              ><span>Google Maps Link <span class="sg-req">*</span></span>
+              >Google Maps Link
               <input
                 id="sg-gmaps"
                 type="url"
-                required
-                placeholder="https://maps.google.com/…"
+                placeholder="https://maps.google.com/… (optional if pin set)"
               />
             </label>
             <label class="sg-label"
