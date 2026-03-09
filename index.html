@@ -928,7 +928,7 @@
           </div>
           <form id="suggest-form" autocomplete="off" novalidate>
             <label class="sg-label"
-              >Place Name
+              ><span>Place Name <span id="sg-name-req" class="sg-req hide">*</span></span>
               <input
                 id="sg-name"
                 type="text"
@@ -943,11 +943,12 @@
             <input type="hidden" id="sg-lat" />
             <input type="hidden" id="sg-lng" />
             <label class="sg-label"
-              >Google Maps Link
+              ><span>Google Maps Link <span id="sg-gmaps-req" class="sg-req">*</span></span>
               <input
                 id="sg-gmaps"
                 type="url"
-                placeholder="https://maps.google.com/… (optional if pin set)"
+                required
+                placeholder="https://maps.google.com/…"
               />
             </label>
             <label class="sg-label"

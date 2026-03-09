@@ -54,7 +54,7 @@ function doPost(e) {
 
       // Check proximity-based duplicates when we have coordinates
       var isDupe = isDuplicateInPlaces(ss, mapsLink, submittedName);
-      if (!isDupe && hasPin) isDupe = isDuplicateByProximity(ss, pinLat, pinLng);
+      if (!isDupe && hasPin) isDupe = isDuplicateByProximity(ss, pinLat, pinLng, submittedName, (data.type || '').toString().trim().toLowerCase());
       if (!isDupe && mapsLink) isDupe = isDuplicateInNew(newSheet, mapsLink);
 
       if (!isDupe) {
@@ -123,8 +123,9 @@ function isDuplicateInNew(newSheet, mapsLink) {
   return false;
 }
 
-// Checks if any place in "Places" sheet is within ~50m of given coordinates.
-function isDuplicateByProximity(ss, lat, lng) {
+// Checks if a place in "Places" sheet is within ~50m AND has the same name or type.
+// Proximity alone is not enough — e.g. two mosques on different floors of one building.
+function isDuplicateByProximity(ss, lat, lng, submittedName, submittedType) {
   var sheet = ss.getSheetByName('Places');
   if (!sheet) return false;
   var THRESHOLD = 0.0005; // ~50m
@@ -133,7 +134,13 @@ function isDuplicateByProximity(ss, lat, lng) {
     var pLat = parseFloat(rows[i][4]);
     var pLng = parseFloat(rows[i][5]);
     if (isNaN(pLat) || isNaN(pLng)) continue;
-    if (Math.abs(pLat - lat) < THRESHOLD && Math.abs(pLng - lng) < THRESHOLD) return true;
+    if (Math.abs(pLat - lat) < THRESHOLD && Math.abs(pLng - lng) < THRESHOLD) {
+      var existingName = (rows[i][1] || '').toString().trim().toLowerCase();
+      var existingType = (rows[i][2] || '').toString().trim().toLowerCase();
+      // Only flag as duplicate if name matches OR same type at same location
+      if (submittedName && existingName && submittedName === existingName) return true;
+      if (submittedType && existingType && submittedType === existingType) return true;
+    }
   }
   return false;
 }

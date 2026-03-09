@@ -140,13 +140,13 @@ function _openPinPopup(lng, lat, kind, entry) {
           <div class="pp-addr">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <span class="pin-addr-text pin-addr-text--loading">Finding address…</span>
+            <button class="pp-add-place-btn btn-roundel-accent" data-lng="${lng}" data-lat="${lat}" title="Add as place" aria-label="Add as place">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
           </div>
           <div class="pp-actions">
             <button class="pp-dir-btn" data-lng="${lng}" data-lat="${lat}" title="Directions" aria-label="Directions">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-            </button>
-            <button class="pp-add-place-btn" data-lng="${lng}" data-lat="${lat}" title="Add as place" aria-label="Add as place">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
             <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>

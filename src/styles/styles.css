@@ -1571,6 +1571,10 @@
 .pp--pin .pp-rm-btn {
   height: 30px;
 }
+.pp-add-place-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
 
 .pp-addr {
   display: flex;
@@ -1580,7 +1584,7 @@
   color: var(--text-2);
   margin-bottom: 10px;
 }
-.pp-addr svg {
+.pp-addr > svg {
   flex-shrink: 0;
   color: var(--text-3);
 }

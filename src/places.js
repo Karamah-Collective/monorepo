@@ -848,17 +848,32 @@ const sgPinBadge = document.getElementById("sg-pin-badge");
 const sgLatInput = document.getElementById("sg-lat");
 const sgLngInput = document.getElementById("sg-lng");
 
+const sgNameInput = document.getElementById("sg-name");
+const sgGmapsInput = document.getElementById("sg-gmaps");
+const sgNameReq = document.getElementById("sg-name-req");
+const sgGmapsReq = document.getElementById("sg-gmaps-req");
+
 function setPinLocation(lat, lng, address) {
   sgLatInput.value = lat;
   sgLngInput.value = lng;
   sgPinBadge.classList.remove("hide");
   if (address) document.getElementById("sg-address").value = address;
+  // Pin mode: name required, gmaps optional
+  sgNameInput.required = true;
+  sgNameReq.classList.remove("hide");
+  sgGmapsInput.required = false;
+  sgGmapsReq.classList.add("hide");
 }
 
 function clearPinLocation() {
   sgLatInput.value = "";
   sgLngInput.value = "";
   sgPinBadge.classList.add("hide");
+  // Default mode: gmaps required, name optional
+  sgNameInput.required = false;
+  sgNameReq.classList.add("hide");
+  sgGmapsInput.required = true;
+  sgGmapsReq.classList.remove("hide");
 }
 
 document.getElementById("sg-pin-clear").addEventListener("click", clearPinLocation);
@@ -1023,6 +1038,9 @@ suggestForm.querySelectorAll("[required]").forEach((el) => {
   el.addEventListener("input", () => el.classList.remove("invalid"));
   if (el.tagName === "SELECT") el.addEventListener("change", () => el.classList.remove("invalid"));
 });
+// Also listen on fields that toggle required dynamically
+sgNameInput.addEventListener("input", () => sgNameInput.classList.remove("invalid"));
+sgGmapsInput.addEventListener("input", () => sgGmapsInput.classList.remove("invalid"));
 
 suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
