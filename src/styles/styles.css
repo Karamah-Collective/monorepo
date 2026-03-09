@@ -560,6 +560,13 @@
   .maplibregl-ctrl-bottom-left {
     bottom: 24px !important;
   }
+  /* OSM credit sits top-right, flush below the scale bar */
+  #osm-link {
+    top: calc(var(--safe-t) + 36px);
+    bottom: auto !important;
+    right: 22px !important;
+    left: auto;
+  }
 }
 
 /* ─── Tools Toggle: visible on phone + tablet, hidden on desktop ─── */
@@ -674,6 +681,14 @@
 @media (min-width: 1200px) {
   #tools-toggle {
     display: none;
+  }
+  /* Align scale bar's right edge with the tab bar (right: 16px) */
+  .maplibregl-ctrl-top-right {
+    right: 16px !important;
+  }
+  /* OSM credit aligns with scale bar and tab bar */
+  #osm-link {
+    right: 12px !important;
   }
 }
 
@@ -4335,6 +4350,7 @@
     bottom: auto;
     right: var(--map-edge);
     left: auto;
+    padding-right: 0;
   }
 }
 
