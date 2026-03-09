@@ -2,7 +2,7 @@ import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
-import { setActiveTab } from "./map-controls.js";
+import { setActiveTab, refreshHeatmapSource, currentStyleMode } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
 
 export let placesData = [];
@@ -189,14 +189,24 @@ function _buildPlacesGeoJSON(places) {
   };
 }
 
-function _updateMarkerVisibility() {
-  const shouldHide = map.getZoom() < CLUSTER_ZOOM;
+const CLUSTER_LAYER_IDS = ["places-cluster-circle", "places-cluster-count", "places-unclustered"];
+
+const HEATMAP_PIN_ZOOM = 14.5;
+
+export function updateMarkerVisibility() {
+  const isHeatmap = currentStyleMode === "heatmap";
+  const zoom = map.getZoom();
+  const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
   placeMarkers.forEach((marker) => {
     const el = marker.getElement();
     if (el) {
       el.style.visibility = shouldHide ? "hidden" : "visible";
       el.style.pointerEvents = shouldHide ? "none" : "auto";
     }
+  });
+  const clusterVis = (isHeatmap && zoom < HEATMAP_PIN_ZOOM) ? "none" : "visible";
+  CLUSTER_LAYER_IDS.forEach((id) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", clusterVis);
   });
 }
 
@@ -260,12 +270,14 @@ function _setupClusterLayers(geojson) {
   });
 
   // Cluster click → zoom in to expand
-  map.on("click", "places-cluster-circle", async (e) => {
+  map.on("click", "places-cluster-circle", (e) => {
     const features = map.queryRenderedFeatures(e.point, { layers: ["places-cluster-circle"] });
     if (!features.length) return;
     const clusterId = features[0].properties.cluster_id;
-    const zoom = await map.getSource("places-cluster").getClusterExpansionZoom(clusterId);
-    map.easeTo({ center: features[0].geometry.coordinates, zoom: zoom + 0.5 });
+    map.getSource("places-cluster").getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err) return;
+      map.flyTo({ center: features[0].geometry.coordinates, zoom: Math.max(zoom + 0.5, CLUSTER_ZOOM), duration: 500 });
+    });
   });
 
   // Unclustered dot click → open place popup
@@ -281,7 +293,7 @@ function _setupClusterLayers(geojson) {
     map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
   });
 
-  map.on("zoom", _updateMarkerVisibility);
+  map.on("zoom", updateMarkerVisibility);
   _clusterLayersReady = true;
 }
 
@@ -337,7 +349,8 @@ export function addPlaceMarkers() {
     });
   }
 
-  _updateMarkerVisibility();
+  updateMarkerVisibility();
+  refreshHeatmapSource();
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
@@ -789,7 +802,7 @@ function renderPlacesList() {
       const typeTags = tagsData[p.type] || [];
       const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
       const posCount = posTags.length;
-      const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "";
+      const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
       const tagNames = posTags.map((t) => t.label);
       const faved = isFavourite(p.id);
       return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
@@ -797,8 +810,7 @@ function renderPlacesList() {
       <span class="pl-name">${esc(p.name)}</span>
       <span class="pl-addr">${esc(p.address)}</span>
       <div class="pl-meta">
-        <span class="pl-type-badge" style="--type-c:${cfg.color}">${cfg.label}</span>
-        ${tagSummary ? `<span class="pl-tags-summary" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>` : ""}
+        <span class="pl-tags-summary" style="--type-c:${cfg.color}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
       </div>
       <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
@@ -813,8 +825,7 @@ function renderPlacesList() {
       <span class="pl-name">${esc(pin.name)}</span>
       <span class="pl-addr">${esc(pin.id)}</span>
       <div class="pl-meta">
-        <span class="pl-type-badge" style="--type-c:var(--accent,#1A73B8)">Dropped Pin</span>
-        <span class="pl-tags-summary" style="visibility:hidden" aria-hidden="true">&nbsp;</span>
+        <span class="pl-tags-summary" style="--type-c:var(--accent,#1A73B8)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
       </div>
       <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
@@ -844,9 +855,18 @@ function showTagTip(el) {
   if (!raw) return;
   tagTipTarget = el;
   tagTipShowTime = Date.now();
+  const typeName = el.dataset.type || "";
+  const typeColor = getComputedStyle(el).getPropertyValue("--type-c").trim() || "";
+  const cfg = Object.values(PLACE_CONFIG).find(c => c.label === typeName);
+  const iconSVG = cfg ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="${typeColor || "currentColor"}">${cfg.icon}</svg>` : "";
+  tagTip.style.setProperty("--type-c", typeColor);
   try {
     const tags = JSON.parse(raw);
-    tagTip.innerHTML = tags.map(t => `<span class="pl-tag-chip">${esc(t)}</span>`).join("");
+    const typeHTML = typeName ? `<div class="pl-tag-type">${iconSVG}${esc(typeName)}</div>` : "";
+    const tagHTML = tags.length
+      ? tags.map(t => `<span class="pl-tag-chip">${esc(t)}</span>`).join("")
+      : '<span class="pl-tag-chip pl-tag-empty">No tags yet</span>';
+    tagTip.innerHTML = typeHTML + `<div class="pl-tag-list">${tagHTML}</div>`;
   } catch { tagTip.textContent = raw; }
   tagTip.classList.add("show");
   const r = el.getBoundingClientRect();

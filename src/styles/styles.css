@@ -353,6 +353,13 @@
 .thumb-satellite {
   background: url("../../data/thumbs/satellite.jpg") center/cover no-repeat;
 }
+.thumb-heatmap {
+  background:
+    radial-gradient(circle at 65% 35%, rgba(255,40,40,0.85) 0%, rgba(255,120,0,0.6) 18%, transparent 36%),
+    radial-gradient(circle at 30% 60%, rgba(31,168,106,0.7) 0%, rgba(26,115,184,0.4) 28%, transparent 48%),
+    radial-gradient(circle at 75% 70%, rgba(255,200,0,0.55) 0%, rgba(26,115,184,0.3) 30%, transparent 50%),
+    #e8edf2;
+}
 
 #zoom-pill {
   position: absolute;
@@ -1122,80 +1129,94 @@
   grid-area: meta;
   align-self: center;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
 }
-.pl-type-badge {
-  padding: 3px 8px;
+.pl-tags-summary {
+  width: 4.2em;
+  box-sizing: border-box;
+  text-align: center;
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
   color: var(--type-c, var(--accent));
-  background: var(--surface-2);
-  border-radius: var(--r-pill);
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-}
-.pl-tags-summary {
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
-  color: var(--text-3);
   white-space: nowrap;
   line-height: 1.3;
-  padding: 2px 7px;
-  background: transparent;
-  border: 1.5px solid var(--border);
+  padding: 3px 0;
+  background: color-mix(in srgb, var(--type-c, var(--accent)) 12%, transparent);
+  border: none;
   border-radius: var(--r-pill);
   cursor: default;
   transition:
-    border-color 0.15s,
+    background 0.15s,
     color 0.15s;
 }
 .pl-tags-summary:hover {
-  border-color: var(--surface-3);
-  color: var(--text-2);
+  background: color-mix(in srgb, var(--type-c, var(--accent)) 20%, transparent);
 }
 
 /* Floating tag tooltip (JS-managed, appended to #places-sheet) */
 .pl-tag-tip {
   position: fixed;
-  min-width: 100px;
-  max-width: 240px;
-  padding: 6px 8px;
+  min-width: 120px;
+  max-width: 260px;
+  padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
   z-index: var(--z-sub-ui);
   pointer-events: none;
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-6px) scale(0.96);
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  overflow: hidden;
 }
 .pl-tag-tip.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+}
+.pl-tag-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  color: var(--type-c, var(--accent));
+  background: color-mix(in srgb, var(--type-c, var(--accent)) 10%, transparent);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+.pl-tag-type svg {
+  flex-shrink: 0;
+}
+.pl-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 10px;
 }
 .pl-tag-chip {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 9px;
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   color: var(--text-2);
-  line-height: 1.4;
+  line-height: 1.3;
   background: var(--surface-2);
   border-radius: var(--r-pill);
   white-space: nowrap;
 }
+.pl-tag-empty {
+  color: var(--text-3);
+  font-style: italic;
+  background: none;
+  padding: 0;
+}
 @supports (background: color-mix(in srgb, red 10%, transparent)) {
-  .pl-tag-chip {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  .pl-tag-chip:not(.pl-tag-empty) {
+    background: color-mix(in srgb, var(--type-c, var(--accent)) 10%, transparent);
   }
 }
 
@@ -1223,10 +1244,10 @@
   color: #f59e0b;
 }
 @supports (background: color-mix(in srgb, red 10%, transparent)) {
-  .pl-type-badge {
+  .pl-tags-summary {
     background: color-mix(
       in srgb,
-      var(--type-c, var(--accent)) 10%,
+      var(--type-c, var(--accent)) 12%,
       transparent
     );
   }
@@ -4588,13 +4609,18 @@
 /* ─── OSM Copyright link ─── */
 #osm-link {
   position: absolute;
-  z-index: var(--z-bar);
+  z-index: var(--z-ctrl-lo);
   bottom: 5px;
   right: 6px;
   font-size: 9px;
   color: rgba(0, 0, 0, 0.65);
   text-decoration: none;
   line-height: 1;
+  display: block;
+  width: fit-content;
+  height: fit-content;
+  padding: 2px 4px;
+  margin: 0;
 }
 #osm-link:hover {
   color: rgba(0, 0, 0, 1);

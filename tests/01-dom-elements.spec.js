@@ -86,7 +86,7 @@ test.describe("Core DOM Structure", () => {
     await expect(page.locator("#style-picker-btn")).toBeVisible();
     await expect(page.locator("#style-panel")).toBeAttached();
     const opts = page.locator(".style-opt");
-    await expect(opts).toHaveCount(2);
+    await expect(opts).toHaveCount(3);
   });
 
   test("default style option is active", async ({ page }) => {

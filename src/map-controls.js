@@ -1,6 +1,7 @@
 import { map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
 import { showToast, showLoadingToast, hideLoadingToast } from "./utils.js";
+import { placesData, updateMarkerVisibility } from "./places.js";
 
 let locMarker = null;
 let locWatchId = null;
@@ -26,6 +27,36 @@ const LABEL_IDS = [
   "label_place_village", "label_place_town", "label_place_city", "label_country",
 ];
 const origLabelPaint = {};
+
+/* ── Heatmap scoring ── */
+const TYPE_BASE = { mosque: 10, prayer_room: 7, shop: 5, restaurant: 4 };
+const TAG_SCORE = {
+  daily_prayers: 5, jummah: 3, taraweeh: 1, eid_prayer: 1,
+  janaza: 0.5, quran_classes: 1, female_prayer: 2, female_wudu: 1,
+  wudu: 1, quran_available: 0.5,
+  fully_halal: 3, partially_halal: 1, no_alcohol: 1.5,
+  halal_meat: 3, halal_butchery: 2, halal_groceries: 2,
+  asian_products: 0.5, african_products: 0.5, arab_products: 0.5, halal_certified: 2,
+};
+
+function buildHeatmapGeoJSON() {
+  const features = placesData.map((p) => {
+    let score = TYPE_BASE[p.type] || 3;
+    if (p.tags) {
+      for (const [tag, val] of Object.entries(p.tags)) {
+        if (val && TAG_SCORE[tag]) score += TAG_SCORE[tag];
+      }
+    }
+    return {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+      properties: { weight: score },
+    };
+  });
+  const maxW = Math.max(...features.map((f) => f.properties.weight), 1);
+  features.forEach((f) => { f.properties.weight = f.properties.weight / maxW; });
+  return { type: "FeatureCollection", features };
+}
 
 export function showCurrentLocation() {
   if (!navigator.geolocation) {
@@ -269,6 +300,7 @@ export function setMapStyle(mode) {
   }
 
   if (map.getLayer("style-raster")) map.removeLayer("style-raster");
+  if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "none");
   if (is3DActive) disable3D();
 
   if (mode === "default") {
@@ -308,13 +340,65 @@ export function setMapStyle(mode) {
     });
     map.setMaxPitch(0);
     map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
+  } else if (mode === "heatmap") {
+    VECTOR_BASE_IDS.forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+    });
+    LABEL_IDS.forEach((id) => {
+      const o = origLabelPaint[id];
+      if (o) {
+        map.setPaintProperty(id, "text-color", o.color);
+        map.setPaintProperty(id, "text-halo-color", o.halo);
+        map.setPaintProperty(id, "text-halo-width", o.haloW);
+      }
+    });
+    map.setMaxPitch(85);
+
+    const geojson = buildHeatmapGeoJSON();
+    if (!map.getSource("heatmap-src")) {
+      map.addSource("heatmap-src", { type: "geojson", data: geojson });
+    } else {
+      map.getSource("heatmap-src").setData(geojson);
+    }
+
+    if (!map.getLayer("heatmap-layer")) {
+      map.addLayer({
+        id: "heatmap-layer",
+        type: "heatmap",
+        source: "heatmap-src",
+        paint: {
+          "heatmap-weight": ["get", "weight"],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 12, 1, 15, 1.4],
+          "heatmap-color": [
+            "interpolate", ["linear"], ["heatmap-density"],
+            0, "rgba(0,0,0,0)",
+            0.15, "rgba(26,115,184,0.4)",
+            0.35, "rgba(31,168,106,0.55)",
+            0.55, "rgba(255,200,0,0.65)",
+            0.75, "rgba(255,120,0,0.75)",
+            1, "rgba(255,40,40,0.85)",
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 8, 30, 12, 50, 15, 70],
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.85, 16, 0.45],
+        },
+      }, "label_road");
+    } else {
+      map.setLayoutProperty("heatmap-layer", "visibility", "visible");
+    }
   }
 
   currentStyleMode = mode;
+  updateMarkerVisibility();
   document.querySelectorAll(".style-opt").forEach((el) => el.classList.toggle("active", el.dataset.style === mode));
   document.getElementById("style-picker-btn")?.classList.toggle("active", mode !== "default");
   document.getElementById("style-panel")?.classList.add("hide");
   console.log(`[Style] Switched to ${mode}`);
+}
+
+export function refreshHeatmapSource() {
+  if (currentStyleMode !== "heatmap") return;
+  const src = map.getSource("heatmap-src");
+  if (src) src.setData(buildHeatmapGeoJSON());
 }
 
 // Style picker toggle

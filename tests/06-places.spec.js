@@ -50,11 +50,11 @@ test.describe("Places List — Content", () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test("place cards have name, address, and type badge", async ({ page }) => {
+  test("place cards have name, address, and tags summary", async ({ page }) => {
     const first = page.locator("#places-list .pl-card").first();
     await expect(first.locator(".pl-name")).toBeVisible();
     await expect(first.locator(".pl-addr")).toBeVisible();
-    await expect(first.locator(".pl-type-badge")).toBeVisible();
+    await expect(first.locator(".pl-tags-summary")).toBeVisible();
   });
 
   test("place cards have favourite button", async ({ page }) => {
@@ -101,13 +101,13 @@ test.describe("Places — Type Filtering", () => {
     await expect(page.locator('.pf-chip[data-type="all"]')).not.toHaveClass(/active/);
   });
 
-  test("filtered list shows correct type badges", async ({ page }) => {
+  test("filtered list shows correct type in tags summary", async ({ page }) => {
     await page.locator('.pf-chip[data-type="restaurant"]').click();
     await page.waitForTimeout(300);
-    const badges = page.locator("#places-list .pl-type-badge");
-    const count = await badges.count();
+    const summaries = page.locator("#places-list .pl-tags-summary");
+    const count = await summaries.count();
     for (let i = 0; i < count; i++) {
-      await expect(badges.nth(i)).toContainText("Restaurant");
+      await expect(summaries.nth(i)).toHaveAttribute("data-type", "Restaurant");
     }
   });
 
