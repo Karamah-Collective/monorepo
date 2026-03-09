@@ -604,7 +604,7 @@
   },
   {
     "id": "trjf07",
-    "name": "Yalla",
+    "name": "Yalla Koivukylä",
     "type": "shop",
     "address": "Koivukylän puistotie 1, 01360 Vantaa, Finland",
     "lat": 60.3232247,
@@ -617,6 +617,242 @@
       "african_products": true,
       "arab_products": true
     },
+    "notes": ""
+  },
+  {
+    "id": "f30ugd",
+    "name": "Yalla Tikkurila",
+    "type": "shop",
+    "address": "Peltolantie 5 B, 01300 Vantaa, Finland",
+    "lat": 60.293788,
+    "lng": 25.030705,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "q65nwj",
+    "name": "Nari Market",
+    "type": "shop",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.214061,
+    "lng": 25.0821358,
+    "tags": {
+      "halal_meat": true,
+      "halal_groceries": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "xfgge7",
+    "name": "Al suleimani ravintola",
+    "type": "restaurant",
+    "address": "Korsholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2134514,
+    "lng": 25.0804478,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "9admdr",
+    "name": "Afghan Restaurant",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2133695,
+    "lng": 25.0805482,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "tdqcws",
+    "name": "Sirwan fast food",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.21335,
+    "lng": 25.0803867,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "pimapy",
+    "name": "Ravintola Kirkuk",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2135987,
+    "lng": 25.0811504,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "254ggv",
+    "name": "Zahiiba Ravintola",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2133243,
+    "lng": 25.080333,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "fd1ocx",
+    "name": "Hkmat Tmi",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2132637,
+    "lng": 25.0802765,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "a5cru1",
+    "name": "Hirshabeele ravintola",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2129951,
+    "lng": 25.0802479,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "bk9bjh",
+    "name": "Somalian restaurant",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2130285,
+    "lng": 25.0805643,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "8oe1jh",
+    "name": "Newroz",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2131521,
+    "lng": 25.0809249,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "8ez1cj",
+    "name": "Somalian restaurant",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2130285,
+    "lng": 25.0805643,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "cx9zp7",
+    "name": "Rachma Ravintola",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2132992,
+    "lng": 25.0807602,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "ghirir",
+    "name": "Diwan Bagdad",
+    "type": "restaurant",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2134059,
+    "lng": 25.081248,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "b3oiuf",
+    "name": "Balkh Market",
+    "type": "shop",
+    "address": "Kastelholmantie 2 A2, 00900 Helsinki, Finland",
+    "lat": 60.2132114,
+    "lng": 25.0802901,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "uks2ox",
+    "name": "Halal Liha",
+    "type": "shop",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2132907,
+    "lng": 25.0803733,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "qwxwzj",
+    "name": "Punjab sweets & Bakers",
+    "type": "restaurant",
+    "address": "Korsholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2136146,
+    "lng": 25.0814656,
+    "tags": {
+      "fully_halal": true,
+      "no_alcohol": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "1kx1m2",
+    "name": "Souriana سوريانا‭",
+    "type": "shop",
+    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "lat": 60.2132624,
+    "lng": 25.0808042,
+    "tags": {},
     "notes": ""
   }
 ]

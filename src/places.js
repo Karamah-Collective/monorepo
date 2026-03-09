@@ -18,6 +18,17 @@ let userSortLat = null;
 let userSortLng = null;
 let _editOriginalPlace = null;
 
+// When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
+// would read "✗ No Alcohol" — a confusing double negative. Map tag IDs to the label
+// that should be shown when the value is false so the chip always states a fact.
+const TAG_NEG_LABELS = {
+  no_alcohol: "Serves alcohol",
+};
+// Also remap display labels for the true-state where the stored label is negative-phrased.
+const TAG_POS_LABELS = {
+  no_alcohol: "Alcohol-free",
+};
+
 const SORT_FIELD_LABELS = { name: "Name", distance: "Distance", date: "Date" };
 
 function applySort(arr) {
@@ -47,6 +58,33 @@ export function isFavourite(id) { return favourites.has(id); }
 export function toggleFavourite(id) {
   if (favourites.has(id)) favourites.delete(id); else favourites.add(id);
   saveFavourites();
+}
+
+// Recently viewed
+const RECENT_KEY = "hf_recent";
+let recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+function trackRecentlyViewed(id) {
+  recentIds = [id, ...recentIds.filter((x) => x !== id)].slice(0, 5);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch (_) {}
+}
+
+// User location for distance badges
+let userLocLat = null, userLocLng = null;
+function tryGetUserLocation() {
+  if (userLocLat !== null || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLocLat = pos.coords.latitude;
+      userLocLng = pos.coords.longitude;
+      const list = document.getElementById("places-list");
+      if (list && list.children.length) renderPlacesList();
+    },
+    () => {},
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+  );
+}
+function formatDist(km) {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
 const CACHE_KEY = 'hf_places_v1';
@@ -367,6 +405,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 });
 
 export function showPlacePopup(place) {
+  trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const typeTags = tagsData[place.type] || [];
 
@@ -416,8 +455,13 @@ export function showPlacePopup(place) {
       .map((tag) => {
         const val = place.tags[tag.id];
         const cls = val === true ? "pp-chip-yes" : "pp-chip-no";
-        const icon = val === true ? "✓" : "✗";
-        return `<span class="pp-chip ${cls}">${icon} ${esc(tag.label)}</span>`;
+        const icon = val === true
+          ? `<svg class="pp-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
+          : `<svg class="pp-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+        const label = val === true
+          ? (TAG_POS_LABELS[tag.id] || tag.label)
+          : (TAG_NEG_LABELS[tag.id] || tag.negLabel || tag.label);
+        return `<span class="pp-chip ${cls}">${icon}${esc(label)}</span>`;
       })
       .join("");
     if (chips) {
@@ -574,6 +618,7 @@ export function openPlacesSheet() {
   placesSheet.style.height = "";
   scrim.classList.remove("hide");
   setActiveTab("places-btn");
+  tryGetUserLocation();
   renderTagFilterBar();
   renderPlacesList();
   placesSnap.open();                           // measure content → set initial snap height → reveal
@@ -668,6 +713,8 @@ sortDropdown.addEventListener("click", (e) => {
           (pos) => {
             userSortLat = pos.coords.latitude;
             userSortLng = pos.coords.longitude;
+            userLocLat = pos.coords.latitude;
+            userLocLng = pos.coords.longitude;
             activeSortField = "distance";
             updateSortButton();
             renderPlacesList();
@@ -796,19 +843,23 @@ function renderPlacesList() {
   ct.textContent = `${totalCount} place${totalCount > 1 ? "s" : ""}`;
 
   const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-  const regularHTML = sorted
-    .map((p, i) => {
-      const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-      const typeTags = tagsData[p.type] || [];
-      const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
-      const posCount = posTags.length;
-      const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
-      const tagNames = posTags.map((t) => t.label);
-      const faved = isFavourite(p.id);
-      return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
+  const _clockIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+  function buildCard(p, i) {
+    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+    const typeTags = tagsData[p.type] || [];
+    const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
+    const posCount = posTags.length;
+    const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
+    const tagNames = posTags.map((t) => t.label);
+    const faved = isFavourite(p.id);
+    const distBadge = userLocLat !== null
+      ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
+      : "";
+    return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
       <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
       <span class="pl-name">${esc(p.name)}</span>
-      <span class="pl-addr">${esc(p.address)}</span>
+      <span class="pl-addr">${esc(p.address)}${distBadge}</span>
       <div class="pl-meta">
         <span class="pl-tags-summary" style="--type-c:${cfg.color}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
       </div>
@@ -816,8 +867,9 @@ function renderPlacesList() {
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
       </button>
     </li>`;
-    })
-    .join("");
+  }
+
+  const regularHTML = sorted.map((p, i) => buildCard(p, i)).join("");
 
   const pinHTML = customPins
     .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent,#1A73B8);--i:${sorted.length + pi}">
@@ -833,7 +885,20 @@ function renderPlacesList() {
     </li>`)
     .join("");
 
-  list.innerHTML = regularHTML + pinHTML;
+  // Recently viewed section (skip on saved tab)
+  let recentHtml = "";
+  if (activeTypeFilter !== "saved" && recentIds.length) {
+    const recentPlaces = recentIds.map((id) => filtered.find((p) => p.id === id)).filter(Boolean);
+    if (recentPlaces.length) {
+      const recentCards = recentPlaces.map((p, i) => buildCard(p, i)).join("");
+      const mainHdr = (regularHTML || pinHTML)
+        ? `<li class="pl-section-hdr pl-section-hdr--main">All places</li>`
+        : "";
+      recentHtml = `<li class="pl-section-hdr">${_clockIcon} Recently viewed</li>${recentCards}${mainHdr}`;
+    }
+  }
+
+  list.innerHTML = recentHtml + regularHTML + pinHTML;
 }
 
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
@@ -1015,12 +1080,16 @@ function renderSuggestTags() {
   tagsSection.style.display = "";
   const tags = tagsData[type] || [];
   sgTagsContainer.innerHTML = tags
-    .map((t) =>
-      `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral">` +
-      `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
-      `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
-      `${t.label}</button>`,
-    ).join("");
+    .map((t) => {
+      const posLabel = TAG_POS_LABELS[t.id] || t.label;
+      const negLabel = TAG_NEG_LABELS[t.id] || t.negLabel || t.label;
+      return (
+        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral" data-pos-label="${esc(posLabel)}" data-neg-label="${esc(negLabel)}">` +
+        `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
+        `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
+        `<span class="sg-tag-label">${esc(posLabel)}</span></button>`
+      );
+    }).join("");
 }
 
 sgTypeSelect.addEventListener("change", renderSuggestTags);
@@ -1030,7 +1099,12 @@ sgTagsContainer.addEventListener("click", (e) => {
   const btn = e.target.closest(".sg-tag");
   if (!btn) return;
   const states = ["neutral", "yes", "no"];
-  btn.dataset.state = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+  const next = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+  btn.dataset.state = next;
+  const labelEl = btn.querySelector(".sg-tag-label");
+  if (labelEl) {
+    labelEl.textContent = next === "no" ? (btn.dataset.negLabel || labelEl.textContent) : (btn.dataset.posLabel || labelEl.textContent);
+  }
 });
 
 const suggestForm = document.getElementById("suggest-form");
@@ -1125,11 +1199,14 @@ function renderEditTags(type, existingTags) {
     .map((t) => {
       const existingVal = existingTags?.[t.id];
       const state = existingVal === true ? "yes" : existingVal === false ? "no" : "neutral";
+      const posLabel = TAG_POS_LABELS[t.id] || t.label;
+      const negLabel = TAG_NEG_LABELS[t.id] || t.negLabel || t.label;
+      const displayLabel = state === "no" ? negLabel : posLabel;
       return (
-        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}">` +
+        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}" data-pos-label="${esc(posLabel)}" data-neg-label="${esc(negLabel)}">` +
         `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
         `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
-        `${t.label}</button>`
+        `<span class="sg-tag-label">${esc(displayLabel)}</span></button>`
       );
     }).join("");
 }
@@ -1151,7 +1228,12 @@ edTagsContainer.addEventListener("click", (e) => {
   const btn = e.target.closest(".sg-tag");
   if (!btn) return;
   const states = ["neutral", "yes", "no"];
-  btn.dataset.state = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+  const next = states[(states.indexOf(btn.dataset.state) + 1) % 3];
+  btn.dataset.state = next;
+  const labelEl = btn.querySelector(".sg-tag-label");
+  if (labelEl) {
+    labelEl.textContent = next === "no" ? (btn.dataset.negLabel || labelEl.textContent) : (btn.dataset.posLabel || labelEl.textContent);
+  }
 });
 
 document.getElementById("edit-close").addEventListener("click", () => {

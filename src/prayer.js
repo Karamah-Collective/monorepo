@@ -8,6 +8,9 @@ const PRAYER_NAMES = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const HELSINKI_LAT = 60.1699;
 const HELSINKI_LNG = 24.9384;
 
+function isFriday() { return new Date().getDay() === 5; }
+function prayerDisplayName(name) { return (name === "Dhuhr" && isFriday()) ? "Jumu\u2019ah" : name; }
+
 let prayerTimesToday = null;
 let sunriseTime = null;
 let isRamadan = false;
@@ -68,7 +71,7 @@ function formatPrayerCountdown(date) {
   return m === 0 ? `in ${h}h` : `in ${h}h ${m}m`;
 }
 
-function showPrayerToast(name) { showToast(`Time for ${name}`, "clock"); }
+function showPrayerToast(name) { showToast(`Time for ${prayerDisplayName(name)}`, "clock"); }
 
 function showPrayerSnack(text, autoHide = false) {
   const el = document.getElementById("prayer-snack");
@@ -100,7 +103,7 @@ function startPrayerWatcher() {
     const snackEl = document.getElementById("prayer-snack");
     if (!snackEl.classList.contains("hide")) {
       const next = getNextPrayer();
-      if (next) document.getElementById("prayer-snack-title").textContent = `${next.name} ${formatPrayerCountdown(next.time)}`;
+      if (next) document.getElementById("prayer-snack-title").textContent = `${prayerDisplayName(next.name)} ${formatPrayerCountdown(next.time)}`;
     }
   }, 30000);
 }
@@ -126,7 +129,7 @@ function togglePrayerExpanded() {
         item.className = "prayer-time-item";
         if (current?.name === name) item.classList.add("current");
         if (next?.name === name) item.classList.add("next");
-        const nameEl = document.createElement("div"); nameEl.className = "prayer-time-name"; nameEl.textContent = name;
+        const nameEl = document.createElement("div"); nameEl.className = "prayer-time-name"; nameEl.textContent = prayerDisplayName(name);
         const timeEl = document.createElement("div"); timeEl.className = "prayer-time-value"; timeEl.textContent = timeStr;
         item.appendChild(nameEl); item.appendChild(timeEl);
         listEl.appendChild(item);
@@ -209,7 +212,7 @@ export async function initPrayerTimes() {
       snackEl.classList.remove("ramadan-active");
     }
     const next = getNextPrayer();
-    if (next) showPrayerSnack(`${next.name} ${formatPrayerCountdown(next.time)}`);
+    if (next) showPrayerSnack(`${prayerDisplayName(next.name)} ${formatPrayerCountdown(next.time)}`);
     startPrayerWatcher();
   } catch (err) {
     console.warn("[Prayer] Could not fetch prayer times:", err.message);
