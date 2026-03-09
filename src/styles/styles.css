@@ -1373,12 +1373,6 @@
   transition: opacity 0.15s ease;
 }
 
-/* Hide HTML pin markers when cluster bubbles are the active view (zoom < 12) */
-.hf-markers-hidden .place-mk-wrap {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .maplibregl-marker {
   opacity: 1 !important;
   transition: none !important;

@@ -106,14 +106,21 @@ export async function loadPlacesData() {
       // 2. Background refresh — update only if data changed
       fetchFresh().then(data => {
         if (!data) return;
-        if (data.places.length !== placesData.length ||
-            JSON.stringify(data.places) !== JSON.stringify(placesData)) {
+        const oldCount = placesData.length;
+        const newCount = data.places.length;
+        const countChanged = newCount !== oldCount;
+        const dataChanged = JSON.stringify(data.places) !== JSON.stringify(placesData);
+        
+        if (countChanged || dataChanged) {
+          console.log(`[Places] Background update: ${newCount} places (was ${oldCount})`);
+          if (countChanged) {
+            console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
+          }
           placesData = data.places;
           tagsData = data.tags || {};
           addPlaceMarkers();
           renderPlacesList();
           updatePlacesBadge();
-          console.log(`[Places] Background update: ${placesData.length} places`);
         }
         writeCache(data.places, data.tags || {});
       });
@@ -140,14 +147,21 @@ export async function loadPlacesData() {
     // 4. Background refresh from API — update cache + UI if data changed
     fetchFresh().then(data => {
       if (!data) return;
-      if (data.places.length !== placesData.length ||
-          JSON.stringify(data.places) !== JSON.stringify(placesData)) {
+      const oldCount = placesData.length;
+      const newCount = data.places.length;
+      const countChanged = newCount !== oldCount;
+      const dataChanged = JSON.stringify(data.places) !== JSON.stringify(placesData);
+      
+      if (countChanged || dataChanged) {
+        console.log(`[Places] Background update: ${newCount} places (was ${oldCount})`);
+        if (countChanged) {
+          console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
+        }
         placesData = data.places;
         tagsData = data.tags || {};
-        addPlaceMarkers();
+        addPlaceMarkers();  // Full refresh removes old + adds new
         renderPlacesList();
         updatePlacesBadge();
-        console.log(`[Places] Background update: ${placesData.length} places`);
       }
       writeCache(data.places, data.tags || {});
     });
@@ -176,7 +190,14 @@ function _buildPlacesGeoJSON(places) {
 }
 
 function _updateMarkerVisibility() {
-  map.getContainer().classList.toggle("hf-markers-hidden", map.getZoom() < CLUSTER_ZOOM);
+  const shouldHide = map.getZoom() < CLUSTER_ZOOM;
+  placeMarkers.forEach((marker) => {
+    const el = marker.getElement();
+    if (el) {
+      el.style.visibility = shouldHide ? "hidden" : "visible";
+      el.style.pointerEvents = shouldHide ? "none" : "auto";
+    }
+  });
 }
 
 function _setupClusterLayers(geojson) {
