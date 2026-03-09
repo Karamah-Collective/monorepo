@@ -390,7 +390,13 @@ export async function reverseGeocode(lat, lng) {
       if (p) {
         const road = p.street || p.name || "";
         const num = p.housenumber || "";
-        return road ? (num ? `${road} ${num}` : road) : p.label?.split(",")[0] || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const postcode = p.postalcode || "";
+        const city = p.locality || "";
+        let base = road ? (num ? `${road} ${num}` : road) : p.label?.split(",")[0];
+        if (!base) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        if (postcode) base += `, ${postcode}`;
+        if (city) base += `, ${city}`;
+        return base;
       }
     }
   } catch {}
@@ -399,7 +405,14 @@ export async function reverseGeocode(lat, lng) {
     const data = await res.json();
     if (data.address) {
       const a = data.address;
-      return a.road ? `${a.road}${a.house_number ? " " + a.house_number : ""}` : data.display_name.split(",")[0];
+      const city = a.city || a.town || a.village || a.municipality || "";
+      if (a.road) {
+        let addr = `${a.road}${a.house_number ? " " + a.house_number : ""}`;
+        if (a.postcode) addr += `, ${a.postcode}`;
+        if (city) addr += `, ${city}`;
+        return addr;
+      }
+      return data.display_name.split(",")[0];
     }
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   } catch {

@@ -400,9 +400,20 @@ map.on("dblclick", async (e) => {
   showDroppedPin(lng, lat);
 });
 
-// Mobile: double-tap drops a custom pin (MapLibre's dblclick may not fire reliably on touch)
+// Mobile: double-tap drops a custom pin (MapLibre's dblclick may not fire reliably on touch).
+// _touchIsMulti guards against accidental pins during pinch-zoom: if 2+ fingers were ever
+// on screen in this gesture the final lift is ignored as a potential tap.
 let _lastTapTime = 0, _lastTapLng = 0, _lastTapLat = 0;
+let _touchIsMulti = false;
+map.getCanvas().addEventListener("touchstart", (e) => {
+  if (e.touches.length > 1) _touchIsMulti = true;
+}, { passive: true });
+
 map.on("touchend", (e) => {
+  // Only act when the very last finger leaves the screen.
+  if (e.originalEvent.touches.length !== 0) return;
+  // If any multi-touch occurred during this gesture, discard as pinch-zoom.
+  if (_touchIsMulti) { _touchIsMulti = false; _lastTapTime = 0; return; }
   if (e.originalEvent.changedTouches.length !== 1) return;
   const now = Date.now();
   const { lng, lat } = e.lngLat;
