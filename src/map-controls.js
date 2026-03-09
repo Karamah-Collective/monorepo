@@ -6,7 +6,9 @@ import { placesData, updateMarkerVisibility } from "./places.js";
 let locMarker = null;
 let locWatchId = null;
 
-export let currentStyleMode = "default";
+export let currentTheme = "light";     // "light" | "dark"
+export let isSatelliteActive = false;
+export let isHeatmapActive = false;
 export let is3DActive = false;
 
 const VECTOR_BASE_IDS = [
@@ -286,37 +288,41 @@ export function disable3D() {
   map.setLayoutProperty("building_outline", "visibility", "visible");
 }
 
-export function setMapStyle(mode) {
-  if (mode === currentStyleMode) return;
+// ── Theme: switch between light and dark ──────────────────────────
+export function setTheme(theme) {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+  const isDark = theme === "dark";
+  document.body.classList.toggle("dark-mode", isDark);
+  document.getElementById("map").classList.toggle("dark-mode", isDark);
+  try { localStorage.setItem("theme", theme); } catch (_) {}
+  _syncStyleButtons();
+  console.log(`[Style] Theme → ${theme}`);
+}
 
-  if (!origLabelPaint.label_road) {
-    LABEL_IDS.forEach((id) => {
-      origLabelPaint[id] = {
-        color: map.getPaintProperty(id, "text-color"),
-        halo: map.getPaintProperty(id, "text-halo-color"),
-        haloW: map.getPaintProperty(id, "text-halo-width"),
-      };
-    });
-  }
+// ── Restore saved theme on load (before first render to avoid flash) ──
+(function restoreSavedTheme() {
+  try {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+      currentTheme = "dark";
+      document.body.classList.add("dark-mode");
+      document.getElementById("map")?.classList.add("dark-mode");
+      _syncStyleButtons();
+    }
+  } catch (_) {}
+})();
 
-  if (map.getLayer("style-raster")) map.removeLayer("style-raster");
-  if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "none");
-  if (is3DActive) disable3D();
+// ── Satellite toggle ──────────────────────────────────────────────
+export function toggleSatellite() {
+  if (!origLabelPaint.label_road) _snapshotLabels();
+  isSatelliteActive = !isSatelliteActive;
+  document.getElementById("map").classList.toggle("satellite-active", isSatelliteActive);
 
-  if (mode === "default") {
-    VECTOR_BASE_IDS.forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
-    });
-    LABEL_IDS.forEach((id) => {
-      const o = origLabelPaint[id];
-      if (o) {
-        map.setPaintProperty(id, "text-color", o.color);
-        map.setPaintProperty(id, "text-halo-color", o.halo);
-        map.setPaintProperty(id, "text-halo-width", o.haloW);
-      }
-    });
-    map.setMaxPitch(85);
-  } else if (mode === "satellite") {
+  if (isSatelliteActive) {
+    const was3D = is3DActive;
+    if (is3DActive) disable3D();
+
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
     });
@@ -338,9 +344,15 @@ export function setMapStyle(mode) {
       map.setPaintProperty(id, "text-halo-color", "rgba(0,0,0,0.75)");
       map.setPaintProperty(id, "text-halo-width", 1.5);
     });
+    // Keep heatmap above satellite raster
+    if (isHeatmapActive && map.getLayer("heatmap-layer")) {
+      map.moveLayer("heatmap-layer", "label_road");
+    }
     map.setMaxPitch(0);
     map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
-  } else if (mode === "heatmap") {
+  } else {
+    if (map.getLayer("style-raster")) map.removeLayer("style-raster");
+
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
     });
@@ -353,7 +365,19 @@ export function setMapStyle(mode) {
       }
     });
     map.setMaxPitch(85);
+  }
 
+  updateMarkerVisibility();
+  _syncStyleButtons();
+  document.getElementById("style-panel")?.classList.add("hide");
+  console.log(`[Style] Satellite ${isSatelliteActive ? "ON" : "OFF"}`);
+}
+
+// ── Heatmap toggle ────────────────────────────────────────────────
+export function toggleHeatmap() {
+  isHeatmapActive = !isHeatmapActive;
+
+  if (isHeatmapActive) {
     const geojson = buildHeatmapGeoJSON();
     if (!map.getSource("heatmap-src")) {
       map.addSource("heatmap-src", { type: "geojson", data: geojson });
@@ -384,20 +408,49 @@ export function setMapStyle(mode) {
       }, "label_road");
     } else {
       map.setLayoutProperty("heatmap-layer", "visibility", "visible");
+      // Ensure heatmap renders above satellite raster
+      if (isSatelliteActive && map.getLayer("style-raster")) {
+        map.moveLayer("heatmap-layer", "label_road");
+      }
     }
+  } else {
+    if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "none");
   }
 
-  currentStyleMode = mode;
   updateMarkerVisibility();
-  document.querySelectorAll(".style-opt").forEach((el) => el.classList.toggle("active", el.dataset.style === mode));
-  document.getElementById("style-picker-btn")?.classList.toggle("active", mode !== "default");
-  document.getElementById("tools-toggle")?.classList.toggle("style-active", mode !== "default");
+  _syncStyleButtons();
   document.getElementById("style-panel")?.classList.add("hide");
-  console.log(`[Style] Switched to ${mode}`);
+  console.log(`[Style] Heatmap ${isHeatmapActive ? "ON" : "OFF"}`);
+}
+
+function _snapshotLabels() {
+  LABEL_IDS.forEach((id) => {
+    origLabelPaint[id] = {
+      color: map.getPaintProperty(id, "text-color"),
+      halo: map.getPaintProperty(id, "text-halo-color"),
+      haloW: map.getPaintProperty(id, "text-halo-width"),
+    };
+  });
+}
+
+function _syncStyleButtons() {
+  document.querySelectorAll(".style-opt").forEach((el) => {
+    const s = el.dataset.style;
+    if (s === "light" || s === "dark") {
+      el.classList.toggle("active", s === currentTheme);
+    } else if (s === "satellite") {
+      el.classList.toggle("active", isSatelliteActive);
+    } else if (s === "heatmap") {
+      el.classList.toggle("active", isHeatmapActive);
+    }
+  });
+  const isNonDefault = isSatelliteActive || isHeatmapActive;
+  document.getElementById("style-picker-btn")?.classList.toggle("active", isNonDefault);
+  document.getElementById("tools-toggle")?.classList.toggle("style-active", isNonDefault);
 }
 
 export function refreshHeatmapSource() {
-  if (currentStyleMode !== "heatmap") return;
+  if (!isHeatmapActive) return;
   const src = map.getSource("heatmap-src");
   if (src) src.setData(buildHeatmapGeoJSON());
 }
@@ -407,7 +460,12 @@ document.getElementById("style-picker-btn")?.addEventListener("click", () => {
   document.getElementById("style-panel")?.classList.toggle("hide");
 });
 document.querySelectorAll(".style-opt").forEach((btn) => {
-  btn.addEventListener("click", () => setMapStyle(btn.dataset.style));
+  btn.addEventListener("click", () => {
+    const s = btn.dataset.style;
+    if (s === "light" || s === "dark") setTheme(s);
+    else if (s === "satellite") toggleSatellite();
+    else if (s === "heatmap") toggleHeatmap();
+  });
 });
 document.addEventListener("click", (e) => {
   const picker = document.getElementById("style-picker");
@@ -416,7 +474,8 @@ document.addEventListener("click", (e) => {
 
 // Home / zoom / locate buttons
 document.getElementById("home-btn").addEventListener("click", () => {
-  if (currentStyleMode !== "default") setMapStyle("default");
+  if (isSatelliteActive) toggleSatellite();
+  if (isHeatmapActive) toggleHeatmap();
   if (is3DActive) disable3D();
   map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
 });
@@ -427,7 +486,7 @@ document.getElementById("locate-btn").addEventListener("click", showCurrentLocat
 map.on("moveend", updateUrlHash);
 
 map.on("pitchend", () => {
-  if (currentStyleMode !== "default") return;
+  if (isSatelliteActive) return;
   const p = map.getPitch();
   if (p > 10 && !is3DActive) enable3D();
   else if (p <= 10 && is3DActive) disable3D();

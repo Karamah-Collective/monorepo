@@ -86,11 +86,11 @@ test.describe("Core DOM Structure", () => {
     await expect(page.locator("#style-picker-btn")).toBeVisible();
     await expect(page.locator("#style-panel")).toBeAttached();
     const opts = page.locator(".style-opt");
-    await expect(opts).toHaveCount(3);
+    await expect(opts).toHaveCount(4);
   });
 
   test("default style option is active", async ({ page }) => {
-    await expect(page.locator('.style-opt[data-style="default"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
   });
 

@@ -78,19 +78,21 @@ test.describe("Style Picker", () => {
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('.style-opt[data-style="satellite"]')).toHaveClass(/active/);
-    await expect(page.locator('.style-opt[data-style="default"]')).not.toHaveClass(/active/);
+    // Light theme button stays active (satellite is a toggle)
+    await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
   });
 
-  test("selecting default style marks it active", async ({ page }) => {
-    // Switch to satellite first
+  test("toggling satellite off restores light theme", async ({ page }) => {
+    // Toggle satellite on
     await page.locator("#style-picker-btn").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
-    // Switch back to default
+    // Toggle satellite off
     await page.locator("#style-picker-btn").click();
-    await page.locator('.style-opt[data-style="default"]').click();
+    await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
-    await expect(page.locator('.style-opt[data-style="default"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
   });
 
   test("clicking outside style picker closes it", async ({ page }) => {
@@ -113,7 +115,7 @@ test.describe("Home Button", () => {
     // Should not throw errors
   });
 
-  test("home button resets to default style if satellite is active", async ({ page }) => {
+  test("home button resets to light theme if satellite is active", async ({ page }) => {
     // Switch to satellite
     await page.locator("#style-picker-btn").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
@@ -121,7 +123,8 @@ test.describe("Home Button", () => {
     // Click home
     await page.locator("#home-btn").click();
     await page.waitForTimeout(800);
-    await expect(page.locator('.style-opt[data-style="default"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
   });
 });
 

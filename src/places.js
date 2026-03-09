@@ -2,7 +2,7 @@ import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
-import { setActiveTab, refreshHeatmapSource, currentStyleMode } from "./map-controls.js";
+import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
 
 export let placesData = [];
@@ -232,7 +232,7 @@ const CLUSTER_LAYER_IDS = ["places-cluster-circle", "places-cluster-count", "pla
 const HEATMAP_PIN_ZOOM = 14.5;
 
 export function updateMarkerVisibility() {
-  const isHeatmap = currentStyleMode === "heatmap";
+  const isHeatmap = isHeatmapActive;
   const zoom = map.getZoom();
   const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
   placeMarkers.forEach((marker) => {

@@ -347,7 +347,7 @@
   height: 52px;
   border-radius: var(--r-inner);
 }
-.thumb-default {
+.thumb-light {
   background: url("../../data/thumbs/default.png") center/cover no-repeat;
 }
 .thumb-satellite {
@@ -376,6 +376,233 @@
       transparent            22%
     ),
     url("../../data/thumbs/default.png") center/cover no-repeat;
+}
+.thumb-dark {
+  background: url("../../data/thumbs/default.png") center/cover no-repeat;
+  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+}
+
+/* When dark theme is active, show heatmap thumb on dark bg */
+body.dark-mode .thumb-heatmap {
+  background:
+    radial-gradient(circle at 38% 40%,
+      rgba(255,255,255,0.7)  0%,
+      rgba(255,200,0,0.55)   8%,
+      rgba(255,80,0,0.35)    18%,
+      rgba(200,0,0,0.18)     26%,
+      rgba(0,80,200,0.18)    34%,
+      rgba(0,40,160,0.08)    42%,
+      transparent            50%
+    ),
+    radial-gradient(circle at 70% 58%,
+      rgba(255,210,0,0.45)   0%,
+      rgba(255,100,0,0.25)   10%,
+      rgba(0,100,220,0.15)   20%,
+      transparent            28%
+    ),
+    radial-gradient(circle at 55% 76%,
+      rgba(255,180,0,0.28)   0%,
+      rgba(0,120,210,0.14)   12%,
+      transparent            22%
+    ),
+    url("../../data/thumbs/default.png") center/cover no-repeat;
+  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+}
+
+/* ─── Dark Mode: CSS filter on MapLibre canvas (not during satellite) ─── */
+#map.dark-mode:not(.satellite-active) .maplibregl-canvas {
+  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+}
+
+/* ─── Dark Mode: override design tokens for all UI ─── */
+body.dark-mode {
+  --surface:      #1a1d2e;
+  --surface-2:    #232738;
+  --surface-3:    #2e3348;
+  --text:         #e2e4ed;
+  --text-2:       #b0b8c8;
+  --text-3:       #808a9e;
+  --border:       #2a2f42;
+  --border-light: #232738;
+  --accent:       #3d9be8;
+  --accent-soft:  rgba(61, 155, 232, 0.18);
+  --accent-muted: #3588d0;
+  --gold:         #e8c87a;
+  --gold-soft:    rgba(232, 200, 122, 0.12);
+  --success:      #34d08a;
+  --success-soft: rgba(52, 208, 138, 0.14);
+  --danger:       #ef6b6b;
+  --danger-soft:  rgba(239, 107, 107, 0.14);
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.30);
+  --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.35);
+  --overlay-bg:   rgba(6, 6, 14, 0.65);
+  --overlay-dim:  rgba(6, 6, 14, 0.75);
+  --scrim-bg:     rgba(6, 6, 14, 0.25);
+  --hsl-bus:      #4da8e8;
+  --hsl-trunk:    #ff8a50;
+  --hsl-tram:     #3ee09a;
+  --hsl-metro:    #ff8a50;
+  --hsl-rail:     #b07cc8;
+  --hsl-ferry:    #40d0f0;
+}
+
+/* Map background behind tiles */
+body.dark-mode #map {
+  background: #14162a;
+}
+
+/* Attribution & scale bar */
+body.dark-mode .maplibregl-ctrl-attrib {
+  background: rgba(26, 29, 46, 0.7) !important;
+  color: var(--text-3) !important;
+}
+body.dark-mode .maplibregl-ctrl-attrib a {
+  color: var(--accent) !important;
+}
+body.dark-mode .maplibregl-ctrl-scale {
+  border-color: rgba(255, 255, 255, 0.40) !important;
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+
+/* Credits & attribution links */
+body.dark-mode #privacy-link {
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+body.dark-mode #privacy-link:hover {
+  color: rgba(255, 255, 255, 1) !important;
+}
+body.dark-mode #osm-link {
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+body.dark-mode #osm-link:hover {
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Search input */
+body.dark-mode #search-input {
+  color: var(--text);
+}
+
+/* Scrollbar thumb */
+body.dark-mode #search-drop::-webkit-scrollbar-thumb,
+body.dark-mode #contact-form::-webkit-scrollbar-thumb,
+body.dark-mode #places-scroll::-webkit-scrollbar-thumb,
+body.dark-mode #dir-results::-webkit-scrollbar-thumb,
+body.dark-mode #privacy-body::-webkit-scrollbar-thumb,
+body.dark-mode .dir-auto-list::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+}
+
+/* Place markers: brighter border in dark */
+body.dark-mode .place-mk,
+body.dark-mode .search-mk,
+body.dark-mode .custom-mk {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* Popup card */
+body.dark-mode .place-popup-wrap .maplibregl-popup-content,
+body.dark-mode .stop-popup-wrap .maplibregl-popup-content {
+  background: var(--surface) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Popup tip (arrow) — match the dark surface for all anchor directions */
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--surface) !important;
+}
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--surface) !important;
+}
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--surface) !important;
+}
+body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-tip,
+body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--surface) !important;
+}
+
+/* Skeletons */
+body.dark-mode .skel-bone {
+  background: var(--surface-3);
+}
+
+/* Tools toggle active state */
+body.dark-mode #app.tools-open #tools-toggle,
+body.dark-mode #tools-toggle.style-active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Form inputs in dark mode */
+body.dark-mode .sg-label input,
+body.dark-mode .sg-label select,
+body.dark-mode .sg-label textarea,
+body.dark-mode .dir-field input {
+  color: var(--text);
+}
+body.dark-mode .sg-label select {
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a0a8ba' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Tutorial card */
+body.dark-mode .tut-card::before {
+  background: var(--surface);
+}
+
+/* Popup & stop popup — darken the colored header slightly for contrast */
+body.dark-mode .pp-head {
+  filter: brightness(0.85) saturate(1.1);
+}
+body.dark-mode .sp-head {
+  filter: brightness(0.85) saturate(1.1);
+}
+
+/* Place card dot icons — dim the bright type colors */
+body.dark-mode .pl-dot {
+  filter: brightness(0.88) saturate(1.15);
+}
+
+/* Place filter chips — dim the icon backgrounds */
+body.dark-mode .pf-chip.active .pf-icon {
+  filter: brightness(0.85) saturate(1.1);
+}
+
+/* Tag count badge for toggle */
+body.dark-mode #tf-toggle.open #tf-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--accent);
+}
+
+/* Boost low-opacity text for dark-mode readability */
+body.dark-mode .pp-sub,
+body.dark-mode .sp-sub {
+  opacity: 0.88;
+}
+body.dark-mode .sg-hint {
+  opacity: 0.78;
+}
+body.dark-mode .cal-day.other-month {
+  opacity: 0.62;
+}
+body.dark-mode .cal-day.other-month:hover {
+  opacity: 0.82;
+}
+body.dark-mode .sort-opt:disabled {
+  opacity: 0.45;
 }
 
 #zoom-pill {
