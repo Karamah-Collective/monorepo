@@ -764,6 +764,10 @@ body {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.snack-icon--warn {
+  background: #fff3cd;
+  color: #b45309;
+}
 
 .snack-body {
   flex: 1;

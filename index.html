@@ -24,6 +24,7 @@
     <meta name="twitter:title" content="Halal Finder Helsinki" />
     <meta name="twitter:description" content="Find halal food, shops, and prayer spaces across Finland." />
     <meta name="twitter:image" content="https://maps.karamahcollective.com/data/halal-finder-preview.png" />
+    <link rel="manifest" href="/manifest.json" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
@@ -260,7 +261,7 @@
       <a id="privacy-link" href="#" aria-label="Privacy Policy"><span class="privacy-full">&copy; Karamah Collective 2026 · </span>Privacy</a>
 
       <!-- OSM Copyright link -->
-      <a id="osm-link" href="https://www.openstreetmap.org/copyright" target="_blank" aria-label="OpenStreetMap contributors"><span class="osm-full">© OpenStreetMap</span><span class="osm-short">© OSM</span></a>
+      <a id="osm-link" href="https://www.openstreetmap.org/copyright" target="_blank" aria-label="OpenStreetMap contributors">© OpenStreetMap</a>
 
       <!-- ─── Directions Sheet (bottom) ─── -->
       <div id="dir-panel" class="sheet shut">
@@ -1317,12 +1318,6 @@
       <div id="scrim" class="hide"></div>
     </div>
 
-    <!-- reCAPTCHA v3 – site key is intentionally public (never use the secret key here) -->
-    <script
-      src="https://www.google.com/recaptcha/api.js?render=6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v"
-      async
-      defer
-    ></script>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script type="module" src="src/app.js"></script>
   </body>

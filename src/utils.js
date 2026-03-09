@@ -131,11 +131,11 @@ export function showEarlyDevNotice() {
       <span class="snack-label">Early Development 🚧</span>
       <span class="snack-sub">Halal Finder is still in its early stages. Some features may not work as expected, and places are being added gradually by the community. JazakAllah Khair for your patience &mdash; we appreciate you being here!</span>
     </span>
-    <button class="geo-notice-close" aria-label="Dismiss">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    <button class="sheet-x btn-roundel" aria-label="Dismiss">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   `;
-  el.querySelector(".geo-notice-close").addEventListener("click", () => {
+  el.querySelector(".sheet-x").addEventListener("click", () => {
     el.classList.remove("dev-notice-show");
     setTimeout(() => el.remove(), 350);
   });
@@ -162,11 +162,11 @@ export function showGeoNotice() {
       <span class="snack-label">Assalamu Alaikum, traveller! 🌍</span>
       <span class="snack-sub">This app is built for Finland — places, prayer times, and transit are all Finland-based. Feel free to look around!</span>
     </span>
-    <button class="geo-notice-close" aria-label="Dismiss">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    <button class="sheet-x btn-roundel" aria-label="Dismiss">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   `;
-  el.querySelector(".geo-notice-close").addEventListener("click", () => {
+  el.querySelector(".sheet-x").addEventListener("click", () => {
     el.classList.remove("geo-notice-show");
     setTimeout(() => el.remove(), 350);
   });
@@ -200,6 +200,45 @@ export async function checkGeoNotice() {
     const data = await res.json();
     if (data.country_code && data.country_code !== "FI") showGeoNotice();
   } catch {}
+}
+
+// --- Lazy reCAPTCHA loader ---
+
+let _recaptchaPromise = null;
+export function loadRecaptcha(siteKey) {
+  if (_recaptchaPromise) return _recaptchaPromise;
+  if (typeof grecaptcha !== "undefined") {
+    _recaptchaPromise = Promise.resolve();
+    return _recaptchaPromise;
+  }
+  _recaptchaPromise = new Promise((resolve) => {
+    const s = document.createElement("script");
+    s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    s.async = true;
+    s.addEventListener("load", resolve);
+    document.head.appendChild(s);
+  });
+  return _recaptchaPromise;
+}
+
+// --- Offline / online status banner ---
+
+const _WIFI_OFF_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`;
+
+let _offlineBannerEl = null;
+export function showOfflineBanner() {
+  if (_offlineBannerEl) return;
+  _offlineBannerEl = document.createElement("div");
+  _offlineBannerEl.id = "offline-banner";
+  _offlineBannerEl.className = "share-toast snack loading-toast";
+  _offlineBannerEl.innerHTML = `<span class="snack-icon snack-icon--warn">${_WIFI_OFF_SVG}</span><span class="snack-body"><span class="snack-label">You're offline</span><span class="snack-sub">Showing cached data</span></span>`;
+  document.body.appendChild(_offlineBannerEl);
+  requestAnimationFrame(() => requestAnimationFrame(() => _offlineBannerEl?.classList.add("share-toast-show")));
+}
+export function hideOfflineBanner() {
+  if (!_offlineBannerEl) return;
+  _offlineBannerEl.classList.remove("share-toast-show");
+  setTimeout(() => { _offlineBannerEl?.remove(); _offlineBannerEl = null; }, 250);
 }
 
 // --- Segmented-control sliding pill ---

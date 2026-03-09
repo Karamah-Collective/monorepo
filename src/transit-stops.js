@@ -108,7 +108,23 @@ async function loadTransitStopsFromAPI(retries = 0) {
   }
 }
 
+const TRANSIT_CACHE_KEY = "hf_transit_v1";
+const TRANSIT_TTL = 24 * 60 * 60 * 1000; // 24 h
+
 export async function loadTransitCache() {
+  // Serve from localStorage if cached within the last 24 h
+  try {
+    const raw = localStorage.getItem(TRANSIT_CACHE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.ts && Date.now() - saved.ts < TRANSIT_TTL) {
+        console.log(`[Transit] localStorage hit (age: ${Math.round((Date.now() - saved.ts) / 60000)}m)`);
+        processTransitStops(saved.geojson);
+        return;
+      }
+    }
+  } catch { /* corrupted entry — fall through */ }
+
   console.log("[Transit] Loading cached stops…");
   try {
     const resp = await fetch("scripts/transit-cache.json", { signal: AbortSignal.timeout(10000) });
@@ -119,6 +135,8 @@ export async function loadTransitCache() {
     for (const f of geojson.features) {
       f.properties.routes = JSON.stringify(f.properties.routes || []);
     }
+    try { localStorage.setItem(TRANSIT_CACHE_KEY, JSON.stringify({ geojson, ts: Date.now() })); }
+    catch { /* storage quota exceeded */ }
     processTransitStops(geojson);
   } catch (err) {
     console.warn("[Transit] Cache load failed:", err.message, "— falling back to Overpass API");

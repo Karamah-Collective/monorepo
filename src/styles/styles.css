@@ -1370,6 +1370,13 @@
 
 .place-mk-wrap {
   cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+/* Hide HTML pin markers when cluster bubbles are the active view (zoom < 12) */
+.hf-markers-hidden .place-mk-wrap {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .maplibregl-marker {
@@ -1659,27 +1666,6 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
-}
-
-.geo-notice-close {
-  flex-shrink: 0;
-  width: var(--btn-roundel-size);
-  height: var(--btn-roundel-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-2);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--text-3);
-  transition:
-    background var(--t-fast),
-    color var(--t-fast);
-}
-.geo-notice-close:hover {
-  background: var(--surface-3);
-  color: var(--text-2);
 }
 
 #suggest-overlay {
@@ -4234,6 +4220,21 @@
   #results-list li:hover {
     background: var(--surface);
   }
+
+  /* ─── Credits on phone ─── */
+  /* Privacy stays bottom-left above the tab bar */
+  #privacy-link {
+    left: 6px;
+    right: auto;
+    bottom: calc(var(--tab-h) + var(--safe-b) + 6px);
+  }
+  /* OSM credit sits top-right, flush below the scale bar */
+  #osm-link {
+    top: calc(var(--safe-t) + 36px);
+    bottom: auto;
+    right: var(--map-edge);
+    left: auto;
+  }
 }
 
 @media (max-width: 380px) {
@@ -4605,23 +4606,14 @@
   color: rgba(0, 0, 0, 1);
   text-decoration: underline;
 }
-.osm-full {
-  display: none;
-}
-.osm-short {
-  display: inline;
-}
-@media (min-width: 769px) {
-  .osm-full {
-    display: inline;
-  }
-  .osm-short {
-    display: none;
-  }
-}
+
 @media (min-width: 769px) {
   .privacy-full {
     display: inline;
+  }
+  #privacy-link,
+  #osm-link {
+    font-size: 11px;
   }
 }
 

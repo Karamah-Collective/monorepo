@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
 import { setActiveTab } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
@@ -158,6 +158,112 @@ export async function loadPlacesData() {
   }
 }
 
+// ── Marker clustering ──────────────────────────────────────────────────────────
+// Zoom < CLUSTER_ZOOM: GeoJSON cluster circles rendered by MapLibre.
+// Zoom ≥ CLUSTER_ZOOM: individual HTML pin markers (existing behaviour).
+const CLUSTER_ZOOM = 12;
+let _clusterLayersReady = false;
+
+function _buildPlacesGeoJSON(places) {
+  return {
+    type: "FeatureCollection",
+    features: places.map((p) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+      properties: { id: p.id, type: p.type },
+    })),
+  };
+}
+
+function _updateMarkerVisibility() {
+  map.getContainer().classList.toggle("hf-markers-hidden", map.getZoom() < CLUSTER_ZOOM);
+}
+
+function _setupClusterLayers(geojson) {
+  map.addSource("places-cluster", {
+    type: "geojson",
+    data: geojson,
+    cluster: true,
+    clusterMaxZoom: CLUSTER_ZOOM - 1,
+    clusterRadius: 50,
+  });
+
+  map.addLayer({
+    id: "places-cluster-circle",
+    type: "circle",
+    source: "places-cluster",
+    filter: ["has", "point_count"],
+    maxzoom: CLUSTER_ZOOM,
+    paint: {
+      "circle-color": "#1A73B8",
+      "circle-opacity": 0.9,
+      "circle-radius": ["step", ["get", "point_count"], 18, 10, 22, 30, 26],
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+    },
+  });
+
+  map.addLayer({
+    id: "places-cluster-count",
+    type: "symbol",
+    source: "places-cluster",
+    filter: ["has", "point_count"],
+    maxzoom: CLUSTER_ZOOM,
+    layout: {
+      "text-field": ["get", "point_count_abbreviated"],
+      "text-font": ["Noto Sans Bold"],
+      "text-size": 12,
+    },
+    paint: { "text-color": "#fff" },
+  });
+
+  // Isolated dot for a place that isn't grouped with any neighbours at the current zoom
+  map.addLayer({
+    id: "places-unclustered",
+    type: "circle",
+    source: "places-cluster",
+    filter: ["!", ["has", "point_count"]],
+    maxzoom: CLUSTER_ZOOM,
+    paint: {
+      "circle-color": ["match", ["get", "type"],
+        "mosque",      "#1FA86A",
+        "prayer_room", "#00B9E4",
+        "restaurant",  "#FF6319",
+        "shop",        "#8C4799",
+        "#1A73B8",
+      ],
+      "circle-radius": 7,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+    },
+  });
+
+  // Cluster click → zoom in to expand
+  map.on("click", "places-cluster-circle", async (e) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ["places-cluster-circle"] });
+    if (!features.length) return;
+    const clusterId = features[0].properties.cluster_id;
+    const zoom = await map.getSource("places-cluster").getClusterExpansionZoom(clusterId);
+    map.easeTo({ center: features[0].geometry.coordinates, zoom: zoom + 0.5 });
+  });
+
+  // Unclustered dot click → open place popup
+  map.on("click", "places-unclustered", (e) => {
+    const feature = e.features?.[0];
+    if (!feature) return;
+    const place = placesData.find((p) => p.id === feature.properties.id);
+    if (place) showPlacePopup(place);
+  });
+
+  ["places-cluster-circle", "places-unclustered"].forEach((layer) => {
+    map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+  });
+
+  map.on("zoom", _updateMarkerVisibility);
+  _clusterLayersReady = true;
+}
+
 export function addPlaceMarkers() {
   placeMarkers.forEach((m) => m.remove());
   placeMarkers = [];
@@ -175,6 +281,14 @@ export function addPlaceMarkers() {
     filtered = filtered.filter((p) =>
       [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true),
     );
+  }
+
+  // Update or create the GeoJSON cluster source
+  const clusterGeoJSON = _buildPlacesGeoJSON(filtered);
+  if (map.getSource("places-cluster")) {
+    map.getSource("places-cluster").setData(clusterGeoJSON);
+  } else {
+    _setupClusterLayers(clusterGeoJSON);
   }
 
   filtered.forEach((place) => {
@@ -201,6 +315,8 @@ export function addPlaceMarkers() {
       savedPinMarkers.push(marker);
     });
   }
+
+  _updateMarkerVisibility();
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
@@ -868,6 +984,7 @@ suggestForm.addEventListener("submit", async (e) => {
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
   try {
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "suggest_place" }).then(resolve)),
     );
@@ -994,6 +1111,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const changesSummary = diffs.length ? diffs.join("\n") : "(no changes detected)";
 
   try {
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
     );

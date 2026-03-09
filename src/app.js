@@ -1,9 +1,18 @@
+// Register service worker for instant tile/shell caching (stale-while-revalidate).
+// Must be registered from a module at the same origin; /sw.js scope covers everything.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => { /* non-critical */ });
+}
+
 import { map } from "./map-init.js";
 import {
   checkGeoNotice,
   showEarlyDevNotice,
   showLoadingToast,
   hideLoadingToast,
+  showOfflineBanner,
+  hideOfflineBanner,
+  showToast,
 } from "./utils.js";
 import "./map-controls.js";
 import "./directions.js";
@@ -23,6 +32,9 @@ document.addEventListener(
   },
   { passive: false },
 );
+
+window.addEventListener("offline", showOfflineBanner);
+window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });
 
 map.on("load", () => {
   const loadPromise = loadPlacesData();

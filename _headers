@@ -1,0 +1,7 @@
+# Cloudflare Pages – response headers
+#
+# The service worker file must never be served from an edge/browser cache.
+# If browsers receive a stale sw.js they won't pick up new deployments.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache

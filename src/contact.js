@@ -1,5 +1,5 @@
 import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { showToast } from "./utils.js";
+import { showToast, loadRecaptcha } from "./utils.js";
 
 const overlay = document.getElementById("contact-overlay");
 const form = document.getElementById("contact-form");
@@ -42,6 +42,7 @@ form.addEventListener("submit", async (e) => {
   const message = document.getElementById("ct-message").value.trim();
 
   try {
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() =>
         grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "contact" }).then(resolve),
