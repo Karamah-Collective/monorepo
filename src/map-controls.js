@@ -391,6 +391,7 @@ export function setMapStyle(mode) {
   updateMarkerVisibility();
   document.querySelectorAll(".style-opt").forEach((el) => el.classList.toggle("active", el.dataset.style === mode));
   document.getElementById("style-picker-btn")?.classList.toggle("active", mode !== "default");
+  document.getElementById("tools-toggle")?.classList.toggle("style-active", mode !== "default");
   document.getElementById("style-panel")?.classList.add("hide");
   console.log(`[Style] Switched to ${mode}`);
 }

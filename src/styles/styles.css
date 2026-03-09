@@ -594,7 +594,8 @@
   #app:not(.tools-open) #search-card       { transition-delay: 0.08s; }
 
   /* Active state for toggle */
-  #app.tools-open #tools-toggle {
+  #app.tools-open #tools-toggle,
+  #tools-toggle.style-active {
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
