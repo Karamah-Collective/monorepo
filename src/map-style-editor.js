@@ -224,6 +224,10 @@ function _applyFilter(theme) {
 
   // ── CSS filter chain ─────────────────────────────────────────────────────
   // Order: invert → standard CSS adjustments → gamma brilliance → shadow/highlight
+  // SVG filter url() references break on mobile browsers when applied to WebGL
+  // canvases (the entire filter chain is silently dropped). Only include them
+  // on devices where they're known to work (non-touch / wide-screen desktops).
+  const canUseSvgFilter = !('ontouchstart' in window) || window.innerWidth > 1024;
   const parts = [];
   if (f.invert > 0)       parts.push(`invert(${f.invert})`);
   parts.push(`brightness(${f.brightness})`);
@@ -231,8 +235,8 @@ function _applyFilter(theme) {
   parts.push(`saturate(${f.saturate})`);
   parts.push(`hue-rotate(${f.hueRotate}deg)`);
   if (f.sepia > 0)        parts.push(`sepia(${f.sepia})`);
-  if (f.brilliance !== 0) parts.push(`url(#mse-brill-${theme})`);
-  if (sh !== 0)           parts.push(`url(#mse-sh-${theme})`);
+  if (canUseSvgFilter && f.brilliance !== 0) parts.push(`url(#mse-brill-${theme})`);
+  if (canUseSvgFilter && sh !== 0)           parts.push(`url(#mse-sh-${theme})`);
 
   document.documentElement.style.setProperty(`--mse-${theme}-filter`, parts.join(' '));
 }
