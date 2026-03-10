@@ -63,7 +63,29 @@
     {
       "id": "no_alcohol",
       "label": "No Alcohol"
+    },
+    {
+      "id": "cuisine",
+      "label": "Cuisine"
     }
+  ],
+  "restaurant_cuisine": [
+    { "id": "cuisine_indian", "label": "Indian" },
+    { "id": "cuisine_pakistani", "label": "Pakistani" },
+    { "id": "cuisine_bangladeshi", "label": "Bangladeshi" },
+    { "id": "cuisine_turkish", "label": "Turkish" },
+    { "id": "cuisine_arab", "label": "Arab" },
+    { "id": "cuisine_somali", "label": "Somali" },
+    { "id": "cuisine_african", "label": "African" },
+    { "id": "cuisine_mediterranean", "label": "Mediterranean" },
+    { "id": "cuisine_chinese", "label": "Chinese" },
+    { "id": "cuisine_thai", "label": "Thai" },
+    { "id": "cuisine_italian", "label": "Italian" },
+    { "id": "cuisine_mexican", "label": "Mexican" },
+    { "id": "cuisine_kebab", "label": "Kebab" },
+    { "id": "cuisine_burger", "label": "Burger" },
+    { "id": "cuisine_pizza", "label": "Pizza" },
+    { "id": "cuisine_fast_food", "label": "Fast Food" }
   ],
   "shop": [
     {

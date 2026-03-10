@@ -9,6 +9,8 @@
 /* ─── Global thin scrollbar ─── */
 #search-drop,
 #contact-form,
+#suggest-form,
+#edit-form,
 #places-scroll,
 #dir-results,
 #privacy-body,
@@ -18,18 +20,24 @@
 }
 #search-drop::-webkit-scrollbar,
 #contact-form::-webkit-scrollbar,
+#suggest-form::-webkit-scrollbar,
+#edit-form::-webkit-scrollbar,
 #places-scroll::-webkit-scrollbar,
 #dir-results::-webkit-scrollbar,
 #privacy-body::-webkit-scrollbar,
 .dir-auto-list::-webkit-scrollbar { width: 3px; }
 #search-drop::-webkit-scrollbar-track,
 #contact-form::-webkit-scrollbar-track,
+#suggest-form::-webkit-scrollbar-track,
+#edit-form::-webkit-scrollbar-track,
 #places-scroll::-webkit-scrollbar-track,
 #dir-results::-webkit-scrollbar-track,
 #privacy-body::-webkit-scrollbar-track,
 .dir-auto-list::-webkit-scrollbar-track { background: transparent; }
 #search-drop::-webkit-scrollbar-thumb,
 #contact-form::-webkit-scrollbar-thumb,
+#suggest-form::-webkit-scrollbar-thumb,
+#edit-form::-webkit-scrollbar-thumb,
 #places-scroll::-webkit-scrollbar-thumb,
 #dir-results::-webkit-scrollbar-thumb,
 #privacy-body::-webkit-scrollbar-thumb,
@@ -283,11 +291,11 @@
 #contact-card {
   width: 100%;
   max-width: 400px;
+  height: min(600px, 85vh);
   background: var(--surface);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  max-height: min(600px, 85vh);
   display: flex;
   flex-direction: column;
   transition: transform 0.25s ease;
@@ -493,6 +501,8 @@ body.dark-mode #search-input {
 /* Scrollbar thumb */
 body.dark-mode #search-drop::-webkit-scrollbar-thumb,
 body.dark-mode #contact-form::-webkit-scrollbar-thumb,
+body.dark-mode #suggest-form::-webkit-scrollbar-thumb,
+body.dark-mode #edit-form::-webkit-scrollbar-thumb,
 body.dark-mode #places-scroll::-webkit-scrollbar-thumb,
 body.dark-mode #dir-results::-webkit-scrollbar-thumb,
 body.dark-mode #privacy-body::-webkit-scrollbar-thumb,
@@ -2017,6 +2027,7 @@ body.dark-mode .sort-opt:disabled {
 #suggest-card {
   width: 100%;
   max-width: 400px;
+  height: min(600px, 85vh);
   background: var(--surface);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
@@ -2050,6 +2061,7 @@ body.dark-mode .sort-opt:disabled {
   flex-direction: column;
   gap: var(--sp-6);
   flex: 1;
+  overflow-y: auto;
 }
 .sg-label {
   display: flex;
@@ -2174,11 +2186,11 @@ body.dark-mode .sort-opt:disabled {
 #edit-card {
   width: 100%;
   max-width: 400px;
+  height: min(600px, 85vh);
   background: var(--surface);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  max-height: min(600px, 85vh);
   display: flex;
   flex-direction: column;
   transition: transform 0.25s ease;
@@ -2193,6 +2205,7 @@ body.dark-mode .sort-opt:disabled {
   flex-direction: column;
   gap: var(--sp-6);
   flex: 1;
+  overflow-y: auto;
 }
 
 #ed-submit {
@@ -4501,6 +4514,7 @@ body.dark-mode .sort-opt:disabled {
   #edit-card,
   #contact-card {
     max-width: 100%;
+    height: auto;
     max-height: calc(100vh - 40px);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     transform: translateY(0);

@@ -32,6 +32,9 @@ function doPost(e) {
     var score = (data.score != null) ? Number(data.score).toFixed(2) : '';
 
     if (data.formType === 'new') {
+      // Persist any user-added cuisine tags to the Tags sheet
+      if (data.newCuisines && data.newCuisines.length) addNewCuisineTags(ss, data.newCuisines);
+
       var newRow = [ts, data.name||'', data.type||'', data.address||'', data.tags||'', data.gmaps||'', data.notes||'', score];
 
       // 1. Always archive to Draft — auto-create sheet if missing
@@ -82,6 +85,9 @@ function doPost(e) {
       }
 
     } else if (data.formType === 'edit') {
+      // Persist any user-added cuisine tags to the Tags sheet
+      if (data.newCuisines && data.newCuisines.length) addNewCuisineTags(ss, data.newCuisines);
+
       // Auto-create Edit sheet if missing
       var editSheet = ss.getSheetByName('Edit');
       if (!editSheet) {
@@ -997,6 +1003,92 @@ function forwardGeocode(query) {
     }
   } catch (err) { Logger.log('forwardGeocode error: ' + err.message); }
   return null;
+}
+
+// ── Cuisine subtag helpers ────────────────────────────────────────────────────
+
+// Adds user-submitted cuisine tags to the Tags sheet so future users see them.
+// newCuisines: array of { id: 'cuisine_xyz', label: 'Xyz' }
+function addNewCuisineTags(ss, newCuisines) {
+  var sheet = ss.getSheetByName('Tags');
+  if (!sheet) return;
+
+  // Build a set of existing tag_ids for restaurant_cuisine
+  var rows = sheet.getDataRange().getValues();
+  var existing = {};
+  for (var i = 1; i < rows.length; i++) {
+    var type  = (rows[i][0] || '').toString().trim().toLowerCase();
+    var tagId = (rows[i][1] || '').toString().trim();
+    if (type === 'restaurant_cuisine') existing[tagId] = true;
+  }
+
+  var added = 0;
+  for (var j = 0; j < newCuisines.length; j++) {
+    var c = newCuisines[j];
+    var id    = (c.id || '').toString().trim();
+    var label = (c.label || '').toString().trim();
+    if (!id || !label) continue;
+    // Sanitise: only allow alphanumeric + underscore in id
+    if (!/^cuisine_[a-z0-9_]+$/.test(id)) continue;
+    // Limit label length
+    if (label.length > 40) label = label.substring(0, 40);
+    if (existing[id]) continue;
+    sheet.appendRow(['restaurant_cuisine', id, label]);
+    existing[id] = true;
+    added++;
+  }
+  if (added > 0) invalidateCache();
+}
+
+// Run ONCE from the editor to seed the Tags sheet with initial cuisine subtags.
+// Safe to re-run — existing rows are skipped.
+function seedCuisineTags() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Tags');
+  if (!sheet) { Logger.log('"Tags" sheet not found.'); return; }
+
+  // Ensure the "cuisine" parent tag exists in restaurant
+  var rows = sheet.getDataRange().getValues();
+  var existingIds = {};
+  for (var i = 1; i < rows.length; i++) {
+    var type  = (rows[i][0] || '').toString().trim().toLowerCase();
+    var tagId = (rows[i][1] || '').toString().trim();
+    existingIds[type + '/' + tagId] = true;
+  }
+
+  if (!existingIds['restaurant/cuisine']) {
+    sheet.appendRow(['restaurant', 'cuisine', 'Cuisine']);
+    Logger.log('Added restaurant/cuisine parent tag.');
+  }
+
+  var cuisines = [
+    ['cuisine_indian', 'Indian'],
+    ['cuisine_pakistani', 'Pakistani'],
+    ['cuisine_bangladeshi', 'Bangladeshi'],
+    ['cuisine_turkish', 'Turkish'],
+    ['cuisine_arab', 'Arab'],
+    ['cuisine_somali', 'Somali'],
+    ['cuisine_african', 'African'],
+    ['cuisine_mediterranean', 'Mediterranean'],
+    ['cuisine_chinese', 'Chinese'],
+    ['cuisine_thai', 'Thai'],
+    ['cuisine_italian', 'Italian'],
+    ['cuisine_mexican', 'Mexican'],
+    ['cuisine_kebab', 'Kebab'],
+    ['cuisine_burger', 'Burger'],
+    ['cuisine_pizza', 'Pizza'],
+    ['cuisine_fast_food', 'Fast Food']
+  ];
+
+  var added = 0;
+  for (var c = 0; c < cuisines.length; c++) {
+    var key = 'restaurant_cuisine/' + cuisines[c][0];
+    if (existingIds[key]) continue;
+    sheet.appendRow(['restaurant_cuisine', cuisines[c][0], cuisines[c][1]]);
+    added++;
+  }
+  invalidateCache();
+  Logger.log('seedCuisineTags: added ' + added + ' cuisine tags.');
 }
 
 // Gets rich place data from the Places API (requires MAPS_API_KEY in Script Properties).

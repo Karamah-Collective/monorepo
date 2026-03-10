@@ -29,6 +29,22 @@ const TAG_POS_LABELS = {
   no_alcohol: "Alcohol-free",
 };
 
+// Returns all displayable tags for a type, replacing expandable parent tags with their subtags.
+// Convention: if tagsData[type + "_" + tag.id] exists, tag is expandable.
+function getDisplayTags(type) {
+  const base = tagsData[type] || [];
+  const result = [];
+  for (const tag of base) {
+    const subKey = `${type}_${tag.id}`;
+    if (tagsData[subKey]) {
+      result.push(...(tagsData[subKey] || []));
+    } else {
+      result.push(tag);
+    }
+  }
+  return result;
+}
+
 const SORT_FIELD_LABELS = { name: "Name", distance: "Distance", date: "Date" };
 
 function applySort(arr) {
@@ -407,7 +423,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 export function showPlacePopup(place) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
-  const typeTags = tagsData[place.type] || [];
+  const typeTags = getDisplayTags(place.type);
 
   const root = document.createElement("div");
   root.className = "pp";
@@ -746,7 +762,7 @@ function renderTagFilterBar() {
   const typePlaces =
     activeTypeFilter === "all" ? placesData : placesData.filter((p) => p.type === activeTypeFilter);
   const count = typePlaces.length;
-  const tags = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? (tagsData[activeTypeFilter] || []) : [];
+  const tags = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? getDisplayTags(activeTypeFilter) : [];
 
   // Filter: show when tags exist and at least 1 place
   const showFilter = tags.length > 0 && count > 0;
@@ -847,7 +863,7 @@ function renderPlacesList() {
 
   function buildCard(p, i) {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const typeTags = tagsData[p.type] || [];
+    const typeTags = getDisplayTags(p.type);
     const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
     const posCount = posTags.length;
     const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
@@ -1081,6 +1097,30 @@ function renderSuggestTags() {
   const tags = tagsData[type] || [];
   sgTagsContainer.innerHTML = tags
     .map((t) => {
+      const subKey = `${type}_${t.id}`;
+      const subtags = tagsData[subKey];
+      if (subtags) {
+        // Expandable group (e.g. Cuisine) — button inline, panel below
+        const subChips = subtags.map((s) =>
+          `<button type="button" class="sg-subtag" data-tag="${s.id}">${esc(s.label)}</button>`
+        ).join("");
+        return (
+          `<button type="button" class="sg-tag sg-tag-expand" data-expand="${t.id}">` +
+          `<span class="sg-tag-label">${esc(t.label)}</span>` +
+          `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
+          `</button>` +
+          `<div class="sg-subtags shut" data-parent="${t.id}">` +
+          `<div class="sg-subtags-inner">` +
+          `<div class="sg-subtag-chips">${subChips}</div>` +
+          `<div class="sg-cuisine-add-row">` +
+          `<input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" />` +
+          `<button type="button" class="sg-cuisine-add-btn">Add</button>` +
+          `</div>` +
+          `</div>` +
+          `</div>`
+        );
+      }
+      // Regular tri-state tag
       const posLabel = TAG_POS_LABELS[t.id] || t.label;
       const negLabel = TAG_NEG_LABELS[t.id] || t.negLabel || t.label;
       return (
@@ -1096,6 +1136,61 @@ sgTypeSelect.addEventListener("change", renderSuggestTags);
 renderSuggestTags();
 
 sgTagsContainer.addEventListener("click", (e) => {
+  // Expand/collapse cuisine group
+  const expandBtn = e.target.closest(".sg-tag-expand");
+  if (expandBtn) {
+    const parentId = expandBtn.dataset.expand;
+    const panel = sgTagsContainer.querySelector(`.sg-subtags[data-parent="${parentId}"]`);
+    if (panel) {
+      panel.classList.toggle("shut");
+      expandBtn.classList.toggle("open");
+    }
+    return;
+  }
+  // Toggle subtag selection
+  const subtag = e.target.closest(".sg-subtag");
+  if (subtag) {
+    subtag.classList.toggle("active");
+    return;
+  }
+  // Add custom cuisine
+  const addBtn = e.target.closest(".sg-cuisine-add-btn");
+  if (addBtn) {
+    const row = addBtn.closest(".sg-cuisine-add-row");
+    const input = row.querySelector(".sg-cuisine-input");
+    const label = input.value.trim();
+    if (!label) return;
+    const id = "cuisine_" + label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    if (!id || id === "cuisine_") return;
+    const chips = addBtn.closest(".sg-subtags").querySelector(".sg-subtag-chips");
+    // Check by ID
+    if (chips.querySelector(`[data-tag="${id}"]`)) {
+      chips.querySelector(`[data-tag="${id}"]`).classList.add("active");
+      input.value = "";
+      return;
+    }
+    // Check by label (case-insensitive) against all existing chips
+    const labelLower = label.toLowerCase();
+    const existing = [...chips.querySelectorAll(".sg-subtag")].find(
+      (c) => c.textContent.trim().toLowerCase() === labelLower
+    );
+    if (existing) {
+      existing.classList.add("active");
+      input.value = "";
+      return;
+    }
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "sg-subtag active";
+    chip.dataset.tag = id;
+    chip.dataset.custom = "true";
+    chip.dataset.label = label;
+    chip.textContent = label;
+    chips.appendChild(chip);
+    input.value = "";
+    return;
+  }
+  // Tri-state toggle for regular tags
   const btn = e.target.closest(".sg-tag");
   if (!btn) return;
   const states = ["neutral", "yes", "no"];
@@ -1104,6 +1199,15 @@ sgTagsContainer.addEventListener("click", (e) => {
   const labelEl = btn.querySelector(".sg-tag-label");
   if (labelEl) {
     labelEl.textContent = next === "no" ? (btn.dataset.negLabel || labelEl.textContent) : (btn.dataset.posLabel || labelEl.textContent);
+  }
+});
+
+// Allow Enter key to add custom cuisine in suggest form
+sgTagsContainer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("sg-cuisine-input")) {
+    e.preventDefault();
+    const addBtn = e.target.closest(".sg-cuisine-add-row").querySelector(".sg-cuisine-add-btn");
+    if (addBtn) addBtn.click();
   }
 });
 
@@ -1146,15 +1250,26 @@ suggestForm.addEventListener("submit", async (e) => {
   const notes = document.getElementById("sg-notes").value.trim();
 
   const yesTags = [], noTags = [];
-  sgTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
+  sgTagsContainer.querySelectorAll(".sg-tag:not(.sg-tag-expand)").forEach((btn) => {
     const tagId = btn.dataset.tag;
     if (btn.dataset.state === "yes") yesTags.push(tagId);
     else if (btn.dataset.state === "no") noTags.push(tagId);
   });
+  // Collect selected cuisine subtags
+  sgTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
+    yesTags.push(btn.dataset.tag);
+  });
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
+
+  // Collect any user-added custom cuisines to persist to Tags sheet
+  const newCuisines = [];
+  sgTagsContainer.querySelectorAll('.sg-subtag.active[data-custom="true"]').forEach((btn) => {
+    newCuisines.push({ id: btn.dataset.tag, label: btn.dataset.label });
+  });
 
   // Build payload — include pin lat/lng when available
   const payload = { token: null, formType: "new", name, type, address, tags: tagsStr, gmaps, notes };
+  if (newCuisines.length) payload.newCuisines = newCuisines;
   if (pinLat && pinLng) {
     payload.pinLat = parseFloat(pinLat);
     payload.pinLng = parseFloat(pinLng);
@@ -1197,6 +1312,32 @@ function renderEditTags(type, existingTags) {
   const tags = tagsData[type] || [];
   edTagsContainer.innerHTML = tags
     .map((t) => {
+      const subKey = `${type}_${t.id}`;
+      const subtags = tagsData[subKey];
+      if (subtags) {
+        // Expandable group (e.g. Cuisine) — button inline, panel below
+        const hasAny = subtags.some((s) => existingTags?.[s.id] === true);
+        const subChips = subtags.map((s) => {
+          const isActive = existingTags?.[s.id] === true;
+          return `<button type="button" class="sg-subtag${isActive ? " active" : ""}" data-tag="${s.id}">${esc(s.label)}</button>`;
+        }).join("");
+        return (
+          `<button type="button" class="sg-tag sg-tag-expand${hasAny ? " open" : ""}" data-expand="${t.id}">` +
+          `<span class="sg-tag-label">${esc(t.label)}</span>` +
+          `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
+          `</button>` +
+          `<div class="sg-subtags${hasAny ? "" : " shut"}" data-parent="${t.id}">` +
+          `<div class="sg-subtags-inner">` +
+          `<div class="sg-subtag-chips">${subChips}</div>` +
+          `<div class="sg-cuisine-add-row">` +
+          `<input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" />` +
+          `<button type="button" class="sg-cuisine-add-btn">Add</button>` +
+          `</div>` +
+          `</div>` +
+          `</div>`
+        );
+      }
+      // Regular tri-state tag
       const existingVal = existingTags?.[t.id];
       const state = existingVal === true ? "yes" : existingVal === false ? "no" : "neutral";
       const posLabel = TAG_POS_LABELS[t.id] || t.label;
@@ -1225,6 +1366,61 @@ function openEditOverlay(place) {
 edTypeSelect.addEventListener("change", () => renderEditTags(edTypeSelect.value, {}));
 
 edTagsContainer.addEventListener("click", (e) => {
+  // Expand/collapse cuisine group
+  const expandBtn = e.target.closest(".sg-tag-expand");
+  if (expandBtn) {
+    const parentId = expandBtn.dataset.expand;
+    const panel = edTagsContainer.querySelector(`.sg-subtags[data-parent="${parentId}"]`);
+    if (panel) {
+      panel.classList.toggle("shut");
+      expandBtn.classList.toggle("open");
+    }
+    return;
+  }
+  // Toggle subtag selection
+  const subtag = e.target.closest(".sg-subtag");
+  if (subtag) {
+    subtag.classList.toggle("active");
+    return;
+  }
+  // Add custom cuisine
+  const addBtn = e.target.closest(".sg-cuisine-add-btn");
+  if (addBtn) {
+    const row = addBtn.closest(".sg-cuisine-add-row");
+    const input = row.querySelector(".sg-cuisine-input");
+    const label = input.value.trim();
+    if (!label) return;
+    const id = "cuisine_" + label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    if (!id || id === "cuisine_") return;
+    const chips = addBtn.closest(".sg-subtags").querySelector(".sg-subtag-chips");
+    // Check by ID
+    if (chips.querySelector(`[data-tag="${id}"]`)) {
+      chips.querySelector(`[data-tag="${id}"]`).classList.add("active");
+      input.value = "";
+      return;
+    }
+    // Check by label (case-insensitive) against all existing chips
+    const labelLower = label.toLowerCase();
+    const existing = [...chips.querySelectorAll(".sg-subtag")].find(
+      (c) => c.textContent.trim().toLowerCase() === labelLower
+    );
+    if (existing) {
+      existing.classList.add("active");
+      input.value = "";
+      return;
+    }
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "sg-subtag active";
+    chip.dataset.tag = id;
+    chip.dataset.custom = "true";
+    chip.dataset.label = label;
+    chip.textContent = label;
+    chips.appendChild(chip);
+    input.value = "";
+    return;
+  }
+  // Tri-state toggle for regular tags
   const btn = e.target.closest(".sg-tag");
   if (!btn) return;
   const states = ["neutral", "yes", "no"];
@@ -1233,6 +1429,15 @@ edTagsContainer.addEventListener("click", (e) => {
   const labelEl = btn.querySelector(".sg-tag-label");
   if (labelEl) {
     labelEl.textContent = next === "no" ? (btn.dataset.negLabel || labelEl.textContent) : (btn.dataset.posLabel || labelEl.textContent);
+  }
+});
+
+// Allow Enter key to add custom cuisine in edit form
+edTagsContainer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("sg-cuisine-input")) {
+    e.preventDefault();
+    const addBtn = e.target.closest(".sg-cuisine-add-row").querySelector(".sg-cuisine-add-btn");
+    if (addBtn) addBtn.click();
   }
 });
 
@@ -1258,12 +1463,22 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const gmaps = document.getElementById("ed-gmaps").value.trim();
 
   const yesTags = [], noTags = [];
-  edTagsContainer.querySelectorAll(".sg-tag").forEach((btn) => {
+  edTagsContainer.querySelectorAll(".sg-tag:not(.sg-tag-expand)").forEach((btn) => {
     const tagId = btn.dataset.tag;
     if (btn.dataset.state === "yes") yesTags.push(tagId);
     else if (btn.dataset.state === "no") noTags.push(tagId);
   });
+  // Collect selected cuisine subtags
+  edTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
+    yesTags.push(btn.dataset.tag);
+  });
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
+
+  // Collect any user-added custom cuisines to persist to Tags sheet
+  const newCuisines = [];
+  edTagsContainer.querySelectorAll('.sg-subtag.active[data-custom="true"]').forEach((btn) => {
+    newCuisines.push({ id: btn.dataset.tag, label: btn.dataset.label });
+  });
 
   const orig = _editOriginalPlace || {};
   const diffs = [];
@@ -1282,7 +1497,9 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   }
   if (type === orig.type) {
     const tagDiffs = [];
+    // Check regular tags
     (tagsData[type] || []).forEach((t) => {
+      if (tagsData[`${type}_${t.id}`]) return; // skip expandable parents
       const origVal = orig.tags?.[t.id];
       const origState = origVal === true ? "yes" : origVal === false ? "no" : "neutral";
       const newState = yesTags.includes(t.id) ? "yes" : noTags.includes(t.id) ? "no" : "neutral";
@@ -1290,6 +1507,15 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
         const icon = { yes: "✓ has", no: "✗ missing", neutral: "? unset" };
         tagDiffs.push(`${t.label}: ${icon[origState]} → ${icon[newState]}`);
       }
+    });
+    // Check cuisine subtag changes
+    const displayTags = getDisplayTags(type);
+    const cuisineSubtags = displayTags.filter((t) => t.id.startsWith("cuisine_"));
+    cuisineSubtags.forEach((t) => {
+      const wasSet = orig.tags?.[t.id] === true;
+      const isSet = yesTags.includes(t.id);
+      if (wasSet && !isSet) tagDiffs.push(`${t.label}: removed`);
+      else if (!wasSet && isSet) tagDiffs.push(`${t.label}: added`);
     });
     if (tagDiffs.length) diffs.push(`Tags: ${tagDiffs.join(" | ")}`);
   } else if (yesTags.length || noTags.length) {
@@ -1305,7 +1531,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary }),
+      body: JSON.stringify({ token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined }),
     });
     const data = await res.json();
     if (data.success) {
