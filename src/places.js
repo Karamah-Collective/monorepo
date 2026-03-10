@@ -45,6 +45,21 @@ function getDisplayTags(type) {
   return result;
 }
 
+// Returns structured tags for the filter bar — expandable parents stay as groups.
+function getFilterBarTags(type) {
+  const base = tagsData[type] || [];
+  const items = [];
+  for (const tag of base) {
+    const subKey = `${type}_${tag.id}`;
+    if (tagsData[subKey]) {
+      items.push({ group: true, parent: tag, children: tagsData[subKey] || [] });
+    } else {
+      items.push({ group: false, tag });
+    }
+  }
+  return items;
+}
+
 const SORT_FIELD_LABELS = { name: "Name", distance: "Distance", date: "Date" };
 
 function applySort(arr) {
@@ -762,19 +777,30 @@ function renderTagFilterBar() {
   const typePlaces =
     activeTypeFilter === "all" ? placesData : placesData.filter((p) => p.type === activeTypeFilter);
   const count = typePlaces.length;
-  const tags = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? getDisplayTags(activeTypeFilter) : [];
+  const items = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? getFilterBarTags(activeTypeFilter) : [];
+  const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
   // Filter: show when tags exist and at least 1 place
-  const showFilter = tags.length > 0 && count > 0;
+  const showFilter = totalTags > 0 && count > 0;
   tfToggle.classList.toggle("hide", !showFilter);
   if (!showFilter) {
     tfToggle.classList.remove("open");
     tfChips.classList.add("shut");
   } else {
     updateTagCount();
-    tfChips.innerHTML = tags
-      .map((t) => `<button class="tf-chip${activeTagFilters.has(t.id) ? " active" : ""}" data-tag="${t.id}">${esc(t.label)}</button>`)
-      .join("");
+    let html = "";
+    for (const it of items) {
+      if (it.group) {
+        const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
+        html += `<button class="tf-chip tf-group-toggle" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+        html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}">`;
+        html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
+        html += `</div>`;
+      } else {
+        html += `<button class="tf-chip${activeTagFilters.has(it.tag.id) ? " active" : ""}" data-tag="${it.tag.id}">${esc(it.tag.label)}</button>`;
+      }
+    }
+    tfChips.innerHTML = html;
   }
 
   // Sort: show only when 2+ places
@@ -794,11 +820,34 @@ tfToggle.addEventListener("click", () => {
 });
 
 document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
+  // Expand/collapse a subtag group
+  const groupBtn = e.target.closest(".tf-group-toggle");
+  if (groupBtn) {
+    const gid = groupBtn.dataset.group;
+    const panel = tfChips.querySelector(`.tf-group-chips[data-group-for="${gid}"]`);
+    if (panel) {
+      const isOpen = !panel.classList.contains("shut");
+      panel.classList.toggle("shut", isOpen);
+      groupBtn.classList.toggle("open", !isOpen);
+    }
+    return;
+  }
   const chip = e.target.closest(".tf-chip");
   if (!chip) return;
   const tagId = chip.dataset.tag;
   if (activeTagFilters.has(tagId)) { activeTagFilters.delete(tagId); chip.classList.remove("active"); }
   else { activeTagFilters.add(tagId); chip.classList.add("active"); }
+  // Update group count badge
+  const groupPanel = chip.closest(".tf-group-chips");
+  if (groupPanel) {
+    const gid = groupPanel.dataset.groupFor;
+    const toggle = tfChips.querySelector(`.tf-group-toggle[data-group="${gid}"]`);
+    if (toggle) {
+      const cnt = groupPanel.querySelectorAll(".tf-chip.active").length;
+      const badge = toggle.querySelector(".tf-group-count");
+      if (badge) { badge.textContent = cnt; badge.classList.toggle("hide", !cnt); }
+    }
+  }
   updateTagCount();
   addPlaceMarkers();
   renderPlacesList();

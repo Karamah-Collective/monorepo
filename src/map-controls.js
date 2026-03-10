@@ -369,7 +369,6 @@ export function toggleSatellite() {
 
   updateMarkerVisibility();
   _syncStyleButtons();
-  document.getElementById("style-panel")?.classList.add("hide");
   console.log(`[Style] Satellite ${isSatelliteActive ? "ON" : "OFF"}`);
 }
 
@@ -419,7 +418,6 @@ export function toggleHeatmap() {
 
   updateMarkerVisibility();
   _syncStyleButtons();
-  document.getElementById("style-panel")?.classList.add("hide");
   console.log(`[Style] Heatmap ${isHeatmapActive ? "ON" : "OFF"}`);
 }
 
