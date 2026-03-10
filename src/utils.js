@@ -445,8 +445,14 @@ export function initSheetDrag(sheet, closeFn) {
 
   /* ── bind drag handles (start on handle, move/end on document) ── */
   sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
-    handle.addEventListener("touchstart", (e) => onStart(e.touches[0].clientY), { passive: true });
-    handle.addEventListener("mousedown",  (e) => { onStart(e.clientY); e.preventDefault(); });
+    handle.addEventListener("touchstart", (e) => {
+      if (e.target.closest("button, a, [role='button']")) return;
+      onStart(e.touches[0].clientY);
+    }, { passive: true });
+    handle.addEventListener("mousedown",  (e) => {
+      if (e.target.closest("button, a, [role='button']")) return;
+      onStart(e.clientY); e.preventDefault();
+    });
   });
   document.addEventListener("touchmove", (e) => { if (dragging) onMove(e.touches[0].clientY); }, { passive: true });
   document.addEventListener("touchend",  ()  => { if (dragging) onEnd(); }, { passive: true });

@@ -4,7 +4,7 @@
   position: fixed;
   inset: 0;
   overflow: hidden;
-  touch-action: pan-x pan-y;
+  touch-action: manipulation;
 }
 /* ─── Global thin scrollbar ─── */
 #search-drop,
@@ -1017,6 +1017,9 @@ body.dark-mode .sort-opt:disabled {
   -webkit-user-select: none;
   user-select: none;
 }
+.sheet-head button {
+  touch-action: manipulation;
+}
 .sheet-head h2 {
   flex: 1;
   font-size: var(--txt-2xl);
@@ -1109,6 +1112,7 @@ body.dark-mode .sort-opt:disabled {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  touch-action: manipulation;
 }
 #places-type-chips::-webkit-scrollbar {
   display: none;
@@ -1125,6 +1129,7 @@ body.dark-mode .sort-opt:disabled {
   border-radius: var(--r-md);
   font-family: inherit;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background-color 0.15s;
 }
 .pf-icon {
@@ -4777,6 +4782,9 @@ body.dark-mode .sort-opt:disabled {
     top 0.45s cubic-bezier(0.32, 0.72, 0, 1),
     width var(--t-spring);
 }
+.tut-card--sliding {
+  pointer-events: none;
+}
 .tut-card.visible {
   opacity: 1;
   pointer-events: auto;
@@ -4906,6 +4914,7 @@ body.dark-mode .sort-opt:disabled {
   cursor: pointer;
   color: var(--text-3);
   flex-shrink: 0;
+  touch-action: manipulation;
   transition: color var(--t-fast);
 }
 @media (hover: hover) {
@@ -4955,6 +4964,7 @@ body.dark-mode .sort-opt:disabled {
   flex-shrink: 0;
   background: var(--surface);
   color: var(--text-3);
+  touch-action: manipulation;
   transition:
     color var(--t-fast),
     border-color var(--t-fast);
@@ -4995,6 +5005,7 @@ body.dark-mode .sort-opt:disabled {
   font-weight: var(--fw-bold);
   cursor: pointer;
   white-space: nowrap;
+  touch-action: manipulation;
   transition: filter var(--t-fast);
 }
 @media (hover: hover) {

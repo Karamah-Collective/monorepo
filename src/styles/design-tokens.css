@@ -155,8 +155,8 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
-  touch-action: pan-x pan-y;
-  -ms-touch-action: pan-x pan-y;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
 }
 
 .btn-icon {
