@@ -127,15 +127,10 @@ halal-finder/
 │   ├── build-cache.js             # Regenerates transit-cache.json from Overpass API
 │   ├── check_places_osm.py        # Validates places against OpenStreetMap data
 │   ├── strip-comments.py          # Strips JS comments for production
-│   └── transit-cache.json         # Generated cache (3.1 MB) — git-ignored
-│
-├── lib/                           # Vendored libraries (no CDN dependency)
-│   ├── maplibre-gl.js             # MapLibre GL 3 (local copy)
-│   └── maplibre-gl.css            # MapLibre GL styles
-│
-└── apps-script/                   # Google Apps Script backend (place submissions + contact)
-    ├── Code.gs                    # Handles form submissions -> Google Sheets (new, edit, contact)
-    └── appsscript.json            # Apps Script manifest
+│   ├── transit-cache.json         # Generated cache (3.1 MB) — git-ignored
+│   └── apps-script/               # Google Apps Script backend (place submissions + contact)
+│       ├── Code.gs                # Handles form submissions -> Google Sheets (new, edit, contact)
+│       └── appsscript.json        # Apps Script manifest
 ```
 
 > Files `config.local.js` and `transit-cache.json` are git-ignored. Never commit them.
@@ -332,7 +327,7 @@ Each failure shows:
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Map engine | MapLibre GL 3 (vendored in `lib/`) | No CDN dependency |
+| Map engine | MapLibre GL 3 (CDN via unpkg) | Pinned version, cached by service worker |
 | Language | Vanilla JS, ES Modules | Zero framework overhead |
 | Styling | CSS custom properties | Runtime theming, no preprocessor |
 | Transit routing | HSL Digitransit GraphQL | Primary |
@@ -676,7 +671,7 @@ Small serverless handlers that run on Cloudflare Pages — no separate deploymen
 | `GET /api/geo` | `functions/api/geo.js` | IP geolocation proxy |
 | `POST /api/submit` | `functions/api/submit.js` | Place suggestion form handler |
 
-### Google Apps Script (`apps-script/Code.gs`)
+### Google Apps Script (`scripts/apps-script/Code.gs`)
 
 The "Suggest a place" and "Suggest an edit" forms submit to a deployed Google Apps Script URL. The script validates the submission and appends a row to a Google Sheet for manual review. See **[docs/FORMS_SHEETS_SETUP.md](docs/FORMS_SHEETS_SETUP.md)** for setup instructions and the Google Sheet template.
 
