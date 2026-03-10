@@ -966,6 +966,7 @@ body.dark-mode .sort-opt:disabled {
 }
 .sheet.shut {
   transform: translateY(100%);
+  pointer-events: none;
 }
 .sheet.dragging {
   transition: none;
