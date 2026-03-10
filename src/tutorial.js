@@ -329,7 +329,7 @@ function _render(index) {
   if (cardEl.classList.contains("tut-card--animated")) {
     cardEl.classList.add("tut-card--sliding");
     clearTimeout(cardEl._slideTimer);
-    cardEl._slideTimer = setTimeout(() => cardEl.classList.remove("tut-card--sliding"), 480);
+    cardEl._slideTimer = setTimeout(() => cardEl.classList.remove("tut-card--sliding"), 120);
   }
   positionCard(s);
 

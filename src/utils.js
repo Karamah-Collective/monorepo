@@ -447,8 +447,11 @@ export function initSheetDrag(sheet, closeFn) {
   sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
     handle.addEventListener("touchstart", (e) => {
       if (e.target.closest("button, a, [role='button']")) return;
+      // preventDefault stops the browser from starting a scroll/pan,
+      // replacing the old CSS touch-action:none on .sheet-head.
+      e.preventDefault();
       onStart(e.touches[0].clientY);
-    }, { passive: true });
+    }, { passive: false });
     handle.addEventListener("mousedown",  (e) => {
       if (e.target.closest("button, a, [role='button']")) return;
       onStart(e.clientY); e.preventDefault();

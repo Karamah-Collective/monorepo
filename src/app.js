@@ -26,13 +26,89 @@ import { initStyleEditor } from "./map-style-editor.js";
 
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("gesturechange", (e) => e.preventDefault());
+
+// Prevent pinch-zoom outside the map. Only attach non-passive handler when
+// multi-touch is actually happening so single-finger taps stay fast.
+let _pinchActive = false;
+document.addEventListener("touchstart", (e) => {
+  _pinchActive = e.touches.length > 1;
+}, { passive: true });
 document.addEventListener(
   "touchmove",
   (e) => {
-    if (e.touches.length > 1 && !e.target.closest("#map")) e.preventDefault();
+    if (_pinchActive && e.touches.length > 1 && !e.target.closest("#map")) e.preventDefault();
   },
   { passive: false },
 );
+
+// ─── Global fast-tap: fire click immediately on touchend for interactive ───
+// Mobile browsers sometimes delay or swallow click events inside scrollable
+// containers, during CSS transitions, or when touch-action inheritance is
+// mismatched. This handler synthesises an immediate click to guarantee
+// responsiveness. A guard prevents double-fire with the native click.
+(function fastTap() {
+  if (!('ontouchstart' in window)) return;
+  let _startX, _startY, _startTarget, _startTime;
+  const MOVE_LIMIT = 10; // px – treat as scroll if finger moves more
+  const TIME_LIMIT = 400; // ms – ignore stale touches
+  let _suppressClick = 0; // timestamp of last synthetic click
+
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { _startTarget = null; return; }
+    const t = e.touches[0];
+    _startX = t.clientX;
+    _startY = t.clientY;
+    _startTarget = e.target;
+    _startTime = Date.now();
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!_startTarget || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - _startX) > MOVE_LIMIT ||
+        Math.abs(t.clientY - _startY) > MOVE_LIMIT) {
+      _startTarget = null; // finger moved – this is a scroll/drag
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const tgt = _startTarget;
+    _startTarget = null;
+    if (!tgt) return;
+    if (Date.now() - _startTime > TIME_LIMIT) return;
+    // Only fast-tap interactive elements
+    const interactive = tgt.closest(
+      'button, [role="button"], .pf-chip, .tf-chip, .tf-group-toggle, ' +
+      '.tut-start-btn, .tut-nav-btn, .tut-close, .tab, .pl-card, ' +
+      '.itin-card, .sort-opt, .style-opt, .cal-day, .tp-cell, ' +
+      '.time-chip, .sp-chip, .prayer-hdr-btn, .prayer-snack-clickable, ' +
+      '#results-list li, .dir-suggest li, .pl-fav-btn, a'
+    );
+    if (!interactive) return;
+    // Don't fast-tap inputs/textareas (they need default focus behavior)
+    if (tgt.closest('input, textarea, select')) return;
+    const ct = e.changedTouches[0];
+    e.preventDefault(); // prevent the browser's delayed click
+    _suppressClick = Date.now();
+    interactive.dispatchEvent(new MouseEvent('click', {
+      bubbles: true, cancelable: true, view: window,
+      clientX: ct.clientX, clientY: ct.clientY,
+    }));
+  }, { passive: false });
+
+  // Suppress the native click that arrives ~300ms later for fast-tapped elements.
+  // Without this guard the handler fires twice.
+  document.addEventListener('click', (e) => {
+    if (_suppressClick && Date.now() - _suppressClick < 500) {
+      if (e.isTrusted) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        _suppressClick = 0;
+      }
+      // Synthetic (dispatched) clicks pass through — guard stays active for native
+    }
+  }, { capture: true });
+})();
 
 window.addEventListener("offline", showOfflineBanner);
 window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });

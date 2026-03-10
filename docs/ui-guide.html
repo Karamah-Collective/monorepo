@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Element Reference — Halal Finder Helsinki</title>
+  <link rel="stylesheet" href="../src/styles/design-tokens.css" />
+  <link rel="stylesheet" href="../src/styles/styles.css" />
+  <style>
+    /* ─── Guide-only overrides ─── */
+    html, body {
+      overflow: auto;
+      background: #f4f5f7;
+      margin: 0;
+      padding: 0;
+    }
+
+    .guide {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .guide h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      color: var(--text);
+    }
+    .guide .subtitle {
+      font-size: 14px;
+      color: var(--text-3);
+      margin-bottom: 32px;
+    }
+
+    /* Section card */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+    .section .desc {
+      font-size: 13px;
+      color: var(--text-3);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    /* Demo area */
+    .demo {
+      background: var(--surface-2);
+      border: 1px dashed var(--border);
+      border-radius: var(--r-lg);
+      padding: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .demo--col {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .demo--dark {
+      background: #1a1d2e;
+      border-color: #2a2f42;
+    }
+
+    /* Label for each element inside demo */
+    .el-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .el-id {
+      font-size: 11px;
+      color: var(--accent);
+      font-family: "Consolas", "Cascadia Code", monospace;
+    }
+    .el-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Notes table */
+    .note-table {
+      width: 100%;
+      font-size: 13px;
+      border-collapse: collapse;
+    }
+    .note-table th {
+      text-align: left;
+      font-weight: 700;
+      color: var(--text-3);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .note-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: top;
+    }
+    .note-table code {
+      font-family: "Consolas", "Cascadia Code", monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* Fix: let guide elements be static so they are visible */
+    .guide .btn-icon-card,
+    .guide .btn-icon,
+    .guide .btn-primary,
+    .guide .btn-secondary,
+    .guide .btn-danger-pill,
+    .guide .btn-danger-filled,
+    .guide .btn-success-pill,
+    .guide .btn-roundel,
+    .guide .btn-roundel-accent,
+    .guide .btn-roundel-subtle,
+    .guide .btn-roundel-sm,
+    .guide .btn-chip,
+    .guide .btn-segment,
+    .guide .btn-tab,
+    .guide .btn-inline,
+    .guide .pf-chip,
+    .guide .pp,
+    .guide .snack,
+    .guide .pill-expand,
+    .guide .pill-panel,
+    .guide .sheet,
+    .guide .tut-card,
+    .guide .style-opt,
+    .guide .pl-card,
+    .guide #zoom-pill,
+    .guide #tab-bar,
+    .guide #search-card,
+    .guide #prayer-snack,
+    .guide #route-snackbar,
+    .guide .sort-dropdown {
+      position: static !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+      transform: none !important;
+      z-index: auto !important;
+    }
+
+    .guide .pill-panel {
+      position: static !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    .guide .tut-card {
+      position: static !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      max-width: 320px;
+    }
+
+    .guide .sheet {
+      position: static !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      width: 100% !important;
+      max-width: 400px;
+      border-radius: var(--r-xl);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    .guide .sheet.shut {
+      transform: none !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+
+    .guide #tab-bar {
+      position: static !important;
+      transform: none !important;
+      left: auto !important;
+    }
+
+    .guide #search-card {
+      position: static !important;
+      width: min(92vw, 360px) !important;
+    }
+    .guide #search-card .pill-expand-body {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    .guide #search-card .pill-expand-icon {
+      opacity: 0 !important;
+      position: absolute !important;
+      pointer-events: none !important;
+    }
+
+    .guide #zoom-pill {
+      position: static !important;
+    }
+
+    .guide #prayer-snack {
+      position: static !important;
+      width: min(92vw, 360px) !important;
+    }
+
+    .guide #route-snackbar {
+      position: static !important;
+      width: min(92vw, 380px) !important;
+      display: flex !important;
+      opacity: 1 !important;
+    }
+
+    .guide .sort-dropdown {
+      position: static !important;
+      max-height: none !important;
+      opacity: 1 !important;
+    }
+
+    /* Quick-ref index at top */
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .toc a {
+      display: block;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .toc a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .toc a span {
+      font-size: 11px;
+      color: var(--text-3);
+      display: block;
+    }
+
+    /* Popup demo container */
+    .popup-demo {
+      max-width: 280px;
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+  </style>
+</head>
+<body>
+<div class="guide">
+
+  <h1>Halal Finder Helsinki — UI Element Reference</h1>
+  <p class="subtitle">Every visual element rendered with the app's actual CSS. Open this file in a browser to see live components.</p>
+
+  <!-- ━━━ TABLE OF CONTENTS ━━━ -->
+  <div class="toc">
+    <a href="#tab-bar-section">Tab Bar <span>Bottom navigation</span></a>
+    <a href="#search-card-section">Search Card <span>Expandable search pill</span></a>
+    <a href="#tools-toggle-section">Tools Toggle <span>Mobile menu button</span></a>
+    <a href="#style-picker-section">Style Picker <span>Map style switcher</span></a>
+    <a href="#zoom-section">Zoom Pill <span>Zoom in / zoom out</span></a>
+    <a href="#contact-pill-section">Contact Pill <span>Contact us button</span></a>
+    <a href="#buttons-section">Buttons <span>All button variants</span></a>
+    <a href="#chips-section">Chips <span>Filter, type, tag chips</span></a>
+    <a href="#places-sheet-section">Places Sheet <span>Bottom sheet list</span></a>
+    <a href="#place-card-section">Place Card <span>List item in places</span></a>
+    <a href="#popup-section">Place Popup <span>Map marker popup</span></a>
+    <a href="#directions-section">Directions Sheet <span>Route planning panel</span></a>
+    <a href="#transport-modes-section">Transport Modes <span>Drive / Transit / Cycle / Walk</span></a>
+    <a href="#prayer-section">Prayer Card <span>Prayer times display</span></a>
+    <a href="#route-snackbar-section">Route Snackbar <span>Active route indicator</span></a>
+    <a href="#toast-section">Toast / Notice <span>Transient notifications</span></a>
+    <a href="#overlays-section">Overlays <span>Forms & modals</span></a>
+    <a href="#tutorial-section">Tutorial Card <span>Onboarding walkthrough</span></a>
+    <a href="#typography-section">Typography <span>Text styles</span></a>
+    <a href="#scrim-section">Scrim <span>Background dim</span></a>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       1. TAB BAR
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="section" id="tab-bar-section">
+    <h2>1. Tab Bar</h2>
+    <p class="desc">The primary navigation bar pinned to the bottom of the screen. Pill-shaped, center-aligned. Contains 4 tab buttons. <code>#tab-bar</code></p>
+
+    <div class="demo">
+      <nav id="tab-bar" style="padding-bottom: env(safe-area-inset-bottom, 0)">
+        <button class="tab btn-tab active-tab" aria-label="Home">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8"/>
+            <path d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+          <span>Home</span>
+        </button>
+        <button class="tab btn-tab" aria-label="Directions">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 18l4-4 4 4 4-8 4 4"/>
+          </svg>
+          <span>Routes</span>
+        </button>
+        <button class="tab btn-tab" aria-label="Places">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          <span>Places</span>
+        </button>
+        <button class="tab btn-tab" aria-label="My location">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+          </svg>
+          <span>Locate</span>
+        </button>
+      </nav>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Role</th></tr>
+      <tr><td>Tab Bar container</td><td><code>#tab-bar</code></td><td>Pill-shaped nav strip</td></tr>
+      <tr><td>Home tab</td><td><code>#home-btn</code> <code>.btn-tab</code></td><td>Reset map to default view</td></tr>
+      <tr><td>Routes tab</td><td><code>#dir-btn</code> <code>.btn-tab</code></td><td>Opens Directions Sheet</td></tr>
+      <tr><td>Places tab</td><td><code>#places-btn</code> <code>.btn-tab</code></td><td>Opens Places Sheet</td></tr>
+      <tr><td>Locate tab</td><td><code>#locate-btn</code> <code>.btn-tab</code></td><td>Centers on user GPS</td></tr>
+      <tr><td>Active indicator</td><td><code>.active-tab::after</code></td><td>Animated underline dot</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 2. SEARCH CARD ━━━ -->
+  <div class="section" id="search-card-section">
+    <h2>2. Search Card</h2>
+    <p class="desc">Expandable pill that collapses to a magnifying-glass icon and expands to a full search input with dropdown. <code>#search-card</code></p>
+
+    <div class="demo" style="flex-direction: column; align-items: flex-start;">
+      <div class="el-wrap">
+        <div class="el-label">Collapsed (pill icon)</div>
+        <button class="btn-icon-card" aria-label="Search" style="width:44px;height:44px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">Expanded (search box)</div>
+        <div id="search-card" class="pill-expand" style="width: min(92vw, 360px);">
+          <div id="search-box" style="display:flex;align-items:center;gap:var(--sp-4);height:44px;padding:0 44px 0 16px;">
+            <input type="text" placeholder="Search Helsinki…" autocomplete="off" style="flex:1;border:none;outline:none;background:transparent;font-family:inherit;font-size:var(--txt-lg);font-weight:var(--fw-medium);color:var(--text);min-width:0;" />
+            <button class="clear-btn" aria-label="Clear" style="position:absolute;right:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Container</td><td><code>#search-card</code> <code>.pill-expand</code></td><td>Animates between 44px icon and full width</td></tr>
+      <tr><td>Collapsed icon</td><td><code>#search-pill</code> <code>.pill-expand-icon</code></td><td>Magnifying glass button</td></tr>
+      <tr><td>Input row</td><td><code>#search-box</code></td><td>Contains input + clear button</td></tr>
+      <tr><td>Text input</td><td><code>#search-input</code></td><td>Auto-suggests as user types</td></tr>
+      <tr><td>Clear button</td><td><code>#clear-input</code> <code>.clear-btn</code></td><td>Hidden when input is empty</td></tr>
+      <tr><td>Dropdown</td><td><code>#search-drop</code></td><td>Appears above the search box</td></tr>
+      <tr><td>Results list</td><td><code>#results-list</code></td><td>UL populated by search.js</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 3. TOOLS TOGGLE ━━━ -->
+  <div class="section" id="tools-toggle-section">
+    <h2>3. Tools Toggle</h2>
+    <p class="desc">Visible only on small screens. Groups Search Card, Style Picker, and Contact Pill behind a single grid icon. Tap to fan out the hidden tools. <code>#tools-toggle</code></p>
+
+    <div class="demo">
+      <div class="el-wrap">
+        <div class="el-label">Closed</div>
+        <button class="btn-icon-card" aria-label="More tools">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="el-wrap">
+        <div class="el-label">Open (active state)</div>
+        <button class="btn-icon-card active" aria-label="More tools">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Button</td><td><code>#tools-toggle</code> <code>.btn-icon-card</code></td><td>Toggles <code>.tools-open</code> on <code>#app</code></td></tr>
+      <tr><td>Grid icon</td><td><code>#tools-icon-grid</code></td><td>Shown when closed</td></tr>
+      <tr><td>Close icon (×)</td><td><code>#tools-icon-x</code></td><td>Shown when open</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 4. STYLE PICKER ━━━ -->
+  <div class="section" id="style-picker-section">
+    <h2>4. Style Picker</h2>
+    <p class="desc">Map base-style switcher. Button opens a horizontal panel with 4 style options. <code>#style-picker</code></p>
+
+    <div class="demo" style="flex-direction: column; align-items: flex-start; gap: 20px;">
+      <div class="el-wrap">
+        <div class="el-label">Style Picker Button</div>
+        <button class="btn-icon-card" aria-label="Map style">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">Style Panel (expanded)</div>
+        <div class="pill-panel" style="position:static !important; transform:none !important; opacity:1 !important;">
+          <button class="style-opt active" data-style="light">
+            <div class="style-thumb" style="width:52px;height:52px;border-radius:var(--r-inner);background:linear-gradient(135deg,#eee 25%,#ddd 75%)"></div>
+            <span>Light</span>
+          </button>
+          <button class="style-opt" data-style="dark">
+            <div class="style-thumb" style="width:52px;height:52px;border-radius:var(--r-inner);background:linear-gradient(135deg,#2a2d3e 25%,#1a1d2e 75%)"></div>
+            <span>Dark</span>
+          </button>
+          <div class="style-divider"></div>
+          <button class="style-opt" data-style="satellite">
+            <div class="style-thumb" style="width:52px;height:52px;border-radius:var(--r-inner);background:linear-gradient(135deg,#3a5a3a 25%,#4a6a5a 75%)"></div>
+            <span>Satellite</span>
+          </button>
+          <button class="style-opt" data-style="heatmap">
+            <div class="style-thumb" style="width:52px;height:52px;border-radius:var(--r-inner);background:radial-gradient(circle at 40% 40%,rgba(255,255,255,0.7) 0%,rgba(255,200,0,0.55) 15%,rgba(255,80,0,0.35) 30%,transparent 50%),#e8e8e8"></div>
+            <span>Heatmap</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Wrapper</td><td><code>#style-picker</code></td><td>Positions button + panel</td></tr>
+      <tr><td>Toggle button</td><td><code>#style-picker-btn</code> <code>.btn-icon-card</code></td><td>Layers icon</td></tr>
+      <tr><td>Panel</td><td><code>#style-panel</code> <code>.pill-panel</code></td><td>Horizontal flyout with 4 options</td></tr>
+      <tr><td>Style option</td><td><code>.style-opt</code></td><td>Thumb + label, <code>.active</code> = selected</td></tr>
+      <tr><td>Thumbnail</td><td><code>.style-thumb</code></td><td>52×52 preview image</td></tr>
+      <tr><td>Divider</td><td><code>.style-divider</code></td><td>Separates Light/Dark from Satellite/Heatmap</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 5. ZOOM PILL ━━━ -->
+  <div class="section" id="zoom-section">
+    <h2>5. Zoom Pill</h2>
+    <p class="desc">Stacked zoom-in / zoom-out buttons in a vertical pill. Always visible at bottom-right. <code>#zoom-pill</code></p>
+
+    <div class="demo">
+      <div id="zoom-pill" style="position:static !important;">
+        <button class="btn-icon" aria-label="Zoom in">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="zp-div"></div>
+        <button class="btn-icon" aria-label="Zoom out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th></tr>
+      <tr><td>Container</td><td><code>#zoom-pill</code></td></tr>
+      <tr><td>Zoom In</td><td><code>#zoomin-btn</code> <code>.btn-icon</code></td></tr>
+      <tr><td>Zoom Out</td><td><code>#zoomout-btn</code> <code>.btn-icon</code></td></tr>
+      <tr><td>Divider</td><td><code>.zp-div</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 6. CONTACT PILL ━━━ -->
+  <div class="section" id="contact-pill-section">
+    <h2>6. Contact Pill</h2>
+    <p class="desc">Envelope icon button that opens the Contact Overlay form. <code>#contact-pill-wrap</code></p>
+
+    <div class="demo">
+      <div class="el-wrap">
+        <div class="el-label">Contact Pill</div>
+        <button class="btn-icon-card" aria-label="Contact us">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th></tr>
+      <tr><td>Wrapper</td><td><code>#contact-pill-wrap</code></td></tr>
+      <tr><td>Button</td><td><code>#contact-pill</code> <code>.btn-icon-card</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 7. ALL BUTTON VARIANTS ━━━ -->
+  <div class="section" id="buttons-section">
+    <h2>7. Buttons</h2>
+    <p class="desc">All reusable button styles used across the app.</p>
+
+    <div class="demo" style="gap: 12px;">
+      <div class="el-wrap">
+        <div class="el-label">btn-icon-card</div>
+        <button class="btn-icon-card"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-icon-card.active</div>
+        <button class="btn-icon-card active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-icon</div>
+        <button class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-primary</div>
+        <button class="btn-primary" style="height:42px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Find Routes
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-primary:disabled</div>
+        <button class="btn-primary" disabled style="height:42px;">Disabled</button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-secondary</div>
+        <button class="btn-secondary" style="height:34px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-danger-pill</div>
+        <button class="btn-danger-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          Clear
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-danger-filled</div>
+        <button class="btn-danger-filled" style="height:34px;">Remove</button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-success-pill</div>
+        <button class="btn-success-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Verified
+        </button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-roundel</div>
+        <button class="btn-roundel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-roundel-accent</div>
+        <button class="btn-roundel-accent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-roundel-subtle</div>
+        <button class="btn-roundel-subtle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">btn-inline</div>
+        <span style="font-size:var(--txt-sm);color:var(--text-3);">Try different filters · <button class="btn-inline">Suggest one</button></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ━━━ 8. CHIPS ━━━ -->
+  <div class="section" id="chips-section">
+    <h2>8. Chips</h2>
+    <p class="desc">Pill-shaped toggles used for filtering, sorting, and tagging.</p>
+
+    <div class="demo" style="flex-direction: column; align-items: flex-start; gap: 20px;">
+      <div class="el-wrap">
+        <div class="el-label">btn-chip (filter / sort)</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-chip active">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Now
+          </button>
+          <button class="btn-chip">
+            <span class="btn-chip-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span>
+            Filter
+          </button>
+          <button class="btn-chip">
+            <span class="btn-chip-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg></span>
+            Sort
+          </button>
+        </div>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">pf-chip (places type chips)</div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          <button class="pf-chip active" data-type="all">
+            <span class="pf-icon" style="--pf-c: var(--accent)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            </span>
+            <span class="pf-label">All</span>
+          </button>
+          <button class="pf-chip" data-type="mosque">
+            <span class="pf-icon" style="--pf-c: #1fa86a">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+            </span>
+            <span class="pf-label">Mosques</span>
+          </button>
+          <button class="pf-chip" data-type="restaurant">
+            <span class="pf-icon" style="--pf-c: #ff6319">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+            </span>
+            <span class="pf-label">Food</span>
+          </button>
+          <button class="pf-chip" data-type="shop">
+            <span class="pf-icon" style="--pf-c: #8c4799">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg>
+            </span>
+            <span class="pf-label">Shops</span>
+          </button>
+          <button class="pf-chip" data-type="saved">
+            <span class="pf-icon" style="--pf-c: #f59e0b">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </span>
+            <span class="pf-label">Saved</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">tf-chip (tag filter chips)</div>
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <button class="tf-chip active">Halal Certified</button>
+          <button class="tf-chip">Dine In</button>
+          <button class="tf-chip">Takeaway</button>
+          <button class="tf-chip">Delivery</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Class</th><th>Used For</th></tr>
+      <tr><td><code>.btn-chip</code></td><td>Toggle chips (filter, sort, time-mode "Now")</td></tr>
+      <tr><td><code>.pf-chip</code></td><td>Places type filter (All, Mosques, Food, Shops, Prayer, Saved)</td></tr>
+      <tr><td><code>.tf-chip</code></td><td>Tag subtag chips inside the tag filter section</td></tr>
+      <tr><td><code>.pp-chip</code></td><td>Small tag badges inside a Place Popup</td></tr>
+      <tr><td><code>.active</code></td><td>Applied to any chip when selected</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 9. PLACES SHEET ━━━ -->
+  <div class="section" id="places-sheet-section">
+    <h2>9. Places Sheet</h2>
+    <p class="desc">Bottom sheet listing all halal places. Opened by tapping the Places tab. <code>#places-sheet</code></p>
+
+    <div class="demo demo--col">
+      <div class="sheet" style="max-width:400px; position:static !important; opacity:1 !important; pointer-events:auto !important; transform:none !important;">
+        <div class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2>Places</h2>
+          <span style="font-size:var(--txt-base);font-weight:var(--fw-semibold);color:var(--text-3);">42</span>
+          <button class="sheet-action-btn btn-roundel-accent" aria-label="Suggest a place" title="Suggest a place">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="sheet-x btn-roundel" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Sheet container</td><td><code>#places-sheet</code> <code>.sheet</code></td><td>Bottom sheet with drag-to-resize</td></tr>
+      <tr><td>Drag handle</td><td><code>.sheet-drag</code></td><td>Draggable touch target at top</td></tr>
+      <tr><td>Sheet header</td><td><code>.sheet-head</code></td><td>Title + count + actions</td></tr>
+      <tr><td>Close button</td><td><code>#places-close</code> <code>.sheet-x .btn-roundel</code></td><td>× icon</td></tr>
+      <tr><td>Add button</td><td><code>#suggest-place-btn</code> <code>.btn-roundel-accent</code></td><td>+ icon, opens Suggest Overlay</td></tr>
+      <tr><td>Place count</td><td><code>#places-ct</code></td><td>Dynamic count number</td></tr>
+      <tr><td>Type chips row</td><td><code>#places-type-chips</code></td><td>Horizontally scrollable pf-chips</td></tr>
+      <tr><td>Tag filter toggle</td><td><code>#tf-toggle</code> <code>.btn-chip</code></td><td>Expands tag filter section</td></tr>
+      <tr><td>Sort toggle</td><td><code>#sort-toggle</code> <code>.btn-chip</code></td><td>Opens sort dropdown</td></tr>
+      <tr><td>Scrollable list</td><td><code>#places-scroll</code></td><td>Scrollable container for place cards</td></tr>
+      <tr><td>List element</td><td><code>#places-list</code></td><td>UL of place cards</td></tr>
+      <tr><td>Empty state</td><td><code>#places-empty</code></td><td>Shown when no places match filters</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 10. PLACE CARD ━━━ -->
+  <div class="section" id="place-card-section">
+    <h2>10. Place Card</h2>
+    <p class="desc">Individual row item inside the places list. Grid layout: icon | name+address | meta | favorite star.</p>
+
+    <div class="demo demo--col" style="max-width: 400px;">
+      <ul style="list-style:none;padding:8px 16px;display:flex;flex-direction:column;gap:var(--sp-3);">
+        <li class="pl-card" style="display:grid;grid-template: 'icon name meta fav' auto 'icon addr meta fav' auto / auto 1fr auto auto;align-items:center;column-gap:var(--sp-5);cursor:pointer;">
+          <span class="pl-dot" style="grid-area:icon;background:#1fa86a;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><path d="M12 2L8 8H4v12h16V8h-4L12 2z"/></svg>
+          </span>
+          <span class="pl-name" style="grid-area:name;align-self:end;">Helsinki Islamic Center</span>
+          <span class="pl-addr t-item-sub" style="grid-area:addr;align-self:start;">Lönnrotinkatu 12 <span class="pl-dist">0.8 km</span></span>
+          <span class="pl-meta" style="grid-area:meta;">
+            <span class="pl-tags-summary" style="--type-c:#1fa86a;">3 tags</span>
+          </span>
+          <button class="pl-fav btn-icon" style="grid-area:fav;width:28px;height:28px;color:var(--text-3);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </button>
+        </li>
+        <li class="pl-card" style="display:grid;grid-template: 'icon name meta fav' auto 'icon addr meta fav' auto / auto 1fr auto auto;align-items:center;column-gap:var(--sp-5);cursor:pointer;">
+          <span class="pl-dot" style="grid-area:icon;background:#ff6319;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7z"/></svg>
+          </span>
+          <span class="pl-name" style="grid-area:name;align-self:end;">Ravintola Shalimar</span>
+          <span class="pl-addr t-item-sub" style="grid-area:addr;align-self:start;">Albertinkatu 38 <span class="pl-dist">1.2 km</span></span>
+          <span class="pl-meta" style="grid-area:meta;">
+            <span class="pl-tags-summary" style="--type-c:#ff6319;">5 tags</span>
+          </span>
+          <button class="pl-fav btn-icon" style="grid-area:fav;width:28px;height:28px;color:#fcd34d;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>Class</th><th>Notes</th></tr>
+      <tr><td>Card (list item)</td><td><code>.pl-card</code> (via <code>#places-list li</code>)</td><td>CSS grid row</td></tr>
+      <tr><td>Type dot icon</td><td><code>.pl-dot</code></td><td>Colored square with rounded corners + SVG icon</td></tr>
+      <tr><td>Place name</td><td><code>.pl-name</code></td><td>Truncated with ellipsis</td></tr>
+      <tr><td>Address</td><td><code>.pl-addr</code></td><td>Grey subtext</td></tr>
+      <tr><td>Distance badge</td><td><code>.pl-dist</code></td><td>Inline "0.8 km" after address</td></tr>
+      <tr><td>Tags summary</td><td><code>.pl-tags-summary</code></td><td>Colored pill showing tag count</td></tr>
+      <tr><td>Favorite star</td><td><code>.pl-fav</code></td><td>Toggles saved state</td></tr>
+      <tr><td>Section header</td><td><code>.pl-section-hdr</code></td><td>Group dividers (e.g. "MOSQUES")</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 11. PLACE POPUP ━━━ -->
+  <div class="section" id="popup-section">
+    <h2>11. Place Popup</h2>
+    <p class="desc">Appears when tapping a map marker. Shows place details with colored header, tags, address, and action buttons.</p>
+
+    <div class="demo" style="justify-content: center;">
+      <div class="popup-demo">
+        <div class="pp">
+          <div class="pp-head" style="--pc: #1fa86a;">
+            <div class="pp-type-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><path d="M12 2L8 8H4v12h16V8h-4L12 2z"/></svg>
+            </div>
+            <div class="pp-title">Helsinki Islamic Center</div>
+            <div class="pp-sub">Mosque</div>
+            <button class="pp-fav-btn" style="color:rgba(255,255,255,0.55);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </button>
+          </div>
+          <div class="pp-body">
+            <div class="pp-addr">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Lönnrotinkatu 12, Helsinki
+            </div>
+            <div class="pp-tags">
+              <span class="pp-chip pp-chip-yes">
+                <svg class="pp-chip-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Halal Certified
+              </span>
+              <span class="pp-chip pp-chip-yes">
+                <svg class="pp-chip-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Jummah
+              </span>
+              <span class="pp-chip pp-chip-no">
+                <svg class="pp-chip-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                Parking
+              </span>
+            </div>
+            <div class="pp-actions">
+              <button class="pp-dir-btn" style="flex:1;height:34px;padding:0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Directions
+              </button>
+              <button class="pp-share-btn" style="flex:1;height:34px;padding:0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                Share
+              </button>
+              <button class="pp-edit-btn" style="flex:1;height:34px;padding:0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>Class</th><th>Notes</th></tr>
+      <tr><td>Popup wrapper</td><td><code>.pp</code></td><td>Flex column</td></tr>
+      <tr><td>Colored header</td><td><code>.pp-head</code></td><td>Uses <code>--pc</code> for type color</td></tr>
+      <tr><td>Type icon</td><td><code>.pp-type-icon</code></td><td>Square icon in header</td></tr>
+      <tr><td>Title</td><td><code>.pp-title</code></td><td>Place name</td></tr>
+      <tr><td>Subtitle</td><td><code>.pp-sub</code></td><td>Type label</td></tr>
+      <tr><td>Favorite button</td><td><code>.pp-fav-btn</code></td><td>Star toggle; <code>.active</code> = gold</td></tr>
+      <tr><td>Body</td><td><code>.pp-body</code></td><td>Address, tags, actions</td></tr>
+      <tr><td>Address row</td><td><code>.pp-addr</code></td><td>Pin icon + text</td></tr>
+      <tr><td>Tag chips</td><td><code>.pp-tags</code> → <code>.pp-chip</code></td><td><code>.pp-chip-yes</code> green, <code>.pp-chip-no</code> red</td></tr>
+      <tr><td>Direction btn</td><td><code>.pp-dir-btn</code></td><td>Styled as <code>.btn-primary</code></td></tr>
+      <tr><td>Share btn</td><td><code>.pp-share-btn</code></td><td>Styled as <code>.btn-secondary</code></td></tr>
+      <tr><td>Edit btn</td><td><code>.pp-edit-btn</code></td><td>Styled as <code>.btn-secondary</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 12. DIRECTIONS SHEET ━━━ -->
+  <div class="section" id="directions-section">
+    <h2>12. Directions Sheet</h2>
+    <p class="desc">Bottom sheet for route planning. Contains origin/destination inputs, mode selector, time picker, and results. <code>#dir-panel</code></p>
+
+    <div class="demo demo--col" style="max-width: 400px;">
+      <div class="sheet" style="max-width:400px; position:static !important; opacity:1 !important; pointer-events:auto !important; transform:none !important;">
+        <div class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2>Directions</h2>
+          <button class="btn-danger-pill" aria-label="Clear route" style="font-size:var(--txt-xs);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Clear
+          </button>
+          <button class="sheet-x btn-roundel" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Sheet</td><td><code>#dir-panel</code> <code>.sheet</code></td><td>Opens via Routes tab</td></tr>
+      <tr><td>Origin input</td><td><code>#dir-from</code></td><td>With <code>.dir-dot.origin</code> indicator</td></tr>
+      <tr><td>Destination input</td><td><code>#dir-to</code></td><td>With <code>.dir-dot.dest</code> indicator</td></tr>
+      <tr><td>Swap button</td><td><code>#dir-swap</code></td><td>Swaps origin ↔ destination</td></tr>
+      <tr><td>My-location btn</td><td><code>.dir-my-loc</code></td><td>Sets origin to GPS</td></tr>
+      <tr><td>Nearest mosque btn</td><td><code>.dir-mosque-dest</code></td><td>Sets dest to nearest mosque</td></tr>
+      <tr><td>Mode selector</td><td><code>#dir-mode-toggle</code></td><td>Segmented control: Drive / Transit / Cycle / Walk</td></tr>
+      <tr><td>Go button</td><td><code>#dir-go</code> <code>.btn-primary</code></td><td>"Find Routes"</td></tr>
+      <tr><td>Results area</td><td><code>#dir-results</code></td><td>Contains itinerary cards</td></tr>
+      <tr><td>Clear route</td><td><code>#dir-clear-route</code> <code>.btn-danger-pill</code></td><td>Visible when route is active</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 13. TRANSPORT MODE SELECTOR ━━━ -->
+  <div class="section" id="transport-modes-section">
+    <h2>13. Transport Mode Selector</h2>
+    <p class="desc">Segmented button bar for choosing the routing mode. <code>#dir-mode-toggle</code></p>
+
+    <div class="demo">
+      <div style="display:flex;background:var(--surface-2);border-radius:var(--r-sm);padding:3px;gap:2px;width:100%;max-width:360px;">
+        <button class="btn-segment active" style="flex:1;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V12.5l2.5-6h13l2.5 6V17a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/><path d="M3 13h18"/></svg>
+          Drive
+        </button>
+        <button class="btn-segment" style="flex:1;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/></svg>
+          Transit
+        </button>
+        <button class="btn-segment" style="flex:1;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5"/></svg>
+          Cycle
+        </button>
+        <button class="btn-segment" style="flex:1;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="2.5" stroke-width="1.8"/><path d="M7 21l3-9M16 21l-2-3-2.5-4 3.5-4"/><path d="M10 14l-1.5-5.5 4-1"/></svg>
+          Walk
+        </button>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>Class</th><th>Notes</th></tr>
+      <tr><td>Segment button</td><td><code>.mode-opt</code> <code>.btn-segment</code></td><td><code>.active</code> = selected mode</td></tr>
+      <tr><td>Drive</td><td><code>[data-mode="drive"]</code></td><td>Car routing</td></tr>
+      <tr><td>Transit</td><td><code>[data-mode="transit"]</code></td><td>Public transport (HSL / Digitransit)</td></tr>
+      <tr><td>Cycle</td><td><code>[data-mode="cycle"]</code></td><td>Bicycle routing</td></tr>
+      <tr><td>Walk</td><td><code>[data-mode="walk"]</code></td><td>Pedestrian routing</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 14. PRAYER CARD ━━━ -->
+  <div class="section" id="prayer-section">
+    <h2>14. Prayer Card</h2>
+    <p class="desc">Expandable pill showing next prayer time. Expands to show all 5 daily prayer times and optional Ramadan suhoor/iftar times. <code>#prayer-snack</code></p>
+
+    <div class="demo" style="flex-direction: column; align-items: flex-start; gap: 16px;">
+      <div class="el-wrap">
+        <div class="el-label">Collapsed (pill)</div>
+        <div class="pill-expand collapsed" style="position:static !important;width:44px;">
+          <button class="btn-icon pill-expand-icon" aria-label="Prayer times" style="position:static !important;opacity:1 !important;pointer-events:auto !important;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="el-wrap">
+        <div class="el-label">Expanded (prayer times)</div>
+        <div class="pill-expand" style="position:static !important;width:min(92vw, 300px);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);">
+          <div style="padding: 12px 16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:var(--txt-lg);font-weight:var(--fw-semibold);color:var(--text);">Dhuhr in 1h 23m</div>
+              </div>
+              <button class="btn-roundel" style="position:static !important;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:var(--txt-sm);">
+                <span style="color:var(--text-3);">Fajr</span><span style="font-weight:var(--fw-semibold);color:var(--text);">03:45</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--txt-sm);background:var(--accent-soft);border-radius:var(--r-xs);padding:4px 8px;margin:0 -8px;">
+                <span style="color:var(--accent);font-weight:var(--fw-bold);">Dhuhr</span><span style="font-weight:var(--fw-bold);color:var(--accent);">12:34</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--txt-sm);">
+                <span style="color:var(--text-3);">Asr</span><span style="font-weight:var(--fw-semibold);color:var(--text);">16:12</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--txt-sm);">
+                <span style="color:var(--text-3);">Maghrib</span><span style="font-weight:var(--fw-semibold);color:var(--text);">19:45</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--txt-sm);">
+                <span style="color:var(--text-3);">Isha</span><span style="font-weight:var(--fw-semibold);color:var(--text);">21:30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Container</td><td><code>#prayer-snack</code> <code>.pill-expand</code></td><td>Top-left of map</td></tr>
+      <tr><td>Collapsed icon</td><td><code>#prayer-pill</code></td><td>Clock icon</td></tr>
+      <tr><td>Title</td><td><code>#prayer-snack-title</code></td><td>e.g. "Dhuhr in 1h 23m"</td></tr>
+      <tr><td>Expand toggle</td><td><code>#prayer-chevron</code></td><td>Down chevron → rotates up</td></tr>
+      <tr><td>Times list</td><td><code>#prayer-times-inner</code></td><td>5 prayer rows</td></tr>
+      <tr><td>Ramadan card</td><td><code>#ramadan-card</code></td><td>Suhoor/Iftar times, appears during Ramadan</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 15. ROUTE SNACKBAR ━━━ -->
+  <div class="section" id="route-snackbar-section">
+    <h2>15. Route Snackbar</h2>
+    <p class="desc">Persistent mini-bar that appears above the tab bar when a route is active. Shows origin → destination. <code>#route-snackbar</code></p>
+
+    <div class="demo">
+      <div class="snack" style="width:min(100%, 380px);position:static !important;">
+        <div style="flex-shrink:0;width:30px;height:30px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18l4-4 4 4 4-8 4 4"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:var(--txt-sm);font-weight:var(--fw-semibold);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <span>Kamppi</span><span style="color:var(--text-3);margin:0 4px"> → </span><span>Helsinki Mosque</span>
+          </div>
+          <div style="font-size:var(--txt-xs);color:var(--text-3);">32 min · Transit</div>
+        </div>
+        <button class="btn-roundel" style="position:static !important;" aria-label="Clear route">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th></tr>
+      <tr><td>Container</td><td><code>#route-snackbar</code> <code>.snack</code></td></tr>
+      <tr><td>Icon</td><td><code>.snackbar-icon-wrap</code> <code>.snack-icon</code></td></tr>
+      <tr><td>Title</td><td><code>#snackbar-title</code></td></tr>
+      <tr><td>From label</td><td><code>#snackbar-from</code></td></tr>
+      <tr><td>To label</td><td><code>#snackbar-to</code></td></tr>
+      <tr><td>Subtitle</td><td><code>#snackbar-sub</code></td></tr>
+      <tr><td>Close</td><td><code>#snackbar-close</code> <code>.btn-roundel</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 16. TOAST / NOTICE ━━━ -->
+  <div class="section" id="toast-section">
+    <h2>16. Toast / Notice</h2>
+    <p class="desc">Transient floating messages. Used for share confirmation, geolocation notices, and dev notices.</p>
+
+    <div class="demo" style="flex-direction: column; align-items: center; gap: 16px;">
+      <div class="el-wrap" style="width:100%;max-width:380px;">
+        <div class="el-label">Share Toast</div>
+        <div class="snack" style="position:static !important;">
+          <div style="flex-shrink:0;width:30px;height:30px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;background:var(--success-soft);color:var(--success);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:var(--txt-sm);font-weight:var(--fw-semibold);color:var(--text);">Link copied!</div>
+            <div style="font-size:var(--txt-xs);color:var(--text-3);">Share this place with anyone</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="el-wrap" style="width:100%;max-width:380px;">
+        <div class="el-label">Geo Notice</div>
+        <div class="snack" style="position:static !important;">
+          <div style="flex-shrink:0;width:30px;height:30px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:var(--txt-sm);font-weight:var(--fw-semibold);color:var(--text);">Location access needed</div>
+            <div style="font-size:var(--txt-xs);color:var(--text-3);">Enable location in your browser settings</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Share toast</td><td><code>.share-toast</code> <code>.snack</code></td><td>Fades in/out at bottom</td></tr>
+      <tr><td>Geo notice</td><td><code>#geo-notice</code> <code>.snack</code></td><td>Location permission prompt</td></tr>
+      <tr><td>Dev notice</td><td><code>#dev-notice</code> <code>.snack</code></td><td>Developer messages</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 17. OVERLAYS ━━━ -->
+  <div class="section" id="overlays-section">
+    <h2>17. Overlays</h2>
+    <p class="desc">Full-screen modal forms that dim the background. Contains a card with header + close button + form body.</p>
+
+    <div class="demo demo--col" style="max-width: 400px;">
+      <div style="background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column;max-height:300px;">
+        <div class="suggest-head" style="display:flex;align-items:center;gap:var(--sp-5);padding:14px 16px;border-bottom:1px solid var(--border-light);">
+          <h3 style="flex:1;font-size:var(--txt-2xl);font-weight:var(--fw-semibold);color:var(--text);margin:0;">Suggest a Place</h3>
+          <button class="sheet-x btn-roundel" aria-label="Close" style="position:static !important;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <label class="sg-label" style="display:flex;flex-direction:column;gap:4px;">
+            <span style="font-size:var(--txt-sm);font-weight:var(--fw-semibold);color:var(--text-2);">Place Name <span style="color:var(--danger);">*</span></span>
+            <input type="text" placeholder="e.g. Halal Kitchen" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:var(--txt-base);color:var(--text);background:var(--surface);outline:none;" />
+          </label>
+          <button class="btn-primary" style="height:44px;width:100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            Submit Suggestion
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Overlay</th><th>ID</th><th>Trigger</th></tr>
+      <tr><td>Suggest Place</td><td><code>#suggest-overlay</code> → <code>#suggest-card</code></td><td>+ button in Places Sheet header</td></tr>
+      <tr><td>Suggest Edit</td><td><code>#edit-overlay</code> → <code>#edit-card</code></td><td>Edit button in a Place Popup</td></tr>
+      <tr><td>Contact Us</td><td><code>#contact-overlay</code> → <code>#contact-card</code></td><td>Contact Pill button</td></tr>
+      <tr><td>Privacy Policy</td><td><code>#privacy-overlay</code> → <code>#privacy-card</code></td><td>Privacy link at bottom</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 18. TUTORIAL CARD ━━━ -->
+  <div class="section" id="tutorial-section">
+    <h2>18. Tutorial Card</h2>
+    <p class="desc">Onboarding walkthrough card. Floats near relevant UI elements with an arrow pointer. Shows step-by-step tips. Created dynamically by <code>tutorial.js</code>.</p>
+
+    <div class="demo" style="justify-content: center;">
+      <div class="tut-card tut-card--center visible" style="position:static !important;opacity:1 !important;pointer-events:auto !important;max-width:320px;">
+        <div class="tut-head" style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2);">
+          <div class="tut-icon" style="width:44px;height:44px;border-radius:var(--r-md);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </div>
+          <h4 class="tut-title" style="margin:0;text-align:center;">Search for anything</h4>
+        </div>
+        <div class="tut-body" style="text-align:center;font-size:var(--txt-base);color:var(--text-2);margin-bottom:var(--sp-3);">
+          Find halal restaurants, mosques, shops, and addresses across Helsinki.
+        </div>
+        <div class="tut-foot" style="display:flex;justify-content:center;gap:var(--sp-3);">
+          <button class="btn-chip">Skip</button>
+          <button class="btn-primary" style="height:36px;font-size:var(--txt-sm);">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>Class</th><th>Notes</th></tr>
+      <tr><td>Card</td><td><code>.tut-card</code></td><td>Positioned dynamically</td></tr>
+      <tr><td>Center variant</td><td><code>.tut-card--center</code></td><td>Large centered intro cards</td></tr>
+      <tr><td>Beside variant</td><td><code>.tut-card--beside</code></td><td>Anchored to a UI element with arrow</td></tr>
+      <tr><td>Arrow</td><td><code>.tut-card--beside::before</code></td><td>Points toward target element</td></tr>
+      <tr><td>Icon</td><td><code>.tut-icon</code></td><td>Accent-colored step icon</td></tr>
+      <tr><td>Title</td><td><code>.tut-title</code></td><td>Step title text</td></tr>
+      <tr><td>Body</td><td><code>.tut-body</code></td><td>Description paragraph</td></tr>
+      <tr><td>Footer</td><td><code>.tut-foot</code></td><td>Skip + Next buttons + dot pagination</td></tr>
+      <tr><td>Dots</td><td><code>.tut-dots</code></td><td>Step progress indicators</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ 19. TYPOGRAPHY ━━━ -->
+  <div class="section" id="typography-section">
+    <h2>19. Typography Scale</h2>
+    <p class="desc">All text size tokens from the design system, rendered at actual sizes.</p>
+
+    <div class="demo demo--col" style="gap: 8px;">
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-3xl</span>
+        <span style="font-size:var(--txt-3xl);font-weight:var(--fw-bold);color:var(--text);">22px Bold</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-2xl</span>
+        <span style="font-size:var(--txt-2xl);font-weight:var(--fw-semibold);color:var(--text);">20px Semibold</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-xl</span>
+        <span style="font-size:var(--txt-xl);font-weight:var(--fw-semibold);color:var(--text);">18px Semibold</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-lg</span>
+        <span style="font-size:var(--txt-lg);font-weight:var(--fw-medium);color:var(--text);">16px Medium</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-md</span>
+        <span style="font-size:var(--txt-md);font-weight:var(--fw-medium);color:var(--text);">15px Medium</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-base</span>
+        <span style="font-size:var(--txt-base);font-weight:var(--fw-regular);color:var(--text);">14px Regular</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-sm</span>
+        <span style="font-size:var(--txt-sm);font-weight:var(--fw-regular);color:var(--text-2);">13px Regular</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="el-id" style="width:80px;">--txt-xs</span>
+        <span style="font-size:var(--txt-xs);font-weight:var(--fw-semibold);color:var(--text-3);">11px Semibold</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ━━━ 20. SCRIM ━━━ -->
+  <div class="section" id="scrim-section">
+    <h2>20. Scrim</h2>
+    <p class="desc">Semi-transparent overlay that dims the map when a sheet is open. Tap to close. <code>#scrim</code></p>
+
+    <div class="demo" style="justify-content: center;">
+      <div style="position:relative;width:200px;height:120px;background:linear-gradient(135deg,#b5d5c5,#8abca0);border-radius:var(--r-lg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:var(--txt-xs);color:#fff;font-weight:var(--fw-bold);">
+        MAP
+        <div style="position:absolute;inset:0;background:var(--scrim-bg);"></div>
+      </div>
+    </div>
+
+    <table class="note-table">
+      <tr><th>Element</th><th>ID / Class</th><th>Notes</th></tr>
+      <tr><td>Scrim</td><td><code>#scrim</code></td><td>Fades in/out via opacity. <code>.hide</code> = invisible</td></tr>
+      <tr><td>Overlay dim</td><td><code>--overlay-bg</code></td><td>Stronger dim for modals/overlays</td></tr>
+    </table>
+  </div>
+
+  <!-- ━━━ COLOR PALETTE ━━━ -->
+  <div class="section">
+    <h2>Color Palette</h2>
+    <p class="desc">Design token colors used throughout the app.</p>
+
+    <div class="demo" style="gap: 10px;">
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);border:2px solid var(--border);"></div> <span class="el-id">--accent</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--success);border:2px solid var(--border);"></div> <span class="el-id">--success</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--danger);border:2px solid var(--border);"></div> <span class="el-id">--danger</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--gold);border:2px solid var(--border);"></div> <span class="el-id">--gold</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:#1fa86a;border:2px solid var(--border);"></div> <span class="el-id">Mosque</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:#ff6319;border:2px solid var(--border);"></div> <span class="el-id">Restaurant</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:#8c4799;border:2px solid var(--border);"></div> <span class="el-id">Shop</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:#00b9e4;border:2px solid var(--border);"></div> <span class="el-id">Prayer Room</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--surface);border:2px solid var(--border);"></div> <span class="el-id">--surface</span> </div>
+      <div class="el-wrap" style="align-items:center;"> <div style="width:36px;height:36px;border-radius:50%;background:var(--text);border:2px solid var(--border);"></div> <span class="el-id">--text</span> </div>
+    </div>
+  </div>
+
+  <!-- ━━━ QUICK REFERENCE TABLE ━━━ -->
+  <div class="section">
+    <h2>Quick Reference: What You Might Call It → Proper Name</h2>
+    <table class="note-table">
+      <tr><th>Informal Name</th><th>Proper Name</th><th>Selector</th></tr>
+      <tr><td>"Bottom bar"</td><td>Tab Bar</td><td><code>#tab-bar</code></td></tr>
+      <tr><td>"Search button", "magnifying glass"</td><td>Search Card (collapsed)</td><td><code>#search-pill</code></td></tr>
+      <tr><td>"Search box"</td><td>Search Card (expanded)</td><td><code>#search-card</code></td></tr>
+      <tr><td>"Map toggle", "layers button"</td><td>Style Picker</td><td><code>#style-picker</code></td></tr>
+      <tr><td>"Light/Dark/Satellite panel"</td><td>Style Panel</td><td><code>#style-panel</code></td></tr>
+      <tr><td>"Grid button", "menu button"</td><td>Tools Toggle</td><td><code>#tools-toggle</code></td></tr>
+      <tr><td>"+ / − buttons"</td><td>Zoom Pill</td><td><code>#zoom-pill</code></td></tr>
+      <tr><td>"Email button"</td><td>Contact Pill</td><td><code>#contact-pill</code></td></tr>
+      <tr><td>"Places list", "the list"</td><td>Places Sheet</td><td><code>#places-sheet</code></td></tr>
+      <tr><td>"Place row", "list item"</td><td>Place Card</td><td><code>.pl-card</code></td></tr>
+      <tr><td>"Map bubble", "info window"</td><td>Place Popup</td><td><code>.pp</code></td></tr>
+      <tr><td>"Route panel"</td><td>Directions Sheet</td><td><code>#dir-panel</code></td></tr>
+      <tr><td>"Drive/Bus/Bike/Walk tabs"</td><td>Transport Mode Selector</td><td><code>#dir-mode-toggle</code></td></tr>
+      <tr><td>"Prayer widget", "clock pill"</td><td>Prayer Card</td><td><code>#prayer-snack</code></td></tr>
+      <tr><td>"Route bar"</td><td>Route Snackbar</td><td><code>#route-snackbar</code></td></tr>
+      <tr><td>"Notification", "popup message"</td><td>Toast / Notice</td><td><code>.share-toast</code> / <code>#geo-notice</code></td></tr>
+      <tr><td>"Add place form"</td><td>Suggest Place Overlay</td><td><code>#suggest-overlay</code></td></tr>
+      <tr><td>"Edit form"</td><td>Suggest Edit Overlay</td><td><code>#edit-overlay</code></td></tr>
+      <tr><td>"Contact form"</td><td>Contact Overlay</td><td><code>#contact-overlay</code></td></tr>
+      <tr><td>"Background dim"</td><td>Scrim</td><td><code>#scrim</code></td></tr>
+      <tr><td>"Walkthrough", "intro tips"</td><td>Tutorial Card</td><td><code>.tut-card</code></td></tr>
+      <tr><td>"Filter icons"</td><td>Place Type Chips</td><td><code>.pf-chip</code></td></tr>
+      <tr><td>"Tag pills"</td><td>Tag Filter Chips</td><td><code>.tf-chip</code></td></tr>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

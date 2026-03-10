@@ -244,7 +244,7 @@ export async function loadPlacesData() {
 // ── Marker clustering ──────────────────────────────────────────────────────────
 // Zoom < CLUSTER_ZOOM: GeoJSON cluster circles rendered by MapLibre.
 // Zoom ≥ CLUSTER_ZOOM: individual HTML pin markers (existing behaviour).
-const CLUSTER_ZOOM = 12;
+const CLUSTER_ZOOM = 10;
 let _clusterLayersReady = false;
 
 function _buildPlacesGeoJSON(places) {
@@ -258,7 +258,7 @@ function _buildPlacesGeoJSON(places) {
   };
 }
 
-const CLUSTER_LAYER_IDS = ["places-cluster-circle", "places-cluster-count", "places-unclustered"];
+const CLUSTER_LAYER_IDS = ["places-cluster-circle", "places-cluster-inner", "places-cluster-count", "places-unclustered"];
 
 const HEATMAP_PIN_ZOOM = 14.5;
 
@@ -285,9 +285,10 @@ function _setupClusterLayers(geojson) {
     data: geojson,
     cluster: true,
     clusterMaxZoom: CLUSTER_ZOOM - 1,
-    clusterRadius: 50,
+    clusterRadius: 40,
   });
 
+  /* ── Cluster donut: outer ring (accent glow) ── */
   map.addLayer({
     id: "places-cluster-circle",
     type: "circle",
@@ -296,10 +297,25 @@ function _setupClusterLayers(geojson) {
     maxzoom: CLUSTER_ZOOM,
     paint: {
       "circle-color": "#1A73B8",
-      "circle-opacity": 0.9,
-      "circle-radius": ["step", ["get", "point_count"], 18, 10, 22, 30, 26],
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#fff",
+      "circle-opacity": 0.18,
+      "circle-radius": ["step", ["get", "point_count"], 26, 10, 32, 30, 38],
+      "circle-stroke-width": 0,
+    },
+  });
+
+  /* ── Cluster donut: inner filled disc ── */
+  map.addLayer({
+    id: "places-cluster-inner",
+    type: "circle",
+    source: "places-cluster",
+    filter: ["has", "point_count"],
+    maxzoom: CLUSTER_ZOOM,
+    paint: {
+      "circle-color": "#1A73B8",
+      "circle-opacity": 0.92,
+      "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 30, 24],
+      "circle-stroke-width": 2.5,
+      "circle-stroke-color": "rgba(255,255,255,0.85)",
     },
   });
 
@@ -312,7 +328,7 @@ function _setupClusterLayers(geojson) {
     layout: {
       "text-field": ["get", "point_count_abbreviated"],
       "text-font": ["Noto Sans Bold"],
-      "text-size": 12,
+      "text-size": ["step", ["get", "point_count"], 12, 10, 13, 30, 14],
     },
     paint: { "text-color": "#fff" },
   });
@@ -339,15 +355,17 @@ function _setupClusterLayers(geojson) {
   });
 
   // Cluster click → zoom in to expand
-  map.on("click", "places-cluster-circle", (e) => {
-    const features = map.queryRenderedFeatures(e.point, { layers: ["places-cluster-circle"] });
+  const _clusterClickHandler = (e) => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ["places-cluster-circle", "places-cluster-inner"] });
     if (!features.length) return;
     const clusterId = features[0].properties.cluster_id;
     map.getSource("places-cluster").getClusterExpansionZoom(clusterId, (err, zoom) => {
       if (err) return;
       map.flyTo({ center: features[0].geometry.coordinates, zoom: Math.max(zoom + 0.5, CLUSTER_ZOOM), duration: 500 });
     });
-  });
+  };
+  map.on("click", "places-cluster-circle", _clusterClickHandler);
+  map.on("click", "places-cluster-inner", _clusterClickHandler);
 
   // Unclustered dot click → open place popup
   map.on("click", "places-unclustered", (e) => {
@@ -357,7 +375,7 @@ function _setupClusterLayers(geojson) {
     if (place) showPlacePopup(place);
   });
 
-  ["places-cluster-circle", "places-unclustered"].forEach((layer) => {
+  ["places-cluster-circle", "places-cluster-inner", "places-unclustered"].forEach((layer) => {
     map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
   });
@@ -967,10 +985,20 @@ function renderPlacesList() {
 }
 
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
-document.getElementById("suggest-place-btn").addEventListener("click", openSuggestOverlay);
+document.getElementById("suggest-place-btn").addEventListener("click", () => {
+  document.getElementById("suggest-form").reset();
+  clearPinLocation();
+  renderSuggestTags();
+  openSuggestOverlay();
+});
 // suggest-place-btn-empty is rendered dynamically, use delegation
 document.getElementById("places-scroll").addEventListener("click", (e) => {
-  if (e.target.closest("#suggest-place-btn-empty")) openSuggestOverlay();
+  if (e.target.closest("#suggest-place-btn-empty")) {
+    document.getElementById("suggest-form").reset();
+    clearPinLocation();
+    renderSuggestTags();
+    openSuggestOverlay();
+  }
 });
 
 /* ── Add Place from dropped pin ── */

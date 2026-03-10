@@ -295,7 +295,7 @@
 #contact-card {
   width: 100%;
   max-width: 400px;
-  height: min(600px, 85vh);
+  max-height: min(600px, 85vh);
   background: var(--surface);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
@@ -834,8 +834,8 @@ body.dark-mode .sort-opt:disabled {
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
 }
 
-/* ─── Shared: hide pills behind toggle on phone + tablet ─── */
-@media (max-width: 1199px) {
+/* ─── Shared: hide pills behind toggle on phone + tablet (+ short desktop) ─── */
+@media (max-width: 1199px), (min-width: 1200px) and (max-height: 779px) {
   #search-card,
   #contact-pill-wrap,
   #style-picker {
@@ -932,8 +932,34 @@ body.dark-mode .sort-opt:disabled {
   }
 }
 
-/* ─── Desktop (≥1200px): toggle hidden, pills always visible ─── */
-@media (min-width: 1200px) {
+/* ─── Desktop (≥1200px) + short viewport: horizontal toggle above zoom pill ─── */
+@media (min-width: 1200px) and (max-height: 779px) {
+  #tools-toggle {
+    right: 26px;
+    bottom: 119px;
+  }
+
+  #search-card       { right: 82px;  bottom: 119px; }
+  #style-picker      { right: 138px; bottom: 119px; }
+  #contact-pill-wrap { right: 194px; bottom: 119px; }
+
+  #search-card:not(.collapsed) {
+    width: min(40vw, 360px);
+  }
+
+  #search-card       { transform: translateX(12px) scale(0.92); }
+  #style-picker      { transform: translateX(12px) scale(0.92); }
+  #contact-pill-wrap { transform: translateX(12px) scale(0.92); }
+
+  #app.tools-open #search-card,
+  #app.tools-open #style-picker,
+  #app.tools-open #contact-pill-wrap {
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ─── Desktop (≥1200px, tall enough): toggle hidden, pills always visible ─── */
+@media (min-width: 1200px) and (min-height: 780px) {
   #tools-toggle {
     display: none;
   }
@@ -1014,12 +1040,9 @@ body.dark-mode .sort-opt:disabled {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-light);
   cursor: grab;
-  touch-action: none;
+  touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-}
-.sheet-head button {
-  touch-action: manipulation;
 }
 .sheet-head h2 {
   flex: 1;
@@ -1106,14 +1129,14 @@ body.dark-mode .sort-opt:disabled {
   flex-shrink: 0;
 }
 #places-type-chips {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(52px, 1fr);
+  display: flex;
   gap: var(--sp-1);
   overflow-x: auto;
+  overscroll-behavior-x: none;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  touch-action: manipulation;
+  touch-action: pan-x manipulation;
+  -webkit-overflow-scrolling: touch;
 }
 #places-type-chips::-webkit-scrollbar {
   display: none;
@@ -1131,6 +1154,8 @@ body.dark-mode .sort-opt:disabled {
   font-family: inherit;
   cursor: pointer;
   transition: background-color 0.15s;
+  flex: 1 0 0;
+  min-width: 48px;
 }
 .pf-icon {
   width: var(--icon-md);
@@ -1346,6 +1371,7 @@ body.dark-mode .sort-opt:disabled {
   padding: 0 16px;
   max-height: 400px;
   overflow: hidden;
+  touch-action: manipulation;
   transition:
     max-height 0.25s ease,
     padding 0.25s ease,
@@ -1367,6 +1393,7 @@ body.dark-mode .sort-opt:disabled {
   min-height: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 #places-list {
@@ -1567,7 +1594,9 @@ body.dark-mode .sort-opt:disabled {
   align-self: center;
   background: none;
   border: none;
-  padding: 6px 2px 6px 6px;
+  padding: 10px 6px;
+  min-width: 36px;
+  min-height: 36px;
   cursor: pointer;
   color: var(--text-3);
   display: flex;
@@ -3865,8 +3894,8 @@ body.dark-mode .sort-opt:disabled {
 }
 
 .prayer-hdr-btn {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -4535,26 +4564,28 @@ body.dark-mode .sort-opt:disabled {
     gap: var(--sp-4);
   }
   .sheet-action-btn {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
   }
   .sheet-action-btn svg {
     width: 14px;
     height: 14px;
   }
   .sheet-x {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
   }
 
   #tf-toggle,
   #sort-toggle {
     padding: 7px 10px 7px 8px;
     font-size: var(--txt-base);
+    min-height: 36px;
   }
   .tf-chip {
     padding: 7px 14px;
     font-size: var(--txt-base);
+    min-height: 36px;
   }
 
   #places-list li,
@@ -5017,6 +5048,19 @@ body.dark-mode .sort-opt:disabled {
   }
   .tut-card--center {
     padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  }
+  .tut-start-btn {
+    height: 40px;
+    font-size: var(--txt-md);
+    padding: 0 var(--sp-8);
+  }
+  .tut-nav-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .tut-close {
+    width: 36px;
+    height: 36px;
   }
   .tut-card--center .tut-title {
     font-size: var(--txt-md);

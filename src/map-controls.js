@@ -405,6 +405,18 @@ export function toggleHeatmap() {
           "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.85, 16, 0.45],
         },
       }, "label_road");
+
+      // Click heatmap hotspot → zoom in closer
+      map.on("click", "heatmap-layer", (e) => {
+        if (!isHeatmapActive) return;
+        const zoom = map.getZoom();
+        const target = Math.min(zoom + 2, 15);
+        if (target > zoom) {
+          map.flyTo({ center: e.lngLat, zoom: target, duration: 500 });
+        }
+      });
+      map.on("mouseenter", "heatmap-layer", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "heatmap-layer", () => { map.getCanvas().style.cursor = ""; });
     } else {
       map.setLayoutProperty("heatmap-layer", "visibility", "visible");
       // Ensure heatmap renders above satellite raster
