@@ -306,9 +306,10 @@
     "lng": 24.9498207,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "cuisine_uyghur": true
     },
-    "notes": "Pls add a cuisine tag. this is uighur. Everything halal, beef and all"
+    "notes": "Everything halal, beef and all"
   },
   {
     "id": "ofmcd6",
@@ -854,5 +855,135 @@
     "lng": 25.0808042,
     "tags": {},
     "notes": ""
+  },
+  {
+    "id": "vtdidd",
+    "name": "Masjid Abu-Bakar",
+    "type": "mosque",
+    "address": "Maatullinaukio 2, 00750 Helsinki, Finland",
+    "lat": 60.27489158087033,
+    "lng": 25.03424921332902,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "tibuac",
+    "name": "Ilm Academy",
+    "type": "mosque",
+    "address": "Leiviskätie 4 K LH, 00440 Helsinki, Finland",
+    "lat": 60.231107,
+    "lng": 24.880987,
+    "tags": {
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true,
+      "daily_prayers": false,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": false,
+      "janaza": true
+    },
+    "notes": "It's a madrasah"
+  },
+  {
+    "id": "d5tlw7",
+    "name": "Darul Aman Masjid and Islamic Center",
+    "type": "mosque",
+    "address": "Tallinnanaukio 4, 00930 Helsinki, Finland",
+    "lat": 60.2106767,
+    "lng": 25.0786668,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "1ktepz",
+    "name": "Muslim Forum of Finland",
+    "type": "prayer_room",
+    "address": "Leiviskätie 4 K LH, 00440 Helsinki, Finland",
+    "lat": 60.231146331767974,
+    "lng": 24.88096085429848,
+    "tags": {
+      "wudu": true,
+      "female_prayer": true,
+      "female_wudu": true,
+      "quran_available": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "bj0psd",
+    "name": "Ravintola Zava",
+    "type": "restaurant",
+    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "lat": 60.2048645,
+    "lng": 24.6561164,
+    "tags": {
+      "fully_halal": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "f5gz4k",
+    "name": "Espoo Asian Market (Espoon keskus)",
+    "type": "shop",
+    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "lat": 60.2048645,
+    "lng": 24.6561164,
+    "tags": {
+      "halal_meat": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": "Alternative name: Medina Halal Shop"
+  },
+  {
+    "id": "nopo3k",
+    "name": "Delhi Rasoi Espoo",
+    "type": "restaurant",
+    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "lat": 60.2048645,
+    "lng": 24.6561164,
+    "tags": {
+      "partially_halal": true,
+      "no_alcohol": false
+    },
+    "notes": "Inside Entresse Shopping mall. The lamb is halal, please check on the counter."
+  },
+  {
+    "id": "4l2lrd",
+    "name": "Peshawar Restaurant",
+    "type": "restaurant",
+    "address": "Kutojantie 3, 02630 Espoo, Finland",
+    "lat": 60.209902973056046,
+    "lng": 24.75414809276856,
+    "tags": {
+      "fully_halal": true
+    },
+    "notes": "Pakistani cuisine"
+  },
+  {
+    "id": "cmn32z",
+    "name": "K Market Tapuli",
+    "type": "shop",
+    "address": "Maatullinaukio 1, 00750 Helsinki, Finland",
+    "lat": 60.274989,
+    "lng": 25.034577,
+    "tags": {
+      "halal_meat": true
+    },
+    "notes": "Has fridges with halal frozen chicken"
   }
 ]

@@ -224,10 +224,11 @@ function _applyFilter(theme) {
 
   // ── CSS filter chain ─────────────────────────────────────────────────────
   // Order: invert → standard CSS adjustments → gamma brilliance → shadow/highlight
-  // SVG filter url() references break on mobile browsers when applied to WebGL
-  // canvases (the entire filter chain is silently dropped). Only include them
-  // on devices where they're known to work (non-touch / wide-screen desktops).
-  const canUseSvgFilter = !('ontouchstart' in window) || window.innerWidth > 1024;
+  // SVG filter url() references break on mobile/tablet browsers when applied to WebGL
+  // canvases (the entire filter chain is silently dropped). Only use them on
+  // non-touch devices (desktops). Do NOT use innerWidth as a proxy — large tablets
+  // (e.g. iPad Pro landscape at 1366px) would incorrectly pass a >1024 threshold.
+  const canUseSvgFilter = !('ontouchstart' in window);
   const parts = [];
   if (f.invert > 0)       parts.push(`invert(${f.invert})`);
   parts.push(`brightness(${f.brightness})`);
