@@ -1129,7 +1129,6 @@ body.dark-mode .sort-opt:disabled {
   border-radius: var(--r-md);
   font-family: inherit;
   cursor: pointer;
-  touch-action: manipulation;
   transition: background-color 0.15s;
 }
 .pf-icon {
@@ -4914,7 +4913,6 @@ body.dark-mode .sort-opt:disabled {
   cursor: pointer;
   color: var(--text-3);
   flex-shrink: 0;
-  touch-action: manipulation;
   transition: color var(--t-fast);
 }
 @media (hover: hover) {
@@ -4964,7 +4962,6 @@ body.dark-mode .sort-opt:disabled {
   flex-shrink: 0;
   background: var(--surface);
   color: var(--text-3);
-  touch-action: manipulation;
   transition:
     color var(--t-fast),
     border-color var(--t-fast);
@@ -5005,7 +5002,6 @@ body.dark-mode .sort-opt:disabled {
   font-weight: var(--fw-bold);
   cursor: pointer;
   white-space: nowrap;
-  touch-action: manipulation;
   transition: filter var(--t-fast);
 }
 @media (hover: hover) {

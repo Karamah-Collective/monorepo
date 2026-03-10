@@ -146,6 +146,19 @@ button {
   cursor: pointer;
 }
 
+/* Eliminate 300ms double-tap-zoom delay on all interactive elements */
+button,
+a,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"],
+[tabindex] {
+  touch-action: manipulation;
+}
+
 html,
 body {
   margin: 0;
