@@ -22,6 +22,7 @@ import "./contact.js";
 import { initPrayerTimes } from "./prayer.js";
 import { loadTransitCache } from "./transit-stops.js";
 import { initTutorial } from "./tutorial.js";
+import { initStyleEditor } from "./map-style-editor.js";
 
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("gesturechange", (e) => e.preventDefault());
@@ -40,6 +41,7 @@ map.on("load", () => {
   const loadPromise = loadPlacesData();
   loadTransitCache();
   initPrayerTimes();
+  initStyleEditor();
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)

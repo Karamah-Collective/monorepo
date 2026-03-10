@@ -410,8 +410,14 @@ body.dark-mode .thumb-heatmap {
 }
 
 /* ─── Dark Mode: CSS filter on MapLibre canvas (not during satellite) ─── */
+/* The --mse-dark-filter variable is set by map-style-editor.js once loaded.  */
+/* Before the editor loads, fall back to the original invert-based preset.    */
 #map.dark-mode:not(.satellite-active) .maplibregl-canvas {
-  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+  filter: var(--mse-dark-filter, invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02));
+}
+/* Optional light-mode filter (no-op by default; editor can add subtle toning) */
+#map:not(.dark-mode):not(.satellite-active) .maplibregl-canvas {
+  filter: var(--mse-light-filter, none);
 }
 
 /* ─── Dark Mode: override design tokens for all UI ─── */
@@ -5055,4 +5061,407 @@ body.dark-mode .sort-opt:disabled {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid var(--border-light);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Map Style Editor Panel  ·  desktop-only dev tool  (hidden on mobile)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* -- Toggle button ---------------------------------------------------------- */
+#mse-toggle {
+  display: none; /* desktop only */
+}
+@media (min-width: 768px) {
+  #mse-toggle {
+    display: flex;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: var(--z-overlay);
+    width: 42px;
+    height: 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-md);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-2);
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  }
+  #mse-toggle:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  #mse-toggle.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+}
+
+/* -- Panel ------------------------------------------------------------------ */
+.mse-panel {
+  display: none; /* desktop only */
+}
+@media (min-width: 768px) {
+  .mse-panel {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 320px;
+    z-index: calc(var(--z-overlay) - 1);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.10);
+    transform: translateX(-100%);
+    transition: transform var(--t-spring);
+    pointer-events: none;
+    /* stay below notifications/modals */
+  }
+  .mse-panel.open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+}
+
+/* -- Header ----------------------------------------------------------------- */
+.mse-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+.mse-title {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.mse-header-btns {
+  display: flex;
+  gap: 4px;
+}
+.mse-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.mse-icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* -- Tabs ------------------------------------------------------------------- */
+.mse-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+.mse-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.mse-tab:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.mse-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* -- Scrollable body -------------------------------------------------------- */
+.mse-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 8px;
+}
+.mse-body::-webkit-scrollbar { width: 5px; }
+.mse-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* -- Sections --------------------------------------------------------------- */
+.mse-section {
+  padding: 10px 14px 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+.mse-section-title {
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+/* -- Small reset button inside section ------------------------------------- */
+.mse-small-btn {
+  font-size: var(--txt-xs);
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background var(--t-fast);
+}
+.mse-small-btn:hover {
+  background: var(--surface-3);
+}
+
+/* -- Filter sliders --------------------------------------------------------- */
+.mse-slider-row {
+  margin-bottom: 9px;
+}
+.mse-slider-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.mse-slider-name {
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+.mse-slider-val {
+  font-size: var(--txt-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+  min-width: 38px;
+  text-align: right;
+}
+.mse-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  outline: none;
+  cursor: pointer;
+}
+.mse-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: pointer;
+}
+.mse-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: pointer;
+}
+
+/* -- Color groups ----------------------------------------------------------- */
+.mse-group {
+  margin-bottom: 2px;
+}
+.mse-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  transition: color var(--t-fast);
+}
+.mse-group-header:hover {
+  color: var(--text);
+}
+.mse-group-header.open .mse-chevron {
+  transform: rotate(180deg);
+}
+.mse-chevron {
+  flex-shrink: 0;
+  transition: transform var(--t-fast);
+  color: var(--text-3);
+}
+.mse-group-body {
+  display: none;
+  padding-bottom: 4px;
+}
+.mse-group-body.open {
+  display: block;
+}
+
+/* -- Color rows ------------------------------------------------------------- */
+.mse-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.mse-color-row:last-child {
+  border-bottom: none;
+}
+.mse-color-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.mse-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.12);
+  flex-shrink: 0;
+  display: inline-block;
+}
+.mse-color-name {
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* native color picker — shrink to icon size */
+.mse-color-input {
+  width: 26px;
+  height: 26px;
+  padding: 1px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mse-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 3px; }
+.mse-color-input::-webkit-color-swatch         { border: none; border-radius: 3px; }
+/* hex text input */
+.mse-color-hex {
+  width: 64px;
+  font-size: var(--txt-xs);
+  font-family: ui-monospace, 'Menlo', monospace;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--text);
+  flex-shrink: 0;
+}
+.mse-color-hex:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+/* -- Footer / Export -------------------------------------------------------- */
+.mse-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mse-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.mse-copy-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.mse-export {
+  width: 100%;
+  height: 120px;
+  font-size: 10px;
+  font-family: ui-monospace, 'Menlo', 'Consolas', monospace;
+  line-height: 1.45;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.mse-export:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+
+/* -- Dark-mode adjustments for the editor panel itself --------------------- */
+body.dark-mode .mse-panel {
+  background: var(--surface);
+  border-right-color: var(--border);
+}
+body.dark-mode .mse-range {
+  background: var(--surface-3);
+}
+body.dark-mode .mse-color-input {
+  background: var(--surface-3);
+  border-color: var(--border);
+}
+body.dark-mode .mse-color-hex {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
+}
+body.dark-mode .mse-export {
+  background: var(--surface-2);
+  color: var(--text-2);
 }
