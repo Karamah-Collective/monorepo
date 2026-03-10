@@ -2008,6 +2008,7 @@ body.dark-mode .sort-opt:disabled {
 .share-toast.share-toast-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
 
 #geo-notice,

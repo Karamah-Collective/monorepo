@@ -280,8 +280,9 @@ function processTransitStops(geojson) {
 
       const popEl = popup.getElement();
       let tip = null;
-      popEl.addEventListener("pointerenter", (ev) => {
-        const badge = ev.target.closest(".sp-chip[data-tip]");
+      let tipBadge = null;
+      const _hasHoverTransit = window.matchMedia("(hover: hover)").matches;
+      function showBadgeTip(badge) {
         if (!badge) return;
         if (!tip) { tip = document.createElement("div"); tip.className = "sp-tip"; document.body.appendChild(tip); }
         tip.textContent = badge.dataset.tip;
@@ -289,13 +290,26 @@ function processTransitStops(geojson) {
         tip.style.left = rect.left + rect.width / 2 + "px";
         tip.style.top = rect.top - 8 + "px";
         tip.style.transform = "translate(-50%, -100%)";
+        tipBadge = badge;
         requestAnimationFrame(() => tip.classList.add("visible"));
-      }, true);
-      popEl.addEventListener("pointerleave", (ev) => {
+      }
+      function hideBadgeTip() { if (tip) tip.classList.remove("visible"); tipBadge = null; }
+      if (_hasHoverTransit) {
+        popEl.addEventListener("mouseenter", (ev) => {
+          const badge = ev.target.closest(".sp-chip[data-tip]");
+          if (badge) showBadgeTip(badge);
+        }, true);
+        popEl.addEventListener("mouseleave", (ev) => {
+          const badge = ev.target.closest(".sp-chip[data-tip]");
+          if (badge) hideBadgeTip();
+        }, true);
+      }
+      popEl.addEventListener("click", (ev) => {
         const badge = ev.target.closest(".sp-chip[data-tip]");
-        if (badge && tip) tip.classList.remove("visible");
+        if (badge) { if (tipBadge === badge) hideBadgeTip(); else showBadgeTip(badge); }
+        else hideBadgeTip();
       }, true);
-      popup.on("close", () => { if (tip) { tip.remove(); tip = null; } });
+      popup.on("close", () => { if (tip) { tip.remove(); tip = null; tipBadge = null; } });
 
       const routesJson = f.properties.routes;
       let cachedRoutes = [];

@@ -1021,13 +1021,11 @@ const tagTip = document.createElement("div");
 tagTip.className = "pl-tag-tip";
 document.getElementById("places-sheet").appendChild(tagTip);
 let tagTipTarget = null;
-let tagTipShowTime = 0;
 
 function showTagTip(el) {
   const raw = el.dataset.tags;
   if (!raw) return;
   tagTipTarget = el;
-  tagTipShowTime = Date.now();
   const typeName = el.dataset.type || "";
   const typeColor = getComputedStyle(el).getPropertyValue("--type-c").trim() || "";
   const cfg = Object.values(PLACE_CONFIG).find(c => c.label === typeName);
@@ -1063,24 +1061,25 @@ function hideTagTip() {
   tagTip.classList.remove("show");
 }
 
-/* Hover listeners — use mouse events (not pointer) so touch doesn't double-fire with click */
-document.getElementById("places-list").addEventListener("mouseenter", (e) => {
-  const el = e.target.closest(".pl-tags-summary");
-  if (el) showTagTip(el);
-}, true);
-document.getElementById("places-list").addEventListener("mouseleave", (e) => {
-  const el = e.target.closest(".pl-tags-summary");
-  if (el && el === tagTipTarget) hideTagTip();
-}, true);
+/* Tag tooltip: hover on desktop, tap-toggle on mobile (no mouseenter) */
+const _hasHover = window.matchMedia("(hover: hover)").matches;
+if (_hasHover) {
+  document.getElementById("places-list").addEventListener("mouseenter", (e) => {
+    const el = e.target.closest(".pl-tags-summary");
+    if (el) showTagTip(el);
+  }, true);
+  document.getElementById("places-list").addEventListener("mouseleave", (e) => {
+    const el = e.target.closest(".pl-tags-summary");
+    if (el && el === tagTipTarget) hideTagTip();
+  }, true);
+}
 document.getElementById("places-scroll").addEventListener("scroll", hideTagTip, { passive: true });
 
 document.getElementById("places-list").addEventListener("click", (e) => {
-  // Toggle tag tooltip on tap (mobile)
+  // Toggle tag tooltip on tap/click
   const tagEl = e.target.closest(".pl-tags-summary");
   if (tagEl) {
     e.stopPropagation();
-    // If mouseenter just showed it (within 400ms), ignore this click — it's the synthetic mouse event from a tap
-    if (tagTipTarget === tagEl && Date.now() - tagTipShowTime < 400) return;
     if (tagTipTarget === tagEl) { hideTagTip(); } else { showTagTip(tagEl); }
     return;
   }

@@ -353,8 +353,10 @@ function closeOpenPanelOnMapInteract() {
     setActiveTab(null);
   }
 }
-map.on("mousedown", closeOpenPanelOnMapInteract);
 map.getCanvas().addEventListener("touchstart", closeOpenPanelOnMapInteract, { passive: true });
+if (window.matchMedia("(hover: hover)").matches) {
+  map.on("mousedown", closeOpenPanelOnMapInteract);
+}
 
 map.on("click", async (e) => {
   if (!dir.pickField) return;
