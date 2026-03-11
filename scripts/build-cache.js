@@ -109,7 +109,7 @@ async function fetchRoutesByMode(mode) {
   console.log(`  Fetching ${mode} routes...`);
   const data = await dtQuery(`{
     routes(feeds: ["HSL"], transportModes: ${mode}) {
-      shortName longName mode type
+      shortName longName mode type color textColor
       patterns { stops { code name lat lon } }
     }
   }`);
@@ -123,7 +123,7 @@ async function fetchFoliRoutes(mode) {
   // Feed ID "FOLI" is the Turku/Föli GTFS feed within the Waltti endpoint.
   const data = await dtQuery(`{
     routes(feeds: ["FOLI"], transportModes: ${mode}) {
-      shortName longName mode type
+      shortName longName mode type color textColor
       patterns { stops { code name lat lon } }
     }
   }`, 3, WALTTI_URL);
@@ -247,6 +247,8 @@ async function main() {
       m: route.mode,
       l: route.longName || '',
       t: route.type || 0,
+      ...(route.color ? { c: route.color } : {}),
+      ...(route.textColor ? { tc: route.textColor } : {}),
     };
 
     const seenCodes = new Set();

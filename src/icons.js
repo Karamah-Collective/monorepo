@@ -7,6 +7,7 @@ export const TRANSIT_COLORS = {
   metro: "#FF6319",
   train: "#8C4799",
   ferry: "#00B9E4",
+  foli_bus: "#008161", // Föli trunk-network teal (Turku/Föli region bus stops)
 };
 
 export const PLACE_CONFIG = {

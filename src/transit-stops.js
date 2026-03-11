@@ -237,7 +237,7 @@ function processTransitStops(geojson) {
     minzoom: 15,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 2.5, 18, 6],
-      "circle-color": TRANSIT_COLORS.bus,
+      "circle-color": ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus],
       "circle-stroke-width": 1,
       "circle-stroke-color": "#fff",
       "circle-opacity": 0.85,
@@ -258,15 +258,15 @@ function processTransitStops(geojson) {
       "text-max-width": 7,
       "text-optional": true,
     },
-    paint: { "text-color": TRANSIT_COLORS.bus, "text-halo-color": "#fff", "text-halo-width": 1.2 },
+    paint: { "text-color": ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
 
   let _stopPopupId = 0;
   ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"].forEach((layerId) => {
     map.on("click", layerId, (e) => {
       const f = e.features[0];
-      const { name, type, code } = f.properties;
-      const color = TRANSIT_COLORS[type] || "#007AC9";
+      const { name, type, code, region } = f.properties;
+      const color = (type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9");
       const lngLat = f.geometry.coordinates.slice();
       const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
       const svgIcon = modeIcon(modeKey, 20);
@@ -337,7 +337,11 @@ function processTransitStops(geojson) {
         const expectedMode = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || null;
         fetchStopRoutes(lngLat[1], lngLat[0], code, expectedMode)
           .then((routes) => {
-            const compact = (routes || []).map((r) => ({ s: r.shortName || "?", m: r.mode, l: r.longName || "", t: r.type || 0 }));
+            const compact = (routes || []).map((r) => ({
+              s: r.shortName || "?", m: r.mode, l: r.longName || "", t: r.type || 0,
+              ...(r.color ? { c: r.color } : {}),
+              ...(r.textColor ? { tc: r.textColor } : {}),
+            }));
             const seen = new Set();
             const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
             renderStopRoutes(routesDivId, unique, color);
@@ -364,9 +368,12 @@ function renderStopRoutes(divId, routes, fallbackColor) {
   el.innerHTML = routes
     .map((r) => {
       const isTrunk = r.m === "BUS" && r.t === 702;
-      const rColor = isTrunk
-        ? TRANSIT_COLORS.trunk
-        : TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor;
+      const rColor = r.c
+        ? `#${r.c}`
+        : isTrunk
+          ? TRANSIT_COLORS.trunk
+          : TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor;
+      const rTextColor = r.c ? (r.tc ? `#${r.tc}` : null) : null;
       const longText = r.l || "";
       const tipAttr = longText ? ` data-tip="${escA(longText)}"` : "";
       const num = esc(r.s || "?");
@@ -377,7 +384,8 @@ function renderStopRoutes(divId, routes, fallbackColor) {
       let sep = "";
       if (lastMode !== null && lastMode !== r.m) sep = '<span class="sp-sep"></span>';
       lastMode = r.m;
-      return `${sep}<span class="sp-chip" style="--rc:${rColor}"${tipAttr}>${label}</span>`;
+      const chipStyle = rTextColor ? `--rc:${rColor};--rt:${rTextColor}` : `--rc:${rColor}`;
+      return `${sep}<span class="sp-chip" style="${chipStyle}"${tipAttr}>${label}</span>`;
     })
     .join("");
 }
@@ -397,10 +405,10 @@ async function fetchStopRoutes(lat, lon, stopCode, expectedMode) {
   const needStation = !stopCode && ["SUBWAY", "RAIL", "FERRY"].includes(expectedMode);
   const query = `{
     nearest(lat: ${lat}, lon: ${lon}, maxResults: 15, maxDistance: 400, filterByPlaceTypes: [STOP]) {
-      edges { node { place { ... on Stop { name code gtfsId routes { shortName mode longName type } } } distance } }
+      edges { node { place { ... on Stop { name code gtfsId routes { shortName mode longName type color textColor } } } distance } }
     }
     ${needStation ? `stations: nearest(lat: ${lat}, lon: ${lon}, maxResults: 3, maxDistance: 500, filterByPlaceTypes: [STATION]) {
-      edges { node { place { ... on Stop { name gtfsId stops { name code routes { shortName mode longName type } } } } distance } }
+      edges { node { place { ... on Stop { name gtfsId stops { name code routes { shortName mode longName type color textColor } } } } distance } }
     }` : ""}
   }`;
   const resp = await fetch(pickDtEndpoint(lat, lon), {

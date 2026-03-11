@@ -774,7 +774,7 @@ async function findRoutes() {
     mode start { scheduledTime } end { scheduledTime }
     from { name stop { code zoneId } } to { name stop { code zoneId } }
     intermediateStops { name code zoneId }
-    trip { routeShortName tripHeadsign route { type } }
+    trip { routeShortName tripHeadsign route { type color textColor } }
     legGeometry { points } duration distance
   } } } }
 }`;
@@ -868,6 +868,7 @@ function modeClass(m, leg) {
   return { WALK: "walk", BUS: "bus", TRAM: "tram", SUBWAY: "subway", METRO: "subway", RAIL: "rail", FERRY: "ferry", FUNICULAR: "funicular" }[m] || "bus";
 }
 function legColor(m, leg) {
+  if (leg?.trip?.route?.color) return "#" + leg.trip.route.color;
   if (leg && isTrunkBus(leg)) return "#FF6319";
   return { WALK: "#52525b", BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: "#8C4799", FERRY: "#00B9E4" }[m] || "#1A73B8";
 }
@@ -1151,9 +1152,9 @@ function renderItineraries() {
       const expandHint = hasStops ? ` <span class="leg-expand-hint">${stops.length} stop${stops.length > 1 ? "s" : ""} <span class="leg-chevron">›</span></span>` : "";
       let interHtml = "";
       if (hasStops) {
-        interHtml = '<div class="leg-intermediate"><div class="leg-inter-inner">' + stops.map((s) => `<div class="leg-inter-stop"><span class="leg-inter-dot" style="background:${color}"></span><span class="leg-inter-name">${esc(s.name || "Stop")}${s.code ? " <small>(" + esc(s.code) + ")</small>" : ""}${s.zoneId ? ' <span class="zone-badge zone-' + s.zoneId.toLowerCase() + ' zone-inline">' + esc(s.zoneId) + "</span>" : ""}</span></div>`).join("") + "</div></div>";
+        interHtml = '<div class="leg-intermediate"><div class="leg-inter-inner">' + stops.map((s) => `<div class="leg-inter-stop"><span class="leg-inter-dot" style="background:${color}"></span><span class="leg-inter-name">${esc(s.name || "Stop")}${s.code ? " <small>(" + esc(s.code) + ")</small>" : ""}${(s.zoneId && /^[A-Z]$/.test(s.zoneId)) ? ' <span class="zone-badge zone-' + s.zoneId.toLowerCase() + ' zone-inline">' + esc(s.zoneId) + "</span>" : ""}</span></div>`).join("") + "</div></div>";
       }
-      row.innerHTML = `<div class="leg-timeline"><span class="leg-icon" style="background:${color}">${modeIcon(leg.mode, 12)}</span><div class="leg-line" style="background:${color}"></div></div><div class="leg-info"><div class="leg-mode-name">${esc(modeName)}${expandHint}</div><div class="leg-stops"><span class="leg-stop-time">${fromTime}</span> ${esc(leg.from.name)}${leg.from.stop?.code ? " <small>(" + esc(leg.from.stop.code) + ")</small>" : ""}${leg.from.stop?.zoneId ? ' <span class="zone-badge zone-' + leg.from.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.from.stop.zoneId) + "</span>" : ""}</div>${interHtml}<div class="leg-stops"><span class="leg-stop-time">${toTime}</span> ${esc(leg.to.name)}${leg.to.stop?.code ? " <small>(" + esc(leg.to.stop.code) + ")</small>" : ""}${leg.to.stop?.zoneId ? ' <span class="zone-badge zone-' + leg.to.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.to.stop.zoneId) + "</span>" : ""}</div><div class="leg-dist">${durL} min</div></div>`;
+      row.innerHTML = `<div class="leg-timeline"><span class="leg-icon" style="background:${color}">${modeIcon(leg.mode, 12)}</span><div class="leg-line" style="background:${color}"></div></div><div class="leg-info"><div class="leg-mode-name">${esc(modeName)}${expandHint}</div><div class="leg-stops"><span class="leg-stop-time">${fromTime}</span> ${esc(leg.from.name)}${leg.from.stop?.code ? " <small>(" + esc(leg.from.stop.code) + ")</small>" : ""}${(leg.from.stop?.zoneId && /^[A-Z]$/.test(leg.from.stop.zoneId)) ? ' <span class="zone-badge zone-' + leg.from.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.from.stop.zoneId) + "</span>" : ""}</div>${interHtml}<div class="leg-stops"><span class="leg-stop-time">${toTime}</span> ${esc(leg.to.name)}${leg.to.stop?.code ? " <small>(" + esc(leg.to.stop.code) + ")</small>" : ""}${(leg.to.stop?.zoneId && /^[A-Z]$/.test(leg.to.stop.zoneId)) ? ' <span class="zone-badge zone-' + leg.to.stop.zoneId.toLowerCase() + ' zone-inline">' + esc(leg.to.stop.zoneId) + "</span>" : ""}</div><div class="leg-dist">${durL} min</div></div>`;
       if (hasStops) {
         row.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1166,9 +1167,9 @@ function renderItineraries() {
     legsDiv.appendChild(legsInner);
     const zones = new Set();
     itin.legs.forEach((leg) => {
-      if (leg.from.stop?.zoneId) zones.add(leg.from.stop.zoneId);
-      if (leg.to.stop?.zoneId) zones.add(leg.to.stop.zoneId);
-      if (leg.intermediateStops) leg.intermediateStops.forEach((s) => { if (s.zoneId) zones.add(s.zoneId); });
+      if (leg.from.stop?.zoneId && /^[A-Z]$/.test(leg.from.stop.zoneId)) zones.add(leg.from.stop.zoneId);
+      if (leg.to.stop?.zoneId && /^[A-Z]$/.test(leg.to.stop.zoneId)) zones.add(leg.to.stop.zoneId);
+      if (leg.intermediateStops) leg.intermediateStops.forEach((s) => { if (s.zoneId && /^[A-Z]$/.test(s.zoneId)) zones.add(s.zoneId); });
     });
     const zoneDiv = document.createElement("div"); zoneDiv.className = "itin-zones";
     if (zones.size) {
