@@ -22,10 +22,11 @@ Comprehensive guide for securing API keys and configuring environments for local
 This application uses five external APIs that require authentication. Each API key is sensitive and must be handled with care:
 
 1. **HSL Digitransit** - Public transit routing in Helsinki (requires subscription key)
-2. **Nominatim** - Location search and reverse geocoding (no key needed, but has rate limits)
-3. **OSRM** - Walking/cycling/driving directions (public, no key needed)
-4. **Transitous** - Community transit routing fallback (public, no key needed)
-5. **Overpass API** - OpenStreetMap data queries (public, no key needed)
+2. **Waltti Digitransit** - Public transit routing in Turku / Föli region (same key as HSL)
+3. **Nominatim** - Location search and reverse geocoding (no key needed, but has rate limits)
+4. **OSRM** - Walking/cycling/driving directions (public, no key needed)
+5. **Transitous** - Community transit routing fallback (public, no key needed)
+6. **Overpass API** - OpenStreetMap data queries (public, no key needed)
 
 **Configuration Strategy:**
 - **Local Development:** Secrets stored in `src/config.local.js` (git-ignored)
@@ -48,11 +49,12 @@ API keys are credentials that authenticate your requests to external services. I
 ### What We're Protecting
 
 ```
-DIGITRANSIT_URL      → API endpoint URL (somewhat public, but good practice to protect)
-TRANSITOUS_URL       → API endpoint URL (public, but good practice to protect)
-DT_API_KEY           → 🔐 SECRET - Digitransit authentication key
-NOMINATIM_REV        → Reverse geocoding endpoint (public, but good practice to protect)
-NOMINATIM_VB         → Bounding box string (not secret, but part of config)
+DIGITRANSIT_URL          → HSL routing endpoint (Helsinki/Espoo/Vantaa)
+DIGITRANSIT_WALTTI_URL   → Waltti routing endpoint (Turku / Föli) — same API key as HSL
+TRANSITOUS_URL           → API endpoint URL (public, but good practice to protect)
+DT_API_KEY               → 🔐 SECRET - Digitransit authentication key (works for both HSL and Waltti)
+NOMINATIM_REV            → Reverse geocoding endpoint (public, but good practice to protect)
+NOMINATIM_VB             → Bounding box string (not secret, but part of config)
 ```
 
 ### Git Protection
@@ -104,9 +106,12 @@ Edit `src/config.local.js` and fill in the following:
 // This file contains actual API keys and is NEVER committed to git
 // ════════════════════════════════════════════════════════════════
 
-// HSL Digitransit Routing API
+// HSL Digitransit Routing API (Helsinki / Espoo / Vantaa)
 export const DIGITRANSIT_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
 export const DT_API_KEY = 'YOUR_ACTUAL_KEY_HERE'; // Get from digitransit.fi
+
+// Waltti Digitransit Routing API (Turku / Föli) — same API key as HSL
+export const DIGITRANSIT_WALTTI_URL = 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1';
 
 // Community Transit Fallback (Transitous/MOTIS)
 export const TRANSITOUS_URL = 'https://api.transitous.org/api/v5/plan';
@@ -197,6 +202,7 @@ This is critical - these tell your build script what values to inject.
    | Name | Value | Source |
    |------|-------|--------|
    | `DIGITRANSIT_URL` | `https://api.digitransit.fi/routing/v2/hsl/gtfs/v1` | Standard |
+   | `DIGITRANSIT_WALTTI_URL` | `https://api.digitransit.fi/routing/v2/waltti/gtfs/v1` | Standard |
    | `TRANSITOUS_URL` | `https://api.transitous.org/api/v5/plan` | Standard |
    | `DT_API_KEY` | Your actual key | From digitransit.fi |
    | `NOMINATIM_REV` | `https://nominatim.openstreetmap.org/reverse` | Standard |

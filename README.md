@@ -33,7 +33,7 @@
 - **First-run tutorial** — a 10-step interactive spotlight tour that guides new users through every feature
 
 ### Place Discovery
-- **27 verified halal-friendly locations** across Helsinki (2 mosques, 14 shops, 11 restaurants) — continuously growing
+- **76+ verified halal-friendly locations** across Helsinki — continuously growing
 - Filter by **place type** (All · Mosque · Restaurant · Shop)
 - Granular **tag filtering** per type (e.g. halal-certified, cash-only, delivery, etc.)
 - **Favourites** — saved locally via `localStorage`
@@ -49,7 +49,7 @@
 
 ### Directions & Routing
 - **4 travel modes**: Transit (bus/tram/metro/train/ferry), Walking, Cycling, Driving
-- **Transit routing** via HSL Digitransit GraphQL API with Transitous (MOTIS v2) as community fallback
+- **Transit routing** via Digitransit GraphQL — **HSL** (Helsinki / Espoo / Vantaa) and **Waltti / Föli** (Turku region) — each with per-route GTFS brand colours; cross-regional trips fall back to **Transitous** (MOTIS v2)
 - **Walk / Cycle / Drive** routing via OSRM (OpenStreetMap Routing Machine)
 - Depart now · Depart at · Arrive by time pickers
 - Expandable leg-by-leg step details with route numbers and zone badges
@@ -115,19 +115,26 @@ halal-finder/
 │   ├── 08-prayer-times.spec.js    # Prayer snack, times, Ramadan card
 │   ├── 09-tutorial.spec.js        # Tutorial flow, steps, localStorage persistence
 │   ├── 10-suggest-edit.spec.js    # Suggest/edit overlays, forms, tag chips
-│   └── 11-pin-markers.spec.js     # Search markers, dropped pins, save, remove
+│   ├── 11-pin-markers.spec.js     # Search markers, dropped pins, save, remove
+│   └── 12-mobile.spec.js          # Touch gestures, sheet drag/snap, mobile CSS — phones only
 │
 ├── docs/                          # Extended documentation
 │   ├── DESIGN_SYSTEM.md           # CSS token reference, templates, component rules
 │   ├── FORMS_SHEETS_SETUP.md      # Google Forms/Sheets integration for suggestions
 │   └── SECRETS_SETUP.md           # How to obtain and configure all API keys
 │
+├── .github/
+│   └── prompts/
+│       └── deploy.prompt.md       # Deploy agent — update → stage → commit → push workflow
+│
 ├── scripts/                       # Build and utility scripts
+│   ├── update-all.js              # Master update runner (--version · --places · --transit · --all)
 │   ├── build-secrets.js           # Injects env vars into config.js for Cloudflare Pages
-│   ├── build-cache.js             # Regenerates transit-cache.json from Overpass API
+│   ├── build-cache.js             # Regenerates transit-cache.json (Overpass + Digitransit HSL + Waltti)
+│   ├── fetch-and-cache-places.js  # Fetches live places + tags from Google Apps Script
 │   ├── check_places_osm.py        # Validates places against OpenStreetMap data
 │   ├── strip-comments.py          # Strips JS comments for production
-│   ├── transit-cache.json         # Generated cache (3.1 MB) — git-ignored
+│   ├── transit-cache.json         # Generated cache (4.4 MB, 10 498 stops) — git-ignored
 │   └── apps-script/               # Google Apps Script backend (place submissions + contact)
 │       ├── Code.gs                # Handles form submissions -> Google Sheets (new, edit, contact)
 │       └── appsscript.json        # Apps Script manifest
@@ -211,8 +218,9 @@ Production (Cloudflare):  Cloudflare env vars
 
 | Key | Where to get it | Required? |
 |-----|----------------|-----------|
-| `DT_API_KEY` | [digitransit.fi/developers](https://digitransit.fi/en/developers/) → Register → API key | Yes — transit routing |
-| `DIGITRANSIT_URL` | Fixed value — see template | Yes |
+| `DT_API_KEY` | [digitransit.fi/developers](https://digitransit.fi/en/developers/) → Register → API key | Yes — transit routing (works for both HSL and Waltti) |
+| `DIGITRANSIT_URL` | Fixed value — see template | Yes — Helsinki / HSL routing |
+| `DIGITRANSIT_WALTTI_URL` | Fixed value — see template | Yes — Turku / Föli routing |
 | `TRANSITOUS_URL` | Fixed value — see template | Yes |
 | `NOMINATIM_REV` | Fixed value — see template | Yes |
 | `NOMINATIM_VB` | Fixed value — see template | Yes |
@@ -222,12 +230,13 @@ Production (Cloudflare):  Cloudflare env vars
 
 ```javascript
 // NEVER commit this file — it is git-ignored
-export const DIGITRANSIT_URL    = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1";
-export const TRANSITOUS_URL     = "https://api.transitous.org/api/v5/plan";
-export const DT_API_KEY         = "your-digitransit-api-key-here";
-export const NOMINATIM_REV      = "https://nominatim.openstreetmap.org/reverse";
-export const NOMINATIM_VB       = "24.0,60.8,25.8,59.8";
-export const RECAPTCHA_SITE_KEY = "";   // leave blank if not using
+export const DIGITRANSIT_URL       = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1";
+export const DIGITRANSIT_WALTTI_URL = "https://api.digitransit.fi/routing/v2/waltti/gtfs/v1";
+export const TRANSITOUS_URL        = "https://api.transitous.org/api/v5/plan";
+export const DT_API_KEY            = "your-digitransit-api-key-here";
+export const NOMINATIM_REV         = "https://nominatim.openstreetmap.org/reverse";
+export const NOMINATIM_VB          = "24.0,60.8,25.8,59.8";
+export const RECAPTCHA_SITE_KEY    = "";   // leave blank if not using
 ```
 
 For step-by-step instructions on getting each API key, see **[docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md)**.
@@ -330,7 +339,8 @@ Each failure shows:
 | Map engine | MapLibre GL 3 (CDN via unpkg) | Pinned version, cached by service worker |
 | Language | Vanilla JS, ES Modules | Zero framework overhead |
 | Styling | CSS custom properties | Runtime theming, no preprocessor |
-| Transit routing | HSL Digitransit GraphQL | Primary |
+| Transit routing (Helsinki) | Digitransit HSL GraphQL | Primary — Helsinki / Espoo / Vantaa |
+| Transit routing (Turku) | Digitransit Waltti GraphQL | Primary — Turku / Föli region |
 | Walk/cycle/drive | OSRM REST API | Open-source, no key needed |
 | Hosting | Cloudflare Pages | Free, global CDN, env vars at build |
 | Testing | Playwright (Desktop Chrome · Pixel 7 · Galaxy S24 · iPhone 15 Pro WebKit) | True E2E across 4 real browsers |
@@ -514,6 +524,7 @@ For the complete token catalogue and component template reference, see **[docs/D
    | Variable | Value |
    |----------|-------|
    | `DIGITRANSIT_URL` | `https://api.digitransit.fi/routing/v2/hsl/gtfs/v1` |
+   | `DIGITRANSIT_WALTTI_URL` | `https://api.digitransit.fi/routing/v2/waltti/gtfs/v1` |
    | `TRANSITOUS_URL` | `https://api.transitous.org/api/v5/plan` |
    | `DT_API_KEY` | *your Digitransit key* |
    | `NOMINATIM_REV` | `https://nominatim.openstreetmap.org/reverse` |
@@ -612,7 +623,7 @@ Please include:
      -H "digitransit-subscription-key: YOUR_KEY" \
      -d "{\"query\":\"{ plan(from:{lat:60.17,lon:24.94},to:{lat:60.20,lon:24.95},date:\\\"20260301\\\",time:\\\"120000\\\",numItineraries:1){itineraries{duration}}} }\"}"
    ```
-2. Ensure start and end points are within the Helsinki metro area
+2. Ensure start and end points are within the Helsinki metro area or the Turku / Föli region
 3. Try walk/cycle/drive mode — these use OSRM and need no API key
 
 ### Search returns no results
@@ -652,7 +663,8 @@ Common causes:
 
 | API | Purpose | Key needed | Docs |
 |-----|---------|-----------|------|
-| HSL Digitransit | Transit routing (GraphQL) | Yes (free) | [digitransit.fi/developers](https://digitransit.fi/en/developers/) |
+| Digitransit HSL | Transit routing for Helsinki / Espoo / Vantaa (GraphQL) | Yes (free) | [digitransit.fi/developers](https://digitransit.fi/en/developers/) |
+| Digitransit Waltti | Transit routing for Turku / Föli region with per-route colours (GraphQL) | Same key as HSL | [digitransit.fi/developers](https://digitransit.fi/en/developers/) |
 | Transitous (MOTIS v2) | Transit fallback | No | [transitous.org](https://transitous.org) |
 | OSRM | Walk / cycle / drive routing | No | [project-osrm.org](http://project-osrm.org) |
 | Nominatim | Geocoding + reverse geocoding | No (1 req/s) | [nominatim.org](https://nominatim.org) |
@@ -693,10 +705,15 @@ npx playwright show-report              # Open last test HTML report
 npx playwright test -g "search pill"    # Run tests matching a name
 
 # ── Data ───────────────────────────────────────────────────────────────────
-node scripts/build-cache.js             # Regenerate transit-cache.json (~30s)
+node scripts/build-cache.js             # Regenerate transit-cache.json (~30s, HSL + Waltti/Föli)
 python scripts/check_places_osm.py     # Validate places against OSM
 
 # ── Deploy ─────────────────────────────────────────────────────────────────
+npm run update                          # Bump version + refresh places (default pre-push step)
+npm run update:full                     # Version + places + transit cache rebuild (~45s)
+npm run update:version                  # Bump SW/CSS cache-bust version string only
+npm run update:places                   # Refresh places.json + tags.json only
+npm run update:transit                  # Rebuild transit-cache.json only
 git push                                # Triggers Cloudflare Pages deploy
 node scripts/build-secrets.js          # (Runs automatically at deploy time)
 ```
@@ -707,7 +724,10 @@ node scripts/build-secrets.js          # (Runs automatically at deploy time)
 
 | Date | Change |
 |------|--------|
-| March 2026 | Added full Playwright test suite (366 tests, 11 spec files); tutorial module; suggest/edit overlays with Google Forms backend; deep-link / URL hash location sharing; transit-stop layer; first-run spotlight tutorial |
+| March 2026 | **Turku / Föli transit support** — 2 812 Turku stops + Waltti GraphQL routing; per-route GTFS brand colours on stop chips, map markers, and itinerary legs; cross-regional routing via Transitous fallback; zone badge filter (HSL A–D only) |
+| March 2026 | **Automation tooling** — `scripts/update-all.js` master update runner with `--version`, `--places`, `--transit`, `--all` flags; `npm run update / update:full / update:version / update:places / update:transit`; deploy agent at `.github/prompts/deploy.prompt.md` with Conventional Commits standard |
+| March 2026 | **Visual fixes** — route snackbar locked to `#1a73b8` in dark mode; chip `<small>` destination text darkened on light backgrounds; `.sp-chip` supports `--rt` CSS variable for GTFS `textColor` |
+| March 2026 | Added full Playwright test suite (1 005 tests, 12 spec files across 4 browser projects); tutorial module; suggest/edit overlays with Google Forms backend; deep-link / URL hash location sharing; transit-stop layer; first-run spotlight tutorial; contact form |
 | 2025 | Initial release — map, places, search, directions, prayer times |
 
 ---
