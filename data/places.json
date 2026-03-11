@@ -1044,5 +1044,22 @@
     "lng": 24.905782,
     "tags": {},
     "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor."
+  },
+  {
+    "id": "yoqkv8",
+    "name": "Ashtin Moskeija",
+    "type": "mosque",
+    "address": "Hakapellonkatu 2, 20540 Turku",
+    "lat": 60.4593307,
+    "lng": 22.3005773,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true
+    },
+    "notes": ""
   }
 ]
