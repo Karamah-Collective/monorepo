@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: "Run update-all, stage all changes, write a regulated commit message, and push to the specified branch."
+description: "Run the appropriate update steps, stage all changes, write a regulated commit message, and push to the specified branch."
 tools:
   - run_in_terminal
   - get_changed_files
@@ -14,20 +14,36 @@ production-ready deployment. Follow every step **in order** without skipping any
 
 ---
 
+## Available update commands (reference)
+
+| Command | What it runs | When to use |
+|---|---|---|
+| `npm run update` | version bump + places refresh | **Default — use this every push** |
+| `npm run update:full` | version + places + transit cache | Full sweep — ~15 s; do ~once a year or when transit data is stale |
+| `npm run update:version` | version bump only | When only bumping the cache string |
+| `npm run update:places` | places + tags fetch only | When only refreshing place data |
+| `npm run update:transit` | transit stop cache rebuild only | When only rebuilding HSL stop data |
+
+---
+
 ## Step 1 — Run the update script
 
-Run:
+**Choose the command based on the user's request:**
 
-```
-npm run update-all
-```
+- No special request / normal push → run the **standard** command:
+  ```
+  npm run update
+  ```
+  This bumps the cache version and fetches fresh places. It does **not** rebuild the transit
+  cache (that only needs doing ~once a year).
 
-This will in sequence:
-1. Bump `VERSION` in `sw.js` and the `?v=` param in `index.html` to today's date (YYYYMMDD).
-2. Fetch fresh place and tag data from Google Apps Script →  
-   `data/places.json` + `data/tags.json`
-3. Rebuild the transit stop cache from Overpass + HSL Digitransit →  
-   `scripts/transit-cache.json`
+- User says "full sweep", "update everything", or "update transit" → run:
+  ```
+  npm run update:full
+  ```
+
+- User asks for a specific step only → use the matching `update:version`, `update:places`,
+  or `update:transit` command.
 
 Wait for the script to complete. If it exits with an error, **stop and report the exact error**
 — do not continue to the next step.
@@ -40,7 +56,7 @@ Use the git status / diff tools to see exactly which files were modified and wha
 like. You need this context to write an accurate commit message. At minimum capture:
 
 - Which files changed
-- The old → new VERSION / ?v= strings (if the version was bumped)
+- The old → new VERSION / `?v=` strings (if the version was bumped)
 - The old vs new place count (if `places.json` changed)
 - The old vs new transit stop count (if `transit-cache.json` changed)
 
@@ -118,15 +134,27 @@ Affects: <comma-separated file list>
 - **No present-tense narration in the body**: write "Updated X to fix Y" → instead write
   "Fixes Y by updating X"
 
-#### Example: routine deploy
+#### Example: routine deploy (standard — version + places)
 
 ```
-chore: bump cache version to 20260311, refresh places and transit data
+chore: bump cache version to 20260311, refresh places data
 
 - SERVICE WORKER: VERSION 20260308 → 20260311 (forces cache invalidation on next visit)
 - CSS CACHE: ?v param 20260308 → 20260311 (cache-busting for styles.css)
 - PLACES DATA: 63 → 65 places (2 new entries approved in spreadsheet)
-- TRANSIT CACHE: 1 402 → 1 407 stops (5 new OSM nodes matched via Digitransit)
+
+Affects: sw.js, index.html, data/places.json, data/tags.json
+```
+
+#### Example: full sweep (version + places + transit)
+
+```
+chore: full sweep — bump version to 20260311, refresh places and transit data
+
+- SERVICE WORKER: VERSION 20260308 → 20260311 (forces cache invalidation on next visit)
+- CSS CACHE: ?v param 20260308 → 20260311 (cache-busting for styles.css)
+- PLACES DATA: 63 → 65 places (2 new entries approved in spreadsheet)
+- TRANSIT CACHE: 7 689 → 7 712 stops (23 new OSM nodes matched via Digitransit)
 
 Affects: sw.js, index.html, data/places.json, data/tags.json, scripts/transit-cache.json
 ```

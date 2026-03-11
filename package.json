@@ -8,7 +8,12 @@
     "lib": "lib"
   },
   "scripts": {
-    "update-all": "node scripts/update-all.js",
+    "update": "node scripts/update-all.js",
+    "update:full": "node scripts/update-all.js --all",
+    "update:version": "node scripts/update-all.js --version",
+    "update:places": "node scripts/update-all.js --places",
+    "update:transit": "node scripts/update-all.js --transit",
+    "update-all": "node scripts/update-all.js --all",
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
     "test:ui": "npx playwright test --ui",

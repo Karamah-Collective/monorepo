@@ -1,21 +1,28 @@
 #!/usr/bin/env node
 /**
- * Halal Finder — Master Update Script
+ * Halal Finder — Update Script
  *
- * Runs every manual update step in the correct order:
- *   1. Bump the cache-busting VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
- *   2. Fetch fresh places + tags from Google Apps Script → data/places.json + data/tags.json
- *   3. Rebuild the transit stop cache from Overpass + Digitransit → scripts/transit-cache.json
+ * Steps:
+ *   version  — Bump VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
+ *   places   — Fetch fresh places + tags from Google Apps Script
+ *   transit  — Rebuild transit stop cache from Overpass + HSL Digitransit
  *
  * Usage:
- *   node scripts/update-all.js
- *   npm run update-all
+ *   node scripts/update-all.js                  # standard: version + places
+ *   node scripts/update-all.js --all            # full sweep: version + places + transit
+ *   node scripts/update-all.js --version        # version bump only
+ *   node scripts/update-all.js --places         # places fetch only
+ *   node scripts/update-all.js --transit        # transit cache rebuild only
+ *   node scripts/update-all.js --places --transit  # any combination
  *
- * Env / config requirements:
- *   The places fetch reads SHEETS_URL from src/config.local.js (same as fetch-and-cache-places.js).
+ *   npm run update             # standard (version + places)
+ *   npm run update:full        # full sweep (all three)
+ *   npm run update:version     # version bump only
+ *   npm run update:places      # places only
+ *   npm run update:transit     # transit only
  *
  * Exit codes:
- *   0 — all steps succeeded
+ *   0 — all requested steps succeeded
  *   1 — one or more steps failed (error printed to stderr)
  */
 
@@ -54,7 +61,7 @@ function warn(msg)       { console.warn(`  ⚠  ${msg}`); }
 // ─── Step 1: Bump VERSION and ?v= cache-busting strings ───────────────────────
 
 function bumpVersionStrings(newVersion) {
-  banner('Step 1 — Bump cache-busting version strings');
+  banner('Version — Bump cache-busting strings');
 
   let anyChange = false;
 
@@ -98,7 +105,7 @@ function bumpVersionStrings(newVersion) {
 // ─── Step 2: Fetch places + tags ──────────────────────────────────────────────
 
 function fetchPlaces() {
-  banner('Step 2 — Fetch places & tags from Google Apps Script');
+  banner('Places — Fetch places & tags from Google Apps Script');
   try {
     execFileSync(NODE, [path.join(__dirname, 'fetch-and-cache-places.js')], {
       stdio: 'inherit',
@@ -114,7 +121,7 @@ function fetchPlaces() {
 // ─── Step 3: Rebuild transit stop cache ───────────────────────────────────────
 
 function buildTransitCache() {
-  banner('Step 3 — Rebuild transit stop cache (Overpass + HSL Digitransit)');
+  banner('Transit — Rebuild transit stop cache (Overpass + HSL Digitransit)');
   try {
     execFileSync(NODE, [path.join(__dirname, 'build-cache.js')], {
       stdio: 'inherit',
@@ -129,38 +136,48 @@ function buildTransitCache() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  const args = process.argv.slice(2);
+  const all      = args.includes('--all');
+  const explicit = args.some(a => ['--version','--places','--transit'].includes(a));
+
+  // Which steps to run:
+  //   --all              → all three
+  //   explicit flags     → only those named
+  //   no flags (default) → standard deploy: version + places
+  const runVersion = all || (!explicit) || args.includes('--version');
+  const runPlaces  = all || (!explicit) || args.includes('--places');
+  const runTransit = all || args.includes('--transit');
+
+  const stepList = [
+    runVersion && 'version bump',
+    runPlaces  && 'places fetch',
+    runTransit && 'transit cache',
+  ].filter(Boolean).join(', ');
+
   const version = today();
-  console.log(`\n🚀  Halal Finder — update-all  (target version: ${version})`);
+  console.log(`\n🚀  Halal Finder — update  (${stepList})  [target: ${version}]`);
 
   const errors = [];
 
-  // Step 1 — always run, fast, local-only
-  try {
-    bumpVersionStrings(version);
-  } catch (e) {
-    errors.push(`Step 1 (version bump): ${e.message}`);
+  if (runVersion) {
+    try { bumpVersionStrings(version); }
+    catch (e) { errors.push(`version bump: ${e.message}`); }
   }
 
-  // Step 2 — requires network + GAS URL in config.local.js
-  try {
-    fetchPlaces();
-  } catch (e) {
-    errors.push(`Step 2 (places fetch): ${e.message}`);
+  if (runPlaces) {
+    try { fetchPlaces(); }
+    catch (e) { errors.push(`places fetch: ${e.message}`); }
   }
 
-  // Step 3 — requires network access to Overpass + Digitransit
-  try {
-    buildTransitCache();
-  } catch (e) {
-    errors.push(`Step 3 (transit cache): ${e.message}`);
+  if (runTransit) {
+    try { buildTransitCache(); }
+    catch (e) { errors.push(`transit cache: ${e.message}`); }
   }
 
   // ─── Summary ──────────────────────────────────────────────────────────────
   banner('Summary');
   if (errors.length === 0) {
-    console.log('  ✅  All steps completed successfully.\n');
-    console.log(`  Version applied : ${version}`);
-    console.log('  Files updated   : sw.js, index.html, data/places.json, data/tags.json, scripts/transit-cache.json\n');
+    console.log(`  ✅  All steps completed successfully. (${stepList})\n`);
   } else {
     console.log(`  ⚠️  Completed with ${errors.length} error(s):\n`);
     errors.forEach((e, i) => console.error(`    ${i + 1}. ${e}`));
