@@ -3841,6 +3841,13 @@ body.dark-mode .sort-opt:disabled {
   }
 }
 
+/* Route snackbar — keep the same dark-blue background in dark mode.
+   The snackbar uses --accent which lightens in dark mode; override it
+   back to the light-mode value so it stays consistently dark. */
+body.dark-mode #route-snackbar {
+  background: #1a73b8;
+}
+
 #prayer-snack {
   position: absolute;
   z-index: var(--z-prayer);
@@ -4410,6 +4417,13 @@ body.dark-mode .sort-opt:disabled {
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* In light mode the chip background can be a light colour (ferry cyan etc),
+   making white text nearly invisible. Use a legible dark tint instead. */
+body:not(.dark-mode) .sp-chip small {
+  color: rgba(0, 0, 0, 0.65);
+  opacity: 1;
 }
 
 .sp-sep {
