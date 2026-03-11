@@ -25,9 +25,10 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true,
-      "quran_classes": true
+      "female_wudu": true
     },
     "notes": "Rabita central mosque."
   },
@@ -449,7 +450,8 @@
     "lng": 24.8537577,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "cuisine_fast_food": true
     },
     "notes": ""
   },
@@ -985,5 +987,62 @@
       "halal_meat": true
     },
     "notes": "Has fridges with halal frozen chicken"
+  },
+  {
+    "id": "rnmk12",
+    "name": "Yalla Myyrmäki",
+    "type": "shop",
+    "address": "Liesitori 1, 01600 Vantaa, Finland",
+    "lat": 60.26277069135821,
+    "lng": 24.85353054238982,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "ld8pqr",
+    "name": "Aalto University Undergraduate Centre",
+    "type": "prayer_room",
+    "address": "Otakaari 1, 02150 Espoo, Finland",
+    "lat": 60.1859838,
+    "lng": 24.8271078,
+    "tags": {},
+    "notes": "Room M135, silent room--needs access card"
+  },
+  {
+    "id": "83cdtk",
+    "name": "Chemicum Building",
+    "type": "prayer_room",
+    "address": "University of Helsinki, A.I. Virtasen aukio 1, 00560 Helsinki, Finland",
+    "lat": 60.20568340000001,
+    "lng": 24.9635073,
+    "tags": {},
+    "notes": "Room B145"
+  },
+  {
+    "id": "vp0tml",
+    "name": "University of Helsinki, Viikki Campus",
+    "type": "prayer_room",
+    "address": "Latokartanonkaari 3, 00790 Helsinki, Finland",
+    "lat": 60.227962,
+    "lng": 25.014806,
+    "tags": {},
+    "notes": "Second floor of building E"
+  },
+  {
+    "id": "372bxr",
+    "name": "Meilahti Tower Hospital",
+    "type": "prayer_room",
+    "address": "Haartmaninkatu 4, 00290 Helsinki, Finland",
+    "lat": 60.188577,
+    "lng": 24.905782,
+    "tags": {},
+    "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor."
   }
 ]

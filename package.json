@@ -8,6 +8,7 @@
     "lib": "lib"
   },
   "scripts": {
+    "update-all": "node scripts/update-all.js",
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
     "test:ui": "npx playwright test --ui",
