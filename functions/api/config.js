@@ -23,7 +23,8 @@ export async function onRequestGet(context) {
   const { env } = context;
 
   const cfg = {
-    DIGITRANSIT_URL:     env.DIGITRANSIT_URL     || 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1',
+    DIGITRANSIT_URL:        env.DIGITRANSIT_URL        || 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1',
+    DIGITRANSIT_WALTTI_URL: env.DIGITRANSIT_WALTTI_URL || 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1',
     DIGITRANSIT_GEO_URL: env.DIGITRANSIT_GEO_URL || 'https://api.digitransit.fi/geocoding/v1/search',
     DIGITRANSIT_REV_URL: env.DIGITRANSIT_REV_URL || 'https://api.digitransit.fi/geocoding/v1/reverse',
     TRANSITOUS_URL:      env.TRANSITOUS_URL      || 'https://api.transitous.org/api/v5/plan',

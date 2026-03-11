@@ -1,9 +1,10 @@
 import { map } from "./map-init.js";
-import { DIGITRANSIT_URL, DT_API_KEY } from "./config.js";
+import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, DT_API_KEY } from "./config.js";
 import { TRANSIT_COLORS, modeIcon } from "./icons.js";
 import { esc, escA } from "./utils.js";
 
 const HKI_BBOX = "59.90,24.30,60.70,25.80";
+const TKU_BBOX = "60.15,21.70,60.70,22.60"; // Turku / Föli service area
 const OVERPASS_SERVERS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -63,7 +64,19 @@ function deduplicateStops(features) {
 }
 
 async function loadTransitStopsFromAPI(retries = 0) {
-  const query = `[out:json][timeout:30];(node["railway"="station"]["station"!="abandoned"](${HKI_BBOX});node["railway"="halt"](${HKI_BBOX});node["railway"="tram_stop"](${HKI_BBOX});node["station"="subway"](${HKI_BBOX});node["railway"="subway_entrance"](${HKI_BBOX});node["amenity"="ferry_terminal"](${HKI_BBOX});node["amenity"="bus_station"](${HKI_BBOX});node["highway"="bus_stop"]["bus"="yes"](${HKI_BBOX});node["highway"="bus_stop"]["public_transport"="platform"](${HKI_BBOX}););out body;`;
+  const bboxes = [HKI_BBOX, TKU_BBOX];
+  const nodeTypes = [
+    `node["railway"="station"]["station"!="abandoned"]`,
+    `node["railway"="halt"]`,
+    `node["railway"="tram_stop"]`,
+    `node["station"="subway"]`,
+    `node["railway"="subway_entrance"]`,
+    `node["amenity"="ferry_terminal"]`,
+    `node["amenity"="bus_station"]`,
+    `node["highway"="bus_stop"]["bus"="yes"]`,
+    `node["highway"="bus_stop"]["public_transport"="platform"]`,
+  ];
+  const query = `[out:json][timeout:60];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(";")};);out body;`;
   const server = OVERPASS_SERVERS[retries % OVERPASS_SERVERS.length];
   console.log(`[Transit] Fallback: loading from ${server} (attempt ${retries + 1})…`);
   try {
@@ -369,6 +382,13 @@ function renderStopRoutes(divId, routes, fallbackColor) {
     .join("");
 }
 
+// Pick the right Digitransit endpoint based on stop coordinates.
+// Turku/Föli stops use the Waltti endpoint; everything else defaults to HSL.
+function pickDtEndpoint(lat, lon) {
+  if (lat >= 60.1 && lat <= 60.75 && lon >= 21.5 && lon <= 22.9) return DIGITRANSIT_WALTTI_URL;
+  return DIGITRANSIT_URL;
+}
+
 async function fetchStopRoutes(lat, lon, stopCode, expectedMode) {
   const filterMode = (routes) => {
     if (!routes) return [];
@@ -383,7 +403,7 @@ async function fetchStopRoutes(lat, lon, stopCode, expectedMode) {
       edges { node { place { ... on Stop { name gtfsId stops { name code routes { shortName mode longName type } } } } distance } }
     }` : ""}
   }`;
-  const resp = await fetch(DIGITRANSIT_URL, {
+  const resp = await fetch(pickDtEndpoint(lat, lon), {
     method: "POST",
     headers: { "Content-Type": "application/json", "digitransit-subscription-key": DT_API_KEY },
     body: JSON.stringify({ query }),

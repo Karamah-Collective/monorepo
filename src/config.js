@@ -14,6 +14,8 @@ try {
 
 export const DIGITRANSIT_URL =
   _cfg.DIGITRANSIT_URL || "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1";
+export const DIGITRANSIT_WALTTI_URL =
+  _cfg.DIGITRANSIT_WALTTI_URL || "https://api.digitransit.fi/routing/v2/waltti/gtfs/v1";
 export const DIGITRANSIT_GEO_URL =
   _cfg.DIGITRANSIT_GEO_URL || "https://api.digitransit.fi/geocoding/v1/search";
 export const TRANSITOUS_URL =

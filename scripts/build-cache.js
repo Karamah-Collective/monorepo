@@ -10,9 +10,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const HKI_BBOX = '59.90,24.30,60.70,25.80';
-const DT_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const DT_KEY = '67e7adc2e4fe4d649753b3b8eb872c23';
+const HKI_BBOX   = '59.90,24.30,60.70,25.80';
+const TKU_BBOX   = '60.15,21.70,60.70,22.60'; // Turku / Föli service area
+const DT_URL     = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
+const WALTTI_URL = 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1'; // Waltti cities (incl. Turku/Föli)
+const DT_KEY     = '67e7adc2e4fe4d649753b3b8eb872c23';
 
 const OVERPASS_SERVERS = [
   'https://overpass-api.de/api/interpreter',
@@ -36,9 +38,28 @@ function classifyStop(el) {
 
 function stopRank(type) { return { train: 3, metro: 3, ferry: 2, tram: 1 }[type] || 0; }
 
+// ─── Region helper ───
+function getRegion(lat, lon) {
+  if (lat >= 60.1 && lat <= 60.75 && lon >= 21.5 && lon <= 22.9) return 'turku';
+  if (lat >= 59.9 && lat <= 60.75 && lon >= 24.0 && lon <= 26.0) return 'hsl';
+  return 'other';
+}
+
 // ─── Overpass ───
 async function fetchOverpassStops() {
-  const query = `[out:json][timeout:60];(node["railway"="station"]["station"!="abandoned"](${HKI_BBOX});node["railway"="halt"](${HKI_BBOX});node["railway"="tram_stop"](${HKI_BBOX});node["station"="subway"](${HKI_BBOX});node["railway"="subway_entrance"](${HKI_BBOX});node["amenity"="ferry_terminal"](${HKI_BBOX});node["amenity"="bus_station"](${HKI_BBOX});node["highway"="bus_stop"]["bus"="yes"](${HKI_BBOX});node["highway"="bus_stop"]["public_transport"="platform"](${HKI_BBOX}););out body;`;
+  const bboxes = [HKI_BBOX, TKU_BBOX];
+  const nodeTypes = [
+    `node["railway"="station"]["station"!="abandoned"]`,
+    `node["railway"="halt"]`,
+    `node["railway"="tram_stop"]`,
+    `node["station"="subway"]`,
+    `node["railway"="subway_entrance"]`,
+    `node["amenity"="ferry_terminal"]`,
+    `node["amenity"="bus_station"]`,
+    `node["highway"="bus_stop"]["bus"="yes"]`,
+    `node["highway"="bus_stop"]["public_transport"="platform"]`,
+  ];
+  const query = `[out:json][timeout:90];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(';')};);out body;`;
   for (let i = 0; i < OVERPASS_SERVERS.length; i++) {
     const server = OVERPASS_SERVERS[i];
     console.log(`  Trying ${server}...`);
@@ -59,10 +80,10 @@ async function fetchOverpassStops() {
 }
 
 // ─── Digitransit bulk query ───
-async function dtQuery(query, retries = 3) {
+async function dtQuery(query, retries = 3, url = DT_URL) {
   for (let i = 0; i < retries; i++) {
     try {
-      const resp = await fetch(DT_URL, {
+      const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'digitransit-subscription-key': DT_KEY },
         body: JSON.stringify({ query }),
@@ -94,6 +115,20 @@ async function fetchRoutesByMode(mode) {
   }`);
   const routes = data?.routes || [];
   console.log(`    ${routes.length} ${mode} routes`);
+  return routes;
+}
+
+async function fetchFoliRoutes(mode) {
+  console.log(`  Fetching Föli ${mode} routes...`);
+  // Feed ID "FOLI" is the Turku/Föli GTFS feed within the Waltti endpoint.
+  const data = await dtQuery(`{
+    routes(feeds: ["FOLI"], transportModes: ${mode}) {
+      shortName longName mode type
+      patterns { stops { code name lat lon } }
+    }
+  }`, 3, WALTTI_URL);
+  const routes = data?.routes || [];
+  console.log(`    ${routes.length} Föli ${mode} routes`);
   return routes;
 }
 
@@ -167,18 +202,38 @@ async function main() {
       },
     }));
   const deduped = deduplicateStops(features);
-  console.log(`  ${features.length} valid → ${deduped.length} after dedup\n`);
+  // Tag each stop with its transit region so the client can pick the right routing endpoint
+  for (const f of deduped) {
+    const [lng, lat] = f.geometry.coordinates;
+    f.properties.region = getRegion(lat, lng);
+  }
+  const hslCount = deduped.filter(f => f.properties.region === 'hsl').length;
+  const tkuCount = deduped.filter(f => f.properties.region === 'turku').length;
+  console.log(`  ${features.length} valid → ${deduped.length} after dedup (${hslCount} HSL, ${tkuCount} Turku)\n`);
 
-  // 3) Fetch ALL routes from Digitransit (bulk — just 5 API calls)
-  console.log('[3/4] Fetching all HSL routes (bulk)...');
-  const modes = ['BUS', 'TRAM', 'SUBWAY', 'RAIL', 'FERRY'];
+  // 3) Fetch all transit routes (HSL + Föli bulk approach)
+  console.log('[3/4] Fetching transit routes (HSL + Turku/Föli)...');
   const allRoutes = [];
-  for (const mode of modes) {
+
+  // 3a) HSL routes (Helsinki region)
+  console.log('  [HSL] Fetching routes...');
+  for (const mode of ['BUS', 'TRAM', 'SUBWAY', 'RAIL', 'FERRY']) {
     const routes = await fetchRoutesByMode(mode);
     allRoutes.push(...routes);
     await sleep(500);
   }
-  console.log(`  Total: ${allRoutes.length} routes\n`);
+  console.log(`  HSL subtotal: ${allRoutes.length} routes`);
+
+  // 3b) Föli routes (Turku region, Waltti endpoint)
+  console.log('  [Föli] Fetching routes...');
+  const foliStart = allRoutes.length;
+  for (const mode of ['BUS', 'FERRY']) {
+    const routes = await fetchFoliRoutes(mode);
+    allRoutes.push(...routes);
+    await sleep(500);
+  }
+  console.log(`  Föli subtotal: ${allRoutes.length - foliStart} routes`);
+  console.log(`  Combined total: ${allRoutes.length} routes\n`);
 
   // 4) Build reverse index: stopCode → routes, name+loc → routes
   console.log('[4/4] Mapping routes to stops...');

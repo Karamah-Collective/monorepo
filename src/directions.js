@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { DIGITRANSIT_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
+import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
 import { esc, escA, showToast, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
@@ -728,6 +728,16 @@ async function autoResolveLocation(inputEl) {
   return null;
 }
 
+// Returns the correct Digitransit routing endpoint for a given pair of coordinates,
+// or null if the route spans multiple/unknown regions (caller should use Transitous).
+function pickTransitEndpoint(lat1, lon1, lat2, lon2) {
+  const inHSL   = (la, lo) => la >= 59.9 && la <= 60.75 && lo >= 24.0 && lo <= 26.0;
+  const inTurku = (la, lo) => la >= 60.1 && la <= 60.75 && lo >= 21.5 && lo <= 22.9;
+  if (inHSL(lat1, lon1)   && inHSL(lat2, lon2))   return DIGITRANSIT_URL;
+  if (inTurku(lat1, lon1) && inTurku(lat2, lon2)) return DIGITRANSIT_WALTTI_URL;
+  return null; // cross-regional or outside known areas
+}
+
 dirGo.addEventListener("click", findRoutes);
 
 async function findRoutes() {
@@ -768,8 +778,15 @@ async function findRoutes() {
     legGeometry { points } duration distance
   } } } }
 }`;
+  const dtEndpoint = pickTransitEndpoint(dir.origin.lat, dir.origin.lng, dir.dest.lat, dir.dest.lng);
+  if (!dtEndpoint) {
+    // Cross-regional or unknown area — skip Digitransit, go straight to Transitous
+    console.warn("[Transit] Route spans multiple/unknown regions, using Transitous…");
+    await findRoutesTransitous();
+    return;
+  }
   try {
-    const res = await fetch(DIGITRANSIT_URL, {
+    const res = await fetch(dtEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/graphql", "digitransit-subscription-key": DT_API_KEY },
       body: query,
@@ -1099,7 +1116,7 @@ async function findRoutesDirect(mode) {
 function renderItineraries() {
   dirEmpty.classList.add("hide"); dirLoad.classList.add("hide"); dirErr.classList.add("hide");
   dirItins.innerHTML = ""; dir.activeIdx = -1;
-  if (dir.usingFallback) dirItins.insertAdjacentHTML("afterbegin", '<div class="fallback-notice">⚠ HSL routing unavailable — showing community transit data (Transitous). Times may be less accurate.</div>');
+  if (dir.usingFallback) dirItins.insertAdjacentHTML("afterbegin", '<div class="fallback-notice">⚠ Regional transit routing unavailable — showing community transit data (Transitous). Times may be less accurate.</div>');
   dir.itineraries.forEach((itin, idx) => {
     const card = document.createElement("div");
     card.className = "itin-card"; card.dataset.idx = idx;

@@ -6,6 +6,7 @@
 */
 
 export const DIGITRANSIT_URL     = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
+export const DIGITRANSIT_WALTTI_URL = 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1';
 export const DIGITRANSIT_GEO_URL = 'https://api.digitransit.fi/geocoding/v1/search';
 export const DIGITRANSIT_REV_URL = 'https://api.digitransit.fi/geocoding/v1/reverse';
 export const TRANSITOUS_URL      = 'https://api.transitous.org/api/v5/plan';
