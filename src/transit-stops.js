@@ -161,6 +161,17 @@ function processTransitStops(geojson) {
   if (!geojson?.features?.length) return;
   if (map.getSource("transit-stops")) { console.log("[Transit] Source already exists, skipping"); return; }
 
+  // Precompute dotColor from the first colored route so map dots and popup
+  // headers use region-accurate colors rather than the generic HSL fallback.
+  for (const f of geojson.features) {
+    const raw = f.properties.routes;
+    let routes = [];
+    if (Array.isArray(raw)) routes = raw;
+    else { try { routes = raw ? JSON.parse(raw) : []; } catch (_) {} }
+    const firstColored = routes.find(r => r.c);
+    if (firstColored) f.properties.dotColor = `#${firstColored.c}`;
+  }
+
   map.addSource("transit-stops", { type: "geojson", data: geojson });
 
   map.addLayer({
@@ -171,7 +182,7 @@ function processTransitStops(geojson) {
     minzoom: 11,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 10, 19, 14],
-      "circle-color": ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#999"],
+      "circle-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#999"]],
       "circle-stroke-width": 2,
       "circle-stroke-color": "#fff",
       "circle-opacity": 0.95,
@@ -193,7 +204,7 @@ function processTransitStops(geojson) {
       "text-optional": true,
     },
     paint: {
-      "text-color": ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#555"],
+      "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#555"]],
       "text-halo-color": "#fff",
       "text-halo-width": 1.5,
     },
@@ -206,7 +217,7 @@ function processTransitStops(geojson) {
     minzoom: 14,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.5, 18, 8],
-      "circle-color": TRANSIT_COLORS.tram,
+      "circle-color": ["coalesce", ["get", "dotColor"], TRANSIT_COLORS.tram],
       "circle-stroke-width": 1.5,
       "circle-stroke-color": "#fff",
       "circle-opacity": 0.9,
@@ -227,7 +238,7 @@ function processTransitStops(geojson) {
       "text-max-width": 7,
       "text-optional": true,
     },
-    paint: { "text-color": TRANSIT_COLORS.tram, "text-halo-color": "#fff", "text-halo-width": 1.2 },
+    paint: { "text-color": ["coalesce", ["get", "dotColor"], TRANSIT_COLORS.tram], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
   map.addLayer({
     id: "transit-bus-bg",
@@ -237,7 +248,7 @@ function processTransitStops(geojson) {
     minzoom: 15,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 2.5, 18, 6],
-      "circle-color": ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus],
+      "circle-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]],
       "circle-stroke-width": 1,
       "circle-stroke-color": "#fff",
       "circle-opacity": 0.85,
@@ -258,7 +269,7 @@ function processTransitStops(geojson) {
       "text-max-width": 7,
       "text-optional": true,
     },
-    paint: { "text-color": ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus], "text-halo-color": "#fff", "text-halo-width": 1.2 },
+    paint: { "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
 
   let _stopPopupId = 0;
@@ -266,7 +277,8 @@ function processTransitStops(geojson) {
     map.on("click", layerId, (e) => {
       const f = e.features[0];
       const { name, type, code, region } = f.properties;
-      const color = (type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9");
+      const color = f.properties.dotColor ||
+        ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9"));
       const lngLat = f.geometry.coordinates.slice();
       const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
       const svgIcon = modeIcon(modeKey, 20);
@@ -344,7 +356,11 @@ function processTransitStops(geojson) {
             }));
             const seen = new Set();
             const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
-            renderStopRoutes(routesDivId, unique, color);
+            const livePrimary = renderStopRoutes(routesDivId, unique, color);
+            if (livePrimary) {
+              const spEl = popup.getElement()?.querySelector(".sp");
+              if (spEl) spEl.style.setProperty("--sc", livePrimary);
+            }
           })
           .catch(() => {
             const el = document.getElementById(routesDivId);
@@ -360,10 +376,11 @@ function processTransitStops(geojson) {
 
 function renderStopRoutes(divId, routes, fallbackColor) {
   const el = document.getElementById(divId);
-  if (!el) return;
-  if (!routes || routes.length === 0) { el.innerHTML = '<span class="sp-empty">No routes</span>'; return; }
+  if (!el) return null;
+  if (!routes || routes.length === 0) { el.innerHTML = '<span class="sp-empty">No routes</span>'; return null; }
   const modeOrder = { RAIL: 0, SUBWAY: 1, FERRY: 2, TRAM: 3, BUS: 4 };
   routes.sort((a, b) => (modeOrder[a.m] ?? 5) - (modeOrder[b.m] ?? 5));
+  const primaryColor = routes.find(r => r.c) ? `#${routes.find(r => r.c).c}` : null;
   let lastMode = null;
   el.innerHTML = routes
     .map((r) => {
@@ -373,7 +390,6 @@ function renderStopRoutes(divId, routes, fallbackColor) {
         : isTrunk
           ? TRANSIT_COLORS.trunk
           : TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor;
-      const rTextColor = r.c ? (r.tc ? `#${r.tc}` : null) : null;
       const longText = r.l || "";
       const tipAttr = longText ? ` data-tip="${escA(longText)}"` : "";
       const num = esc(r.s || "?");
@@ -384,10 +400,10 @@ function renderStopRoutes(divId, routes, fallbackColor) {
       let sep = "";
       if (lastMode !== null && lastMode !== r.m) sep = '<span class="sp-sep"></span>';
       lastMode = r.m;
-      const chipStyle = rTextColor ? `--rc:${rColor};--rt:${rTextColor}` : `--rc:${rColor}`;
-      return `${sep}<span class="sp-chip" style="${chipStyle}"${tipAttr}>${label}</span>`;
+      return `${sep}<span class="sp-chip" style="--rc:${rColor}"${tipAttr}>${label}</span>`;
     })
     .join("");
+  return primaryColor;
 }
 
 // Pick the right Digitransit endpoint based on stop coordinates.

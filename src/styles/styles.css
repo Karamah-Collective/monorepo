@@ -4398,7 +4398,7 @@ body.dark-mode #route-snackbar {
   border-radius: var(--r-xs);
   font-size: var(--txt-sm);
   font-weight: var(--fw-bold);
-  color: var(--rt, #fff);
+  color: #fff;
   background: var(--rc, var(--accent));
   letter-spacing: 0.15px;
   cursor: default;
@@ -4413,18 +4413,11 @@ body.dark-mode #route-snackbar {
 .sp-chip small {
   font-weight: var(--fw-semibold);
   font-size: var(--txt-xs);
-  opacity: 0.85;
+  color: #fff;
+  opacity: 0.82;
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* In light mode, chips without an explicit --rt text colour use a dark tint on
-   small text for legibility (e.g. ferry cyan background). When --rt IS set
-   (Föli per-route GTFS colours), the inherited value from the parent is used. */
-body:not(.dark-mode) .sp-chip small {
-  color: var(--rt, rgba(0, 0, 0, 0.65));
-  opacity: 1;
 }
 
 .sp-sep {
