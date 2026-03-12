@@ -11,8 +11,7 @@ src/config.local.js
 scripts/apps-script/Code.gs
 
 
-# Generated/cached files
-scripts/transit-cache.json
+# Generated/cached files — transit cache IS committed (deployed to Cloudflare Pages)
 scripts/cache/
 *.cache
 
