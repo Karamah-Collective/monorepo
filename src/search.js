@@ -3,6 +3,7 @@ import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
+import { placesData, showPlacePopup } from "./places.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -48,7 +49,7 @@ function _localPlaceSearch(q) {
     .slice(0, 4)
     .map(p => {
       const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
-      return { lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true };
+      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true };
     });
 }
 
@@ -325,14 +326,16 @@ function showResults(items) {
     return;
   }
   rList.innerHTML = items
-    .map((r) => `<li data-lat="${r.lat}" data-lng="${r.lng}"${r.local ? ' class="r-local"' : ''}>
+    .map((r) => {
+      const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}>
       <span class="r-icon">${typeIcon(r.type, r.cls)}</span>
       <div class="r-body">
         <div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div>
         <div class="r-addr">${esc(r.addr)}</div>
       </div>
-    </li>`)
-    .join("");
+    </li>`;
+    })
   showDrop();
 }
 
@@ -360,10 +363,14 @@ rList.addEventListener("click", (e) => {
   const li = e.target.closest("li");
   if (!li || !li.dataset.lat) return;
   const lat = +li.dataset.lat, lng = +li.dataset.lng;
-  showSearchMarker(lng, lat);
-  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
   collapseSearch();
   inp.blur();
+  if (li.dataset.placeId) {
+    const place = placesData.find(p => p.id === li.dataset.placeId);
+    if (place) { showPlacePopup(place); return; }
+  }
+  showSearchMarker(lng, lat);
+  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
 });
 
 const searchCard = document.getElementById("search-card");
