@@ -167,6 +167,10 @@
     {
       "id": "cuisine_uyghur",
       "label": "Uyghur"
+    },
+    {
+      "id": "cuisine_japanese",
+      "label": "Japanese"
     }
   ]
 }
