@@ -171,6 +171,18 @@
     {
       "id": "cuisine_japanese",
       "label": "Japanese"
+    },
+    {
+      "id": "cuisine_korean",
+      "label": "Korean"
+    },
+    {
+      "id": "cuisine_buffet",
+      "label": "Buffet"
+    },
+    {
+      "id": "cuisine_malaysian",
+      "label": "Malaysian"
     }
   ]
 }

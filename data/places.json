@@ -1088,5 +1088,20 @@
       "no_alcohol": true
     },
     "notes": ""
+  },
+  {
+    "id": "8jp8hr",
+    "name": "面师傅 Noodle Master",
+    "type": "restaurant",
+    "address": "Eerikinkatu 20, 00100 Helsinki, Finland",
+    "lat": 60.1663769,
+    "lng": 24.9332311,
+    "tags": {
+      "fully_halal": true,
+      "partially_halal": true,
+      "cuisine_chinese": true,
+      "no_alcohol": false
+    },
+    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination."
   }
 ]
