@@ -75,11 +75,14 @@ halal-finder/
 │
 ├── index.html                     # Single-page app shell (~1 170 lines)
 ├── package.json                   # npm scripts — tests only; app has zero runtime deps
-├── playwright.config.js           # Playwright E2E test configuration
 │
 ├── data/                          # Static data (checked into git)
 │   ├── places.json                # 27 halal locations with tags and coordinates
 │   ├── tags.json                  # Tag definitions per place type
+│   ├── icons/                     # PWA & favicon icons
+│   │   ├── favicon.png            # Site favicon (512×512)
+│   │   ├── icon-192.png           # PWA icon 192×192
+│   │   └── icon-512.png           # PWA icon 512×512
 │   └── thumbs/                    # Optional place thumbnail images
 │
 ├── src/                           # Application source — all ES modules
@@ -104,6 +107,7 @@ halal-finder/
 │       └── styles.css             # Component layout + unique overrides (imports tokens)
 │
 ├── tests/                         # Playwright automated test suite
+│   ├── playwright.config.js       # Playwright E2E test configuration
 │   ├── helpers.js                 # Shared fixtures: API mocking, app loading, helpers
 │   ├── 01-dom-elements.spec.js    # DOM structure — every element, ID, and attribute
 │   ├── 02-data-integrity.spec.js  # places.json + tags.json validation
@@ -651,7 +655,7 @@ npx playwright show-report
 ```
 
 Common causes:
-- **Port 4173 in use** — stop the other process, or change the port in `playwright.config.js`
+- **Port 4173 in use** — stop the other process, or change the port in `tests/playwright.config.js`
 - **Stale browser binary** — run `npx playwright install chromium`
 - **Flaky timing** — tests have `retries: 1`; a single flake auto-retries. If it fails consistently, investigate the actual behaviour
 

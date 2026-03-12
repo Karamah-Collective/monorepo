@@ -22,12 +22,13 @@ const { defineConfig, devices } = require("@playwright/test");
  *   npm run test:phones            – all 3 phone projects
  */
 module.exports = defineConfig({
-  testDir: "./tests",
+  testDir: "./",
+  outputDir: "../test-results",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [["html", { open: "never" }], ["list"]],
+  reporter: [["html", { open: "never", outputFolder: "../playwright-report" }], ["list"]],
   timeout: 60_000,
   expect: { timeout: 10_000 },
 
@@ -41,7 +42,7 @@ module.exports = defineConfig({
 
   /* Launch a simple static file server before all tests */
   webServer: {
-    command: "npx serve . -l 4173 --no-clipboard",
+    command: "npx serve .. -l 4173 --no-clipboard",
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,

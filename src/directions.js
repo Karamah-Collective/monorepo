@@ -1134,6 +1134,7 @@ function renderItineraries() {
       if (li > 0) chain.insertAdjacentHTML("beforeend", '<span class="leg-arrow">›</span>');
       const badge = document.createElement("span");
       badge.className = `leg-badge ${modeClass(leg.mode, leg)}`;
+      if (leg.trip?.route?.color) badge.style.background = `#${leg.trip.route.color}`;
       badge.innerHTML = leg.trip?.routeShortName ? `${modeIcon(leg.mode, 12)} ${esc(leg.trip.routeShortName)}` : modeIcon(leg.mode, 14);
       chain.appendChild(badge);
     });
@@ -1210,6 +1211,7 @@ function focusRoute(idx) {
     if (li > 0) chainEl.insertAdjacentHTML("beforeend", '<span class="leg-arrow">›</span>');
     const badge = document.createElement("span");
     badge.className = `leg-badge ${modeClass(leg.mode, leg)}`;
+    if (leg.trip?.route?.color) badge.style.background = `#${leg.trip.route.color}`;
     badge.innerHTML = leg.trip?.routeShortName ? `${modeIcon(leg.mode, 12)} ${esc(leg.trip.routeShortName)}` : modeIcon(leg.mode, 14);
     chainEl.appendChild(badge);
   });

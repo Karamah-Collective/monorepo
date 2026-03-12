@@ -14,14 +14,14 @@
     "update:places": "node scripts/update-all.js --places",
     "update:transit": "node scripts/update-all.js --transit",
     "update-all": "node scripts/update-all.js --all",
-    "test": "npx playwright test",
-    "test:headed": "npx playwright test --headed",
-    "test:ui": "npx playwright test --ui",
-    "test:desktop": "npx playwright test --project=\"Desktop Chrome\"",
-    "test:mobile": "npx playwright test --project=\"Pixel 7\"",
-    "test:android": "npx playwright test --project=\"Galaxy S24\"",
-    "test:iphone": "npx playwright test --project=\"iPhone 15 Pro\"",
-    "test:phones": "npx playwright test --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\""
+    "test": "npx playwright test --config tests/playwright.config.js",
+    "test:headed": "npx playwright test --config tests/playwright.config.js --headed",
+    "test:ui": "npx playwright test --config tests/playwright.config.js --ui",
+    "test:desktop": "npx playwright test --config tests/playwright.config.js --project=\"Desktop Chrome\"",
+    "test:mobile": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\"",
+    "test:android": "npx playwright test --config tests/playwright.config.js --project=\"Galaxy S24\"",
+    "test:iphone": "npx playwright test --config tests/playwright.config.js --project=\"iPhone 15 Pro\"",
+    "test:phones": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\""
   },
   "repository": {
     "type": "git",
