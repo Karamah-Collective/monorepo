@@ -2583,6 +2583,10 @@ body.dark-mode .sort-opt:disabled {
   max-width: 120px;
   overflow: hidden;
 }
+.direct-endpoints svg {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
 .direct-ep {
   font-size: var(--txt-xs);
   color: var(--text-2);
