@@ -28,6 +28,83 @@ fetch("data/places.json")
   .then(data => { _localPlaces = data; })
   .catch(() => { _localPlaces = []; });
 
+// ─── Semantic search: pre-computed embeddings + Web Worker ────────────────────────
+let _semEmbeddings = null; // { dim, ids, vectors: Float32Array }
+let _semWorker = null;
+let _semReady = false;
+let _semCallbacks = {};
+let _semIdCounter = 0;
+
+// Load the embeddings file (small, ~150 KB gzipped)
+fetch("data/embeddings.json")
+  .then(r => r.json())
+  .then(data => {
+    const binary = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
+    const vectors = new Float32Array(binary.buffer);
+    _semEmbeddings = { dim: data.dim, ids: data.ids, vectors };
+  })
+  .catch(() => { /* embeddings not available — semantic search disabled */ });
+
+function _warmupSemanticWorker() {
+  if (_semWorker) return;
+  try {
+    _semWorker = new Worker("src/semantic-worker.js", { type: "module" });
+    _semWorker.onmessage = (e) => {
+      const { type, id, vector, message } = e.data;
+      if (type === "ready") { _semReady = true; return; }
+      if (type === "result" && _semCallbacks[id]) {
+        _semCallbacks[id].resolve(new Float32Array(vector));
+        delete _semCallbacks[id];
+      }
+      if (type === "error" && id && _semCallbacks[id]) {
+        _semCallbacks[id].reject(new Error(message));
+        delete _semCallbacks[id];
+      }
+    };
+    _semWorker.postMessage({ type: "warmup" });
+  } catch { /* Worker not supported — graceful fallback */ }
+}
+
+function _embedQuery(query) {
+  return new Promise((resolve, reject) => {
+    if (!_semWorker) { reject(new Error("no worker")); return; }
+    const id = ++_semIdCounter;
+    _semCallbacks[id] = { resolve, reject };
+    _semWorker.postMessage({ type: "embed", id, query });
+    // Timeout: if model is still loading, allow up to 30s
+    setTimeout(() => {
+      if (_semCallbacks[id]) {
+        _semCallbacks[id].reject(new Error("timeout"));
+        delete _semCallbacks[id];
+      }
+    }, 30000);
+  });
+}
+
+function _cosineSimilarity(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot; // vectors are pre-normalized, so dot product = cosine similarity
+}
+
+function _semanticSearch(queryVec, topK = 5, threshold = 0.25) {
+  if (!_semEmbeddings || !_localPlaces) return [];
+  const { dim, ids, vectors } = _semEmbeddings;
+  const scored = [];
+  for (let i = 0; i < ids.length; i++) {
+    const placeVec = vectors.subarray(i * dim, (i + 1) * dim);
+    const sim = _cosineSimilarity(queryVec, placeVec);
+    if (sim >= threshold) scored.push({ idx: i, id: ids[i], sim });
+  }
+  scored.sort((a, b) => b.sim - a.sim);
+  return scored.slice(0, topK).map(s => {
+    const p = _localPlaces.find(pl => pl.id === s.id);
+    if (!p) return null;
+    const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
+    return { lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true, semantic: true, score: s.sim };
+  }).filter(Boolean);
+}
+
 // Map our place types to icons compatible with typeIcon(type, cls)
 const _localTypeCls = {
   mosque:      { type: "place_of_worship", cls: "amenity" },
@@ -272,7 +349,25 @@ async function search(q) {
     // De-duplicate: drop API results whose name matches a local result
     const apiFiltered = apiItems.filter(r => !localNames.has(r.name.toLowerCase()));
 
-    showResults([...localItems, ...apiFiltered]);
+    // Show keyword results immediately
+    const keywordResults = [...localItems, ...apiFiltered];
+    showResults(keywordResults);
+
+    // 3. Async semantic search — augments results when model is ready
+    if (_semWorker && _semEmbeddings) {
+      _embedQuery(q)
+        .then(queryVec => {
+          const semItems = _semanticSearch(queryVec);
+          // Only add semantic results not already shown by keyword search
+          const shownNames = new Set(keywordResults.map(r => r.name.toLowerCase()));
+          const newSem = semItems.filter(r => !shownNames.has(r.name.toLowerCase()));
+          if (newSem.length && inp.value.trim() === q) {
+            // Re-render with semantic results appended after keyword results
+            showResults([...keywordResults, ...newSem]);
+          }
+        })
+        .catch(() => { /* worker not ready yet — keyword results already shown */ });
+    }
   } catch {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">Search failed.</li>';
     showDrop();
@@ -328,7 +423,7 @@ function showResults(items) {
     .map((r) => `<li data-lat="${r.lat}" data-lng="${r.lng}"${r.local ? ' class="r-local"' : ''}>
       <span class="r-icon">${typeIcon(r.type, r.cls)}</span>
       <div class="r-body">
-        <div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div>
+        <div class="r-name">${esc(r.name)}${r.semantic ? ' <span class="r-ai-badge">AI match</span>' : r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div>
         <div class="r-addr">${esc(r.addr)}</div>
       </div>
     </li>`)
@@ -371,6 +466,7 @@ document.getElementById("search-pill").addEventListener("click", (e) => {
   e.stopPropagation();
   if (searchCard.classList.contains("collapsed")) {
     searchCard.classList.remove("collapsed");
+    _warmupSemanticWorker(); // preload model on first interaction
     setTimeout(() => inp.focus(), 60);
   } else {
     collapseSearch();

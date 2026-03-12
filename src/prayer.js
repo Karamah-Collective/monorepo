@@ -17,6 +17,58 @@ let isRamadan = false;
 let prayerWatchInterval = null;
 let lastAlertedPrayer = null;
 
+// --- Prayer-contextual mosque scoring ---
+// Returns an effective "cost" for a mosque — lower is better.
+// Starts with haversine distance, then applies multipliers
+// based on the current prayer window and mosque capabilities.
+export function scoreMosque(mosque, userLat, userLng) {
+  const dist = haversineDistance(userLat, userLng, mosque.lat, mosque.lng);
+  let score = Math.max(dist, 0.05); // floor to avoid zero-divide
+  const tags = mosque.tags || {};
+
+  // Small baseline bonus for mosques that host all five daily prayers
+  if (tags.daily_prayers) score *= 0.85;
+
+  // Friday Dhuhr → strongly prefer mosques with Jummah
+  if (isFriday() && _isInPrayerWindow("Dhuhr")) {
+    score *= tags.jummah ? 0.3 : 1.5;
+  }
+
+  // Ramadan → prefer mosques with Taraweeh (after Isha)
+  if (isRamadan && _isInPrayerWindow("Isha")) {
+    score *= tags.taraweeh ? 0.4 : 1.0;
+  }
+
+  // Eid day → prefer mosques that host Eid prayer
+  if (tags.eid_prayer && _isEidWindow()) {
+    score *= 0.4;
+  }
+
+  return score;
+}
+
+// True if `name` is the current prayer or the upcoming one within 30 min
+function _isInPrayerWindow(name) {
+  if (!prayerTimesToday?.[name]) return false;
+  const now = Date.now();
+  const prayerMs = prayerTimesToday[name].getTime();
+  // Window: from 30 min before prayer until the *next* prayer starts
+  const idx = PRAYER_NAMES.indexOf(name);
+  const nextPrayer = idx < PRAYER_NAMES.length - 1 ? prayerTimesToday[PRAYER_NAMES[idx + 1]] : null;
+  const windowEnd = nextPrayer ? nextPrayer.getTime() : prayerMs + 3 * 3600000;
+  return now >= prayerMs - 30 * 60000 && now < windowEnd;
+}
+
+function _isEidWindow() {
+  // Approximate: 1 Shawwal (after Ramadan) or 10 Dhul-Hijjah.
+  // We detect the day after Ramadan ends (isRamadan was true yesterday).
+  // For simplicity, check if today's Hijri month is 10 (Shawwal) day 1,
+  // or month 12 (Dhul-Hijjah) day 10. This relies on Aladhan data which
+  // we may not have parsed deeply, so just return false for now — the tag
+  // bonus is a mild preference, not a hard filter.
+  return false;
+}
+
 // --- Fetch & parse ---
 async function fetchPrayerTimes(lat, lng) {
   const ts = Math.floor(Date.now() / 1000);
@@ -159,10 +211,10 @@ function findNearestMosque() {
         setFindingNearestMosque(false);
         return;
       }
-      let nearest = null, minDist = Infinity;
+      let nearest = null, minScore = Infinity;
       for (const mosque of mosques) {
-        const dist = haversineDistance(userLat, userLng, mosque.lat, mosque.lng);
-        if (dist < minDist) { minDist = dist; nearest = mosque; }
+        const s = scoreMosque(mosque, userLat, userLng);
+        if (s < minScore) { minScore = s; nearest = mosque; }
       }
       if (nearest) {
         const originName = await reverseGeocode(userLat, userLng);

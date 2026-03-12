@@ -4,6 +4,7 @@ import { esc, escA, showToast, showLoadingToast, hideLoadingToast, initSheetDrag
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
+import { scoreMosque } from "./prayer.js";
 
 // --- State ---
 let dirTravelMode = "drive";
@@ -1395,10 +1396,10 @@ export function findNearestMosqueFromOrigin(originLat, originLng) {
     alert(activeTagFilters.size ? "No mosques match the active filters." : "No mosques found in the database.");
     return;
   }
-  let nearest = null, minDist = Infinity;
+  let nearest = null, minScore = Infinity;
   for (const mosque of mosques) {
-    const dist = haversineDistance(originLat, originLng, mosque.lat, mosque.lng);
-    if (dist < minDist) { minDist = dist; nearest = mosque; }
+    const s = scoreMosque(mosque, originLat, originLng);
+    if (s < minScore) { minScore = s; nearest = mosque; }
   }
   if (nearest) {
     dir.dest = { lat: nearest.lat, lng: nearest.lng, name: nearest.name };
@@ -1418,10 +1419,10 @@ export async function autoSetNearestMosque(originLat, originLng) {
     mosques = mosques.filter((p) => [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true));
   }
   if (mosques.length === 0) return;
-  let nearest = null, minDist = Infinity;
+  let nearest = null, minScore = Infinity;
   for (const mosque of mosques) {
-    const dist = haversineDistance(originLat, originLng, mosque.lat, mosque.lng);
-    if (dist < minDist) { minDist = dist; nearest = mosque; }
+    const s = scoreMosque(mosque, originLat, originLng);
+    if (s < minScore) { minScore = s; nearest = mosque; }
   }
   if (nearest) {
     dir.dest = { lat: nearest.lat, lng: nearest.lng, name: nearest.name };

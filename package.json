@@ -12,6 +12,7 @@
     "update:full": "node scripts/update-all.js --all",
     "update:version": "node scripts/update-all.js --version",
     "update:places": "node scripts/update-all.js --places",
+    "update:embeddings": "node scripts/update-all.js --embeddings",
     "update:transit": "node scripts/update-all.js --transit",
     "update-all": "node scripts/update-all.js --all",
     "test": "npx playwright test --config tests/playwright.config.js",

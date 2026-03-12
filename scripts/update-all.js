@@ -3,22 +3,25 @@
  * Halal Finder — Update Script
  *
  * Steps:
- *   version  — Bump VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
- *   places   — Fetch fresh places + tags from Google Apps Script
- *   transit  — Rebuild transit stop cache from Overpass + HSL Digitransit
+ *   version     — Bump VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
+ *   places      — Fetch fresh places + tags from Google Apps Script
+ *   embeddings  — Rebuild semantic-search embeddings (requires Python + sentence-transformers)
+ *   transit     — Rebuild transit stop cache from Overpass + HSL Digitransit
  *
  * Usage:
- *   node scripts/update-all.js                  # standard: version + places
- *   node scripts/update-all.js --all            # full sweep: version + places + transit
- *   node scripts/update-all.js --version        # version bump only
- *   node scripts/update-all.js --places         # places fetch only
- *   node scripts/update-all.js --transit        # transit cache rebuild only
- *   node scripts/update-all.js --places --transit  # any combination
+ *   node scripts/update-all.js                     # standard: version + places + embeddings
+ *   node scripts/update-all.js --all               # full sweep: version + places + embeddings + transit
+ *   node scripts/update-all.js --version           # version bump only
+ *   node scripts/update-all.js --places            # places fetch only
+ *   node scripts/update-all.js --embeddings        # embeddings rebuild only
+ *   node scripts/update-all.js --transit           # transit cache rebuild only
+ *   node scripts/update-all.js --places --transit   # any combination
  *
- *   npm run update             # standard (version + places)
- *   npm run update:full        # full sweep (all three)
+ *   npm run update             # standard (version + places + embeddings)
+ *   npm run update:full        # full sweep (all four)
  *   npm run update:version     # version bump only
  *   npm run update:places      # places only
+ *   npm run update:embeddings  # embeddings only
  *   npm run update:transit     # transit only
  *
  * Exit codes:
@@ -118,7 +121,23 @@ function fetchPlaces() {
   }
 }
 
-// ─── Step 3: Rebuild transit stop cache ───────────────────────────────────────
+// ─── Step 3: Rebuild semantic-search embeddings ──────────────────────────────
+
+function buildEmbeddings() {
+  banner('Embeddings — Rebuild semantic-search vectors (Python)');
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  try {
+    execFileSync(py, [path.join(__dirname, 'build-embeddings.py')], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+    checkmark('embeddings.json updated');
+  } catch (err) {
+    throw new Error('build-embeddings.py exited with non-zero status');
+  }
+}
+
+// ─── Step 4: Rebuild transit stop cache ───────────────────────────────────────
 
 function buildTransitCache() {
   banner('Transit — Rebuild transit stop cache (Overpass + HSL Digitransit)');
@@ -138,20 +157,22 @@ function buildTransitCache() {
 async function main() {
   const args = process.argv.slice(2);
   const all      = args.includes('--all');
-  const explicit = args.some(a => ['--version','--places','--transit'].includes(a));
+  const explicit = args.some(a => ['--version','--places','--embeddings','--transit'].includes(a));
 
   // Which steps to run:
-  //   --all              → all three
+  //   --all              → all four
   //   explicit flags     → only those named
-  //   no flags (default) → standard deploy: version + places
-  const runVersion = all || (!explicit) || args.includes('--version');
-  const runPlaces  = all || (!explicit) || args.includes('--places');
-  const runTransit = all || args.includes('--transit');
+  //   no flags (default) → standard deploy: version + places + embeddings
+  const runVersion    = all || (!explicit) || args.includes('--version');
+  const runPlaces     = all || (!explicit) || args.includes('--places');
+  const runEmbeddings = all || (!explicit) || args.includes('--embeddings');
+  const runTransit    = all || args.includes('--transit');
 
   const stepList = [
-    runVersion && 'version bump',
-    runPlaces  && 'places fetch',
-    runTransit && 'transit cache',
+    runVersion    && 'version bump',
+    runPlaces     && 'places fetch',
+    runEmbeddings && 'embeddings',
+    runTransit    && 'transit cache',
   ].filter(Boolean).join(', ');
 
   const version = today();
@@ -167,6 +188,11 @@ async function main() {
   if (runPlaces) {
     try { fetchPlaces(); }
     catch (e) { errors.push(`places fetch: ${e.message}`); }
+  }
+
+  if (runEmbeddings) {
+    try { buildEmbeddings(); }
+    catch (e) { errors.push(`embeddings: ${e.message}`); }
   }
 
   if (runTransit) {
