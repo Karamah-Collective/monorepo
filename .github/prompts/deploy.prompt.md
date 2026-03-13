@@ -221,7 +221,7 @@ git checkout preview
 # 2. Pull in only the deployment files from main
 # IMPORTANT: do NOT include package.json — preview has its own minimal one
 #            for Cloudflare's npm auto-detection (no deps, no build scripts)
-git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json
+git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json scripts/build-secrets.js
 
 # 3. Stage everything
 git add .
@@ -232,7 +232,7 @@ git commit -m "chore: promote main to preview
 Synced deployment files from main branch.
 main HEAD: <sha-from-step-6>
 
-Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json"
+Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json, scripts/build-secrets.js"
 
 # 5. Push preview
 git push origin preview
