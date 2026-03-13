@@ -1,16 +1,21 @@
 ---
 mode: agent
-description: "Run the appropriate update steps, stage all changes, write a regulated commit message, and push to the specified branch."
-tools:
-  - run_in_terminal
-  - get_changed_files
-  - mcp_gitkraken_git_add_or_commit
-  - mcp_gitkraken_git_push
-  - mcp_gitkraken_git_status
+description: "Run update steps, commit to main, then optionally promote to preview or deploy branch."
 ---
 
 You are the **Halal Finder deploy agent**. Your job is to prepare and push a clean,
 production-ready deployment. Follow every step **in order** without skipping any.
+
+> **Branch rules — read before doing anything**
+>
+> | Branch | Purpose | Contents |
+> |--------|---------|----------|
+> | `main` | Full codebase — everything you work on | All files |
+> | `preview` | Deployment subset — deploys to **preview** domain | App files only (no scripts/, docs/, tests/, README, package.json, .github/) |
+> | `deploy` | Production — deploys to **main** domain for users | Exact copy of `preview` |
+>
+> **You NEVER push directly to `preview` or `deploy` with `git push`.
+> Those branches are managed exclusively through the promotion steps below.**
 
 ---
 
@@ -189,22 +194,67 @@ Create the commit using the message you wrote in Step 4. Do not alter the messag
 
 ---
 
-## Step 6 — Push
+## Step 6 — Push to `main`
 
-Push to the branch specified in the user's request.
-If no branch was specified, default to **`main`**.
+Always push to `main` first:
 
 ```
-git push origin <branch>
+git push origin main
 ```
+
+After pushing, **ask the user**:
+> "Pushed to main. Would you like me to promote this to **preview** now?"
+
+If they say yes, continue to Step 7. If they say no, stop here.
 
 ---
 
-## Step 7 — Confirm
+## Step 7 — Promote `main` → `preview`
 
-Report back with a concise summary:
+This copies only the deployment-relevant files to the `preview` branch.
+**Do not skip any sub-step.**
 
-- ✅ Short commit hash
-- 📝 The full commit message as committed
-- 🌿 Branch pushed to
-- 📦 What changed: files modified, versions bumped, data counts
+```bash
+# 1. Switch to preview
+git checkout preview
+
+# 2. Pull in only the deployment files from main
+git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json
+
+# 3. Stage everything
+git add .
+
+# 4. Capture the main SHA for traceability (use the actual short SHA from Step 6)
+git commit -m "chore: promote main to preview
+
+Synced deployment files from main branch.
+main HEAD: <sha-from-step-6>
+
+Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json"
+
+# 5. Push preview
+git push origin preview
+
+# 6. Return to main
+git checkout main
+```
+
+After promoting to preview, **ask the user**:
+> "Preview branch updated and pushed. Please review the preview site. When you are
+> ready, say 'promote to deploy' and I will copy preview → deploy."
+
+---
+
+## Step 8 — Promote `preview` → `deploy`  *(only on explicit instruction)*
+
+**Only run this step when the user has reviewed the preview site and explicitly says to
+promote, e.g. "promote to deploy", "ship it", "looks good, deploy".**
+
+```bash
+git push origin preview:deploy --force-with-lease
+```
+
+This fast-forwards `deploy` to match `preview` exactly — no cherry-pick, no separate commit.
+
+Confirm with the user after:
+> "Deploy branch updated. Cloudflare will now deploy to the main domain."
