@@ -663,7 +663,5 @@ export function _decodeLegacyToken(token) {
 }
 
 export function buildShareUrl(place) {
-  const { lat, lng } = map.getCenter();
-  const z = map.getZoom().toFixed(1);
-  return `${location.origin}${location.pathname}#${z}/${lat.toFixed(4)}/${lng.toFixed(4)}&p=${encryptToken(place)}`;
+  return `${location.origin}${location.pathname}?place=${encodeURIComponent(place.id)}`;
 }

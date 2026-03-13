@@ -11,7 +11,7 @@ export { getSavedPins, removeSavedPin };
 window.addEventListener("hf:show-search-marker", (e) => { showDroppedPin(e.detail.lng, e.detail.lat); });
 function _buildPinShareUrl(lat, lng) {
   const z = map.getZoom().toFixed(1);
-  return `${location.origin}${location.pathname}#${z}/${(+lat).toFixed(4)}/${(+lng).toFixed(4)}`;
+  return `${location.origin}${location.pathname}?lat=${(+lat).toFixed(4)}&lng=${(+lng).toFixed(4)}&z=${z}`;
 }
 const _starSVG = (filled) =>
   `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;

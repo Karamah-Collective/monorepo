@@ -608,20 +608,40 @@ export function checkShareUrl() {
     }
   }
 
-  if (!placeToken && !mapView) {
-    const params = new URLSearchParams(location.search);
-    placeToken = params.get("p") || null;
-    if (!placeToken) {
-      const id = params.get("place");
-      if (id) {
-        const place = placesData.find((p) => String(p.id) === id);
-        if (place) {
-          map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 });
-          map.once("moveend", () => showPlacePopup(place));
-        }
-        return;
-      }
+  // Always check query params (they work alongside hash-based links)
+  const params = new URLSearchParams(location.search);
+
+  // ?place=<id> — shared place link (new format)
+  const qPlaceId = params.get("place");
+  if (qPlaceId) {
+    const place = placesData.find((p) => String(p.id) === qPlaceId);
+    if (place) {
+      if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); showPlacePopup(place); }
+      else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => showPlacePopup(place)); }
     }
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
+
+  // ?lat=X&lng=Y&z=Z — shared pin/stop location (new format)
+  const qLat = params.get("lat");
+  const qLng = params.get("lng");
+  if (qLat && qLng) {
+    const la = parseFloat(qLat), lo = parseFloat(qLng);
+    const z = parseFloat(params.get("z")) || 16;
+    if (!isNaN(la) && !isNaN(lo)) {
+      map.flyTo({ center: [lo, la], zoom: z, speed: 1.4 });
+      map.once("moveend", () => {
+        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: lo, lat: la } }));
+      });
+    }
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
+
+  // Legacy: ?p=<token> (encrypted share link)
+  if (!placeToken && !mapView) {
+    placeToken = params.get("p") || null;
   }
 
   if (mapView && !placeToken) {
