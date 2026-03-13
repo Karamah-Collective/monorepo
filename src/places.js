@@ -629,10 +629,12 @@ export function checkShareUrl() {
   if (qLat && qLng) {
     const la = parseFloat(qLat), lo = parseFloat(qLng);
     const z = parseFloat(params.get("z")) || 16;
+    const isStop = params.get("type") === "stop";
     if (!isNaN(la) && !isNaN(lo)) {
       map.flyTo({ center: [lo, la], zoom: z, speed: 1.4 });
       map.once("moveend", () => {
-        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: lo, lat: la } }));
+        const eventName = isStop ? "hf:open-stop" : "hf:show-search-marker";
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: lo, lat: la } }));
       });
     }
     history.replaceState(null, "", location.pathname);

@@ -9,10 +9,180 @@ const _starSVG = (filled) =>
 
 function _buildStopShareUrl(lat, lng, name) {
   const z = map.getZoom().toFixed(1);
-  let url = `${location.origin}${location.pathname}?lat=${(+lat).toFixed(4)}&lng=${(+lng).toFixed(4)}&z=${z}`;
+  let url = `${location.origin}${location.pathname}?lat=${(+lat).toFixed(4)}&lng=${(+lng).toFixed(4)}&z=${z}&type=stop`;
   if (name) url += `&name=${encodeURIComponent(name)}`;
   return url;
 }
+
+let _stopPopupId = 0;
+let _pendingStopOpen = null;
+
+function _openStopFeaturePopup(f) {
+  const { name, type, code, region } = f.properties;
+  const color = f.properties.dotColor ||
+    ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9"));
+  const lngLat = f.geometry.coordinates.slice();
+  const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
+  const svgIcon = modeIcon(modeKey, 20);
+  const popId = ++_stopPopupId;
+  const routesDivId = `stop-routes-${popId}`;
+
+  const displayName = name || "Unnamed stop";
+  const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+  const codeStr = code ? `<span class="sp-code">${esc(code)}</span>` : "";
+  const lat = lngLat[1], lng = lngLat[0];
+  const saved = isPinSaved(lat, lng);
+  const html = `
+        <div class="sp" style="--sc:${color}">
+          <div class="sp-head">
+            <span class="sp-icon">${svgIcon}</span>
+            <div class="sp-title">${esc(displayName)}</div>
+            <div class="sp-sub">${typeLabel} ${codeStr}</div>
+            <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
+          </div>
+          <div class="sp-routes" id="${routesDivId}"></div>
+          <div class="sp-actions">
+            <button class="sp-dir-btn" title="Directions" aria-label="Directions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            </button>
+            <button class="sp-share-btn" title="Share this stop" aria-label="Share this stop">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button class="sp-close-btn" title="Close" aria-label="Close popup">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>`;
+
+  const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", className: "stop-popup-wrap" })
+    .setLngLat(lngLat)
+    .setHTML(html)
+    .addTo(map);
+
+  const popEl = popup.getElement();
+  let tip = null;
+  let tipBadge = null;
+  const _hasHoverTransit = window.matchMedia("(hover: hover)").matches;
+  function showBadgeTip(badge) {
+    if (!badge) return;
+    if (!tip) { tip = document.createElement("div"); tip.className = "sp-tip"; document.body.appendChild(tip); }
+    tip.textContent = badge.dataset.tip;
+    const rect = badge.getBoundingClientRect();
+    tip.style.left = rect.left + rect.width / 2 + "px";
+    tip.style.top = rect.top - 8 + "px";
+    tip.style.transform = "translate(-50%, -100%)";
+    tipBadge = badge;
+    requestAnimationFrame(() => tip.classList.add("visible"));
+  }
+  function hideBadgeTip() { if (tip) tip.classList.remove("visible"); tipBadge = null; }
+  if (_hasHoverTransit) {
+    popEl.addEventListener("mouseenter", (ev) => {
+      const badge = ev.target.closest(".sp-chip[data-tip]");
+      if (badge) showBadgeTip(badge);
+    }, true);
+    popEl.addEventListener("mouseleave", (ev) => {
+      const badge = ev.target.closest(".sp-chip[data-tip]");
+      if (badge) hideBadgeTip();
+    }, true);
+  }
+  popEl.addEventListener("click", (ev) => {
+    const badge = ev.target.closest(".sp-chip[data-tip]");
+    if (badge) { if (tipBadge === badge) hideBadgeTip(); else showBadgeTip(badge); return; }
+    hideBadgeTip();
+
+    const favBtn  = ev.target.closest(".sp-fav-btn");
+    const dirBtn  = ev.target.closest(".sp-dir-btn");
+    const shrBtn  = ev.target.closest(".sp-share-btn");
+    const clsBtn  = ev.target.closest(".sp-close-btn");
+
+    if (favBtn) {
+      const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+      const nowSaved = !isPinSaved(lat, lng);
+      toggleSavedPin(lat, lng, stopName);
+      favBtn.classList.toggle("active", nowSaved);
+      favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save stop");
+      favBtn.innerHTML = _starSVG(nowSaved);
+      showToast(nowSaved ? "Stop saved" : "Stop removed", "check");
+    } else if (dirBtn) {
+      const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+      dir.origin = { lat, lng, name: stopName };
+      document.getElementById("dir-from").value = stopName;
+      placeOriginMarker(lng, lat);
+      autoSetNearestMosque(lat, lng);
+      updateGoButton();
+      popup.remove();
+      openDirPanel();
+      if (!dir.dest) startPick("to");
+    } else if (shrBtn) {
+      const url = _buildStopShareUrl(lat, lng, displayName);
+      if (navigator.share) {
+        navigator.share({ title: displayName, text: `${displayName} – Halal Finder`, url })
+          .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
+      } else {
+        copyToClipboard(url);
+        showToast("Link copied");
+      }
+    } else if (clsBtn) {
+      popup.remove();
+    }
+  }, true);
+  popup.on("close", () => { if (tip) { tip.remove(); tip = null; tipBadge = null; } });
+
+  const routesJson = f.properties.routes;
+  let cachedRoutes = [];
+  if (Array.isArray(routesJson)) cachedRoutes = routesJson;
+  else { try { cachedRoutes = routesJson ? JSON.parse(routesJson) : []; } catch (_) {} }
+
+  if (cachedRoutes.length > 0) {
+    renderStopRoutes(routesDivId, cachedRoutes, color);
+  } else {
+    const el = document.getElementById(routesDivId);
+    if (el) el.innerHTML = '<span class="sp-loading"><span class="sp-spin"></span>Loading…</span>';
+    const expectedMode = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || null;
+    fetchStopRoutes(lngLat[1], lngLat[0], code, expectedMode)
+      .then((routes) => {
+        const compact = (routes || []).map((r) => ({
+          s: r.shortName || "?", m: r.mode, l: r.longName || "", t: r.type || 0,
+          ...(r.color ? { c: r.color } : {}),
+          ...(r.textColor ? { tc: r.textColor } : {}),
+        }));
+        const seen = new Set();
+        const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
+        const livePrimary = renderStopRoutes(routesDivId, unique, color);
+        if (livePrimary) {
+          const spEl = popup.getElement()?.querySelector(".sp");
+          if (spEl) spEl.style.setProperty("--sc", livePrimary);
+        }
+      })
+      .catch(() => {
+        const el = document.getElementById(routesDivId);
+        if (el) el.innerHTML = '<span class="sp-empty">Could not load routes</span>';
+      });
+  }
+}
+
+function _triggerStopOpen(lat, lng) {
+  const pt = map.project([lng, lat]);
+  const R = 18;
+  const features = map.queryRenderedFeatures(
+    [[pt.x - R, pt.y - R], [pt.x + R, pt.y + R]],
+    { layers: ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"] }
+  );
+  if (features.length) {
+    _openStopFeaturePopup(features[0]);
+  } else {
+    // Stop not rendered at current zoom — fall back to pin popup
+    window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng, lat } }));
+  }
+}
+
+window.addEventListener("hf:open-stop", ({ detail: { lat, lng } }) => {
+  if (map.getSource("transit-stops")) {
+    _triggerStopOpen(lat, lng);
+  } else {
+    _pendingStopOpen = { lat, lng };
+  }
+});
 
 const HKI_BBOX = "59.90,24.30,60.70,25.80";
 const TKU_BBOX = "60.15,21.70,60.70,22.60"; // Turku / Föli service area
@@ -283,155 +453,18 @@ function processTransitStops(geojson) {
     paint: { "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
 
-  let _stopPopupId = 0;
   ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"].forEach((layerId) => {
-    map.on("click", layerId, (e) => {
-      const f = e.features[0];
-      const { name, type, code, region } = f.properties;
-      const color = f.properties.dotColor ||
-        ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9"));
-      const lngLat = f.geometry.coordinates.slice();
-      const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
-      const svgIcon = modeIcon(modeKey, 20);
-      const popId = ++_stopPopupId;
-      const routesDivId = `stop-routes-${popId}`;
-
-      const displayName = name || "Unnamed stop";
-      const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
-      const codeStr = code ? `<span class="sp-code">${esc(code)}</span>` : "";
-      const lat = lngLat[1], lng = lngLat[0];
-      const saved = isPinSaved(lat, lng);
-      const html = `
-        <div class="sp" style="--sc:${color}">
-          <div class="sp-head">
-            <span class="sp-icon">${svgIcon}</span>
-            <div class="sp-title">${esc(displayName)}</div>
-            <div class="sp-sub">${typeLabel} ${codeStr}</div>
-            <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
-          </div>
-          <div class="sp-routes" id="${routesDivId}"></div>
-          <div class="sp-actions">
-            <button class="sp-dir-btn" title="Directions" aria-label="Directions">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-            </button>
-            <button class="sp-share-btn" title="Share this stop" aria-label="Share this stop">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            </button>
-            <button class="sp-close-btn" title="Close" aria-label="Close popup">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>`;
-
-      const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", className: "stop-popup-wrap" })
-        .setLngLat(lngLat)
-        .setHTML(html)
-        .addTo(map);
-
-      const popEl = popup.getElement();
-      let tip = null;
-      let tipBadge = null;
-      const _hasHoverTransit = window.matchMedia("(hover: hover)").matches;
-      function showBadgeTip(badge) {
-        if (!badge) return;
-        if (!tip) { tip = document.createElement("div"); tip.className = "sp-tip"; document.body.appendChild(tip); }
-        tip.textContent = badge.dataset.tip;
-        const rect = badge.getBoundingClientRect();
-        tip.style.left = rect.left + rect.width / 2 + "px";
-        tip.style.top = rect.top - 8 + "px";
-        tip.style.transform = "translate(-50%, -100%)";
-        tipBadge = badge;
-        requestAnimationFrame(() => tip.classList.add("visible"));
-      }
-      function hideBadgeTip() { if (tip) tip.classList.remove("visible"); tipBadge = null; }
-      if (_hasHoverTransit) {
-        popEl.addEventListener("mouseenter", (ev) => {
-          const badge = ev.target.closest(".sp-chip[data-tip]");
-          if (badge) showBadgeTip(badge);
-        }, true);
-        popEl.addEventListener("mouseleave", (ev) => {
-          const badge = ev.target.closest(".sp-chip[data-tip]");
-          if (badge) hideBadgeTip();
-        }, true);
-      }
-      popEl.addEventListener("click", (ev) => {
-        const badge = ev.target.closest(".sp-chip[data-tip]");
-        if (badge) { if (tipBadge === badge) hideBadgeTip(); else showBadgeTip(badge); return; }
-        hideBadgeTip();
-
-        const favBtn  = ev.target.closest(".sp-fav-btn");
-        const dirBtn  = ev.target.closest(".sp-dir-btn");
-        const shrBtn  = ev.target.closest(".sp-share-btn");
-        const clsBtn  = ev.target.closest(".sp-close-btn");
-
-        if (favBtn) {
-          const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
-          const nowSaved = !isPinSaved(lat, lng);
-          toggleSavedPin(lat, lng, stopName);
-          favBtn.classList.toggle("active", nowSaved);
-          favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save stop");
-          favBtn.innerHTML = _starSVG(nowSaved);
-          showToast(nowSaved ? "Stop saved" : "Stop removed", "check");
-        } else if (dirBtn) {
-          const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
-          dir.origin = { lat, lng, name: stopName };
-          document.getElementById("dir-from").value = stopName;
-          placeOriginMarker(lng, lat);
-          autoSetNearestMosque(lat, lng);
-          updateGoButton();
-          popup.remove();
-          openDirPanel();
-          if (!dir.dest) startPick("to");
-        } else if (shrBtn) {
-          const url = _buildStopShareUrl(lat, lng, displayName);
-          if (navigator.share) {
-            navigator.share({ title: displayName, text: `${displayName} – Halal Finder`, url })
-              .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-          } else {
-            copyToClipboard(url);
-            showToast("Link copied");
-          }
-        } else if (clsBtn) {
-          popup.remove();
-        }
-      }, true);
-      popup.on("close", () => { if (tip) { tip.remove(); tip = null; tipBadge = null; } });
-
-      const routesJson = f.properties.routes;
-      let cachedRoutes = [];
-      if (Array.isArray(routesJson)) cachedRoutes = routesJson;
-      else { try { cachedRoutes = routesJson ? JSON.parse(routesJson) : []; } catch (_) {} }
-
-      if (cachedRoutes.length > 0) {
-        renderStopRoutes(routesDivId, cachedRoutes, color);
-      } else {
-        const el = document.getElementById(routesDivId);
-        if (el) el.innerHTML = '<span class="sp-loading"><span class="sp-spin"></span>Loading…</span>';
-        const expectedMode = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || null;
-        fetchStopRoutes(lngLat[1], lngLat[0], code, expectedMode)
-          .then((routes) => {
-            const compact = (routes || []).map((r) => ({
-              s: r.shortName || "?", m: r.mode, l: r.longName || "", t: r.type || 0,
-              ...(r.color ? { c: r.color } : {}),
-              ...(r.textColor ? { tc: r.textColor } : {}),
-            }));
-            const seen = new Set();
-            const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
-            const livePrimary = renderStopRoutes(routesDivId, unique, color);
-            if (livePrimary) {
-              const spEl = popup.getElement()?.querySelector(".sp");
-              if (spEl) spEl.style.setProperty("--sc", livePrimary);
-            }
-          })
-          .catch(() => {
-            const el = document.getElementById(routesDivId);
-            if (el) el.innerHTML = '<span class="sp-empty">Could not load routes</span>';
-          });
-      }
-    });
+    map.on("click", layerId, (e) => { _openStopFeaturePopup(e.features[0]); });
     map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
   });
+
+  if (_pendingStopOpen) {
+    const { lat, lng } = _pendingStopOpen;
+    _pendingStopOpen = null;
+    // Give the map one frame to finish rendering the new features
+    requestAnimationFrame(() => _triggerStopOpen(lat, lng));
+  }
   console.log(`[Transit] Loaded ${geojson.features.length} transit stops`);
 }
 
