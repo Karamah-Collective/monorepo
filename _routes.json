@@ -6,7 +6,8 @@
     "/index.html",
     "/api/*",
     "/data/places.json",
-    "/data/tags.json"
+    "/data/tags.json",
+    "/src/*"
   ],
   "exclude": []
 }

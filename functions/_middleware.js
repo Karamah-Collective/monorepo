@@ -10,8 +10,14 @@
  *    links so social platforms show a context-aware preview.
  */
 
-// ── Protected data files (block direct / cross-origin access) ─────────────────
-const PROTECTED_PATHS = ['/data/places.json', '/data/tags.json'];
+// ── Protected paths (block direct / cross-origin access) ─────────────────────
+// Data JSON files  → curated datasets (most valuable to protect)
+// Source files     → app logic, config, styles
+function isProtectedPath(pathname) {
+  if (pathname === '/data/places.json' || pathname === '/data/tags.json') return true;
+  if (pathname.startsWith('/src/')) return true;
+  return false;
+}
 
 const PLACE_TYPES = {
   mosque:      'Mosque',
@@ -27,11 +33,11 @@ export async function onRequest(context) {
   // Sec-Fetch-Site is set by browsers and cannot be forged from client JS.
   // 'same-origin' = our app code / service worker fetching data normally.
   // 'none' = direct URL bar navigation. 'cross-site' / absent = external.
-  if (PROTECTED_PATHS.includes(url.pathname)) {
+  if (isProtectedPath(url.pathname)) {
     const fetchSite = context.request.headers.get('Sec-Fetch-Site');
     if (fetchSite !== 'same-origin') {
       return new Response(
-        JSON.stringify({ error: 'Direct access not permitted. Visit maps.karamahcollective.com to use the app.' }),
+        JSON.stringify({ error: 'Direct access not permitted.' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } },
       );
     }

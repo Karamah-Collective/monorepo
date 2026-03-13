@@ -123,7 +123,7 @@ self.addEventListener('fetch', (evt) => {
   // middleware gate handle them. Only serve from cache for programmatic
   // fetch() calls from app JS (mode === 'cors' or 'same-origin').
   if (url.origin === self.location.origin) {
-    if (req.mode === 'navigate' && (url.pathname === '/data/places.json' || url.pathname === '/data/tags.json')) {
+    if (req.mode === 'navigate' && (url.pathname === '/data/places.json' || url.pathname === '/data/tags.json' || url.pathname.startsWith('/src/'))) {
       return; // fall through to network → middleware returns 403
     }
     evt.respondWith(staleWhileRevalidate(req, CACHE_SHELL));

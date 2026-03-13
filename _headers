@@ -18,7 +18,7 @@
 
 # ─── Static assets — long cache with version-busted URLs ──────────────
 /src/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: private, max-age=31536000, immutable
 /data/places.json
   Cache-Control: private, no-store
 /data/tags.json
