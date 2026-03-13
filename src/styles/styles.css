@@ -2478,6 +2478,9 @@ body.dark-mode .sort-opt:disabled {
     opacity 0.2s ease,
     transform 0.2s ease;
 }
+.dir-share-btn svg {
+  transform: translateX(-1px);
+}
 .dir-clear-btn.hide,
 .dir-share-btn.hide {
   display: inline-flex !important;
