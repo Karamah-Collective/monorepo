@@ -233,7 +233,7 @@
   align-items: center;
   gap: 2px;
   margin-left: 6px;
-  font-size: 10px;
+  font-size: var(--txt-xs);
   font-weight: var(--fw-semi);
   color: var(--accent);
   background: var(--accent-soft);
@@ -775,7 +775,7 @@ body.dark-mode .sort-opt:disabled {
     padding: 10px 0;
     min-width: unset;
     gap: var(--sp-1);
-    font-size: 10px;
+    font-size: var(--txt-sm);
   }
   .tab svg {
     width: 20px;
@@ -1942,7 +1942,7 @@ body.dark-mode .sort-opt:disabled {
   font-size: var(--txt-sm);
 }
 .pp--pin .pp-sub {
-  font-size: 10px;
+  font-size: var(--txt-xs);
 }
 .pp--pin .pp-body {
   padding: 8px 10px;
@@ -2171,7 +2171,7 @@ body.dark-mode .sort-opt:disabled {
 .sg-pin-clear {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: var(--txt-xl);
   line-height: 1;
   color: var(--text-3);
   cursor: pointer;
@@ -3748,7 +3748,7 @@ body.dark-mode .fallback-notice {
   height: 16px;
   padding: 0 5px;
   border-radius: var(--r-2xs);
-  font-size: 10px;
+  font-size: var(--txt-xs);
   vertical-align: middle;
   margin-left: 2px;
 }
@@ -3844,7 +3844,7 @@ body.dark-mode .fallback-notice {
   flex-shrink: 0;
 }
 #snackbar-sub {
-  font-size: 11.5px;
+  font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   color: rgba(255, 255, 255, 0.78);
   white-space: nowrap;
@@ -5206,7 +5206,7 @@ body.dark-mode #route-snackbar {
   }
   #privacy-link,
   #osm-link {
-    font-size: 11px;
+    font-size: var(--txt-xs);
   }
 }
 
@@ -5461,7 +5461,7 @@ body.dark-mode #route-snackbar {
   border-bottom: 1px solid var(--border-light);
 }
 .mse-section-title {
-  font-size: 10px;
+  font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
