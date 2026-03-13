@@ -1,14 +1,17 @@
 /**
- * Cloudflare Pages Middleware — Dynamic Open Graph tags for shared links
+ * Cloudflare Pages Middleware
  *
- * When a URL contains ?place=<id> or ?lat=<X>&lng=<Y>, this middleware
- * rewrites the OG / Twitter meta tags in the HTML response so social
- * platforms (WhatsApp, Telegram, Twitter, Facebook, etc.) show a
- * context-aware preview instead of the generic site description.
+ * 1. Data protection — blocks direct/cross-origin access to /data/*.json
+ *    so the dataset can't be trivially cloned by visiting the URL.
+ *    Same-origin requests (app JS, service worker) are allowed via
+ *    the browser's Sec-Fetch-Site header (cannot be spoofed from JS).
  *
- * Only the root HTML page is affected; static assets and API routes
- * pass through untouched.
+ * 2. Dynamic Open Graph tags — rewrites OG/Twitter meta tags for shared
+ *    links so social platforms show a context-aware preview.
  */
+
+// ── Protected data files (block direct / cross-origin access) ─────────────────
+const PROTECTED_PATHS = ['/data/places.json', '/data/tags.json'];
 
 const PLACE_TYPES = {
   mosque:      'Mosque',
@@ -19,6 +22,21 @@ const PLACE_TYPES = {
 
 export async function onRequest(context) {
   const url = new URL(context.request.url);
+
+  // ── Data protection gate ─────────────────────────────────────────────────
+  // Sec-Fetch-Site is set by browsers and cannot be forged from client JS.
+  // 'same-origin' = our app code / service worker fetching data normally.
+  // 'none' = direct URL bar navigation. 'cross-site' / absent = external.
+  if (PROTECTED_PATHS.includes(url.pathname)) {
+    const fetchSite = context.request.headers.get('Sec-Fetch-Site');
+    if (fetchSite !== 'same-origin') {
+      return new Response(
+        JSON.stringify({ error: 'Direct access not permitted. Visit maps.karamahcollective.com to use the app.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return context.next();
+  }
 
   // Fast path: only process root HTML page with share params
   const placeId = url.searchParams.get('place');
