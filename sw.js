@@ -103,6 +103,9 @@ self.addEventListener('fetch', (evt) => {
   // ── Skip dynamic Cloudflare Functions (config / places API) ──────────────
   if (url.pathname.startsWith('/api/')) return;
 
+  // ── Only handle http(s) schemes ──────────────────────────────────────────
+  if (!url.protocol.startsWith('http')) return;
+
   // ── Glyphs / fonts from OpenFreeMap — cache-first (immutable) ───────────
   if (url.hostname === 'tiles.openfreemap.org' && url.pathname.startsWith('/fonts/')) {
     evt.respondWith(cacheFirst(req, CACHE_GLYPHS, MAX_GLYPHS));
@@ -134,6 +137,17 @@ self.addEventListener('fetch', (evt) => {
 // ─── Cache strategies ──────────────────────────────────────────────────────────
 
 /**
+ * Validate that a response is safe to cache:
+ * - Must be a 200 OK basic or cors response
+ * - Must have a valid content-type (no opaque error pages)
+ */
+function isCacheable(res) {
+  if (!res || !res.ok) return false;
+  if (res.type === 'opaque') return false; // can't inspect opaque
+  return true;
+}
+
+/**
  * Stale-While-Revalidate:
  * Return the cached copy immediately if available.
  * Simultaneously kick off a network fetch to refresh the cache in the background.
@@ -146,7 +160,7 @@ async function staleWhileRevalidate(req, cacheName, maxEntries) {
   // Always kick off a background refresh (fire-and-forget, errors swallowed).
   const refresh = fetch(req)
     .then(async (res) => {
-      if (res.ok) {
+      if (isCacheable(res)) {
         await cache.put(req, res.clone());
         if (maxEntries) await trimCache(cache, maxEntries);
       }
@@ -169,7 +183,7 @@ async function cacheFirst(req, cacheName, maxEntries) {
   if (cached) return cached;
 
   const res = await fetch(req);
-  if (res.ok) {
+  if (isCacheable(res)) {
     await cache.put(req, res.clone());
     if (maxEntries) await trimCache(cache, maxEntries);
   }

@@ -26,9 +26,16 @@
     <meta name="twitter:image" content="https://maps.karamahcollective.com/data/halal-finder-preview.png" />
     <link rel="icon" type="image/png" href="/data/icons/favicon.png" sizes="512x512" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="preconnect" href="https://api.digitransit.fi" crossorigin />
+    <link rel="dns-prefetch" href="https://api.transitous.org" />
+    <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://api.aladhan.com" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+      integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
+      crossorigin="anonymous"
     />
     <link rel="stylesheet" href="src/styles/styles.css?v=20260314" />
   </head>
@@ -961,6 +968,7 @@
                 id="sg-name"
                 type="text"
                 placeholder="e.g. Halal Kitchen"
+                maxlength="200"
               />
             </label>
             <div id="sg-pin-badge" class="sg-pin-badge hide">
@@ -977,6 +985,7 @@
                 type="url"
                 required
                 placeholder="https://maps.google.com/…"
+                maxlength="500"
               />
             </label>
             <label class="sg-label"
@@ -998,7 +1007,7 @@
             </div>
             <label class="sg-label"
               >Address
-              <input id="sg-address" type="text" placeholder="Street, city" />
+              <input id="sg-address" type="text" placeholder="Street, city" maxlength="300" />
             </label>
             <label class="sg-label"
               >Additional Notes
@@ -1006,6 +1015,7 @@
                 id="sg-notes"
                 rows="3"
                 placeholder="Any details about this place…"
+                maxlength="2000"
               ></textarea>
             </label>
             <button type="submit" id="sg-submit" class="btn-primary">
@@ -1059,6 +1069,7 @@
                 id="ed-name"
                 type="text"
                 placeholder="e.g. Halal Kitchen"
+                maxlength="200"
               />
             </label>
             <label class="sg-label"
@@ -1079,7 +1090,7 @@
             </div>
             <label class="sg-label"
               >Address
-              <input id="ed-address" type="text" placeholder="Street, city" />
+              <input id="ed-address" type="text" placeholder="Street, city" maxlength="300" />
             </label>
             <label class="sg-label"
               >Google Maps Link
@@ -1087,6 +1098,7 @@
                 id="ed-gmaps"
                 type="url"
                 placeholder="https://maps.google.com/…"
+                maxlength="500"
               />
             </label>
             <label class="sg-label"
@@ -1095,6 +1107,7 @@
                 id="ed-notes"
                 rows="3"
                 placeholder="Any details about this place…"
+                maxlength="2000"
               ></textarea>
             </label>
             <button type="submit" id="ed-submit" class="btn-primary">
@@ -1330,19 +1343,19 @@
           <form id="contact-form" autocomplete="off" novalidate>
             <label class="sg-label">
               <span>Name <span class="sg-req">*</span></span>
-              <input id="ct-name" type="text" required placeholder="Your name"/>
+              <input id="ct-name" type="text" required placeholder="Your name" maxlength="200"/>
             </label>
             <label class="sg-label">
               <span>Email <span class="sg-req">*</span></span>
-              <input id="ct-email" type="email" required placeholder="you@example.com"/>
+              <input id="ct-email" type="email" required placeholder="you@example.com" maxlength="254"/>
             </label>
             <label class="sg-label">
               Phone
-              <input id="ct-phone" type="tel" placeholder="Optional"/>
+              <input id="ct-phone" type="tel" placeholder="Optional" maxlength="30"/>
             </label>
             <label class="sg-label">
               <span>Message <span class="sg-req">*</span></span>
-              <textarea id="ct-message" rows="4" required placeholder="How can we help?"></textarea>
+              <textarea id="ct-message" rows="4" required placeholder="How can we help?" maxlength="2000"></textarea>
             </label>
             <button type="submit" id="ct-submit" class="btn-primary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1359,7 +1372,7 @@
       <div id="scrim" class="hide"></div>
     </div>
 
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js" integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW" crossorigin="anonymous"></script>
     <script type="module" src="src/app.js"></script>
   </body>
 </html>

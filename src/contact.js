@@ -4,6 +4,8 @@ import { showToast, loadRecaptcha } from "./utils.js";
 const overlay = document.getElementById("contact-overlay");
 const form = document.getElementById("contact-form");
 const submitBtn = document.getElementById("ct-submit");
+let _lastSubmit = 0;
+const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
 
 // Open / close
 document.getElementById("contact-pill").addEventListener("click", () => {
@@ -24,6 +26,11 @@ form.querySelectorAll("[required]").forEach((el) => {
 // Submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
+    showToast("Please wait", "error", "You can submit again in a minute.");
+    return;
+  }
 
   let hasEmpty = false;
   form.querySelectorAll("[required]").forEach((el) => {
@@ -55,6 +62,7 @@ form.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      _lastSubmit = Date.now();
       form.reset();
       overlay.classList.add("hide");
       showToast("Message sent!", "check", "JazakAllah Khair! InSyaAllah we'll get back to you soon.");

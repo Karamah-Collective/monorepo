@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
-import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
+import { RECAPTCHA_SITE_KEY } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 
@@ -17,6 +17,8 @@ let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
 let _editOriginalPlace = null;
+let _lastSubmit = 0;
+const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
 
 // When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
 // would read "✗ No Alcohol" — a confusing double negative. Map tag IDs to the label
@@ -137,7 +139,6 @@ function writeCache(places, tags) {
 
 async function fetchFresh() {
   const urls = ['/api/places?action=all'];
-  if (SHEETS_URL) urls.push(`${SHEETS_URL}?action=all`);
   for (const url of urls) {
     try {
       const res = await fetch(url);
@@ -1371,6 +1372,11 @@ sgGmapsInput.addEventListener("input", () => sgGmapsInput.classList.remove("inva
 suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
+    showToast("Please wait", "error", "You can submit again in a minute.");
+    return;
+  }
+
   let hasEmpty = false;
   suggestForm.querySelectorAll("[required]").forEach((el) => {
     if (!el.value || !el.value.trim()) { el.classList.add("invalid"); hasEmpty = true; }
@@ -1436,6 +1442,7 @@ suggestForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      _lastSubmit = Date.now();
       document.getElementById("suggest-form").reset();
       clearPinLocation();
       renderSuggestTags();
@@ -1598,6 +1605,12 @@ document.getElementById("edit-overlay").addEventListener("click", (e) => {
 
 document.getElementById("edit-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
+    showToast("Please wait", "error", "You can submit again in a minute.");
+    return;
+  }
+
   const submitBtn = document.getElementById("ed-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
@@ -1683,6 +1696,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      _lastSubmit = Date.now();
       document.getElementById("edit-overlay").classList.add("hide");
       showToast("Edit submitted", "check", "JazakAllah Khair!");
     } else {

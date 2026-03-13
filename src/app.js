@@ -18,11 +18,7 @@ import "./map-controls.js";
 import "./directions.js";
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
-import "./contact.js";
-import { initPrayerTimes } from "./prayer.js";
-import { loadTransitCache } from "./transit-stops.js";
-import { initTutorial } from "./tutorial.js";
-import { initStyleEditor } from "./map-style-editor.js";
+// Non-critical modules loaded lazily after map.on("load") for faster startup
 
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("gesturechange", (e) => e.preventDefault());
@@ -113,8 +109,22 @@ document.addEventListener(
 window.addEventListener("offline", showOfflineBanner);
 window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });
 
-map.on("load", () => {
+map.on("load", async () => {
   const loadPromise = loadPlacesData();
+
+  // Lazy-load non-critical modules in parallel after first paint
+  const [
+    { loadTransitCache },
+    { initPrayerTimes },
+    { initStyleEditor },
+    _contact, // side-effect import — attaches event listeners
+  ] = await Promise.all([
+    import("./transit-stops.js"),
+    import("./prayer.js"),
+    import("./map-style-editor.js"),
+    import("./contact.js"),
+  ]);
+
   loadTransitCache();
   initPrayerTimes();
   initStyleEditor();
@@ -122,7 +132,8 @@ map.on("load", () => {
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
   setTimeout(
-    () =>
+    async () => {
+      const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
         showEarlyDevNotice();
         // Show loading toast only after tutorial/intro finishes, if places still loading
@@ -130,7 +141,8 @@ map.on("load", () => {
           showLoadingToast("Loading places…", "Fetching latest data");
           loadPromise.then(() => hideLoadingToast());
         }
-      }),
+      });
+    },
     800,
   );
 

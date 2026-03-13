@@ -7,16 +7,27 @@
  *   2. Verify the reCAPTCHA v3 token with Google (server-side)
  *   3. Forward the data to the Google Apps Script web app → Google Sheet
  *
- * Required Cloudflare Pages Environment Variables (set in Pages → Settings → Variables):
+ * Required Cloudflare Pages Environment Variables (set in Pages -> Settings -> Variables):
  *   RECAPTCHA_SECRET   – reCAPTCHA v3 secret key
  *   GAS_URL            – Google Apps Script web app URL (https://script.google.com/macros/s/…/exec)
- * 
- * Updated GAS_URL to new deployment: AKfycby46l_-jABRg6ePKjDPbooFPcQYBnGrV_WtoSBWcxjk4e5MP4SX7qA3dAJWvur1Amt-SA
  */
 
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
-// Minimum reCAPTCHA v3 score to accept (0.0 = bot, 1.0 = human). 0.5 is Google's recommended default.
 const MIN_SCORE = 0.5;
+const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
+const MAX_FIELD_LEN = 500;
+const MAX_NOTES_LEN = 2000;
+const MAX_BODY_SIZE = 8192; // 8 KB
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function allowedOrigin(request) {
+  const origin = request.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+function truncate(str, max) {
+  return typeof str === 'string' ? str.slice(0, max) : '';
+}
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 export async function onRequestPost(context) {
@@ -24,7 +35,7 @@ export async function onRequestPost(context) {
 
   const responseHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin(request),
   };
 
   // ── Guard: env vars must be present ──
@@ -35,9 +46,25 @@ export async function onRequestPost(context) {
     return json({ error: 'Server misconfiguration: GAS_URL not set' }, 500, responseHeaders);
   }
 
+  // ── Reject oversized payloads ──
+  const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
+  if (contentLength > MAX_BODY_SIZE) {
+    return json({ error: 'Payload too large' }, 413, responseHeaders);
+  }
+
+  let rawText;
+  try {
+    rawText = await request.text();
+  } catch {
+    return json({ error: 'Invalid request body' }, 400, responseHeaders);
+  }
+  if (rawText.length > MAX_BODY_SIZE) {
+    return json({ error: 'Payload too large' }, 413, responseHeaders);
+  }
+
   let body;
   try {
-    body = await request.json();
+    body = JSON.parse(rawText);
   } catch {
     return json({ error: 'Invalid JSON body' }, 400, responseHeaders);
   }
@@ -45,12 +72,28 @@ export async function onRequestPost(context) {
   const { token, formType, ...formData } = body;
 
   // ── Basic validation ──
-  if (!token) {
+  if (!token || typeof token !== 'string') {
     return json({ error: 'Missing reCAPTCHA token' }, 400, responseHeaders);
   }
   if (!formType || !['new', 'edit', 'contact'].includes(formType)) {
-    return json({ error: 'formType must be "new", "edit", or "contact"' }, 400, responseHeaders);
+    return json({ error: 'Invalid form type' }, 400, responseHeaders);
   }
+
+  // ── Field-level validation & truncation ──
+  if (formData.name)    formData.name    = truncate(formData.name, MAX_FIELD_LEN);
+  if (formData.address) formData.address = truncate(formData.address, MAX_FIELD_LEN);
+  if (formData.gmaps)   formData.gmaps   = truncate(formData.gmaps, MAX_FIELD_LEN);
+  if (formData.notes)   formData.notes   = truncate(formData.notes, MAX_NOTES_LEN);
+  if (formData.message) formData.message = truncate(formData.message, MAX_NOTES_LEN);
+  if (formData.tags)    formData.tags    = truncate(formData.tags, MAX_FIELD_LEN);
+  if (formData.changesSummary) formData.changesSummary = truncate(formData.changesSummary, MAX_NOTES_LEN);
+
+  // Validate email format for contact forms
+  if (formType === 'contact' && formData.email && !EMAIL_RE.test(formData.email)) {
+    return json({ error: 'Invalid email address' }, 400, responseHeaders);
+  }
+  if (formData.email) formData.email = truncate(formData.email, 254);
+  if (formData.phone) formData.phone = truncate(formData.phone, 30);
 
   // ── 1. Verify reCAPTCHA v3 ────────────────────────────────────────────────
   let captcha;
@@ -111,27 +154,24 @@ export async function onRequestPost(context) {
     const gasText = gasRes ? await gasRes.text() : '';
     let gasData = null;
     try { gasData = JSON.parse(gasText); } catch { /* not JSON */ }
-    if (!gasData) {
-      const preview = gasText.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().substring(0, 200);
-      return json({ success: false, error: 'GAS error: ' + (preview || 'empty response') }, 200, responseHeaders);
-    }
-    if (gasData.error) {
-      return json({ success: false, error: gasData.error }, 200, responseHeaders);
+    if (!gasData || gasData.error) {
+      return json({ success: false, error: 'Submission could not be processed. Please try again.' }, 200, responseHeaders);
     }
     return json({ success: true }, 200, responseHeaders);
-  } catch (err) {
-    return json({ success: false, error: 'GAS request failed: ' + err.message }, 200, responseHeaders);
+  } catch {
+    return json({ success: false, error: 'Submission failed. Please try again later.' }, 200, responseHeaders);
   }
 }
 
 // ── OPTIONS preflight (CORS) ──────────────────────────────────────────────────
-export async function onRequestOptions() {
+export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Origin':  allowedOrigin(context.request),
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age':       '86400',
     },
   });
 }

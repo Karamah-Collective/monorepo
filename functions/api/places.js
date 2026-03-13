@@ -14,6 +14,13 @@
  *   ?action=places  → [...] places array
  *   ?action=tags    → {...} tags object
  */
+const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
+
+function allowedOrigin(request) {
+  const origin = request.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 export async function onRequestGet(context) {
   const { env, request } = context;
   const sheetsUrl = env.SHEETS_URL;
@@ -37,11 +44,11 @@ export async function onRequestGet(context) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin(request),
       },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Upstream fetch failed: ' + err.message }), {
+  } catch {
+    return new Response(JSON.stringify({ error: 'Data temporarily unavailable' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     });
