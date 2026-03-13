@@ -772,6 +772,26 @@ const tfCount = document.getElementById("tf-count");
 const sortToggle = document.getElementById("sort-toggle");
 const sortDropdown = document.getElementById("sort-dropdown");
 const sortLabel = document.getElementById("sort-label");
+const placesClearBtn = document.getElementById("places-clear-filters");
+
+function updateClearButton() {
+  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default";
+  placesClearBtn.classList.toggle("hide", !dirty);
+}
+
+placesClearBtn.addEventListener("click", () => {
+  activeTypeFilter = "all";
+  document.querySelectorAll(".pf-chip").forEach((c) => c.classList.toggle("active", c.dataset.type === "all"));
+  activeTagFilters.clear();
+  activeSortField = "default";
+  activeSortDir = "asc";
+  updateSortButton();
+  renderTagFilterBar();
+  addPlaceMarkers();
+  renderPlacesList();
+  placesSnap.softRemeasure();
+  updateClearButton();
+});
 
 function updateSortButton() {
   const isActive = activeSortField !== "default";
@@ -785,6 +805,7 @@ function updateSortButton() {
     btn.classList.toggle("active", btn.dataset.sortDir === activeSortDir);
     btn.disabled = activeSortField === "default";
   });
+  updateClearButton();
 }
 
 function closeSortDropdown() {
@@ -890,6 +911,7 @@ function renderTagFilterBar() {
   // Sort: show only when 2+ places
   sortToggle.classList.toggle("hide", count < 2);
   if (count < 2) closeSortDropdown();
+  updateClearButton();
 }
 
 function updateTagCount() {
@@ -943,6 +965,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   addPlaceMarkers();
   renderPlacesList();
   placesSnap.softRemeasure();                    // update drag cap for filtered content
+  updateClearButton();
 });
 
 function renderPlacesList() {

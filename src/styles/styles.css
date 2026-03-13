@@ -1272,9 +1272,10 @@ body.dark-mode .sort-opt:disabled {
 #tf-count {
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
-  display: inline-grid;
-  place-items: center;
+  padding: 1px 5px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--accent);
   color: #fff;
   border-radius: var(--r-pill);
@@ -1288,7 +1289,7 @@ body.dark-mode .sort-opt:disabled {
 #tf-count.one-digit {
   width: 18px;
   min-width: 18px;
-  padding: 0;
+  padding: 1px 0 0;
 }
 #tf-toggle.open #tf-count {
   background: #fff;
