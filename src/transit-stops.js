@@ -1,7 +1,16 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, DT_API_KEY } from "./config.js";
 import { TRANSIT_COLORS, modeIcon } from "./icons.js";
-import { esc, escA } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, isPinSaved, toggleSavedPin, pinId } from "./utils.js";
+import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, startPick } from "./directions.js";
+
+const _starSVG = (filled) =>
+  `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+function _buildStopShareUrl(lat, lng) {
+  const z = map.getZoom().toFixed(1);
+  return `${location.origin}${location.pathname}#${z}/${(+lat).toFixed(4)}/${(+lng).toFixed(4)}`;
+}
 
 const HKI_BBOX = "59.90,24.30,60.70,25.80";
 const TKU_BBOX = "60.15,21.70,60.70,22.60"; // Turku / Föli service area
@@ -288,14 +297,28 @@ function processTransitStops(geojson) {
       const displayName = name || "Unnamed stop";
       const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
       const codeStr = code ? `<span class="sp-code">${esc(code)}</span>` : "";
+      const lat = lngLat[1], lng = lngLat[0];
+      const saved = isPinSaved(lat, lng);
       const html = `
         <div class="sp" style="--sc:${color}">
           <div class="sp-head">
             <span class="sp-icon">${svgIcon}</span>
             <div class="sp-title">${esc(displayName)}</div>
             <div class="sp-sub">${typeLabel} ${codeStr}</div>
+            <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
           </div>
           <div class="sp-routes" id="${routesDivId}"></div>
+          <div class="sp-actions">
+            <button class="sp-dir-btn" title="Directions" aria-label="Directions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            </button>
+            <button class="sp-share-btn" title="Share this stop" aria-label="Share this stop">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button class="sp-close-btn" title="Close" aria-label="Close popup">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>`;
 
       const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", className: "stop-popup-wrap" })
@@ -331,8 +354,44 @@ function processTransitStops(geojson) {
       }
       popEl.addEventListener("click", (ev) => {
         const badge = ev.target.closest(".sp-chip[data-tip]");
-        if (badge) { if (tipBadge === badge) hideBadgeTip(); else showBadgeTip(badge); }
-        else hideBadgeTip();
+        if (badge) { if (tipBadge === badge) hideBadgeTip(); else showBadgeTip(badge); return; }
+        hideBadgeTip();
+
+        const favBtn  = ev.target.closest(".sp-fav-btn");
+        const dirBtn  = ev.target.closest(".sp-dir-btn");
+        const shrBtn  = ev.target.closest(".sp-share-btn");
+        const clsBtn  = ev.target.closest(".sp-close-btn");
+
+        if (favBtn) {
+          const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+          const nowSaved = !isPinSaved(lat, lng);
+          toggleSavedPin(lat, lng, stopName);
+          favBtn.classList.toggle("active", nowSaved);
+          favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save stop");
+          favBtn.innerHTML = _starSVG(nowSaved);
+          showToast(nowSaved ? "Stop saved" : "Stop removed", "check");
+        } else if (dirBtn) {
+          const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+          dir.origin = { lat, lng, name: stopName };
+          document.getElementById("dir-from").value = stopName;
+          placeOriginMarker(lng, lat);
+          autoSetNearestMosque(lat, lng);
+          updateGoButton();
+          popup.remove();
+          openDirPanel();
+          if (!dir.dest) startPick("to");
+        } else if (shrBtn) {
+          const url = _buildStopShareUrl(lat, lng);
+          if (navigator.share) {
+            navigator.share({ title: displayName, text: `${displayName} – Halal Finder`, url })
+              .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
+          } else {
+            copyToClipboard(url);
+            showToast("Link copied");
+          }
+        } else if (clsBtn) {
+          popup.remove();
+        }
       }, true);
       popup.on("close", () => { if (tip) { tip.remove(); tip = null; tipBadge = null; } });
 

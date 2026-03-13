@@ -221,7 +221,8 @@ body {
 }
 
 .btn-primary,
-.pp-dir-btn {
+.pp-dir-btn,
+.sp-dir-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -236,7 +237,8 @@ body {
 }
 @media (hover: hover) {
   .btn-primary:hover:not(:disabled),
-  .pp-dir-btn:hover {
+  .pp-dir-btn:hover,
+  .sp-dir-btn:hover {
     filter: brightness(1.12);
   }
 }
@@ -247,7 +249,8 @@ body {
 
 .btn-secondary,
 .pp-share-btn,
-.pp-edit-btn {
+.pp-edit-btn,
+.sp-share-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -266,7 +269,8 @@ body {
 @media (hover: hover) {
   .btn-secondary:hover,
   .pp-share-btn:hover,
-  .pp-edit-btn:hover {
+  .pp-edit-btn:hover,
+  .sp-share-btn:hover {
     color: var(--text);
     border-color: var(--surface-3);
   }
@@ -292,7 +296,8 @@ body {
 }
 
 .btn-danger-filled,
-.pp-rm-btn {
+.pp-rm-btn,
+.sp-close-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -307,7 +312,8 @@ body {
 }
 @media (hover: hover) {
   .btn-danger-filled:hover,
-  .pp-rm-btn:hover {
+  .pp-rm-btn:hover,
+  .sp-close-btn:hover {
     filter: brightness(1.12);
   }
 }

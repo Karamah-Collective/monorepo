@@ -4330,7 +4330,7 @@ body.dark-mode #route-snackbar {
 
 .sp-head {
   display: grid;
-  grid-template: "icon title" auto "icon sub" auto / auto 1fr;
+  grid-template: "icon title fav" auto "icon sub fav" auto / auto 1fr auto;
   gap: 0 8px;
   padding: 10px 12px;
   background: var(--sc);
@@ -4392,6 +4392,41 @@ body.dark-mode #route-snackbar {
 }
 .sp-routes:empty {
   display: none;
+}
+
+/* ── Stop popup: save/fav button in header ── */
+.sp-fav-btn {
+  grid-area: fav;
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.18s, transform 0.18s;
+}
+@media (hover: hover) {
+  .sp-fav-btn:hover {
+    color: #fcd34d;
+  }
+}
+.sp-fav-btn.active {
+  color: #fcd34d;
+}
+
+/* ── Stop popup: action buttons bar ── */
+.sp-actions {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+}
+.sp-dir-btn,
+.sp-share-btn,
+.sp-close-btn {
+  flex: 1;
+  height: 30px;
+  padding: 0;
 }
 
 .sp-chip {
