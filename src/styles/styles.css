@@ -2470,14 +2470,16 @@ body.dark-mode .sort-opt:disabled {
   flex-shrink: 0;
 }
 
-/* #11 — Clear route button fade */
-.dir-clear-btn {
+/* #11 — Clear / Share route buttons fade */
+.dir-clear-btn,
+.dir-share-btn {
   transition:
     color var(--t-fast),
     opacity 0.2s ease,
     transform 0.2s ease;
 }
-.dir-clear-btn.hide {
+.dir-clear-btn.hide,
+.dir-share-btn.hide {
   display: inline-flex !important;
   opacity: 0;
   transform: scale(0.9);

@@ -3,7 +3,7 @@ import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, SHEETS_URL } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
-import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick } from "./directions.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -535,7 +535,7 @@ export function showPlacePopup(place) {
   dirBtn.className = "pp-dir-btn";
   dirBtn.title = "Get directions";
   dirBtn.setAttribute("aria-label", "Get directions");
-  dirBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>`;
+  dirBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>`;
   dirBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     dir.dest = { lat: place.lat, lng: place.lng, name: place.name };
@@ -610,6 +610,49 @@ export function checkShareUrl() {
 
   // Always check query params (they work alongside hash-based links)
   const params = new URLSearchParams(location.search);
+
+  // ?r=<base64> — encoded shared route link
+  const routeToken = params.get("r");
+  if (routeToken) {
+    try {
+      const padded = routeToken.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(atob(padded));
+      const [olat, olng] = (payload.o || []).map(parseFloat);
+      const [dlat, dlng] = (payload.d || []).map(parseFloat);
+      if (!isNaN(olat) && !isNaN(olng) && !isNaN(dlat) && !isNaN(dlng)) {
+        history.replaceState(null, "", location.pathname);
+        loadSharedRoute({
+          olat, olng, oname: payload.on || null,
+          dlat, dlng, dname: payload.dn || null,
+          mode: payload.m || "transit",
+          tmode: payload.tm || null,
+          tdate: payload.td || null,
+          ttime: payload.tt || null,
+        });
+        return;
+      }
+    } catch { /* malformed token — fall through */ }
+  }
+
+  // ?route=1 — legacy plain-text shared route link (keep for backwards compat)
+  if (params.get("route") === "1") {
+    const olat = parseFloat(params.get("olat"));
+    const olng = parseFloat(params.get("olng"));
+    const dlat = parseFloat(params.get("dlat"));
+    const dlng = parseFloat(params.get("dlng"));
+    if (!isNaN(olat) && !isNaN(olng) && !isNaN(dlat) && !isNaN(dlng)) {
+      history.replaceState(null, "", location.pathname);
+      loadSharedRoute({
+        olat, olng, oname: params.get("on") || null,
+        dlat, dlng, dname: params.get("dn") || null,
+        mode: params.get("mode") || "transit",
+        tmode: params.get("tmode") || null,
+        tdate: params.get("tdate") || null,
+        ttime: params.get("ttime") || null,
+      });
+      return;
+    }
+  }
 
   // ?place=<id> — shared place link (new format)
   const qPlaceId = params.get("place");

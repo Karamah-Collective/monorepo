@@ -24,15 +24,39 @@ export async function onRequest(context) {
   const placeId = url.searchParams.get('place');
   const lat = url.searchParams.get('lat');
   const lng = url.searchParams.get('lng');
+  const routeToken = url.searchParams.get('r');
+  const isLegacyRoute = url.searchParams.get('route') === '1';
+  const isRoute = !!(routeToken || isLegacyRoute);
 
-  if ((!placeId && !lat) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
+  if ((!placeId && !lat && !isRoute) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
     return context.next();
   }
 
   let ogTitle = null;
   let ogDescription = null;
 
-  if (placeId) {
+  if (isRoute) {
+    let oname = '', dname = '', mode = 'transit';
+    if (routeToken) {
+      try {
+        const padded = routeToken.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(padded));
+        oname = (payload.on || '').slice(0, 100);
+        dname = (payload.dn || '').slice(0, 100);
+        mode = payload.m || 'transit';
+      } catch { /* ignore malformed token */ }
+    } else {
+      oname = (url.searchParams.get('on') || '').slice(0, 100);
+      dname = (url.searchParams.get('dn') || '').slice(0, 100);
+      mode = url.searchParams.get('mode') || 'transit';
+    }
+    const modeLabels = { drive: 'Driving', transit: 'Transit', cycle: 'Cycling', walk: 'Walking' };
+    const modeLabel = modeLabels[mode] || 'Transit';
+    const from = oname || 'Origin';
+    const to = dname || 'Destination';
+    ogTitle = `${from} → ${to} — Halal Finder Helsinki`;
+    ogDescription = `${modeLabel} route shared via Halal Finder Helsinki`;
+  } else if (placeId) {
     try {
       const res = await context.env.ASSETS.fetch(new URL('/data/places.json', url.origin));
       const places = await res.json();

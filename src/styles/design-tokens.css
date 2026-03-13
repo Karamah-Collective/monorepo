@@ -295,6 +295,27 @@ body {
   }
 }
 
+.btn-secondary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-6);
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-secondary-pill:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+  }
+}
+
 .btn-danger-filled,
 .pp-rm-btn,
 .sp-close-btn {
@@ -363,6 +384,23 @@ body {
 @media (hover: hover) {
   .btn-roundel:hover {
     color: var(--text-2);
+  }
+}
+
+.btn-roundel-danger {
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--danger-soft);
+  border-radius: 50%;
+  color: var(--danger);
+  transition: filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-roundel-danger:hover {
+    filter: brightness(0.95);
   }
 }
 

@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, showToast, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -40,6 +40,7 @@ const dirItins = document.getElementById("dir-itineraries");
 const routeSnackbar = document.getElementById("route-snackbar");
 const snackbarSub = document.getElementById("snackbar-sub");
 const dirClearBtn = document.getElementById("dir-clear-route");
+const dirShareBtn = document.getElementById("dir-share-route");
 
 // --- Panel open/close ---
 export function openDirPanel() {
@@ -182,6 +183,98 @@ dirClearBtn.addEventListener("click", () => {
   // remeasure handles the smooth transition from current → target
   dirSnap.remeasure();
 });
+
+function _routeB64(str) {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function _buildRouteShareUrl() {
+  if (!dir.origin || !dir.dest) return null;
+  const payload = {
+    o: [dir.origin.lat.toFixed(5), dir.origin.lng.toFixed(5)],
+    d: [dir.dest.lat.toFixed(5), dir.dest.lng.toFixed(5)],
+    m: dirTravelMode,
+  };
+  if (dir.origin.name) payload.on = dir.origin.name.slice(0, 80);
+  if (dir.dest.name) payload.dn = dir.dest.name.slice(0, 80);
+  if (dirTravelMode === "transit") {
+    payload.tm = dirTimeMode;
+    if (!dirUseNow) {
+      payload.td = getDateValue();
+      payload.tt = getTimeValue();
+    }
+  }
+  return `${location.origin}${location.pathname}?r=${_routeB64(JSON.stringify(payload))}`;
+}
+
+dirShareBtn.addEventListener("click", () => {
+  const url = _buildRouteShareUrl();
+  if (!url) return;
+  const title = `${dir.origin?.name || "Origin"} → ${dir.dest?.name || "Destination"}`;
+  if (navigator.share) {
+    navigator.share({ title, text: `${title} – Halal Finder`, url })
+      .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
+  } else {
+    copyToClipboard(url);
+    showToast("Link copied");
+  }
+});
+
+export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime }) {
+  dir.origin = { lat: olat, lng: olng, name: oname || `${olat.toFixed(4)}, ${olng.toFixed(4)}` };
+  dir.dest = { lat: dlat, lng: dlng, name: dname || `${dlat.toFixed(4)}, ${dlng.toFixed(4)}` };
+  dirFrom.value = dir.origin.name;
+  dirTo.value = dir.dest.name;
+  placeOriginMarker(olng, olat);
+  placeDestMarker(dlng, dlat);
+
+  // Set mode — replicate the full mode-toggle click behaviour
+  const validModes = ["drive", "transit", "cycle", "walk"];
+  if (validModes.includes(mode)) {
+    dirTravelMode = mode;
+    let activeBtn;
+    document.querySelectorAll("#dir-mode-toggle .mode-opt").forEach(b => {
+      const match = b.dataset.mode === mode;
+      b.classList.toggle("active", match);
+      if (match) activeBtn = b;
+    });
+    if (activeBtn) moveModePill(activeBtn);
+    dirPanel.dataset.travelMode = mode;
+    if (mode === "transit") {
+      // Restore depart/arrive toggle
+      if (tmode === "depart" || tmode === "arrive") {
+        dirTimeMode = tmode;
+        let activeTimeBtn;
+        dirTimeToggles.forEach(b => {
+          const match = b.dataset.mode === tmode;
+          b.classList.toggle("active", match);
+          if (match) activeTimeBtn = b;
+        });
+        if (activeTimeBtn) moveTimePill(activeTimeBtn);
+      } else {
+        const activeTime = document.querySelector("#dir-time-toggle .time-opt.active");
+        if (activeTime) moveTimePill(activeTime);
+      }
+      // Restore custom date/time if shared
+      if (tdate && ttime) {
+        dirUseNow = false;
+        dirTimeNow.classList.remove("active");
+        dirCustomRow.classList.add("show");
+        const [y, m, d] = tdate.split("-").map(Number);
+        calYear = y; calMonth = m - 1; calSelectedDate = tdate;
+        const [h, min] = ttime.split(":").map(Number);
+        tpSelectedH = h; tpSelectedM = min;
+        dirDate.value = formatDisplayDate(tdate);
+        dirTime.value = ttime;
+      }
+    }
+  }
+
+  updateGoButton();
+  openDirPanel();
+  // Trigger route search after panel is open
+  setTimeout(() => findRoutes(), 300);
+}
 
 dirItins.addEventListener("click", (e) => {
   if (e.target.closest(".direct-expand")) {
@@ -1111,6 +1204,7 @@ async function findRoutesDirect(mode) {
       </div>`;
   document.getElementById("dir-btn").classList.add("route-active");
   dirClearBtn.classList.remove("hide");
+  dirShareBtn.classList.remove("hide");
   enterResultsMode();
   updateSnackbar();
 }
@@ -1299,6 +1393,7 @@ export function clearRoute() {
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
   dirClearBtn.classList.add("hide");
+  dirShareBtn.classList.add("hide");
 }
 
 function updateSnackbar() {
@@ -1345,6 +1440,7 @@ function drawRoute(itin) {
   }
   document.getElementById("dir-btn").classList.add("route-active");
   dirClearBtn.classList.remove("hide");
+  dirShareBtn.classList.remove("hide");
   updateSnackbar();
 }
 
