@@ -52,6 +52,7 @@ const SHELL_ASSETS = [
   '/src/tutorial.js',
   '/src/contact.js',
   '/src/transit-stops.js',
+  '/src/styles/fonts/Inter-Variable-Latin.woff2',
   '/data/places.json',
   '/data/tags.json',
   '/data/thumbs/default.png',

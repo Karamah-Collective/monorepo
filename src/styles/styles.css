@@ -4269,7 +4269,7 @@ body.dark-mode #route-snackbar {
   padding: 16px 18px !important;
   box-shadow: var(--shadow-lg) !important;
   font-family:
-    "Segoe UI",
+    'Inter',
     -apple-system,
     BlinkMacSystemFont,
     system-ui,
