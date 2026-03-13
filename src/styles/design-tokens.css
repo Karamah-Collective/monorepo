@@ -53,14 +53,14 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
 
-  --txt-xs: 12px;
-  --txt-sm: 13px;
-  --txt-base: 14px;
-  --txt-md: 15px;
-  --txt-lg: 16px;
-  --txt-xl: 17px;
-  --txt-2xl: 20px;
-  --txt-3xl: 24px;
+  --txt-xs: 11px;
+  --txt-sm: 12px;
+  --txt-base: 13px;
+  --txt-md: 14px;
+  --txt-lg: 15px;
+  --txt-xl: 16px;
+  --txt-2xl: 18px;
+  --txt-3xl: 22px;
 
   --fw-regular: 400;
   --fw-medium: 500;

@@ -775,7 +775,7 @@ body.dark-mode .sort-opt:disabled {
     padding: 10px 0;
     min-width: unset;
     gap: var(--sp-1);
-    font-size: var(--txt-xs);
+    font-size: var(--txt-sm);
   }
   .tab svg {
     width: 20px;
