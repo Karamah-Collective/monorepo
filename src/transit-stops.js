@@ -313,6 +313,7 @@ export async function loadTransitCache() {
       const saved = JSON.parse(raw);
       if (saved.ts && Date.now() - saved.ts < TRANSIT_TTL) {
         console.log(`[Transit] localStorage hit (age: ${Math.round((Date.now() - saved.ts) / 60000)}m)`);
+        for (const f of saved.geojson.features) f.properties._cached = 1;
         processTransitStops(saved.geojson);
         return;
       }
@@ -328,6 +329,7 @@ export async function loadTransitCache() {
     const geojson = cache.geojson;
     for (const f of geojson.features) {
       f.properties.routes = JSON.stringify(f.properties.routes || []);
+      f.properties._cached = 1;
     }
     try { localStorage.setItem(TRANSIT_CACHE_KEY, JSON.stringify({ geojson, ts: Date.now() })); }
     catch { /* storage quota exceeded */ }
@@ -342,8 +344,10 @@ function processTransitStops(geojson) {
   if (!geojson?.features?.length) return;
   if (map.getSource("transit-stops")) { console.log("[Transit] Source already exists, skipping"); return; }
 
-  // Precompute dotColor from the first colored route so map dots and popup
-  // headers use region-accurate colors rather than the generic HSL fallback.
+  // Precompute dotColor and hasRoutes so we can hide empty stops from the map.
+  // Stops from the pre-built cache have full route data; Overpass stops have
+  // routes="[]" (unknown), so we default to visible (1) for those.
+  let hidden = 0;
   for (const f of geojson.features) {
     const raw = f.properties.routes;
     let routes = [];
@@ -351,7 +355,13 @@ function processTransitStops(geojson) {
     else { try { routes = raw ? JSON.parse(raw) : []; } catch (_) {} }
     const firstColored = routes.find(r => r.c);
     if (firstColored) f.properties.dotColor = `#${firstColored.c}`;
+    // Cache data has confirmed route info; Overpass data has no route info.
+    // Hide only stops confirmed to have zero routes (from cache).
+    const fromCache = f.properties._cached === 1;
+    f.properties.hasRoutes = (fromCache && routes.length === 0) ? 0 : 1;
+    if (!f.properties.hasRoutes) hidden++;
   }
+  if (hidden) console.log(`[Transit] Hiding ${hidden} stops with no active routes`);
 
   map.addSource("transit-stops", { type: "geojson", data: geojson });
 
@@ -359,7 +369,7 @@ function processTransitStops(geojson) {
     id: "transit-major-bg",
     type: "circle",
     source: "transit-stops",
-    filter: [">=", ["get", "rank"], 2],
+    filter: ["all", [">=", ["get", "rank"], 2], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 11,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 10, 19, 14],
@@ -373,7 +383,7 @@ function processTransitStops(geojson) {
     id: "transit-major-label",
     type: "symbol",
     source: "transit-stops",
-    filter: [">=", ["get", "rank"], 2],
+    filter: ["all", [">=", ["get", "rank"], 2], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 12,
     layout: {
       "text-field": ["get", "name"],
@@ -394,7 +404,7 @@ function processTransitStops(geojson) {
     id: "transit-tram-bg",
     type: "circle",
     source: "transit-stops",
-    filter: ["==", ["get", "type"], "tram"],
+    filter: ["all", ["==", ["get", "type"], "tram"], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 14,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.5, 18, 8],
@@ -408,7 +418,7 @@ function processTransitStops(geojson) {
     id: "transit-tram-label",
     type: "symbol",
     source: "transit-stops",
-    filter: ["==", ["get", "type"], "tram"],
+    filter: ["all", ["==", ["get", "type"], "tram"], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 15,
     layout: {
       "text-field": ["get", "name"],
@@ -425,7 +435,7 @@ function processTransitStops(geojson) {
     id: "transit-bus-bg",
     type: "circle",
     source: "transit-stops",
-    filter: ["==", ["get", "type"], "bus"],
+    filter: ["all", ["==", ["get", "type"], "bus"], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 15,
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 2.5, 18, 6],
@@ -439,7 +449,7 @@ function processTransitStops(geojson) {
     id: "transit-bus-label",
     type: "symbol",
     source: "transit-stops",
-    filter: ["==", ["get", "type"], "bus"],
+    filter: ["all", ["==", ["get", "type"], "bus"], ["==", ["get", "hasRoutes"], 1]],
     minzoom: 16.5,
     layout: {
       "text-field": ["get", "name"],
