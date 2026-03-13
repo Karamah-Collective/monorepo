@@ -119,7 +119,13 @@ self.addEventListener('fetch', (evt) => {
   }
 
   // ── Own origin (shell JS / CSS / data / HTML) — stale-while-revalidate ───
+  // Skip protected data files on direct navigation (URL bar) — let the
+  // middleware gate handle them. Only serve from cache for programmatic
+  // fetch() calls from app JS (mode === 'cors' or 'same-origin').
   if (url.origin === self.location.origin) {
+    if (req.mode === 'navigate' && (url.pathname === '/data/places.json' || url.pathname === '/data/tags.json')) {
+      return; // fall through to network → middleware returns 403
+    }
     evt.respondWith(staleWhileRevalidate(req, CACHE_SHELL));
     return;
   }
