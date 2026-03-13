@@ -892,8 +892,15 @@ function renderTagFilterBar() {
 }
 
 function updateTagCount() {
-  if (activeTagFilters.size) { tfCount.textContent = activeTagFilters.size; tfCount.classList.remove("hide"); }
-  else { tfCount.classList.add("hide"); }
+  if (activeTagFilters.size) {
+    const countText = String(activeTagFilters.size);
+    tfCount.textContent = countText;
+    tfCount.classList.toggle("one-digit", countText.length === 1);
+    tfCount.classList.remove("hide");
+  } else {
+    tfCount.classList.add("hide");
+    tfCount.classList.remove("one-digit");
+  }
 }
 
 tfToggle.addEventListener("click", () => {

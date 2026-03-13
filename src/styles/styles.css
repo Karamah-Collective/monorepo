@@ -609,6 +609,10 @@ body.dark-mode .pf-chip.active .pf-icon {
 }
 
 /* Tag count badge for toggle */
+body.dark-mode #tf-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--surface);
+}
 body.dark-mode #tf-toggle.open #tf-count {
   background: rgba(255, 255, 255, 0.9);
   color: var(--accent);
@@ -1269,14 +1273,22 @@ body.dark-mode .sort-opt:disabled {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
   background: var(--accent);
   color: #fff;
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
+  line-height: 1;
+  text-align: center;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+#tf-count.one-digit {
+  width: 18px;
+  min-width: 18px;
+  padding: 0;
 }
 #tf-toggle.open #tf-count {
   background: #fff;
@@ -3101,7 +3113,7 @@ body.dark-mode .sort-opt:disabled {
   border: 1px solid #fcd34d;
   border-radius: var(--r-sm);
 }
-.dark .fallback-notice {
+body.dark-mode .fallback-notice {
   color: #fcd34d;
   background: rgba(253, 211, 77, 0.1);
   border-color: rgba(253, 211, 77, 0.3);
@@ -3717,15 +3729,19 @@ body.dark-mode .sort-opt:disabled {
 }
 .zone-badge.zone-b {
   background: #1fa86a;
+  color: #1a2433;
 }
 .zone-badge.zone-c {
   background: #d8b56a;
+  color: #1a2433;
 }
 .zone-badge.zone-d {
   background: #ff6319;
+  color: #1a2433;
 }
 .zone-badge.zone-default {
   background: #8d99a5;
+  color: #1a2433;
 }
 .zone-badge.zone-inline {
   width: auto;
@@ -4116,7 +4132,7 @@ body.dark-mode #route-snackbar {
 }
 @media (hover: hover) {
   .prayer-time-item.next:hover {
-    background: #dae8f3;
+    background: var(--accent-soft);
   }
 }
 
@@ -4477,8 +4493,8 @@ body.dark-mode #route-snackbar {
 .sp-tip {
   position: fixed;
   z-index: var(--z-picker);
-  background: var(--text);
-  color: #fff;
+  background: #1a2433;
+  color: #f0f2f5;
   font-family: inherit;
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);

@@ -355,7 +355,7 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "female_prayer": true
+      "female_prayer": false
     },
     "notes": ""
   },
@@ -398,7 +398,7 @@
     "lng": 24.7373375,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": false
     },
     "notes": "Has alcohol to drink/order, everything else is fully halal food wise. Malaysian buffet."
   },
@@ -411,7 +411,7 @@
     "lng": 24.7373375,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": false
     },
     "notes": "It is on the bus terminal floor of Iso Omena, only selected fried chicken are halal, please ask the counter"
   },
@@ -551,7 +551,8 @@
     "lng": 25.008901,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "cuisine_pizza": true
     },
     "notes": ""
   },
@@ -576,7 +577,9 @@
     "lat": 60.2483098,
     "lng": 25.0068875,
     "tags": {
-      "fully_halal": true
+      "fully_halal": true,
+      "cuisine_indian": true,
+      "cuisine_bangladeshi": true
     },
     "notes": ""
   },
@@ -880,12 +883,12 @@
     "lat": 60.231107,
     "lng": 24.880987,
     "tags": {
+      "jummah": true,
+      "taraweeh": true,
       "quran_classes": true,
       "female_prayer": true,
       "female_wudu": true,
       "daily_prayers": false,
-      "jummah": true,
-      "taraweeh": true,
       "eid_prayer": false,
       "janaza": true
     },
@@ -972,7 +975,8 @@
     "lat": 60.209902973056046,
     "lng": 24.75414809276856,
     "tags": {
-      "fully_halal": true
+      "fully_halal": true,
+      "cuisine_pakistani": true
     },
     "notes": "Pakistani cuisine"
   },
@@ -1032,8 +1036,10 @@
     "address": "Latokartanonkaari 3, 00790 Helsinki, Finland",
     "lat": 60.227962,
     "lng": 25.014806,
-    "tags": {},
-    "notes": "Second floor of building E"
+    "tags": {
+      "quran_available": true
+    },
+    "notes": "Second floor of building E, bathroom on ground floor for wudu"
   },
   {
     "id": "372bxr",
@@ -1085,7 +1091,9 @@
     "lng": 24.9133727,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "cuisine_korean": true,
+      "cuisine_buffet": true
     },
     "notes": ""
   },

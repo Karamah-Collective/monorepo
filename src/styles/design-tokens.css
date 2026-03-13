@@ -1042,8 +1042,8 @@ body {
   color: var(--accent);
 }
 .snack-icon--warn {
-  background: #fff3cd;
-  color: #b45309;
+  background: var(--gold-soft);
+  color: var(--gold);
 }
 
 .snack-body {
