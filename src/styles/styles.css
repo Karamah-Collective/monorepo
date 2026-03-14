@@ -14,7 +14,8 @@
 #places-scroll,
 #dir-results,
 #privacy-body,
-.dir-auto-list {
+.dir-auto-list,
+.dir-suggest {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -25,7 +26,8 @@
 #places-scroll::-webkit-scrollbar,
 #dir-results::-webkit-scrollbar,
 #privacy-body::-webkit-scrollbar,
-.dir-auto-list::-webkit-scrollbar { width: 3px; }
+.dir-auto-list::-webkit-scrollbar,
+.dir-suggest::-webkit-scrollbar { width: 3px; }
 #search-drop::-webkit-scrollbar-track,
 #contact-form::-webkit-scrollbar-track,
 #suggest-form::-webkit-scrollbar-track,
@@ -33,7 +35,8 @@
 #places-scroll::-webkit-scrollbar-track,
 #dir-results::-webkit-scrollbar-track,
 #privacy-body::-webkit-scrollbar-track,
-.dir-auto-list::-webkit-scrollbar-track { background: transparent; }
+.dir-auto-list::-webkit-scrollbar-track,
+.dir-suggest::-webkit-scrollbar-track { background: transparent; }
 #search-drop::-webkit-scrollbar-thumb,
 #contact-form::-webkit-scrollbar-thumb,
 #suggest-form::-webkit-scrollbar-thumb,
@@ -41,7 +44,8 @@
 #places-scroll::-webkit-scrollbar-thumb,
 #dir-results::-webkit-scrollbar-thumb,
 #privacy-body::-webkit-scrollbar-thumb,
-.dir-auto-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.dir-auto-list::-webkit-scrollbar-thumb,
+.dir-suggest::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .hide {
   display: none !important;
@@ -96,6 +100,7 @@
 
 #search-card:not(.collapsed) {
   width: min(92vw, 360px);
+  z-index: var(--z-sheet);
 }
 
 #search-pill {
@@ -223,10 +228,9 @@
   margin-top: 2px;
 }
 
-/* Local (from data/places.json) results — subtle left accent + verified badge */
+/* Local (from data/places.json) results — verified badge */
 #results-list li.r-local {
-  border-left: 3px solid var(--accent);
-  padding-left: 15px;
+  padding-left: 18px;
 }
 .r-halal-badge {
   display: inline-flex;
@@ -1011,6 +1015,7 @@ body.dark-mode .sort-opt:disabled {
 
 #dir-panel {
   height: auto;
+  overflow: visible;
 }
 #dir-panel.results-shown,
 #dir-panel.route-focused {
@@ -1090,16 +1095,24 @@ body.dark-mode .sort-opt:disabled {
 @media (min-width: 769px) and (max-width: 1199px) {
   /* Tablet: use one scroll container (the sheet) so fit-content can size naturally. */
   .sheet,
-  #places-sheet,
-  #dir-panel {
+  #places-sheet {
     display: block;
     overflow-y: auto;
   }
-  #places-scroll,
-  #dir-results {
+  #dir-panel {
+    display: block;
+    overflow: visible;
+  }
+  #places-scroll {
     flex: none;
     min-height: auto;
     overflow: visible;
+  }
+  #dir-results {
+    flex: none;
+    min-height: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
   }
   #dir-go {
     display: flex;
@@ -4565,7 +4578,7 @@ body.dark-mode #route-snackbar {
     font-size: var(--txt-xl);
   }
   #search-drop {
-    max-height: calc(100dvh - 240px);
+    max-height: calc(100dvh - 290px);
   }
 
   #tab-bar {
@@ -4634,7 +4647,13 @@ body.dark-mode #route-snackbar {
     font-size: var(--txt-xl);
   }
   .dir-suggest {
+    top: auto;
+    bottom: 100%;
     max-height: 180px;
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+  }
+  .dir-suggest.hide {
+    transform: translateY(6px);
   }
 
   .sheet-drag {

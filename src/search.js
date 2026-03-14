@@ -328,13 +328,7 @@ function showResults(items) {
   rList.innerHTML = items
     .map((r) => {
       const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
-      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}>
-      <span class="r-icon">${typeIcon(r.type, r.cls)}</span>
-      <div class="r-body">
-        <div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div>
-        <div class="r-addr">${esc(r.addr)}</div>
-      </div>
-    </li>`;
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
     })
   showDrop();
 }
