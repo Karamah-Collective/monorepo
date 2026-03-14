@@ -797,7 +797,7 @@ function updateSortButton() {
   const isActive = activeSortField !== "default";
   const arrowChar = activeSortDir === "asc" ? "\u2191" : "\u2193";
   sortLabel.textContent = isActive ? `${SORT_FIELD_LABELS[activeSortField]} ${arrowChar}` : "Sort";
-  sortToggle.classList.toggle("open", isActive);
+  sortToggle.classList.toggle("has-active", isActive);
   sortDropdown.querySelectorAll("[data-sort-field]").forEach((btn) =>
     btn.classList.toggle("active", btn.dataset.sortField === activeSortField),
   );
@@ -810,6 +810,7 @@ function updateSortButton() {
 
 function closeSortDropdown() {
   sortDropdown.classList.add("shut");
+  sortToggle.classList.remove("open");
 }
 
 function positionSortDropdown() {
@@ -831,6 +832,7 @@ sortToggle.addEventListener("click", (e) => {
   const isOpen = !sortDropdown.classList.contains("shut");
   if (!isOpen) positionSortDropdown();
   sortDropdown.classList.toggle("shut", isOpen);
+  sortToggle.classList.toggle("open", !isOpen);
 });
 
 sortDropdown.addEventListener("click", (e) => {
@@ -920,9 +922,11 @@ function updateTagCount() {
     tfCount.textContent = countText;
     tfCount.classList.toggle("one-digit", countText.length === 1);
     tfCount.classList.remove("hide");
+    tfToggle.classList.add("has-active");
   } else {
     tfCount.classList.add("hide");
     tfCount.classList.remove("one-digit");
+    tfToggle.classList.remove("has-active");
   }
 }
 
