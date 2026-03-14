@@ -1083,7 +1083,7 @@ body.dark-mode .sort-opt:disabled {
       height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   }
   .sheet.shut {
-    transform: translateX(40px) scale(0.92);
+    transform: translateX(40px);
     opacity: 0;
     pointer-events: none;
   }
