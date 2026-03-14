@@ -4580,6 +4580,25 @@ body.dark-mode #route-snackbar {
   #search-drop {
     max-height: calc(100dvh - 290px);
   }
+  #results-list {
+    margin: 0;
+    padding: 0;
+  }
+  #results-list li {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+  }
+  .r-icon {
+    margin-top: 2px;
+  }
+  .r-name,
+  .r-addr {
+    line-height: 1.2;
+  }
+  .r-addr {
+    margin-top: 1px;
+  }
 
   #tab-bar {
     height: var(--tab-h);

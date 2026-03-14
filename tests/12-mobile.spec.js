@@ -527,6 +527,52 @@ test.describe("Search Card — Mobile", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(vw + 2);
   });
 
+  test("mobile search suggestions stay compact without extra vertical spacing", async ({
+    page,
+  }) => {
+    await page.route("**/api.digitransit.fi/geocoding/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          features: [
+            {
+              properties: {
+                name: "Pasilan asema",
+                label: "Pasilan asema, Ita-Pasila, Helsinki",
+                layer: "address",
+              },
+              geometry: { type: "Point", coordinates: [24.93506, 60.1977] },
+            },
+            {
+              properties: {
+                name: "Kamppi",
+                label: "Kamppi, Helsinki",
+                layer: "venue",
+              },
+              geometry: { type: "Point", coordinates: [24.9312, 60.1687] },
+            },
+          ],
+        }),
+      }),
+    );
+
+    await page.locator("#search-pill").tap();
+    await page.waitForTimeout(400);
+    await page.locator("#search-input").fill("pa");
+    await page.locator("#search-input").press("Enter");
+    await expect(page.locator("#results-list li").first()).toBeVisible({ timeout: 10000 });
+
+    const items = page.locator("#results-list li");
+    expect(await items.count()).toBeGreaterThanOrEqual(2);
+
+    const firstBox = await items.nth(0).boundingBox();
+    const secondBox = await items.nth(1).boundingBox();
+
+    expect(firstBox.height).toBeLessThanOrEqual(66);
+    expect(Math.abs(secondBox.y - (firstBox.y + firstBox.height))).toBeLessThanOrEqual(1);
+  });
+
   test("search card collapses when clear/close action is used", async ({
     page,
   }) => {
