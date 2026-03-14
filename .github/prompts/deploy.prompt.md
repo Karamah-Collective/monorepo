@@ -19,6 +19,20 @@ production-ready deployment. Follow every step **in order** without skipping any
 
 ---
 
+## Deploy workflow — user command interpretation
+
+**When the user says a command, this is what you do:**
+
+| Command | Action |
+|---------|--------|
+| `"main"` | Push to `main` only (ask for explicit confirmation within steps) |
+| `"preview"` | Execute Steps 1–7: push to main, then promote to preview |
+| `"deploy"` | Execute Steps 1–8: push to main → promote to preview → promote to deploy (full chain) |
+
+This ensures predictable, repeatable behavior. No guessing about promotion intent.
+
+---
+
 ## Available update commands (reference)
 
 | Command | What it runs | When to use |
