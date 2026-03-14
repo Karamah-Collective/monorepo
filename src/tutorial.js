@@ -39,7 +39,7 @@ const ALL_STEPS = [
     target: "#dir-btn",
     title: "Routes",
     body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times",
-    icon: '<path d="M3 18l4-4 4 4 4-8 4 4"/><circle cx="7" cy="14" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="14" r="1.5" fill="currentColor" stroke="none"/>',
+    icon: '<path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/>',
     phoneOrder: 2,
   },
   {

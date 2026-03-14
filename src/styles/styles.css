@@ -2659,6 +2659,7 @@ body.dark-mode .sort-opt:disabled {
 }
 .direct-step:last-child {
   border-bottom: none;
+  align-items: center;
 }
 .step-icon-wrap {
   width: 30px;
