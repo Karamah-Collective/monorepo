@@ -223,8 +223,9 @@ git checkout preview
 #            for Cloudflare's npm auto-detection (no deps, no build scripts)
 git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json scripts/build-secrets.js
 
-# 3. Stage everything
+# 3. Stage everything — then remove secrets that must never be deployed
 git add .
+git rm --cached src/config.local.js 2>$null   # untrack if present; harmless if absent
 
 # 4. Capture the main SHA for traceability (use the actual short SHA from Step 6)
 git commit -m "chore: promote main to preview
