@@ -483,17 +483,27 @@ document.addEventListener("click", (e) => {
 });
 
 // Home / zoom / locate buttons
+let _homeFlyActive = false;
 document.getElementById("home-btn").addEventListener("click", () => {
   if (isSatelliteActive) toggleSatellite();
   if (isHeatmapActive) toggleHeatmap();
   if (is3DActive) disable3D();
+  _homeFlyActive = true;
+  setActiveTab("home-btn");
   map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
+  map.once("moveend", () => { _homeFlyActive = false; });
 });
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));
 document.getElementById("zoomout-btn").addEventListener("click", () => map.zoomOut({ duration: 300 }));
 document.getElementById("locate-btn").addEventListener("click", showCurrentLocation);
 
 map.on("moveend", updateUrlHash);
+
+map.on("zoomend", () => {
+  if (_homeFlyActive) return;
+  const homeBtn = document.getElementById("home-btn");
+  if (homeBtn.classList.contains("active-tab")) setActiveTab(null);
+});
 
 map.on("pitchend", () => {
   if (isSatelliteActive) return;
