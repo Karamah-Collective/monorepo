@@ -1110,5 +1110,116 @@
       "no_alcohol": false
     },
     "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination."
+  },
+  {
+    "id": "5x7lmi",
+    "name": "K-Supermarket Suuris",
+    "type": "shop",
+    "address": "Kynäkatu 6, 02250 Espoo, Finland",
+    "lat": 60.1863986,
+    "lng": 24.7465642,
+    "tags": {
+      "halal_meat": true,
+      "halal_groceries": true
+    },
+    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy."
+  },
+  {
+    "id": "qo8fs0",
+    "name": "Al-Fatih Moskeija (Al-Fatih Mosque)",
+    "type": "mosque",
+    "address": "Tammitie 5, 20540 Turku, Finland",
+    "lat": 60.45618509999999,
+    "lng": 22.3088474,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": "Daily iftari available during ramadan."
+  },
+  {
+    "id": "trkq3z",
+    "name": "Masjid Al-Furqan, Turku, Finland",
+    "type": "mosque",
+    "address": "Pormestarinkatu 5, 20750 Turku, Finland",
+    "lat": 60.4325269,
+    "lng": 22.3448362,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": "Above the restaurent palma"
+  },
+  {
+    "id": "0t3ogz",
+    "name": "Masjid Al-Madina",
+    "type": "mosque",
+    "address": "Katteluksenkatu 6, 20610 Turku, Finland",
+    "lat": 60.4452648,
+    "lng": 22.3576133,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "female_prayer": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "93v21q",
+    "name": "Turun Islamilainen Yhdyskunta (montana)",
+    "type": "mosque",
+    "address": "Yliopistonkatu 7, 20100 Turku, Finland",
+    "lat": 60.4546855,
+    "lng": 22.2724624,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "janaza": true,
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku, Finland"
+  },
+  {
+    "id": "8s3a3j",
+    "name": "Beno Oy",
+    "type": "shop",
+    "address": "Varissuon Tornikartio, Jössenpolku a4, 20610 Turku, Finland",
+    "lat": 60.4437039,
+    "lng": 22.3596601,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true,
+      "halal_certified": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "0h13qo",
+    "name": "Golan Shop",
+    "type": "shop",
+    "address": "Varissuon Tornikartio, Littoistentie 81, 20610 Turku, Finland",
+    "lat": 60.4433206,
+    "lng": 22.3594573,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true,
+      "asian_products": true,
+      "african_products": true,
+      "arab_products": true,
+      "halal_certified": true
+    },
+    "notes": ""
   }
 ]

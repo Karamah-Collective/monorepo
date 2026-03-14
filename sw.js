@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20260314'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
+const VERSION = '20260315'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
 const CACHE_TILES  = `hf-tiles-${VERSION}`;
@@ -33,8 +33,8 @@ const MAX_GLYPHS =  64;   // 64 glyph ranges covers the full Basic Multilingual 
 
 // ─── Assets to pre-cache on install ───────────────────────────────────────────
 // These are served instantly from the very first repeat visit.
-// Do NOT include assets with ?v= query params here — they are handled at runtime
-// by the stale-while-revalidate handler for own-origin requests.
+// CSS is pre-cached without ?v= — the own-origin handler uses ignoreSearch
+// so runtime requests like styles.css?v=20260314 still match.
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -42,6 +42,8 @@ const SHELL_ASSETS = [
   '/src/config.js',
   '/src/map-init.js',
   '/src/map-style.js',
+  '/src/map-style-config.js',
+  '/src/map-style-editor.js',
   '/src/map-controls.js',
   '/src/places.js',
   '/src/search.js',
@@ -52,6 +54,8 @@ const SHELL_ASSETS = [
   '/src/tutorial.js',
   '/src/contact.js',
   '/src/transit-stops.js',
+  '/src/styles/styles.css',
+  '/src/styles/design-tokens.css',
   '/src/styles/fonts/Inter-Variable-Latin.woff2',
   '/data/places.json',
   '/data/tags.json',
@@ -123,11 +127,12 @@ self.addEventListener('fetch', (evt) => {
   // Skip protected data files on direct navigation (URL bar) — let the
   // middleware gate handle them. Only serve from cache for programmatic
   // fetch() calls from app JS (mode === 'cors' or 'same-origin').
+  // ignoreSearch lets styles.css?v=xxx match the pre-cached styles.css.
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate' && (url.pathname === '/data/places.json' || url.pathname === '/data/tags.json' || url.pathname.startsWith('/src/'))) {
       return; // fall through to network → middleware returns 403
     }
-    evt.respondWith(staleWhileRevalidate(req, CACHE_SHELL));
+    evt.respondWith(staleWhileRevalidate(req, CACHE_SHELL, undefined, true));
     return;
   }
 
@@ -159,10 +164,16 @@ function isCacheable(res) {
  * Return the cached copy immediately if available.
  * Simultaneously kick off a network fetch to refresh the cache in the background.
  * Falls back to the in-flight network response if the cache is cold.
+ *
+ * @param {Request}  req
+ * @param {string}   cacheName
+ * @param {number}   [maxEntries]    – optional cap on cache size
+ * @param {boolean}  [ignoreSearch]  – ignore URL query string when matching cache
  */
-async function staleWhileRevalidate(req, cacheName, maxEntries) {
+async function staleWhileRevalidate(req, cacheName, maxEntries, ignoreSearch) {
   const cache  = await caches.open(cacheName);
-  const cached = await cache.match(req);
+  const matchOpts = ignoreSearch ? { ignoreSearch: true } : undefined;
+  const cached = await cache.match(req, matchOpts);
 
   // Always kick off a background refresh (fire-and-forget, errors swallowed).
   const refresh = fetch(req)
@@ -171,12 +182,17 @@ async function staleWhileRevalidate(req, cacheName, maxEntries) {
         await cache.put(req, res.clone());
         if (maxEntries) await trimCache(cache, maxEntries);
       }
-      return res;
+      return isCacheable(res) ? res : null;
     })
     .catch(() => null);
 
   // Return cached instantly; if cold, await the network.
-  return cached ?? (await refresh);
+  if (cached) return cached;
+  const fresh = await refresh;
+  if (fresh) return fresh;
+  // Last resort: return any ignoreSearch match (e.g. old ?v= version)
+  if (ignoreSearch) return (await cache.match(req, matchOpts)) ?? Response.error();
+  return Response.error();
 }
 
 /**
