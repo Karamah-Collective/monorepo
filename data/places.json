@@ -889,8 +889,7 @@
       "female_prayer": true,
       "female_wudu": true,
       "daily_prayers": false,
-      "eid_prayer": false,
-      "janaza": true
+      "eid_prayer": false
     },
     "notes": "It's a madrasah"
   },
