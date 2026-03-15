@@ -440,6 +440,23 @@ body.dark-mode .thumb-heatmap {
   filter: var(--mse-light-filter, none);
 }
 
+/* ─── Theme transition: smooth switch between light ↔ dark ─── */
+/* Applied temporarily by JS during theme toggle, then removed.  */
+body.theme-transition,
+body.theme-transition *,
+body.theme-transition *::before,
+body.theme-transition *::after {
+  transition: background-color 0.4s ease,
+              color 0.4s ease,
+              border-color 0.4s ease,
+              box-shadow 0.4s ease,
+              fill 0.4s ease,
+              stroke 0.4s ease !important;
+}
+body.theme-transition .maplibregl-canvas {
+  transition: filter 0.5s ease !important;
+}
+
 /* ─── Dark Mode: override design tokens for all UI ─── */
 body.dark-mode {
   --surface:      #1a1d2e;
@@ -1177,8 +1194,8 @@ body.dark-mode .sort-opt:disabled {
   min-width: 48px;
 }
 .pf-icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1189,8 +1206,12 @@ body.dark-mode .sort-opt:disabled {
     background-color 0.2s,
     color 0.2s;
 }
+.pf-icon svg {
+  width: 18px;
+  height: 18px;
+}
 .pf-label {
-  font-size: var(--txt-xs);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-semibold);
   color: var(--text-3);
   transition: color 0.15s;
@@ -1849,6 +1870,7 @@ body.dark-mode .sort-opt:disabled {
     0 2px 8px rgba(26, 115, 184, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.12);
   position: relative;
+  animation: fadeIn 0.2s ease;
 }
 .search-mk svg {
   transform: rotate(45deg);
@@ -1869,6 +1891,7 @@ body.dark-mode .sort-opt:disabled {
     0 2px 8px rgba(26, 115, 184, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.12);
   position: relative;
+  animation: fadeIn 0.2s ease;
 }
 .custom-mk svg {
   transform: rotate(45deg);
@@ -1886,6 +1909,7 @@ body.dark-mode .sort-opt:disabled {
     0 8px 30px rgba(0, 0, 0, 0.12),
     0 1px 3px rgba(0, 0, 0, 0.08) !important;
   background: var(--surface) !important;
+  animation: fadeIn 0.2s ease;
 }
 .place-popup-wrap .maplibregl-popup-close-button {
   display: none !important;
@@ -3096,6 +3120,7 @@ body.dark-mode .sort-opt:disabled {
     transform: translateY(0);
   }
 }
+
 .spinner {
   width: 20px;
   height: 20px;
@@ -3109,6 +3134,13 @@ body.dark-mode .sort-opt:disabled {
     transform: rotate(360deg);
   }
 }
+
+/* ─── Smooth entrance for instant-appearing elements ─── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Inline button loading spinner */
 .btn-spinner {
   display: inline-block;
@@ -3119,6 +3151,19 @@ body.dark-mode .sort-opt:disabled {
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
   flex-shrink: 0;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+/* Applied temporarily by JS before calling popup.remove() / marker.remove() */
+.popup-fading-out {
+  animation: fadeOut 0.15s ease forwards;
+  pointer-events: none;
+}
+.marker-fading-out {
+  animation: fadeOut 0.15s ease forwards;
 }
 
 #dir-error {
@@ -4226,6 +4271,7 @@ body.dark-mode #route-snackbar {
   background: var(--success);
   border: 3px solid #fff;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.2s ease;
 }
 .dir-dest-marker {
   width: 16px;
@@ -4234,6 +4280,7 @@ body.dark-mode #route-snackbar {
   background: var(--danger);
   border: 3px solid #fff;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.2s ease;
 }
 .map-click-mode {
   cursor: crosshair !important;
@@ -4370,6 +4417,7 @@ body.dark-mode #route-snackbar {
     0 8px 30px rgba(0, 0, 0, 0.12),
     0 1px 3px rgba(0, 0, 0, 0.08) !important;
   background: var(--surface) !important;
+  animation: fadeIn 0.2s ease;
 }
 .stop-popup-wrap .maplibregl-popup-close-button {
   display: none !important;

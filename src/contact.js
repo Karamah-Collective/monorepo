@@ -65,7 +65,7 @@ form.addEventListener("submit", async (e) => {
       _lastSubmit = Date.now();
       form.reset();
       overlay.classList.add("hide");
-      showToast("Message sent!", "check", "JazakAllah Khair! InSyaAllah we'll get back to you soon.");
+      setTimeout(() => showToast("Message sent!", "check", "JazakAllah Khair! InSyaAllah we'll get back to you soon."), 200);
     } else {
       showToast("Sending failed", "error", data.error || "Please try again.");
     }

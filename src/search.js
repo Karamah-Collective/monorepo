@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
-import { esc, copyToClipboard, showToast, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId } from "./utils.js";
+import { esc, copyToClipboard, showToast, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, showPlacePopup } from "./places.js";
@@ -57,6 +57,8 @@ function _localPlaceSearch(q) {
 let searchMarker = null;
 let searchMarkerPopup = null;
 let _searchAddrCache = null;
+let _activePinPopupKey = null;
+let _activePinPopup = null;
 
 export function showSearchMarker(lng, lat) {
   if (!isInsideFinland(lat, lng)) return;  // only allow pins inside Finland
@@ -72,13 +74,19 @@ export function showSearchMarker(lng, lat) {
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
-    _openPinPopup(lng, lat, "search");
+    const key = `${lng},${lat}`;
+    if (_activePinPopupKey === key) {
+      if (_activePinPopup) { fadeAndRemovePopup(_activePinPopup); _activePinPopup = null; }
+      _activePinPopupKey = null;
+    } else {
+      _openPinPopup(lng, lat, "search");
+    }
   });
 }
 
 export function clearSearchMarker() {
-  if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
-  if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+  if (searchMarkerPopup) { fadeAndRemovePopup(searchMarkerPopup); searchMarkerPopup = null; }
+  if (searchMarker) { fadeAndRemoveMarker(searchMarker); searchMarker = null; }
 }
 
 // ─── Multiple dropped-pin markers (custom pins) ────────────────────────────────
@@ -102,18 +110,24 @@ export function showDroppedPin(lng, lat) {
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
-    _openPinPopup(lng, lat, "custom", entry);
+    const key = `${lng},${lat}`;
+    if (_activePinPopupKey === key) {
+      if (_activePinPopup) { fadeAndRemovePopup(_activePinPopup); _activePinPopup = null; }
+      _activePinPopupKey = null;
+    } else {
+      _openPinPopup(lng, lat, "custom", entry);
+    }
   });
 }
 
 function _removeDroppedPin(entry) {
-  if (entry.popup) entry.popup.remove();
-  if (entry.marker) entry.marker.remove();
+  if (entry.popup) fadeAndRemovePopup(entry.popup);
+  if (entry.marker) fadeAndRemoveMarker(entry.marker);
   _droppedPins = _droppedPins.filter(e => e !== entry);
 }
 
 export function clearDroppedPins() {
-  _droppedPins.forEach(e => { if (e.popup) e.popup.remove(); e.marker.remove(); });
+  _droppedPins.forEach(e => { if (e.popup) fadeAndRemovePopup(e.popup); fadeAndRemoveMarker(e.marker); });
   _droppedPins = [];
 }
 
@@ -122,6 +136,9 @@ function _openPinPopup(lng, lat, kind, entry) {
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
   if (searchMarkerPopup) searchMarkerPopup = null;
   _droppedPins.forEach(e => { e.popup = null; });
+
+  _activePinPopupKey = `${lng},${lat}`;
+  _activePinPopup = null; // set after creation below
 
   const isSearch = kind === "search";
   const title = isSearch ? "Searched Location" : "Dropped Pin";
@@ -168,6 +185,7 @@ function _openPinPopup(lng, lat, kind, entry) {
   } else if (entry) {
     entry.popup = popup;
   }
+  _activePinPopup = popup;
 
   // Resolve address into the popup
   const addrEl = popup.getElement()?.querySelector(".pin-addr-text");
@@ -195,6 +213,8 @@ function _openPinPopup(lng, lat, kind, entry) {
   }
 
   popup.on("close", () => {
+    if (_activePinPopupKey === `${lng},${lat}`) _activePinPopupKey = null;
+    if (_activePinPopup === popup) _activePinPopup = null;
     if (isSearch) searchMarkerPopup = null;
     else if (entry) entry.popup = null;
   });
@@ -211,7 +231,7 @@ function _openPinPopup(lng, lat, kind, entry) {
     if (addBtn) {
       const pLng = +addBtn.dataset.lng, pLat = +addBtn.dataset.lat;
       const addr = resolvedAddr || "";
-      popup.remove();
+      fadeAndRemovePopup(popup);
       window.dispatchEvent(new CustomEvent("hf:add-place-from-pin", { detail: { lat: pLat, lng: pLng, address: addr } }));
     } else if (dirBtn) {
       const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
@@ -221,7 +241,7 @@ function _openPinPopup(lng, lat, kind, entry) {
       placeOriginMarker(pLng, pLat);
       autoSetNearestMosque(pLat, pLng);
       updateGoButton();
-      popup.remove();
+      fadeAndRemovePopup(popup);
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
       else if (entry) { _removeDroppedPin(entry); }
       openDirPanel();
@@ -244,7 +264,7 @@ function _openPinPopup(lng, lat, kind, entry) {
         showToast("Link copied");
       }
     } else if (rmBtn) {
-      popup.remove();
+      fadeAndRemovePopup(popup);
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
       else if (entry) { _removeDroppedPin(entry); }
       // Remove from saved storage so pin doesn't reappear on refresh

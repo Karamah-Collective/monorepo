@@ -62,11 +62,27 @@ export function copyToClipboard(text) {
 
 // --- Toast notifications ---
 
+// ─── Fade-out helpers for MapLibre popups and markers ───────────────────────
+export function fadeAndRemovePopup(popup) {
+  if (!popup) return;
+  const el = popup.getElement();
+  if (!el) { try { popup.remove(); } catch (_) {} return; }
+  el.classList.add("popup-fading-out");
+  setTimeout(() => { try { popup.remove(); } catch (_) {} }, 150);
+}
+export function fadeAndRemoveMarker(marker) {
+  if (!marker) return;
+  const el = marker.getElement();
+  if (!el) { marker.remove(); return; }
+  el.classList.add("marker-fading-out");
+  setTimeout(() => marker.remove(), 150);
+}
+
 const _TOAST_SVG = {
   check: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
   clock: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
   error: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
-  loc: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M13.73 13.73A4 4 0 0 1 8.27 8.27"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A2 2 0 0 1 12 2c.34 0 .68.04 1 .1M12 8a4 4 0 0 1 4 4"/><path d="M17.94 17.94A10 10 0 0 1 12 20c-5.52 0-10-4.48-10-10 0-2.05.62-3.95 1.68-5.53"/></svg>`,
+  loc: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.61 1.43 4.88 3.54 6.96L12 22l3.46-6.04C17.57 13.88 19 11.61 19 9c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/><line x1="3" y1="3" x2="21" y2="21"/></svg>`,
 };
 const _TOAST_ICON_CLASS = {
   check: "snack-icon--success",

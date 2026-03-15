@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
@@ -10,6 +10,8 @@ export let tagsData = {};
 export let placesLoaded = false;
 let placeMarkers = [];
 let savedPinMarkers = [];
+let _activePlacePopupId = null;
+let _activePlacePopup = null;
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 let activeSortField = "default"; // "default" | "name" | "distance" | "date"
@@ -368,12 +370,18 @@ function _setupClusterLayers(geojson) {
   map.on("click", "places-cluster-circle", _clusterClickHandler);
   map.on("click", "places-cluster-inner", _clusterClickHandler);
 
-  // Unclustered dot click → open place popup
+  // Unclustered dot click → open place popup (or close if already open)
   map.on("click", "places-unclustered", (e) => {
     const feature = e.features?.[0];
     if (!feature) return;
     const place = placesData.find((p) => p.id === feature.properties.id);
-    if (place) showPlacePopup(place);
+    if (!place) return;
+    if (_activePlacePopupId === place.id) {
+      if (_activePlacePopup) { fadeAndRemovePopup(_activePlacePopup); _activePlacePopup = null; }
+      _activePlacePopupId = null;
+    } else {
+      showPlacePopup(place);
+    }
   });
 
   ["places-cluster-circle", "places-cluster-inner", "places-unclustered"].forEach((layer) => {
@@ -417,7 +425,15 @@ export function addPlaceMarkers() {
     el.className = "place-mk-wrap";
     el.innerHTML = makePlaceMarkerHTML(place.type);
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([place.lng, place.lat]).addTo(map);
-    el.addEventListener("click", (e) => { e.stopPropagation(); showPlacePopup(place); });
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (_activePlacePopupId === place.id) {
+        if (_activePlacePopup) { fadeAndRemovePopup(_activePlacePopup); _activePlacePopup = null; }
+        _activePlacePopupId = null;
+      } else {
+        showPlacePopup(place);
+      }
+    });
     placeMarkers.push(marker);
   });
 
@@ -543,7 +559,7 @@ export function showPlacePopup(place) {
     document.getElementById("dir-to").value = place.name;
     placeDestMarker(place.lng, place.lat);
     updateGoButton();
-    popup.remove();
+    fadeAndRemovePopup(popup);
     document.getElementById("places-sheet").classList.add("shut");
     openDirPanel();
   });
@@ -583,10 +599,20 @@ export function showPlacePopup(place) {
 
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
 
+  // Track the open popup id for toggle-close
+  _activePlacePopupId = place.id;
+
   const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "300px", className: "place-popup-wrap" })
     .setLngLat([place.lng, place.lat])
     .setDOMContent(root)
     .addTo(map);
+
+  _activePlacePopup = popup;
+
+  popup.on("close", () => {
+    if (_activePlacePopupId === place.id) _activePlacePopupId = null;
+    if (_activePlacePopup === popup) _activePlacePopup = null;
+  });
 
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
 }
@@ -1474,7 +1500,7 @@ suggestForm.addEventListener("submit", async (e) => {
       clearPinLocation();
       renderSuggestTags();
       document.getElementById("suggest-overlay").classList.add("hide");
-      showToast("Suggestion submitted", "check", "JazakAllah Khair!");
+      setTimeout(() => showToast("Suggestion submitted", "check", "JazakAllah Khair!"), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
@@ -1725,7 +1751,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     if (data.success) {
       _lastSubmit = Date.now();
       document.getElementById("edit-overlay").classList.add("hide");
-      showToast("Edit submitted", "check", "JazakAllah Khair!");
+      setTimeout(() => showToast("Edit submitted", "check", "JazakAllah Khair!"), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }

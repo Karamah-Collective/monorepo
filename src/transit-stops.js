@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, DT_API_KEY } from "./config.js";
 import { TRANSIT_COLORS, modeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, isPinSaved, toggleSavedPin, pinId } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, startPick } from "./directions.js";
 
 const _starSVG = (filled) =>
@@ -16,6 +16,8 @@ function _buildStopShareUrl(lat, lng, name) {
 
 let _stopPopupId = 0;
 let _pendingStopOpen = null;
+let _activeStopPopupKey = null;
+let _activeStopPopup = null;
 
 function _openStopFeaturePopup(f) {
   const { name, type, code, region } = f.properties;
@@ -58,6 +60,9 @@ function _openStopFeaturePopup(f) {
     .setLngLat(lngLat)
     .setHTML(html)
     .addTo(map);
+
+  _activeStopPopupKey = `${lngLat[0]},${lngLat[1]}`;
+  _activeStopPopup = popup;
 
   const popEl = popup.getElement();
   let tip = null;
@@ -110,7 +115,7 @@ function _openStopFeaturePopup(f) {
       placeOriginMarker(lng, lat);
       autoSetNearestMosque(lat, lng);
       updateGoButton();
-      popup.remove();
+      fadeAndRemovePopup(popup);
       openDirPanel();
       if (!dir.dest) startPick("to");
     } else if (shrBtn) {
@@ -123,10 +128,14 @@ function _openStopFeaturePopup(f) {
         showToast("Link copied");
       }
     } else if (clsBtn) {
-      popup.remove();
+      fadeAndRemovePopup(popup);
     }
   }, true);
-  popup.on("close", () => { if (tip) { tip.remove(); tip = null; tipBadge = null; } });
+  popup.on("close", () => {
+    if (_activeStopPopupKey === `${lngLat[0]},${lngLat[1]}`) _activeStopPopupKey = null;
+    if (_activeStopPopup === popup) _activeStopPopup = null;
+    if (tip) { tip.remove(); tip = null; tipBadge = null; }
+  });
 
   const routesJson = f.properties.routes;
   let cachedRoutes = [];
@@ -464,7 +473,17 @@ function processTransitStops(geojson) {
   });
 
   ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"].forEach((layerId) => {
-    map.on("click", layerId, (e) => { _openStopFeaturePopup(e.features[0]); });
+    map.on("click", layerId, (e) => {
+      const f = e.features[0];
+      const coords = f.geometry.coordinates.slice();
+      const key = `${coords[0]},${coords[1]}`;
+      if (_activeStopPopupKey === key) {
+        if (_activeStopPopup) { fadeAndRemovePopup(_activeStopPopup); _activeStopPopup = null; }
+        _activeStopPopupKey = null;
+      } else {
+        _openStopFeaturePopup(f);
+      }
+    });
     map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
   });

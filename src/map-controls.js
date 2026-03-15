@@ -297,8 +297,10 @@ export function setTheme(theme) {
   if (theme === currentTheme) return;
   currentTheme = theme;
   const isDark = theme === "dark";
+  document.body.classList.add("theme-transition");
   document.body.classList.toggle("dark-mode", isDark);
   document.getElementById("map").classList.toggle("dark-mode", isDark);
+  setTimeout(() => document.body.classList.remove("theme-transition"), 500);
   try { localStorage.setItem("theme", theme); } catch (_) {}
   _syncStyleButtons();
   console.log(`[Style] Theme → ${theme}`);
