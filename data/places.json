@@ -1221,5 +1221,90 @@
       "halal_certified": true
     },
     "notes": ""
+  },
+  {
+    "id": "uj177l",
+    "name": "Al-Nuur Mosque (Islamic Community of Espoo)",
+    "type": "mosque",
+    "address": "Kirstinharju 1 b, 02760 Espoo, Finland",
+    "lat": 60.2013389,
+    "lng": 24.6656559,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "i0mxzn",
+    "name": "Masjid Abu Bakr Al-Siddique",
+    "type": "mosque",
+    "address": "Sepetlahdentie 8, 02230 Espoo, Finland",
+    "lat": 60.1524348,
+    "lng": 24.7440042,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "2ivnxo",
+    "name": "Bukhara Mosque",
+    "type": "mosque",
+    "address": "Kirvuntie 22, 02140 Espoo, Finland",
+    "lat": 60.2039881,
+    "lng": 24.8046016,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "r1ckxd",
+    "name": "Masjid Al-Ikhlas",
+    "type": "mosque",
+    "address": "Harakantie 20 L3, 02650 Espoo, Finland",
+    "lat": 60.2211232,
+    "lng": 24.8156451,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": "Khutbah in both English and Arabic"
+  },
+  {
+    "id": "onu9dw",
+    "name": "Daar Ul Muntaha Mosque",
+    "type": "mosque",
+    "address": "Kuparitie 1, 00440 Helsinki, Finland",
+    "lat": 60.2307131,
+    "lng": 24.8828721,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
+      "female_prayer": true
+    },
+    "notes": ""
   }
 ]

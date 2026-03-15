@@ -358,10 +358,33 @@ export function toggleSatellite() {
     // Force MapLibre to request tiles immediately
     map.triggerRepaint();
 
-    LABEL_IDS.forEach((id) => {
-      map.setPaintProperty(id, "text-color", "#ffffff");
-      map.setPaintProperty(id, "text-halo-color", "rgba(0,0,0,0.75)");
-      map.setPaintProperty(id, "text-halo-width", 1.5);
+    // Keep the Finland mask above satellite — dark fill, only covering land.
+    // Place it before label_place_city so only city + country labels show above.
+    if (map.getLayer("finland-mask")) {
+      map.moveLayer("finland-mask", "label_place_city");
+      map.setPaintProperty("finland-mask", "fill-color", "#1a1a1a");
+      map.setPaintProperty("finland-mask", "fill-opacity", 0.65);
+    }
+
+    // Keep water layers visible above the mask so waterways aren't blocked
+    ["waterway", "water", "label_water"].forEach(id => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.moveLayer(id, "label_place_city");
+      }
+    });
+
+    // Only show city + country labels in satellite mode (same as vector outside Finland)
+    ["label_road", "label_park", "label_poi", "label_place_village", "label_place_town"].forEach(id => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+    });
+    ["label_place_city", "label_country"].forEach(id => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.setPaintProperty(id, "text-color", "#ffffff");
+        map.setPaintProperty(id, "text-halo-color", "rgba(0,0,0,0.75)");
+        map.setPaintProperty(id, "text-halo-width", 1.5);
+      }
     });
     if (isHeatmapActive && map.getLayer("heatmap-layer")) {
       map.moveLayer("heatmap-layer", "label_road");
@@ -374,6 +397,27 @@ export function toggleSatellite() {
     }
 
     VECTOR_BASE_IDS.forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+    });
+
+    // Restore mask to its original position and vector-style paint
+    if (map.getLayer("finland-mask")) {
+      map.setPaintProperty("finland-mask", "fill-color", [
+        "interpolate", ["linear"], ["zoom"], 7, "#d3e3bb", 9, "#f0f1f2",
+      ]);
+      map.setPaintProperty("finland-mask", "fill-opacity", 1);
+      if (map.getLayer("label_place_city")) map.moveLayer("finland-mask", "label_place_city");
+    }
+
+    // Restore water layers above mask (same as initial setup in app.js)
+    ["waterway", "water", "label_water", "admin_country"].forEach(id => {
+      if (map.getLayer(id) && map.getLayer("label_place_city")) {
+        map.moveLayer(id, "label_place_city");
+      }
+    });
+
+    // Restore all label visibility and paint
+    LABEL_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
     });
     LABEL_IDS.forEach((id) => {

@@ -111,6 +111,36 @@ window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back o
 
 map.on("load", async () => {
   preloadSatelliteSource();
+
+  // Mask everything outside Finland — placed just below city/country labels.
+  // Water layers are then promoted above the mask so seas/lakes stay visible.
+  map.addSource("finland-mask", {
+    type: "geojson",
+    data: "/data/finland-outside-mask.geojson",
+  });
+  map.addLayer(
+    {
+      id: "finland-mask",
+      type: "fill",
+      source: "finland-mask",
+      paint: {
+        "fill-color": [
+          "interpolate", ["linear"], ["zoom"],
+          7, "#d3e3bb",
+          9, "#f0f1f2",
+        ],
+        "fill-opacity": 1,
+      },
+    },
+    "label_place_city",          // ← inserted right below city labels
+  );
+
+  // Lift water + country borders above the mask so they remain visible everywhere
+  map.moveLayer("waterway",      "label_place_city");
+  map.moveLayer("water",         "label_place_city");
+  map.moveLayer("label_water",   "label_place_city");
+  map.moveLayer("admin_country", "label_place_city");
+
   const loadPromise = loadPlacesData();
 
   // Lazy-load non-critical modules in parallel after first paint

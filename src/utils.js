@@ -1,4 +1,4 @@
-import { _CRYPTO_KEY, FINLAND_SW, FINLAND_NE } from "./config.js";
+import { _CRYPTO_KEY } from "./config.js";
 import { map } from "./map-init.js";
 
 // ─── Saved custom pins ─────────────────────────────────────────────────────────────

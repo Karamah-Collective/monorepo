@@ -59,6 +59,7 @@ const SHELL_ASSETS = [
   '/src/styles/fonts/Inter-Variable-Latin.woff2',
   '/data/places.json',
   '/data/tags.json',
+  '/data/finland-outside-mask.geojson',
   '/data/thumbs/default.png',
   '/data/thumbs/satellite.jpg',
   '/data/thumbs/3d.png',

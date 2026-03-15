@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId } from "./utils.js";
-import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL } from "./config.js";
+import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, showPlacePopup } from "./places.js";
 
@@ -59,6 +59,7 @@ let searchMarkerPopup = null;
 let _searchAddrCache = null;
 
 export function showSearchMarker(lng, lat) {
+  if (!isInsideFinland(lat, lng)) return;  // only allow pins inside Finland
   if (searchMarker) searchMarker.remove();
   if (searchMarkerPopup) { searchMarkerPopup.remove(); searchMarkerPopup = null; }
   _searchAddrCache = null;
@@ -84,6 +85,7 @@ export function clearSearchMarker() {
 let _droppedPins = []; // [{marker, popup, lat, lng, addrCache}]
 
 export function showDroppedPin(lng, lat) {
+  if (!isInsideFinland(lat, lng)) return;  // only allow pins inside Finland
   // If a pin already exists at these exact coordinates, just re-open its popup
   // instead of stacking a duplicate — this happens when re-opening saved pins.
   const existing = _droppedPins.find(e => e.lng === lng && e.lat === lat);
@@ -320,6 +322,8 @@ async function _nominatimSearch(q) {
 }
 
 function showResults(items) {
+  // Only show results inside Finland
+  items = items.filter(r => isInsideFinland(r.lat, r.lng));
   if (!items.length) {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">No results found.</li>';
     showDrop();
@@ -399,6 +403,7 @@ map.doubleClickZoom.disable();
 
 map.on("dblclick", async (e) => {
   const { lat, lng } = e.lngLat;
+  if (!isInsideFinland(lat, lng)) return;  // ignore outside Finland
   showDroppedPin(lng, lat);
 });
 
@@ -420,7 +425,7 @@ map.on("touchend", (e) => {
   const now = Date.now();
   const { lng, lat } = e.lngLat;
   if (now - _lastTapTime < 350 && Math.abs(lng - _lastTapLng) < 0.0015 && Math.abs(lat - _lastTapLat) < 0.0015) {
-    showDroppedPin(lng, lat);
+    if (isInsideFinland(lat, lng)) showDroppedPin(lng, lat);  // only inside Finland
     _lastTapTime = 0;
   } else {
     _lastTapTime = now;

@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha } from "./utils.js";
-import { RECAPTCHA_SITE_KEY } from "./config.js";
+import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 
@@ -423,7 +423,7 @@ export function addPlaceMarkers() {
 
   // Show saved custom pins as map markers when on the saved tab
   if (activeTypeFilter === "saved") {
-    getSavedPins().forEach((pin) => {
+    getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
       const el = document.createElement("div");
       el.className = "place-mk-wrap";
       el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
@@ -674,7 +674,7 @@ export function checkShareUrl() {
     const la = parseFloat(qLat), lo = parseFloat(qLng);
     const z = parseFloat(params.get("z")) || 16;
     const isStop = params.get("type") === "stop";
-    if (!isNaN(la) && !isNaN(lo)) {
+    if (!isNaN(la) && !isNaN(lo) && isInsideFinland(la, lo)) {
       map.flyTo({ center: [lo, la], zoom: z, speed: 1.4 });
       map.once("moveend", () => {
         const eventName = isStop ? "hf:open-stop" : "hf:show-search-marker";

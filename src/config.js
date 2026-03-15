@@ -31,6 +31,39 @@ export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
 export const RECAPTCHA_SITE_KEY = "6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v";
 
 export const HELSINKI = [24.9384, 60.1699];
-// Keep panning focused on the Nordic/Baltic region while allowing wider zoom-out.
-export const FINLAND_SW = [14.0, 54.5];
-export const FINLAND_NE = [36.0, 72.5];
+
+// Finland's border polygon (loaded from GeoJSON at runtime for point-in-polygon checks).
+let _finlandRing = null;
+let _finlandRingPromise = null;
+
+function _loadFinlandRing() {
+  if (!_finlandRingPromise) {
+    _finlandRingPromise = fetch("/data/finland-outside-mask.geojson")
+      .then(r => r.json())
+      .then(json => { _finlandRing = json.features[0].geometry.coordinates[1]; })
+      .catch(() => { _finlandRing = []; });
+  }
+  return _finlandRingPromise;
+}
+// Start loading immediately on module init
+_loadFinlandRing();
+
+// Quick bounding-box pre-check (rejects obviously-outside points fast).
+const FI_BBOX = { minLng: 19.0, maxLng: 31.7, minLat: 59.4, maxLat: 70.2 };
+
+// Ray-casting point-in-polygon against the actual Finland border.
+export function isInsideFinland(lat, lng) {
+  if (lat < FI_BBOX.minLat || lat > FI_BBOX.maxLat ||
+      lng < FI_BBOX.minLng || lng > FI_BBOX.maxLng) return false;
+  if (!_finlandRing || !_finlandRing.length) return true; // allow while loading
+  let inside = false;
+  for (let i = 0, j = _finlandRing.length - 1; i < _finlandRing.length; j = i++) {
+    const xi = _finlandRing[i][0], yi = _finlandRing[i][1];
+    const xj = _finlandRing[j][0], yj = _finlandRing[j][1];
+    if ((yi > lat) !== (yj > lat) &&
+        lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
