@@ -14,7 +14,7 @@ import {
   hideOfflineBanner,
   showToast,
 } from "./utils.js";
-import "./map-controls.js";
+import { preloadSatelliteSource } from "./map-controls.js";
 import "./directions.js";
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
@@ -110,6 +110,7 @@ window.addEventListener("offline", showOfflineBanner);
 window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });
 
 map.on("load", async () => {
+  preloadSatelliteSource();
   const loadPromise = loadPlacesData();
 
   // Lazy-load non-critical modules in parallel after first paint

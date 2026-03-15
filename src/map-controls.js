@@ -8,6 +8,10 @@ let locWatchId = null;
 
 export let currentTheme = "light";     // "light" | "dark"
 export let isSatelliteActive = false;
+
+const SAT_SOURCE_ID = "satellite-src";
+const SAT_TILES = ["https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
+const SAT_ATTRIBUTION = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics';
 export let isHeatmapActive = false;
 export let is3DActive = false;
 
@@ -313,6 +317,20 @@ export function setTheme(theme) {
   } catch (_) {}
 })();
 
+// Pre-register the satellite raster source so tiles start caching early.
+// Called from map "load" — the source exists but no layer renders until toggled.
+export function preloadSatelliteSource() {
+  if (!map.getSource(SAT_SOURCE_ID)) {
+    map.addSource(SAT_SOURCE_ID, {
+      type: "raster",
+      tiles: SAT_TILES,
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: SAT_ATTRIBUTION,
+    });
+  }
+}
+
 // ── Satellite toggle ──────────────────────────────────────────────
 export function toggleSatellite() {
   if (!origLabelPaint.label_road) _snapshotLabels();
@@ -320,38 +338,40 @@ export function toggleSatellite() {
   document.getElementById("map").classList.toggle("satellite-active", isSatelliteActive);
 
   if (isSatelliteActive) {
-    const was3D = is3DActive;
     if (is3DActive) disable3D();
 
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
     });
-    if (!map.getSource("esri-satellite")) {
-      map.addSource("esri-satellite", {
-        type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics',
-      });
+
+    // Ensure source exists (normally pre-registered on load)
+    preloadSatelliteSource();
+
+    if (!map.getLayer("style-raster")) {
+      map.addLayer(
+        { id: "style-raster", type: "raster", source: SAT_SOURCE_ID, paint: { "raster-opacity": 1 } },
+        "label_road",
+      );
+    } else {
+      map.setLayoutProperty("style-raster", "visibility", "visible");
     }
-    map.addLayer(
-      { id: "style-raster", type: "raster", source: "esri-satellite", paint: { "raster-opacity": 1 } },
-      "label_road",
-    );
+    // Force MapLibre to request tiles immediately
+    map.triggerRepaint();
+
     LABEL_IDS.forEach((id) => {
       map.setPaintProperty(id, "text-color", "#ffffff");
       map.setPaintProperty(id, "text-halo-color", "rgba(0,0,0,0.75)");
       map.setPaintProperty(id, "text-halo-width", 1.5);
     });
-    // Keep heatmap above satellite raster
     if (isHeatmapActive && map.getLayer("heatmap-layer")) {
       map.moveLayer("heatmap-layer", "label_road");
     }
     map.setMaxPitch(0);
     map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
   } else {
-    if (map.getLayer("style-raster")) map.removeLayer("style-raster");
+    if (map.getLayer("style-raster")) {
+      map.setLayoutProperty("style-raster", "visibility", "none");
+    }
 
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");

@@ -372,6 +372,7 @@
 .thumb-satellite {
   background: url("../../data/thumbs/satellite.jpg") center/cover no-repeat;
 }
+
 .thumb-heatmap {
   background:
     radial-gradient(circle at 38% 40%,
