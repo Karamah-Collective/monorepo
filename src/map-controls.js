@@ -342,6 +342,8 @@ export function toggleSatellite() {
   if (isSatelliteActive) {
     if (is3DActive) disable3D();
 
+    showLoadingToast("Loading satellite imagery…");
+
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
     });
@@ -359,6 +361,9 @@ export function toggleSatellite() {
     }
     // Force MapLibre to request tiles immediately
     map.triggerRepaint();
+
+    // Dismiss loading toast once tiles finish loading
+    map.once("idle", () => { hideLoadingToast(); });
 
     // Keep the Finland mask above satellite — dark fill, only covering land.
     // Place it before label_place_city so only city + country labels show above.
