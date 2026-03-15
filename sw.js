@@ -127,7 +127,7 @@ self.addEventListener('fetch', (evt) => {
   }
 
   // ── Satellite raster tiles from ArcGIS — stale-while-revalidate ──────────
-  if (url.hostname === 'clarity.maptiles.arcgis.com') {
+  if (url.hostname === 'server.arcgisonline.com') {
     evt.respondWith(staleWhileRevalidate(req, CACHE_SAT, MAX_SAT));
     return;
   }

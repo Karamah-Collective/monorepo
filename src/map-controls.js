@@ -10,7 +10,7 @@ export let currentTheme = "light";     // "light" | "dark"
 export let isSatelliteActive = false;
 
 const SAT_SOURCE_ID = "satellite-src";
-const SAT_TILES = ["https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
+const SAT_TILES = ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
 const SAT_ATTRIBUTION = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics';
 export let isHeatmapActive = false;
 export let is3DActive = false;
