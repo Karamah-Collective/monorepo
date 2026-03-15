@@ -25,11 +25,13 @@ const VERSION = '20260315'; // ← update to today's date (YYYYMMDD) on every de
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
 const CACHE_TILES  = `hf-tiles-${VERSION}`;
 const CACHE_GLYPHS = `hf-glyphs-${VERSION}`;
+const CACHE_SAT    = `hf-sat-${VERSION}`;
 
 // Cap tile cache entries so storage stays reasonable.
 // Helsinki vector tiles at z10-z16 are ~20-80 KB each; 500 entries ≈ 10-40 MB.
 const MAX_TILES  = 500;
 const MAX_GLYPHS =  64;   // 64 glyph ranges covers the full Basic Multilingual Plane
+const MAX_SAT    = 300;   // satellite raster tiles ~15-40 KB each; 300 ≈ 5-12 MB
 
 // ─── Assets to pre-cache on install ───────────────────────────────────────────
 // These are served instantly from the very first repeat visit.
@@ -89,7 +91,7 @@ self.addEventListener('install', (evt) => {
 // ─── Activate ──────────────────────────────────────────────────────────────────
 // Delete all caches from previous versions.
 self.addEventListener('activate', (evt) => {
-  const live = new Set([CACHE_SHELL, CACHE_TILES, CACHE_GLYPHS]);
+  const live = new Set([CACHE_SHELL, CACHE_TILES, CACHE_GLYPHS, CACHE_SAT]);
   evt.waitUntil(
     caches.keys()
       .then((names) =>
@@ -121,6 +123,12 @@ self.addEventListener('fetch', (evt) => {
   // ── Vector tiles + TileJSON from OpenFreeMap — stale-while-revalidate ────
   if (url.hostname === 'tiles.openfreemap.org') {
     evt.respondWith(staleWhileRevalidate(req, CACHE_TILES, MAX_TILES));
+    return;
+  }
+
+  // ── Satellite raster tiles from ArcGIS — stale-while-revalidate ──────────
+  if (url.hostname === 'clarity.maptiles.arcgis.com') {
+    evt.respondWith(staleWhileRevalidate(req, CACHE_SAT, MAX_SAT));
     return;
   }
 
