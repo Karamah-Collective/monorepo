@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
@@ -788,7 +788,7 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   activeTagFilters.clear();
   renderTagFilterBar();
   addPlaceMarkers();
-  renderPlacesList();
+  animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();                    // update drag cap for new tab content
 });
 
@@ -814,7 +814,7 @@ placesClearBtn.addEventListener("click", () => {
   updateSortButton();
   renderTagFilterBar();
   addPlaceMarkers();
-  renderPlacesList();
+  animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();
   updateClearButton();
 });
@@ -881,7 +881,7 @@ sortDropdown.addEventListener("click", (e) => {
             userLocLng = pos.coords.longitude;
             activeSortField = "distance";
             updateSortButton();
-            renderPlacesList();
+            animateSheetHeight(placesSheet, () => renderPlacesList());
           },
           () => showToast("Location is off", "loc", "Enable location to sort by distance"),
           { enableHighAccuracy: false, timeout: 6000 },
@@ -891,12 +891,12 @@ sortDropdown.addEventListener("click", (e) => {
     }
     activeSortField = field;
     updateSortButton();
-    renderPlacesList();
+    animateSheetHeight(placesSheet, () => renderPlacesList());
     if (field === "default") closeSortDropdown();
   } else if (opt.dataset.sortDir !== undefined) {
     activeSortDir = opt.dataset.sortDir;
     updateSortButton();
-    renderPlacesList();
+    animateSheetHeight(placesSheet, () => renderPlacesList());
     closeSortDropdown();
   }
 });
@@ -925,7 +925,7 @@ function renderTagFilterBar() {
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
-        html += `<button class="tf-chip tf-group-toggle" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+        html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
         html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}">`;
         html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
         html += `</div>`;
@@ -958,8 +958,25 @@ function updateTagCount() {
 
 tfToggle.addEventListener("click", () => {
   const isOpen = !tfChips.classList.contains("shut");
-  tfChips.classList.toggle("shut", isOpen);
+  if (isOpen) {
+    // Closing: commit current height then animate to 0
+    tfChips.style.maxHeight = tfChips.scrollHeight + "px";
+    void tfChips.offsetHeight;
+    tfChips.classList.add("shut");
+    tfChips.style.maxHeight = "";
+  } else {
+    // Opening: animate from 0 to measured scrollHeight, then uncap
+    tfChips.classList.remove("shut");
+    const h = tfChips.scrollHeight;
+    tfChips.style.maxHeight = "0px";
+    void tfChips.offsetHeight;
+    tfChips.style.maxHeight = h + "px";
+    const clear = () => { tfChips.style.maxHeight = ""; tfChips.removeEventListener("transitionend", clear); };
+    tfChips.addEventListener("transitionend", clear);
+  }
   tfToggle.classList.toggle("open", !isOpen);
+  // Re-snap mobile sheet after filter chips expand/collapse
+  setTimeout(() => placesSnap.remeasure(), 280);
 });
 
 document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
@@ -970,8 +987,23 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
     const panel = tfChips.querySelector(`.tf-group-chips[data-group-for="${gid}"]`);
     if (panel) {
       const isOpen = !panel.classList.contains("shut");
-      panel.classList.toggle("shut", isOpen);
+      if (isOpen) {
+        panel.style.maxHeight = panel.scrollHeight + "px";
+        void panel.offsetHeight;
+        panel.classList.add("shut");
+        panel.style.maxHeight = "";
+      } else {
+        panel.classList.remove("shut");
+        const h = panel.scrollHeight;
+        panel.style.maxHeight = "0px";
+        void panel.offsetHeight;
+        panel.style.maxHeight = h + "px";
+        const clear = () => { panel.style.maxHeight = ""; panel.removeEventListener("transitionend", clear); };
+        panel.addEventListener("transitionend", clear);
+      }
       groupBtn.classList.toggle("open", !isOpen);
+      // Re-snap mobile sheet after cuisine group expand/collapse
+      setTimeout(() => placesSnap.remeasure(), 280);
     }
     return;
   }
@@ -989,11 +1021,12 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
       const cnt = groupPanel.querySelectorAll(".tf-chip.active").length;
       const badge = toggle.querySelector(".tf-group-count");
       if (badge) { badge.textContent = cnt; badge.classList.toggle("hide", !cnt); }
+      toggle.classList.toggle("has-active", cnt > 0);
     }
   }
   updateTagCount();
   addPlaceMarkers();
-  renderPlacesList();
+  animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();                    // update drag cap for filtered content
   updateClearButton();
 });

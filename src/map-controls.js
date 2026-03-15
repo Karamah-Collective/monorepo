@@ -10,6 +10,7 @@ export let currentTheme = "light";     // "light" | "dark"
 export let isSatelliteActive = false;
 
 const SAT_SOURCE_ID = "satellite-src";
+let origWaterColor = null;   // snapshot for restore
 const SAT_TILES = ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
 const SAT_ATTRIBUTION = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics';
 export let isHeatmapActive = false;
@@ -373,13 +374,23 @@ export function toggleSatellite() {
       map.setPaintProperty("finland-mask", "fill-opacity", 0.65);
     }
 
-    // Keep water layers visible above the mask so waterways aren't blocked
-    ["waterway", "water", "label_water"].forEach(id => {
-      if (map.getLayer(id)) {
-        map.setLayoutProperty(id, "visibility", "visible");
-        map.moveLayer(id, "label_place_city");
-      }
-    });
+    // Show water fill above the mask so ocean isn't greyed out.
+    // Use a natural ocean colour that matches the satellite aesthetic.
+    if (map.getLayer("water")) {
+      if (!origWaterColor) origWaterColor = map.getPaintProperty("water", "fill-color");
+      map.setLayoutProperty("water", "visibility", "visible");
+      map.moveLayer("water", "label_place_city");
+      map.setPaintProperty("water", "fill-color", "#0a1e33");
+    }
+    // Hide waterways (thin lines not useful in satellite)
+    if (map.getLayer("waterway")) {
+      map.setLayoutProperty("waterway", "visibility", "none");
+    }
+    // Keep water labels visible above satellite
+    if (map.getLayer("label_water")) {
+      map.setLayoutProperty("label_water", "visibility", "visible");
+      map.moveLayer("label_water", "label_place_city");
+    }
 
     // Only show city + country labels in satellite mode (same as vector outside Finland)
     ["label_road", "label_park", "label_poi", "label_place_village", "label_place_town"].forEach(id => {
@@ -422,6 +433,10 @@ export function toggleSatellite() {
         map.moveLayer(id, "label_place_city");
       }
     });
+    // Restore water paint to vector defaults
+    if (origWaterColor && map.getLayer("water")) {
+      map.setPaintProperty("water", "fill-color", origWaterColor);
+    }
 
     // Restore all label visibility and paint
     LABEL_IDS.forEach((id) => {

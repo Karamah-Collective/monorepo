@@ -546,8 +546,19 @@ body {
   border-color: var(--border);
 }
 .tf-group-toggle.open {
-  border-color: var(--accent-muted);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.tf-group-toggle.open svg {
+  stroke: #fff;
+}
+.tf-group-toggle.has-active:not(.open) {
+  border-color: var(--accent);
   color: var(--accent);
+}
+.tf-group-toggle.has-active:not(.open) svg {
+  stroke: var(--accent);
 }
 .tf-group-arrow {
   transition: transform 0.2s ease;
@@ -571,6 +582,10 @@ body {
   margin-left: 2px;
   line-height: 1;
 }
+.tf-group-toggle.open .tf-group-count {
+  background: #fff;
+  color: var(--accent);
+}
 .tf-group-count.hide {
   display: none;
 }
@@ -582,12 +597,15 @@ body {
   padding-left: 8px;
   border-left: 2px solid var(--accent-soft);
   overflow: hidden;
-  max-height: 200px;
-  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.2s ease;
+  max-height: none;
+  transition:
+    max-height 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.15s ease,
+    padding 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   opacity: 1;
 }
 .tf-group-chips.shut {
-  max-height: 0;
+  max-height: 0 !important;
   opacity: 0;
   padding-top: 0;
   padding-bottom: 0;

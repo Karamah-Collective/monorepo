@@ -1306,5 +1306,129 @@
       "female_prayer": true
     },
     "notes": ""
+  },
+  {
+    "id": "butyl8",
+    "name": "Iqra mosque",
+    "type": "mosque",
+    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "lat": 60.2368541,
+    "lng": 25.0848472,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "t2ul0o",
+    "name": "Dar Al Salam Mosque",
+    "type": "mosque",
+    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "lat": 60.2367005,
+    "lng": 25.0840101,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "0da753",
+    "name": "Kontulan Kebab Pizza",
+    "type": "restaurant",
+    "address": "Kontulan Ostoskeskus, Ostostie 4 H 24, 00940 Helsinki, Finland",
+    "lat": 60.23703219999999,
+    "lng": 25.0834663,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true,
+      "cuisine_fast_food": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "eoq1d0",
+    "name": "Kalkan Pizza-Kebab-Grilli Kontula",
+    "type": "restaurant",
+    "address": "Keinulaudankuja 4 B, 00940 Helsinki, Finland",
+    "lat": 60.2362357,
+    "lng": 25.0827705,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true,
+      "cuisine_pizza": true,
+      "cuisine_fast_food": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "d9hwaf",
+    "name": "RAYAN Pizza Kebab",
+    "type": "restaurant",
+    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "lat": 60.2363937,
+    "lng": 25.0832966,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true,
+      "cuisine_pizza": true,
+      "cuisine_fast_food": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "x8z3u0",
+    "name": "Döner King",
+    "type": "restaurant",
+    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "lat": 60.2359126,
+    "lng": 25.0827562,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "zbyu0l",
+    "name": "Tikke Kebab grilli",
+    "type": "restaurant",
+    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "lat": 60.2368892,
+    "lng": 25.0841213,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "izifkc",
+    "name": "Antalya Ravintola",
+    "type": "restaurant",
+    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "lat": 60.2373168,
+    "lng": 25.0835932,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_turkish": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "wg4zxd",
+    "name": "Taormina Pizza & Kebab",
+    "type": "restaurant",
+    "address": "Ostostie, 00940 Helsinki, Finland",
+    "lat": 60.23670089999999,
+    "lng": 25.0825267,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_pizza": true
+    },
+    "notes": ""
   }
 ]

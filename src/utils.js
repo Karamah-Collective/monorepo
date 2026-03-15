@@ -309,6 +309,55 @@ export function initSegPill(container) {
 // During drag the sheet follows the finger with zero resistance.
 // On release it gracefully animates to the nearest snap point.
 
+/**
+ * Smoothly animate a desktop sheet's height when its content changes.
+ * On mobile (≤768 px) the changeFn runs immediately with no animation.
+ *
+ * Flow: pin at current height → run changeFn → measure new natural
+ * height → FLIP-animate from old → new → restore fit-content.
+ */
+export function animateSheetHeight(sheet, changeFn) {
+  if (window.innerWidth <= 768 || sheet.classList.contains("shut")) {
+    changeFn();
+    return;
+  }
+
+  const oldH = sheet.offsetHeight;
+
+  // 1. Pin at current height so DOM change doesn't cause visible jump
+  sheet.style.setProperty("height", oldH + "px", "important");
+  sheet.style.setProperty("transition", "none", "important");
+
+  // 2. Execute content change (sheet stays visually at oldH)
+  changeFn();
+
+  // 3. Measure new natural height (briefly restore fit-content)
+  sheet.style.setProperty("height", "fit-content", "important");
+  const newH = sheet.offsetHeight;
+
+  if (Math.abs(newH - oldH) < 2) {
+    sheet.style.removeProperty("height");
+    sheet.style.removeProperty("transition");
+    return;
+  }
+
+  // 4. Re-pin at old height, force reflow so browser commits it
+  sheet.style.setProperty("height", oldH + "px", "important");
+  void sheet.offsetHeight;
+
+  // 5. Animate to new height (CSS transition on .sheet kicks in)
+  sheet.style.removeProperty("transition");
+  sheet.style.setProperty("height", newH + "px", "important");
+
+  const cleanup = () => {
+    sheet.style.removeProperty("height");
+    sheet.removeEventListener("transitionend", onEnd);
+  };
+  const onEnd = (e) => { if (e.propertyName === "height") cleanup(); };
+  sheet.addEventListener("transitionend", onEnd);
+  setTimeout(cleanup, 400); // safety fallback
+}
+
 export function initSheetDrag(sheet, closeFn) {
   const isMobile = () => window.innerWidth <= 768;
   let startY = 0, startH = 0, dragging = false;
@@ -413,49 +462,14 @@ export function initSheetDrag(sheet, closeFn) {
     }
   }
 
-  /* ── Desktop: smooth height animation via ResizeObserver ── */
+  /* ── Desktop: track height for open() priming ── */
+  /* The sheet uses fit-content on desktop, which naturally follows child
+     transitions frame by frame — no FLIP or pinning needed. We only
+     track the current height so open() can prime correctly. */
   let prevDesktopH = null;
-  let desktopTransitioning = false;
-  let desktopEndFn = null;
-  let desktopFallback = null;
-
-  function cleanupDesktopFlip() {
-    clearTimeout(desktopFallback);
-    sheet.removeEventListener("transitionend", desktopEndFn);
-    desktopEndFn = null;
-    desktopFallback = null;
-    sheet.style.removeProperty("height");
-    desktopTransitioning = false;
-    prevDesktopH = sheet.offsetHeight; // re-sync with CSS fit-content
-  }
-
   const desktopRO = new ResizeObserver(() => {
-    if (isMobile() || sheet.classList.contains("shut") || sheet.classList.contains("dragging")) {
-      prevDesktopH = null;
-      desktopTransitioning = false;
-      return;
-    }
-    if (desktopTransitioning) return;  // ignore changes driven by our own animation
-
-    const newH = sheet.offsetHeight;
-    if (prevDesktopH === null) { prevDesktopH = newH; return; }
-    if (prevDesktopH === newH) return;
-
-    const oldH = prevDesktopH;
-    prevDesktopH = newH;
-
-    // FLIP: pin to old height (overrides fit-content !important), then transition to new
-    sheet.style.setProperty("height", oldH + "px", "important");
-    void sheet.offsetHeight;             // commit start value before transition fires
-
-    desktopTransitioning = true;
-    sheet.style.setProperty("height", newH + "px", "important");
-
-    desktopEndFn = (e) => { if (e.propertyName === "height") cleanupDesktopFlip(); };
-    sheet.addEventListener("transitionend", desktopEndFn);
-    // Fallback: if transitionend for height never fires (e.g. prefers-reduced-motion,
-    // near-zero delta, panel hidden mid-transition), always unblock after transition ends.
-    desktopFallback = setTimeout(cleanupDesktopFlip, 500);
+    if (isMobile() || sheet.classList.contains("shut")) { prevDesktopH = null; return; }
+    prevDesktopH = sheet.offsetHeight;
   });
   desktopRO.observe(sheet);
 

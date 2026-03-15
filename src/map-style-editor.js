@@ -175,7 +175,10 @@ const ST = {
 // ─── Map helpers ──────────────────────────────────────────────────────────────
 function _applyColors(theme) {
   const palette = ST.colors[theme];
+  const satActive = document.getElementById('map')?.classList.contains('satellite-active');
   for (const [id, hex] of Object.entries(palette)) {
+    // In satellite mode, don't override the water layer's satellite paint
+    if (satActive && (id === 'water' || id === 'waterway')) continue;
     const prop = LAYER_PROP[id];
     if (!prop) continue;
     try { map.setPaintProperty(id, prop, hex); } catch (_) {}
