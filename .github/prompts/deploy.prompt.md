@@ -37,9 +37,9 @@ This ensures predictable, repeatable behavior. No guessing about promotion inten
 
 | Command | What it runs | When to use |
 |---|---|---|
-| `npm run update` | version bump + places refresh | **Default — use this every push** |
+| `npm run update` | version bump + places refresh | Data-only refresh without deploying |
 | `npm run update:full` | version + places + transit cache | Full sweep — ~15 s; do ~once a year or when transit data is stale |
-| `npm run update:force` | **force** version bump + places | Same-day re-deploy — bumps version even if already today's date |
+| `npm run update:force` | **force** version bump + places | **Default for all deploys** — always busts cache |
 | `npm run update:version` | version bump only | When only bumping the cache string |
 | `npm run update:places` | places + tags fetch only | When only refreshing place data |
 | `npm run update:transit` | transit stop cache rebuild only | When only rebuilding HSL stop data |
@@ -50,26 +50,21 @@ This ensures predictable, repeatable behavior. No guessing about promotion inten
 
 **Choose the command based on the user's request:**
 
-- No special request / normal push → run the **standard** command:
+- No special request / normal push → run the **force** command (default for all deploys):
   ```
-  npm run update
+  npm run update:force
   ```
-  This bumps the cache version and fetches fresh places. It does **not** rebuild the transit
-  cache (that only needs doing ~once a year).
+  This always produces a new VERSION string — bumping the date, or if already today appending
+  a counter (e.g. `20260316` → `20260316-2` → `20260316-3`). Every deploy forces every user's
+  service worker to install the new version and wipe their old caches on next visit. **Saved
+  favourites are stored in `localStorage` and are never affected by a VERSION change.**
 
 - User says "full sweep", "update everything", or "update transit" → run:
   ```
   npm run update:full
   ```
-
-- User says `deploy --force`, "force update", "force cache bust", or "push again today" → run:
-  ```
-  npm run update:force
-  ```
-  This appends a build counter to today's date (e.g. `20260316` → `20260316-2` → `20260316-3`).
-  The changed VERSION string causes every user's service worker to install the new version
-  and wipe their old caches on next visit. **Saved favourites are stored in `localStorage`
-  and are never affected by a VERSION change.**
+  Note: `update:full` does not force — only rebuilds version+places+transit. Use
+  `node scripts/update-all.js --force --all` if a force bump is also needed.
 
 - User asks for a specific step only → use the matching `update:version`, `update:places`,
   or `update:transit` command.
