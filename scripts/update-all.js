@@ -10,6 +10,7 @@
  * Usage:
  *   node scripts/update-all.js                  # standard: version + places
  *   node scripts/update-all.js --all            # full sweep: version + places + transit
+ *   node scripts/update-all.js --force          # force version bump even if already today
  *   node scripts/update-all.js --version        # version bump only
  *   node scripts/update-all.js --places         # places fetch only
  *   node scripts/update-all.js --transit        # transit cache rebuild only
@@ -17,6 +18,7 @@
  *
  *   npm run update             # standard (version + places)
  *   npm run update:full        # full sweep (all three)
+ *   npm run update:force       # force version bump + places (same-day re-deploy)
  *   npm run update:version     # version bump only
  *   npm run update:places      # places only
  *   npm run update:transit     # transit only
@@ -47,6 +49,26 @@ function today() {
   return `${y}${m}${dd}`;
 }
 
+// When --force is used, increment a build counter suffix so the SW treats it
+// as a new version even if today's date is already set.
+// Sequence: 20260316 → 20260316-2 → 20260316-3 …
+// User data (saved places in localStorage) is never touched by a VERSION change.
+function computeNextVersion(force) {
+  const base = today();
+  if (!force) return base;
+
+  try {
+    const sw = fs.readFileSync(SW_PATH, 'utf-8');
+    const match = sw.match(/const VERSION = '(\d{8}(?:-(\d+))?)'/);
+    if (match && match[1].startsWith(base)) {
+      const n = match[2] ? parseInt(match[2], 10) : 1;
+      return `${base}-${n + 1}`;
+    }
+  } catch { /* sw.js unreadable — fall through to plain date */ }
+
+  return base;
+}
+
 function banner(title) {
   const bar = '═'.repeat(50);
   console.log(`\n${bar}`);
@@ -65,9 +87,9 @@ function bumpVersionStrings(newVersion) {
 
   let anyChange = false;
 
-  // sw.js
+  // sw.js — matches YYYYMMDD or YYYYMMDD-N
   let sw = fs.readFileSync(SW_PATH, 'utf-8');
-  const swMatch = sw.match(/const VERSION = '(\d{8})'/);
+  const swMatch = sw.match(/const VERSION = '(\d{8}(?:-\d+)?)'/);
   if (!swMatch) {
     warn('Could not find VERSION string in sw.js — skipping');
   } else {
@@ -82,9 +104,9 @@ function bumpVersionStrings(newVersion) {
     }
   }
 
-  // index.html — ?v= on styles.css link
+  // index.html — ?v= on styles.css link — matches YYYYMMDD or YYYYMMDD-N
   let html = fs.readFileSync(HTML_PATH, 'utf-8');
-  const htmlMatch = html.match(/styles\.css\?v=(\d{8})/);
+  const htmlMatch = html.match(/styles\.css\?v=(\d{8}(?:-\d+)?)/)
   if (!htmlMatch) {
     warn('Could not find ?v= param in index.html — skipping');
   } else {
@@ -138,23 +160,26 @@ function buildTransitCache() {
 async function main() {
   const args = process.argv.slice(2);
   const all      = args.includes('--all');
+  const force    = args.includes('--force');
   const explicit = args.some(a => ['--version','--places','--transit'].includes(a));
 
   // Which steps to run:
   //   --all              → all three
+  //   --force            → standard (version + places) with forced version increment
   //   explicit flags     → only those named
   //   no flags (default) → standard deploy: version + places
-  const runVersion = all || (!explicit) || args.includes('--version');
-  const runPlaces  = all || (!explicit) || args.includes('--places');
+  const runVersion = force || all || (!explicit) || args.includes('--version');
+  const runPlaces  = force || all || (!explicit) || args.includes('--places');
   const runTransit = all || args.includes('--transit');
 
   const stepList = [
     runVersion && 'version bump',
     runPlaces  && 'places fetch',
     runTransit && 'transit cache',
+    force      && '⚡ forced',
   ].filter(Boolean).join(', ');
 
-  const version = today();
+  const version = computeNextVersion(force);
   console.log(`\n🚀  Halal Finder — update  (${stepList})  [target: ${version}]`);
 
   const errors = [];

@@ -10,6 +10,7 @@
   "scripts": {
     "update": "node scripts/update-all.js",
     "update:full": "node scripts/update-all.js --all",
+    "update:force": "node scripts/update-all.js --force",
     "update:version": "node scripts/update-all.js --version",
     "update:places": "node scripts/update-all.js --places",
     "update:transit": "node scripts/update-all.js --transit",
