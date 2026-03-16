@@ -14,7 +14,7 @@
 // Data JSON files  → curated datasets (most valuable to protect)
 // Source files     → app logic, config, styles
 function isProtectedPath(pathname) {
-  if (pathname === '/data/places.json' || pathname === '/data/tags.json') return true;
+  if (pathname === '/data/places.json' || pathname === '/data/tags.json' || pathname === '/data/eid-prayers.json') return true;
   if (pathname.startsWith('/src/')) return true;
   return false;
 }
@@ -51,15 +51,23 @@ export async function onRequest(context) {
   const routeToken = url.searchParams.get('r');
   const isLegacyRoute = url.searchParams.get('route') === '1';
   const isRoute = !!(routeToken || isLegacyRoute);
+  const isEid = url.searchParams.get('eid') === '1';
 
-  if ((!placeId && !lat && !isRoute) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
+  if ((!placeId && !lat && !isRoute && !isEid) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
     return context.next();
   }
 
   let ogTitle = null;
   let ogDescription = null;
 
-  if (isRoute) {
+  if (isEid) {
+    const rawName = url.searchParams.get('name');
+    const name = rawName ? rawName.slice(0, 100) : null;
+    ogTitle = `✨ Eid Mubarak! — ${name ? `${name} Eid Prayer` : 'Eid Prayer Location'}`;
+    ogDescription = name
+      ? `Join ${name} for Eid prayer. Find times, location, and directions on Halal Finder Helsinki.`
+      : 'Find Eid prayer times, locations, and directions on Halal Finder Helsinki.';
+  } else if (isRoute) {
     let oname = '', dname = '', mode = 'transit';
     if (routeToken) {
       try {

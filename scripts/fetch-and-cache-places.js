@@ -65,8 +65,21 @@ async function main() {
     fs.writeFileSync(tagsPath, JSON.stringify(data.tags || {}, null, 2));
     console.log(`✅ Wrote ${tagsCount} tag types to data/tags.json`);
 
+    // Fetch & write eid-prayers.json
+    try {
+      console.log('\n🔄 Fetching Eid prayer locations...');
+      const eidRes = await fetch(`${gasUrl}?action=eid`);
+      if (!eidRes.ok) throw new Error(`HTTP ${eidRes.status}`);
+      const eidData = await eidRes.json();
+      const eidPath = path.join(__dirname, '../data/eid-prayers.json');
+      fs.writeFileSync(eidPath, JSON.stringify(eidData, null, 2));
+      console.log(`✅ Wrote ${Array.isArray(eidData) ? eidData.length : 0} Eid prayer location(s) to data/eid-prayers.json`);
+    } catch (eidErr) {
+      console.warn(`⚠️  Could not fetch Eid prayers (non-fatal): ${eidErr.message}`);
+    }
+
     console.log('\n📋 Next steps:');
-    console.log('   1. Commit: git add data/places.json data/tags.json');
+    console.log('   1. Commit: git add data/places.json data/tags.json data/eid-prayers.json');
     console.log('   2. Push:   git push');
     console.log('   3. Deploy: Cloudflare will redeploy automatically (~1 min)');
     console.log('\n✨ First-time visitors will now see the updated places instantly!');

@@ -1,0 +1,83 @@
+[
+  {
+    "id": "eid1",
+    "name": "Masjid Abu Bakr Al-Siddique",
+    "address": "Sepetlahdentie 8, 02230 Espoo",
+    "lat": 60.1525869253678,
+    "lng": 24.743910967692,
+    "organizer": "Masjid Abu Bakr Al-Siddique",
+    "jamaats": [
+      "7:15",
+      "8:15",
+      "9:15"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "eid2",
+    "name": "Arena Center Myllypuro",
+    "address": "Alakiventie 2, 00920 Helsinki",
+    "lat": 60.2216436839729,
+    "lng": 25.0791575560525,
+    "organizer": "Darul Aman Islamic Center, Islamic Rahma Center",
+    "jamaats": [
+      "9:00",
+      "10:00"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "eid3",
+    "name": "EBK - Honka Areena",
+    "address": "Kylävainiontie 20, 02760 Espoo",
+    "lat": 60.2097886824536,
+    "lng": 24.6776777848877,
+    "organizer": "Masjid An Nuur",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "eid4",
+    "name": "Al-Iman Mosque",
+    "address": "Munkkiniemen puistotie 4, 00331 Helsinki",
+    "lat": 60.1967039875071,
+    "lng": 24.8829167118726,
+    "organizer": "Al-Iman Mosque",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "eid5",
+    "name": "Kameleonten Urheilukeskus",
+    "address": "Monikonkatu 8, 02650 Espoo",
+    "lat": 60.2251806439469,
+    "lng": 24.7983577407097,
+    "organizer": "Espoo Muslim Center",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "6",
+    "name": "Viikin Nuorisotalo",
+    "address": "Agronominkatu 3, 00790 Helsinki",
+    "lat": 60.23393653473,
+    "lng": 25.0338393116427,
+    "organizer": "Bangladesh Islamic Cultural Center (BICC)",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "Please do wudu at home and bring janamaz",
+    "date": "2026-03-20"
+  }
+]

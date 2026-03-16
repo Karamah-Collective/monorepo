@@ -133,6 +133,13 @@ const ALL_STEPS = [
     phoneOrder: 10,
   },
   {
+    target: "#eid-pill",
+    title: "Eid Prayers",
+    body: "Find Eid prayer locations, jamaat times and organizers \u2014 tap to see all locations on the map",
+    icon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+    phoneOrder: 11,
+  },
+  {
     target: null,
     title: "You\u2019re all set!",
     body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to suggest one \u2014 the community keeps the map accurate",
@@ -171,7 +178,15 @@ function closeToolsMenu() {
 let STEPS = [];
 function buildSteps() {
   const layout = getLayout();
-  STEPS = ALL_STEPS.filter(s => !s.layout || s.layout.includes(layout));
+  STEPS = ALL_STEPS.filter(s => {
+    if (s.layout && !s.layout.includes(layout)) return false;
+    // Skip steps whose target is hidden (e.g. Eid pill when no data loaded)
+    if (s.target) {
+      const el = document.querySelector(s.target);
+      if (el && el.classList.contains("hide")) return false;
+    }
+    return true;
+  });
   if (layout === "phone") {
     STEPS.sort((a, b) => (a.phoneOrder ?? 50) - (b.phoneOrder ?? 50));
   }

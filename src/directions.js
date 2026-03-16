@@ -62,7 +62,7 @@ export function closeDirPanel() {
   stopPick();
   updateSnackbar();
   setActiveTab(null);
-  if (dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) {
+  if ((dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) && !dir.directInfo) {
     if (dir.originMarker) dir.originMarker.getElement().style.display = "none";
     if (dir.destMarker) dir.destMarker.getElement().style.display = "none";
   }

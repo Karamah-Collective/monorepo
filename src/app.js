@@ -149,16 +149,19 @@ map.on("load", async () => {
     { initPrayerTimes },
     { initStyleEditor },
     _contact, // side-effect import — attaches event listeners
+    { initEidPrayers },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
     import("./map-style-editor.js"),
     import("./contact.js"),
+    import("./eid-prayers.js"),
   ]);
 
   loadTransitCache();
   initPrayerTimes();
   initStyleEditor();
+  initEidPrayers();
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
@@ -166,7 +169,8 @@ map.on("load", async () => {
     async () => {
       const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
-        showEarlyDevNotice();
+        // TODO: Re-enable after Eid — disabled so the Eid banner gets full visual attention
+        // showEarlyDevNotice();
         // Show loading toast only after tutorial/intro finishes, if places still loading
         if (!placesLoaded) {
           showLoadingToast("Loading places…", "Fetching latest data");

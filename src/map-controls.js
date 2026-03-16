@@ -65,6 +65,14 @@ function buildHeatmapGeoJSON() {
   return { type: "FeatureCollection", features };
 }
 
+const LOC_ICON_ON = '<path d="M3 11l19-9-9 19-2-8-8-2z"/>';
+const LOC_ICON_OFF = '<path d="M3 11l19-9-9 19-2-8-8-2z"/><line x1="6" y1="3" x2="22" y2="18" stroke-width="2"/>';
+
+function setLocateIcon(on) {
+  const svg = document.querySelector("#locate-btn svg");
+  if (svg) svg.innerHTML = on ? LOC_ICON_ON : LOC_ICON_OFF;
+}
+
 export function showCurrentLocation() {
   if (!navigator.geolocation) {
     showToast("Location not available", "loc", "Your browser doesn't support location");
@@ -77,10 +85,12 @@ export function showCurrentLocation() {
     locWatchId = null;
     if (locMarker) { locMarker.remove(); locMarker = null; }
     locBtn.classList.remove("tracking");
+    setLocateIcon(false);
     return;
   }
 
   locBtn.classList.add("tracking");
+  setLocateIcon(true);
   showLoadingToast("Finding your location\u2026");
   let firstFix = true;
 
@@ -105,6 +115,7 @@ export function showCurrentLocation() {
       hideLoadingToast();
       showToast("Location is off", "loc", "Enable location permission");
       locBtn.classList.remove("tracking");
+      setLocateIcon(false);
       locWatchId = null;
       map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
     },

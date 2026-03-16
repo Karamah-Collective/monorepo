@@ -269,6 +269,7 @@
             stroke-linejoin="round"
           >
             <path d="M3 11l19-9-9 19-2-8-8-2z" />
+            <line x1="6" y1="3" x2="22" y2="18" stroke-width="2" />
           </svg>
           <span>Locate</span>
         </button>
@@ -1273,6 +1274,27 @@
               <span id="ramadan-iftar" class="ramadan-time">--:--</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── Eid Prayer Locations (temporary) ─── -->
+      <button id="eid-pill" class="btn-icon-card hide" aria-label="Eid prayer locations">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <div id="eid-overlay" class="hide">
+        <div id="eid-card">
+          <div class="suggest-head">
+            <h3>
+              <svg class="eid-heading-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              Eid Prayers
+            </h3>
+            <button id="eid-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="eid-list"></div>
         </div>
       </div>
 
