@@ -14,9 +14,21 @@ let _bannerDismissed = false;
 
 // ── Fetch & initialise ──────────────────────────────────────────────────────
 
-async function fetchEidData() {
-  // Try CF proxy first, then static cache, then direct Apps Script (local dev)
-  const urls = ["/api/eid-prayers", "/data/eid-prayers.json"];
+// Phase 1: load from the pre-cached static JSON immediately (no Sheets round-trip)
+async function _fetchEidStatic() {
+  try {
+    const res = await fetch("/data/eid-prayers.json", { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) return data;
+    }
+  } catch { /* network error */ }
+  return null;
+}
+
+// Phase 2: background refresh via CF proxy → Sheets (for live updates)
+async function _fetchEidApi() {
+  const urls = ["/api/eid-prayers"];
   try {
     const cfg = await import("./config.local.js");
     if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=eid`);
@@ -28,51 +40,75 @@ async function fetchEidData() {
       if (!res.ok) continue;
       const data = await res.json();
       if (Array.isArray(data) && data.length) return data;
-    } catch {
-      continue;
-    }
+    } catch { continue; }
   }
   return null;
 }
 
+function _filterEidData(data) {
+  const today = _todayStr();
+  const filtered = data.filter(loc => {
+    const d = _normaliseDate(loc.date);
+    return d && d >= today;
+  });
+  if (!filtered.length && data.length) {
+    console.warn("[Eid] Date filter removed all entries — showing all. Raw dates:", data.map(l => l.date));
+    return data;
+  }
+  return filtered;
+}
+
+function _initWithData(data) {
+  const filtered = _filterEidData(data);
+  if (!filtered.length) return false;
+  eidLocations = filtered;
+  console.log(`[Eid] Loaded ${eidLocations.length} Eid prayer location(s)`);
+  addEidMarkers();
+  setupEidPanel();
+
+  // If page was opened via a shared Eid prayer link, open that popup
+  const urlParams = new URLSearchParams(location.search);
+  if (urlParams.get("eid") === "1") {
+    const sharedName = decodeURIComponent(urlParams.get("name") || "").trim().toLowerCase();
+    const loc = sharedName && eidLocations.find(l => l.name.trim().toLowerCase() === sharedName);
+    if (loc) { setTimeout(() => showEidPopup(loc), 500); }
+  }
+
+  showEidBanner();
+  return true;
+}
+
 export async function initEidPrayers() {
   try {
-    const data = await fetchEidData();
-    if (!data) return;
+    // Phase 1: render immediately from static JSON (fast, pre-cached by SW)
+    const staticData = await _fetchEidStatic();
+    const rendered = staticData ? _initWithData(staticData) : false;
 
-    // Filter to today's or future Eid dates only
-    const today = _todayStr();
-    eidLocations = data.filter(loc => {
-      const d = _normaliseDate(loc.date);
-      return d && d >= today;
-    });
-
-    if (!eidLocations.length) {
-      // If date filtering removed everything, show all data anyway
-      // (common when dates are in an unexpected format)
-      if (data.length) {
-        console.warn("[Eid] Date filter removed all entries — showing all. Raw dates:", data.map(l => l.date));
-        eidLocations = data;
-      } else {
-        return;
-      }
+    if (!rendered) {
+      // Static JSON unavailable — wait for API directly
+      const apiData = await _fetchEidApi();
+      if (apiData) _initWithData(apiData);
+      return;
     }
 
-    console.log(`[Eid] Loaded ${eidLocations.length} Eid prayer location(s)`);
-    addEidMarkers();
-    setupEidPanel();
-
-    // If page was opened via a shared Eid prayer link, open that popup
-    const urlParams = new URLSearchParams(location.search);
-    if (urlParams.get("eid") === "1") {
-      const sharedName = decodeURIComponent(urlParams.get("name") || "").trim().toLowerCase();
-      const loc = sharedName && eidLocations.find(l => l.name.trim().toLowerCase() === sharedName);
-      if (loc) {
-        setTimeout(() => showEidPopup(loc), 500);
+    // Phase 2: background refresh from Sheets via CF proxy
+    _fetchEidApi().then(freshData => {
+      if (!freshData) return;
+      const filtered = _filterEidData(freshData);
+      if (!filtered.length) return;
+      if (JSON.stringify(filtered) === JSON.stringify(eidLocations)) return; // no change
+      console.log("[Eid] Background update from API");
+      eidLocations = filtered;
+      addEidMarkers();
+      _renderEidList();
+      // Update banner count if it's still visible
+      const sub = document.querySelector("#eid-banner .snack-sub");
+      if (sub) {
+        const count = eidLocations.length;
+        sub.textContent = `${count} Eid prayer location${count > 1 ? "s" : ""} — tap to view`;
       }
-    }
+    }).catch(() => { /* silent — static data already shown */ });
 
-    showEidBanner();
   } catch (err) {
     console.warn("[Eid] Could not load Eid prayer data:", err.message);
   }
@@ -98,17 +134,9 @@ function _normaliseDate(raw) {
 
 // ── Eid Panel (overlay with location list) ──────────────────────────────────
 
-function setupEidPanel() {
-  const pill = document.getElementById("eid-pill");
-  const overlay = document.getElementById("eid-overlay");
-  const closeBtn = document.getElementById("eid-close");
+function _renderEidList() {
   const list = document.getElementById("eid-list");
-  if (!pill || !overlay || !list) return;
-
-  // Show the pill button
-  pill.classList.remove("hide");
-
-  // Populate list
+  if (!list) return;
   list.innerHTML = eidLocations.map((loc, i) => `
     <button class="eid-loc-card" data-idx="${i}" aria-label="${esc(loc.name)}">
       <div class="eid-loc-top">
@@ -123,6 +151,20 @@ function setupEidPanel() {
       ${loc.notes ? `<div class="eid-loc-notes">${esc(loc.notes)}</div>` : ""}
     </button>
   `).join("");
+}
+
+function setupEidPanel() {
+  const pill = document.getElementById("eid-pill");
+  const overlay = document.getElementById("eid-overlay");
+  const closeBtn = document.getElementById("eid-close");
+  const list = document.getElementById("eid-list");
+  if (!pill || !overlay || !list) return;
+
+  // Show the pill button
+  pill.classList.remove("hide");
+
+  // Populate list
+  _renderEidList();
 
   // Wire pill button
   pill.addEventListener("click", () => openEidPanel());

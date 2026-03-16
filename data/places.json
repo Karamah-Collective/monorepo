@@ -1430,5 +1430,19 @@
       "cuisine_pizza": true
     },
     "notes": ""
+  },
+  {
+    "id": "qxmkuj",
+    "name": "Al-Iman Mosque",
+    "type": "mosque",
+    "address": "Munkkiniemen puistotie 4 a A, 00330 Helsinki, Finland",
+    "lat": 60.1965707,
+    "lng": 24.8829489,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": ""
   }
 ]
