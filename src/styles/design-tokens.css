@@ -15,7 +15,7 @@
   --accent-soft: #e8f1f8;
   --accent-muted: #6da8d2;
 
-  --gold: #d8b56a;
+  --gold: #b08830;
   --gold-soft: #faf5eb;
 
   --success: #1fa86a;
@@ -576,6 +576,9 @@ body {
 }
 .tf-group-count {
   font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   background: var(--accent);
   color: #fff;
   border-radius: var(--r-pill);

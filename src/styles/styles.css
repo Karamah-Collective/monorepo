@@ -5886,6 +5886,9 @@ body.dark-mode .mse-export {
   gap: 6px;
 }
 .eid-popup-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
   color: var(--gold);
 }
 .eid-popup-badge {

@@ -61,6 +61,17 @@ export async function initEidPrayers() {
     console.log(`[Eid] Loaded ${eidLocations.length} Eid prayer location(s)`);
     addEidMarkers();
     setupEidPanel();
+
+    // If page was opened via a shared Eid prayer link, open that popup
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get("eid") === "1") {
+      const sharedName = decodeURIComponent(urlParams.get("name") || "").trim().toLowerCase();
+      const loc = sharedName && eidLocations.find(l => l.name.trim().toLowerCase() === sharedName);
+      if (loc) {
+        setTimeout(() => showEidPopup(loc), 500);
+      }
+    }
+
     showEidBanner();
   } catch (err) {
     console.warn("[Eid] Could not load Eid prayer data:", err.message);
