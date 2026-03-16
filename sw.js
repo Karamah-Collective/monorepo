@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20260316-2'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
+const VERSION = '20260316-3'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
 const CACHE_TILES  = `hf-tiles-${VERSION}`;
@@ -81,7 +81,7 @@ self.addEventListener('install', (evt) => {
       const cache = await caches.open(CACHE_SHELL);
       await Promise.all(
         SHELL_ASSETS.map((url) =>
-          cache.add(new Request(url, { credentials: 'same-origin' }))
+          cache.add(new Request(url, { credentials: 'same-origin', cache: 'reload' }))
                .catch(() => { /* skip if unavailable */ }),
         ),
       );

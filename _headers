@@ -16,9 +16,20 @@
   Pragma: no-cache
   Service-Worker-Allowed: /
 
+# ─── HTML entry point — always revalidate ────────────────────────────
+# Must never be served stale — the VERSION param in index.html is what
+# drives SW cache invalidation. If old index.html is cached, users stay
+# on stale JS indefinitely even after re-deploy.
+/index.html
+  Cache-Control: no-cache, must-revalidate
+/manifest.json
+  Cache-Control: no-cache, must-revalidate
+
 # ─── Static assets — long cache with version-busted URLs ──────────────
+# cache:'reload' in sw.js install bypasses these for SW pre-caching, so
+# the browser HTTP cache here only affects direct browser requests.
 /src/*
-  Cache-Control: private, max-age=31536000, immutable
+  Cache-Control: no-cache, must-revalidate
 /data/places.json
   Cache-Control: private, no-store
 /data/tags.json

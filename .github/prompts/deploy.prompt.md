@@ -25,9 +25,13 @@ production-ready deployment. Follow every step **in order** without skipping any
 
 | Command | Action |
 |---------|--------|
-| `"main"` | Push to `main` only (ask for explicit confirmation within steps) |
-| `"preview"` | Execute Steps 1–7: push to main, then promote to preview |
-| `"deploy"` | Execute Steps 1–8: push to main → promote to preview → promote to deploy (full chain) |
+| `"main"` | Steps 1–6: update, commit, push to `main` only |
+| `"preview"` | Steps 1–6 + Step 7: push to main, then push curated files to `preview` branch |
+| `"deploy"` | Steps 1–6 + Step 8: push to main, then push curated files **directly to `deploy`** — skips `preview` entirely |
+
+**`deploy` bypasses `preview`** — there is no point triggering a preview site build when the
+intent is to ship to production. Use `preview` when you want to review on the staging domain
+before going live.
 
 This ensures predictable, repeatable behavior. No guessing about promotion intent.
 
@@ -221,14 +225,15 @@ Always push to `main` first:
 git push origin main
 ```
 
-After pushing, **ask the user**:
-> "Pushed to main. Would you like me to promote this to **preview** now?"
-
-If they say yes, continue to Step 7. If they say no, stop here.
+- If the command was **`"main"`** — stop here. Done.
+- If the command was **`"preview"`** — continue to Step 7.
+- If the command was **`"deploy"`** — skip Step 7, go directly to Step 8.
 
 ---
 
-## Step 7 — Promote `main` → `preview`
+## Step 7 — Promote `main` → `preview`  *(only for `"preview"` command)*
+
+**Only run this step when the user said `"preview"`. Skip entirely for `"deploy"`.**
 
 This copies only the deployment-relevant files to the `preview` branch.
 **Do not skip any sub-step.**
@@ -261,22 +266,45 @@ git push origin preview
 git checkout main
 ```
 
-After promoting to preview, **ask the user**:
-> "Preview branch updated and pushed. Please review the preview site. When you are
-> ready, say 'promote to deploy' and I will copy preview → deploy."
+After completing, confirm:
+> "Preview branch updated and pushed. The preview site will build shortly."
 
 ---
 
-## Step 8 — Promote `preview` → `deploy`  *(only on explicit instruction)*
+## Step 8 — Push curated files directly to `deploy`  *(only for `"deploy"` command)*
 
-**Only run this step when the user has reviewed the preview site and explicitly says to
-promote, e.g. "promote to deploy", "ship it", "looks good, deploy".**
+**Only run this step when the user said `"deploy"`. This step replaces Step 7 — do NOT
+also run Step 7.**
+
+This copies only the deployment-relevant files directly to the `deploy` branch, bypassing
+`preview`. No preview site is triggered — changes go straight to production.
 
 ```bash
-git push origin preview:deploy --force-with-lease
+# 1. Switch to deploy
+git checkout deploy
+
+# 2. Pull in only the deployment files from main
+# IMPORTANT: do NOT include package.json — deploy has its own minimal one
+git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json scripts/build-secrets.js
+
+# 3. Stage everything — then remove secrets that must never be deployed
+git add .
+git rm --cached src/config.local.js 2>$null   # untrack if present; harmless if absent
+
+# 4. Commit with main SHA for traceability
+git commit -m "chore: promote main to deploy
+
+Synced deployment files from main branch.
+main HEAD: <sha-from-step-6>
+
+Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json, scripts/build-secrets.js"
+
+# 5. Push deploy
+git push origin deploy
+
+# 6. Return to main
+git checkout main
 ```
 
-This fast-forwards `deploy` to match `preview` exactly — no cherry-pick, no separate commit.
-
-Confirm with the user after:
-> "Deploy branch updated. Cloudflare will now deploy to the main domain."
+Confirm after:
+> "Deploy branch updated. Cloudflare will now build and deploy to the main domain."
