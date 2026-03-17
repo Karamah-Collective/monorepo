@@ -198,7 +198,7 @@
     "id": "8uaffs",
     "name": "Bangladesh Kendrio Masjid",
     "type": "mosque",
-    "address": "Laippatie 13, 00880 Helsinki, Finland",
+    "address": "Laippatie 13, 00880 Helsinki",
     "lat": 60.2104776,
     "lng": 25.050148,
     "tags": {
@@ -248,7 +248,7 @@
     "id": "pa61kp",
     "name": "Espoo Muslim Center",
     "type": "mosque",
-    "address": "Maapallonkatu 8, 02210 Espoo, Finland",
+    "address": "Maapallonkatu 8, 02210 Espoo",
     "lat": 60.1709733,
     "lng": 24.7268367,
     "tags": {
@@ -264,7 +264,7 @@
     "id": "1m0auf",
     "name": "Albanian Mosque",
     "type": "mosque",
-    "address": "Asemakuja 3, 02770 Espoo, Finland",
+    "address": "Asemakuja 3, 02770 Espoo",
     "lat": 60.2052773,
     "lng": 24.6612704,
     "tags": {
@@ -278,7 +278,7 @@
     "id": "7rbzu8",
     "name": "King Kebab Tikkurila",
     "type": "restaurant",
-    "address": "Tikkuraitti 15, 01300 Vantaa, Finland",
+    "address": "Tikkuraitti 15, 01300 Vantaa",
     "lat": 60.2935895,
     "lng": 25.0351338,
     "tags": {
@@ -290,7 +290,7 @@
     "id": "pnznbn",
     "name": "Ahaan Tam Sang Forum",
     "type": "restaurant",
-    "address": "Mannerheimintie 14-20, 00100 Helsinki, Finland",
+    "address": "Mannerheimintie 14-20, 00100 Helsinki",
     "lat": 60.1693055,
     "lng": 24.9382082,
     "tags": {
@@ -302,7 +302,7 @@
     "id": "yua29z",
     "name": "Uyghur Noodle House",
     "type": "restaurant",
-    "address": "Siltasaarenkatu 13, 00530 Helsinki, Finland",
+    "address": "Siltasaarenkatu 13, 00530 Helsinki",
     "lat": 60.1816695,
     "lng": 24.9498207,
     "tags": {
@@ -316,7 +316,7 @@
     "id": "ofmcd6",
     "name": "Chingu Korean BBQ Helsinki Kalasatama",
     "type": "restaurant",
-    "address": "Tukkutorinkuja 2, 00580 Helsinki, Finland",
+    "address": "Tukkutorinkuja 2, 00580 Helsinki",
     "lat": 60.1901412,
     "lng": 24.9764137,
     "tags": {
@@ -329,7 +329,7 @@
     "id": "tsatr6",
     "name": "Masjid Al-Huda (Helsinki Islamic Center)",
     "type": "mosque",
-    "address": "Veturitori 2, 00520 Helsinki, Finland",
+    "address": "Veturitori 2, 00520 Helsinki",
     "lat": 60.1997356,
     "lng": 24.9375732,
     "tags": {
@@ -348,7 +348,7 @@
     "id": "4vxx5n",
     "name": "Taqwa Cultural Centre, Läkkisepänkuja 3, 02650 Espoo",
     "type": "mosque",
-    "address": "Läkkisepänkuja 3, 02650 Espoo, Finland",
+    "address": "Läkkisepänkuja 3, 02650 Espoo",
     "lat": 60.2203206,
     "lng": 24.8127404,
     "tags": {
@@ -363,7 +363,7 @@
     "id": "j74tjs",
     "name": "Olari Mosque",
     "type": "mosque",
-    "address": "Kuunkehrä 4 A, 02210 Espoo, Finland",
+    "address": "Kuunkehrä 4 A, 02210 Espoo",
     "lat": 60.1734588,
     "lng": 24.7246462,
     "tags": {
@@ -379,7 +379,7 @@
     "id": "oq2wi2",
     "name": "Kilo Mosque",
     "type": "mosque",
-    "address": "Kutojantie 3, 02630 Espoo, Finland",
+    "address": "Kutojantie 3, 02630 Espoo",
     "lat": 60.2098915,
     "lng": 24.7539849,
     "tags": {
@@ -393,7 +393,7 @@
     "id": "anzxjj",
     "name": "Malacca Iso Omena",
     "type": "restaurant",
-    "address": "Piispansilta 11, 02230 Espoo, Finland",
+    "address": "Piispansilta 11, 02230 Espoo",
     "lat": 60.1625889,
     "lng": 24.7373375,
     "tags": {
@@ -406,7 +406,7 @@
     "id": "3yqkym",
     "name": "Seoul Good Iso Omena",
     "type": "restaurant",
-    "address": "Piispansilta 11, 02230 Espoo, Finland",
+    "address": "Piispansilta 11, 02230 Espoo",
     "lat": 60.1625889,
     "lng": 24.7373375,
     "tags": {
@@ -419,7 +419,7 @@
     "id": "l8wj1i",
     "name": "Hungry Hub Kontula",
     "type": "restaurant",
-    "address": "Kontula Shopping Center, Kontulankaari 1, 00940 Helsinki, Finland",
+    "address": "Kontula Shopping Center, Kontulankaari 1, 00940 Helsinki",
     "lat": 60.23627649999999,
     "lng": 25.0828743,
     "tags": {
@@ -432,7 +432,7 @@
     "id": "1dshyj",
     "name": "Hungry Hub Vuosaari",
     "type": "restaurant",
-    "address": "Vuotie 47b, 00990 Helsinki, Finland",
+    "address": "Vuotie 47b, 00990 Helsinki",
     "lat": 60.2071347,
     "lng": 25.1474204,
     "tags": {
@@ -445,7 +445,7 @@
     "id": "ntho35",
     "name": "Hungry Hub Myyrmäki",
     "type": "restaurant",
-    "address": "Liesikuja 4, 01600 Vantaa, Finland",
+    "address": "Liesikuja 4, 01600 Vantaa",
     "lat": 60.2625384,
     "lng": 24.8537577,
     "tags": {
@@ -459,7 +459,7 @@
     "id": "89bg9y",
     "name": "Hungry Hub Keskusta",
     "type": "restaurant",
-    "address": "Töölönlahdenkatu 3, 00100 Helsinki, Finland",
+    "address": "Töölönlahdenkatu 3, 00100 Helsinki",
     "lat": 60.1743189,
     "lng": 24.9388954,
     "tags": {
@@ -472,7 +472,7 @@
     "id": "l5kwds",
     "name": "Hungry Hub Korso",
     "type": "restaurant",
-    "address": "Urpiaisentie 6, 01450 Vantaa, Finland",
+    "address": "Urpiaisentie 6, 01450 Vantaa",
     "lat": 60.3498804,
     "lng": 25.076831,
     "tags": {
@@ -485,7 +485,7 @@
     "id": "j13ysd",
     "name": "Al-Aqsa Market",
     "type": "shop",
-    "address": "Kauppakaarre 1, 00700 Helsinki, Finland",
+    "address": "Kauppakaarre 1, 00700 Helsinki",
     "lat": 60.2509391,
     "lng": 25.0088526,
     "tags": {
@@ -502,7 +502,7 @@
     "id": "f54kwd",
     "name": "Al-Fateh Market Malmi ( Afro & Asian and Caribbean Super Market )",
     "type": "shop",
-    "address": "Kirkonkyläntie 3, 00700 Helsinki, Finland",
+    "address": "Kirkonkyläntie 3, 00700 Helsinki",
     "lat": 60.2515864,
     "lng": 25.0084111,
     "tags": {
@@ -517,7 +517,7 @@
     "id": "11mlq9",
     "name": "Bangla Bazaar Oy",
     "type": "shop",
-    "address": "Kirkonkyläntie 9, 00700 Helsinki, Finland",
+    "address": "Kirkonkyläntie 9, 00700 Helsinki",
     "lat": 60.2525787,
     "lng": 25.0066934,
     "tags": {
@@ -531,7 +531,7 @@
     "id": "7dn24u",
     "name": "Al Madina Market",
     "type": "shop",
-    "address": "Malmin kauppatie 18, 00700 Helsinki, Finland",
+    "address": "Malmin kauppatie 18, 00700 Helsinki",
     "lat": 60.2517475,
     "lng": 25.0095205,
     "tags": {
@@ -546,7 +546,7 @@
     "id": "c3ecup",
     "name": "Pizza Kuningas Malmi",
     "type": "restaurant",
-    "address": "Latokartanontie 3, 00700 Helsinki, Finland",
+    "address": "Latokartanontie 3, 00700 Helsinki",
     "lat": 60.2489018,
     "lng": 25.008901,
     "tags": {
@@ -560,7 +560,7 @@
     "id": "8j7scl",
     "name": "Chitir Chicken Malmi",
     "type": "restaurant",
-    "address": "Latokartanontie 5, 00700 Helsinki, Finland",
+    "address": "Latokartanontie 5, 00700 Helsinki",
     "lat": 60.2484813,
     "lng": 25.0094426,
     "tags": {
@@ -573,7 +573,7 @@
     "id": "l4pclo",
     "name": "Nondon Ravintola",
     "type": "restaurant",
-    "address": "Malmin asematie 6, 00700 Helsinki, Finland",
+    "address": "Malmin asematie 6, 00700 Helsinki",
     "lat": 60.2483098,
     "lng": 25.0068875,
     "tags": {
@@ -587,7 +587,7 @@
     "id": "lxtmd9",
     "name": "Kaisa-talo Prayer Space",
     "type": "prayer_room",
-    "address": "Vuorikatu 7, 00100 Helsinki, Finland",
+    "address": "Vuorikatu 7, 00100 Helsinki",
     "lat": 60.1713071,
     "lng": 24.9477437,
     "tags": {
@@ -599,7 +599,7 @@
     "id": "13tova",
     "name": "King Kebab Malmi",
     "type": "restaurant",
-    "address": "Kirkonkyläntie 14, 00700 Helsinki, Finland",
+    "address": "Kirkonkyläntie 14, 00700 Helsinki",
     "lat": 60.252433,
     "lng": 25.0046472,
     "tags": {
@@ -612,7 +612,7 @@
     "id": "trjf07",
     "name": "Yalla Koivukylä",
     "type": "shop",
-    "address": "Koivukylän puistotie 1, 01360 Vantaa, Finland",
+    "address": "Koivukylän puistotie 1, 01360 Vantaa",
     "lat": 60.3232247,
     "lng": 25.0625794,
     "tags": {
@@ -629,7 +629,7 @@
     "id": "f30ugd",
     "name": "Yalla Tikkurila",
     "type": "shop",
-    "address": "Peltolantie 5 B, 01300 Vantaa, Finland",
+    "address": "Peltolantie 5 B, 01300 Vantaa",
     "lat": 60.293788,
     "lng": 25.030705,
     "tags": {
@@ -646,7 +646,7 @@
     "id": "q65nwj",
     "name": "Nari Market",
     "type": "shop",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.214061,
     "lng": 25.0821358,
     "tags": {
@@ -659,7 +659,7 @@
     "id": "xfgge7",
     "name": "Al suleimani ravintola",
     "type": "restaurant",
-    "address": "Korsholmantie 2, 00900 Helsinki, Finland",
+    "address": "Korsholmantie 2, 00900 Helsinki",
     "lat": 60.2134514,
     "lng": 25.0804478,
     "tags": {
@@ -672,7 +672,7 @@
     "id": "9admdr",
     "name": "Afghan Restaurant",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2133695,
     "lng": 25.0805482,
     "tags": {
@@ -685,7 +685,7 @@
     "id": "tdqcws",
     "name": "Sirwan fast food",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.21335,
     "lng": 25.0803867,
     "tags": {
@@ -698,7 +698,7 @@
     "id": "pimapy",
     "name": "Ravintola Kirkuk",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2135987,
     "lng": 25.0811504,
     "tags": {
@@ -711,7 +711,7 @@
     "id": "254ggv",
     "name": "Zahiiba Ravintola",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2133243,
     "lng": 25.080333,
     "tags": {
@@ -724,7 +724,7 @@
     "id": "fd1ocx",
     "name": "Hkmat Tmi",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2132637,
     "lng": 25.0802765,
     "tags": {
@@ -737,7 +737,7 @@
     "id": "a5cru1",
     "name": "Hirshabeele ravintola",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2129951,
     "lng": 25.0802479,
     "tags": {
@@ -750,7 +750,7 @@
     "id": "bk9bjh",
     "name": "Somalian restaurant",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2130285,
     "lng": 25.0805643,
     "tags": {
@@ -763,7 +763,7 @@
     "id": "8oe1jh",
     "name": "Newroz",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2131521,
     "lng": 25.0809249,
     "tags": {
@@ -776,7 +776,7 @@
     "id": "8ez1cj",
     "name": "Somalian restaurant",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2130285,
     "lng": 25.0805643,
     "tags": {
@@ -789,7 +789,7 @@
     "id": "cx9zp7",
     "name": "Rachma Ravintola",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2132992,
     "lng": 25.0807602,
     "tags": {
@@ -802,7 +802,7 @@
     "id": "ghirir",
     "name": "Diwan Bagdad",
     "type": "restaurant",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2134059,
     "lng": 25.081248,
     "tags": {
@@ -815,7 +815,7 @@
     "id": "b3oiuf",
     "name": "Balkh Market",
     "type": "shop",
-    "address": "Kastelholmantie 2 A2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2 A2, 00900 Helsinki",
     "lat": 60.2132114,
     "lng": 25.0802901,
     "tags": {
@@ -829,7 +829,7 @@
     "id": "uks2ox",
     "name": "Halal Liha",
     "type": "shop",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2132907,
     "lng": 25.0803733,
     "tags": {
@@ -842,7 +842,7 @@
     "id": "qwxwzj",
     "name": "Punjab sweets & Bakers",
     "type": "restaurant",
-    "address": "Korsholmantie 2, 00900 Helsinki, Finland",
+    "address": "Korsholmantie 2, 00900 Helsinki",
     "lat": 60.2136146,
     "lng": 25.0814656,
     "tags": {
@@ -855,7 +855,7 @@
     "id": "1kx1m2",
     "name": "Souriana سوريانا‭",
     "type": "shop",
-    "address": "Kastelholmantie 2, 00900 Helsinki, Finland",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
     "lat": 60.2132624,
     "lng": 25.0808042,
     "tags": {},
@@ -865,7 +865,7 @@
     "id": "vtdidd",
     "name": "Masjid Abu-Bakar",
     "type": "mosque",
-    "address": "Maatullinaukio 2, 00750 Helsinki, Finland",
+    "address": "Maatullinaukio 2, 00750 Helsinki",
     "lat": 60.27489158087033,
     "lng": 25.03424921332902,
     "tags": {
@@ -879,7 +879,7 @@
     "id": "tibuac",
     "name": "Ilm Academy",
     "type": "mosque",
-    "address": "Leiviskätie 4 K LH, 00440 Helsinki, Finland",
+    "address": "Leiviskätie 4 K LH, 00440 Helsinki",
     "lat": 60.231107,
     "lng": 24.880987,
     "tags": {
@@ -897,7 +897,7 @@
     "id": "d5tlw7",
     "name": "Darul Aman Masjid and Islamic Center",
     "type": "mosque",
-    "address": "Tallinnanaukio 4, 00930 Helsinki, Finland",
+    "address": "Tallinnanaukio 4, 00930 Helsinki",
     "lat": 60.2106767,
     "lng": 25.0786668,
     "tags": {
@@ -915,7 +915,7 @@
     "id": "1ktepz",
     "name": "Muslim Forum of Finland",
     "type": "prayer_room",
-    "address": "Leiviskätie 4 K LH, 00440 Helsinki, Finland",
+    "address": "Leiviskätie 4 K LH, 00440 Helsinki",
     "lat": 60.231146331767974,
     "lng": 24.88096085429848,
     "tags": {
@@ -930,7 +930,7 @@
     "id": "bj0psd",
     "name": "Ravintola Zava",
     "type": "restaurant",
-    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "address": "Kirkkojärventie 1, 02770 Espoo",
     "lat": 60.2048645,
     "lng": 24.6561164,
     "tags": {
@@ -942,7 +942,7 @@
     "id": "f5gz4k",
     "name": "Espoo Asian Market (Espoon keskus)",
     "type": "shop",
-    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "address": "Kirkkojärventie 1, 02770 Espoo",
     "lat": 60.2048645,
     "lng": 24.6561164,
     "tags": {
@@ -957,7 +957,7 @@
     "id": "nopo3k",
     "name": "Delhi Rasoi Espoo",
     "type": "restaurant",
-    "address": "Kirkkojärventie 1, 02770 Espoo, Finland",
+    "address": "Kirkkojärventie 1, 02770 Espoo",
     "lat": 60.2048645,
     "lng": 24.6561164,
     "tags": {
@@ -970,7 +970,7 @@
     "id": "4l2lrd",
     "name": "Peshawar Restaurant",
     "type": "restaurant",
-    "address": "Kutojantie 3, 02630 Espoo, Finland",
+    "address": "Kutojantie 3, 02630 Espoo",
     "lat": 60.209902973056046,
     "lng": 24.75414809276856,
     "tags": {
@@ -983,7 +983,7 @@
     "id": "cmn32z",
     "name": "K Market Tapuli",
     "type": "shop",
-    "address": "Maatullinaukio 1, 00750 Helsinki, Finland",
+    "address": "Maatullinaukio 1, 00750 Helsinki",
     "lat": 60.274989,
     "lng": 25.034577,
     "tags": {
@@ -995,7 +995,7 @@
     "id": "rnmk12",
     "name": "Yalla Myyrmäki",
     "type": "shop",
-    "address": "Liesitori 1, 01600 Vantaa, Finland",
+    "address": "Liesitori 1, 01600 Vantaa",
     "lat": 60.26277069135821,
     "lng": 24.85353054238982,
     "tags": {
@@ -1012,7 +1012,7 @@
     "id": "ld8pqr",
     "name": "Aalto University Undergraduate Centre",
     "type": "prayer_room",
-    "address": "Otakaari 1, 02150 Espoo, Finland",
+    "address": "Otakaari 1, 02150 Espoo",
     "lat": 60.1859838,
     "lng": 24.8271078,
     "tags": {},
@@ -1022,7 +1022,7 @@
     "id": "83cdtk",
     "name": "Chemicum Building",
     "type": "prayer_room",
-    "address": "University of Helsinki, A.I. Virtasen aukio 1, 00560 Helsinki, Finland",
+    "address": "University of Helsinki, A.I. Virtasen aukio 1, 00560 Helsinki",
     "lat": 60.20568340000001,
     "lng": 24.9635073,
     "tags": {},
@@ -1032,7 +1032,7 @@
     "id": "vp0tml",
     "name": "University of Helsinki, Viikki Campus",
     "type": "prayer_room",
-    "address": "Latokartanonkaari 3, 00790 Helsinki, Finland",
+    "address": "Latokartanonkaari 3, 00790 Helsinki",
     "lat": 60.227962,
     "lng": 25.014806,
     "tags": {
@@ -1044,7 +1044,7 @@
     "id": "372bxr",
     "name": "Meilahti Tower Hospital",
     "type": "prayer_room",
-    "address": "Haartmaninkatu 4, 00290 Helsinki, Finland",
+    "address": "Haartmaninkatu 4, 00290 Helsinki",
     "lat": 60.188577,
     "lng": 24.905782,
     "tags": {},
@@ -1071,7 +1071,7 @@
     "id": "6morhi",
     "name": "Hanami Vallila",
     "type": "restaurant",
-    "address": "Sturenkatu 31, 00550 Helsinki, Finland",
+    "address": "Sturenkatu 31, 00550 Helsinki",
     "lat": 60.1945556,
     "lng": 24.9575974,
     "tags": {
@@ -1085,7 +1085,7 @@
     "id": "h1twdw",
     "name": "Jump Chick",
     "type": "restaurant",
-    "address": "Töölöntullinkatu 8c, 00250 Helsinki, Finland",
+    "address": "Töölöntullinkatu 8c, 00250 Helsinki",
     "lat": 60.1900916,
     "lng": 24.9133727,
     "tags": {
@@ -1100,7 +1100,7 @@
     "id": "8jp8hr",
     "name": "面师傅 Noodle Master",
     "type": "restaurant",
-    "address": "Eerikinkatu 20, 00100 Helsinki, Finland",
+    "address": "Eerikinkatu 20, 00100 Helsinki",
     "lat": 60.1663769,
     "lng": 24.9332311,
     "tags": {
@@ -1115,7 +1115,7 @@
     "id": "5x7lmi",
     "name": "K-Supermarket Suuris",
     "type": "shop",
-    "address": "Kynäkatu 6, 02250 Espoo, Finland",
+    "address": "Kynäkatu 6, 02250 Espoo",
     "lat": 60.1863986,
     "lng": 24.7465642,
     "tags": {
@@ -1128,7 +1128,7 @@
     "id": "qo8fs0",
     "name": "Al-Fatih Moskeija (Al-Fatih Mosque)",
     "type": "mosque",
-    "address": "Tammitie 5, 20540 Turku, Finland",
+    "address": "Tammitie 5, 20540 Turku",
     "lat": 60.45618509999999,
     "lng": 22.3088474,
     "tags": {
@@ -1140,9 +1140,9 @@
   },
   {
     "id": "trkq3z",
-    "name": "Masjid Al-Furqan, Turku, Finland",
+    "name": "Masjid Al-Furqan, Turku",
     "type": "mosque",
-    "address": "Pormestarinkatu 5, 20750 Turku, Finland",
+    "address": "Pormestarinkatu 5, 20750 Turku",
     "lat": 60.4325269,
     "lng": 22.3448362,
     "tags": {
@@ -1156,7 +1156,7 @@
     "id": "0t3ogz",
     "name": "Masjid Al-Madina",
     "type": "mosque",
-    "address": "Katteluksenkatu 6, 20610 Turku, Finland",
+    "address": "Katteluksenkatu 6, 20610 Turku",
     "lat": 60.4452648,
     "lng": 22.3576133,
     "tags": {
@@ -1171,7 +1171,7 @@
     "id": "93v21q",
     "name": "Turun Islamilainen Yhdyskunta (montana)",
     "type": "mosque",
-    "address": "Yliopistonkatu 7, 20100 Turku, Finland",
+    "address": "Yliopistonkatu 7, 20100 Turku",
     "lat": 60.4546855,
     "lng": 22.2724624,
     "tags": {
@@ -1184,13 +1184,13 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku, Finland"
+    "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku"
   },
   {
     "id": "8s3a3j",
     "name": "Beno Oy",
     "type": "shop",
-    "address": "Varissuon Tornikartio, Jössenpolku a4, 20610 Turku, Finland",
+    "address": "Varissuon Tornikartio, Jössenpolku a4, 20610 Turku",
     "lat": 60.4437039,
     "lng": 22.3596601,
     "tags": {
@@ -1208,7 +1208,7 @@
     "id": "0h13qo",
     "name": "Golan Shop",
     "type": "shop",
-    "address": "Varissuon Tornikartio, Littoistentie 81, 20610 Turku, Finland",
+    "address": "Varissuon Tornikartio, Littoistentie 81, 20610 Turku",
     "lat": 60.4433206,
     "lng": 22.3594573,
     "tags": {
@@ -1226,7 +1226,7 @@
     "id": "uj177l",
     "name": "Al-Nuur Mosque (Islamic Community of Espoo)",
     "type": "mosque",
-    "address": "Kirstinharju 1 b, 02760 Espoo, Finland",
+    "address": "Kirstinharju 1 b, 02760 Espoo",
     "lat": 60.2013389,
     "lng": 24.6656559,
     "tags": {
@@ -1243,7 +1243,7 @@
     "id": "i0mxzn",
     "name": "Masjid Abu Bakr Al-Siddique",
     "type": "mosque",
-    "address": "Sepetlahdentie 8, 02230 Espoo, Finland",
+    "address": "Sepetlahdentie 8, 02230 Espoo",
     "lat": 60.1524348,
     "lng": 24.7440042,
     "tags": {
@@ -1261,7 +1261,7 @@
     "id": "2ivnxo",
     "name": "Bukhara Mosque",
     "type": "mosque",
-    "address": "Kirvuntie 22, 02140 Espoo, Finland",
+    "address": "Kirvuntie 22, 02140 Espoo",
     "lat": 60.2039881,
     "lng": 24.8046016,
     "tags": {
@@ -1276,7 +1276,7 @@
     "id": "r1ckxd",
     "name": "Masjid Al-Ikhlas",
     "type": "mosque",
-    "address": "Harakantie 20 L3, 02650 Espoo, Finland",
+    "address": "Harakantie 20 L3, 02650 Espoo",
     "lat": 60.2211232,
     "lng": 24.8156451,
     "tags": {
@@ -1294,7 +1294,7 @@
     "id": "onu9dw",
     "name": "Daar Ul Muntaha Mosque",
     "type": "mosque",
-    "address": "Kuparitie 1, 00440 Helsinki, Finland",
+    "address": "Kuparitie 1, 00440 Helsinki",
     "lat": 60.2307131,
     "lng": 24.8828721,
     "tags": {
@@ -1311,7 +1311,7 @@
     "id": "butyl8",
     "name": "Iqra mosque",
     "type": "mosque",
-    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "address": "Kontulankaari 1, 00940 Helsinki",
     "lat": 60.2368541,
     "lng": 25.0848472,
     "tags": {
@@ -1325,7 +1325,7 @@
     "id": "t2ul0o",
     "name": "Dar Al Salam Mosque",
     "type": "mosque",
-    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "address": "Ostostie 4, 00940 Helsinki",
     "lat": 60.2367005,
     "lng": 25.0840101,
     "tags": {
@@ -1339,7 +1339,7 @@
     "id": "0da753",
     "name": "Kontulan Kebab Pizza",
     "type": "restaurant",
-    "address": "Kontulan Ostoskeskus, Ostostie 4 H 24, 00940 Helsinki, Finland",
+    "address": "Kontulan Ostoskeskus, Ostostie 4 H 24, 00940 Helsinki",
     "lat": 60.23703219999999,
     "lng": 25.0834663,
     "tags": {
@@ -1353,7 +1353,7 @@
     "id": "eoq1d0",
     "name": "Kalkan Pizza-Kebab-Grilli Kontula",
     "type": "restaurant",
-    "address": "Keinulaudankuja 4 B, 00940 Helsinki, Finland",
+    "address": "Keinulaudankuja 4 B, 00940 Helsinki",
     "lat": 60.2362357,
     "lng": 25.0827705,
     "tags": {
@@ -1368,7 +1368,7 @@
     "id": "d9hwaf",
     "name": "RAYAN Pizza Kebab",
     "type": "restaurant",
-    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "address": "Kontulankaari 1, 00940 Helsinki",
     "lat": 60.2363937,
     "lng": 25.0832966,
     "tags": {
@@ -1383,7 +1383,7 @@
     "id": "x8z3u0",
     "name": "Döner King",
     "type": "restaurant",
-    "address": "Kontulankaari 1, 00940 Helsinki, Finland",
+    "address": "Kontulankaari 1, 00940 Helsinki",
     "lat": 60.2359126,
     "lng": 25.0827562,
     "tags": {
@@ -1396,7 +1396,7 @@
     "id": "zbyu0l",
     "name": "Tikke Kebab grilli",
     "type": "restaurant",
-    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "address": "Ostostie 4, 00940 Helsinki",
     "lat": 60.2368892,
     "lng": 25.0841213,
     "tags": {
@@ -1409,7 +1409,7 @@
     "id": "izifkc",
     "name": "Antalya Ravintola",
     "type": "restaurant",
-    "address": "Ostostie 4, 00940 Helsinki, Finland",
+    "address": "Ostostie 4, 00940 Helsinki",
     "lat": 60.2373168,
     "lng": 25.0835932,
     "tags": {
@@ -1422,7 +1422,7 @@
     "id": "wg4zxd",
     "name": "Taormina Pizza & Kebab",
     "type": "restaurant",
-    "address": "Ostostie, 00940 Helsinki, Finland",
+    "address": "Ostostie, 00940 Helsinki",
     "lat": 60.23670089999999,
     "lng": 25.0825267,
     "tags": {
@@ -1435,7 +1435,7 @@
     "id": "qxmkuj",
     "name": "Al-Iman Mosque",
     "type": "mosque",
-    "address": "Munkkiniemen puistotie 4 a A, 00330 Helsinki, Finland",
+    "address": "Munkkiniemen puistotie 4 a A, 00330 Helsinki",
     "lat": 60.1965707,
     "lng": 24.8829489,
     "tags": {

@@ -616,12 +616,12 @@ body.dark-mode .tut-card::before {
   background: var(--surface);
 }
 
-/* Popup & stop popup — darken the colored header slightly for contrast */
-body.dark-mode .pp-head {
-  filter: brightness(0.85) saturate(1.1);
+/* Popup & stop popup — darken badge slightly for contrast */
+body.dark-mode .pp-badge {
+  filter: brightness(0.92);
 }
-body.dark-mode .sp-head {
-  filter: brightness(0.85) saturate(1.1);
+body.dark-mode .sp-badge {
+  filter: brightness(0.92);
 }
 
 /* Place card dot icons — dim the bright type colors */
@@ -645,10 +645,6 @@ body.dark-mode #tf-toggle.open #tf-count {
 }
 
 /* Boost low-opacity text for dark-mode readability */
-body.dark-mode .pp-sub,
-body.dark-mode .sp-sub {
-  opacity: 0.88;
-}
 body.dark-mode .sg-hint {
   opacity: 0.78;
 }
@@ -1922,124 +1918,107 @@ body.dark-mode .sort-opt:disabled {
 .pp {
   display: flex;
   flex-direction: column;
-}
-
-.pp-head {
-  display: grid;
-  grid-template: "icon title fav" auto "icon sub  fav" auto / auto 1fr auto;
-  gap: 0 8px;
-  padding: 10px 12px;
-  background: var(--pc);
-  color: #fff;
   position: relative;
 }
-.pp-type-icon {
-  grid-area: icon;
-  align-self: center;
-  width: 30px;
-  height: 30px;
+
+.pp-inner {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pp-hdr {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--r-inner);
+  gap: 6px;
+  padding-right: 24px;
 }
-.pp-title {
-  grid-area: title;
-  font-size: var(--txt-md);
-  font-weight: var(--fw-semibold);
-  line-height: 1.2;
-  align-self: end;
+.pp-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
-.pp-sub {
-  grid-area: sub;
+.pp-badge {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
-  opacity: 0.75;
-  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: var(--r-pill);
+  padding: 2px 8px;
+}
+
+.pp-title {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  line-height: 1.3;
 }
 
 .pp-fav-btn {
-  grid-area: fav;
-  align-self: center;
+  position: absolute;
+  top: 12px;
+  right: 12px;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 2px;
   cursor: pointer;
-  border-radius: var(--r-xs);
-  color: rgba(255, 255, 255, 0.55);
-  display: flex;
+  color: var(--text-3);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s;
+  line-height: 1;
+  transition: color var(--t-fast);
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
   .pp-fav-btn:hover {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--gold);
   }
 }
 .pp-fav-btn.active {
-  color: #fcd34d;
-}
-
-.pp-body {
-  padding: 10px 12px;
-}
-
-/* Compact custom-pin popup */
-.pp--pin .pp-head {
-  padding: 8px 10px;
-  gap: 0 6px;
-}
-.pp--pin .pp-type-icon {
-  width: 26px;
-  height: 26px;
-}
-.pp--pin .pp-title {
-  font-size: var(--txt-sm);
-}
-.pp--pin .pp-sub {
-  font-size: var(--txt-xs);
-}
-.pp--pin .pp-body {
-  padding: 8px 10px;
-}
-.pp--pin .pp-addr {
-  margin-bottom: 8px;
-  font-size: var(--txt-xs);
-}
-.pp--pin .pp-actions {
-  padding-top: 8px;
-}
-.pp--pin .pp-dir-btn,
-.pp--pin .pp-share-btn,
-.pp--pin .pp-rm-btn {
-  height: 30px;
-}
-.pp-add-place-btn {
-  flex-shrink: 0;
-  margin-left: auto;
+  color: var(--gold);
 }
 
 .pp-addr {
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+}
+
+/* Pin popup address row */
+.pp-addr-row {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--txt-sm);
-  color: var(--text-2);
-  margin-bottom: 10px;
+  gap: 6px;
 }
-.pp-addr > svg {
+.pp-addr-row .pp-addr {
+  flex: 1;
+}
+.pp-add-place-btn {
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
-  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .pp-add-place-btn:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+  }
 }
 
 .pp-tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
-  margin-bottom: 10px;
 }
 .pp-chip {
   display: inline-flex;
@@ -2050,11 +2029,6 @@ body.dark-mode .sort-opt:disabled {
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
   white-space: nowrap;
-}
-.pp-chip-icon {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
 }
 .pp-chip-yes {
   background: var(--success-soft);
@@ -2069,8 +2043,8 @@ body.dark-mode .sort-opt:disabled {
   font-size: var(--txt-sm);
   color: var(--text-3);
   line-height: 1.5;
-  padding: 6px 0;
-  margin-bottom: 6px;
+  padding-top: 6px;
+  margin-top: 2px;
   border-top: 1px solid var(--border-light);
 }
 
@@ -2080,11 +2054,10 @@ body.dark-mode .sort-opt:disabled {
   padding-top: 10px;
   border-top: 1px solid var(--border-light);
 }
-
-.pp-dir-btn,
-.pp-share-btn,
-.pp-edit-btn,
-.pp-rm-btn {
+.pp-actions .pp-dir-btn,
+.pp-actions .pp-share-btn,
+.pp-actions .pp-edit-btn,
+.pp-actions .pp-rm-btn {
   flex: 1;
   height: 34px;
   padding: 0;
@@ -4430,106 +4403,107 @@ body.dark-mode #route-snackbar {
 .sp {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
-.sp-head {
-  display: grid;
-  grid-template: "icon title fav" auto "icon sub fav" auto / auto 1fr auto;
-  gap: 0 8px;
-  padding: 10px 12px;
-  background: var(--sc);
-  color: #fff;
+.sp-inner {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.sp-icon {
-  grid-area: icon;
-  align-self: center;
-  width: 30px;
-  height: 30px;
+
+.sp-hdr {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--r-inner);
+  gap: 6px;
+  padding-right: 24px;
+}
+.sp-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 .sp-icon svg {
-  width: 16px;
-  height: 16px;
-  color: #fff;
+  width: 14px;
+  height: 14px;
+}
+.sp-badge {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: var(--r-pill);
+  padding: 2px 8px;
 }
 .sp-title {
-  grid-area: title;
   font-size: var(--txt-md);
-  font-weight: var(--fw-semibold);
-  line-height: 1.2;
-  align-self: end;
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  line-height: 1.3;
+  padding-right: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sp-sub {
-  grid-area: sub;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  opacity: 0.75;
-  line-height: 1.4;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
 .sp-code {
-  background: rgba(255, 255, 255, 0.18);
   padding: 2px 6px;
   border-radius: var(--r-2xs);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.3px;
-  opacity: 1;
   line-height: 1;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 
 .sp-routes {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
-  padding: 8px 12px;
   max-height: 150px;
 }
 .sp-routes:empty {
   display: none;
 }
 
-/* ── Stop popup: save/fav button in header ── */
+/* ── Stop popup: save/fav button (absolute) ── */
 .sp-fav-btn {
-  grid-area: fav;
-  align-self: center;
+  position: absolute;
+  top: 12px;
+  right: 12px;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 2px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.55);
-  transition: color 0.18s, transform 0.18s;
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color var(--t-fast);
 }
 @media (hover: hover) {
   .sp-fav-btn:hover {
-    color: #fcd34d;
+    color: var(--gold);
   }
 }
 .sp-fav-btn.active {
-  color: #fcd34d;
+  color: var(--gold);
 }
 
 /* ── Stop popup: action buttons bar ── */
 .sp-actions {
   display: flex;
   gap: var(--sp-2);
-  padding: 8px 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--border-light);
 }
 .sp-dir-btn,
 .sp-share-btn,
 .sp-close-btn {
   flex: 1;
-  height: 30px;
+  height: 34px;
   padding: 0;
 }
 

@@ -79,5 +79,34 @@
     ],
     "notes": "Please do wudu at home and bring janamaz",
     "date": "2026-03-20"
+  },
+  {
+    "id": "qhtzka",
+    "name": "Rajakylän tenniskeskus",
+    "address": "Latukuja 2, 01280 Vantaa",
+    "lat": 60.2554727841804,
+    "lng": 25.1060145728186,
+    "organizer": "Bangladesh Kendrio Masjid",
+    "jamaats": [
+      "8:00",
+      "9:00"
+    ],
+    "notes": "Only if Eid is on the 19th of March",
+    "date": "2026-03-19"
+  },
+  {
+    "id": "ivbzae",
+    "name": "Laippatie 13",
+    "address": "Laippatie 13, 00880 Helsinki",
+    "lat": 60.210680148853,
+    "lng": 25.0501909153429,
+    "organizer": "Bangladesh Kendrio Masjid",
+    "jamaats": [
+      "7:30",
+      "8:30",
+      "9:30"
+    ],
+    "notes": "Only if Eid is on the 20th of March",
+    "date": "2026-03-20"
   }
 ]

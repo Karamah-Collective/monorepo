@@ -22,35 +22,37 @@ function _openStopFeaturePopup(f) {
     ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9"));
   const lngLat = f.geometry.coordinates.slice();
   const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
-  const svgIcon = modeIcon(modeKey, 20);
+  const svgIcon = modeIcon(modeKey, 14);
   const popId = ++_stopPopupId;
   const routesDivId = `stop-routes-${popId}`;
 
   const displayName = name || "Unnamed stop";
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
-  const codeStr = code ? `<span class="sp-code">${esc(code)}</span>` : "";
+  const codeStr = code ? ` <span class="sp-code">${esc(code)}</span>` : "";
   const lat = lngLat[1], lng = lngLat[0];
   const saved = isPinSaved(lat, lng);
   const html = `
-        <div class="sp" style="--sc:${color}">
-          <div class="sp-head">
-            <span class="sp-icon">${svgIcon}</span>
+        <div class="sp">
+          <div class="sp-inner">
+            <div class="sp-hdr">
+              <span class="sp-icon" style="color:${color}">${svgIcon}</span>
+              <span class="sp-badge" style="background:${color}1A;color:${color}">${typeLabel}${codeStr}</span>
+            </div>
             <div class="sp-title">${esc(displayName)}</div>
-            <div class="sp-sub">${typeLabel} ${codeStr}</div>
-            <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
+            <div class="sp-routes" id="${routesDivId}"></div>
+            <div class="sp-actions">
+              <button class="sp-dir-btn" title="Directions" aria-label="Directions">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+              </button>
+              <button class="sp-share-btn" title="Share this stop" aria-label="Share this stop">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </button>
+              <button class="sp-close-btn" title="Close" aria-label="Close popup">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="sp-routes" id="${routesDivId}"></div>
-          <div class="sp-actions">
-            <button class="sp-dir-btn" title="Directions" aria-label="Directions">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
-            </button>
-            <button class="sp-share-btn" title="Share this stop" aria-label="Share this stop">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            </button>
-            <button class="sp-close-btn" title="Close" aria-label="Close popup">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
+          <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
         </div>`;
 
   const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", className: "stop-popup-wrap" })
@@ -149,8 +151,10 @@ function _openStopFeaturePopup(f) {
         const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
         const livePrimary = renderStopRoutes(routesDivId, unique, color);
         if (livePrimary) {
-          const spEl = popup.getElement()?.querySelector(".sp");
-          if (spEl) spEl.style.setProperty("--sc", livePrimary);
+          const badge = popup.getElement()?.querySelector(".sp-badge");
+          if (badge) { badge.style.color = livePrimary; badge.style.background = livePrimary + "1A"; }
+          const icon = popup.getElement()?.querySelector(".sp-icon");
+          if (icon) icon.style.color = livePrimary;
         }
       })
       .catch(() => {

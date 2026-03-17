@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Popup Variations — Eid Card Style Adapted</title>
+<title>Popup Variations - Eid Card Style Adapted</title>
 <style>
-  /* ── Tokens (matching your project design-tokens.css) ──────────── */
+  /* -- Tokens (matching your project design-tokens.css) ------------ */
   :root {
     --accent: #1a73b8;
     --accent-soft: #e8f1f8;
@@ -34,7 +34,10 @@
     --txt-base: 13px;
     --txt-md: 14px;
     --txt-lg: 15px;
+    --txt-xl: 16px;
+    --txt-2xl: 18px;
     --fw-medium: 500;
+    --fw-regular: 400;
     --fw-semibold: 600;
     --fw-bold: 700;
     --sp-2: 6px;
@@ -44,7 +47,7 @@
     /* type colors */
     --c-mosque: #1FA86A;
     --c-restaurant: #FF6319;
-    --c-shop: #8C4799;
+    --c-shop: #A855F7;
     --c-prayer: #00B9E4;
     --c-pin: #1a73b8;
   }
@@ -67,28 +70,37 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      system-ui,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     background: #e8ecf0;
     min-height: 100vh;
     padding: 40px 20px 80px;
   }
 
-  h1 { text-align: center; font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: #1a2433; margin-bottom: 6px; }
-  .sub { text-align: center; font-size: 13px; color: #506070; margin-bottom: 36px; line-height: 1.6; }
+  h1 { text-align: center; font-size: var(--txt-2xl); font-weight: var(--fw-bold); letter-spacing: -0.02em; color: var(--text); margin-bottom: 6px; }
+  .sub { text-align: center; font-size: var(--txt-base); color: var(--text-2); margin-bottom: 36px; line-height: 1.6; }
 
   .section-title {
-    font-size: 18px;
-    font-weight: 800;
+    font-size: var(--txt-xl);
+    font-weight: var(--fw-bold);
     letter-spacing: -0.02em;
-    color: #1a2433;
+    color: var(--text);
     margin-bottom: 6px;
     text-align: center;
   }
   .section-sub {
     text-align: center;
-    font-size: 12px;
-    color: #506070;
+    font-size: var(--txt-sm);
+    color: var(--text-2);
     margin-bottom: 24px;
   }
 
@@ -108,21 +120,21 @@
   }
 
   .card-label {
-    font-size: 10px;
-    font-weight: 800;
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-bold);
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #8d99a5;
+    color: var(--text-3);
   }
   .card-desc {
-    font-size: 11px;
-    color: #506070;
+    font-size: var(--txt-xs);
+    color: var(--text-2);
     text-align: center;
     max-width: 280px;
     line-height: 1.5;
   }
 
-  /* ── Map background tile ─── */
+  /* -- Map background tile --- */
   .map-tile {
     width: 300px;
     min-height: 280px;
@@ -152,9 +164,9 @@
 
   svg { display: block; }
 
-  /* ═════════════════════════════════════════════════════════════════
-     POPUP CARD — matches the Eid popup structure you like
-     ═════════════════════════════════════════════════════════════════ */
+  /* =================================================================
+     POPUP CARD - matches the Eid popup structure you like
+     ================================================================= */
   .popup {
     width: 268px;
     border-radius: var(--r-md);
@@ -248,8 +260,11 @@
   /* Notes */
   .popup-notes {
     font-size: var(--txt-sm);
-    color: var(--text-2);
-    font-style: italic;
+    color: var(--text-3);
+    line-height: 1.5;
+    padding-top: 6px;
+    margin-top: 2px;
+    border-top: 1px solid var(--border-light);
   }
 
   /* Action bar */
@@ -263,26 +278,62 @@
     flex: 1;
     height: 34px;
     padding: 0;
-    border: none;
+    border: 1.5px solid transparent;
     cursor: pointer;
-    font: inherit;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: var(--r-sm);
+    transition:
+      color 0.15s,
+      border-color 0.15s,
+      filter 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--txt-lg);
+    font-weight: var(--fw-bold);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text-2);
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-semibold);
+  }
+  .popup-actions .btn.btn-secondary {
+    border-color: var(--border);
+  }
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
     font-size: var(--txt-base);
     font-weight: var(--fw-bold);
-    transition: filter 0.15s;
   }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-secondary { background: var(--surface); border: 1.5px solid var(--border); color: var(--text-2); font-size: var(--txt-sm); font-weight: var(--fw-semibold); }
-  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-primary:hover,
+  .btn-danger:hover {
+    filter: brightness(1.12);
+  }
+  .btn-secondary:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+  }
+  .popup-actions .btn.btn-secondary:hover {
+    border-color: var(--surface-3);
+  }
 
   /* Favourite star */
   .popup-fav {
     position: absolute;
     top: 10px;
     right: 10px;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
     color: var(--gold);
   }
 
@@ -312,26 +363,26 @@
 
   .divider { margin-top: 60px; border: none; border-top: 1px solid #d5dce3; max-width: 600px; margin-left: auto; margin-right: auto; }
 
-  .footer { text-align: center; font-size: 12px; color: #8d99a5; margin-top: 40px; line-height: 1.6; }
+  .footer { text-align: center; font-size: var(--txt-sm); color: var(--text-3); margin-top: 40px; line-height: 1.6; }
 </style>
 </head>
 <body>
 
-<h1>Popup Redesign — Eid Card Style</h1>
+<h1>Popup Redesign - Eid Card Style</h1>
 <p class="sub">All variations below follow the Eid prayer popup design language: flat, padded, vertical flow, badge header, clean action bar.<br>Shown in
-both light and dark mode. Pick one for regular places and one for pins — or mix features.</p>
+both light and dark mode. Pick one for regular places and one for pins - or mix features.</p>
 
-<!-- ══════════════════════════════════════════════════════════════════
+<!-- ==================================================================
      REGULAR PLACES
-     ══════════════════════════════════════════════════════════════════ -->
+     ================================================================== -->
 <div class="section-title">Regular Places (Restaurant / Mosque / Shop / Prayer Room)</div>
-<div class="section-sub">Content: type badge, name, address, tags (halal, alcohol, prayer room, etc.), notes, actions (directions / share / edit), favourite star</div>
+<div class="section-sub">All place cards below keep Design A as the base: badge header, title, address, inline chips, notes support, and the app's original action buttons.</div>
 
-<!-- ─── Variation A: Badge + Chips Inline ──────── -->
+<!-- --- Variation A1: Base restaurant with short note -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Variation A — Light</div>
-    <div class="card-desc">Type badge in header row, tag chips flow below address. Closest to Eid layout.</div>
+    <div class="card-label">Variation A1 - Light</div>
+    <div class="card-desc">The closest version to your preferred A. Adds a concise note block without changing the overall rhythm.</div>
     <div class="map-tile light">
       <div class="popup">
         <div class="popup-inner">
@@ -340,12 +391,13 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: rgba(255,99,25,0.1); color: var(--c-restaurant);">Restaurant</span>
           </div>
           <div class="popup-title">Al-Falafel Palace</div>
-          <div class="popup-addr">Hämeentie 12, Helsinki</div>
+          <div class="popup-addr">Hameentie 12, Helsinki</div>
           <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal certified</span>
-            <span class="chip chip-yes">✓ Alcohol-free</span>
-            <span class="chip chip-yes">✓ Prayer room</span>
+            <span class="chip chip-yes">Halal certified</span>
+            <span class="chip chip-yes">Alcohol-free</span>
+            <span class="chip chip-yes">Prayer room</span>
           </div>
+          <div class="popup-notes">Kitchen closes 30 minutes before the listed closing time during Ramadan evenings.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -358,7 +410,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Variation A — Dark</div>
+    <div class="card-label">Variation A1 - Dark</div>
     <div class="map-tile dark">
       <div class="popup dark">
         <div class="popup-inner">
@@ -367,12 +419,13 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: rgba(255,99,25,0.15); color: #ff7a3f;">Restaurant</span>
           </div>
           <div class="popup-title">Al-Falafel Palace</div>
-          <div class="popup-addr">Hämeentie 12, Helsinki</div>
+          <div class="popup-addr">Hameentie 12, Helsinki</div>
           <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal certified</span>
-            <span class="chip chip-yes">✓ Alcohol-free</span>
-            <span class="chip chip-yes">✓ Prayer room</span>
+            <span class="chip chip-yes">Halal certified</span>
+            <span class="chip chip-yes">Alcohol-free</span>
+            <span class="chip chip-yes">Prayer room</span>
           </div>
+          <div class="popup-notes">Kitchen closes 30 minutes before the listed closing time during Ramadan evenings.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -385,11 +438,11 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<!-- ─── Variation B: Badge + Labelled Tags Section ──────── -->
+<!-- --- Variation A2: Mosque with subtitle and note -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Variation B — Light</div>
-    <div class="card-desc">Adds a "Tags" section label above chips just like Eid's "Jamaat times" label. More structured.</div>
+    <div class="card-label">Variation A2 - Light</div>
+    <div class="card-desc">Still Design A, but with a small subtitle line for service timing and a note block for operational detail.</div>
     <div class="map-tile light">
       <div class="popup">
         <div class="popup-inner">
@@ -398,16 +451,14 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: rgba(31,168,106,0.1); color: var(--c-mosque);">Mosque</span>
           </div>
           <div class="popup-title">Helsingin Moskeija</div>
+          <div class="popup-sub">Friday Jummah at 13:15 and 14:00</div>
           <div class="popup-addr">Fredrikinkatu 33, Helsinki</div>
-          <div class="popup-info">
-            <div class="popup-info-label">Tags</div>
-            <div class="popup-chips">
-              <span class="chip chip-yes">✓ Prayer room</span>
-              <span class="chip chip-yes">✓ Wudu area</span>
-              <span class="chip chip-yes">✓ Women's section</span>
-            </div>
+          <div class="popup-chips">
+            <span class="chip chip-yes">Prayer room</span>
+            <span class="chip chip-yes">Wudu area</span>
+            <span class="chip chip-yes">Women's section</span>
           </div>
-          <div class="popup-notes">Friday Jummah at 13:15 and 14:00</div>
+          <div class="popup-notes">Main hall remains open between Dhuhr and Isha, but the side entrance locks 10 minutes after iqamah.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -420,7 +471,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Variation B — Dark</div>
+    <div class="card-label">Variation A2 - Dark</div>
     <div class="map-tile dark">
       <div class="popup dark">
         <div class="popup-inner">
@@ -429,16 +480,14 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: rgba(31,168,106,0.12); color: #4ed494;">Mosque</span>
           </div>
           <div class="popup-title">Helsingin Moskeija</div>
+          <div class="popup-sub">Friday Jummah at 13:15 and 14:00</div>
           <div class="popup-addr">Fredrikinkatu 33, Helsinki</div>
-          <div class="popup-info">
-            <div class="popup-info-label">Tags</div>
-            <div class="popup-chips">
-              <span class="chip chip-yes">✓ Prayer room</span>
-              <span class="chip chip-yes">✓ Wudu area</span>
-              <span class="chip chip-yes">✓ Women's section</span>
-            </div>
+          <div class="popup-chips">
+            <span class="chip chip-yes">Prayer room</span>
+            <span class="chip chip-yes">Wudu area</span>
+            <span class="chip chip-yes">Women's section</span>
           </div>
-          <div class="popup-notes">Friday Jummah at 13:15 and 14:00</div>
+          <div class="popup-notes">Main hall remains open between Dhuhr and Isha, but the side entrance locks 10 minutes after iqamah.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -451,22 +500,27 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<!-- ─── Variation C: No Badge, Subtitle type ──────── -->
+<!-- --- Variation A3: Prayer room with access note -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Variation C — Light</div>
-    <div class="card-desc">Type text as subtitle instead of a pill badge. Slightly lighter header. Good when many types coexist.</div>
+    <div class="card-label">Variation A3 - Light</div>
+    <div class="card-desc">Design A with a secondary subtitle and a longer access note for places that need a bit more context.</div>
     <div class="map-tile light">
       <div class="popup">
         <div class="popup-inner">
-          <div class="popup-title">Arabesque Grill</div>
-          <div class="popup-sub" style="color: var(--c-restaurant); font-weight: var(--fw-semibold);">Restaurant</div>
-          <div class="popup-addr">Sörnäisten Rantatie 5, Helsinki</div>
-          <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal certified</span>
-            <span class="chip chip-no">✗ Serves alcohol</span>
-            <span class="chip chip-yes">✓ Family seating</span>
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--c-prayer);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l4 4v5.5A4.5 4.5 0 0111.5 16H10v6H8v-7.5A4.5 4.5 0 0112.5 10H14V6l-2-2-2 2v1H8V6l4-4z"/></svg></span>
+            <span class="popup-badge" style="background: rgba(0,185,228,0.12); color: var(--c-prayer);">Prayer Room</span>
           </div>
+          <div class="popup-title">Tripla Musalla</div>
+          <div class="popup-sub">Level 2 - Near East entrance</div>
+          <div class="popup-addr">Fredikanterassi 1, Pasila</div>
+          <div class="popup-chips">
+            <span class="chip chip-yes">Quiet space</span>
+            <span class="chip chip-yes">Wudu nearby</span>
+            <span class="chip chip-no">No Friday khutbah</span>
+          </div>
+          <div class="popup-notes">Access is through the shopping centre corridor; ask security for the keypad code after 21:00.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -479,18 +533,23 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Variation C — Dark</div>
+    <div class="card-label">Variation A3 - Dark</div>
     <div class="map-tile dark">
       <div class="popup dark">
         <div class="popup-inner">
-          <div class="popup-title">Arabesque Grill</div>
-          <div class="popup-sub" style="color: #ff7a3f; font-weight: var(--fw-semibold);">Restaurant</div>
-          <div class="popup-addr">Sörnäisten Rantatie 5, Helsinki</div>
-          <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal certified</span>
-            <span class="chip chip-no">✗ Serves alcohol</span>
-            <span class="chip chip-yes">✓ Family seating</span>
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--c-prayer);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l4 4v5.5A4.5 4.5 0 0111.5 16H10v6H8v-7.5A4.5 4.5 0 0112.5 10H14V6l-2-2-2 2v1H8V6l4-4z"/></svg></span>
+            <span class="popup-badge" style="background: rgba(0,185,228,0.15); color: #56d7f1;">Prayer Room</span>
           </div>
+          <div class="popup-title">Tripla Musalla</div>
+          <div class="popup-sub">Level 2 - Near East entrance</div>
+          <div class="popup-addr">Fredikanterassi 1, Pasila</div>
+          <div class="popup-chips">
+            <span class="chip chip-yes">Quiet space</span>
+            <span class="chip chip-yes">Wudu nearby</span>
+            <span class="chip chip-no">No Friday khutbah</span>
+          </div>
+          <div class="popup-notes">Access is through the shopping centre corridor; ask security for the keypad code after 21:00.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -503,26 +562,26 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<!-- ─── Variation D: Shop type, showing mixed tags ──────── -->
+<!-- --- Variation A4: Shop with dense metadata and note -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Variation D — Light (Shop)</div>
-    <div class="card-desc">Shows how the same card works for a shop type with mixed yes/no chips and a notes field.</div>
+    <div class="card-label">Variation A4 - Light</div>
+    <div class="card-desc">Same Design A shell, but tested with mixed positive and negative chips plus a practical hours note.</div>
     <div class="map-tile light">
       <div class="popup">
         <div class="popup-inner">
           <div class="popup-hdr">
             <span class="popup-icon" style="color: var(--c-shop);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg></span>
-            <span class="popup-badge" style="background: rgba(140,71,153,0.1); color: var(--c-shop);">Shop</span>
+            <span class="popup-badge" style="background: rgba(168,85,247,0.1); color: var(--c-shop);">Shop</span>
           </div>
           <div class="popup-title">Halal Market Helsinki</div>
           <div class="popup-addr">Vaasankatu 7, Helsinki</div>
           <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal meat</span>
-            <span class="chip chip-yes">✓ Spices</span>
-            <span class="chip chip-no">✗ No delivery</span>
+            <span class="chip chip-yes">Halal meat</span>
+            <span class="chip chip-yes">Frozen items</span>
+            <span class="chip chip-no">No delivery</span>
           </div>
-          <div class="popup-notes">Open Mon–Sat 9–21, Sun 10–18</div>
+          <div class="popup-notes">Open Mon-Sat 9-21, Sun 10-18. Fresh bread usually arrives after Asr on Thursdays and Fridays.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -535,22 +594,22 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Variation D — Dark (Shop)</div>
+    <div class="card-label">Variation A4 - Dark</div>
     <div class="map-tile dark">
       <div class="popup dark">
         <div class="popup-inner">
           <div class="popup-hdr">
-            <span class="popup-icon" style="color: #b47dcc;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg></span>
-            <span class="popup-badge" style="background: rgba(140,71,153,0.15); color: #b47dcc;">Shop</span>
+            <span class="popup-icon" style="color: var(--c-shop);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg></span>
+            <span class="popup-badge" style="background: rgba(168,85,247,0.15); color: var(--c-shop);">Shop</span>
           </div>
           <div class="popup-title">Halal Market Helsinki</div>
           <div class="popup-addr">Vaasankatu 7, Helsinki</div>
           <div class="popup-chips">
-            <span class="chip chip-yes">✓ Halal meat</span>
-            <span class="chip chip-yes">✓ Spices</span>
-            <span class="chip chip-no">✗ No delivery</span>
+            <span class="chip chip-yes">Halal meat</span>
+            <span class="chip chip-yes">Frozen items</span>
+            <span class="chip chip-no">No delivery</span>
           </div>
-          <div class="popup-notes">Open Mon–Sat 9–21, Sun 10–18</div>
+          <div class="popup-notes">Open Mon-Sat 9-21, Sun 10-18. Fresh bread usually arrives after Asr on Thursdays and Fridays.</div>
           <div class="popup-actions">
             <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
             <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -565,16 +624,16 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
 
 <hr class="divider">
 
-<!-- ══════════════════════════════════════════════════════════════════
+<!-- ==================================================================
      PINNED / DROPPED PIN PLACES
-     ══════════════════════════════════════════════════════════════════ -->
+     ================================================================== -->
 <div class="section-title">Pinned / Dropped Pin Cards</div>
 <div class="section-sub">Content: title, subtitle, reverse-geocoded address, actions (directions / share / remove), optional save star & add-as-place button</div>
 
-<!-- ─── Pin Variation A: Search result style ──────── -->
+<!-- --- Pin Variation A: Search result style -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Pin A — Light (Searched Location)</div>
+    <div class="card-label">Pin A - Light (Searched Location)</div>
     <div class="card-desc">Searched location card. Blue badge with pin icon. Address resolves asynchronously. "Add as place" roundel.</div>
     <div class="map-tile light">
       <div class="popup" style="width: 248px;">
@@ -584,7 +643,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <div class="popup-addr" style="flex: 1;">Hämeentie 12, Helsinki</div>
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
             <button class="popup-add-btn" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
           <div class="popup-actions">
@@ -599,7 +658,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Pin A — Dark (Searched Location)</div>
+    <div class="card-label">Pin A - Dark (Searched Location)</div>
     <div class="map-tile dark">
       <div class="popup dark" style="width: 248px;">
         <div class="popup-inner">
@@ -608,7 +667,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <div class="popup-addr" style="flex: 1;">Hämeentie 12, Helsinki</div>
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
             <button class="popup-add-btn" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
           <div class="popup-actions">
@@ -623,11 +682,11 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<!-- ─── Pin Variation B: Dropped pin style ──────── -->
+<!-- --- Pin Variation B: Dropped pin style -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Pin B — Light (Dropped Pin)</div>
-    <div class="card-desc">Custom dropped pin. Pin icon, "Custom location" subtitle, coordinates shown as a secondary detail.</div>
+    <div class="card-label">Pin B - Light (Dropped Pin)</div>
+    <div class="card-desc">Dropped pin card. Pin icon, "Dropped pin" subtitle, coordinates shown as a secondary detail.</div>
     <div class="map-tile light">
       <div class="popup" style="width: 248px;">
         <div class="popup-inner">
@@ -635,7 +694,6 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg></span>
             <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Dropped Pin</span>
           </div>
-          <div class="popup-sub">Custom location</div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <div class="popup-addr" style="flex: 1;">Kalasatamankatu 3, Helsinki</div>
             <button class="popup-add-btn" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -652,7 +710,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Pin B — Dark (Dropped Pin)</div>
+    <div class="card-label">Pin B - Dark (Dropped Pin)</div>
     <div class="map-tile dark">
       <div class="popup dark" style="width: 248px;">
         <div class="popup-inner">
@@ -660,7 +718,6 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
             <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg></span>
             <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Dropped Pin</span>
           </div>
-          <div class="popup-sub">Custom location</div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <div class="popup-addr" style="flex: 1;">Kalasatamankatu 3, Helsinki</div>
             <button class="popup-add-btn" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -677,10 +734,10 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<!-- ─── Pin Variation C: Minimal (no sub, no badge) ──────── -->
+<!-- --- Pin Variation C: Minimal (no sub, no badge) -------- -->
 <div class="row">
   <div class="card-wrap">
-    <div class="card-label">Pin C — Light (Minimal)</div>
+    <div class="card-label">Pin C - Light (Minimal)</div>
     <div class="card-desc">Most compact pin variant. Just address + actions. Good when there's nothing else to say.</div>
     <div class="map-tile light">
       <div class="popup" style="width: 240px;">
@@ -701,7 +758,7 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 
   <div class="card-wrap">
-    <div class="card-label">Pin C — Dark (Minimal)</div>
+    <div class="card-label">Pin C - Dark (Minimal)</div>
     <div class="map-tile dark">
       <div class="popup dark" style="width: 240px;">
         <div class="popup-inner">
@@ -721,8 +778,347 @@ both light and dark mode. Pick one for regular places and one for pins — or mi
   </div>
 </div>
 
-<p class="footer">All variations share the same Eid popup DNA: flat surface, padded inner container, vertical flow, badge header row, action bar with border-top.<br>
-Tell me which <strong>place variation</strong> (A/B/C/D) and which <strong>pin variation</strong> (A/B/C) you prefer, and I'll implement it.</p>
+<hr class="divider">
+
+<!-- ==================================================================
+     ADD-AS-PLACE BUTTON VARIATIONS
+     ================================================================== -->
+<div class="section-title">"Add as Place" Button Variations</div>
+<div class="section-sub">The current solid-accent roundel (32 px circle) feels heavy next to the subtle address text. Showing 5 alternatives inside a searched-location card.</div>
+
+<style>
+  /* -- Add-button variation styles (scoped to this page) -- */
+  .add-btn-base {
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: filter 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  /* V1 — keep current (accent roundel 32 px) */
+  .add-v1 {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+  }
+  .add-v1:hover { filter: brightness(1.12); }
+
+  /* V2 — smaller accent roundel (26 px) */
+  .add-v2 {
+    width: 26px; height: 26px;
+    border-radius: var(--r-inner);
+    background: var(--accent);
+    color: #fff;
+  }
+  .add-v2:hover { filter: brightness(1.12); }
+
+  /* V3 — ghost circle (transparent bg, accent border) */
+  .add-v3 {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid var(--accent) !important;
+    color: var(--accent);
+  }
+  .add-v3:hover {
+    background: var(--accent-soft);
+  }
+
+  /* V4 — pill button with label */
+  .add-v4 {
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-semibold);
+  }
+  .add-v4:hover {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* V5 — secondary icon square (matches action bar secondary style) */
+  .add-v5 {
+    width: 26px; height: 26px;
+    border-radius: var(--r-xs);
+    background: var(--surface);
+    border: 1.5px solid var(--border) !important;
+    color: var(--text-2);
+  }
+  .add-v5:hover {
+    color: var(--text);
+    border-color: var(--surface-3) !important;
+  }
+</style>
+
+<!-- --- V1: Current (accent roundel 32px) -------- -->
+<div class="row">
+  <div class="card-wrap">
+    <div class="card-label">V1 - Accent Roundel (current)</div>
+    <div class="card-desc">The current 32 px filled circle. Bold & eye-catching but can feel heavy beside the light address text.</div>
+    <div class="map-tile light">
+      <div class="popup" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v1" title="Add as place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wrap">
+    <div class="card-label">V1 - Dark</div>
+    <div class="map-tile dark">
+      <div class="popup dark" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v1" title="Add as place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- --- V2: Smaller accent square-roundel (26px, r-inner) -------- -->
+<div class="row">
+  <div class="card-wrap">
+    <div class="card-label">V2 - Small Accent Square</div>
+    <div class="card-desc">26 px with rounded-square corners (r-inner). Same solid accent fill, but smaller footprint, less dominant.</div>
+    <div class="map-tile light">
+      <div class="popup" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v2" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wrap">
+    <div class="card-label">V2 - Dark</div>
+    <div class="map-tile dark">
+      <div class="popup dark" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v2" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- --- V3: Ghost circle (outlined accent) -------- -->
+<div class="row">
+  <div class="card-wrap">
+    <div class="card-label">V3 - Ghost Circle</div>
+    <div class="card-desc">Transparent with accent border. Lighter visual weight, doesn't compete with the directions button. Fills on hover.</div>
+    <div class="map-tile light">
+      <div class="popup" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v3" title="Add as place"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wrap">
+    <div class="card-label">V3 - Dark</div>
+    <div class="map-tile dark">
+      <div class="popup dark" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v3" title="Add as place"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- --- V4: Pill button with label -------- -->
+<div class="row">
+  <div class="card-wrap">
+    <div class="card-label">V4 - Accent Soft Pill</div>
+    <div class="card-desc">Tinted pill with "Add" label. More discoverable for new users; becomes solid accent on hover. Uses the badge language already in the card.</div>
+    <div class="map-tile light">
+      <div class="popup" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v4" title="Add as place"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wrap">
+    <div class="card-label">V4 - Dark</div>
+    <div class="map-tile dark">
+      <div class="popup dark" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v4" title="Add as place"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- --- V5: Secondary icon square (matches action bar) -------- -->
+<div class="row">
+  <div class="card-wrap">
+    <div class="card-label">V5 - Secondary Square</div>
+    <div class="card-desc">Mirrors the share/edit action buttons: bordered, neutral, blends in. Doesn't steal focus from the primary CTA. Hover darkens border.</div>
+    <div class="map-tile light">
+      <div class="popup" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v5" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wrap">
+    <div class="card-label">V5 - Dark</div>
+    <div class="map-tile dark">
+      <div class="popup dark" style="width: 248px;">
+        <div class="popup-inner">
+          <div class="popup-hdr">
+            <span class="popup-icon" style="color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+            <span class="popup-badge" style="background: var(--accent-soft); color: var(--accent);">Searched Location</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="popup-addr" style="flex: 1;">Hameentie 12, Helsinki</div>
+            <button class="add-btn-base add-v5" title="Add as place"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="popup-actions">
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 014-4h12"/></svg></button>
+            <button class="btn btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="btn btn-danger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div class="popup-fav"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="footer">All variations share the same Eid popup DNA: flat surface, padded inner container, vertical flow, badge header row, and the original popup action buttons.<br>
+Pick a <strong>button variation</strong> (V1-V5) and I'll implement it.</p>
 
 </body>
 </html>

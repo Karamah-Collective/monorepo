@@ -15,6 +15,8 @@ what you like, what you've decided, and how you want things done.
 - Popup redesign direction should stay flat and modern, not glassy, blurry, or heavily dimensional.
 - One primary CTA per screen/card. Secondary actions use outline or pill variants.
 - Template-first: every visual pattern should exist as a reusable class in `design-tokens.css` before being used in `styles.css` or JS.
+- Popup tag chips should not include tick/cross glyph prefixes; keep labels plain text.
+- For pin popups, use the subtitle text "Dropped pin" (no "Custom location" wording).
 
 ### Architecture / Development
 - Static site only — no bundler, no SSR, no frameworks. Vanilla JS ES modules.
@@ -39,7 +41,9 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-03-17 — Popup redesign direction: Design A as the base.** User prefers the Design A popup structure for regular places, wants the existing live popup button treatment preserved, and wants note support included in A-based variants.
 - **2026-03-17 — URL shortening: compact binary over Cloudflare KV.** User explicitly rejected KV-based URL shortener — wants "free yet unlimited" with no external storage. Chose client-side binary encoding over base64-JSON. No server-side state needed.
+- **2026-03-17 — Popup redesign: badge-pill layout replaces colored header.** All popup types (places, pins, stops) now use a white/surface background with a small colored badge pill instead of a full-width colored header band. Fav star is absolute top-right. Chips are plain-text only (no icons). Address is plain text (no map pin SVG).
 
 ---
 

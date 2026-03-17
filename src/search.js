@@ -143,27 +143,27 @@ function _openPinPopup(lng, lat, kind, entry) {
   _activePinPopup = null; // set after creation below
 
   const isSearch = kind === "search";
-  const title = isSearch ? "Searched Location" : "Dropped Pin";
-  const subtitle = isSearch ? "Search result" : "Custom location";
-  const popupColor = isSearch ? "var(--accent, #1A73B8)" : "var(--accent, #1A73B8)";
+  const badgeLabel = isSearch ? "Searched Location" : "Dropped Pin";
   const saved = isPinSaved(lat, lng);
+  const _popupIconSVG = isSearch
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`;
 
   const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "260px", className: "place-popup-wrap pin-popup-wrap" })
     .setLngLat([lng, lat])
     .setHTML(`
-      <div class="pp pp--pin" style="--pc: ${popupColor}">
-        <div class="pp-head">
-          <span class="pp-type-icon">${isSearch ? _popupSearchSVG : _popupPinSVG}</span>
-          <div class="pp-title">${title}</div>
-          <div class="pp-sub">${subtitle}</div>
-          <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
-        </div>
-        <div class="pp-body">
-          <div class="pp-addr">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span class="pin-addr-text pin-addr-text--loading">Finding address…</span>
-            <button class="pp-add-place-btn btn-roundel-accent" data-lng="${lng}" data-lat="${lat}" title="Add as place" aria-label="Add as place">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+      <div class="pp pp--pin">
+        <div class="pp-inner">
+          <div class="pp-hdr">
+            <span class="pp-icon" style="color:var(--accent)">${_popupIconSVG}</span>
+            <span class="pp-badge" style="background:var(--accent-soft);color:var(--accent)">${badgeLabel}</span>
+          </div>
+          <div class="pp-addr-row">
+            <div class="pp-addr">
+              <span class="pin-addr-text pin-addr-text--loading">Finding address...</span>
+            </div>
+            <button class="pp-add-place-btn" data-lng="${lng}" data-lat="${lat}" title="Add as place" aria-label="Add as place">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
           </div>
           <div class="pp-actions">
@@ -178,6 +178,7 @@ function _openPinPopup(lng, lat, kind, entry) {
             </button>
           </div>
         </div>
+        <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
       </div>
     `)
     .addTo(map);
@@ -257,7 +258,7 @@ function _openPinPopup(lng, lat, kind, entry) {
       favBtn.innerHTML = _starSVG(nowSaved);
       showToast(nowSaved ? "Pin saved" : "Pin removed", "check");
     } else if (shrBtn) {
-      shareUrl(_buildPinShareUrl(lat, lng), title, `${title} – Halal Finder`);
+      shareUrl(_buildPinShareUrl(lat, lng), badgeLabel, `${badgeLabel} – Halal Finder`);
     } else if (rmBtn) {
       fadeAndRemovePopup(popup);
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }

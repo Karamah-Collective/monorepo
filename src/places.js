@@ -354,7 +354,7 @@ function _setupClusterLayers(geojson) {
         "mosque",      "#1FA86A",
         "prayer_room", "#00B9E4",
         "restaurant",  "#FF6319",
-        "shop",        "#8C4799",
+        "shop",        "#A855F7",
         "#1A73B8",
       ],
       "circle-radius": 7,
@@ -483,64 +483,48 @@ export function showPlacePopup(place) {
 
   const root = document.createElement("div");
   root.className = "pp";
-  root.style.setProperty("--pc", cfg.color);
 
-  const head = document.createElement("div");
-  head.className = "pp-head";
-  const _isFavHead = isFavourite(place.id);
-  const _starSVGHead = (filled) =>
-    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
-  head.innerHTML =
-    `<span class="pp-type-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>` +
-    `<div class="pp-title">${esc(place.name)}</div>` +
-    `<div class="pp-sub">${cfg.label}</div>` +
-    `<button class="pp-fav-btn${_isFavHead ? " active" : ""}" aria-label="${_isFavHead ? "Remove from saved" : "Save place"}">${_starSVGHead(_isFavHead)}</button>`;
+  const inner = document.createElement("div");
+  inner.className = "pp-inner";
 
-  const headFavBtn = head.querySelector(".pp-fav-btn");
-  headFavBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleFavourite(place.id);
-    const saved = isFavourite(place.id);
-    headFavBtn.classList.toggle("active", saved);
-    headFavBtn.setAttribute("aria-label", saved ? "Remove from saved" : "Save place");
-    headFavBtn.innerHTML = _starSVGHead(saved);
-    const listBtn = document.querySelector(`.pl-fav-btn[data-fav-id="${place.id}"]`);
-    if (listBtn) {
-      listBtn.classList.toggle("active", saved);
-      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
-    }
-    if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
-  });
-  root.appendChild(head);
+  // Header: icon + type badge
+  const hdr = document.createElement("div");
+  hdr.className = "pp-hdr";
+  hdr.innerHTML =
+    `<span class="pp-icon" style="color:${cfg.color}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
+    `<span class="pp-badge" style="background:${cfg.color}1A;color:${cfg.color}">${cfg.label}</span>`;
+  inner.appendChild(hdr);
 
-  const body = document.createElement("div");
-  body.className = "pp-body";
+  // Title
+  const title = document.createElement("div");
+  title.className = "pp-title";
+  title.textContent = place.name;
+  inner.appendChild(title);
 
+  // Address
   const addr = document.createElement("div");
   addr.className = "pp-addr";
-  addr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(place.address)}`;
-  body.appendChild(addr);
+  addr.textContent = place.address;
+  inner.appendChild(addr);
 
+  // Tags (plain text labels, no icons)
   if (typeTags.length) {
     const chips = typeTags
       .filter((tag) => place.tags?.[tag.id] !== undefined)
       .map((tag) => {
         const val = place.tags[tag.id];
         const cls = val === true ? "pp-chip-yes" : "pp-chip-no";
-        const icon = val === true
-          ? `<svg class="pp-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
-          : `<svg class="pp-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
         const label = val === true
           ? (TAG_POS_LABELS[tag.id] || tag.label)
           : (TAG_NEG_LABELS[tag.id] || tag.negLabel || tag.label);
-        return `<span class="pp-chip ${cls}">${icon}${esc(label)}</span>`;
+        return `<span class="pp-chip ${cls}">${esc(label)}</span>`;
       })
       .join("");
     if (chips) {
       const tagsEl = document.createElement("div");
       tagsEl.className = "pp-tags";
       tagsEl.innerHTML = chips;
-      body.appendChild(tagsEl);
+      inner.appendChild(tagsEl);
     }
   }
 
@@ -548,7 +532,7 @@ export function showPlacePopup(place) {
     const notes = document.createElement("div");
     notes.className = "pp-notes";
     notes.textContent = place.notes;
-    body.appendChild(notes);
+    inner.appendChild(notes);
   }
 
   const actions = document.createElement("div");
@@ -593,8 +577,32 @@ export function showPlacePopup(place) {
   actions.appendChild(dirBtn);
   actions.appendChild(shareBtn);
   actions.appendChild(editBtn);
-  body.appendChild(actions);
-  root.appendChild(body);
+  inner.appendChild(actions);
+  root.appendChild(inner);
+
+  // Fav button (absolute positioned, top-right)
+  const _isFav = isFavourite(place.id);
+  const _starSVG = (filled) =>
+    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+  const favBtn = document.createElement("button");
+  favBtn.className = `pp-fav-btn${_isFav ? " active" : ""}`;
+  favBtn.setAttribute("aria-label", _isFav ? "Remove from saved" : "Save place");
+  favBtn.innerHTML = _starSVG(_isFav);
+  favBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleFavourite(place.id);
+    const saved = isFavourite(place.id);
+    favBtn.classList.toggle("active", saved);
+    favBtn.setAttribute("aria-label", saved ? "Remove from saved" : "Save place");
+    favBtn.innerHTML = _starSVG(saved);
+    const listBtn = document.querySelector(`.pl-fav-btn[data-fav-id="${place.id}"]`);
+    if (listBtn) {
+      listBtn.classList.toggle("active", saved);
+      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    }
+    if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
+  });
+  root.appendChild(favBtn);
 
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
 
