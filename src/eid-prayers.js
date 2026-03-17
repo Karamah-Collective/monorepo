@@ -4,7 +4,7 @@
 // "EidPrayers" Google Sheet worksheet via /api/eid-prayers.
 
 import { map } from "./map-init.js";
-import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl } from "./utils.js";
+import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl, requestLocation } from "./utils.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, placeOriginMarker, reverseGeocode } from "./directions.js";
 
 let eidLocations = [];
@@ -377,23 +377,21 @@ function navigateToEid(loc) {
   document.getElementById("dir-to").value = loc.name;
   placeDestMarker(loc.lng, loc.lat);
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const originName = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        dir.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: originName };
-        document.getElementById("dir-from").value = originName;
-        placeOriginMarker(pos.coords.longitude, pos.coords.latitude);
-        updateGoButton();
-        openDirPanel();
-      },
-      () => { updateGoButton(); openDirPanel(); },
-      { timeout: 6000, maximumAge: 120000 },
-    );
-  } else {
-    updateGoButton();
-    openDirPanel();
-  }
+  requestLocation().then(
+    async (pos) => {
+      const originName = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      dir.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: originName };
+      document.getElementById("dir-from").value = originName;
+      placeOriginMarker(pos.coords.longitude, pos.coords.latitude);
+      updateGoButton();
+      openDirPanel();
+    },
+    (error) => {
+      showToast("Location is off", "loc", error.message);
+      updateGoButton();
+      openDirPanel();
+    },
+  );
 }
 
 // ── Banner ──────────────────────────────────────────────────────────────────

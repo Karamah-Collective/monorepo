@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { showToast, haversineDistance } from "./utils.js";
+import { showToast, haversineDistance, requestLocation } from "./utils.js";
 import { dir, openDirPanel, placeOriginMarker, placeDestMarker, updateGoButton, reverseGeocode, setFindingNearestMosque } from "./directions.js";
 import { placesData, activeTagFilters } from "./places.js";
 
@@ -195,13 +195,7 @@ function togglePrayerExpanded() {
 // Finds nearest mosque using device location, then sets up directions
 function findNearestMosque() {
   setFindingNearestMosque(true);
-  if (!navigator.geolocation) {
-    dismissPrayerSnack();
-    document.getElementById("places-sheet").classList.add("shut");
-    openDirPanel();
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
+  requestLocation().then(
     async (pos) => {
       const userLat = pos.coords.latitude, userLng = pos.coords.longitude;
       let mosques = placesData.filter((p) => p.type === "mosque");
@@ -234,9 +228,11 @@ function findNearestMosque() {
     },
     (error) => {
       console.error("Geolocation error:", error);
+      showToast("Location is off", "loc", error.message);
       dismissPrayerSnack();
       document.getElementById("places-sheet").classList.add("shut");
       openDirPanel();
+      setFindingNearestMosque(false);
     },
   );
 }

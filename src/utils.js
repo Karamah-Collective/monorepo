@@ -833,22 +833,18 @@ export function requestLocation({ watch = false, onPosition, onWatch } = {}) {
       return reject({ denied: false, message: "Browser doesn't support location" });
     }
 
-    // Determine permission state (not all browsers support this API)
     let permState = "unknown";
-    try {
-      const status = await navigator.permissions.query({ name: "geolocation" });
-      permState = status.state; // "granted" | "prompt" | "denied"
-    } catch { /* fallback: treat as unknown, use generous timeout */ }
+    // Start the geolocation request immediately so the browser still treats it
+    // as a direct user gesture and can show the permission prompt. Permission
+    // state is queried in parallel and only used as a hint for messaging.
+    Promise.resolve()
+      .then(() => navigator.permissions?.query?.({ name: "geolocation" }))
+      .then((status) => { if (status?.state) permState = status.state; })
+      .catch(() => {});
 
-    if (permState === "denied") {
-      return reject({ denied: true, message: "Enable it in browser settings" });
-    }
-
-    // When the browser needs to show a permission dialog, the timeout counts
-    // down while the dialog is visible. Use a generous timeout so the user
-    // has time to interact with it.
-    const needsPrompt = permState === "prompt" || permState === "unknown";
-    const firstTimeout = needsPrompt ? 60000 : 10000;
+    // A generous first timeout avoids firing while the browser permission
+    // dialog is still open when the state is "ask" / "prompt".
+    const firstTimeout = 60000;
     const retryTimeout = 15000;
     let retried = false;
 
@@ -871,11 +867,14 @@ export function requestLocation({ watch = false, onPosition, onWatch } = {}) {
     }
 
     function onError(err) {
-      // PERMISSION_DENIED (1) — user denied at the dialog
+      // PERMISSION_DENIED (1) — either blocked in settings or denied at prompt.
       if (err && err.code === 1) {
         return reject({ denied: true, message: "Enable it in browser settings" });
       }
-      // POSITION_UNAVAILABLE (2) / TIMEOUT (3) — retry once with low accuracy
+      if (permState === "denied") {
+        return reject({ denied: true, message: "Enable it in browser settings" });
+      }
+      // POSITION_UNAVAILABLE (2) / TIMEOUT (3) — retry once with low accuracy.
       if (!retried) {
         retried = true;
         return retry(onFinalError);
@@ -889,12 +888,12 @@ export function requestLocation({ watch = false, onPosition, onWatch } = {}) {
 
     if (watch) {
       const id = navigator.geolocation.watchPosition(onPosition || onSuccess, onError, {
-        enableHighAccuracy: !needsPrompt, timeout: firstTimeout,
+        enableHighAccuracy: true, timeout: firstTimeout,
       });
       if (onWatch) onWatch(id);
     } else {
       navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-        enableHighAccuracy: !needsPrompt, timeout: firstTimeout,
+        enableHighAccuracy: true, timeout: firstTimeout,
       });
     }
   });
