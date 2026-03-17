@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, encryptToken, decryptToken, _decodeLegacyToken, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
@@ -573,14 +573,7 @@ export function showPlacePopup(place) {
   function doShare(e) {
     e.preventDefault();
     e.stopPropagation();
-    const url = buildShareUrl(place);
-    if (navigator.share) {
-      navigator.share({ title: place.name, text: `${place.name} – Halal Finder Helsinki`, url })
-        .catch((err) => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-    } else {
-      copyToClipboard(url);
-      showToast("Link copied");
-    }
+    shareUrl(buildShareUrl(place), place.name, `${place.name} – Halal Finder Helsinki`);
   }
   shareBtn.addEventListener("click", doShare);
 
@@ -638,9 +631,21 @@ export function checkShareUrl() {
   // Always check query params (they work alongside hash-based links)
   const params = new URLSearchParams(location.search);
 
-  // ?r=<base64> — encoded shared route link
+  // ?r=<token> — route link (compact binary or legacy base64-JSON)
   const routeToken = params.get("r");
   if (routeToken) {
+    // Try compact binary first (byte 0 != '{'), then legacy JSON
+    const cr = decodeCompactRoute(routeToken);
+    if (cr) {
+      history.replaceState(null, "", location.pathname);
+      loadSharedRoute({
+        olat: cr.olat, olng: cr.olng, oname: cr.oname || null,
+        dlat: cr.dlat, dlng: cr.dlng, dname: cr.dname || null,
+        mode: cr.mode, tmode: cr.tmode || null,
+        tdate: cr.tdate || null, ttime: cr.ttime || null,
+      });
+      return;
+    }
     try {
       const padded = routeToken.replace(/-/g, "+").replace(/_/g, "/");
       const payload = JSON.parse(atob(padded));
@@ -681,6 +686,21 @@ export function checkShareUrl() {
     }
   }
 
+  // ?p=<token> — compact pin/stop link
+  const pinToken = params.get("p");
+  if (pinToken) {
+    const cp = decodeCompactPin(pinToken);
+    if (cp && !isNaN(cp.lat) && !isNaN(cp.lng) && isInsideFinland(cp.lat, cp.lng)) {
+      map.flyTo({ center: [cp.lng, cp.lat], zoom: cp.zoom, speed: 1.4 });
+      map.once("moveend", () => {
+        const eventName = cp.isStop ? "hf:open-stop" : "hf:show-search-marker";
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: cp.lng, lat: cp.lat, openPopup: true } }));
+      });
+      history.replaceState(null, "", location.pathname);
+      return;
+    }
+  }
+
   // ?place=<id> — shared place link (new format)
   const qPlaceId = params.get("place");
   if (qPlaceId) {
@@ -704,7 +724,7 @@ export function checkShareUrl() {
       map.flyTo({ center: [lo, la], zoom: z, speed: 1.4 });
       map.once("moveend", () => {
         const eventName = isStop ? "hf:open-stop" : "hf:show-search-marker";
-        window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: lo, lat: la } }));
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: lo, lat: la, openPopup: true } }));
       });
     }
     history.replaceState(null, "", location.pathname);

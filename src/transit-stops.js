@@ -1,17 +1,14 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, DT_API_KEY } from "./config.js";
 import { TRANSIT_COLORS, modeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, startPick } from "./directions.js";
 
 const _starSVG = (filled) =>
   `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 
 function _buildStopShareUrl(lat, lng, name) {
-  const z = map.getZoom().toFixed(1);
-  let url = `${location.origin}${location.pathname}?lat=${(+lat).toFixed(4)}&lng=${(+lng).toFixed(4)}&z=${z}&type=stop`;
-  if (name) url += `&name=${encodeURIComponent(name)}`;
-  return url;
+  return `${location.origin}${location.pathname}?p=${encodeCompactPin(+lat, +lng, map.getZoom(), true, name)}`;
 }
 
 let _stopPopupId = 0;
@@ -119,14 +116,7 @@ function _openStopFeaturePopup(f) {
       openDirPanel();
       if (!dir.dest) startPick("to");
     } else if (shrBtn) {
-      const url = _buildStopShareUrl(lat, lng, displayName);
-      if (navigator.share) {
-        navigator.share({ title: displayName, text: `${displayName} – Halal Finder`, url })
-          .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-      } else {
-        copyToClipboard(url);
-        showToast("Link copied");
-      }
+      shareUrl(_buildStopShareUrl(lat, lng, displayName), displayName, `${displayName} – Halal Finder`);
     } else if (clsBtn) {
       fadeAndRemovePopup(popup);
     }

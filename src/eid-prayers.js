@@ -4,7 +4,7 @@
 // "EidPrayers" Google Sheet worksheet via /api/eid-prayers.
 
 import { map } from "./map-init.js";
-import { esc, fadeAndRemovePopup, showToast, copyToClipboard } from "./utils.js";
+import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl } from "./utils.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, placeOriginMarker, reverseGeocode } from "./directions.js";
 
 let eidLocations = [];
@@ -58,6 +58,28 @@ function _filterEidData(data) {
   return filtered;
 }
 
+// Checks user URL for ?eid= and opens the matching popup if found.
+let _eidShareHandled = false;
+function _checkEidShareUrl() {
+  if (_eidShareHandled) return;
+  const urlParams = new URLSearchParams(location.search);
+  const eidId = urlParams.get("eid");
+  if (!eidId) return;
+
+  // New format: ?eid=<id>  |  Legacy: ?eid=1&name=...
+  let loc;
+  if (eidId === "1") {
+    const sharedName = decodeURIComponent(urlParams.get("name") || "").trim().toLowerCase();
+    loc = sharedName && eidLocations.find(l => l.name.trim().toLowerCase() === sharedName);
+  } else {
+    loc = eidLocations.find(l => l.id === eidId);
+  }
+  if (loc) {
+    _eidShareHandled = true;
+    setTimeout(() => showEidPopup(loc), 500);
+  }
+}
+
 function _initWithData(data) {
   const filtered = _filterEidData(data);
   if (!filtered.length) return false;
@@ -66,13 +88,15 @@ function _initWithData(data) {
   addEidMarkers();
   setupEidPanel();
 
-  // If page was opened via a shared Eid prayer link, open that popup
-  const urlParams = new URLSearchParams(location.search);
-  if (urlParams.get("eid") === "1") {
-    const sharedName = decodeURIComponent(urlParams.get("name") || "").trim().toLowerCase();
-    const loc = sharedName && eidLocations.find(l => l.name.trim().toLowerCase() === sharedName);
-    if (loc) { setTimeout(() => showEidPopup(loc), 500); }
-  }
+  _checkEidShareUrl();
+
+  // Listen for deferred open from checkShareUrl()
+  window.addEventListener("hf:open-eid", (ev) => {
+    const { id } = ev.detail;
+    if (!id) return;
+    const loc = eidLocations.find(l => l.id === id);
+    if (loc) showEidPopup(loc);
+  });
 
   showEidBanner();
   return true;
@@ -101,6 +125,7 @@ export async function initEidPrayers() {
       eidLocations = filtered;
       addEidMarkers();
       _renderEidList();
+      _checkEidShareUrl();
       // Update banner count if it's still visible
       const sub = document.querySelector("#eid-banner .snack-sub");
       if (sub) {
@@ -315,14 +340,8 @@ function showEidPopup(loc) {
   dirBtn.addEventListener("click", (e) => { e.stopPropagation(); navigateToEid(loc); });
   shareBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const url = `${location.origin}${location.pathname}?eid=1&name=${encodeURIComponent(loc.name)}#15/${loc.lat}/${loc.lng}`;
-    if (navigator.share) {
-      navigator.share({ title: loc.name, text: `${loc.name} \u2013 Eid Prayer`, url })
-        .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-    } else {
-      copyToClipboard(url);
-      showToast("Link copied");
-    }
+    const url = `${location.origin}${location.pathname}?eid=${encodeURIComponent(loc.id)}`;
+    shareUrl(url, loc.name, `${loc.name} \u2013 Eid Prayer`);
   });
   closeBtn.addEventListener("click", (e) => { e.stopPropagation(); fadeAndRemovePopup(popup); });
 

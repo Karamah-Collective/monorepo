@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, copyToClipboard, showToast, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -184,40 +184,27 @@ dirClearBtn.addEventListener("click", () => {
   dirSnap.remeasure();
 });
 
-function _routeB64(str) {
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-
 function _buildRouteShareUrl() {
   if (!dir.origin || !dir.dest) return null;
-  const payload = {
-    o: [dir.origin.lat.toFixed(5), dir.origin.lng.toFixed(5)],
-    d: [dir.dest.lat.toFixed(5), dir.dest.lng.toFixed(5)],
-    m: dirTravelMode,
-  };
-  if (dir.origin.name) payload.on = dir.origin.name.slice(0, 80);
-  if (dir.dest.name) payload.dn = dir.dest.name.slice(0, 80);
-  if (dirTravelMode === "transit") {
-    payload.tm = dirTimeMode;
-    if (!dirUseNow) {
-      payload.td = getDateValue();
-      payload.tt = getTimeValue();
-    }
-  }
-  return `${location.origin}${location.pathname}?r=${_routeB64(JSON.stringify(payload))}`;
+  const hasTime = dirTravelMode === "transit" && !dirUseNow;
+  const token = encodeCompactRoute({
+    olat: dir.origin.lat, olng: dir.origin.lng,
+    dlat: dir.dest.lat, dlng: dir.dest.lng,
+    mode: dirTravelMode,
+    oname: dir.origin.name ? dir.origin.name.slice(0, 60) : "",
+    dname: dir.dest.name ? dir.dest.name.slice(0, 60) : "",
+    tmode: dirTimeMode,
+    tdate: hasTime ? getDateValue() : null,
+    ttime: hasTime ? getTimeValue() : null,
+  });
+  return `${location.origin}${location.pathname}?r=${token}`;
 }
 
 dirShareBtn.addEventListener("click", () => {
   const url = _buildRouteShareUrl();
   if (!url) return;
   const title = `${dir.origin?.name || "Origin"} → ${dir.dest?.name || "Destination"}`;
-  if (navigator.share) {
-    navigator.share({ title, text: `${title} – Halal Finder`, url })
-      .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-  } else {
-    copyToClipboard(url);
-    showToast("Link copied");
-  }
+  shareUrl(url, title, `${title} – Halal Finder`);
 });
 
 export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime }) {

@@ -695,3 +695,126 @@ export function _decodeLegacyToken(token) {
 export function buildShareUrl(place) {
   return `${location.origin}${location.pathname}?place=${encodeURIComponent(place.id)}`;
 }
+
+// ─── Unified share helper ───────────────────────────────────────────────────
+
+export async function shareUrl(fullUrl, title, text) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url: fullUrl });
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    }
+  }
+  copyToClipboard(fullUrl);
+  showToast("Link copied");
+}
+
+// ─── Compact share URL encoding ────────────────────────────────────────────
+// Packs share data into tight binary → base64url. ~50% shorter than JSON.
+// Old URL formats (?r=base64-JSON, ?lat=&lng=, ?eid=) still parse for
+// backward compat — new shares just generate the compact form.
+
+const _C_LAT_BASE = 58;
+const _C_LNG_BASE = 19;
+const _C_SCALE = 5000; // uint16 covers 58–71° lat, 19–32° lng (~22 m precision)
+const _DATE_EPOCH = Date.UTC(2024, 0, 1);
+const _ROUTE_MODES = ["drive", "transit", "cycle", "walk"];
+
+function _toU16(v) { const u = Math.round(v) & 0xffff; return [u >> 8, u & 0xff]; }
+function _fromU16(h, l) { return (h << 8) | l; }
+function _encLat(lat) { return _toU16((lat - _C_LAT_BASE) * _C_SCALE); }
+function _encLng(lng) { return _toU16((lng - _C_LNG_BASE) * _C_SCALE); }
+function _decLat(h, l) { return _C_LAT_BASE + _fromU16(h, l) / _C_SCALE; }
+function _decLng(h, l) { return _C_LNG_BASE + _fromU16(h, l) / _C_SCALE; }
+
+function _pushStr(buf, str) {
+  const enc = new TextEncoder().encode(str.slice(0, 60));
+  buf.push(enc.length);
+  for (const b of enc) buf.push(b);
+}
+function _pullStr(buf, off) {
+  const len = buf[off];
+  return { s: new TextDecoder().decode(new Uint8Array(buf.slice(off + 1, off + 1 + len))), n: off + 1 + len };
+}
+function _b64e(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function _b64d(tok) {
+  const b = tok.replace(/-/g, "+").replace(/_/g, "/");
+  const p = b.length % 4;
+  return Array.from(atob(p ? b + "=".repeat(4 - p) : b), (c) => c.charCodeAt(0));
+}
+
+// ── Route compact: ?r=<token>  (byte 0 = 0x01 distinguishes from legacy JSON whose byte 0 = '{')
+export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime }) {
+  const buf = [0x01];
+  const m = _ROUTE_MODES.indexOf(mode) & 3;
+  const tm = tmode === "arrive" ? 1 : 0;
+  const ht = !!(tdate && ttime);
+  const ho = !!oname;
+  const hd = !!dname;
+  buf.push(m | (tm << 2) | (ht ? 8 : 0) | (ho ? 16 : 0) | (hd ? 32 : 0));
+  buf.push(..._encLat(olat), ..._encLng(olng));
+  buf.push(..._encLat(dlat), ..._encLng(dlng));
+  if (ht) {
+    const days = Math.round((new Date(tdate + "T00:00:00").getTime() - _DATE_EPOCH) / 86400000);
+    buf.push(..._toU16(days));
+    const [h, mi] = ttime.split(":").map(Number);
+    buf.push(h * 4 + Math.round(mi / 15));
+  }
+  if (ho) _pushStr(buf, oname);
+  if (hd) _pushStr(buf, dname);
+  return _b64e(buf);
+}
+
+export function decodeCompactRoute(token) {
+  try {
+    const b = _b64d(token);
+    if (b[0] !== 0x01) return null;
+    const f = b[1];
+    const mode = _ROUTE_MODES[f & 3];
+    const tmode = (f >> 2) & 1 ? "arrive" : "depart";
+    const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32);
+    const olat = _decLat(b[2], b[3]), olng = _decLng(b[4], b[5]);
+    const dlat = _decLat(b[6], b[7]), dlng = _decLng(b[8], b[9]);
+    let off = 10, tdate, ttime;
+    if (ht) {
+      const days = _fromU16(b[off], b[off + 1]);
+      const d = new Date(_DATE_EPOCH + days * 86400000);
+      tdate = d.toISOString().slice(0, 10);
+      const qh = b[off + 2];
+      ttime = `${String(Math.floor(qh / 4)).padStart(2, "0")}:${String((qh % 4) * 15).padStart(2, "0")}`;
+      off += 3;
+    }
+    let oname = "";
+    if (ho) { const r = _pullStr(b, off); oname = r.s; off = r.n; }
+    let dname = "";
+    if (hd) { const r = _pullStr(b, off); dname = r.s; off = r.n; }
+    return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime };
+  } catch { return null; }
+}
+
+// ── Pin / Stop compact: ?p=<token>
+export function encodeCompactPin(lat, lng, zoom, isStop, name) {
+  const buf = [isStop ? 0x03 : 0x02];
+  buf.push(Math.round(zoom * 10));
+  buf.push(..._encLat(lat), ..._encLng(lng));
+  if (isStop && name) _pushStr(buf, name);
+  return _b64e(buf);
+}
+
+export function decodeCompactPin(token) {
+  try {
+    const b = _b64d(token);
+    if (b[0] !== 0x02 && b[0] !== 0x03) return null;
+    const isStop = b[0] === 0x03;
+    const zoom = b[1] / 10;
+    const lat = _decLat(b[2], b[3]);
+    const lng = _decLng(b[4], b[5]);
+    let name = "";
+    if (isStop && b.length > 6) { name = _pullStr(b, 6).s; }
+    return { lat, lng, zoom, isStop, name };
+  } catch { return null; }
+}

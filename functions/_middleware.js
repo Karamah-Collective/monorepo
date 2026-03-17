@@ -26,6 +26,56 @@ const PLACE_TYPES = {
   shop:        'Halal Shop',
 };
 
+// ── Compact share token decoders (mirrors utils.js encoding) ─────────────────
+const _GEO_LAT_BASE = 58, _GEO_LNG_BASE = 19, _GEO_SCALE = 5000;
+const _DATE_EPOCH = Date.UTC(2024, 0, 1);
+const _ROUTE_MODES = ['drive', 'transit', 'cycle', 'walk'];
+
+function _b64d(tok) {
+  const b = tok.replace(/-/g, '+').replace(/_/g, '/');
+  const p = b.length % 4;
+  const raw = atob(p ? b + '='.repeat(4 - p) : b);
+  return Array.from(raw, c => c.charCodeAt(0));
+}
+function _u16(h, l) { return (h << 8) | l; }
+function _lat(h, l) { return _GEO_LAT_BASE + _u16(h, l) / _GEO_SCALE; }
+function _lng(h, l) { return _GEO_LNG_BASE + _u16(h, l) / _GEO_SCALE; }
+function _str(b, off) {
+  const len = b[off];
+  const bytes = b.slice(off + 1, off + 1 + len);
+  return { s: new TextDecoder().decode(new Uint8Array(bytes)), n: off + 1 + len };
+}
+
+function _decodeCompactRoute(token) {
+  try {
+    const b = _b64d(token);
+    if (b[0] !== 0x01) return null;
+    const f = b[1];
+    const mode = _ROUTE_MODES[f & 3];
+    const ho = !!(f & 16), hd = !!(f & 32);
+    let off = 10;
+    if (f & 8) off += 3; // skip time data
+    let oname = '';
+    if (ho) { const r = _str(b, off); oname = r.s; off = r.n; }
+    let dname = '';
+    if (hd) { const r = _str(b, off); dname = r.s; off = r.n; }
+    return { oname, dname, mode };
+  } catch { return null; }
+}
+
+function _decodeCompactPin(token) {
+  try {
+    const b = _b64d(token);
+    if (b[0] !== 0x02 && b[0] !== 0x03) return null;
+    const isStop = b[0] === 0x03;
+    const lat = _lat(b[2], b[3]);
+    const lng = _lng(b[4], b[5]);
+    let name = '';
+    if (isStop && b.length > 6) { name = _str(b, 6).s; }
+    return { lat, lng, isStop, name };
+  } catch { return null; }
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
 
@@ -51,9 +101,11 @@ export async function onRequest(context) {
   const routeToken = url.searchParams.get('r');
   const isLegacyRoute = url.searchParams.get('route') === '1';
   const isRoute = !!(routeToken || isLegacyRoute);
-  const isEid = url.searchParams.get('eid') === '1';
+  const eidParam = url.searchParams.get('eid');
+  const isEid = !!eidParam;
+  const pinToken = url.searchParams.get('p');
 
-  if ((!placeId && !lat && !isRoute && !isEid) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
+  if ((!placeId && !lat && !isRoute && !isEid && !pinToken) || (url.pathname !== '/' && url.pathname !== '/index.html')) {
     return context.next();
   }
 
@@ -61,8 +113,20 @@ export async function onRequest(context) {
   let ogDescription = null;
 
   if (isEid) {
-    const rawName = url.searchParams.get('name');
-    const name = rawName ? rawName.slice(0, 100) : null;
+    let name = null;
+    if (eidParam === '1') {
+      // Legacy: ?eid=1&name=...
+      const rawName = url.searchParams.get('name');
+      name = rawName ? rawName.slice(0, 100) : null;
+    } else {
+      // New: ?eid=<id> — resolve name from data
+      try {
+        const res = await context.env.ASSETS.fetch(new URL('/data/eid-prayers.json', url.origin));
+        const locs = await res.json();
+        const loc = locs.find(l => l.id === eidParam);
+        if (loc) name = loc.name.slice(0, 100);
+      } catch { /* fall through */ }
+    }
     ogTitle = `✨ Eid Mubarak! — ${name ? `${name} Eid Prayer` : 'Eid Prayer Location'}`;
     ogDescription = name
       ? `Join ${name} for Eid prayer. Find times, location, and directions on Halal Finder Helsinki.`
@@ -70,13 +134,21 @@ export async function onRequest(context) {
   } else if (isRoute) {
     let oname = '', dname = '', mode = 'transit';
     if (routeToken) {
-      try {
-        const padded = routeToken.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(padded));
-        oname = (payload.on || '').slice(0, 100);
-        dname = (payload.dn || '').slice(0, 100);
-        mode = payload.m || 'transit';
-      } catch { /* ignore malformed token */ }
+      // Try compact binary first, then legacy JSON
+      const cr = _decodeCompactRoute(routeToken);
+      if (cr) {
+        oname = (cr.oname || '').slice(0, 100);
+        dname = (cr.dname || '').slice(0, 100);
+        mode = cr.mode || 'transit';
+      } else {
+        try {
+          const padded = routeToken.replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(atob(padded));
+          oname = (payload.on || '').slice(0, 100);
+          dname = (payload.dn || '').slice(0, 100);
+          mode = payload.m || 'transit';
+        } catch { /* ignore malformed token */ }
+      }
     } else {
       oname = (url.searchParams.get('on') || '').slice(0, 100);
       dname = (url.searchParams.get('dn') || '').slice(0, 100);
@@ -99,7 +171,22 @@ export async function onRequest(context) {
         ogDescription = `${typeLabel} at ${place.address}`;
       }
     } catch { /* fall through to default tags */ }
+  } else if (pinToken) {
+    // Compact pin/stop link: ?p=<token>
+    const cp = _decodeCompactPin(pinToken);
+    if (cp) {
+      const name = cp.name ? cp.name.slice(0, 100) : null;
+      if (cp.isStop && name) {
+        ogTitle = `${name} — Halal Finder Helsinki`;
+        ogDescription = 'Transit stop shared via Halal Finder Helsinki';
+      } else {
+        ogTitle = 'Shared Location — Halal Finder Helsinki';
+        ogDescription = name ? `${name} — shared via Halal Finder Helsinki`
+          : `Location at ${cp.lat.toFixed(4)}, ${cp.lng.toFixed(4)}`;
+      }
+    }
   } else if (lat && lng) {
+    // Legacy pin/stop link: ?lat=&lng=
     const rawName = url.searchParams.get('name');
     // Limit name length to prevent abuse
     const name = rawName ? rawName.slice(0, 100) : null;

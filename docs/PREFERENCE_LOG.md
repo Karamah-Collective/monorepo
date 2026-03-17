@@ -12,6 +12,7 @@ what you like, what you've decided, and how you want things done.
 ### Visual / Design
 - Rendering HTML with `Array.map()` into `innerHTML` must use `.join("")` — commas between elements are never acceptable.
 - Design should feel flat and minimal — very subtle shadows only (`--shadow-sm/md/lg`).
+- Popup redesign direction should stay flat and modern, not glassy, blurry, or heavily dimensional.
 - One primary CTA per screen/card. Secondary actions use outline or pill variants.
 - Template-first: every visual pattern should exist as a reusable class in `design-tokens.css` before being used in `styles.css` or JS.
 
@@ -38,6 +39,8 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-03-17 — URL shortening: compact binary over Cloudflare KV.** User explicitly rejected KV-based URL shortener — wants "free yet unlimited" with no external storage. Chose client-side binary encoding over base64-JSON. No server-side state needed.
+
 ---
 
 ## Patterns to Avoid
@@ -45,6 +48,8 @@ what you like, what you've decided, and how you want things done.
 > Things that were tried and rejected, or that the user has explicitly said "don't do."
 
 <!-- Append new entries below this line -->
+
+- Don't use Cloudflare KV or any paid/tiered storage for link shortening. Keep sharing fully stateless.
 
 ---
 
@@ -76,3 +81,11 @@ what you like, what you've decided, and how you want things done.
 - Replaced ambiguous "tap to view" banner (confused with multiple locations) with a panel overlay listing all locations.
 - Added gold-accented Eid pill button (top-left, near prayer snack) that opens the Eid panel overlay.
 - Pattern: banner toast → opens panel; location card in panel → flies to map + opens popup.
+
+### 2026-03-17 — Compact Share URL Encoding
+- Replaced verbose JSON base64 / query-param share URLs with compact binary encoding (uint16 coords, packed flags).
+- Route URLs reduced ~64% (246 → 89 chars with names). Pin/stop/eid URLs reduced ~20-30%.
+- Format: `?r=` (routes, compact binary vs legacy JSON auto-detected), `?p=` (pins/stops), `?e=` (eid).
+- Full backward compat: old `?r=`(JSON), `?lat=&lng=`, `?eid=`, `?route=1`, `?p=`(encrypted) all still parse.
+- Middleware updated for OG tag generation from compact tokens.
+- No server-side storage — everything is encoded in the URL itself.

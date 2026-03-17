@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
-import { esc, copyToClipboard, showToast, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker } from "./utils.js";
+import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, showPlacePopup } from "./places.js";
@@ -8,10 +8,9 @@ import { placesData, showPlacePopup } from "./places.js";
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
 // Allow places.js to call showDroppedPin without a direct import (breaks circular dep)
-window.addEventListener("hf:show-search-marker", (e) => { showDroppedPin(e.detail.lng, e.detail.lat); });
+window.addEventListener("hf:show-search-marker", (e) => { showDroppedPin(e.detail.lng, e.detail.lat, e.detail.openPopup); });
 function _buildPinShareUrl(lat, lng) {
-  const z = map.getZoom().toFixed(1);
-  return `${location.origin}${location.pathname}?lat=${(+lat).toFixed(4)}&lng=${(+lng).toFixed(4)}&z=${z}`;
+  return `${location.origin}${location.pathname}?p=${encodeCompactPin(+lat, +lng, map.getZoom(), false)}`;
 }
 const _starSVG = (filled) =>
   `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
@@ -92,7 +91,7 @@ export function clearSearchMarker() {
 // ─── Multiple dropped-pin markers (custom pins) ────────────────────────────────
 let _droppedPins = []; // [{marker, popup, lat, lng, addrCache}]
 
-export function showDroppedPin(lng, lat) {
+export function showDroppedPin(lng, lat, openPopup) {
   if (!isInsideFinland(lat, lng)) return;  // only allow pins inside Finland
   // If a pin already exists at these exact coordinates, just re-open its popup
   // instead of stacking a duplicate — this happens when re-opening saved pins.
@@ -107,6 +106,9 @@ export function showDroppedPin(lng, lat) {
   _droppedPins.push(entry);
 
   reverseGeocode(lat, lng).then(n => { entry.addrCache = n || ""; }).catch(() => { entry.addrCache = ""; });
+
+  // Auto-open popup when arriving from a shared link
+  if (openPopup) _openPinPopup(lng, lat, "custom", entry);
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -255,14 +257,7 @@ function _openPinPopup(lng, lat, kind, entry) {
       favBtn.innerHTML = _starSVG(nowSaved);
       showToast(nowSaved ? "Pin saved" : "Pin removed", "check");
     } else if (shrBtn) {
-      const url = _buildPinShareUrl(lat, lng);
-      if (navigator.share) {
-        navigator.share({ title, text: `${title} – Halal Finder`, url })
-          .catch(err => { if (err?.name !== "AbortError") { copyToClipboard(url); showToast("Link copied"); } });
-      } else {
-        copyToClipboard(url);
-        showToast("Link copied");
-      }
+      shareUrl(_buildPinShareUrl(lat, lng), title, `${title} – Halal Finder`);
     } else if (rmBtn) {
       fadeAndRemovePopup(popup);
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
