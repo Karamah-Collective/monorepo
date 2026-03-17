@@ -1110,6 +1110,35 @@ body {
   line-height: 1.4;
 }
 
+/* ── Chip (display badge, non-interactive) ─────────────────────────────────── */
+/* Set --chip-c to control the tint. .chip-yes / .chip-no are semantic aliases. */
+/* .pp-chip and .sp-chip are component aliases — add new ones here, don't copy.  */
+.chip,
+.pp-chip,
+.sp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  color: var(--chip-c, var(--accent));
+  background: color-mix(in srgb, var(--chip-c, var(--accent)) 14%, transparent);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.chip-yes,
+.pp-chip-yes {
+  --chip-c: var(--success);
+}
+
+.chip-no,
+.pp-chip-no {
+  --chip-c: var(--danger);
+}
+
 /* ── Eid location card (panel list item) ─── */
 .eid-loc-card {
   display: flex;

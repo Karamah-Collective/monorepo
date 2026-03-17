@@ -2020,24 +2020,7 @@ body.dark-mode .sort-opt:disabled {
   flex-wrap: wrap;
   gap: var(--sp-1);
 }
-.pp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
-  border-radius: var(--r-pill);
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
-  white-space: nowrap;
-}
-.pp-chip-yes {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.pp-chip-no {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
+/* .pp-chip, .pp-chip-yes, .pp-chip-no → see .chip template in design-tokens.css */
 
 .pp-notes {
   font-size: var(--txt-sm);
@@ -4447,14 +4430,10 @@ body.dark-mode #route-snackbar {
   text-overflow: ellipsis;
 }
 .sp-code {
-  padding: 2px 6px;
-  border-radius: var(--r-2xs);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.3px;
-  line-height: 1;
-  background: var(--surface-2);
   color: var(--text-2);
+  opacity: 0.75;
 }
 
 .sp-routes {
@@ -4507,32 +4486,13 @@ body.dark-mode #route-snackbar {
   padding: 0;
 }
 
+/* Route chip — bridges --rc (per-route color) into the shared --chip-c token */
 .sp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: var(--r-xs);
-  font-size: var(--txt-sm);
-  font-weight: var(--fw-bold);
-  color: #fff;
-  background: var(--rc, var(--accent));
-  letter-spacing: 0.15px;
-  cursor: default;
-  white-space: nowrap;
-  transition: filter 0.15s;
-}
-@media (hover: hover) {
-  .sp-chip:hover {
-    filter: brightness(1.12);
-  }
+  --chip-c: var(--rc, var(--accent));
 }
 .sp-chip small {
   font-weight: var(--fw-semibold);
-  font-size: var(--txt-xs);
-  color: #fff;
-  opacity: 0.82;
+  opacity: 0.75;
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
