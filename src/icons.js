@@ -1,11 +1,18 @@
 // SVG icons, place/transit type configs, and marker HTML builders
 
+const PURPLE_LIGHT = "#8C4799";
+const PURPLE_DARK = "#E896E3";
+
+export function getThemeRailShopPurple() {
+  return document.body.classList.contains("dark-mode") ? PURPLE_DARK : PURPLE_LIGHT;
+}
+
 export const TRANSIT_COLORS = {
   bus: "#1A73B8",
   trunk: "#FF6319",
   tram: "#1FA86A",
   metro: "#FF6319",
-  train: "#8C4799",
+  train: PURPLE_LIGHT,
   ferry: "#00B9E4",
   foli_bus: "#008161", // Föli trunk-network teal (Turku/Föli region bus stops)
 };
@@ -28,7 +35,7 @@ export const PLACE_CONFIG = {
   },
   shop: {
     label: "Shop",
-    color: "#A855F7",
+    color: PURPLE_LIGHT,
     icon: '<path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/>',
   },
 };

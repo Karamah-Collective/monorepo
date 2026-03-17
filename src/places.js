@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
+import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
@@ -354,7 +354,7 @@ function _setupClusterLayers(geojson) {
         "mosque",      "#1FA86A",
         "prayer_room", "#00B9E4",
         "restaurant",  "#FF6319",
-        "shop",        "#A855F7",
+        "shop",        getThemeRailShopPurple(),
         "#1A73B8",
       ],
       "circle-radius": 7,
@@ -479,6 +479,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 export function showPlacePopup(place) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
+  const cfgColor = place.type === "shop" ? "var(--hsl-rail)" : cfg.color;
   const typeTags = getDisplayTags(place.type);
 
   const root = document.createElement("div");
@@ -491,8 +492,8 @@ export function showPlacePopup(place) {
   const hdr = document.createElement("div");
   hdr.className = "pp-hdr";
   hdr.innerHTML =
-    `<span class="pp-icon" style="color:${cfg.color}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
-    `<span class="pp-badge" style="background:${cfg.color}1A;color:${cfg.color}">${cfg.label}</span>`;
+    `<span class="pp-icon" style="color:${cfgColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
+    `<span class="pp-badge" style="background:color-mix(in srgb, ${cfgColor} 12%, transparent);color:${cfgColor}">${cfg.label}</span>`;
   inner.appendChild(hdr);
 
   // Title

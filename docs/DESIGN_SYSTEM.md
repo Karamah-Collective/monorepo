@@ -59,7 +59,7 @@ Used for leg badges and route chips. Match HSL operator brand colours exactly.
 | `--hsl-bus` | `#1A73B8` | Bus |
 | `--hsl-trunk` | `#FF6319` | Trunk / Metro |
 | `--hsl-tram` | `#1FA86A` | Tram |
-| `--hsl-rail` | `#8C4799` | Rail |
+| `--hsl-rail` | `#8C4799` | Rail (light mode; dark mode override in styles.css uses `#E896E3`) |
 | `--hsl-ferry` | `#00B9E4` | Ferry |
 
 ### Surface palette

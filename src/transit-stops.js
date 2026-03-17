@@ -18,8 +18,9 @@ let _activeStopPopup = null;
 
 function _openStopFeaturePopup(f) {
   const { name, type, code, region } = f.properties;
+  const themedType = type === "train" ? "var(--hsl-rail)" : TRANSIT_COLORS[type];
   const color = f.properties.dotColor ||
-    ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (TRANSIT_COLORS[type] || "#007AC9"));
+    ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (themedType || "#007AC9"));
   const lngLat = f.geometry.coordinates.slice();
   const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
   const svgIcon = modeIcon(modeKey, 14);
@@ -36,7 +37,7 @@ function _openStopFeaturePopup(f) {
           <div class="sp-inner">
             <div class="sp-hdr">
               <span class="sp-icon" style="color:${color}">${svgIcon}</span>
-              <span class="sp-badge" style="background:${color}1A;color:${color}">${typeLabel}${codeStr}</span>
+              <span class="sp-badge" style="background:color-mix(in srgb, ${color} 12%, transparent);color:${color}">${typeLabel}${codeStr}</span>
             </div>
             <div class="sp-title">${esc(displayName)}</div>
             <div class="sp-routes" id="${routesDivId}"></div>
@@ -506,7 +507,9 @@ function renderStopRoutes(divId, routes, fallbackColor) {
         ? `#${r.c}`
         : isTrunk
           ? TRANSIT_COLORS.trunk
-          : TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor;
+          : ({ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] === "train"
+            ? "var(--hsl-rail)"
+            : (TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor));
       const longText = r.l || "";
       const tipAttr = longText ? ` data-tip="${escA(longText)}"` : "";
       const num = esc(r.s || "?");

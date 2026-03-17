@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
 import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
-import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
+import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
@@ -945,7 +945,7 @@ function modeClass(m, leg) {
 function legColor(m, leg) {
   if (leg?.trip?.route?.color) return "#" + leg.trip.route.color;
   if (leg && isTrunkBus(leg)) return "#FF6319";
-  return { WALK: "#52525b", BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: "#8C4799", FERRY: "#00B9E4" }[m] || "#1A73B8";
+  return { WALK: "#52525b", BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: getThemeRailShopPurple(), FERRY: "#00B9E4" }[m] || "#1A73B8";
 }
 
 function dirModeIconSvg(mode, size = 20) {
@@ -1144,7 +1144,7 @@ async function findRoutesDirect(mode) {
   map.addLayer({
     id: "dir-direct-ln", type: "line", source: "dir-direct-src",
     paint: {
-      "line-color": stepFeatures?.length ? ["case", ["==", ["get", "segType"], "roundabout"], "#8C4799", ["==", ["%", ["get", "idx"], 2], 0], color, altColor] : color,
+      "line-color": stepFeatures?.length ? ["case", ["==", ["get", "segType"], "roundabout"], getThemeRailShopPurple(), ["==", ["%", ["get", "idx"], 2], 0], color, altColor] : color,
       "line-width": mode === "walk" ? 4 : 5, "line-dasharray": mode === "walk" ? [1.5, 2] : [1], "line-opacity": 0.9,
     },
     layout: { "line-cap": "round", "line-join": "round" },

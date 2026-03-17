@@ -490,7 +490,7 @@ body.dark-mode {
   --hsl-trunk:    #ff8a50;
   --hsl-tram:     #3ee09a;
   --hsl-metro:    #ff8a50;
-  --hsl-rail:     #b07cc8;
+  --hsl-rail:     #E896E3;
   --hsl-ferry:    #40d0f0;
 }
 
@@ -2676,8 +2676,8 @@ body.dark-mode .sort-opt:disabled {
   color: var(--accent);
 }
 .step-icon-wrap.step-roundabout {
-  background: rgba(140, 71, 153, 0.12);
-  color: #8c4799;
+  background: color-mix(in srgb, var(--hsl-rail) 12%, transparent);
+  color: var(--hsl-rail);
 }
 .step-text-col {
   flex: 1;
@@ -5935,7 +5935,14 @@ body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-pop
   left: calc(16px + 44px + 8px);
   color: var(--gold);
   border-color: var(--gold-soft);
-  transition: left 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    left 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+    background var(--t-fast);
+}
+@media (hover: hover) {
+  #eid-pill:hover {
+    background: var(--surface-2);
+  }
 }
 #prayer-snack:not(.collapsed) ~ #eid-pill {
   left: calc(16px + min(80vw, 210px) + 8px);
