@@ -98,7 +98,7 @@ function _initWithData(data) {
     if (loc) showEidPopup(loc);
   });
 
-  showEidBanner();
+  _showBannerWhenReady();
   return true;
 }
 
@@ -397,6 +397,17 @@ function navigateToEid(loc) {
 }
 
 // ── Banner ──────────────────────────────────────────────────────────────────
+
+// Defer the banner until the Aladhan prayer API has finished loading
+// (success or error). On mobile, showing the banner while heavy init
+// work is still running causes touch events to be swallowed.
+function _showBannerWhenReady() {
+  let shown = false;
+  const show = () => { if (!shown) { shown = true; showEidBanner(); } };
+  window.addEventListener("hf:prayer-ready", show, { once: true });
+  // Safety: show after 8 s regardless so the banner is never lost
+  setTimeout(show, 8000);
+}
 
 function showEidBanner() {
   if (_bannerDismissed || document.getElementById("eid-banner")) return;

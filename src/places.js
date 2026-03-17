@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
@@ -105,8 +105,14 @@ function trackRecentlyViewed(id) {
 
 // User location for distance badges
 let userLocLat = null, userLocLng = null;
-function tryGetUserLocation() {
+async function tryGetUserLocation() {
   if (userLocLat !== null || !navigator.geolocation) return;
+  // Only silently grab location if already granted — don't trigger a prompt
+  // just for distance badges. The prompt should appear on explicit user actions.
+  try {
+    const perm = await navigator.permissions.query({ name: "geolocation" });
+    if (perm.state !== "granted") return;
+  } catch (_) { /* permissions API not supported — skip silent grab */ return; }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       userLocLat = pos.coords.latitude;
@@ -888,24 +894,18 @@ sortDropdown.addEventListener("click", (e) => {
   if (opt.dataset.sortField !== undefined) {
     const field = opt.dataset.sortField;
     if (field === "distance") {
-      if (!navigator.geolocation) {
-        showToast("Location not available", "loc", "Your browser doesn't support location");
-        return;
-      }
       if (userSortLat === null) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            userSortLat = pos.coords.latitude;
-            userSortLng = pos.coords.longitude;
-            userLocLat = pos.coords.latitude;
-            userLocLng = pos.coords.longitude;
-            activeSortField = "distance";
-            updateSortButton();
-            animateSheetHeight(placesSheet, () => renderPlacesList());
-          },
-          () => showToast("Location is off", "loc", "Enable location to sort by distance"),
-          { enableHighAccuracy: false, timeout: 6000 },
-        );
+        requestLocation().then((pos) => {
+          userSortLat = pos.coords.latitude;
+          userSortLng = pos.coords.longitude;
+          userLocLat = pos.coords.latitude;
+          userLocLng = pos.coords.longitude;
+          activeSortField = "distance";
+          updateSortButton();
+          animateSheetHeight(placesSheet, () => renderPlacesList());
+        }).catch((e) => {
+          showToast("Location is off", "loc", e.message);
+        });
         return;
       }
     }

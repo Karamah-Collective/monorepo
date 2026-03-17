@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
-import { showToast, showLoadingToast, hideLoadingToast } from "./utils.js";
+import { showToast, showLoadingToast, hideLoadingToast, requestLocation } from "./utils.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
 
 let locMarker = null;
@@ -74,10 +74,6 @@ function setLocateIcon(on) {
 }
 
 export function showCurrentLocation() {
-  if (!navigator.geolocation) {
-    showToast("Location not available", "loc", "Your browser doesn't support location");
-    return;
-  }
   const locBtn = document.getElementById("locate-btn");
 
   if (locWatchId !== null) {
@@ -94,33 +90,35 @@ export function showCurrentLocation() {
   showLoadingToast("Finding your location\u2026");
   let firstFix = true;
 
-  locWatchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      if (firstFix) hideLoadingToast();
-      if (!locMarker) {
-        const el = document.createElement("div");
-        el.className = "loc-marker";
-        el.innerHTML = '<div class="loc-ring"></div><div class="loc-dot"></div>';
-        locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
-      } else {
-        locMarker.setLngLat([lng, lat]);
-      }
-      if (firstFix) {
-        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
-        firstFix = false;
-      }
-    },
-    () => {
-      hideLoadingToast();
-      showToast("Location is off", "loc", "Enable location permission");
-      locBtn.classList.remove("tracking");
-      setLocateIcon(false);
-      locWatchId = null;
-      map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
-    },
-    { enableHighAccuracy: true, timeout: 8000 },
-  );
+  function onPosition(pos) {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    if (firstFix) hideLoadingToast();
+    if (!locMarker) {
+      const el = document.createElement("div");
+      el.className = "loc-marker";
+      el.innerHTML = '<div class="loc-ring"></div><div class="loc-dot"></div>';
+      locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+    } else {
+      locMarker.setLngLat([lng, lat]);
+    }
+    if (firstFix) {
+      map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+      firstFix = false;
+    }
+  }
+
+  requestLocation({
+    watch: true,
+    onPosition,
+    onWatch(id) { locWatchId = id; },
+  }).catch((e) => {
+    hideLoadingToast();
+    showToast("Location is off", "loc", e.message);
+    locBtn.classList.remove("tracking");
+    setLocateIcon(false);
+    locWatchId = null;
+    map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
+  });
 }
 
 export function setActiveTab(id) {

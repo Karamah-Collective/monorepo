@@ -243,14 +243,18 @@ function findNearestMosque() {
 
 export async function initPrayerTimes() {
   let lat = HELSINKI_LAT, lng = HELSINKI_LNG;
-  if (navigator.geolocation) {
-    try {
+  // Only use geolocation if already granted — don't trigger the browser prompt
+  // here. This preserves the prompt for explicit user actions (locate button,
+  // directions) so it appears when the user actually expects it.
+  try {
+    const perm = await navigator.permissions.query({ name: "geolocation" });
+    if (perm.state === "granted" && navigator.geolocation) {
       const pos = await new Promise((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 120000 }),
       );
       lat = pos.coords.latitude; lng = pos.coords.longitude;
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
   try {
     const data = await fetchPrayerTimes(lat, lng);
     prayerTimesToday = parsePrayerTimings(data.timings);
@@ -269,6 +273,7 @@ export async function initPrayerTimes() {
   } catch (err) {
     console.warn("[Prayer] Could not fetch prayer times:", err.message);
   }
+  window.dispatchEvent(new Event("hf:prayer-ready"));
 }
 
 // --- UI listeners ---

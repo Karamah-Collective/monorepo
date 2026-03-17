@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -519,30 +519,24 @@ export function placeDestMarker(lng, lat) {
 }
 
 document.querySelector(".dir-my-loc").addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    showToast("Location not available", "loc", "Your browser doesn't support location");
-    return;
-  }
   showLoadingToast("Finding your location\u2026");
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      hideLoadingToast();
-      const { latitude: lat, longitude: lng } = pos.coords;
-      const name = await reverseGeocode(lat, lng);
+
+  requestLocation().then((pos) => {
+    hideLoadingToast();
+    const { latitude: lat, longitude: lng } = pos.coords;
+    reverseGeocode(lat, lng).then(name => {
       dir.origin = { lat, lng, name };
       dirFrom.value = name;
       placeOriginMarker(lng, lat);
       autoSetNearestMosque(lat, lng);
       updateGoButton();
       if (!dir.dest) startPick("to");
-    },
-    () => {
-      hideLoadingToast();
-      showDirError("Location access denied");
-      showToast("Location is off", "loc", "Enable location to use this feature");
-    },
-    { enableHighAccuracy: true, timeout: 10000 },
-  );
+    });
+  }).catch((e) => {
+    hideLoadingToast();
+    showDirError("Location unavailable");
+    showToast("Location is off", "loc", e.message);
+  });
 });
 
 document.getElementById("dir-swap").addEventListener("click", () => {
