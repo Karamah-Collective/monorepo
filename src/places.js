@@ -33,6 +33,12 @@ const TAG_POS_LABELS = {
   no_alcohol: "Alcohol-free",
 };
 
+// Tags whose true-state should use an amber/warn chip instead of green.
+const WARN_TAGS = new Set(["partially_halal"]);
+
+// Expandable tag groups where only one child may be selected at a time (radio behaviour).
+const EXCLUSIVE_GROUPS = new Set(["halal_status"]);
+
 // Returns all displayable tags for a type, replacing expandable parent tags with their subtags.
 // Convention: if tagsData[type + "_" + tag.id] exists, tag is expandable.
 function getDisplayTags(type) {
@@ -479,7 +485,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 export function showPlacePopup(place) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
-  const cfgColor = place.type === "shop" ? "var(--hsl-rail)" : cfg.color;
+  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[place.type] || cfg.color;
   const typeTags = getDisplayTags(place.type);
 
   const root = document.createElement("div");
@@ -492,8 +498,8 @@ export function showPlacePopup(place) {
   const hdr = document.createElement("div");
   hdr.className = "pp-hdr";
   hdr.innerHTML =
-    `<span class="pp-icon" style="color:${cfgColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
-    `<span class="pp-badge" style="background:color-mix(in srgb, ${cfgColor} 12%, transparent);color:${cfgColor}">${cfg.label}</span>`;
+    `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
+    `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>`;
   inner.appendChild(hdr);
 
   // Title
@@ -514,7 +520,9 @@ export function showPlacePopup(place) {
       .filter((tag) => place.tags?.[tag.id] !== undefined)
       .map((tag) => {
         const val = place.tags[tag.id];
-        const cls = val === true ? "pp-chip-yes" : "pp-chip-no";
+        const cls = val === true
+          ? (WARN_TAGS.has(tag.id) ? "pp-chip-warn" : "pp-chip-yes")
+          : "pp-chip-no";
         const label = val === true
           ? (TAG_POS_LABELS[tag.id] || tag.label)
           : (TAG_NEG_LABELS[tag.id] || tag.negLabel || tag.label);
@@ -954,10 +962,10 @@ function renderTagFilterBar() {
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
-        html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
-        html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}">`;
-        html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
-        html += `</div>`;
+          html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+          html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}>`;
+          html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
+          html += `</div>`;
       } else {
         html += `<button class="tf-chip${activeTagFilters.has(it.tag.id) ? " active" : ""}" data-tag="${it.tag.id}">${esc(it.tag.label)}</button>`;
       }
@@ -1016,6 +1024,19 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
     const panel = tfChips.querySelector(`.tf-group-chips[data-group-for="${gid}"]`);
     if (panel) {
       const isOpen = !panel.classList.contains("shut");
+      // Accordion: collapse any other open group first
+      if (!isOpen) {
+        tfChips.querySelectorAll(".tf-group-chips:not(.shut)").forEach(other => {
+          if (other === panel) return;
+          other.style.maxHeight = other.scrollHeight + "px";
+          void other.offsetHeight;
+          other.classList.add("shut");
+          other.style.maxHeight = "";
+          const otherGid = other.dataset.groupFor;
+          const otherToggle = tfChips.querySelector(`.tf-group-toggle[data-group="${otherGid}"]`);
+          if (otherToggle) otherToggle.classList.remove("open");
+        });
+      }
       if (isOpen) {
         panel.style.maxHeight = panel.scrollHeight + "px";
         void panel.offsetHeight;
@@ -1031,7 +1052,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
         panel.addEventListener("transitionend", clear);
       }
       groupBtn.classList.toggle("open", !isOpen);
-      // Re-snap mobile sheet after cuisine group expand/collapse
+      // Re-snap mobile sheet after group expand/collapse
       setTimeout(() => placesSnap.remeasure(), 280);
     }
     return;
@@ -1039,10 +1060,16 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   const chip = e.target.closest(".tf-chip");
   if (!chip) return;
   const tagId = chip.dataset.tag;
+  const groupPanel = chip.closest(".tf-group-chips");
+  // Exclusive group: deselect siblings before toggling
+  if (groupPanel?.hasAttribute("data-exclusive") && !activeTagFilters.has(tagId)) {
+    groupPanel.querySelectorAll(".tf-chip.active").forEach(c => {
+      if (c !== chip) { activeTagFilters.delete(c.dataset.tag); c.classList.remove("active"); }
+    });
+  }
   if (activeTagFilters.has(tagId)) { activeTagFilters.delete(tagId); chip.classList.remove("active"); }
   else { activeTagFilters.add(tagId); chip.classList.add("active"); }
   // Update group count badge
-  const groupPanel = chip.closest(".tf-group-chips");
   if (groupPanel) {
     const gid = groupPanel.dataset.groupFor;
     const toggle = tfChips.querySelector(`.tf-group-toggle[data-group="${gid}"]`);
@@ -1118,6 +1145,7 @@ function renderPlacesList() {
 
   function buildCard(p, i) {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
     const typeTags = getDisplayTags(p.type);
     const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
     const posCount = posTags.length;
@@ -1127,12 +1155,12 @@ function renderPlacesList() {
     const distBadge = userLocLat !== null
       ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
       : "";
-    return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cfg.color};--i:${i}">
-      <span class="pl-dot" style="background:${cfg.color}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
+    return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+      <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
       <span class="pl-name">${esc(p.name)}</span>
       <span class="pl-addr">${esc(p.address)}${distBadge}</span>
       <div class="pl-meta">
-        <span class="pl-tags-summary" style="--type-c:${cfg.color}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
+        <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
       </div>
       <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
@@ -1143,12 +1171,12 @@ function renderPlacesList() {
   const regularHTML = sorted.map((p, i) => buildCard(p, i)).join("");
 
   const pinHTML = customPins
-    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent,#1A73B8);--i:${sorted.length + pi}">
-      <span class="pl-dot" style="background:var(--accent,#1A73B8)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
+    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${sorted.length + pi}">
+      <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
       <span class="pl-name">${esc(pin.name)}</span>
       <span class="pl-addr">${esc(pin.id)}</span>
       <div class="pl-meta">
-        <span class="pl-tags-summary" style="--type-c:var(--accent,#1A73B8)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
+        <span class="pl-tags-summary" style="--type-c:var(--accent)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
       </div>
       <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
@@ -1364,22 +1392,20 @@ function renderSuggestTags() {
       const subKey = `${type}_${t.id}`;
       const subtags = tagsData[subKey];
       if (subtags) {
-        // Expandable group (e.g. Cuisine) — button inline, panel below
+        const isExclusive = EXCLUSIVE_GROUPS.has(t.id);
         const subChips = subtags.map((s) =>
           `<button type="button" class="sg-subtag" data-tag="${s.id}">${esc(s.label)}</button>`
         ).join("");
+        const addRow = t.id === "cuisine" ? `<div class="sg-cuisine-add-row"><input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" /><button type="button" class="sg-cuisine-add-btn">Add</button></div>` : "";
         return (
           `<button type="button" class="sg-tag sg-tag-expand" data-expand="${t.id}">` +
           `<span class="sg-tag-label">${esc(t.label)}</span>` +
           `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
           `</button>` +
-          `<div class="sg-subtags shut" data-parent="${t.id}">` +
+          `<div class="sg-subtags shut" data-parent="${t.id}"${isExclusive ? " data-exclusive" : ""}>` +
           `<div class="sg-subtags-inner">` +
           `<div class="sg-subtag-chips">${subChips}</div>` +
-          `<div class="sg-cuisine-add-row">` +
-          `<input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" />` +
-          `<button type="button" class="sg-cuisine-add-btn">Add</button>` +
-          `</div>` +
+          addRow +
           `</div>` +
           `</div>`
         );
@@ -1400,12 +1426,22 @@ sgTypeSelect.addEventListener("change", renderSuggestTags);
 renderSuggestTags();
 
 sgTagsContainer.addEventListener("click", (e) => {
-  // Expand/collapse cuisine group
+  // Expand/collapse group (accordion: only one open at a time)
   const expandBtn = e.target.closest(".sg-tag-expand");
   if (expandBtn) {
     const parentId = expandBtn.dataset.expand;
     const panel = sgTagsContainer.querySelector(`.sg-subtags[data-parent="${parentId}"]`);
     if (panel) {
+      const opening = panel.classList.contains("shut");
+      if (opening) {
+        sgTagsContainer.querySelectorAll(".sg-subtags:not(.shut)").forEach(other => {
+          if (other === panel) return;
+          other.classList.add("shut");
+          const oid = other.dataset.parent;
+          const otherBtn = sgTagsContainer.querySelector(`.sg-tag-expand[data-expand="${oid}"]`);
+          if (otherBtn) otherBtn.classList.remove("open");
+        });
+      }
       panel.classList.toggle("shut");
       expandBtn.classList.toggle("open");
     }
@@ -1414,6 +1450,10 @@ sgTagsContainer.addEventListener("click", (e) => {
   // Toggle subtag selection
   const subtag = e.target.closest(".sg-subtag");
   if (subtag) {
+    const panel = subtag.closest(".sg-subtags");
+    if (panel?.hasAttribute("data-exclusive") && !subtag.classList.contains("active")) {
+      panel.querySelectorAll(".sg-subtag.active").forEach(s => s.classList.remove("active"));
+    }
     subtag.classList.toggle("active");
     return;
   }
@@ -1585,24 +1625,22 @@ function renderEditTags(type, existingTags) {
       const subKey = `${type}_${t.id}`;
       const subtags = tagsData[subKey];
       if (subtags) {
-        // Expandable group (e.g. Cuisine) — button inline, panel below
+        const isExclusive = EXCLUSIVE_GROUPS.has(t.id);
         const hasAny = subtags.some((s) => existingTags?.[s.id] === true);
         const subChips = subtags.map((s) => {
           const isActive = existingTags?.[s.id] === true;
           return `<button type="button" class="sg-subtag${isActive ? " active" : ""}" data-tag="${s.id}">${esc(s.label)}</button>`;
         }).join("");
+        const addRow = t.id === "cuisine" ? `<div class="sg-cuisine-add-row"><input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" /><button type="button" class="sg-cuisine-add-btn">Add</button></div>` : "";
         return (
           `<button type="button" class="sg-tag sg-tag-expand${hasAny ? " open" : ""}" data-expand="${t.id}">` +
           `<span class="sg-tag-label">${esc(t.label)}</span>` +
           `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
           `</button>` +
-          `<div class="sg-subtags${hasAny ? "" : " shut"}" data-parent="${t.id}">` +
+          `<div class="sg-subtags${hasAny ? "" : " shut"}" data-parent="${t.id}"${isExclusive ? " data-exclusive" : ""}>` +
           `<div class="sg-subtags-inner">` +
           `<div class="sg-subtag-chips">${subChips}</div>` +
-          `<div class="sg-cuisine-add-row">` +
-          `<input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" />` +
-          `<button type="button" class="sg-cuisine-add-btn">Add</button>` +
-          `</div>` +
+          addRow +
           `</div>` +
           `</div>`
         );
@@ -1636,12 +1674,22 @@ function openEditOverlay(place) {
 edTypeSelect.addEventListener("change", () => renderEditTags(edTypeSelect.value, {}));
 
 edTagsContainer.addEventListener("click", (e) => {
-  // Expand/collapse cuisine group
+  // Expand/collapse group (accordion: only one open at a time)
   const expandBtn = e.target.closest(".sg-tag-expand");
   if (expandBtn) {
     const parentId = expandBtn.dataset.expand;
     const panel = edTagsContainer.querySelector(`.sg-subtags[data-parent="${parentId}"]`);
     if (panel) {
+      const opening = panel.classList.contains("shut");
+      if (opening) {
+        edTagsContainer.querySelectorAll(".sg-subtags:not(.shut)").forEach(other => {
+          if (other === panel) return;
+          other.classList.add("shut");
+          const oid = other.dataset.parent;
+          const otherBtn = edTagsContainer.querySelector(`.sg-tag-expand[data-expand="${oid}"]`);
+          if (otherBtn) otherBtn.classList.remove("open");
+        });
+      }
       panel.classList.toggle("shut");
       expandBtn.classList.toggle("open");
     }
@@ -1650,6 +1698,10 @@ edTagsContainer.addEventListener("click", (e) => {
   // Toggle subtag selection
   const subtag = e.target.closest(".sg-subtag");
   if (subtag) {
+    const panel = subtag.closest(".sg-subtags");
+    if (panel?.hasAttribute("data-exclusive") && !subtag.classList.contains("active")) {
+      panel.querySelectorAll(".sg-subtag.active").forEach(s => s.classList.remove("active"));
+    }
     subtag.classList.toggle("active");
     return;
   }
@@ -1784,10 +1836,11 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
         tagDiffs.push(`${t.label}: ${icon[origState]} → ${icon[newState]}`);
       }
     });
-    // Check cuisine subtag changes
+    // Check subtag changes (cuisine, halal_status, etc.)
     const displayTags = getDisplayTags(type);
-    const cuisineSubtags = displayTags.filter((t) => t.id.startsWith("cuisine_"));
-    cuisineSubtags.forEach((t) => {
+    const baseIds = new Set((tagsData[type] || []).map(t => t.id));
+    const groupSubtags = displayTags.filter((t) => !baseIds.has(t.id));
+    groupSubtags.forEach((t) => {
       const wasSet = orig.tags?.[t.id] === true;
       const isSet = yesTags.includes(t.id);
       if (wasSet && !isSet) tagDiffs.push(`${t.label}: removed`);

@@ -53,14 +53,24 @@ All tokens are CSS custom properties on `:root`.
 ### Transit colours
 
 Used for leg badges and route chips. Match HSL operator brand colours exactly.
+All transit tokens have brighter dark-mode overrides in `styles.css` for contrast against `--surface`.
 
-| Token | Value | Line type |
-|---|---|---|
-| `--hsl-bus` | `#1A73B8` | Bus |
-| `--hsl-trunk` | `#FF6319` | Trunk / Metro |
-| `--hsl-tram` | `#1FA86A` | Tram |
-| `--hsl-rail` | `#8C4799` | Rail (light mode; dark mode override in styles.css uses `#E896E3`) |
-| `--hsl-ferry` | `#00B9E4` | Ferry |
+| Token | Light | Dark | Line type |
+|---|---|---|---|
+| `--hsl-bus` | `#1A73B8` | `#4da8e8` | Bus |
+| `--hsl-trunk` | `#FF6319` | `#ff8a50` | Trunk / Metro |
+| `--hsl-tram` | `#1FA86A` | `#3ee09a` | Tram |
+| `--hsl-metro` | `#FF6319` | `#ff8a50` | Metro |
+| `--hsl-rail` | `#8C4799` | `#E896E3` | Rail |
+| `--hsl-ferry` | `#00B9E4` | `#40d0f0` | Ferry |
+| `--hsl-foli` | `#008161` | `#2ee8b7` | Föli bus (Turku) |
+
+### Route & mode colours
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--walk` | `#52525b` | `#94a3b8` | Walking route lines, leg badges |
+| `--funicular` | `#71717a` | `#a1a1aa` | Funicular leg badges |
 
 ### Surface palette
 
@@ -363,6 +373,18 @@ The raw input element inside `.t-field-wrap`.
 ---
 
 ## §6 — Chip & Badge Templates
+
+### `.chip` / `.pp-chip` / `.sp-chip`
+
+Display badge chip. Set `--chip-c` to control tint (text colour + 14% background via `color-mix`).
+
+| Modifier | Variable | Semantics |
+|---|---|---|
+| `.chip-yes` / `.pp-chip-yes` | `--chip-c: var(--success)` | Positive / confirmed (green) |
+| `.chip-no` / `.pp-chip-no` | `--chip-c: var(--danger)` | Negative / missing (red) |
+| `.chip-warn` / `.pp-chip-warn` | `--chip-c: var(--gold)` | Partial / cautionary (amber) |
+
+**Usage:** Popup tag chips, stop popup route chips. `partially_halal` uses `.pp-chip-warn`.
 
 ### `.tag-chip` / `.sg-tag`
 

@@ -121,9 +121,11 @@ export function modeIcon(m, size = 14) {
 }
 
 // Build the HTML for a place marker pin on the map
+const _PLACE_CSS_COLOR = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" };
 export function makePlaceMarkerHTML(type) {
   const cfg = PLACE_CONFIG[type] || PLACE_CONFIG.mosque;
-  return `<div class="place-mk" style="--place-c:${cfg.color}">
+  const cssColor = _PLACE_CSS_COLOR[type] || cfg.color;
+  return `<div class="place-mk" style="--place-c:${cssColor}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg>
     <div class="place-mk-tip"></div>
   </div>`;

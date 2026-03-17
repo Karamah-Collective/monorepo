@@ -492,6 +492,10 @@ body.dark-mode {
   --hsl-metro:    #ff8a50;
   --hsl-rail:     #E896E3;
   --hsl-ferry:    #40d0f0;
+  --hsl-foli:     #2ee8b7;
+
+  --walk:         #94a3b8;
+  --funicular:    #a1a1aa;
 }
 
 /* Map background behind tiles */
@@ -550,7 +554,8 @@ body.dark-mode .dir-auto-list::-webkit-scrollbar-thumb {
 /* Place markers: brighter border in dark */
 body.dark-mode .place-mk,
 body.dark-mode .search-mk,
-body.dark-mode .custom-mk {
+body.dark-mode .custom-mk,
+body.dark-mode .eid-mk {
   border-color: rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
@@ -624,9 +629,9 @@ body.dark-mode .sp-badge {
   filter: brightness(0.92);
 }
 
-/* Place card dot icons — dim the bright type colors */
+/* Place card dot icons — ensure visibility in dark mode */
 body.dark-mode .pl-dot {
-  filter: brightness(0.88) saturate(1.15);
+  filter: brightness(1.15) saturate(1.1);
 }
 
 /* Place filter chips — dim the icon backgrounds */
@@ -658,6 +663,26 @@ body.dark-mode .cal-day.other-month {
 }
 body.dark-mode .sort-opt:disabled {
   opacity: 0.45;
+}
+
+/* Zone badges — dark text on bright bg needs inverting in dark mode */
+body.dark-mode .zone-badge.zone-b,
+body.dark-mode .zone-badge.zone-c,
+body.dark-mode .zone-badge.zone-d,
+body.dark-mode .zone-badge.zone-default {
+  color: var(--surface);
+}
+
+/* Fav star — brighter amber in dark mode */
+body.dark-mode .pl-fav-btn:hover,
+body.dark-mode .pl-fav-btn.active {
+  color: #fbbf24;
+}
+
+/* Tooltip — invert for dark mode */
+body.dark-mode .sp-tip {
+  background: var(--text);
+  color: var(--surface);
 }
 
 #zoom-pill {
@@ -2228,12 +2253,12 @@ body.dark-mode .sort-opt:disabled {
 .sg-label input.invalid,
 .sg-label select.invalid,
 .sg-label textarea.invalid {
-  border-color: #e05252;
+  border-color: var(--danger);
 }
 .sg-label input.invalid:focus,
 .sg-label select.invalid:focus,
 .sg-label textarea.invalid:focus {
-  border-color: #e05252;
+  border-color: var(--danger);
 }
 .sg-label textarea {
   resize: vertical;
@@ -3294,7 +3319,7 @@ body.dark-mode .fallback-notice {
   flex-shrink: 0;
 }
 .leg-badge.walk {
-  background: #52525b;
+  background: var(--walk);
 }
 .leg-badge.bus {
   background: var(--hsl-bus);
@@ -3314,19 +3339,19 @@ body.dark-mode .fallback-notice {
   background: var(--hsl-metro);
 }
 .leg-badge.mode-drive {
-  background: #ff6319;
+  background: var(--hsl-trunk);
 }
 .leg-badge.mode-cycle {
-  background: #1fa86a;
+  background: var(--hsl-tram);
 }
 .leg-badge.mode-walk {
-  background: #52525b;
+  background: var(--walk);
 }
 .leg-badge.ferry {
   background: var(--hsl-ferry);
 }
 .leg-badge.funicular {
-  background: #71717a;
+  background: var(--funicular);
 }
 .leg-arrow {
   color: var(--text-3);
@@ -3761,22 +3786,22 @@ body.dark-mode .fallback-notice {
   line-height: 1;
 }
 .zone-badge.zone-a {
-  background: #1a73b8;
+  background: var(--hsl-bus);
 }
 .zone-badge.zone-b {
-  background: #1fa86a;
+  background: var(--success);
   color: #1a2433;
 }
 .zone-badge.zone-c {
-  background: #d8b56a;
+  background: var(--gold);
   color: #1a2433;
 }
 .zone-badge.zone-d {
-  background: #ff6319;
+  background: var(--hsl-trunk);
   color: #1a2433;
 }
 .zone-badge.zone-default {
-  background: #8d99a5;
+  background: var(--text-3);
   color: #1a2433;
 }
 .zone-badge.zone-inline {
@@ -5909,9 +5934,6 @@ body.dark-mode .mse-export {
 }
 
 /* ── Dark mode overrides ─── */
-body.dark-mode .eid-mk {
-  border-color: var(--surface-3);
-}
 body.dark-mode .eid-popup-wrap .maplibregl-popup-content {
   background: var(--surface) !important;
 }

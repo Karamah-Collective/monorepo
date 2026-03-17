@@ -18,6 +18,7 @@ const OSRM_URLS = {
   walk: "https://routing.openstreetmap.de/routed-foot/route/v1/foot",
 };
 const OSRM_COLORS = { walk: "#52525b", cycle: "#1FA86A", drive: "#FF6319" };
+const OSRM_CSS_COLORS = { walk: "var(--walk)", cycle: "var(--hsl-tram)", drive: "var(--hsl-trunk)" };
 const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
 const OSRM_ALT_COLORS = { walk: "#94A3B8", cycle: "#34D399", drive: "#FBBF24" };
 
@@ -947,6 +948,12 @@ function legColor(m, leg) {
   if (leg && isTrunkBus(leg)) return "#FF6319";
   return { WALK: "#52525b", BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: getThemeRailShopPurple(), FERRY: "#00B9E4" }[m] || "#1A73B8";
 }
+// CSS variable version for HTML panels (auto-adapts to dark mode)
+function legCssColor(m, leg) {
+  if (leg?.trip?.route?.color) return "#" + leg.trip.route.color;
+  if (leg && isTrunkBus(leg)) return "var(--hsl-trunk)";
+  return { WALK: "var(--walk)", BUS: "var(--hsl-bus)", TRAM: "var(--hsl-tram)", SUBWAY: "var(--hsl-metro)", METRO: "var(--hsl-metro)", RAIL: "var(--hsl-rail)", FERRY: "var(--hsl-ferry)" }[m] || "var(--accent)";
+}
 
 function dirModeIconSvg(mode, size = 20) {
   const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`;
@@ -1136,6 +1143,7 @@ async function findRoutesDirect(mode) {
   }
   const { coords, duration, distance, stepsHTML, stepGeometries, srcData, stepFeatures } = data;
   const color = OSRM_COLORS[mode], altColor = data.altColor || OSRM_ALT_COLORS[mode];
+  const cssColor = OSRM_CSS_COLORS[mode];
   const durMin = Math.round(duration / 60);
   const distKm = (distance / 1000).toFixed(1);
   clearRoute();
@@ -1165,7 +1173,7 @@ async function findRoutesDirect(mode) {
   dirLoad.classList.add("hide");
   dirErr.classList.add("hide");
   dirItins.innerHTML = `
-      <div class="itin-card direct-card active" style="--dc:${color}">
+      <div class="itin-card direct-card active" style="--dc:${cssColor}">
         <div class="direct-header">
           <div class="direct-mode-icon">${dirModeIconSvg(mode, 20)}</div>
           <div class="direct-summary">
@@ -1222,7 +1230,7 @@ function renderItineraries() {
       const hasStops = stops.length > 0;
       const row = document.createElement("div");
       row.className = "leg-row" + (hasStops ? " leg-expandable" : "");
-      const color = legColor(leg.mode, leg);
+      const color = legCssColor(leg.mode, leg);
       const fromTime = fmtTime(new Date(leg.start.scheduledTime)), toTime = fmtTime(new Date(leg.end.scheduledTime));
       const durL = Math.round(leg.duration / 60), distM = Math.round(leg.distance);
       let modeName = leg.mode === "WALK" ? `Walk ${distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m"}` : `${leg.trip?.routeShortName || leg.mode} → ${leg.trip?.tripHeadsign || leg.to.name}`;

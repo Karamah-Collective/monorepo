@@ -53,16 +53,12 @@
   ],
   "restaurant": [
     {
-      "id": "fully_halal",
-      "label": "Fully Halal"
-    },
-    {
-      "id": "partially_halal",
-      "label": "Partially Halal"
-    },
-    {
       "id": "no_alcohol",
       "label": "No Alcohol"
+    },
+    {
+      "id": "halal_status",
+      "label": "Halal Status"
     },
     {
       "id": "cuisine",
@@ -97,6 +93,16 @@
     {
       "id": "halal_certified",
       "label": "Certified"
+    }
+  ],
+  "restaurant_halal_status": [
+    {
+      "id": "fully_halal",
+      "label": "Fully Halal"
+    },
+    {
+      "id": "partially_halal",
+      "label": "Partially Halal"
     }
   ],
   "restaurant_cuisine": [

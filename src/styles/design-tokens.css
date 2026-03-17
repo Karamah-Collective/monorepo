@@ -30,6 +30,10 @@
   --hsl-metro: #ff6319;
   --hsl-rail: #8c4799;
   --hsl-ferry: #00b9e4;
+  --hsl-foli: #008161;
+
+  --walk: #52525b;
+  --funicular: #71717a;
 
   --surface: #ffffff;
   --surface-2: #e6ebef;
@@ -312,7 +316,8 @@ body {
 }
 @media (hover: hover) {
   .btn-danger-pill:hover {
-    color: #b33636;
+    color: var(--danger);
+    opacity: 0.75;
   }
 }
 
@@ -603,6 +608,7 @@ body {
   flex-wrap: wrap;
   gap: 5px;
   flex-basis: 100%;
+  order: 1;
   padding-left: 8px;
   border-left: 2px solid var(--accent-soft);
   overflow: hidden;
@@ -883,12 +889,16 @@ body {
 .sg-subtags {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 0.25s ease;
+  transition: grid-template-rows 0.25s ease, margin 0.25s ease, flex-basis 0.25s ease;
   flex-basis: 100%;
+  order: 1;
   margin-top: 2px;
+  min-width: 0;
 }
 .sg-subtags.shut {
   grid-template-rows: 0fr;
+  flex-basis: 0;
+  margin: 0;
 }
 
 .sg-subtags-inner {
@@ -901,6 +911,7 @@ body {
   background: var(--surface);
   overflow: hidden;
   transition: padding 0.25s ease, border-color 0.25s ease;
+  width: fit-content;
 }
 .sg-subtags.shut .sg-subtags-inner {
   padding-top: 0;
@@ -1137,6 +1148,11 @@ body {
 .chip-no,
 .pp-chip-no {
   --chip-c: var(--danger);
+}
+
+.chip-warn,
+.pp-chip-warn {
+  --chip-c: var(--gold);
 }
 
 /* ── Eid location card (panel list item) ─── */

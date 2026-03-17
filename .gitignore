@@ -13,6 +13,7 @@ scripts/apps-script/Code.gs
 
 # Generated/cached files — transit cache IS committed (deployed to Cloudflare Pages)
 scripts/cache/
+scripts/local-backups/
 *.cache
 
 # Playwright generated output

@@ -122,9 +122,9 @@ function _bindStopTouchHandlers() {
 
 function _openStopFeaturePopup(f) {
   const { name, type, code, region } = f.properties;
-  const themedType = type === "train" ? "var(--hsl-rail)" : TRANSIT_COLORS[type];
+  const CSS_TRANSIT_VAR = { bus: "var(--hsl-bus)", tram: "var(--hsl-tram)", metro: "var(--hsl-metro)", train: "var(--hsl-rail)", ferry: "var(--hsl-ferry)" };
   const color = f.properties.dotColor ||
-    ((type === "bus" && region === "turku") ? TRANSIT_COLORS.foli_bus : (themedType || "#007AC9"));
+    ((type === "bus" && region === "turku") ? "var(--hsl-foli)" : (CSS_TRANSIT_VAR[type] || "var(--accent)"));
   const lngLat = f.geometry.coordinates.slice();
   const modeKey = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || "BUS";
   const svgIcon = modeIcon(modeKey, 14);
@@ -600,16 +600,15 @@ function renderStopRoutes(divId, routes, fallbackColor) {
   routes.sort((a, b) => (modeOrder[a.m] ?? 5) - (modeOrder[b.m] ?? 5));
   const primaryColor = routes.find(r => r.c) ? `#${routes.find(r => r.c).c}` : null;
   let lastMode = null;
+  const CSS_MODE_VAR = { BUS: "var(--hsl-bus)", TRAM: "var(--hsl-tram)", SUBWAY: "var(--hsl-metro)", RAIL: "var(--hsl-rail)", FERRY: "var(--hsl-ferry)" };
   el.innerHTML = routes
     .map((r) => {
       const isTrunk = r.m === "BUS" && r.t === 702;
       const rColor = r.c
         ? `#${r.c}`
         : isTrunk
-          ? TRANSIT_COLORS.trunk
-          : ({ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] === "train"
-            ? "var(--hsl-rail)"
-            : (TRANSIT_COLORS[{ BUS: "bus", TRAM: "tram", SUBWAY: "metro", RAIL: "train", FERRY: "ferry" }[r.m] || "bus"] || fallbackColor));
+          ? "var(--hsl-trunk)"
+          : (CSS_MODE_VAR[r.m] || fallbackColor);
       const longText = r.l || "";
       const tipAttr = longText ? ` data-tip="${escA(longText)}"` : "";
       const num = esc(r.s || "?");
