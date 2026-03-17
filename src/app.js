@@ -78,7 +78,7 @@ document.addEventListener(
       '.tut-start-btn, .tut-nav-btn, .tut-close, .tab, .pl-card, ' +
       '.itin-card, .sort-opt, .style-opt, .cal-day, .tp-cell, ' +
       '.time-chip, .sp-chip, .prayer-hdr-btn, .prayer-snack-clickable, ' +
-      '#results-list li, .dir-suggest li, .pl-fav-btn, a'
+      '#results-list li, .dir-suggest li, .pl-fav-btn, #eid-banner .snack-body, #snackbar-body, a'
     );
     if (!interactive) return;
     // Don't fast-tap inputs/textareas (they need default focus behavior)

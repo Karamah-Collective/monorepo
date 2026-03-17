@@ -15,6 +15,110 @@ let _stopPopupId = 0;
 let _pendingStopOpen = null;
 let _activeStopPopupKey = null;
 let _activeStopPopup = null;
+let _stopTouchListenersBound = false;
+let _suppressStopClickUntil = 0;
+
+const STOP_INTERACTIVE_LAYERS = ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"];
+
+function _toggleStopFeaturePopup(f) {
+  const coords = f.geometry.coordinates.slice();
+  const key = `${coords[0]},${coords[1]}`;
+  if (_activeStopPopupKey === key) {
+    if (_activeStopPopup) {
+      fadeAndRemovePopup(_activeStopPopup);
+      _activeStopPopup = null;
+    }
+    _activeStopPopupKey = null;
+    return;
+  }
+  _openStopFeaturePopup(f);
+}
+
+function _pickNearestStopFeature(features, point) {
+  let nearest = null;
+  let nearestDist = Infinity;
+  for (const feature of features) {
+    const [lng, lat] = feature.geometry.coordinates;
+    const projected = map.project([lng, lat]);
+    const dx = projected.x - point.x;
+    const dy = projected.y - point.y;
+    const distance = (dx * dx) + (dy * dy);
+    if (distance < nearestDist) {
+      nearest = feature;
+      nearestDist = distance;
+    }
+  }
+  return nearest;
+}
+
+function _tryOpenStopPopupFromTouch(clientX, clientY) {
+  const canvas = map.getCanvas();
+  const rect = canvas.getBoundingClientRect();
+  const point = { x: clientX - rect.left, y: clientY - rect.top };
+  if (point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height) return false;
+  const radius = 22;
+  const features = map.queryRenderedFeatures(
+    [[point.x - radius, point.y - radius], [point.x + radius, point.y + radius]],
+    { layers: STOP_INTERACTIVE_LAYERS },
+  );
+  if (!features.length) return false;
+  const feature = _pickNearestStopFeature(features, point);
+  if (!feature) return false;
+  _suppressStopClickUntil = Date.now() + 500;
+  _toggleStopFeaturePopup(feature);
+  return true;
+}
+
+function _bindStopTouchHandlers() {
+  if (_stopTouchListenersBound) return;
+  const canvas = map.getCanvas();
+  if (!canvas) return;
+
+  let touchStart = null;
+  let touchMoved = false;
+  const moveLimit = 12;
+
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) {
+      touchStart = null;
+      touchMoved = false;
+      return;
+    }
+    const touch = e.touches[0];
+    touchStart = { x: touch.clientX, y: touch.clientY };
+    touchMoved = false;
+  }, { passive: true });
+
+  canvas.addEventListener("touchmove", (e) => {
+    if (!touchStart || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    if (
+      Math.abs(touch.clientX - touchStart.x) > moveLimit ||
+      Math.abs(touch.clientY - touchStart.y) > moveLimit
+    ) {
+      touchMoved = true;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener("touchend", (e) => {
+    if (!touchStart || touchMoved || e.changedTouches.length !== 1) {
+      touchStart = null;
+      touchMoved = false;
+      return;
+    }
+    const touch = e.changedTouches[0];
+    _tryOpenStopPopupFromTouch(touch.clientX, touch.clientY);
+    touchStart = null;
+    touchMoved = false;
+  }, { passive: true });
+
+  canvas.addEventListener("touchcancel", () => {
+    touchStart = null;
+    touchMoved = false;
+  }, { passive: true });
+
+  _stopTouchListenersBound = true;
+}
 
 function _openStopFeaturePopup(f) {
   const { name, type, code, region } = f.properties;
@@ -467,21 +571,17 @@ function processTransitStops(geojson) {
     paint: { "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
 
-  ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"].forEach((layerId) => {
+  STOP_INTERACTIVE_LAYERS.forEach((layerId) => {
     map.on("click", layerId, (e) => {
+      if (Date.now() < _suppressStopClickUntil) return;
       const f = e.features[0];
-      const coords = f.geometry.coordinates.slice();
-      const key = `${coords[0]},${coords[1]}`;
-      if (_activeStopPopupKey === key) {
-        if (_activeStopPopup) { fadeAndRemovePopup(_activeStopPopup); _activeStopPopup = null; }
-        _activeStopPopupKey = null;
-      } else {
-        _openStopFeaturePopup(f);
-      }
+      _toggleStopFeaturePopup(f);
     });
     map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
   });
+
+  _bindStopTouchHandlers();
 
   if (_pendingStopOpen) {
     const { lat, lng } = _pendingStopOpen;

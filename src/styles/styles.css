@@ -5898,7 +5898,7 @@ body.dark-mode .mse-export {
   min-width: 280px;
   max-width: min(calc(100vw - 24px), 480px);
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
@@ -5906,7 +5906,6 @@ body.dark-mode .mse-export {
 .eid-banner.eid-banner-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
 }
 
 /* ── Dark mode overrides ─── */
