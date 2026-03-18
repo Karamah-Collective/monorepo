@@ -2438,17 +2438,19 @@ body.dark-mode .sp-tip {
   background: var(--danger-soft);
 }
 .dir-dot.waypoint {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: auto;
+  height: auto;
+  border-radius: var(--r-pill);
   border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  display: flex;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 2px 6px;
   line-height: 1;
 }
 
@@ -2502,8 +2504,9 @@ body.dark-mode .sp-tip {
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-size: 12px;
-  font-weight: var(--fw-bold);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
   display: flex;
   align-items: center;
   justify-content: center;
