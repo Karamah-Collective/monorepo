@@ -231,6 +231,14 @@ git push origin main
 
 ---
 
+## ⚠️ Gitignored file protection
+
+`scripts/local-backups/` is gitignored and **will be deleted** by branch switches.
+Steps 7 and 8 include backup/restore commands — **never skip them**.
+If you see `Copy-Item … local-backups` in the script block, it is mandatory.
+
+---
+
 ## Step 7 — Promote `main` → `preview`  *(only for `"preview"` command)*
 
 **Only run this step when the user said `"preview"`. Skip entirely for `"deploy"`.**
@@ -239,19 +247,22 @@ This copies only the deployment-relevant files to the `preview` branch.
 **Do not skip any sub-step.**
 
 ```bash
-# 1. Switch to preview
+# 1. Protect gitignored local files that branch switches would delete
+if (Test-Path 'scripts/local-backups') { Copy-Item -Recurse -Force 'scripts/local-backups' "$env:TEMP/halal-local-backups" }
+
+# 2. Switch to preview
 git checkout preview
 
-# 2. Pull in only the deployment files from main
+# 3. Pull in only the deployment files from main
 # IMPORTANT: do NOT include package.json — preview has its own minimal one
 #            for Cloudflare's npm auto-detection (no deps, no build scripts)
 git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json scripts/build-secrets.js
 
-# 3. Stage everything — then remove secrets that must never be deployed
+# 4. Stage everything — then remove secrets that must never be deployed
 git add .
 git rm --cached src/config.local.js 2>$null   # untrack if present; harmless if absent
 
-# 4. Capture the main SHA for traceability (use the actual short SHA from Step 6)
+# 5. Capture the main SHA for traceability (use the actual short SHA from Step 6)
 git commit -m "chore: promote main to preview
 
 Synced deployment files from main branch.
@@ -259,11 +270,12 @@ main HEAD: <sha-from-step-6>
 
 Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json, scripts/build-secrets.js"
 
-# 5. Push preview
+# 6. Push preview
 git push origin preview
 
-# 6. Return to main
+# 7. Return to main and restore local backups
 git checkout main
+if (Test-Path "$env:TEMP/halal-local-backups") { Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups" 'scripts/local-backups'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
 After completing, confirm:
@@ -280,18 +292,21 @@ This copies only the deployment-relevant files directly to the `deploy` branch, 
 `preview`. No preview site is triggered — changes go straight to production.
 
 ```bash
-# 1. Switch to deploy
+# 1. Protect gitignored local files that branch switches would delete
+if (Test-Path 'scripts/local-backups') { Copy-Item -Recurse -Force 'scripts/local-backups' "$env:TEMP/halal-local-backups" }
+
+# 2. Switch to deploy
 git checkout deploy
 
-# 2. Pull in only the deployment files from main
+# 3. Pull in only the deployment files from main
 # IMPORTANT: do NOT include package.json — deploy has its own minimal one
 git checkout main -- _headers index.html manifest.json sw.js data src functions scripts/transit-cache.json scripts/build-secrets.js
 
-# 3. Stage everything — then remove secrets that must never be deployed
+# 4. Stage everything — then remove secrets that must never be deployed
 git add .
 git rm --cached src/config.local.js 2>$null   # untrack if present; harmless if absent
 
-# 4. Commit with main SHA for traceability
+# 5. Commit with main SHA for traceability
 git commit -m "chore: promote main to deploy
 
 Synced deployment files from main branch.
@@ -299,11 +314,12 @@ main HEAD: <sha-from-step-6>
 
 Affects: _headers, index.html, manifest.json, sw.js, data/, src/, functions/, scripts/transit-cache.json, scripts/build-secrets.js"
 
-# 5. Push deploy
+# 6. Push deploy
 git push origin deploy
 
-# 6. Return to main
+# 7. Return to main and restore local backups
 git checkout main
+if (Test-Path "$env:TEMP/halal-local-backups") { Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups" 'scripts/local-backups'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
 Confirm after:

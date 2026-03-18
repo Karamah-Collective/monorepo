@@ -47,15 +47,10 @@ async function _fetchEidApi() {
 
 function _filterEidData(data) {
   const today = _todayStr();
-  const filtered = data.filter(loc => {
+  return data.filter(loc => {
     const d = _normaliseDate(loc.date);
     return d && d >= today;
   });
-  if (!filtered.length && data.length) {
-    console.warn("[Eid] Date filter removed all entries — showing all. Raw dates:", data.map(l => l.date));
-    return data;
-  }
-  return filtered;
 }
 
 // Checks user URL for ?eid= and opens the matching popup if found.
@@ -119,7 +114,7 @@ export async function initEidPrayers() {
     _fetchEidApi().then(freshData => {
       if (!freshData) return;
       const filtered = _filterEidData(freshData);
-      if (!filtered.length) return;
+      if (!filtered.length) { removeEidPrayers(); return; }
       if (JSON.stringify(filtered) === JSON.stringify(eidLocations)) return; // no change
       console.log("[Eid] Background update from API");
       eidLocations = filtered;
