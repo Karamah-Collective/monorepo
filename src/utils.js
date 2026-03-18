@@ -748,7 +748,7 @@ function _b64d(tok) {
 }
 
 // ── Route compact: ?r=<token>  (byte 0 = 0x01 distinguishes from legacy JSON whose byte 0 = '{')
-export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints }) {
+export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx }) {
   const buf = [0x01];
   const m = _ROUTE_MODES.indexOf(mode) & 3;
   const tm = tmode === "arrive" ? 1 : 0;
@@ -756,7 +756,8 @@ export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname,
   const ho = !!oname;
   const hd = !!dname;
   const hw = !!(waypoints?.length);
-  buf.push(m | (tm << 2) | (ht ? 8 : 0) | (ho ? 16 : 0) | (hd ? 32 : 0) | (hw ? 64 : 0));
+  const hi = itinIdx != null && itinIdx >= 0;
+  buf.push(m | (tm << 2) | (ht ? 8 : 0) | (ho ? 16 : 0) | (hd ? 32 : 0) | (hw ? 64 : 0) | (hi ? 128 : 0));
   buf.push(..._encLat(olat), ..._encLng(olng));
   buf.push(..._encLat(dlat), ..._encLng(dlng));
   if (ht) {
@@ -774,6 +775,7 @@ export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname,
       _pushStr(buf, (wp.name || "").slice(0, 60));
     }
   }
+  if (hi) buf.push(itinIdx & 0xff);
   return _b64e(buf);
 }
 
@@ -784,7 +786,7 @@ export function decodeCompactRoute(token) {
     const f = b[1];
     const mode = _ROUTE_MODES[f & 3];
     const tmode = (f >> 2) & 1 ? "arrive" : "depart";
-    const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32), hw = !!(f & 64);
+    const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32), hw = !!(f & 64), hi = !!(f & 128);
     const olat = _decLat(b[2], b[3]), olng = _decLng(b[4], b[5]);
     const dlat = _decLat(b[6], b[7]), dlng = _decLng(b[8], b[9]);
     let off = 10, tdate, ttime;
@@ -812,7 +814,9 @@ export function decodeCompactRoute(token) {
         off = r.n;
       }
     }
-    return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints };
+    let itinIdx = null;
+    if (hi) itinIdx = b[off++];
+    return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx };
   } catch { return null; }
 }
 

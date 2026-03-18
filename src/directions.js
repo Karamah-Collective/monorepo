@@ -276,6 +276,7 @@ function _buildRouteShareUrl() {
     tdate: hasTime ? getDateValue() : null,
     ttime: hasTime ? getTimeValue() : null,
     waypoints: validWaypoints.length ? validWaypoints : null,
+    itinIdx: dirTravelMode === "transit" && dir.activeIdx > 0 ? dir.activeIdx : null,
   });
   return `${location.origin}${location.pathname}?r=${token}`;
 }
@@ -287,7 +288,9 @@ dirShareBtn.addEventListener("click", () => {
   shareUrl(url, title, `${title} – Halal Finder`);
 });
 
-export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints }) {
+let _pendingItinIdx = null;
+export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints, itinIdx }) {
+  _pendingItinIdx = itinIdx != null ? itinIdx : null;
   dir.origin = { lat: olat, lng: olng, name: oname || `${olat.toFixed(4)}, ${olng.toFixed(4)}` };
   dir.dest = { lat: dlat, lng: dlng, name: dname || `${dlat.toFixed(4)}, ${dlng.toFixed(4)}` };
   dirFrom.value = dir.origin.name;
@@ -1524,7 +1527,11 @@ function renderItineraries() {
   });
   // Enter results mode AFTER cards are built so the panel measures correct height
   enterResultsMode();
-  if (dir.itineraries.length) selectItinerary(0);
+  if (dir.itineraries.length) {
+    const pending = _pendingItinIdx;
+    _pendingItinIdx = null;
+    selectItinerary(pending != null && pending < dir.itineraries.length ? pending : 0);
+  }
 }
 
 function selectItinerary(idx) {

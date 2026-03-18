@@ -666,6 +666,8 @@ export function checkShareUrl() {
         dlat: cr.dlat, dlng: cr.dlng, dname: cr.dname || null,
         mode: cr.mode, tmode: cr.tmode || null,
         tdate: cr.tdate || null, ttime: cr.ttime || null,
+        waypoints: cr.waypoints?.length ? cr.waypoints : null,
+        itinIdx: cr.itinIdx,
       });
       return;
     }
@@ -1063,7 +1065,6 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
           if (other === panel) return;
           other.scrollTop = 0;
           const otherGid = other.dataset.groupFor;
-          tfChips.querySelector(`.tf-see-more[data-group-more="${otherGid}"]`)?.remove();
           slideHeight(other, 0, () => { other.classList.add("shut"); other.style.height = ""; syncPlacesSnap(); });
           const otherToggle = tfChips.querySelector(`.tf-group-toggle[data-group="${otherGid}"]`);
           if (otherToggle) otherToggle.classList.remove("open");
@@ -1071,7 +1072,6 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
       }
       if (isOpen) {
         panel.scrollTop = 0;
-        tfChips.querySelector(`.tf-see-more[data-group-more="${gid}"]`)?.remove();
         slideHeight(panel, 0, () => { panel.classList.add("shut"); panel.style.height = ""; syncPlacesSnap(); });
       } else {
         panel.classList.remove("shut");
@@ -1079,10 +1079,9 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
         const firstChip = panel.querySelector(".tf-chip");
         const chipH = firstChip ? firstChip.offsetHeight : 30;
         const gap = inner ? (parseFloat(getComputedStyle(inner).rowGap) || 5) : 5;
-        const twoRowH = chipH * 2 + gap;
         const threeRowH = chipH * 3 + gap * 2;
         const fullH = inner ? inner.offsetHeight : panel.scrollHeight;
-        const targetH = Math.min(fullH, twoRowH);
+        const targetH = Math.min(fullH, threeRowH);
         panel.style.height = "0px";
         requestAnimationFrame(() => { requestAnimationFrame(() => {
           panel.style.height = targetH + "px";
@@ -1090,24 +1089,10 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
             if (ev.propertyName !== "height" || ev.target !== panel) return;
             panel.removeEventListener("transitionend", clear);
             syncPlacesSnap();
-            if (fullH > twoRowH) {
-              const btn = document.createElement("button");
-              btn.className = "tf-see-more";
-              btn.setAttribute("data-group-more", gid);
-              btn.textContent = "See more \u2193";
-              btn.addEventListener("click", () => {
-                if (btn.dataset.expanded) {
-                  panel.scrollTop = 0;
-                  slideHeight(panel, twoRowH, () => syncPlacesSnap());
-                  btn.textContent = "See more \u2193";
-                  delete btn.dataset.expanded;
-                } else {
-                  slideHeight(panel, threeRowH, () => syncPlacesSnap());
-                  btn.textContent = "See less \u2191";
-                  btn.dataset.expanded = "1";
-                }
-              });
-              panel.insertAdjacentElement("afterend", btn);
+            // Scroll-bounce hint (phone only — on desktop the scrollbar is always visible)
+            if (fullH > threeRowH && window.matchMedia("(max-width: 768px)").matches) {
+              panel.scrollTo({ top: 24, behavior: "smooth" });
+              setTimeout(() => panel.scrollTo({ top: 0, behavior: "smooth" }), 300);
             }
           };
           panel.addEventListener("transitionend", clear);
