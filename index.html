@@ -38,7 +38,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260318" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260318-2" />
   </head>
   <body>
     <div id="app">
@@ -477,6 +477,7 @@
               </div>
               <ul id="dir-from-suggest" class="dir-suggest hide"></ul>
             </div>
+            <div id="dir-waypoints"></div>
             <div class="dir-field-wrap">
               <div class="dir-field" id="dir-field-to">
                 <span class="dir-dot dest"></span>
@@ -507,20 +508,25 @@
               <ul id="dir-to-suggest" class="dir-suggest hide"></ul>
             </div>
           </div>
-          <button id="dir-swap" title="Swap origin &amp; destination">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M7 16V4M7 4l-4 4M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4" />
-            </svg>
-          </button>
+          <div class="dir-side-controls">
+            <button id="dir-swap" title="Swap origin &amp; destination">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 16V4M7 4l-4 4M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4" />
+              </svg>
+            </button>
+            <button id="dir-add-stop" class="dir-add-stop" type="button" aria-label="Add stop" title="Add stop">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- ─── Transport Mode Selector ─── -->

@@ -1162,9 +1162,14 @@ function renderPlacesList() {
       <div class="pl-meta">
         <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
       </div>
-      <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
-        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
-      </button>
+      <div class="pl-acts">
+        <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+        </button>
+        <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
+          <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
+        </button>
+      </div>
     </li>`;
   }
 
@@ -1178,9 +1183,14 @@ function renderPlacesList() {
       <div class="pl-meta">
         <span class="pl-tags-summary" style="--type-c:var(--accent)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
       </div>
-      <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
-        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
-      </button>
+      <div class="pl-acts">
+        <button class="pl-dir-btn" data-lat="${pin.lat}" data-lng="${pin.lng}" data-name="${escA(pin.name)}" aria-label="Directions to ${escA(pin.name)}" title="Directions">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+        </button>
+        <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
+          <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
+        </button>
+      </div>
     </li>`)
     .join("");
 
@@ -1330,6 +1340,19 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   // Dismiss any open tag tooltip
   hideTagTip();
 
+  // Quick directions from list card
+  const dirBtn = e.target.closest(".pl-dir-btn");
+  if (dirBtn) {
+    e.stopPropagation();
+    const { lat, lng, name } = dirBtn.dataset;
+    dir.dest = { lat: +lat, lng: +lng, name };
+    document.getElementById("dir-to").value = name;
+    placeDestMarker(+lng, +lat);
+    updateGoButton();
+    closePlacesSheet();
+    openDirPanel();
+    return;
+  }
   // Unsave a custom dropped pin
   const unsaveBtn = e.target.closest(".pl-unsave-pin-btn");
   if (unsaveBtn) {

@@ -26,6 +26,7 @@ export const dir = {
   origin: null, dest: null, pickField: null,
   itineraries: [], activeIdx: -1, directInfo: null,
   originMarker: null, destMarker: null,
+  waypoints: [], waypointMarkers: [],
   routeLayers: [], routeSources: [], usingFallback: false,
 };
 
@@ -42,6 +43,72 @@ const routeSnackbar = document.getElementById("route-snackbar");
 const snackbarSub = document.getElementById("snackbar-sub");
 const dirClearBtn = document.getElementById("dir-clear-route");
 const dirShareBtn = document.getElementById("dir-share-route");
+const dirWaypointsCt = document.getElementById("dir-waypoints");
+const dirAddStopBtn = document.getElementById("dir-add-stop");
+const MAX_WAYPOINTS = 3;
+
+// --- Waypoints ---
+function _createWaypointEl(idx) {
+  const wrap = document.createElement("div");
+  wrap.className = "dir-field-wrap";
+  wrap.dataset.wpIdx = idx;
+  wrap.innerHTML = `<div class="dir-field" id="dir-field-wp-${idx}">
+    <span class="dir-dot waypoint">${idx + 1}</span>
+    <input id="dir-wp-${idx}" type="text" placeholder="Stop ${idx + 1} — tap map or type" autocomplete="off"/>
+    <button class="dir-field-btn dir-wp-remove" data-wp-idx="${idx}" title="Remove stop" aria-label="Remove stop">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <ul id="dir-wp-${idx}-suggest" class="dir-suggest hide"></ul>`;
+  return wrap;
+}
+
+function _renderWaypoints() {
+  dirWaypointsCt.innerHTML = "";
+  dir.waypoints.forEach((wp, i) => {
+    const el = _createWaypointEl(i);
+    dirWaypointsCt.appendChild(el);
+    const input = el.querySelector(`#dir-wp-${i}`);
+    if (wp) input.value = wp.name || "";
+    setupDirAutocomplete(input, el.querySelector(`#dir-wp-${i}-suggest`), `wp-${i}`);
+  });
+  dirAddStopBtn.classList.toggle("hide", dir.waypoints.length >= MAX_WAYPOINTS);
+  dirSnap.remeasure();
+}
+
+function addWaypoint() {
+  if (dir.waypoints.length >= MAX_WAYPOINTS) return;
+  dir.waypoints.push(null);
+  _renderWaypoints();
+  startPick(`wp-${dir.waypoints.length - 1}`);
+}
+
+function removeWaypoint(idx) {
+  dir.waypoints.splice(idx, 1);
+  if (dir.waypointMarkers[idx]) { dir.waypointMarkers[idx].remove(); }
+  dir.waypointMarkers.splice(idx, 1);
+  _renderWaypoints();
+  updateGoButton();
+}
+
+function placeWaypointMarker(idx, lng, lat) {
+  if (dir.waypointMarkers[idx]) dir.waypointMarkers[idx].remove();
+  const el = document.createElement("div");
+  el.className = "dir-waypoint-marker";
+  el.textContent = idx + 1;
+  dir.waypointMarkers[idx] = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+}
+
+function clearWaypointMarkers() {
+  dir.waypointMarkers.forEach(m => { if (m) m.remove(); });
+  dir.waypointMarkers = [];
+}
+
+dirAddStopBtn.addEventListener("click", addWaypoint);
+dirWaypointsCt.addEventListener("click", (e) => {
+  const btn = e.target.closest(".dir-wp-remove");
+  if (btn) { e.stopPropagation(); removeWaypoint(+btn.dataset.wpIdx); }
+});
 
 // --- Panel open/close ---
 export function openDirPanel() {
@@ -52,6 +119,7 @@ export function openDirPanel() {
   setActiveTab("dir-btn");
   if (dir.originMarker) dir.originMarker.getElement().style.display = "";
   if (dir.destMarker) dir.destMarker.getElement().style.display = "";
+  dir.waypointMarkers.forEach(m => { if (m) m.getElement().style.display = ""; });
   if (!dir.pickField) startPick("from");
   dirSnap.open();
 }
@@ -66,6 +134,7 @@ export function closeDirPanel() {
   if ((dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) && !dir.directInfo) {
     if (dir.originMarker) dir.originMarker.getElement().style.display = "none";
     if (dir.destMarker) dir.destMarker.getElement().style.display = "none";
+    dir.waypointMarkers.forEach(m => { if (m) m.getElement().style.display = "none"; });
   }
 }
 
@@ -76,6 +145,10 @@ export function fullCloseDirPanel() {
   exitResultsMode();
   if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; }
   if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; }
+  clearWaypointMarkers();
+  dir.waypoints = [];
+  dirWaypointsCt.innerHTML = "";
+  dirAddStopBtn.classList.remove("hide");
 }
 
 document.getElementById("dir-btn").addEventListener("click", () =>
@@ -174,6 +247,10 @@ dirClearBtn.addEventListener("click", () => {
   dirTo.value = "";
   if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; }
   if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; }
+  clearWaypointMarkers();
+  dir.waypoints = [];
+  dirWaypointsCt.innerHTML = "";
+  dirAddStopBtn.classList.remove("hide");
   dirItins.innerHTML = "";
   dirEmpty.classList.remove("hide");
   exitResultsMode();
@@ -188,6 +265,7 @@ dirClearBtn.addEventListener("click", () => {
 function _buildRouteShareUrl() {
   if (!dir.origin || !dir.dest) return null;
   const hasTime = dirTravelMode === "transit" && !dirUseNow;
+  const validWaypoints = dir.waypoints.filter(Boolean);
   const token = encodeCompactRoute({
     olat: dir.origin.lat, olng: dir.origin.lng,
     dlat: dir.dest.lat, dlng: dir.dest.lng,
@@ -197,6 +275,7 @@ function _buildRouteShareUrl() {
     tmode: dirTimeMode,
     tdate: hasTime ? getDateValue() : null,
     ttime: hasTime ? getTimeValue() : null,
+    waypoints: validWaypoints.length ? validWaypoints : null,
   });
   return `${location.origin}${location.pathname}?r=${token}`;
 }
@@ -208,13 +287,20 @@ dirShareBtn.addEventListener("click", () => {
   shareUrl(url, title, `${title} – Halal Finder`);
 });
 
-export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime }) {
+export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints }) {
   dir.origin = { lat: olat, lng: olng, name: oname || `${olat.toFixed(4)}, ${olng.toFixed(4)}` };
   dir.dest = { lat: dlat, lng: dlng, name: dname || `${dlat.toFixed(4)}, ${dlng.toFixed(4)}` };
   dirFrom.value = dir.origin.name;
   dirTo.value = dir.dest.name;
   placeOriginMarker(olng, olat);
   placeDestMarker(dlng, dlat);
+
+  // Restore waypoints
+  if (waypoints?.length) {
+    dir.waypoints = waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng, name: wp.name || `${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}` }));
+    dir.waypoints.forEach((wp, i) => placeWaypointMarker(i, wp.lng, wp.lat));
+    _renderWaypoints();
+  }
 
   // Set mode — replicate the full mode-toggle click behaviour
   const validModes = ["drive", "transit", "cycle", "walk"];
@@ -288,7 +374,11 @@ export function startPick(field) {
   if (dir.activeIdx >= 0) return;
   dir.pickField = field;
   document.querySelectorAll(".dir-field").forEach((f) => f.classList.remove("picking"));
-  (field === "from" ? dirFrom.parentElement : dirTo.parentElement).classList.add("picking");
+  let target;
+  if (field === "from") target = dirFrom.parentElement;
+  else if (field === "to") target = dirTo.parentElement;
+  else if (field.startsWith("wp-")) target = document.getElementById(`dir-field-${field}`);
+  if (target) target.classList.add("picking");
   map.getCanvas().classList.add("map-click-mode");
   updateGoButton();
 }
@@ -313,13 +403,18 @@ let dirSugDebounce = null;
 
 function setupDirAutocomplete(inputEl, suggestEl, field) {
   inputEl.addEventListener("input", () => {
-    if (field === "from") dir.origin = null; else dir.dest = null;
+    if (field === "from") dir.origin = null;
+    else if (field === "to") dir.dest = null;
+    else if (field.startsWith("wp-")) dir.waypoints[parseInt(field.slice(3), 10)] = null;
     routeRequested = false;
     updateGoButton();
     clearTimeout(dirSugDebounce);
     const q = inputEl.value.trim();
     if (q.length < 2) { suggestEl.classList.add("hide"); return; }
     dirSugDebounce = setTimeout(() => dirGeoSearch(q, suggestEl, field), 300);
+  });
+  inputEl.addEventListener("focus", () => {
+    if (field.startsWith("wp-")) startPick(field);
   });
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Escape") suggestEl.classList.add("hide");
@@ -341,10 +436,21 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
       placeOriginMarker(lng, lat);
       autoSetNearestMosque(lat, lng);
       if (!dir.dest) {
-        startPick("to");
-        // On mobile, focus destination field to keep keyboard open
-        if (window.innerWidth <= 768) setTimeout(() => dirTo.focus(), 80);
+        const nextField = dir.waypoints.length ? (dir.waypoints[0] ? "to" : "wp-0") : "to";
+        startPick(nextField);
+        if (window.innerWidth <= 768) {
+          const nextInput = nextField === "to" ? dirTo : document.getElementById(`dir-wp-${nextField.slice(3)}`);
+          if (nextInput) setTimeout(() => nextInput.focus(), 80);
+        }
       }
+    } else if (field.startsWith("wp-")) {
+      const wpIdx = parseInt(field.slice(3), 10);
+      dir.waypoints[wpIdx] = { lat, lng, name };
+      placeWaypointMarker(wpIdx, lng, lat);
+      const nextEmpty = dir.waypoints.findIndex((w, i) => i > wpIdx && !w);
+      if (nextEmpty >= 0) startPick(`wp-${nextEmpty}`);
+      else if (!dir.dest) startPick("to");
+      else stopPick();
     } else {
       dir.dest = { lat, lng, name };
       placeDestMarker(lng, lat);
@@ -450,7 +556,19 @@ map.on("click", async (e) => {
     dirFrom.value = name;
     placeOriginMarker(lng, lat);
     autoSetNearestMosque(lat, lng);
-    startPick("to");
+    if (dir.waypoints.length) startPick(dir.waypoints[0] ? "to" : "wp-0");
+    else startPick("to");
+  } else if (field.startsWith("wp-")) {
+    const wpIdx = parseInt(field.slice(3), 10);
+    dir.waypoints[wpIdx] = { lat, lng, name };
+    const wpInput = document.getElementById(`dir-wp-${wpIdx}`);
+    if (wpInput) wpInput.value = name;
+    placeWaypointMarker(wpIdx, lng, lat);
+    // Move to next empty waypoint, or dest
+    const nextEmpty = dir.waypoints.findIndex((w, i) => i > wpIdx && !w);
+    if (nextEmpty >= 0) startPick(`wp-${nextEmpty}`);
+    else if (!dir.dest) startPick("to");
+    else stopPick();
   } else {
     dir.dest = { lat, lng, name };
     dirTo.value = name;
@@ -542,12 +660,17 @@ document.querySelector(".dir-my-loc").addEventListener("click", () => {
 
 document.getElementById("dir-swap").addEventListener("click", () => {
   [dir.origin, dir.dest] = [dir.dest, dir.origin];
+  dir.waypoints.reverse();
+  dir.waypointMarkers.reverse();
   dirFrom.value = dir.origin?.name || "";
   dirTo.value = dir.dest?.name || "";
   if (dir.origin) placeOriginMarker(dir.origin.lng, dir.origin.lat);
   else if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; }
   if (dir.dest) placeDestMarker(dir.dest.lng, dir.dest.lat);
   else if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; }
+  // Update waypoint marker labels after reversal
+  dir.waypointMarkers.forEach((m, i) => { if (m) m.getElement().textContent = i + 1; });
+  if (dir.waypoints.length) _renderWaypoints();
   updateGoButton();
 });
 
@@ -832,7 +955,27 @@ async function findRoutes() {
   updateGoButton();
   if (!dir.origin) { showDirError("Select an origin on the map or type a place"); return; }
   if (!dir.dest) { showDirError("Select a destination on the map or type a place"); return; }
+
+  // Auto-resolve any waypoint inputs that were typed but not geocoded
+  for (let i = 0; i < dir.waypoints.length; i++) {
+    if (!dir.waypoints[i]) {
+      const wpInput = document.getElementById(`dir-wp-${i}`);
+      if (wpInput?.value.trim()) {
+        const r = await autoResolveLocation(wpInput);
+        if (r) { dir.waypoints[i] = r; wpInput.value = r.name; placeWaypointMarker(i, r.lng, r.lat); }
+      }
+    }
+  }
+  // Remove null waypoints (empty rows the user didn't fill)
+  const validWaypoints = dir.waypoints.filter(Boolean);
+
   if (dirTravelMode !== "transit") { await findRoutesDirect(dirTravelMode); return; }
+
+  // Transit with waypoints — chain A→B segments
+  if (validWaypoints.length > 0) {
+    await _findTransitWithWaypoints(validWaypoints);
+    return;
+  }
 
   showDirLoading();
   dirPanel.classList.remove("search-editing");
@@ -933,6 +1076,95 @@ async function findRoutesTransitous() {
     return;
   }
   renderItineraries();
+}
+
+// Transit routing with intermediate waypoints — chain A→B segments sequentially
+async function _findTransitWithWaypoints(waypoints) {
+  showDirLoading();
+  dirPanel.classList.remove("search-editing");
+  const stops = [dir.origin, ...waypoints, dir.dest];
+  let departureTime = dirUseNow
+    ? new Date().toISOString()
+    : new Date(`${getDateValue()}T${getTimeValue()}`).toISOString();
+  const combinedLegs = [];
+  let usedFallback = false;
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const from = stops[i], to = stops[i + 1];
+    const itin = await _transitSegment(from, to, departureTime);
+    if (!itin) {
+      showDirError(`No route found for segment: ${esc(from.name)} → ${esc(to.name)}`);
+      return;
+    }
+    if (itin._fallback) usedFallback = true;
+    combinedLegs.push(...itin.legs);
+    // Use next segment's departure as 2 min after this segment's arrival
+    const lastLeg = itin.legs[itin.legs.length - 1];
+    const arrivalMs = new Date(lastLeg.end.scheduledTime).getTime();
+    departureTime = new Date(arrivalMs + 120000).toISOString();
+  }
+
+  const startTime = combinedLegs[0].start.scheduledTime;
+  const endTime = combinedLegs[combinedLegs.length - 1].end.scheduledTime;
+  dir.usingFallback = usedFallback;
+  dir.itineraries = [{ start: startTime, end: endTime, legs: combinedLegs }];
+  renderItineraries();
+}
+
+// Route a single transit segment (Digitransit primary, Transitous fallback)
+async function _transitSegment(from, to, departureTime) {
+  const dateTimeParam = `earliestDeparture: "${departureTime}"`;
+  const query = `{ planConnection(
+    origin: {location: {coordinate: {latitude: ${from.lat}, longitude: ${from.lng}}}}
+    destination: {location: {coordinate: {latitude: ${to.lat}, longitude: ${to.lng}}}}
+    first: 1
+    dateTime: {${dateTimeParam}}
+  ) { edges { node { start end legs {
+    mode start { scheduledTime } end { scheduledTime }
+    from { name stop { code zoneId } } to { name stop { code zoneId } }
+    intermediateStops { name code zoneId }
+    trip { routeShortName tripHeadsign route { type color textColor } }
+    legGeometry { points } duration distance
+  } } } } }`;
+  const dtEndpoint = pickTransitEndpoint(from.lat, from.lng, to.lat, to.lng);
+  if (dtEndpoint) {
+    try {
+      const res = await fetch(dtEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/graphql", "digitransit-subscription-key": DT_API_KEY },
+        body: query,
+        signal: AbortSignal.timeout(12000),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (!json.errors) {
+          const node = json.data?.planConnection?.edges?.[0]?.node;
+          if (node) return node;
+        }
+      }
+    } catch {}
+  }
+  // Transitous fallback
+  try {
+    const params = new URLSearchParams({
+      fromPlace: `${from.lat},${from.lng}`, toPlace: `${to.lat},${to.lng}`,
+      time: departureTime, arriveBy: "false",
+      numItineraries: "1", transitModes: "TRANSIT",
+    });
+    const res = await fetch(`${TRANSITOUS_URL}?${params}`, {
+      headers: { Referer: "https://halal-map.pages.dev/" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.itineraries?.length) {
+        const itin = normalizeMOTISItinerary(json.itineraries[0]);
+        itin._fallback = true;
+        return itin;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 // --- Route rendering helpers ---
@@ -1056,11 +1288,11 @@ function _otpManeuverIcon(step, isFirst, isLast) {
   return maneuverIconSvg("continue", "straight");
 }
 
-async function _dtDirectRoute(mode) {
+async function _dtDirectRouteSeg(mode, from, to) {
   const dtMode = { walk: "WALK", cycle: "BICYCLE", drive: "CAR" }[mode];
   const query = `{ planConnection(
-    origin: {location: {coordinate: {latitude: ${dir.origin.lat}, longitude: ${dir.origin.lng}}}}
-    destination: {location: {coordinate: {latitude: ${dir.dest.lat}, longitude: ${dir.dest.lng}}}}
+    origin: {location: {coordinate: {latitude: ${from.lat}, longitude: ${from.lng}}}}
+    destination: {location: {coordinate: {latitude: ${to.lat}, longitude: ${to.lng}}}}
     first: 1 transportModes: [{mode: ${dtMode}}]
   ) { edges { node { start end legs {
     mode duration distance legGeometry { points }
@@ -1077,11 +1309,25 @@ async function _dtDirectRoute(mode) {
   if (json.errors) throw new Error("dt_query");
   const node = json.data?.planConnection?.edges?.[0]?.node;
   if (!node) throw new Error("dt_empty");
+  return node;
+}
+
+async function _dtDirectRoute(mode) {
+  const stops = [dir.origin, ...dir.waypoints.filter(Boolean), dir.dest];
+  const segments = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    segments.push(_dtDirectRouteSeg(mode, stops[i], stops[i + 1]));
+  }
+  const nodes = await Promise.all(segments);
   const allCoords = [];
-  node.legs.forEach((leg) => decodePolyline(leg.legGeometry.points, 5).forEach((c) => allCoords.push(c)));
-  const totalDuration = node.legs.reduce((s, l) => s + l.duration, 0);
-  const totalDistance = node.legs.reduce((s, l) => s + l.distance, 0);
-  const allSteps = node.legs.flatMap((leg) => leg.steps || []);
+  let totalDuration = 0, totalDistance = 0;
+  const allSteps = [];
+  for (const node of nodes) {
+    node.legs.forEach((leg) => decodePolyline(leg.legGeometry.points, 5).forEach((c) => allCoords.push(c)));
+    totalDuration += node.legs.reduce((s, l) => s + l.duration, 0);
+    totalDistance += node.legs.reduce((s, l) => s + l.distance, 0);
+    allSteps.push(...node.legs.flatMap((leg) => leg.steps || []));
+  }
   const stepsHTML = allSteps.map((step, i) => {
     const isFirst = i === 0, isLast = i === allSteps.length - 1;
     const inst = _otpStepInstruction(step, isFirst, isLast);
@@ -1099,19 +1345,24 @@ async function _dtDirectRoute(mode) {
 }
 
 async function _osrmDirectRoute(mode) {
-  const url = `${OSRM_URLS[mode]}/${dir.origin.lng},${dir.origin.lat};${dir.dest.lng},${dir.dest.lat}?overview=full&geometries=geojson&steps=true`;
+  const points = [
+    `${dir.origin.lng},${dir.origin.lat}`,
+    ...dir.waypoints.filter(Boolean).map(wp => `${wp.lng},${wp.lat}`),
+    `${dir.dest.lng},${dir.dest.lat}`,
+  ].join(";");
+  const url = `${OSRM_URLS[mode]}/${points}?overview=full&geometries=geojson&steps=true`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Routing error ${res.status}`);
   const json = await res.json();
   if (json.code !== "Ok" || !json.routes?.length) throw new Error("No route found");
   const route = json.routes[0];
-  const steps = route.legs[0]?.steps || [];
+  const allSteps = route.legs.flatMap(leg => leg.steps || []);
   const altColor = OSRM_ALT_COLORS[mode];
   let segIdx = 0;
-  const stepFeatures = steps.filter((s) => s.geometry?.coordinates?.length > 1)
+  const stepFeatures = allSteps.filter((s) => s.geometry?.coordinates?.length > 1)
     .map((s) => ({ type: "Feature", geometry: s.geometry, properties: { segType: stepSegType(s.maneuver.type), idx: segIdx++ } }));
   const srcData = stepFeatures.length ? { type: "FeatureCollection", features: stepFeatures } : route.geometry;
-  const stepsHTML = steps.map((step, si) => {
+  const stepsHTML = allSteps.map((step, si) => {
     const stype = step.maneuver.type, smod = step.maneuver.modifier || "";
     const iconClass = stype === "roundabout" || stype === "rotary" || stype === "exit roundabout" || stype === "exit rotary" ? "step-roundabout" : stype === "arrive" ? "step-arrive" : stype === "depart" ? "step-depart" : "";
     const dist = step.distance > 5 ? fmtDist(step.distance) : "";
@@ -1121,7 +1372,7 @@ async function _osrmDirectRoute(mode) {
   }).join("");
   return {
     coords: route.geometry.coordinates, duration: route.duration, distance: route.distance, stepsHTML,
-    stepGeometries: steps.map((s) => s.geometry), stepFeatures, altColor, srcData,
+    stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData,
   };
 }
 
@@ -1182,6 +1433,7 @@ async function findRoutesDirect(mode) {
           </div>
           <div class="direct-endpoints">
             <span class="direct-ep">${esc(dir.origin.name)}</span>
+            ${dir.waypoints.filter(Boolean).map(wp => `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span class="direct-ep">${esc(wp.name)}</span>`).join("")}
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             <span class="direct-ep">${esc(dir.dest.name)}</span>
           </div>
@@ -1452,8 +1704,11 @@ function setGoLoading(loading) {
 }
 
 function enterResultsMode() {
+  const wpNames = dir.waypoints.filter(Boolean).map(w => w.name);
   dirSumFrom.textContent = dir.origin?.name || "Origin";
-  dirSumTo.textContent = dir.dest?.name || "Destination";
+  dirSumTo.textContent = wpNames.length
+    ? wpNames.join(" → ") + " → " + (dir.dest?.name || "Destination")
+    : dir.dest?.name || "Destination";
   setGoLoading(false);
 
   // Apply class changes — on mobile this hides inputs/mode-bar/go, shows summary

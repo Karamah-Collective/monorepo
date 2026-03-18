@@ -139,9 +139,9 @@ function _openStopFeaturePopup(f) {
   const html = `
         <div class="sp">
           <div class="sp-inner">
-            <div class="sp-hdr">
-              <span class="sp-icon" style="color:${color}">${svgIcon}</span>
-              <span class="sp-badge" style="background:color-mix(in srgb, ${color} 12%, transparent);color:${color}">${typeLabel}${codeStr}</span>
+            <div class="sp-hdr" style="--stop-c:${color}">
+              <span class="sp-icon">${svgIcon}</span>
+              <span class="sp-badge">${typeLabel}${codeStr}</span>
             </div>
             <div class="sp-title">${esc(displayName)}</div>
             <div class="sp-routes" id="${routesDivId}"></div>
@@ -256,10 +256,8 @@ function _openStopFeaturePopup(f) {
         const unique = compact.filter((r) => { const k = `${r.s}_${r.m}`; if (seen.has(k)) return false; seen.add(k); return true; });
         const livePrimary = renderStopRoutes(routesDivId, unique, color);
         if (livePrimary) {
-          const badge = popup.getElement()?.querySelector(".sp-badge");
-          if (badge) { badge.style.color = livePrimary; badge.style.background = livePrimary + "1A"; }
-          const icon = popup.getElement()?.querySelector(".sp-icon");
-          if (icon) icon.style.color = livePrimary;
+          const hdr = popup.getElement()?.querySelector(".sp-hdr");
+          if (hdr) hdr.style.setProperty("--stop-c", livePrimary);
         }
       })
       .catch(() => {
@@ -278,10 +276,35 @@ function _triggerStopOpen(lat, lng) {
   );
   if (features.length) {
     _openStopFeaturePopup(features[0]);
-  } else {
-    // Stop not rendered at current zoom — fall back to pin popup
-    window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng, lat } }));
+    return;
   }
+  // Features may not be rendered yet — try source data directly
+  const src = map.getSource("transit-stops");
+  if (src) {
+    const all = map.querySourceFeatures("transit-stops");
+    if (all.length) {
+      let best = null, bestD = Infinity;
+      for (const f of all) {
+        const [fLng, fLat] = f.geometry.coordinates;
+        const d = (fLat - lat) ** 2 + (fLng - lng) ** 2;
+        if (d < bestD) { bestD = d; best = f; }
+      }
+      // ~0.0003° ≈ 30 m tolerance
+      if (best && bestD < 9e-8) { _openStopFeaturePopup(best); return; }
+    }
+  }
+  // Last resort: wait one idle cycle then retry once before falling back
+  const onIdle = () => {
+    map.off("idle", onIdle);
+    const pt2 = map.project([lng, lat]);
+    const found = map.queryRenderedFeatures(
+      [[pt2.x - R, pt2.y - R], [pt2.x + R, pt2.y + R]],
+      { layers: ["transit-major-bg", "transit-tram-bg", "transit-bus-bg"] }
+    );
+    if (found.length) { _openStopFeaturePopup(found[0]); }
+    else { window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng, lat } })); }
+  };
+  map.on("idle", onIdle);
 }
 
 window.addEventListener("hf:open-stop", ({ detail: { lat, lng } }) => {

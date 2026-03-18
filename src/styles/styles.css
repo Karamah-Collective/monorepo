@@ -621,12 +621,28 @@ body.dark-mode .tut-card::before {
   background: var(--surface);
 }
 
-/* Popup & stop popup — darken badge slightly for contrast */
+/* Popup & stop popup — dark mode contrast adjustments */
 body.dark-mode .pp-badge {
   filter: brightness(0.92);
 }
+body.dark-mode .sp-icon {
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 80%, white);
+}
 body.dark-mode .sp-badge {
-  filter: brightness(0.92);
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 80%, white);
+  background: color-mix(in srgb, var(--stop-c, var(--accent)) 16%, transparent);
+}
+
+/* Leg badges with GTFS inline color — brighten for contrast */
+body.dark-mode .leg-badge[style] {
+  filter: brightness(1.12);
+}
+/* Leg timeline elements — boost visibility on dark surface */
+body.dark-mode .leg-line {
+  opacity: 0.6;
+}
+body.dark-mode .leg-inter-dot {
+  opacity: 0.7;
 }
 
 /* Place card dot icons — ensure visibility in dark mode */
@@ -1498,7 +1514,7 @@ body.dark-mode .sp-tip {
 /* Both the regular li cards and the empty-state card extend .pl-card (design-tokens.css) */
 #places-list li {
   display: grid;
-  grid-template: "icon name meta fav" auto "icon addr meta fav" auto / auto 1fr auto auto;
+  grid-template: "icon name meta acts" auto "icon addr meta acts" auto / auto 1fr auto auto;
   align-items: center;
   column-gap: var(--sp-5);
   cursor: pointer;
@@ -1678,13 +1694,18 @@ body.dark-mode .sp-tip {
   }
 }
 
-.pl-fav-btn {
-  grid-area: fav;
+.pl-acts {
+  grid-area: acts;
   align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.pl-acts > button {
   background: none;
   border: none;
-  padding: 10px 6px;
-  min-width: 36px;
+  padding: 8px 5px;
+  min-width: 28px;
   min-height: 36px;
   cursor: pointer;
   color: var(--text-3);
@@ -1698,6 +1719,9 @@ body.dark-mode .sp-tip {
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
+  .pl-dir-btn:hover {
+    color: var(--accent);
+  }
   .pl-fav-btn:hover {
     color: #f59e0b;
   }
@@ -2413,25 +2437,79 @@ body.dark-mode .sp-tip {
   border-color: var(--danger);
   background: var(--danger-soft);
 }
+.dir-dot.waypoint {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
 
-#dir-swap {
-  width: var(--icon-md);
-  height: var(--icon-md);
+/* "Add stop" button between origin and destination */
+#dir-waypoints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+#dir-waypoints:empty {
+  display: none;
+}
+
+/* Side controls: swap + add-stop */
+.dir-side-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   flex-shrink: 0;
+  gap: var(--sp-2);
+}
+.dir-side-controls > button {
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--surface-2);
-  border: 1.5px solid var(--border);
+  border: none;
   border-radius: var(--r-sm);
   cursor: pointer;
-  color: var(--text-2);
-  transition: color 0.15s;
+  color: var(--text-3);
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 @media (hover: hover) {
-  #dir-swap:hover {
+  .dir-side-controls > button:hover {
     color: var(--text);
+    background: var(--surface-3);
   }
+}
+.dir-add-stop.hide {
+  display: none;
+}
+
+/* Waypoint map markers */
+.dir-waypoint-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
 }
 
 /* #8 — Direction autocomplete fade+slide */
@@ -2660,7 +2738,7 @@ body.dark-mode .sp-tip {
 }
 .direct-step {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--sp-5);
   padding: 10px 16px;
   border-bottom: 1px solid var(--border-light);
@@ -2682,7 +2760,6 @@ body.dark-mode .sp-tip {
 }
 .direct-step:last-child {
   border-bottom: none;
-  align-items: center;
 }
 .step-icon-wrap {
   width: 30px;
@@ -4244,7 +4321,8 @@ body.dark-mode #route-snackbar {
   }
   .share-toast,
   #geo-notice,
-  #dev-notice {
+  #dev-notice,
+  .eid-banner {
     bottom: calc(var(--safe-b) + 24px);
   }
 }
@@ -4431,6 +4509,7 @@ body.dark-mode #route-snackbar {
   display: inline-flex;
   align-items: center;
   line-height: 1;
+  color: var(--stop-c, var(--accent));
 }
 .sp-icon svg {
   width: 14px;
@@ -4443,6 +4522,8 @@ body.dark-mode #route-snackbar {
   letter-spacing: 0.04em;
   border-radius: var(--r-pill);
   padding: 2px 8px;
+  color: var(--stop-c, var(--accent));
+  background: color-mix(in srgb, var(--stop-c, var(--accent)) 12%, transparent);
 }
 .sp-title {
   font-size: var(--txt-md);
@@ -4514,6 +4595,10 @@ body.dark-mode #route-snackbar {
 /* Route chip — bridges --rc (per-route color) into the shared --chip-c token */
 .sp-chip {
   --chip-c: var(--rc, var(--accent));
+}
+body.dark-mode .sp-chip {
+  color: color-mix(in srgb, var(--chip-c, var(--accent)) 80%, white);
+  background: color-mix(in srgb, var(--chip-c, var(--accent)) 16%, transparent);
 }
 .sp-chip small {
   font-weight: var(--fw-semibold);

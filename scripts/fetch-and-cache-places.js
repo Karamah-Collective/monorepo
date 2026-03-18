@@ -20,51 +20,28 @@ const path = require('path');
 
 const LOCAL_SHEET_BACKUP_DIR = path.join(__dirname, 'local-backups', 'sheets');
 
-function readSpreadsheetId() {
-  try {
-    const codeGsPath = path.join(__dirname, 'apps-script', 'Code.gs');
-    const code = fs.readFileSync(codeGsPath, 'utf-8');
-    const match = code.match(/SPREADSHEET_ID\s*=\s*['"]([^'"]+)['"]/);
-    return match ? match[1] : '';
-  } catch (err) {
-    console.warn(`⚠️  Could not read spreadsheet ID from Code.gs: ${err.message}`);
-    return '';
-  }
-}
+async function downloadSpreadsheetBackup(gasUrl) {
+  if (!gasUrl) throw new Error('GAS URL missing');
 
-function buildBackupFilename() {
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `halal-finder-sheet-${stamp}.xlsx`;
-}
-
-async function downloadSpreadsheetBackup(spreadsheetId) {
-  if (!spreadsheetId) {
-    throw new Error('Spreadsheet ID missing');
-  }
-
-  const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
-  const res = await fetch(exportUrl);
+  const res = await fetch(`${gasUrl}?action=backup`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const json = await res.json();
+  if (!json.data) throw new Error('No backup data in response');
 
   fs.mkdirSync(LOCAL_SHEET_BACKUP_DIR, { recursive: true });
 
-  const bytes = Buffer.from(await res.arrayBuffer());
-  const backupPath = path.join(LOCAL_SHEET_BACKUP_DIR, buildBackupFilename());
-  const latestPath = path.join(LOCAL_SHEET_BACKUP_DIR, 'latest.xlsx');
+  const bytes = Buffer.from(json.data, 'base64');
+  const backupPath = path.join(LOCAL_SHEET_BACKUP_DIR, 'halal-finder-sheet.xlsx');
 
   fs.writeFileSync(backupPath, bytes);
-  fs.writeFileSync(latestPath, bytes);
 
-  return {
-    backupPath,
-    latestPath,
-  };
+  return backupPath;
 }
 
 async function main() {
   // Get GAS_URL from command-line arg or config file
   let gasUrl = process.argv[2];
-  const spreadsheetId = readSpreadsheetId();
 
   if (!gasUrl) {
     // Try to read from config.local.js
@@ -124,10 +101,8 @@ async function main() {
 
     try {
       console.log('\n🔄 Downloading local spreadsheet backup...');
-      const backup = await downloadSpreadsheetBackup(spreadsheetId);
-      console.log(`✅ Saved local spreadsheet backup to ${path.relative(process.cwd(), backup.backupPath)}`);
-      console.log(`✅ Updated local spreadsheet backup at ${path.relative(process.cwd(), backup.latestPath)}`);
-      console.log('   This backup is local-only and gitignored. Do not commit or push it.');
+      const backupPath = await downloadSpreadsheetBackup(gasUrl);
+      console.log(`✅ Spreadsheet backup saved to ${path.relative(process.cwd(), backupPath)}`);
     } catch (backupErr) {
       console.warn(`⚠️  Could not download spreadsheet backup (non-fatal): ${backupErr.message}`);
     }
