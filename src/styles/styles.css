@@ -4728,7 +4728,7 @@ body.dark-mode .sp-chip {
     width: 38px;
     height: 38px;
   }
-  #dir-swap {
+  .dir-side-controls > button {
     width: 40px;
     height: 40px;
   }
