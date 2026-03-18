@@ -51,20 +51,6 @@
       "label": "Quran Available"
     }
   ],
-  "restaurant": [
-    {
-      "id": "no_alcohol",
-      "label": "No Alcohol"
-    },
-    {
-      "id": "halal_status",
-      "label": "Halal Status"
-    },
-    {
-      "id": "cuisine",
-      "label": "Cuisine"
-    }
-  ],
   "shop": [
     {
       "id": "halal_meat",
@@ -93,6 +79,20 @@
     {
       "id": "halal_certified",
       "label": "Certified"
+    }
+  ],
+  "restaurant": [
+    {
+      "id": "no_alcohol",
+      "label": "No Alcohol"
+    },
+    {
+      "id": "halal_status",
+      "label": "Halal Status"
+    },
+    {
+      "id": "cuisine",
+      "label": "Cuisine"
     }
   ],
   "restaurant_halal_status": [

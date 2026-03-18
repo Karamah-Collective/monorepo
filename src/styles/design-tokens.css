@@ -604,26 +604,36 @@ body {
   display: none;
 }
 .tf-group-chips {
+  flex-basis: 100%;
+  order: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  will-change: height;
+  transition: height 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tf-group-inner {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  flex-basis: 100%;
-  order: 1;
   padding-left: 8px;
   border-left: 2px solid var(--accent-soft);
-  overflow: hidden;
-  max-height: none;
-  transition:
-    max-height 0.25s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.15s ease,
-    padding 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-  opacity: 1;
+}
+.tf-see-more {
+  flex-basis: 100%;
+  order: 1;
+  background: none;
+  border: none;
+  padding: 2px 0 0;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
 }
 .tf-group-chips.shut {
-  max-height: 0 !important;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  height: 0 !important;
+  overflow-y: hidden;
   pointer-events: none;
 }
 

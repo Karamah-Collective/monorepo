@@ -958,18 +958,20 @@ function renderTagFilterBar() {
     tfChips.classList.add("shut");
   } else {
     updateTagCount();
-    let html = "";
+    let html = "<div class=\"tf-chips-inner\">";
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
           html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
-          html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}>`;
+          html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}><div class="tf-group-inner">`;
           html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
+          html += `</div>`;
           html += `</div>`;
       } else {
         html += `<button class="tf-chip${activeTagFilters.has(it.tag.id) ? " active" : ""}" data-tag="${it.tag.id}">${esc(it.tag.label)}</button>`;
       }
     }
+    html += `</div>`;
     tfChips.innerHTML = html;
   }
 
@@ -993,27 +995,58 @@ function updateTagCount() {
   }
 }
 
+// Smooth slide helper: animates element height from current to target
+function slideHeight(el, to, onDone) {
+  const from = el.offsetHeight;
+  el.style.height = from + "px";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.height = to + "px";
+      if (onDone) {
+        const done = (e) => {
+          if (e.propertyName !== "height" || e.target !== el) return;
+          el.removeEventListener("transitionend", done);
+          onDone();
+        };
+        el.addEventListener("transitionend", done);
+      }
+    });
+  });
+}
+
+function syncPlacesSnap() {
+  requestAnimationFrame(() => placesSnap.softRemeasure());
+}
+
 tfToggle.addEventListener("click", () => {
   const isOpen = !tfChips.classList.contains("shut");
   if (isOpen) {
-    // Closing: commit current height then animate to 0
-    tfChips.style.maxHeight = tfChips.scrollHeight + "px";
-    void tfChips.offsetHeight;
-    tfChips.classList.add("shut");
-    tfChips.style.maxHeight = "";
+    // Closing: animate height to 0, then add .shut
+    slideHeight(tfChips, 0, () => {
+      tfChips.classList.add("shut");
+      tfChips.style.height = "";
+      syncPlacesSnap();
+    });
   } else {
-    // Opening: animate from 0 to measured scrollHeight, then uncap
+    // Opening: remove .shut, measure natural height, animate from 0
     tfChips.classList.remove("shut");
-    const h = tfChips.scrollHeight;
-    tfChips.style.maxHeight = "0px";
-    void tfChips.offsetHeight;
-    tfChips.style.maxHeight = h + "px";
-    const clear = () => { tfChips.style.maxHeight = ""; tfChips.removeEventListener("transitionend", clear); };
-    tfChips.addEventListener("transitionend", clear);
+    const inner = tfChips.querySelector(".tf-chips-inner");
+    const h = inner ? inner.offsetHeight : 0;
+    tfChips.style.height = "0px";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tfChips.style.height = h + "px";
+        const done = (e) => {
+          if (e.propertyName !== "height" || e.target !== tfChips) return;
+          tfChips.style.height = "";
+          tfChips.removeEventListener("transitionend", done);
+          syncPlacesSnap();
+        };
+        tfChips.addEventListener("transitionend", done);
+      });
+    });
   }
   tfToggle.classList.toggle("open", !isOpen);
-  // Re-snap mobile sheet after filter chips expand/collapse
-  setTimeout(() => placesSnap.remeasure(), 280);
 });
 
 document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
@@ -1028,32 +1061,59 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
       if (!isOpen) {
         tfChips.querySelectorAll(".tf-group-chips:not(.shut)").forEach(other => {
           if (other === panel) return;
-          other.style.maxHeight = other.scrollHeight + "px";
-          void other.offsetHeight;
-          other.classList.add("shut");
-          other.style.maxHeight = "";
+          other.scrollTop = 0;
           const otherGid = other.dataset.groupFor;
+          tfChips.querySelector(`.tf-see-more[data-group-more="${otherGid}"]`)?.remove();
+          slideHeight(other, 0, () => { other.classList.add("shut"); other.style.height = ""; syncPlacesSnap(); });
           const otherToggle = tfChips.querySelector(`.tf-group-toggle[data-group="${otherGid}"]`);
           if (otherToggle) otherToggle.classList.remove("open");
         });
       }
       if (isOpen) {
-        panel.style.maxHeight = panel.scrollHeight + "px";
-        void panel.offsetHeight;
-        panel.classList.add("shut");
-        panel.style.maxHeight = "";
+        panel.scrollTop = 0;
+        tfChips.querySelector(`.tf-see-more[data-group-more="${gid}"]`)?.remove();
+        slideHeight(panel, 0, () => { panel.classList.add("shut"); panel.style.height = ""; syncPlacesSnap(); });
       } else {
         panel.classList.remove("shut");
-        const h = panel.scrollHeight;
-        panel.style.maxHeight = "0px";
-        void panel.offsetHeight;
-        panel.style.maxHeight = h + "px";
-        const clear = () => { panel.style.maxHeight = ""; panel.removeEventListener("transitionend", clear); };
-        panel.addEventListener("transitionend", clear);
+        const inner = panel.querySelector(".tf-group-inner");
+        const firstChip = panel.querySelector(".tf-chip");
+        const chipH = firstChip ? firstChip.offsetHeight : 30;
+        const gap = inner ? (parseFloat(getComputedStyle(inner).rowGap) || 5) : 5;
+        const twoRowH = chipH * 2 + gap;
+        const threeRowH = chipH * 3 + gap * 2;
+        const fullH = inner ? inner.offsetHeight : panel.scrollHeight;
+        const targetH = Math.min(fullH, twoRowH);
+        panel.style.height = "0px";
+        requestAnimationFrame(() => { requestAnimationFrame(() => {
+          panel.style.height = targetH + "px";
+          const clear = (ev) => {
+            if (ev.propertyName !== "height" || ev.target !== panel) return;
+            panel.removeEventListener("transitionend", clear);
+            syncPlacesSnap();
+            if (fullH > twoRowH) {
+              const btn = document.createElement("button");
+              btn.className = "tf-see-more";
+              btn.setAttribute("data-group-more", gid);
+              btn.textContent = "See more \u2193";
+              btn.addEventListener("click", () => {
+                if (btn.dataset.expanded) {
+                  panel.scrollTop = 0;
+                  slideHeight(panel, twoRowH, () => syncPlacesSnap());
+                  btn.textContent = "See more \u2193";
+                  delete btn.dataset.expanded;
+                } else {
+                  slideHeight(panel, threeRowH, () => syncPlacesSnap());
+                  btn.textContent = "See less \u2191";
+                  btn.dataset.expanded = "1";
+                }
+              });
+              panel.insertAdjacentElement("afterend", btn);
+            }
+          };
+          panel.addEventListener("transitionend", clear);
+        }); });
       }
       groupBtn.classList.toggle("open", !isOpen);
-      // Re-snap mobile sheet after group expand/collapse
-      setTimeout(() => placesSnap.remeasure(), 280);
     }
     return;
   }
