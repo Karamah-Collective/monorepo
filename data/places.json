@@ -1443,5 +1443,53 @@
       "taraweeh": true
     },
     "notes": ""
+  },
+  {
+    "id": "tc4qvi",
+    "name": "Al-Taqwa Mosque",
+    "type": "mosque",
+    "address": "Sitratie 7, 00420 Helsinki, Finland",
+    "lat": 60.2395933,
+    "lng": 24.8757143,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "tzgl0e",
+    "name": "Al-Taqwa Mosque",
+    "type": "mosque",
+    "address": "Sitratie 7, 00420 Helsinki, Finland",
+    "lat": 60.2395933,
+    "lng": 24.8757143,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "l3517t",
+    "name": "Ummah Moskeija",
+    "type": "mosque",
+    "address": "Hernepellonkuja 6, 00560 Helsinki, Finland",
+    "lat": 60.2232459,
+    "lng": 24.9935227,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "janaza": true,
+      "quran_classes": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": ""
   }
 ]

@@ -48,6 +48,7 @@ All tokens are CSS custom properties on `:root`.
 | `--success` | `#1FA86A` | Green — mosques, confirmed features |
 | `--success-soft` | `#e8f6ee` | Green tint surface |
 | `--danger` | `#d64545` | Red — errors, destructive actions |
+| `--danger-vivid` | `#c62828` | Red hover/active — prominent danger state |
 | `--danger-soft` | `#fce8e8` | Red tint surface |
 
 ### Transit colours

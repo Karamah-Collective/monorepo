@@ -22,6 +22,7 @@
   --success-soft: #e8f6ee;
 
   --danger: #d64545;
+  --danger-vivid: #c62828;
   --danger-soft: #fce8e8;
 
   --hsl-bus: #1a73b8;
@@ -424,11 +425,11 @@ body {
   background: var(--danger-soft);
   border-radius: 50%;
   color: var(--danger);
-  transition: filter var(--t-fast);
+  transition: color var(--t-fast);
 }
 @media (hover: hover) {
   .btn-roundel-danger:hover {
-    filter: brightness(0.95);
+    color: var(--danger-vivid);
   }
 }
 
@@ -610,7 +611,7 @@ body {
   overflow-x: hidden;
   scrollbar-gutter: stable;
   will-change: height;
-  transition: height 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: height 0.25s ease;
 }
 .tf-group-inner {
   display: flex;
@@ -623,6 +624,7 @@ body {
   height: 0 !important;
   overflow-y: hidden;
   pointer-events: none;
+  display: none;
 }
 
 /* ─── Style panel divider ─── */

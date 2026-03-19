@@ -77,7 +77,7 @@
     "jamaats": [
       "9:00"
     ],
-    "notes": "Please do wudu at home and bring janamaz",
+    "notes": "Please do wudu at home and bring prayer mat",
     "date": "2026-03-20"
   },
   {
@@ -107,6 +107,88 @@
       "9:30"
     ],
     "notes": "Only if Eid is on the 20th of March",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "qp123p",
+    "name": "Ummah Moskeija",
+    "address": "Hernepellonkuja 6, 00560 Helsinki",
+    "lat": 60.2235442514646,
+    "lng": 24.993565613724,
+    "organizer": "Ummah Moskeija",
+    "jamaats": [
+      "8:00",
+      "8:30"
+    ],
+    "notes": "",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "i5egwm",
+    "name": "Talin Jalkapallo Halli",
+    "address": "Purotie 8, 00380 Helsinki",
+    "lat": 60.2147830523261,
+    "lng": 24.8681582560521,
+    "organizer": "Masjid Al-Huda",
+    "jamaats": [
+      "8:00"
+    ],
+    "notes": "Bring prayer mat",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "ktpkk5",
+    "name": "Aktia Areena",
+    "address": "Martinkyläntie 1, 01670 Vantaa",
+    "lat": 60.2910091322359,
+    "lng": 24.8648341857504,
+    "organizer": "As-salam Center",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "Bring prayer mat",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "lczx2d",
+    "name": "Iqra Mosque",
+    "address": "Kontulankaari 1, 00940 Helsinki",
+    "lat": 60.236947705821,
+    "lng": 25.0848255653037,
+    "organizer": "Iqra Mosque",
+    "jamaats": [
+      "8:30",
+      "9:30"
+    ],
+    "notes": "Men at 8.30, Women at 9.30",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "2in4lt",
+    "name": "Campo Sportcenter Oy",
+    "address": "Latukuja 4, 01280 Vantaa",
+    "lat": 60.252176344854,
+    "lng": 25.1078960791035,
+    "organizer": "",
+    "jamaats": [
+      "9:30"
+    ],
+    "notes": "Bring prayer mat",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "2stpsk",
+    "name": "Impivaaran jalkapallohalli",
+    "address": "Eskonkatu 1, 20320 Turku",
+    "lat": 60.478478701411,
+    "lng": 22.2519759695574,
+    "organizer": "Ashtin Moskeija",
+    "jamaats": [
+      "8:00",
+      "9:00",
+      "10:00"
+    ],
+    "notes": "",
     "date": "2026-03-20"
   }
 ]

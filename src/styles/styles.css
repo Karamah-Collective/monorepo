@@ -72,6 +72,12 @@
   z-index: var(--z-map);
   background: #f0f1f2;
 }
+.maplibregl-canvas-container.maplibregl-interactive {
+  cursor: grab !important;
+}
+.maplibregl-canvas-container.maplibregl-interactive:active {
+  cursor: grabbing !important;
+}
 .maplibregl-ctrl-bottom-right {
   display: none !important;
 }
@@ -261,34 +267,7 @@
   vertical-align: middle;
   white-space: nowrap;
 }
-.r-dist-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semi);
-  color: var(--text-3);
-  background: var(--surface-2);
-  border-radius: var(--r-pill);
-  padding: 1px 6px;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-.r-nearby-hdr {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-4) 18px;
-  font-size: var(--txt-sm);
-  font-weight: var(--fw-semi);
-  color: var(--accent);
-  border-bottom: 1px solid var(--border-light);
-  pointer-events: none;
-}
-#results-list li.r-status {
-  pointer-events: none;
-  cursor: default;
-}
+
 
 
 .maplibregl-ctrl-scale {
@@ -1517,7 +1496,7 @@ body.dark-mode .sp-tip {
 #tag-filter-chips {
   overflow: hidden;
   touch-action: manipulation;
-  transition: height 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: height 0.25s ease;
 }
 #tag-filter-chips.shut {
   height: 0 !important;
@@ -2656,18 +2635,23 @@ body.dark-mode .sp-tip {
 }
 
 #dir-time-bar {
-  height: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 0fr;
   flex-shrink: 0;
-  transition: height var(--t-spring);
+  transition: grid-template-rows 0.25s ease;
 }
 .time-bar-inner {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   padding: 0 16px 12px;
   opacity: 0;
   transition: opacity var(--t-med);
+}
+#dir-time-bar.show {
+  grid-template-rows: 1fr;
 }
 #dir-time-bar.show .time-bar-inner {
   opacity: 1;
@@ -2903,18 +2887,20 @@ body.dark-mode .sp-tip {
   border-color: var(--accent);
 }
 #dir-custom-time-row {
-  height: 0;
-  overflow: hidden;
-  transition: height var(--t-spring);
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
 }
 .custom-time-inner {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   gap: var(--sp-2);
   opacity: 0;
   transition: opacity var(--t-med);
 }
 #dir-custom-time-row.show {
-  height: auto;
+  grid-template-rows: 1fr;
 }
 #dir-custom-time-row.show .custom-time-inner {
   opacity: 1;
@@ -4786,7 +4772,7 @@ body.dark-mode .sp-chip {
   #dir-mode-bar {
     padding: 10px 12px 10px;
   }
-  #dir-time-bar {
+  #dir-time-bar .time-bar-inner {
     padding: 0 12px 10px;
   }
   #dir-go {

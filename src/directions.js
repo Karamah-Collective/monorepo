@@ -180,13 +180,9 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
     moveModePill(btn);
     dirTravelMode = btn.dataset.mode;
 
-    // Suppress time-bar transition so it snaps instantly to its new state;
-    // `remeasure()` will smoothly animate the sheet height instead.
-    dirTimeBar.style.transition = "none";
-
     // Apply real mode change
     dirPanel.dataset.travelMode = dirTravelMode;
-    void dirTimeBar.offsetHeight;                  // commit time-bar layout
+    dirTimeBar.classList.toggle("show", dirTravelMode === "transit");
     if (dirTravelMode === "transit") {
       const activeTime = document.querySelector("#dir-time-toggle .time-opt.active");
       if (activeTime) moveTimePill(activeTime);
@@ -204,9 +200,6 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
 
     // remeasure handles the smooth height transition from current → target
     dirSnap.remeasure();
-
-    // Restore time-bar transition next frame (after panel transition committed)
-    requestAnimationFrame(() => { dirTimeBar.style.transition = ""; });
 
     // Auto-reload only if routes were already shown (user clicked Find Routes)
     if (dir.origin && dir.dest && routeRequested) findRoutes();
@@ -317,6 +310,7 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
     });
     if (activeBtn) moveModePill(activeBtn);
     dirPanel.dataset.travelMode = mode;
+    dirTimeBar.classList.toggle("show", mode === "transit");
     if (mode === "transit") {
       // Restore depart/arrive toggle
       if (tmode === "depart" || tmode === "arrive") {
@@ -878,19 +872,10 @@ dirTimeNow.addEventListener("click", () => {
   dirUseNow = !dirUseNow;
   dirTimeNow.classList.toggle("active", dirUseNow);
 
-  // Suppress custom-row transition so it snaps to final state;
-  // remeasure will smoothly animate the sheet height instead.
-  dirCustomRow.style.transition = "none";
-
   dirCustomRow.classList.toggle("show", !dirUseNow);
   if (dirUseNow) { setDefaultDatetime(); closePickerOverlays(); }
 
-  // Commit row layout at final state, then let remeasure animate the sheet
-  void dirCustomRow.offsetHeight;
   dirSnap.remeasure();
-
-  // Restore custom-row transition next frame
-  requestAnimationFrame(() => { dirCustomRow.style.transition = ""; });
 });
 
 // --- Routing ---

@@ -189,6 +189,14 @@
     {
       "id": "cuisine_malaysian",
       "label": "Malaysian"
+    },
+    {
+      "id": "cuisine_cafe",
+      "label": "Cafe"
+    },
+    {
+      "id": "cuisine_pastries",
+      "label": "Pastries"
     }
   ]
 }
