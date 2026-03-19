@@ -712,9 +712,11 @@ export async function shareUrl(fullUrl, title, text) {
 }
 
 // ─── Compact share URL encoding ────────────────────────────────────────────
-// Packs share data into tight binary → base64url. ~50% shorter than JSON.
-// Old URL formats (?r=base64-JSON, ?lat=&lng=, ?eid=) still parse for
-// backward compat — new shares just generate the compact form.
+// v2: binary header + DEFLATE-compressed itinerary for transit routes.
+// Transit shares embed the full itinerary (legs, geometry, stops) so the
+// receiver sees the EXACT route — no API re-query needed.
+// Non-transit shares (drive/cycle/walk) still re-query (deterministic).
+// Old v1 tokens (0x01) and legacy JSON formats still decode for compat.
 
 const _C_LAT_BASE = 58;
 const _C_LNG_BASE = 19;
@@ -739,7 +741,9 @@ function _pullStr(buf, off) {
   return { s: new TextDecoder().decode(new Uint8Array(buf.slice(off + 1, off + 1 + len))), n: off + 1 + len };
 }
 function _b64e(bytes) {
-  return btoa(String.fromCharCode(...bytes)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 function _b64d(tok) {
   const b = tok.replace(/-/g, "+").replace(/_/g, "/");
@@ -747,16 +751,117 @@ function _b64d(tok) {
   return Array.from(atob(p ? b + "=".repeat(4 - p) : b), (c) => c.charCodeAt(0));
 }
 
-// ── Route compact: ?r=<token>  (byte 0 = 0x01 distinguishes from legacy JSON whose byte 0 = '{')
-export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx }) {
-  const buf = [0x01];
+// ── Compression helpers (DEFLATE-raw via Web Streams API) ──
+async function _deflate(data) {
+  const cs = new CompressionStream('deflate-raw');
+  const writer = cs.writable.getWriter();
+  writer.write(data instanceof Uint8Array ? data : new Uint8Array(data));
+  writer.close();
+  const chunks = [];
+  const reader = cs.readable.getReader();
+  for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
+  const total = chunks.reduce((s, c) => s + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+async function _inflate(data) {
+  const ds = new DecompressionStream('deflate-raw');
+  const writer = ds.writable.getWriter();
+  writer.write(data instanceof Uint8Array ? data : new Uint8Array(data));
+  writer.close();
+  const chunks = [];
+  const reader = ds.readable.getReader();
+  for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
+  const total = chunks.reduce((s, c) => s + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+// ── Itinerary packing (full itinerary → minimal JSON) ──
+function _packItinerary(itin) {
+  return {
+    s: new Date(itin.start).getTime(),
+    e: new Date(itin.end).getTime(),
+    l: itin.legs.map(leg => {
+      const o = {
+        m: leg.mode,
+        s: new Date(leg.start.scheduledTime).getTime(),
+        e: new Date(leg.end.scheduledTime).getTime(),
+        fn: leg.from.name || "",
+        tn: leg.to.name || "",
+        g: leg.legGeometry.points,
+        du: leg.duration,
+        di: leg.distance || 0,
+      };
+      if (leg.legGeometry.precision && leg.legGeometry.precision !== 5) o.gp = leg.legGeometry.precision;
+      if (leg.from.stop?.code) o.fc = leg.from.stop.code;
+      if (leg.from.stop?.zoneId) o.fz = leg.from.stop.zoneId;
+      if (leg.to.stop?.code) o.tc = leg.to.stop.code;
+      if (leg.to.stop?.zoneId) o.tz = leg.to.stop.zoneId;
+      if (leg.intermediateStops?.length) {
+        o.is = leg.intermediateStops.map(s => {
+          const st = { n: s.name || "" };
+          if (s.code) st.c = s.code;
+          if (s.zoneId) st.z = s.zoneId;
+          return st;
+        });
+      }
+      if (leg.trip) {
+        if (leg.trip.routeShortName) o.rn = leg.trip.routeShortName;
+        if (leg.trip.tripHeadsign) o.rh = leg.trip.tripHeadsign;
+        if (leg.trip.route?.type != null) o.rt = leg.trip.route.type;
+        if (leg.trip.route?.color) o.rc = leg.trip.route.color;
+        if (leg.trip.route?.textColor) o.rx = leg.trip.route.textColor;
+      }
+      return o;
+    }),
+  };
+}
+function _unpackItinerary(packed) {
+  return {
+    start: new Date(packed.s).toISOString(),
+    end: new Date(packed.e).toISOString(),
+    legs: packed.l.map(pl => ({
+      mode: pl.m,
+      duration: pl.du,
+      distance: pl.di || 0,
+      start: { scheduledTime: new Date(pl.s).toISOString() },
+      end: { scheduledTime: new Date(pl.e).toISOString() },
+      from: { name: pl.fn || "", stop: (pl.fc || pl.fz) ? { code: pl.fc || null, zoneId: pl.fz || null } : null },
+      to: { name: pl.tn || "", stop: (pl.tc || pl.tz) ? { code: pl.tc || null, zoneId: pl.tz || null } : null },
+      intermediateStops: (pl.is || []).map(s => ({ name: s.n || "", code: s.c || null, zoneId: s.z || null })),
+      trip: (pl.rn || pl.rh || pl.rt != null) ? {
+        routeShortName: pl.rn || null,
+        tripHeadsign: pl.rh || null,
+        route: { type: pl.rt ?? 0, color: pl.rc || null, textColor: pl.rx || null },
+      } : null,
+      legGeometry: { points: pl.g, precision: pl.gp || 5 },
+    })),
+  };
+}
+
+export async function decompressItinerary(compressedBytes) {
+  const decompressed = await _inflate(compressedBytes);
+  const json = new TextDecoder().decode(decompressed);
+  return _unpackItinerary(JSON.parse(json));
+}
+
+// ── Route compact v2: ?r=<token>  (byte 0 = 0x02)
+// v2 changes vs v1: exact-minute time (not 15-min); embedded DEFLATE-compressed
+// itinerary for transit (receiver renders directly without re-querying APIs).
+export async function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinerary }) {
+  const buf = [0x02];
   const m = _ROUTE_MODES.indexOf(mode) & 3;
   const tm = tmode === "arrive" ? 1 : 0;
   const ht = !!(tdate && ttime);
   const ho = !!oname;
   const hd = !!dname;
   const hw = !!(waypoints?.length);
-  const hi = itinIdx != null && itinIdx >= 0;
+  const hi = !!(itinerary && mode === "transit");
   buf.push(m | (tm << 2) | (ht ? 8 : 0) | (ho ? 16 : 0) | (hd ? 32 : 0) | (hw ? 64 : 0) | (hi ? 128 : 0));
   buf.push(..._encLat(olat), ..._encLng(olng));
   buf.push(..._encLat(dlat), ..._encLng(dlng));
@@ -764,7 +869,7 @@ export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname,
     const days = Math.round((new Date(tdate + "T00:00:00").getTime() - _DATE_EPOCH) / 86400000);
     buf.push(..._toU16(days));
     const [h, mi] = ttime.split(":").map(Number);
-    buf.push(h * 4 + Math.round(mi / 15));
+    buf.push(h, mi);
   }
   if (ho) _pushStr(buf, oname);
   if (hd) _pushStr(buf, dname);
@@ -775,49 +880,102 @@ export function encodeCompactRoute({ olat, olng, dlat, dlng, mode, oname, dname,
       _pushStr(buf, (wp.name || "").slice(0, 60));
     }
   }
-  if (hi) buf.push(itinIdx & 0xff);
+  if (hi) {
+    const json = JSON.stringify(_packItinerary(itinerary));
+    const compressed = await _deflate(new TextEncoder().encode(json));
+    const combined = new Uint8Array(buf.length + compressed.length);
+    combined.set(buf);
+    combined.set(compressed, buf.length);
+    return _b64e(combined);
+  }
   return _b64e(buf);
 }
 
+// Decode handles both v1 (0x01) and v2 (0x02) compact route tokens.
+// Returns header fields synchronously; v2 transit tokens include _compressedItinerary
+// bytes that must be decompressed async via decompressItinerary().
 export function decodeCompactRoute(token) {
   try {
     const b = _b64d(token);
-    if (b[0] !== 0x01) return null;
-    const f = b[1];
-    const mode = _ROUTE_MODES[f & 3];
-    const tmode = (f >> 2) & 1 ? "arrive" : "depart";
-    const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32), hw = !!(f & 64), hi = !!(f & 128);
-    const olat = _decLat(b[2], b[3]), olng = _decLng(b[4], b[5]);
-    const dlat = _decLat(b[6], b[7]), dlng = _decLng(b[8], b[9]);
-    let off = 10, tdate, ttime;
-    if (ht) {
-      const days = _fromU16(b[off], b[off + 1]);
-      const d = new Date(_DATE_EPOCH + days * 86400000);
-      tdate = d.toISOString().slice(0, 10);
-      const qh = b[off + 2];
-      ttime = `${String(Math.floor(qh / 4)).padStart(2, "0")}:${String((qh % 4) * 15).padStart(2, "0")}`;
-      off += 3;
-    }
-    let oname = "";
-    if (ho) { const r = _pullStr(b, off); oname = r.s; off = r.n; }
-    let dname = "";
-    if (hd) { const r = _pullStr(b, off); dname = r.s; off = r.n; }
-    const waypoints = [];
-    if (hw) {
-      const count = b[off++];
-      for (let i = 0; i < count; i++) {
-        const wlat = _decLat(b[off], b[off + 1]);
-        const wlng = _decLng(b[off + 2], b[off + 3]);
-        off += 4;
-        const r = _pullStr(b, off);
-        waypoints.push({ lat: wlat, lng: wlng, name: r.s });
-        off = r.n;
-      }
-    }
-    let itinIdx = null;
-    if (hi) itinIdx = b[off++];
-    return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx };
+    if (b[0] === 0x01) return _decodeRouteV1(b);
+    if (b[0] === 0x02) return _decodeRouteV2(b);
+    return null;
   } catch { return null; }
+}
+
+function _decodeRouteV1(b) {
+  const f = b[1];
+  const mode = _ROUTE_MODES[f & 3];
+  const tmode = (f >> 2) & 1 ? "arrive" : "depart";
+  const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32), hw = !!(f & 64), hi = !!(f & 128);
+  const olat = _decLat(b[2], b[3]), olng = _decLng(b[4], b[5]);
+  const dlat = _decLat(b[6], b[7]), dlng = _decLng(b[8], b[9]);
+  let off = 10, tdate, ttime;
+  if (ht) {
+    const days = _fromU16(b[off], b[off + 1]);
+    const d = new Date(_DATE_EPOCH + days * 86400000);
+    tdate = d.toISOString().slice(0, 10);
+    const qh = b[off + 2];
+    ttime = `${String(Math.floor(qh / 4)).padStart(2, "0")}:${String((qh % 4) * 15).padStart(2, "0")}`;
+    off += 3;
+  }
+  let oname = "";
+  if (ho) { const r = _pullStr(b, off); oname = r.s; off = r.n; }
+  let dname = "";
+  if (hd) { const r = _pullStr(b, off); dname = r.s; off = r.n; }
+  const waypoints = [];
+  if (hw) {
+    const count = b[off++];
+    for (let i = 0; i < count; i++) {
+      const wlat = _decLat(b[off], b[off + 1]);
+      const wlng = _decLng(b[off + 2], b[off + 3]);
+      off += 4;
+      const r = _pullStr(b, off);
+      waypoints.push({ lat: wlat, lng: wlng, name: r.s });
+      off = r.n;
+    }
+  }
+  let itinIdx = null;
+  if (hi) itinIdx = b[off++];
+  return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx, _compressedItinerary: null };
+}
+
+function _decodeRouteV2(b) {
+  const f = b[1];
+  const mode = _ROUTE_MODES[f & 3];
+  const tmode = (f >> 2) & 1 ? "arrive" : "depart";
+  const ht = !!(f & 8), ho = !!(f & 16), hd = !!(f & 32), hw = !!(f & 64), hi = !!(f & 128);
+  const olat = _decLat(b[2], b[3]), olng = _decLng(b[4], b[5]);
+  const dlat = _decLat(b[6], b[7]), dlng = _decLng(b[8], b[9]);
+  let off = 10, tdate, ttime;
+  if (ht) {
+    const days = _fromU16(b[off], b[off + 1]);
+    const d = new Date(_DATE_EPOCH + days * 86400000);
+    tdate = d.toISOString().slice(0, 10);
+    ttime = `${String(b[off + 2]).padStart(2, "0")}:${String(b[off + 3]).padStart(2, "0")}`;
+    off += 4;
+  }
+  let oname = "";
+  if (ho) { const r = _pullStr(b, off); oname = r.s; off = r.n; }
+  let dname = "";
+  if (hd) { const r = _pullStr(b, off); dname = r.s; off = r.n; }
+  const waypoints = [];
+  if (hw) {
+    const count = b[off++];
+    for (let i = 0; i < count; i++) {
+      const wlat = _decLat(b[off], b[off + 1]);
+      const wlng = _decLng(b[off + 2], b[off + 3]);
+      off += 4;
+      const r = _pullStr(b, off);
+      waypoints.push({ lat: wlat, lng: wlng, name: r.s });
+      off = r.n;
+    }
+  }
+  let _compressedItinerary = null;
+  if (hi && off < b.length) {
+    _compressedItinerary = new Uint8Array(b.slice(off));
+  }
+  return { olat, olng, dlat, dlng, mode, oname, dname, tmode, tdate, ttime, waypoints, itinIdx: null, _compressedItinerary };
 }
 
 // ── Pin / Stop compact: ?p=<token>

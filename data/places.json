@@ -1476,5 +1476,49 @@
       "female_wudu": true
     },
     "notes": ""
+  },
+  {
+    "id": "54bqty",
+    "name": "Ziara's Cafe",
+    "type": "restaurant",
+    "address": "Albertinkatu 10, 00150 Helsinki, Finland",
+    "lat": 60.1605935,
+    "lng": 24.9382727,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_cafe": true,
+      "cuisine_pastries": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "u9uzjc",
+    "name": "Masjid Sunnah - Helsinki مسجد السنة هلسنكي‭",
+    "type": "mosque",
+    "address": "Ylä-Malmin tori 6b, 00700 Helsinki, Finland",
+    "lat": 60.2525271,
+    "lng": 25.0078858,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "zrr1ng",
+    "name": "Hanami Sushi Töölö",
+    "type": "restaurant",
+    "address": "Linnankoskenkatu 11b, 00250 Helsinki, Finland",
+    "lat": 60.1854763,
+    "lng": 24.9159709,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_sushi": true
+    },
+    "notes": ""
   }
 ]

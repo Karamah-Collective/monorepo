@@ -668,6 +668,7 @@ export function checkShareUrl() {
         tdate: cr.tdate || null, ttime: cr.ttime || null,
         waypoints: cr.waypoints?.length ? cr.waypoints : null,
         itinIdx: cr.itinIdx,
+        _compressedItinerary: cr._compressedItinerary || null,
       });
       return;
     }

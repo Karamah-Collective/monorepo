@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -255,11 +255,13 @@ dirClearBtn.addEventListener("click", () => {
   dirSnap.remeasure();
 });
 
-function _buildRouteShareUrl() {
+async function _buildRouteShareUrl() {
   if (!dir.origin || !dir.dest) return null;
   const hasTime = dirTravelMode === "transit" && !dirUseNow;
   const validWaypoints = dir.waypoints.filter(Boolean);
-  const token = encodeCompactRoute({
+  const activeItin = dirTravelMode === "transit" && dir.activeIdx >= 0
+    ? dir.itineraries[dir.activeIdx] : null;
+  const token = await encodeCompactRoute({
     olat: dir.origin.lat, olng: dir.origin.lng,
     dlat: dir.dest.lat, dlng: dir.dest.lng,
     mode: dirTravelMode,
@@ -269,20 +271,20 @@ function _buildRouteShareUrl() {
     tdate: hasTime ? getDateValue() : null,
     ttime: hasTime ? getTimeValue() : null,
     waypoints: validWaypoints.length ? validWaypoints : null,
-    itinIdx: dirTravelMode === "transit" && dir.activeIdx > 0 ? dir.activeIdx : null,
+    itinerary: activeItin,
   });
   return `${location.origin}${location.pathname}?r=${token}`;
 }
 
-dirShareBtn.addEventListener("click", () => {
-  const url = _buildRouteShareUrl();
+dirShareBtn.addEventListener("click", async () => {
+  const url = await _buildRouteShareUrl();
   if (!url) return;
   const title = `${dir.origin?.name || "Origin"} → ${dir.dest?.name || "Destination"}`;
   shareUrl(url, title, `${title} – Halal Finder`);
 });
 
 let _pendingItinIdx = null;
-export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints, itinIdx }) {
+export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints, itinIdx, _compressedItinerary }) {
   _pendingItinIdx = itinIdx != null ? itinIdx : null;
   dir.origin = { lat: olat, lng: olng, name: oname || `${olat.toFixed(4)}, ${olng.toFixed(4)}` };
   dir.dest = { lat: dlat, lng: dlng, name: dname || `${dlat.toFixed(4)}, ${dlng.toFixed(4)}` };
@@ -343,7 +345,24 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
 
   updateGoButton();
   openDirPanel();
-  // Trigger route search after panel is open
+
+  // Embedded transit itinerary — decompress and render directly (no API re-query)
+  if (_compressedItinerary) {
+    _pendingItinIdx = null;
+    routeRequested = true;
+    showDirLoading();
+    dirPanel.classList.remove("search-editing");
+    decompressItinerary(_compressedItinerary).then(itin => {
+      dir.usingFallback = false;
+      dir.itineraries = [itin];
+      renderItineraries();
+    }).catch(() => {
+      setTimeout(() => findRoutes(), 100);
+    });
+    return;
+  }
+
+  // No embedded itinerary — re-query
   setTimeout(() => findRoutes(), 300);
 }
 

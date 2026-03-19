@@ -197,6 +197,18 @@
     {
       "id": "cuisine_pastries",
       "label": "Pastries"
+    },
+    {
+      "id": "cuisine_sushi",
+      "label": "Sushi"
+    },
+    {
+      "id": "cuisine_uzbek",
+      "label": "Uzbek"
+    },
+    {
+      "id": "cuisine_central_asia",
+      "label": "Central Asia"
     }
   ]
 }

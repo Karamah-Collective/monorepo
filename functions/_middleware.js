@@ -49,12 +49,13 @@ function _str(b, off) {
 function _decodeCompactRoute(token) {
   try {
     const b = _b64d(token);
-    if (b[0] !== 0x01) return null;
+    const ver = b[0];
+    if (ver !== 0x01 && ver !== 0x02) return null;
     const f = b[1];
     const mode = _ROUTE_MODES[f & 3];
     const ho = !!(f & 16), hd = !!(f & 32);
     let off = 10;
-    if (f & 8) off += 3; // skip time data
+    if (f & 8) off += ver === 0x01 ? 3 : 4; // v1: 3 bytes time, v2: 4 bytes (exact min)
     let oname = '';
     if (ho) { const r = _str(b, off); oname = r.s; off = r.n; }
     let dname = '';
