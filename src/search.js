@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
-import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker } from "./utils.js";
+import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, haversineDistance, requestLocation } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, showPlacePopup } from "./places.js";
@@ -49,6 +49,53 @@ function _localPlaceSearch(q) {
     .map(p => {
       const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
       return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true };
+    });
+}
+
+// ─── NLP-lite: proximity intent detection ──────────────────────────────────────
+// Instead of heavy NLP, a curated pattern table catches common "near me" phrases
+// and optional category keywords, then returns local places sorted by distance.
+const _PROXIMITY = [
+  /\bnear\s*(?:me|by|here)\b/i,
+  /\baround\s*(?:me|here)\b/i,
+  /\bclose\s*(?:to\s*me|by)\b/i,
+  /\bnearby\b/i,
+  /\bclosest\b/i,
+  /\bnearest\b/i,
+];
+const _CATEGORIES = [
+  { types: ["restaurant"], pattern: /\b(?:restaurant|eat|food|dining|dine|lunch|dinner|breakfast|kebab|pizza|burger|biryani|cafe|coffee)s?\b/i },
+  { types: ["mosque", "prayer_room"], pattern: /\b(?:mosque|masjid|pray|prayer|worship|jummah|salah|namaz)s?\b/i },
+  { types: ["shop"], pattern: /\b(?:shop|store|grocery|grocer|market|supermarket|meat|butcher)s?\b/i },
+];
+let _cachedUserPos = null;
+
+function _detectNearbyIntent(q) {
+  if (!_PROXIMITY.some(p => p.test(q))) return null;
+  const types = [];
+  for (const cat of _CATEGORIES) if (cat.pattern.test(q)) types.push(...cat.types);
+  return { types: types.length ? types : null };
+}
+
+async function _getUserPosition() {
+  if (_cachedUserPos) return _cachedUserPos;
+  try {
+    const pos = await requestLocation();
+    _cachedUserPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    return _cachedUserPos;
+  } catch { return null; }
+}
+
+function _nearbySearch(types, lat, lng) {
+  const source = placesData.length ? placesData : (_localPlaces || []);
+  let filtered = types ? source.filter(p => types.includes(p.type)) : source;
+  return filtered
+    .map(p => ({ ...p, _dist: haversineDistance(lat, lng, p.lat, p.lng) }))
+    .sort((a, b) => a._dist - b._dist)
+    .slice(0, 8)
+    .map(p => {
+      const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
+      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true, dist: p._dist };
     });
 }
 
@@ -279,6 +326,26 @@ let debounce = null;
 async function search(q) {
   q = q.trim();
   if (!q) { hideDrop(); return; }
+
+  // ── Proximity intent: "restaurants near me", "mosque nearby", etc. ──
+  const intent = _detectNearbyIntent(q);
+  if (intent) {
+    rList.innerHTML = '<li class="r-status"><span class="r-icon" style="background:var(--accent-soft);color:var(--accent)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m0-10.14l2.83 2.83m4.48 4.48l2.83 2.83"/></svg></span><div class="r-body"><div class="r-name">Finding your location…</div></div></li>';
+    showDrop();
+    const pos = await _getUserPosition();
+    if (!pos) {
+      rList.innerHTML = '<li class="r-status"><div class="r-body"><div class="r-name" style="white-space:normal">Enable location access to find places near you</div></div></li>';
+      return;
+    }
+    const results = _nearbySearch(intent.types, pos.lat, pos.lng);
+    if (!results.length) {
+      rList.innerHTML = '<li class="r-status"><div class="r-body"><div class="r-name">No places found near you</div></div></li>';
+      return;
+    }
+    showResults(results, true);
+    return;
+  }
+
   try {
     // 1. Instant local results from our own data/places.json
     const localItems = _localPlaceSearch(q);
@@ -337,7 +404,11 @@ async function _nominatimSearch(q) {
   } catch { return []; }
 }
 
-function showResults(items) {
+function _fmtDist(km) {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
+
+function showResults(items, isNearby = false) {
   // Only show results inside Finland
   items = items.filter(r => isInsideFinland(r.lat, r.lng));
   if (!items.length) {
@@ -345,12 +416,20 @@ function showResults(items) {
     showDrop();
     return;
   }
-  rList.innerHTML = items
+  let html = "";
+  if (isNearby) {
+    html += '<li class="r-nearby-hdr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Near you</li>';
+  }
+  html += items
     .map((r) => {
       const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
-      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
+      const distBadge = r.dist != null
+        ? ` <span class="r-dist-badge">${esc(_fmtDist(r.dist))}</span>`
+        : '';
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}${distBadge}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
     })
     .join("");
+  rList.innerHTML = html;
   showDrop();
 }
 

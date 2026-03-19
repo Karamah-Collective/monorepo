@@ -17,6 +17,7 @@ what you like, what you've decided, and how you want things done.
 - Template-first: every visual pattern should exist as a reusable class in `design-tokens.css` before being used in `styles.css` or JS.
 - Popup tag chips should not include tick/cross glyph prefixes; keep labels plain text.
 - For pin popups, use the subtitle text "Dropped pin" (no "Custom location" wording).
+- Expand/collapse UI should reveal by clipping container height/opacity, not by moving or squashing inner text/icons.
 
 ### Architecture / Development
 - Static site only — no bundler, no SSR, no frameworks. Vanilla JS ES modules.
@@ -50,6 +51,8 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-18 — Spreadsheet backups: local-only, never committed.** When refreshing `data/places.json`, also download a local `.xlsx` backup of the full spreadsheet into `scripts/local-backups/`. This backup must stay gitignored and must never be pushed to any branch.
 - **2026-03-18 — Dark mode GTFS color contrast: brighten, don't replace.** GTFS-provided route colors (raw hex from API) have low contrast on dark surfaces. Fix: use `color-mix(55%, white)` for text/chip colors in dark mode, `filter: brightness(1.35)` for background-colored badges, and increase timeline opacity. Never change the base light-mode color — only override in dark mode.
 
+- **2026-03-19 — NLP-lite proximity search: pattern table, not NLP library.** User wants natural-language "near me" search but explicitly no heavy language processing. Solution: curated regex pattern table with proximity triggers + category keywords. No external API, no ML, no new dependencies. Just string matching.
+
 ---
 
 ## Patterns to Avoid
@@ -59,6 +62,7 @@ what you like, what you've decided, and how you want things done.
 <!-- Append new entries below this line -->
 
 - Don't use Cloudflare KV or any paid/tiered storage for link shortening. Keep sharing fully stateless.
+- Don't use NLP libraries, ML models, or external language-processing APIs for search intent detection. Keep it lightweight with curated regex patterns.
 
 ---
 

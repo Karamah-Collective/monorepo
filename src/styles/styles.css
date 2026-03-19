@@ -261,6 +261,34 @@
   vertical-align: middle;
   white-space: nowrap;
 }
+.r-dist-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semi);
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 1px 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.r-nearby-hdr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 18px;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semi);
+  color: var(--accent);
+  border-bottom: 1px solid var(--border-light);
+  pointer-events: none;
+}
+#results-list li.r-status {
+  pointer-events: none;
+  cursor: default;
+}
 
 
 .maplibregl-ctrl-scale {
@@ -490,6 +518,7 @@ body.dark-mode {
   --success:      #34d08a;
   --success-soft: rgba(52, 208, 138, 0.14);
   --danger:       #ef6b6b;
+  --danger-dark:  #ff9494;
   --danger-soft:  rgba(239, 107, 107, 0.14);
   --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.25);
   --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.30);
@@ -2491,14 +2520,11 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-sm);
   cursor: pointer;
   color: var(--text-3);
-  transition:
-    color 0.15s,
-    background 0.15s;
+  transition: color var(--t-fast);
 }
 @media (hover: hover) {
   .dir-side-controls > button:hover {
-    color: var(--text);
-    background: var(--surface-3);
+    color: var(--text-2);
   }
 }
 .dir-add-stop.hide {
@@ -2629,26 +2655,22 @@ body.dark-mode .sp-tip {
   pointer-events: none;
 }
 
-/* #5 — Animated time-bar collapse using grid-rows */
 #dir-time-bar {
-  display: grid !important;
-  grid-template-rows: 1fr;
+  height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: height var(--t-spring);
 }
 .time-bar-inner {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  overflow: hidden;
+  padding: 0 16px 12px;
+  opacity: 0;
+  transition: opacity var(--t-med);
 }
-#dir-panel:not([data-travel-mode="transit"]) #dir-time-bar {
-  grid-template-rows: 0fr;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-#dir-time-bar {
-  transition:
-    grid-template-rows 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-    padding 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+#dir-time-bar.show .time-bar-inner {
+  opacity: 1;
 }
 
 #dir-mode-bar {
@@ -2812,10 +2834,6 @@ body.dark-mode .sp-tip {
   color: var(--text-3);
 }
 
-#dir-time-bar {
-  padding: 0 16px 12px;
-  flex-shrink: 0;
-}
 .time-row {
   display: flex;
   align-items: center;
@@ -2884,19 +2902,22 @@ body.dark-mode .sp-tip {
   color: #fff;
   border-color: var(--accent);
 }
-/* #9 — Custom time row animated expand */
 #dir-custom-time-row {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  height: 0;
+  overflow: hidden;
+  transition: height var(--t-spring);
 }
 .custom-time-inner {
   display: flex;
   gap: var(--sp-2);
-  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--t-med);
 }
 #dir-custom-time-row.show {
-  grid-template-rows: 1fr;
+  height: auto;
+}
+#dir-custom-time-row.show .custom-time-inner {
+  opacity: 1;
 }
 .custom-date-wrap,
 .custom-time-wrap {
