@@ -209,6 +209,14 @@
     {
       "id": "cuisine_central_asia",
       "label": "Central Asia"
+    },
+    {
+      "id": "cuisine_middle_eastern",
+      "label": "Middle Eastern"
+    },
+    {
+      "id": "cuisine_palestinian",
+      "label": "Palestinian"
     }
   ]
 }

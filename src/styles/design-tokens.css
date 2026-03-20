@@ -471,7 +471,6 @@ body {
 }
 
 .btn-roundel-sm,
-.cal-nav,
 #dir-focused-back {
   width: var(--btn-roundel-sm-size);
   height: var(--btn-roundel-sm-size);
@@ -485,7 +484,6 @@ body {
 }
 @media (hover: hover) {
   .btn-roundel-sm:hover,
-  .cal-nav:hover,
   #dir-focused-back:hover {
     color: var(--text-2);
   }
@@ -756,8 +754,6 @@ body {
 }
 
 .t-micro-label,
-.cal-weekdays span,
-.tp-wheel-label,
 .itin-zones-label {
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
@@ -1271,4 +1267,54 @@ body {
   /* Font-size tokens used by both row types so they stay in sync */
   --pl-row1: var(--txt-base); /* name row  / empty title */
   --pl-row2: var(--txt-sm); /* addr row  / empty sub   */
+}
+
+/* ─── Drum picker ───────────────────────────────────────────────────────────── */
+/* Depth tiers — JS sets data-tier="0|1|2|3" on each cell */
+.drum-cell {
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-regular);
+  color: var(--text-3);
+  opacity: .22;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  transition: none;
+}
+.drum-cell[data-tier="2"] {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  opacity: .4;
+}
+.drum-cell[data-tier="1"] {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  opacity: .7;
+  color: var(--text-2);
+}
+.drum-cell[data-tier="0"] {
+  font-size: var(--txt-xl);
+  font-weight: var(--fw-bold);
+  opacity: 1;
+  color: var(--text);
+}
+.drum-cell.past {
+  opacity: .15 !important;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+  pointer-events: none;
+}
+
+.drum-sep {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+}
+.drum-toast {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--danger);
 }

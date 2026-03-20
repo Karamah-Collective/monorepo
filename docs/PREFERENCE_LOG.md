@@ -18,6 +18,7 @@ what you like, what you've decided, and how you want things done.
 - Popup tag chips should not include tick/cross glyph prefixes; keep labels plain text.
 - For pin popups, use the subtitle text "Dropped pin" (no "Custom location" wording).
 - Expand/collapse UI should reveal by clipping container height/opacity, not by moving or squashing inner text/icons.
+- Date/time picker: drum roller style (iOS-like) with gradient depth tiers, not calendar grid or dropdown selects. Compact, unified, smooth drag interaction.
 
 ### Architecture / Development
 - Static site only — no bundler, no SSR, no frameworks. Vanilla JS ES modules.
@@ -93,6 +94,16 @@ what you like, what you've decided, and how you want things done.
 - Feature is date-filtered (shows only today's or future Eid dates), making cleanup automatic.
 - User wants dedicated UI section for temporary features on the root UI — not buried in menus.
 - Temporary features should still maintain consistent design language; uniformity is key.
+
+### 2026-03-20 — Drum Roller Date/Time Picker
+- Replaced the old calendar + scroll-wheel time picker with a unified drum roller (Variant L "Gradient Depth").
+- User chose this style after reviewing 10 general picker designs, then 12 drum roller variants.
+- Key design: 3 side-by-side drum columns (date · hour : min) with depth tiers (font-size/weight/opacity fade away from center).
+- Interaction: Pointer Events for unified mouse+touch, velocity-based inertia on flick release, rubber-band damping at edges.
+- Compact layout: 28px cell height, 5 visible rows, tight separators (`·` and `:` in `--txt-sm`).
+- Past-time prevention: past cells are greyed/struck-through, selecting a past time flashes an error toast and snaps back.
+- Single trigger button replaces the old separate date/time input fields.
+- Places card notes now match eid prayer card notes style (italic, `--text-2` colour, no upper border separator).
 - Replaced ambiguous "tap to view" banner (confused with multiple locations) with a panel overlay listing all locations.
 - Added gold-accented Eid pill button (top-left, near prayer snack) that opens the Eid panel overlay.
 - Pattern: banner toast → opens panel; location card in panel → flies to map + opens popup.

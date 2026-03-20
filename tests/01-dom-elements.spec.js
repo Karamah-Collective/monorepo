@@ -241,8 +241,8 @@ test.describe("Direction Input Structure", () => {
   test("time controls exist", async ({ page }) => {
     await expect(page.locator("#dir-time-bar")).toBeAttached();
     await expect(page.locator("#dir-time-now")).toBeAttached();
-    await expect(page.locator("#dir-date")).toBeAttached();
-    await expect(page.locator("#dir-time")).toBeAttached();
+    await expect(page.locator("#datetime-trigger")).toBeAttached();
+    await expect(page.locator("#dir-datetime-label")).toBeAttached();
   });
 
   test("depart/arrive toggle exists", async ({ page }) => {

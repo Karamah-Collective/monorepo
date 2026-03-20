@@ -333,12 +333,18 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
         dirUseNow = false;
         dirTimeNow.classList.remove("active");
         dirCustomRow.classList.add("show");
-        const [y, m, d] = tdate.split("-").map(Number);
-        calYear = y; calMonth = m - 1; calSelectedDate = tdate;
+        calSelectedDate = tdate;
         const [h, min] = ttime.split(":").map(Number);
         tpSelectedH = h; tpSelectedM = min;
-        dirDate.value = formatDisplayDate(tdate);
-        dirTime.value = ttime;
+        // Sync drum picker indices to match
+        const [y, m, d] = tdate.split("-").map(Number);
+        selDate = drumDates.findIndex(dd => dd.year === y && dd.month === m - 1 && dd.day === d);
+        if (selDate < 0) selDate = 0;
+        selHour = drumHours.findIndex(hh => hh.value === h);
+        if (selHour < 0) selHour = 0;
+        selMin = drumMinutes.findIndex(mm => mm.value >= min);
+        if (selMin < 0) selMin = 0;
+        _syncPickerToState();
       }
     }
   }
@@ -690,144 +696,293 @@ document.getElementById("dir-swap").addEventListener("click", () => {
   updateGoButton();
 });
 
-// --- Date/time pickers ---
+// --- Date/time drum picker ---
 const dirTimeToggles = document.querySelectorAll(".time-opt");
 const dirTimeNow = document.getElementById("dir-time-now");
-const dirDate = document.getElementById("dir-date");
-const dirTime = document.getElementById("dir-time");
+const dirDatetimeLabel = document.getElementById("dir-datetime-label");
 const dirCustomRow = document.getElementById("dir-custom-time-row");
 let dirTimeMode = "depart";
 let dirUseNow = true;
-let calYear, calMonth, calSelectedDate, tpSelectedH, tpSelectedM;
+let calSelectedDate, tpSelectedH, tpSelectedM;
 
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+/* ── Drum picker constants ──── */
+const DRUM_CELL_H  = 28;
+const DRUM_VISIBLE = 5;
+const DRUM_COL_H   = DRUM_CELL_H * DRUM_VISIBLE;
+const DRUM_CENTER  = 2;
+const DRUM_DAYS    = 60;
+const DRUM_MIN_STEP = 5;
+const DRUM_SNAP_DUR = 280;
+const DRUM_SPRING   = "cubic-bezier(0.32, 0.72, 0, 1)";
 
-const calOverlay = document.createElement("div");
-calOverlay.id = "cal-overlay";
-calOverlay.className = "picker-overlay hide";
-calOverlay.innerHTML = `<div class="cal-head"><button id="cal-prev" class="cal-nav" aria-label="Previous month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><span id="cal-title"></span><button id="cal-next" class="cal-nav" aria-label="Next month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div><div class="cal-weekdays"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div><div id="cal-grid" class="cal-grid"></div>`;
-document.body.appendChild(calOverlay);
+const _pad   = n => String(n).padStart(2, "0");
+const _clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const WDAYS  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const timeOverlay = document.createElement("div");
-timeOverlay.id = "time-overlay";
-timeOverlay.className = "picker-overlay hide";
-timeOverlay.innerHTML = `<div class="tp-wheels"><div class="tp-wheel-wrap"><div class="tp-wheel-label">Hour</div><div class="tp-wheel" id="tp-hours"></div></div><div class="tp-colon">:</div><div class="tp-wheel-wrap"><div class="tp-wheel-label">Min</div><div class="tp-wheel" id="tp-minutes"></div></div></div>`;
-document.body.appendChild(timeOverlay);
+function _todayMidnight() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
-const calGrid = document.getElementById("cal-grid");
-const calTitle = document.getElementById("cal-title");
+/* ── Build data arrays ──── */
+let drumDates = [], drumHours = [], drumMinutes = [];
+let selDate = 0, selHour = 0, selMin = 0;
+
+function buildDrumData() {
+  drumDates = [];
+  for (let i = 0; i < DRUM_DAYS; i++) {
+    const d = new Date(_todayMidnight().getTime() + i * 864e5);
+    drumDates.push({
+      label: `${WDAYS[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`,
+      year: d.getFullYear(), month: d.getMonth(), day: d.getDate()
+    });
+  }
+  drumHours = [];
+  for (let h = 0; h < 24; h++) drumHours.push({ label: _pad(h), value: h });
+  drumMinutes = [];
+  for (let m = 0; m < 60; m += DRUM_MIN_STEP) drumMinutes.push({ label: _pad(m), value: m });
+}
+
+/* ── Create overlay DOM ──── */
+const drumOverlay = document.createElement("div");
+drumOverlay.id = "drum-overlay";
+drumOverlay.className = "picker-overlay hide";
+drumOverlay.innerHTML = [
+  '<div class="drum-wrap" id="drum-wrap">',
+    '<div class="drum-highlight-top" id="drum-ht"></div>',
+    '<div class="drum-highlight-bottom" id="drum-hb"></div>',
+    '<div class="drum-col" id="drum-date-col"><div class="drum-col-inner" id="drum-date-inner"></div></div>',
+    '<span class="drum-sep">\u00b7</span>',
+    '<div class="drum-col" id="drum-hour-col"><div class="drum-col-inner" id="drum-hour-inner"></div></div>',
+    '<span class="drum-sep">:</span>',
+    '<div class="drum-col" id="drum-min-col"><div class="drum-col-inner" id="drum-min-inner"></div></div>',
+  '</div>',
+  '<div class="drum-toast" id="drum-toast">Cannot select a time in the past</div>'
+].join("");
+document.body.appendChild(drumOverlay);
+
+const drumDateInner = document.getElementById("drum-date-inner");
+const drumHourInner = document.getElementById("drum-hour-inner");
+const drumMinInner  = document.getElementById("drum-min-inner");
+const drumToast     = document.getElementById("drum-toast");
+
+/* Position highlight lines */
+document.getElementById("drum-ht").style.top = (DRUM_CENTER * DRUM_CELL_H) + "px";
+document.getElementById("drum-hb").style.top = ((DRUM_CENTER + 1) * DRUM_CELL_H) + "px";
+document.querySelectorAll(".drum-col").forEach(c => c.style.height = DRUM_COL_H + "px");
+
+/* ── Render helpers ──── */
+function _idxToOff(idx) { return -(idx - DRUM_CENTER) * DRUM_CELL_H; }
+function _offToIdx(off) { return Math.round(-(off / DRUM_CELL_H) + DRUM_CENTER); }
+
+function _setTransform(inner, px, animate) {
+  inner.style.transition = animate ? `transform ${DRUM_SNAP_DUR}ms ${DRUM_SPRING}` : "none";
+  inner.style.transform = `translateY(${px}px)`;
+}
+
+function renderDrumCol(inner, items, idx) {
+  inner.innerHTML = "";
+  items.forEach((item, i) => {
+    const el = document.createElement("button");
+    el.className = "drum-cell";
+    el.textContent = item.label;
+    el.style.height = DRUM_CELL_H + "px";
+    el.dataset.idx = i;
+    inner.appendChild(el);
+  });
+  _setTransform(inner, _idxToOff(idx), false);
+  _applyTiers(inner, idx);
+}
+
+function _applyTiers(inner, idx) {
+  inner.querySelectorAll(".drum-cell").forEach((c, i) => {
+    const dist = Math.abs(i - idx);
+    c.dataset.tier = dist > 2 ? "3" : String(dist);
+    c.classList.remove("past");
+  });
+  _markPast();
+}
+
+function _markPast() {
+  const nowH = new Date().getHours();
+  const nowM = new Date().getMinutes();
+  if (selDate === 0) {
+    drumHourInner.querySelectorAll(".drum-cell").forEach(c => {
+      if (drumHours[+c.dataset.idx].value < nowH) c.classList.add("past");
+    });
+    if (drumHours[selHour].value === nowH) {
+      drumMinInner.querySelectorAll(".drum-cell").forEach(c => {
+        if (drumMinutes[+c.dataset.idx].value < nowM) c.classList.add("past");
+      });
+    }
+  }
+}
+
+function _isSelPast() {
+  const d = drumDates[selDate];
+  return new Date(d.year, d.month, d.day, drumHours[selHour].value, drumMinutes[selMin].value) < Date.now();
+}
+
+function _enforceNoPast() {
+  if (!_isSelPast()) return;
+  if (selDate > 0) return;
+  const nowH = new Date().getHours(), nowM = new Date().getMinutes();
+  if (drumHours[selHour].value < nowH) {
+    selHour = _clamp(drumHours.findIndex(h => h.value >= nowH), 0, drumHours.length - 1);
+    _snapCol(drumHourInner, selHour);
+  }
+  if (drumHours[selHour].value === nowH) {
+    const ni = drumMinutes.findIndex(m => m.value >= nowM);
+    if (ni === -1) {
+      selHour = _clamp(selHour + 1, 0, drumHours.length - 1);
+      selMin = 0;
+      _snapCol(drumHourInner, selHour);
+    } else { selMin = ni; }
+    _snapCol(drumMinInner, selMin);
+  }
+  _syncPickerToState();
+}
+
+function _snapCol(inner, idx) {
+  _setTransform(inner, _idxToOff(idx), true);
+  _applyTiers(inner, idx);
+}
+
+
+
+let _toastTimer;
+function _flashToast() {
+  drumToast.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => drumToast.classList.remove("show"), 1600);
+}
+
+function _onDrumSelect(colId, newIdx) {
+  const oldD = selDate, oldH = selHour, oldM = selMin;
+  if (colId === "date") selDate = _clamp(newIdx, 0, drumDates.length - 1);
+  else if (colId === "hour") selHour = _clamp(newIdx, 0, drumHours.length - 1);
+  else selMin = _clamp(newIdx, 0, drumMinutes.length - 1);
+
+  if (_isSelPast()) {
+    _flashToast();
+    selDate = oldD; selHour = oldH; selMin = oldM;
+    _snapCol(drumDateInner, selDate);
+    _snapCol(drumHourInner, selHour);
+    _snapCol(drumMinInner, selMin);
+    return;
+  }
+
+  if (colId === "date") _snapCol(drumDateInner, selDate);
+  else if (colId === "hour") _snapCol(drumHourInner, selHour);
+  else _snapCol(drumMinInner, selMin);
+
+  if (colId === "date") {
+    _applyTiers(drumHourInner, selHour);
+    _applyTiers(drumMinInner, selMin);
+    _enforceNoPast();
+  }
+  if (colId === "hour") {
+    _applyTiers(drumMinInner, selMin);
+    _enforceNoPast();
+  }
+  _syncPickerToState();
+}
+
+/* ── Drag / Swipe (pointer events — unified mouse + touch) ──── */
+function _attachDrumDrag(colEl, inner, getItems, colId, getIdx) {
+  let dragging = false, startY = 0, baseOff = 0, curOff = 0;
+  let lastY = 0, lastT = 0, velocity = 0;
+
+  function currentOff() { return _idxToOff(getIdx()); }
+
+  function begin(y) {
+    dragging = true; startY = y; lastY = y; lastT = Date.now();
+    velocity = 0; baseOff = currentOff(); curOff = baseOff;
+    inner.style.transition = "none";
+  }
+
+  function move(y) {
+    if (!dragging) return;
+    const dy = y - startY, nowT = Date.now(), dt = nowT - lastT;
+    if (dt > 0) velocity = (y - lastY) / dt;
+    lastY = y; lastT = nowT;
+    curOff = baseOff + dy;
+    const items = getItems();
+    const minOff = _idxToOff(items.length - 1);
+    const maxOff = _idxToOff(0);
+    if (curOff > maxOff) curOff = maxOff + (curOff - maxOff) * 0.3;
+    if (curOff < minOff) curOff = minOff + (curOff - minOff) * 0.3;
+    inner.style.transform = `translateY(${curOff}px)`;
+    const liveIdx = _clamp(_offToIdx(curOff), 0, items.length - 1);
+    _applyTiers(inner, liveIdx);
+  }
+
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    const items = getItems();
+    const projected = curOff + velocity * 120;
+    const snapIdx = _clamp(_offToIdx(projected), 0, items.length - 1);
+    _onDrumSelect(colId, snapIdx);
+  }
+
+  colEl.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    colEl.setPointerCapture(e.pointerId);
+    begin(e.clientY);
+  });
+  colEl.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    e.preventDefault();
+    move(e.clientY);
+  });
+  colEl.addEventListener("pointerup", () => end());
+  colEl.addEventListener("pointercancel", () => end());
+
+  inner.addEventListener("click", e => {
+    const cell = e.target.closest(".drum-cell");
+    if (!cell || cell.classList.contains("past")) return;
+    if (Math.abs(e.clientY - startY) > 4) return;
+    _onDrumSelect(colId, +cell.dataset.idx);
+  });
+
+  colEl.addEventListener("wheel", e => {
+    e.preventDefault();
+    const d = e.deltaY > 0 ? 1 : -1;
+    _onDrumSelect(colId, getIdx() + d);
+  }, { passive: false });
+}
+
+/* ── Sync internal state to external vars (for routing) ──── */
+function _syncPickerToState() {
+  const d = drumDates[selDate];
+  calSelectedDate = `${d.year}-${_pad(d.month + 1)}-${_pad(d.day)}`;
+  tpSelectedH = drumHours[selHour].value;
+  tpSelectedM = drumMinutes[selMin].value;
+  dirDatetimeLabel.textContent = `${d.label}, ${drumHours[selHour].label}:${drumMinutes[selMin].label}`;
+}
 
 function setDefaultDatetime() {
+  buildDrumData();
   const now = new Date();
-  calYear = now.getFullYear();
-  calMonth = now.getMonth();
-  calSelectedDate = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  tpSelectedH = now.getHours();
-  tpSelectedM = now.getMinutes();
-  dirDate.value = formatDisplayDate(calSelectedDate);
-  dirTime.value = `${String(tpSelectedH).padStart(2, "0")}:${String(tpSelectedM).padStart(2, "0")}`;
+  selDate = 0;
+  selHour = drumHours.findIndex(h => h.value === now.getHours());
+  selMin  = drumMinutes.findIndex(m => m.value >= Math.ceil(now.getMinutes() / DRUM_MIN_STEP) * DRUM_MIN_STEP);
+  if (selMin === -1) { selMin = 0; selHour = _clamp(selHour + 1, 0, drumHours.length - 1); }
+  _syncPickerToState();
 }
 
 function getDateValue() { return calSelectedDate; }
-function getTimeValue() { return `${String(tpSelectedH).padStart(2, "0")}:${String(tpSelectedM).padStart(2, "0")}`; }
+function getTimeValue() { return `${_pad(tpSelectedH)}:${_pad(tpSelectedM)}`; }
 
-function formatDisplayDate(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
-
-function renderCalendar(slideDir) {
-  calTitle.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
-  calGrid.innerHTML = "";
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
-  const offset = (firstDay + 6) % 7;
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  for (let i = offset - 1; i >= 0; i--) {
-    const day = daysInPrev - i, pm = calMonth === 0 ? 12 : calMonth, py = calMonth === 0 ? calYear - 1 : calYear;
-    calGrid.appendChild(makeCalDay(day, `${py}-${String(pm).padStart(2, "0")}-${String(day).padStart(2, "0")}`, "other-month", todayStr));
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    calGrid.appendChild(makeCalDay(d, `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, "", todayStr));
-  }
-  const remaining = (7 - ((offset + daysInMonth) % 7)) % 7;
-  for (let d = 1; d <= remaining; d++) {
-    const nm = calMonth === 11 ? 1 : calMonth + 2, ny = calMonth === 11 ? calYear + 1 : calYear;
-    calGrid.appendChild(makeCalDay(d, `${ny}-${String(nm).padStart(2, "0")}-${String(d).padStart(2, "0")}`, "other-month", todayStr));
-  }
-  if (slideDir) {
-    calGrid.classList.remove("cal-slide-left", "cal-slide-right");
-    void calGrid.offsetHeight;
-    calGrid.classList.add(slideDir === "left" ? "cal-slide-left" : "cal-slide-right");
-    calGrid.addEventListener("animationend", () => calGrid.classList.remove("cal-slide-left", "cal-slide-right"), { once: true });
-  }
-}
-
-function makeCalDay(label, iso, extraClass, todayStr) {
-  const btn = document.createElement("button");
-  btn.className = "cal-day";
-  if (extraClass) btn.classList.add(extraClass);
-  if (iso === todayStr) btn.classList.add("today");
-  if (iso === calSelectedDate) btn.classList.add("selected");
-  btn.textContent = label;
-  btn.addEventListener("click", () => {
-    calSelectedDate = iso;
-    const [y, m] = iso.split("-").map(Number);
-    calYear = y; calMonth = m - 1;
-    dirDate.value = formatDisplayDate(iso);
-    markNotNow();
-    closePickerOverlays();
-  });
-  return btn;
-}
-
-document.getElementById("cal-prev").addEventListener("click", () => {
-  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar("right");
-});
-document.getElementById("cal-next").addEventListener("click", () => {
-  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar("left");
-});
-
-function renderTimePicker() {
-  const hCol = document.getElementById("tp-hours");
-  const mCol = document.getElementById("tp-minutes");
-  hCol.innerHTML = ""; mCol.innerHTML = "";
-  for (let h = 0; h < 24; h++) {
-    const btn = document.createElement("button");
-    btn.className = "tp-cell";
-    if (h === tpSelectedH) btn.classList.add("selected");
-    btn.textContent = String(h).padStart(2, "0");
-    btn.addEventListener("click", () => {
-      tpSelectedH = h;
-      dirTime.value = getTimeValue();
-      hCol.querySelectorAll(".tp-cell").forEach((c) => c.classList.remove("selected"));
-      btn.classList.add("selected");
-      markNotNow();
-    });
-    hCol.appendChild(btn);
-  }
-  for (let m = 0; m < 60; m += 5) {
-    const btn = document.createElement("button");
-    btn.className = "tp-cell";
-    if (m === Math.round(tpSelectedM / 5) * 5) btn.classList.add("selected");
-    btn.textContent = String(m).padStart(2, "0");
-    btn.addEventListener("click", () => {
-      tpSelectedM = m;
-      dirTime.value = getTimeValue();
-      mCol.querySelectorAll(".tp-cell").forEach((c) => c.classList.remove("selected"));
-      btn.classList.add("selected");
-      markNotNow();
-    });
-    mCol.appendChild(btn);
-  }
-  requestAnimationFrame(() => {
-    const selH = hCol.querySelector(".selected");
-    if (selH) selH.scrollIntoView({ block: "center", behavior: "instant" });
-    const selM = mCol.querySelector(".selected");
-    if (selM) selM.scrollIntoView({ block: "center", behavior: "instant" });
-  });
+function openDrumPicker(triggerEl) {
+  if (!drumOverlay.classList.contains("hide")) { drumOverlay.classList.add("hide"); return; }
+  // Rebuild data each time to keep dates fresh
+  buildDrumData();
+  renderDrumCol(drumDateInner, drumDates, selDate);
+  renderDrumCol(drumHourInner, drumHours, selHour);
+  renderDrumCol(drumMinInner, drumMinutes, selMin);
+  _enforceNoPast();
+  positionOverlay(drumOverlay, triggerEl);
+  drumOverlay.classList.remove("hide");
 }
 
 function markNotNow() {
@@ -837,41 +992,45 @@ function markNotNow() {
 }
 
 function closePickerOverlays() {
-  calOverlay.classList.add("hide");
-  timeOverlay.classList.add("hide");
+  drumOverlay.classList.add("hide");
 }
 
 function positionOverlay(overlay, triggerEl) {
   const r = triggerEl.getBoundingClientRect();
-  overlay.style.left = r.left + "px";
-  overlay.style.top = r.bottom + 6 + "px";
-  overlay.style.width = Math.max(r.width, 260) + "px";
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    // Position above the trigger so it stays visible
+    const bottomGap = window.innerHeight - r.top + 6;
+    overlay.style.bottom = bottomGap + "px";
+    overlay.style.top = "auto";
+    overlay.style.left = "";
+    overlay.style.width = "";
+  } else {
+    overlay.style.left = r.left + "px";
+    overlay.style.top = r.bottom + 6 + "px";
+    overlay.style.bottom = "";
+    overlay.style.width = Math.max(r.width, 280) + "px";
+  }
 }
 
-document.getElementById("date-trigger").addEventListener("click", (e) => {
+document.getElementById("datetime-trigger").addEventListener("click", (e) => {
   e.stopPropagation();
-  timeOverlay.classList.add("hide");
-  if (!calOverlay.classList.contains("hide")) { calOverlay.classList.add("hide"); return; }
-  renderCalendar();
-  positionOverlay(calOverlay, e.currentTarget);
-  calOverlay.classList.remove("hide");
-});
-
-document.getElementById("time-trigger").addEventListener("click", (e) => {
-  e.stopPropagation();
-  calOverlay.classList.add("hide");
-  if (!timeOverlay.classList.contains("hide")) { timeOverlay.classList.add("hide"); return; }
-  renderTimePicker();
-  positionOverlay(timeOverlay, e.currentTarget);
-  timeOverlay.classList.remove("hide");
+  markNotNow();
+  openDrumPicker(e.currentTarget);
 });
 
 document.addEventListener("click", (e) => {
-  if (!calOverlay.contains(e.target) && !e.target.closest("#date-trigger")) calOverlay.classList.add("hide");
-  if (!timeOverlay.contains(e.target) && !e.target.closest("#time-trigger")) timeOverlay.classList.add("hide");
+  if (!drumOverlay.contains(e.target) && !e.target.closest("#datetime-trigger")) drumOverlay.classList.add("hide");
 });
-calOverlay.addEventListener("click", (e) => e.stopPropagation());
-timeOverlay.addEventListener("click", (e) => e.stopPropagation());
+drumOverlay.addEventListener("click", (e) => e.stopPropagation());
+
+/* Init drum drag handlers */
+_attachDrumDrag(document.getElementById("drum-date-col"), drumDateInner, () => drumDates, "date", () => selDate);
+_attachDrumDrag(document.getElementById("drum-hour-col"), drumHourInner, () => drumHours, "hour", () => selHour);
+_attachDrumDrag(document.getElementById("drum-min-col"), drumMinInner, () => drumMinutes, "min", () => selMin);
+
+/* Refresh past-time markers periodically */
+setInterval(() => { _markPast(); if (_isSelPast()) _enforceNoPast(); }, 30000);
 
 setDefaultDatetime();
 

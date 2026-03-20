@@ -1520,5 +1520,36 @@
       "cuisine_sushi": true
     },
     "notes": ""
+  },
+  {
+    "id": "w4u80v",
+    "name": "Qazan Restaurant",
+    "type": "restaurant",
+    "address": "Itäkatu 1-7, 00930 Helsinki",
+    "lat": 60.2119872,
+    "lng": 25.0828231,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_uzbek": true,
+      "cuisine_central_asia": true
+    },
+    "notes": "Qazan Ravintola, Halal restaurant in Helsinki"
+  },
+  {
+    "id": "s3bdjv",
+    "name": "Myyrmäen Moskeija مسجد مورمكي, Ojahaanrinne 4k, 01600 Vantaa‭",
+    "type": "mosque",
+    "address": "Ojahaanrinne 4k, 01600 Vantaa, Finland",
+    "lat": 60.26400959999999,
+    "lng": 24.8557993,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true
+    },
+    "notes": ""
   }
 ]
