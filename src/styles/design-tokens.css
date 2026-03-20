@@ -21,6 +21,9 @@
   --success: #1fa86a;
   --success-soft: #e8f6ee;
 
+  --home: #475569;
+  --home-soft: #eef0f3;
+
   --danger: #d64545;
   --danger-vivid: #c62828;
   --danger-soft: #fce8e8;
@@ -272,10 +275,13 @@ body {
 }
 
 .btn-secondary,
+.pp-home-btn,
 .pp-share-btn,
 .pp-edit-btn,
 .sp-share-btn,
-.eid-share-btn {
+.sp-close-btn,
+.eid-share-btn,
+.eid-close-popup-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -293,10 +299,13 @@ body {
 }
 @media (hover: hover) {
   .btn-secondary:hover,
+  .pp-home-btn:hover,
   .pp-share-btn:hover,
   .pp-edit-btn:hover,
   .sp-share-btn:hover,
-  .eid-share-btn:hover {
+  .sp-close-btn:hover,
+  .eid-share-btn:hover,
+  .eid-close-popup-btn:hover {
     color: var(--text);
     border-color: var(--surface-3);
   }
@@ -344,9 +353,7 @@ body {
 }
 
 .btn-danger-filled,
-.pp-rm-btn,
-.sp-close-btn,
-.eid-close-popup-btn {
+.pp-rm-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -361,9 +368,7 @@ body {
 }
 @media (hover: hover) {
   .btn-danger-filled:hover,
-  .pp-rm-btn:hover,
-  .sp-close-btn:hover,
-  .eid-close-popup-btn:hover {
+  .pp-rm-btn:hover {
     filter: brightness(1.12);
   }
 }

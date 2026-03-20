@@ -1,10 +1,28 @@
 import { map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
-import { showToast, showLoadingToast, hideLoadingToast, requestLocation } from "./utils.js";
+import {
+  esc,
+  showToast,
+  showLoadingToast,
+  hideLoadingToast,
+  requestLocation,
+  getHomeLocation,
+  clearHomeLocation,
+  encodeCompactPin,
+  shareUrl,
+  fadeAndRemovePopup,
+  setCurrentLocationState,
+  clearCurrentLocationState,
+} from "./utils.js";
+import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
 
 let locMarker = null;
 let locWatchId = null;
+let homeMarker = null;
+
+const HOME_VIEW_ZOOM = 14.2;
+const HOME_MARKER_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
 
 export let currentTheme = "light";     // "light" | "dark"
 export let isSatelliteActive = false;
@@ -73,6 +91,124 @@ function setLocateIcon(on) {
   if (svg) svg.innerHTML = on ? LOC_ICON_ON : LOC_ICON_OFF;
 }
 
+let _homePopup = null;
+
+function _buildHomeShareUrl(lat, lng) {
+  return `${location.origin}${location.pathname}?p=${encodeCompactPin(+lat, +lng, 15, false)}`;
+}
+
+function openHomePopup() {
+  const home = getHomeLocation();
+  if (!home) return;
+
+  document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
+  _homePopup = null;
+
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "260px", className: "place-popup-wrap pin-popup-wrap" })
+    .setLngLat([home.lng, home.lat])
+    .setHTML(`
+      <div class="pp pp--pin">
+        <div class="pp-inner">
+          <div class="pp-hdr">
+            <span class="pp-icon" style="color:var(--home)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg></span>
+            <span class="pp-badge" style="background:var(--home-soft);color:var(--home)">Home</span>
+          </div>
+          <div class="pp-addr">${esc(home.address || home.name)}</div>
+          <div class="pp-actions">
+            <button class="pp-dir-btn" data-lng="${home.lng}" data-lat="${home.lat}" title="Directions" aria-label="Directions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+            </button>
+            <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button class="pp-rm-btn" title="Remove home" aria-label="Remove home">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    `)
+    .addTo(map);
+
+  _homePopup = popup;
+
+  popup.on("close", () => { _homePopup = null; });
+
+  map.flyTo({ center: [home.lng, home.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+
+  popup.getElement().addEventListener("click", async (ev) => {
+    const dirBtn = ev.target.closest(".pp-dir-btn");
+    const shrBtn = ev.target.closest(".pp-share-btn");
+    const rmBtn  = ev.target.closest(".pp-rm-btn");
+
+    if (dirBtn) {
+      const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
+      const name = home.address || home.name || await reverseGeocode(pLat, pLng);
+      dir.origin = { lat: pLat, lng: pLng, name };
+      document.getElementById("dir-from").value = name;
+      placeOriginMarker(pLng, pLat);
+      autoSetNearestMosque(pLat, pLng);
+      updateGoButton();
+      fadeAndRemovePopup(popup);
+      openDirPanel();
+      if (!dir.dest) startPick("to");
+    } else if (shrBtn) {
+      shareUrl(_buildHomeShareUrl(home.lat, home.lng), "Home", "Home – Halal Finder");
+    } else if (rmBtn) {
+      fadeAndRemovePopup(popup);
+      clearHomeLocation();
+      showToast("Home removed", "check");
+    }
+  });
+}
+
+export function syncHomeMarker() {
+  const home = getHomeLocation();
+  if (!home) {
+    if (homeMarker) {
+      homeMarker.remove();
+      homeMarker = null;
+    }
+    if (_homePopup) { try { _homePopup.remove(); } catch (_) {} _homePopup = null; }
+    return;
+  }
+
+  if (!homeMarker) {
+    const el = document.createElement("div");
+    el.className = "place-mk-wrap";
+    el.innerHTML = `<div class="home-mk">${HOME_MARKER_SVG}</div>`;
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openHomePopup();
+    });
+    homeMarker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      .setLngLat([home.lng, home.lat])
+      .addTo(map);
+  } else {
+    homeMarker.setLngLat([home.lng, home.lat]);
+  }
+}
+
+export function centerStoredHomeIfAvailable({ instant = false } = {}) {
+  const home = getHomeLocation();
+  if (!home) return false;
+
+  const view = {
+    center: [home.lng, home.lat],
+    zoom: HOME_VIEW_ZOOM,
+    bearing: 0,
+    pitch: 0,
+    duration: 600,
+  };
+
+  if (instant) {
+    map.jumpTo({ center: view.center, zoom: view.zoom, bearing: view.bearing, pitch: view.pitch });
+  } else {
+    map.flyTo(view);
+  }
+  return true;
+}
+
 export function showCurrentLocation() {
   const locBtn = document.getElementById("locate-btn");
 
@@ -80,6 +216,7 @@ export function showCurrentLocation() {
     navigator.geolocation.clearWatch(locWatchId);
     locWatchId = null;
     if (locMarker) { locMarker.remove(); locMarker = null; }
+    clearCurrentLocationState();
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
     return;
@@ -92,6 +229,7 @@ export function showCurrentLocation() {
 
   function onPosition(pos) {
     const { latitude: lat, longitude: lng } = pos.coords;
+    setCurrentLocationState({ lat, lng, active: true });
     if (firstFix) hideLoadingToast();
     if (!locMarker) {
       const el = document.createElement("div");
@@ -113,6 +251,7 @@ export function showCurrentLocation() {
     onWatch(id) { locWatchId = id; },
   }).catch((e) => {
     hideLoadingToast();
+    clearCurrentLocationState();
     showToast("Location is off", "loc", e.message);
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
@@ -128,6 +267,14 @@ export function setActiveTab(id) {
     if (t) t.classList.add("active-tab");
   }
 }
+
+if (map.loaded()) syncHomeMarker();
+else map.on("load", syncHomeMarker);
+
+window.addEventListener("hf:home-updated", () => {
+  if (map.loaded()) syncHomeMarker();
+  else map.once("load", syncHomeMarker);
+});
 
 function updateUrlHash() {
   const { lat, lng } = map.getCenter();
@@ -583,7 +730,9 @@ document.getElementById("home-btn").addEventListener("click", () => {
   if (isHeatmapActive) toggleHeatmap();
   if (is3DActive) disable3D();
   setActiveTab(null);
+  if (centerStoredHomeIfAvailable()) return;
   map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
+  showToast("Add home", "home", "Pick an address or pin. It stays only on this device.");
 });
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));
 document.getElementById("zoomout-btn").addEventListener("click", () => map.zoomOut({ duration: 300 }));

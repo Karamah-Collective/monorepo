@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
-import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker } from "./utils.js";
+import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, showPlacePopup } from "./places.js";
@@ -18,6 +18,7 @@ const _starSVG = (filled) =>
 // ─── Pin SVG icons ──────────────────────────────────────────────────────────────
 const _searchPinSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
 const _droppedPinSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
+const _homePinSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>`;
 const _popupPinSVG   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
 const _popupSearchSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
 
@@ -147,6 +148,7 @@ function _openPinPopup(lng, lat, kind, entry) {
   const isSearch = kind === "search";
   const badgeLabel = isSearch ? "Searched Location" : "Dropped Pin";
   const saved = isPinSaved(lat, lng);
+  const homeAlreadySet = hasHomeLocation();
   const _popupIconSVG = isSearch
     ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`
     : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>`;
@@ -172,6 +174,7 @@ function _openPinPopup(lng, lat, kind, entry) {
             <button class="pp-dir-btn" data-lng="${lng}" data-lat="${lat}" title="Directions" aria-label="Directions">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
             </button>
+            ${homeAlreadySet ? '' : `<button class="pp-home-btn" title="Set as home" aria-label="Set as home">${_homePinSVG}</button>`}
             <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
@@ -228,6 +231,7 @@ function _openPinPopup(lng, lat, kind, entry) {
 
   popup.getElement().addEventListener("click", async (ev) => {
     const dirBtn = ev.target.closest(".pp-dir-btn");
+    const homeBtn = ev.target.closest(".pp-home-btn");
     const addBtn = ev.target.closest(".pp-add-place-btn");
     const rmBtn  = ev.target.closest(".pp-rm-btn");
     const favBtn = ev.target.closest(".pp-fav-btn");
@@ -238,6 +242,14 @@ function _openPinPopup(lng, lat, kind, entry) {
       const addr = resolvedAddr || "";
       fadeAndRemovePopup(popup);
       window.dispatchEvent(new CustomEvent("hf:add-place-from-pin", { detail: { lat: pLat, lng: pLng, address: addr } }));
+    } else if (homeBtn) {
+      const fallbackName = `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+      const homeLabel = resolvedAddr || fallbackName;
+      setHomeLocation({ lat, lng, name: homeLabel, address: resolvedAddr || "" });
+      fadeAndRemovePopup(popup);
+      if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
+      else if (entry) { _removeDroppedPin(entry); }
+      showToast("Home saved", "home", "Saved locally on this device.");
     } else if (dirBtn) {
       const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
       const name = resolvedAddr != null ? (resolvedAddr || `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`) : await reverseGeocode(pLat, pLng);

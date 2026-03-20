@@ -330,7 +330,7 @@ function showEidPopup(loc) {
   closeBtn.className = "eid-close-popup-btn";
   closeBtn.title = "Close";
   closeBtn.setAttribute("aria-label", "Close popup");
-  closeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  closeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
 
   dirBtn.addEventListener("click", (e) => { e.stopPropagation(); navigateToEid(loc); });
   shareBtn.addEventListener("click", (e) => {

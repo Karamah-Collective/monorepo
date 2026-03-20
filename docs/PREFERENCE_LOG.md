@@ -29,6 +29,7 @@ what you like, what you've decided, and how you want things done.
 - Lazy-load non-critical modules after `map.on("load")` for faster startup.
 - Service worker for offline support and instant repeat visits.
 - Prefer direct code fixes first; only add extra test-focused follow-up when explicitly requested or needed to validate a risky change.
+- Prefer simple, high-return product improvements in the early stage rather than complex ranking or location logic.
 
 ### Security
 - Full CSP, HSTS, CORS, SRI enforcement.

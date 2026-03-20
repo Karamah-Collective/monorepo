@@ -14,11 +14,26 @@ import {
   hideOfflineBanner,
   showToast,
 } from "./utils.js";
-import { preloadSatelliteSource } from "./map-controls.js";
+import { preloadSatelliteSource, centerStoredHomeIfAvailable, syncHomeMarker } from "./map-controls.js";
 import "./directions.js";
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
+
+function hasIncomingSharedState() {
+  const params = new URLSearchParams(location.search);
+  if (
+    params.has("r") ||
+    params.has("route") ||
+    params.has("p") ||
+    params.has("place") ||
+    params.has("eid") ||
+    (params.has("lat") && params.has("lng"))
+  ) {
+    return true;
+  }
+  return location.hash.includes("&p=");
+}
 
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("gesturechange", (e) => e.preventDefault());
@@ -111,6 +126,8 @@ window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back o
 
 map.on("load", async () => {
   preloadSatelliteSource();
+  syncHomeMarker();
+  if (!hasIncomingSharedState()) centerStoredHomeIfAvailable({ instant: true });
 
   // Mask everything outside Finland — placed just below city/country labels.
   // Water layers are then promoted above the mask so seas/lakes stay visible.

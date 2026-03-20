@@ -3,6 +3,8 @@ import { map } from "./map-init.js";
 
 // ─── Saved custom pins ─────────────────────────────────────────────────────────────
 const SAVED_PINS_KEY = "hf_saved_pins";
+const HOME_LOCATION_KEY = "hf_home_location";
+let _currentLocationState = { active: false, lat: null, lng: null };
 export function pinId(lat, lng) { return `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
 function _loadPins() { try { return JSON.parse(localStorage.getItem(SAVED_PINS_KEY) || "[]"); } catch { return []; } }
 export function getSavedPins() { return _loadPins(); }
@@ -17,6 +19,77 @@ export function toggleSavedPin(lat, lng, name) {
 }
 export function removeSavedPin(id) {
   localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(_loadPins().filter(p => p.id !== id)));
+}
+
+function _emitWindowEvent(name, detail) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
+function _normalizeStoredLocation(raw) {
+  if (!raw) return null;
+  const lat = Number(raw.lat);
+  const lng = Number(raw.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const address = String(raw.address || "").trim();
+  const name = String(raw.name || address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`).trim();
+  return {
+    id: raw.id || pinId(lat, lng),
+    lat,
+    lng,
+    name,
+    address,
+  };
+}
+
+export function getHomeLocation() {
+  try {
+    return _normalizeStoredLocation(JSON.parse(localStorage.getItem(HOME_LOCATION_KEY) || "null"));
+  } catch {
+    return null;
+  }
+}
+
+export function hasHomeLocation() {
+  return !!getHomeLocation();
+}
+
+export function isHomeLocation(lat, lng) {
+  const home = getHomeLocation();
+  return !!home && home.id === pinId(lat, lng);
+}
+
+export function setHomeLocation({ lat, lng, name, address } = {}) {
+  const home = _normalizeStoredLocation({ lat, lng, name, address });
+  if (!home) return null;
+  localStorage.setItem(HOME_LOCATION_KEY, JSON.stringify(home));
+  _emitWindowEvent("hf:home-updated", { home });
+  return home;
+}
+
+export function clearHomeLocation() {
+  localStorage.removeItem(HOME_LOCATION_KEY);
+  _emitWindowEvent("hf:home-updated", { home: null });
+}
+
+export function getCurrentLocationState() {
+  return { ..._currentLocationState };
+}
+
+export function setCurrentLocationState({ lat, lng, active = true } = {}) {
+  const next = {
+    active: !!active && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)),
+    lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
+    lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
+  };
+  _currentLocationState = next;
+  _emitWindowEvent("hf:current-location-updated", { location: { ...next } });
+  return { ...next };
+}
+
+export function clearCurrentLocationState() {
+  return setCurrentLocationState({ active: false, lat: null, lng: null });
 }
 // ─────────────────────────────────────────────────────────────
 
@@ -83,12 +156,16 @@ const _TOAST_SVG = {
   clock: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
   error: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
   loc: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.61 1.43 4.88 3.54 6.96L12 22l3.46-6.04C17.57 13.88 19 11.61 19 9c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/><line x1="3" y1="3" x2="21" y2="21"/></svg>`,
+  info: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>`,
+  home: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>`,
 };
 const _TOAST_ICON_CLASS = {
   check: "snack-icon--success",
   clock: "snack-icon--clock",
   error: "snack-icon--error",
   loc:   "snack-icon--error",
+  info:  "snack-icon--info",
+  home:  "snack-icon--info",
 };
 
 /* ── Persistent loading toast (stays until hideLoadingToast is called) ──── */

@@ -1,8 +1,8 @@
 import { map } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
-import { setActiveTab, refreshHeatmapSource, isHeatmapActive } from "./map-controls.js";
+import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 
 export let placesData = [];
@@ -18,6 +18,8 @@ let activeSortField = "default"; // "default" | "name" | "distance" | "date"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
+const collapsedCityGroups = new Set();
+let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
 let _lastSubmit = 0;
 const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
@@ -70,11 +72,121 @@ function getFilterBarTags(type) {
   return items;
 }
 
-const SORT_FIELD_LABELS = { name: "Name", distance: "Distance", date: "Date" };
+const SORT_FIELD_LABELS = { default: "Most Relevant", name: "Name", distance: "Distance", date: "Date" };
+
+function extractCityFromAddress(address) {
+  const raw = String(address || "").trim();
+  if (!raw) return "";
+
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return "";
+
+  let tail = parts[parts.length - 1];
+  if (/^finland$/i.test(tail) && parts.length > 1) tail = parts[parts.length - 2];
+  return tail.replace(/^\d{5}\s+/, "").trim();
+}
+
+function getPlaceCity(place) {
+  return String(place.city || extractCityFromAddress(place.address) || "Other places").trim();
+}
+
+// Fixed priority so cities always appear in a sensible geographic order
+// when there's no home/current-location anchor.
+// Lower number = higher priority. Unlisted cities get 99.
+const CITY_PRIORITY = new Map([
+  ["Helsinki", 1],
+  ["Espoo", 2],
+  ["Vantaa", 3],
+  ["Kauniainen", 4],
+  ["Turku", 10],
+  ["Tampere", 11],
+  ["Oulu", 12],
+  ["Jyväskylä", 13],
+  ["Kuopio", 14],
+  ["Lahti", 15],
+  ["Pori", 16],
+  ["Joensuu", 17],
+  ["Vaasa", 18],
+  ["Rovaniemi", 19],
+]);
+function _cityPriority(city) { return CITY_PRIORITY.get(city) ?? 99; }
+
+function normalizePlacesData(places) {
+  return (places || []).map((place) => ({ ...place, city: getPlaceCity(place) }));
+}
+
+function getViewportCityCounts(places) {
+  if (!map?.getBounds) return new Map();
+  const bounds = map.getBounds();
+  if (!bounds) return new Map();
+
+  const counts = new Map();
+  places.forEach((place) => {
+    if (!bounds.contains([place.lng, place.lat])) return;
+    const city = getPlaceCity(place);
+    counts.set(city, (counts.get(city) || 0) + 1);
+  });
+  return counts;
+}
+
+function getMostRelevantAnchor() {
+  const current = getCurrentLocationState();
+  if (current.active && current.lat !== null && current.lng !== null) return current;
+
+  const home = getHomeLocation();
+  if (home && home.lat !== null && home.lng !== null) return home;
+
+  return null;
+}
+
+function getCityMinDistances(places, anchor) {
+  const distances = new Map();
+  if (!anchor) return distances;
+
+  places.forEach((place) => {
+    const city = getPlaceCity(place);
+    const dist = haversineDistance(anchor.lat, anchor.lng, place.lat, place.lng);
+    const current = distances.get(city);
+    if (current === undefined || dist < current) distances.set(city, dist);
+  });
+  return distances;
+}
+
+function compareMostRelevantPlaces(a, b, anchor, viewportCounts, cityDistances) {
+  const aCity = getPlaceCity(a);
+  const bCity = getPlaceCity(b);
+
+  if (anchor) {
+    const aDist = cityDistances.get(aCity) ?? Number.POSITIVE_INFINITY;
+    const bDist = cityDistances.get(bCity) ?? Number.POSITIVE_INFINITY;
+    if (aDist !== bDist) return aDist - bDist;
+
+    const itemDistA = haversineDistance(anchor.lat, anchor.lng, a.lat, a.lng);
+    const itemDistB = haversineDistance(anchor.lat, anchor.lng, b.lat, b.lng);
+    if (itemDistA !== itemDistB) return itemDistA - itemDistB;
+  }
+
+  const aVisible = viewportCounts.get(aCity) || 0;
+  const bVisible = viewportCounts.get(bCity) || 0;
+  if (aVisible !== bVisible) return bVisible - aVisible;
+
+  const cityCmp = _cityPriority(aCity) - _cityPriority(bCity);
+  if (cityCmp) return cityCmp;
+  if (_cityPriority(aCity) === 99 && _cityPriority(bCity) === 99) {
+    const alpha = aCity.localeCompare(bCity);
+    if (alpha) return alpha;
+  }
+  return a.name.localeCompare(b.name);
+}
 
 function applySort(arr) {
-  if (activeSortField === "default") return [...arr].sort((x, y) => x.name.localeCompare(y.name));
   const a = [...arr];
+  if (activeSortField === "default") {
+    const anchor = getMostRelevantAnchor();
+    const viewportCounts = getViewportCityCounts(a);
+    const cityDistances = getCityMinDistances(a, anchor);
+    return a.sort((x, y) => compareMostRelevantPlaces(x, y, anchor, viewportCounts, cityDistances));
+  }
   switch (activeSortField) {
     case "name":
       return a.sort((x, y) => activeSortDir === "asc"
@@ -134,6 +246,39 @@ function formatDist(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
+const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
+const _clockIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+function _buildCard(p, i) {
+  const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+  const typeTags = getDisplayTags(p.type);
+  const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
+  const posCount = posTags.length;
+  const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
+  const tagNames = posTags.map((t) => t.label);
+  const faved = isFavourite(p.id);
+  const distBadge = userLocLat !== null
+    ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
+    : "";
+  return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+    <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
+    <span class="pl-name">${esc(p.name)}</span>
+    <span class="pl-addr">${esc(p.address)}${distBadge}</span>
+    <div class="pl-meta">
+      <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
+    </div>
+    <div class="pl-acts">
+      <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+      </button>
+      <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
+        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
+      </button>
+    </div>
+  </li>`;
+}
+
 const CACHE_KEY = 'hf_places_v1';
 
 function readCache() {
@@ -177,7 +322,7 @@ export async function loadPlacesData() {
     // 1. Instant load from localStorage cache (returning visitors)
     const cached = readCache();
     if (cached) {
-      placesData = cached.places;
+      placesData = normalizePlacesData(cached.places);
       tagsData = cached.tags || {};
       placesLoaded = true;
       hideLoadingToast();
@@ -200,13 +345,13 @@ export async function loadPlacesData() {
           if (countChanged) {
             console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
           }
-          placesData = data.places;
+          placesData = normalizePlacesData(data.places);
           tagsData = data.tags || {};
           addPlaceMarkers();
           renderPlacesList();
           updatePlacesBadge();
         }
-        writeCache(data.places, data.tags || {});
+        writeCache(normalizePlacesData(data.places), data.tags || {});
       });
       return;
     }
@@ -215,7 +360,7 @@ export async function loadPlacesData() {
     try {
       const [pRes, tRes] = await Promise.all([fetch('data/places.json'), fetch('data/tags.json')]);
       if (pRes.ok && tRes.ok) {
-        placesData = await pRes.json();
+        placesData = normalizePlacesData(await pRes.json());
         tagsData = await tRes.json();
         console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);
       }
@@ -241,13 +386,13 @@ export async function loadPlacesData() {
         if (countChanged) {
           console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
         }
-        placesData = data.places;
+        placesData = normalizePlacesData(data.places);
         tagsData = data.tags || {};
         addPlaceMarkers();  // Full refresh removes old + adds new
         renderPlacesList();
         updatePlacesBadge();
       }
-      writeCache(data.places, data.tags || {});
+      writeCache(normalizePlacesData(data.places), data.tags || {});
     });
   } catch (err) {
     console.warn("[Places] Failed to load:", err.message);
@@ -449,24 +594,25 @@ export function addPlaceMarkers() {
     placeMarkers.push(marker);
   });
 
-  // Show saved custom pins as map markers when on the saved tab
-  if (activeTypeFilter === "saved") {
-    getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
-      const el = document.createElement("div");
-      el.className = "place-mk-wrap";
-      el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
-      el.dataset.pinId = pin.id;
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
-      });
-      savedPinMarkers.push(marker);
+  // Always show saved custom pins (dropped pins) that don't overlap with a place
+  const placeCoords = new Set(placesData.map(p => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`));
+  getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
+    if (placeCoords.has(`${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`)) return;
+    const el = document.createElement("div");
+    el.className = "place-mk-wrap";
+    el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
+    el.dataset.pinId = pin.id;
+    const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
     });
-  }
+    savedPinMarkers.push(marker);
+  });
 
   updateMarkerVisibility();
   refreshHeatmapSource();
+  syncHomeMarker();
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
@@ -762,13 +908,6 @@ export function checkShareUrl() {
     placeToken = params.get("p") || null;
   }
 
-  if (mapView && !placeToken) {
-    map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom });
-    // Clear hash so the view isn't re-applied on refresh
-    history.replaceState(null, "", location.pathname + location.search);
-    return;
-  }
-
   if (placeToken) {
     const data = decryptToken(placeToken) || _decodeLegacyToken(placeToken);
     if (!data) return;
@@ -807,6 +946,7 @@ export function openPlacesSheet() {
   setActiveTab("places-btn");
   tryGetUserLocation();
   renderTagFilterBar();
+  if (_placesDirty) _placesDirty = false;
   renderPlacesList();
   placesSnap.open();                           // measure content → set initial snap height → reveal
 }
@@ -825,6 +965,20 @@ document.getElementById("places-close").addEventListener("click", closePlacesShe
 
 const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
 
+let _placesDirty = false;
+
+function refreshDefaultPlacesSort() {
+  if (activeSortField !== "default") return;
+  if (!placesSheet.classList.contains("shut")) {
+    _placesDirty = true;
+    return;
+  }
+  _placesDirty = false;
+}
+
+window.addEventListener("hf:home-updated", refreshDefaultPlacesSort);
+window.addEventListener("hf:current-location-updated", refreshDefaultPlacesSort);
+
 document.getElementById("places-type-chips").addEventListener("click", (e) => {
   const chip = e.target.closest(".pf-chip");
   if (!chip) return;
@@ -833,9 +987,10 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   activeTypeFilter = chip.dataset.type;
   activeTagFilters.clear();
   renderTagFilterBar();
-  addPlaceMarkers();
   animateSheetHeight(placesSheet, () => renderPlacesList());
-  placesSnap.softRemeasure();                    // update drag cap for new tab content
+  placesSnap.softRemeasure();
+  // Defer heavy marker rebuild so the list appears instantly
+  requestAnimationFrame(() => addPlaceMarkers());
 });
 
 const tfToggle = document.getElementById("tf-toggle");
@@ -868,7 +1023,7 @@ placesClearBtn.addEventListener("click", () => {
 function updateSortButton() {
   const isActive = activeSortField !== "default";
   const arrowChar = activeSortDir === "asc" ? "\u2191" : "\u2193";
-  sortLabel.textContent = isActive ? `${SORT_FIELD_LABELS[activeSortField]} ${arrowChar}` : "Sort";
+  sortLabel.textContent = isActive ? `${SORT_FIELD_LABELS[activeSortField]} ${arrowChar}` : SORT_FIELD_LABELS.default;
   sortToggle.classList.toggle("has-active", isActive);
   sortDropdown.querySelectorAll("[data-sort-field]").forEach((btn) =>
     btn.classList.toggle("active", btn.dataset.sortField === activeSortField),
@@ -1186,40 +1341,27 @@ function renderPlacesList() {
   empty.classList.add("hide");
   ct.textContent = `${totalCount} place${totalCount > 1 ? "s" : ""}`;
 
-  const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-  const _clockIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const buildGroupedPlacesHTML = (sorted) => {
+    const groups = new Map();
+    sorted.forEach((place) => {
+      const city = getPlaceCity(place);
+      if (!groups.has(city)) groups.set(city, []);
+      groups.get(city).push(place);
+    });
 
-  function buildCard(p, i) {
-    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
-    const typeTags = getDisplayTags(p.type);
-    const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
-    const posCount = posTags.length;
-    const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
-    const tagNames = posTags.map((t) => t.label);
-    const faved = isFavourite(p.id);
-    const distBadge = userLocLat !== null
-      ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
-      : "";
-    return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
-      <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-      <span class="pl-name">${esc(p.name)}</span>
-      <span class="pl-addr">${esc(p.address)}${distBadge}</span>
-      <div class="pl-meta">
-        <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
-      </div>
-      <div class="pl-acts">
-        <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
-        </button>
-        <button class="pl-fav-btn${faved ? " active" : ""}" data-fav-id="${p.id}" aria-label="${faved ? "Remove from saved" : "Save place"}">
-          <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
-        </button>
-      </div>
-    </li>`;
-  }
+    _lastGroupedData = groups;
+    let animationIndex = 0;
+    return [...groups.entries()].map(([city, group]) => {
+      const collapsed = collapsedCityGroups.has(city);
+      const cards = collapsed ? "" : group.map((place) => _buildCard(place, animationIndex++)).join("");
+      if (collapsed) animationIndex += group.length;
+      return `<li class="pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(city)}"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(city)}</span><span class="pl-city-count">${group.length}</span></li><li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(city)}"${collapsed ? ' data-lazy="1"' : ''}><div class="pl-city-group-inner"><ul class="pl-city-group-list">${cards}</ul></div></li>`;
+    }).join("");
+  };
 
-  const regularHTML = sorted.map((p, i) => buildCard(p, i)).join("");
+  const regularHTML = activeSortField === "default"
+    ? buildGroupedPlacesHTML(sorted)
+    : sorted.map((p, i) => _buildCard(p, i)).join("");
 
   const pinHTML = customPins
     .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${sorted.length + pi}">
@@ -1245,7 +1387,7 @@ function renderPlacesList() {
   if (activeTypeFilter !== "saved" && recentIds.length) {
     const recentPlaces = recentIds.map((id) => filtered.find((p) => p.id === id)).filter(Boolean);
     if (recentPlaces.length) {
-      const recentCards = recentPlaces.map((p, i) => buildCard(p, i)).join("");
+      const recentCards = recentPlaces.map((p, i) => _buildCard(p, i)).join("");
       const mainHdr = (regularHTML || pinHTML)
         ? `<li class="pl-section-hdr pl-section-hdr--main">All places</li>`
         : "";
@@ -1376,6 +1518,32 @@ if (_hasHover) {
 document.getElementById("places-scroll").addEventListener("scroll", hideTagTip, { passive: true });
 
 document.getElementById("places-list").addEventListener("click", (e) => {
+  const cityHdr = e.target.closest(".pl-city-hdr[data-city-group]");
+  if (cityHdr) {
+    e.stopPropagation();
+    const city = cityHdr.dataset.cityGroup;
+    const body = document.querySelector(`.pl-city-group-body[data-city-group-body="${CSS.escape(city)}"]`);
+    if (!body) return;
+    const collapsed = collapsedCityGroups.has(city);
+    if (collapsed) {
+      collapsedCityGroups.delete(city);
+      cityHdr.classList.remove("is-collapsed");
+      body.classList.remove("shut");
+      if (body.dataset.lazy) {
+        const list = body.querySelector(".pl-city-group-list");
+        const group = _lastGroupedData.get(city);
+        if (group && list) list.innerHTML = group.map((p, i) => _buildCard(p, i)).join("");
+        delete body.dataset.lazy;
+      }
+    } else {
+      collapsedCityGroups.add(city);
+      cityHdr.classList.add("is-collapsed");
+      body.classList.add("shut");
+    }
+    requestAnimationFrame(() => placesSnap.softRemeasure());
+    return;
+  }
+
   // Toggle tag tooltip on tap/click
   const tagEl = e.target.closest(".pl-tags-summary");
   if (tagEl) {
