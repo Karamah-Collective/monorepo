@@ -76,7 +76,7 @@ document.addEventListener(
     const interactive = tgt.closest(
       'button, [role="button"], .pf-chip, .tf-chip, .tf-group-toggle, ' +
       '.tut-start-btn, .tut-nav-btn, .tut-close, .tab, .pl-card, ' +
-      '.itin-card, .sort-opt, .style-opt, .cal-day, .tp-cell, ' +
+      '.itin-card, .leg-expandable, .direct-step, .sort-opt, .style-opt, .cal-day, .tp-cell, ' +
       '.time-chip, .sp-chip, .prayer-hdr-btn, .prayer-snack-clickable, ' +
       '#results-list li, .dir-suggest li, .pl-fav-btn, #eid-banner .snack-body, #snackbar-body, a'
     );

@@ -28,6 +28,7 @@ what you like, what you've decided, and how you want things done.
 - Secrets in `config.local.js` (gitignored) for local dev, Cloudflare env vars for production.
 - Lazy-load non-critical modules after `map.on("load")` for faster startup.
 - Service worker for offline support and instant repeat visits.
+- Prefer direct code fixes first; only add extra test-focused follow-up when explicitly requested or needed to validate a risky change.
 
 ### Security
 - Full CSP, HSTS, CORS, SRI enforcement.

@@ -158,6 +158,35 @@ document.getElementById("dir-close").addEventListener("click", closeDirPanel);
 
 const dirSnap = initSheetDrag(dirPanel, closeDirPanel);
 
+function getDirPanelContentHeight() {
+  let height = 0;
+  for (const child of dirPanel.children) {
+    if (!child.offsetWidth && !child.offsetHeight) continue;
+    const styles = getComputedStyle(child);
+    const ownHeight = parseFloat(styles.flexGrow) > 0 ? child.scrollHeight : child.offsetHeight;
+    height += ownHeight + parseFloat(styles.marginTop) + parseFloat(styles.marginBottom);
+  }
+  return height;
+}
+
+function maybeExpandResultsFullscreen() {
+  if (window.innerWidth > 768) return;
+  if (dirPanel.classList.contains("shut") || dirPanel.classList.contains("route-focused")) return;
+  if (!dirPanel.classList.contains("results-shown") || dirPanel.classList.contains("search-editing")) return;
+  if (!(dir.directInfo || dir.itineraries.length === 1)) return;
+
+  const contentRatio = getDirPanelContentHeight() / window.innerHeight;
+  if (contentRatio < 0.75) return;
+
+  dirPanel.classList.add("full");
+  dirPanel.style.height = "";
+}
+
+function syncResultsPanelHeight() {
+  dirSnap.remeasure();
+  maybeExpandResultsFullscreen();
+}
+
 // Auto-remeasure sheet height after animated sections finish transitioning
 const dirTimeBar = document.getElementById("dir-time-bar");
 dirTimeBar.addEventListener("transitionend", (e) => {
@@ -423,6 +452,34 @@ const dirFromSuggest = document.getElementById("dir-from-suggest");
 const dirToSuggest = document.getElementById("dir-to-suggest");
 let dirSugDebounce = null;
 
+function getDirInputForField(field) {
+  if (field === "from") return dirFrom;
+  if (field === "to") return dirTo;
+  if (field?.startsWith("wp-")) return document.getElementById(`dir-wp-${field.slice(3)}`);
+  return null;
+}
+
+function moveDirFocusToField(field, previousInput = null) {
+  startPick(field);
+  const nextInput = getDirInputForField(field);
+  if (!nextInput) return;
+
+  if (previousInput && previousInput !== nextInput) {
+    previousInput.blur();
+    if (typeof previousInput.setSelectionRange === "function") {
+      previousInput.setSelectionRange(0, 0);
+    }
+  }
+
+  requestAnimationFrame(() => {
+    nextInput.focus({ preventScroll: true });
+    if (typeof nextInput.setSelectionRange === "function") {
+      const caret = nextInput.value.length;
+      nextInput.setSelectionRange(caret, caret);
+    }
+  });
+}
+
 function setupDirAutocomplete(inputEl, suggestEl, field) {
   inputEl.addEventListener("input", () => {
     if (field === "from") dir.origin = null;
@@ -459,24 +516,21 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
       autoSetNearestMosque(lat, lng);
       if (!dir.dest) {
         const nextField = dir.waypoints.length ? (dir.waypoints[0] ? "to" : "wp-0") : "to";
-        startPick(nextField);
-        if (window.innerWidth <= 768) {
-          const nextInput = nextField === "to" ? dirTo : document.getElementById(`dir-wp-${nextField.slice(3)}`);
-          if (nextInput) setTimeout(() => nextInput.focus(), 80);
-        }
+        moveDirFocusToField(nextField, inputEl);
       }
     } else if (field.startsWith("wp-")) {
       const wpIdx = parseInt(field.slice(3), 10);
       dir.waypoints[wpIdx] = { lat, lng, name };
       placeWaypointMarker(wpIdx, lng, lat);
       const nextEmpty = dir.waypoints.findIndex((w, i) => i > wpIdx && !w);
-      if (nextEmpty >= 0) startPick(`wp-${nextEmpty}`);
-      else if (!dir.dest) startPick("to");
+      if (nextEmpty >= 0) moveDirFocusToField(`wp-${nextEmpty}`, inputEl);
+      else if (!dir.dest) moveDirFocusToField("to", inputEl);
       else stopPick();
     } else {
       dir.dest = { lat, lng, name };
       placeDestMarker(lng, lat);
       stopPick();
+      inputEl.blur();
     }
     updateGoButton();
   });
@@ -1689,12 +1743,12 @@ function renderItineraries() {
     });
   });
   // Enter results mode AFTER cards are built so the panel measures correct height
-  enterResultsMode();
   if (dir.itineraries.length) {
     const pending = _pendingItinIdx;
     _pendingItinIdx = null;
     selectItinerary(pending != null && pending < dir.itineraries.length ? pending : 0);
   }
+  enterResultsMode();
 }
 
 function selectItinerary(idx) {
@@ -1702,6 +1756,9 @@ function selectItinerary(idx) {
   dir.activeIdx = idx;
   document.querySelectorAll(".itin-card").forEach((c, i) => c.classList.toggle("active", i === idx));
   drawRoute(dir.itineraries[idx]);
+  if (dirPanel.classList.contains("results-shown") && !dirPanel.classList.contains("route-focused")) {
+    syncResultsPanelHeight();
+  }
 }
 
 function focusRoute(idx) {
@@ -1888,7 +1945,7 @@ function enterResultsMode() {
   // Let remeasure handle snapping to the correct height with smooth CSS transition.
   // This avoids transitioning to raw content height (which could be huge for
   // step-by-step routes) and then snapping down — remeasure caps correctly.
-  dirSnap.remeasure();
+  syncResultsPanelHeight();
 }
 function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
 dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); dirSnap.remeasure(); });
