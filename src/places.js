@@ -260,9 +260,12 @@ function _buildCard(p, i) {
   const distBadge = userLocLat !== null
     ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
     : "";
-  return `<li class="pl-card" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+  const boycottBadge = p.boycott
+    ? `<span class="pl-boycott-chip">Boycott Watch</span>`
+    : "";
+  return `<li class="pl-card${p.boycott ? " pl-card--boycott" : ""}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${esc(p.name)}</span>
+    <span class="pl-name">${esc(p.name)}${boycottBadge}</span>
     <span class="pl-addr">${esc(p.address)}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
@@ -680,6 +683,15 @@ export function showPlacePopup(place) {
       tagsEl.innerHTML = chips;
       inner.appendChild(tagsEl);
     }
+  }
+
+  if (place.boycott) {
+    const callout = document.createElement("div");
+    callout.className = "pp-boycott-callout";
+    callout.innerHTML =
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` +
+      `<span>On the boycott list for supporting genocide in Gaza</span>`;
+    inner.appendChild(callout);
   }
 
   if (place.notes) {

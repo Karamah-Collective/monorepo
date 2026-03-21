@@ -63,7 +63,8 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": "KFC branch in Kamppi centre."
+    "notes": "KFC branch in Kamppi centre.",
+    "boycott": true
   },
   {
     "id": "m90m87",
@@ -1698,7 +1699,7 @@
     "notes": "Enter from parking area as the mosque has its own doors located between a pizzeria and a hairsalon. The mosque is in the second floor."
   },
   {
-    "id": "6kynog",
+    "id": "zqnplx",
     "name": "Woolshed Helsinki - Australian Gastropub",
     "type": "restaurant",
     "address": "Töölönlahdenkatu 3B, 00100 Helsinki, Finland",

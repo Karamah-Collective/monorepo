@@ -2210,6 +2210,47 @@ body.dark-mode .sp-tip {
   line-height: 1.5;
 }
 
+/* Boycott callout in popup */
+.pp-boycott-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-xs);
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-normal);
+  line-height: 1.4;
+}
+.pp-boycott-callout svg {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* Boycott chip inline in list card name */
+.pl-boycott-chip {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  vertical-align: middle;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: var(--gold-soft);
+  color: var(--gold);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* Subtle amber left accent on boycott cards */
+.pl-card.pl-card--boycott {
+  border-left: 2px solid var(--gold);
+  padding-left: 14px; /* 16px default − 2px for the extra border width */
+}
+
 .pp-actions {
   display: flex;
   gap: var(--sp-2);
