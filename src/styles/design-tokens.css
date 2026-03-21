@@ -99,6 +99,7 @@
 
   /* — z-index layer system — */
   --z-map: 0;
+  --z-sticky: 2; /* sticky headers inside scroll containers */
   --z-ctrl-lo: 5;
   --z-ctrl-mid: 6;
   --z-prayer: 9;

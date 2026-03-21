@@ -1574,9 +1574,19 @@ body.dark-mode .sp-tip {
 }
 
 #places-list li.pl-city-hdr {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
   justify-content: flex-start;
   gap: var(--sp-3);
   padding-top: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  background: var(--surface);
+}
+/* Keep background opaque while stuck — override the section-hdr:hover/active rules */
+#places-list li.pl-city-hdr:hover,
+#places-list li.pl-city-hdr:active {
+  background: var(--surface);
 }
 .pl-city-toggle {
   display: flex;
@@ -1633,7 +1643,7 @@ body.dark-mode .sp-tip {
   border-radius: 0;
   cursor: default;
   animation: none;
-  transition: none;
+  transition: margin var(--t-spring);
 }
 @media (hover: hover) {
   #places-list li.pl-city-group-body:hover,
@@ -1641,16 +1651,24 @@ body.dark-mode .sp-tip {
     background: none;
   }
 }
+/* When shut, pull surrounding flex gap to zero so no double-gap appears */
+#places-list li.pl-city-group-body.shut {
+  margin-top: calc(-1 * var(--sp-3));
+  margin-bottom: calc(-1 * var(--sp-3));
+}
 .pl-city-group-inner {
   display: grid;
   grid-template-rows: 1fr;
   overflow: hidden;
-  transition: grid-template-rows var(--t-spring), opacity var(--t-med);
+  /* Expand: ease-in-out so it builds up gradually rather than snapping instantly */
+  transition: grid-template-rows 0.35s ease, opacity var(--t-med);
   opacity: 1;
 }
 .pl-city-group-body.shut .pl-city-group-inner {
   grid-template-rows: 0fr;
   opacity: 0;
+  /* Collapse: spring (ease-out) so it snaps shut with the same feel as the sheet */
+  transition: grid-template-rows var(--t-spring), opacity var(--t-med);
 }
 .pl-city-group-list {
   list-style: none;

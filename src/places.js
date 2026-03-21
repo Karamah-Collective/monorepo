@@ -1530,22 +1530,28 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     const prevScroll = scrollEl.scrollTop;
     const collapsed = collapsedCityGroups.has(city);
     if (collapsed) {
-      collapsedCityGroups.delete(city);
-      cityHdr.classList.remove("is-collapsed");
-      body.classList.remove("shut");
+      // Inject lazy content while SHUT so grid knows its full target height
+      // before the transition starts — prevents the instant-snap on expand
       if (body.dataset.lazy) {
         const list = body.querySelector(".pl-city-group-list");
         const group = _lastGroupedData.get(city);
         if (group && list) list.innerHTML = group.map((p, i) => _buildCard(p, i)).join("");
         delete body.dataset.lazy;
       }
+      collapsedCityGroups.delete(city);
+      cityHdr.classList.remove("is-collapsed");
+      body.classList.remove("shut");
     } else {
       collapsedCityGroups.add(city);
       cityHdr.classList.add("is-collapsed");
       body.classList.add("shut");
     }
     scrollEl.scrollTop = prevScroll;
-    requestAnimationFrame(() => placesSnap.softRemeasure());
+    requestAnimationFrame(() => {
+      placesSnap.softRemeasure();
+      // Re-assert after softRemeasure's height:auto reflow, which can reset scrollTop on iOS
+      scrollEl.scrollTop = prevScroll;
+    });
     return;
   }
 
