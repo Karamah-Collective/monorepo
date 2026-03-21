@@ -186,8 +186,7 @@ map.on("load", async () => {
     async () => {
       const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
-        // TODO: Re-enable after Eid — disabled so the Eid banner gets full visual attention
-        // showEarlyDevNotice();
+        showEarlyDevNotice();
         // Show loading toast only after tutorial/intro finishes, if places still loading
         if (!placesLoaded) {
           showLoadingToast("Loading places…", "Fetching latest data");

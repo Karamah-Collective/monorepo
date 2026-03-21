@@ -217,6 +217,10 @@
     {
       "id": "cuisine_palestinian",
       "label": "Palestinian"
+    },
+    {
+      "id": "cuisine_steak",
+      "label": "Steak"
     }
   ]
 }
