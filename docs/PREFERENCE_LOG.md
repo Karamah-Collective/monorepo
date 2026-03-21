@@ -117,3 +117,11 @@ what you like, what you've decided, and how you want things done.
 - Full backward compat: old `?r=`(JSON), `?lat=&lng=`, `?eid=`, `?route=1`, `?p=`(encrypted) all still parse.
 - Middleware updated for OG tag generation from compact tokens.
 - No server-side storage — everything is encoded in the URL itself.
+
+### 2026-03-21 — Places Window Collapsible & Tap Fixes
+- Recently viewed section is now a collapsible group identical to city groups (chevron + name + count badge).
+- Removed the clock icon from the recently viewed header — plain text only.
+- Collapsible section trigger area reduced to just the chevron and city name (wrapped in a `<button class="pl-city-toggle">`), not the entire row.
+- Suppressed `cardSlideIn` animation on nested cards inside `.pl-city-group-list` to eliminate compositor saturation during sheet opening (root cause of multi-tap issue on mobile).
+- Removed `scroll-behavior: smooth` from `#places-scroll` to prevent unwanted scroll resets during expand/collapse.
+- Scroll position preserved across expand/collapse toggles.

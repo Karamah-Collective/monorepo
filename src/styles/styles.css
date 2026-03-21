@@ -1508,7 +1508,6 @@ body.dark-mode .sp-tip {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1566,6 +1565,9 @@ body.dark-mode .sp-tip {
     background: none;
   }
 }
+#places-list li.pl-section-hdr:active {
+  background: none;
+}
 #places-list li.pl-section-hdr--main {
   margin-top: var(--sp-3);
   border-top: 1px solid var(--border-light);
@@ -1575,14 +1577,29 @@ body.dark-mode .sp-tip {
   justify-content: flex-start;
   gap: var(--sp-3);
   padding-top: var(--sp-3);
+}
+.pl-city-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
-  #places-list li.pl-city-hdr:hover {
+  .pl-city-toggle:hover {
     color: var(--text-2);
   }
 }
-#places-list li.pl-city-hdr:active {
+.pl-city-toggle:active {
   color: var(--text);
 }
 .pl-city-arrow {
@@ -1644,6 +1661,9 @@ body.dark-mode .sp-tip {
   margin: 0;
   padding: 0 0 0 var(--sp-7);
   border-left: 2px solid var(--accent-soft);
+}
+#places-list .pl-city-group-list li {
+  animation: none;
 }
 
 .pl-dot {

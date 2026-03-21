@@ -370,7 +370,7 @@
   },
   {
     "id": "4vxx5n",
-    "name": "Taqwa Cultural Centre, Läkkisepänkuja 3, 02650 Espoo",
+    "name": "Taqwa Cultural Centre",
     "type": "mosque",
     "address": "Läkkisepänkuja 3, 02650 Espoo",
     "city": "Espoo",
@@ -1646,7 +1646,7 @@
   },
   {
     "id": "s3bdjv",
-    "name": "Myyrmäen Moskeija مسجد مورمكي, Ojahaanrinne 4k, 01600 Vantaa‭",
+    "name": "Myyrmäen Moskeija مسجد مورمكي‭",
     "type": "mosque",
     "address": "Ojahaanrinne 4k, 01600 Vantaa",
     "city": "Vantaa",
@@ -1696,5 +1696,18 @@
       "female_wudu": true
     },
     "notes": "Enter from parking area as the mosque has its own doors located between a pizzeria and a hairsalon. The mosque is in the second floor."
+  },
+  {
+    "id": "6kynog",
+    "name": "Woolshed Helsinki - Australian Gastropub",
+    "type": "restaurant",
+    "address": "Töölönlahdenkatu 3B, 00100 Helsinki, Finland",
+    "city": "Helsinki",
+    "lat": 60.1735388,
+    "lng": 24.9390951,
+    "tags": {
+      "cuisine_steak": true
+    },
+    "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\""
   }
 ]

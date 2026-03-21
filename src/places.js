@@ -247,7 +247,6 @@ function formatDist(km) {
 }
 
 const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-const _clockIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
@@ -1355,7 +1354,7 @@ function renderPlacesList() {
       const collapsed = collapsedCityGroups.has(city);
       const cards = collapsed ? "" : group.map((place) => _buildCard(place, animationIndex++)).join("");
       if (collapsed) animationIndex += group.length;
-      return `<li class="pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(city)}"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(city)}</span><span class="pl-city-count">${group.length}</span></li><li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(city)}"${collapsed ? ' data-lazy="1"' : ''}><div class="pl-city-group-inner"><ul class="pl-city-group-list">${cards}</ul></div></li>`;
+      return `<li class="pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(city)}"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(city)}</span></button><span class="pl-city-count">${group.length}</span></li><li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(city)}"${collapsed ? ' data-lazy="1"' : ''}><div class="pl-city-group-inner"><ul class="pl-city-group-list">${cards}</ul></div></li>`;
     }).join("");
   };
 
@@ -1387,11 +1386,12 @@ function renderPlacesList() {
   if (activeTypeFilter !== "saved" && recentIds.length) {
     const recentPlaces = recentIds.map((id) => filtered.find((p) => p.id === id)).filter(Boolean);
     if (recentPlaces.length) {
+      const recentCollapsed = collapsedCityGroups.has("__recent__");
       const recentCards = recentPlaces.map((p, i) => _buildCard(p, i)).join("");
       const mainHdr = (regularHTML || pinHTML)
         ? `<li class="pl-section-hdr pl-section-hdr--main">All places</li>`
         : "";
-      recentHtml = `<li class="pl-section-hdr">${_clockIcon} Recently viewed</li>${recentCards}${mainHdr}`;
+      recentHtml = `<li class="pl-section-hdr pl-city-hdr${recentCollapsed ? " is-collapsed" : ""}" data-city-group="__recent__"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">Recently viewed</span></button><span class="pl-city-count">${recentPlaces.length}</span></li><li class="pl-city-group-body${recentCollapsed ? " shut" : ""}" data-city-group-body="__recent__"><div class="pl-city-group-inner"><ul class="pl-city-group-list">${recentCards}</ul></div></li>${mainHdr}`;
     }
   }
 
@@ -1518,12 +1518,16 @@ if (_hasHover) {
 document.getElementById("places-scroll").addEventListener("scroll", hideTagTip, { passive: true });
 
 document.getElementById("places-list").addEventListener("click", (e) => {
-  const cityHdr = e.target.closest(".pl-city-hdr[data-city-group]");
-  if (cityHdr) {
+  const cityToggle = e.target.closest(".pl-city-toggle");
+  if (cityToggle) {
     e.stopPropagation();
+    const cityHdr = cityToggle.closest(".pl-city-hdr[data-city-group]");
+    if (!cityHdr) return;
     const city = cityHdr.dataset.cityGroup;
     const body = document.querySelector(`.pl-city-group-body[data-city-group-body="${CSS.escape(city)}"]`);
     if (!body) return;
+    const scrollEl = document.getElementById("places-scroll");
+    const prevScroll = scrollEl.scrollTop;
     const collapsed = collapsedCityGroups.has(city);
     if (collapsed) {
       collapsedCityGroups.delete(city);
@@ -1540,6 +1544,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
       cityHdr.classList.add("is-collapsed");
       body.classList.add("shut");
     }
+    scrollEl.scrollTop = prevScroll;
     requestAnimationFrame(() => placesSnap.softRemeasure());
     return;
   }
