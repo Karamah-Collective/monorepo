@@ -68,7 +68,7 @@ test.describe("Places Popup Regression", () => {
 
   test("desktop repeated place selection keeps map full width and sheet fully shut", async ({ page }) => {
     await openPlaces(page);
-    await clickDistinctPlaces(page, 3);
+    await clickDistinctPlaces(page, 6);
 
     await expect(page.locator("#places-sheet")).toHaveClass(/shut/);
 
@@ -78,20 +78,32 @@ test.describe("Places Popup Regression", () => {
       const canvas = document.querySelector("#map canvas");
       return {
         vw: window.innerWidth,
+        vh: window.innerHeight,
+        dpr: window.devicePixelRatio || 1,
         appW: app ? app.getBoundingClientRect().width : 0,
+        appH: app ? app.getBoundingClientRect().height : 0,
         mapW: map ? map.getBoundingClientRect().width : 0,
+        mapH: map ? map.getBoundingClientRect().height : 0,
         canvasW: canvas ? canvas.getBoundingClientRect().width : 0,
+        canvasH: canvas ? canvas.getBoundingClientRect().height : 0,
+        bufferW: canvas ? canvas.width : 0,
+        bufferH: canvas ? canvas.height : 0,
       };
     });
 
     expect(dims.appW).toBeGreaterThanOrEqual(dims.vw - 4);
+    expect(dims.appH).toBeGreaterThanOrEqual(dims.vh - 4);
     expect(dims.mapW).toBeGreaterThanOrEqual(dims.vw - 4);
+    expect(dims.mapH).toBeGreaterThanOrEqual(dims.vh - 4);
     expect(dims.canvasW).toBeGreaterThanOrEqual(dims.vw - 8);
+    expect(dims.canvasH).toBeGreaterThanOrEqual(dims.vh - 8);
+    expect(dims.bufferW).toBeGreaterThanOrEqual(Math.round((dims.vw - 8) * dims.dpr));
+    expect(dims.bufferH).toBeGreaterThanOrEqual(Math.round((dims.vh - 8) * dims.dpr));
   });
 
   test("rapid-fire place selection keeps map full width (stress test)", async ({ page }) => {
     await openPlaces(page);
-    await clickDistinctPlacesFast(page, 5);
+    await clickDistinctPlacesFast(page, 8);
 
     // Wait for any pending resize callbacks to settle
     await page.waitForTimeout(500);
@@ -104,32 +116,57 @@ test.describe("Places Popup Regression", () => {
       const canvas = document.querySelector("#map canvas");
       return {
         vw: window.innerWidth,
+        vh: window.innerHeight,
+        dpr: window.devicePixelRatio || 1,
         appW: app ? app.getBoundingClientRect().width : 0,
+        appH: app ? app.getBoundingClientRect().height : 0,
         mapW: map ? map.getBoundingClientRect().width : 0,
+        mapH: map ? map.getBoundingClientRect().height : 0,
         canvasW: canvas ? canvas.getBoundingClientRect().width : 0,
+        canvasH: canvas ? canvas.getBoundingClientRect().height : 0,
+        bufferW: canvas ? canvas.width : 0,
+        bufferH: canvas ? canvas.height : 0,
       };
     });
 
     expect(dims.appW).toBeGreaterThanOrEqual(dims.vw - 4);
+    expect(dims.appH).toBeGreaterThanOrEqual(dims.vh - 4);
     expect(dims.mapW).toBeGreaterThanOrEqual(dims.vw - 4);
+    expect(dims.mapH).toBeGreaterThanOrEqual(dims.vh - 4);
     expect(dims.canvasW).toBeGreaterThanOrEqual(dims.vw - 8);
+    expect(dims.canvasH).toBeGreaterThanOrEqual(dims.vh - 8);
+    expect(dims.bufferW).toBeGreaterThanOrEqual(Math.round((dims.vw - 8) * dims.dpr));
+    expect(dims.bufferH).toBeGreaterThanOrEqual(Math.round((dims.vh - 8) * dims.dpr));
   });
 
   test("mobile repeated place selection keeps sheet fully shut", async ({ page, browserName }) => {
     test.skip(browserName === "chromium" && (await page.evaluate(() => window.innerWidth)) > 768, "mobile-only assertion");
     await openPlaces(page);
-    await clickDistinctPlaces(page, 3);
+    await clickDistinctPlaces(page, 6);
 
     const state = await page.evaluate(() => {
       const sheet = document.querySelector("#places-sheet");
+      const app = document.querySelector("#app");
+      const map = document.querySelector("#map");
+      const canvas = document.querySelector("#map canvas");
       const rect = sheet.getBoundingClientRect();
       return {
         shut: sheet.classList.contains("shut"),
         top: rect.top,
         height: rect.height,
         vh: window.innerHeight,
+        vw: window.innerWidth,
+        dpr: window.devicePixelRatio || 1,
         opacity: getComputedStyle(sheet).opacity,
         visibility: getComputedStyle(sheet).visibility,
+        appW: app ? app.getBoundingClientRect().width : 0,
+        mapW: map ? map.getBoundingClientRect().width : 0,
+        canvasW: canvas ? canvas.getBoundingClientRect().width : 0,
+        appH: app ? app.getBoundingClientRect().height : 0,
+        mapH: map ? map.getBoundingClientRect().height : 0,
+        canvasH: canvas ? canvas.getBoundingClientRect().height : 0,
+        bufferW: canvas ? canvas.width : 0,
+        bufferH: canvas ? canvas.height : 0,
       };
     });
 
@@ -137,5 +174,13 @@ test.describe("Places Popup Regression", () => {
     expect(Number(state.opacity)).toBe(0);
     expect(state.visibility).toBe("hidden");
     expect(state.top).toBeGreaterThanOrEqual(state.vh - Math.min(state.height, 4));
+    expect(state.appW).toBeGreaterThanOrEqual(state.vw - 4);
+    expect(state.mapW).toBeGreaterThanOrEqual(state.vw - 4);
+    expect(state.canvasW).toBeGreaterThanOrEqual(state.vw - 8);
+    expect(state.appH).toBeGreaterThanOrEqual(state.vh - 4);
+    expect(state.mapH).toBeGreaterThanOrEqual(state.vh - 4);
+    expect(state.canvasH).toBeGreaterThanOrEqual(state.vh - 8);
+    expect(state.bufferW).toBeGreaterThanOrEqual(Math.round((state.vw - 8) * state.dpr));
+    expect(state.bufferH).toBeGreaterThanOrEqual(Math.round((state.vh - 8) * state.dpr));
   });
 });

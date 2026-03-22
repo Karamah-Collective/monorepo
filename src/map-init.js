@@ -16,6 +16,141 @@ export const map = new maplibregl.Map({
   doubleClickZoom: false,
 });
 
+const appRoot = document.getElementById("app");
+const mapHost = document.getElementById("map");
+let _syncRAF = 0;
+let _syncTimeout = 0;
+let _contextLost = false;
+
+function getViewportSize() {
+  const rect = appRoot?.getBoundingClientRect();
+  return {
+    width: Math.round(rect?.width || window.innerWidth || mapHost?.clientWidth || 0),
+    height: Math.round(rect?.height || window.innerHeight || mapHost?.clientHeight || 0),
+  };
+}
+
+function setViewportFloor(width, height) {
+  if (!mapHost || !width || !height) return;
+  mapHost.style.setProperty("width", `${width}px`, "important");
+  mapHost.style.setProperty("height", `${height}px`, "important");
+
+  const canvasContainer = map.getCanvasContainer?.();
+  if (canvasContainer) {
+    canvasContainer.style.setProperty("width", `${width}px`, "important");
+    canvasContainer.style.setProperty("height", `${height}px`, "important");
+  }
+
+  const canvas = map.getCanvas();
+  if (canvas) {
+    canvas.style.setProperty("width", `${width}px`, "important");
+    canvas.style.setProperty("height", `${height}px`, "important");
+  }
+}
+
+function syncMapViewportNow() {
+  if (!mapHost || _contextLost) return;
+
+  const canvas = map.getCanvas();
+  if (!canvas) return;
+
+  const { width: targetWidth, height: targetHeight } = getViewportSize();
+  if (!targetWidth || !targetHeight) return;
+
+  setViewportFloor(targetWidth, targetHeight);
+
+  const hostRect = mapHost.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const minBufferWidth = Math.round(targetWidth * dpr);
+  const minBufferHeight = Math.round(targetHeight * dpr);
+  const cssTooSmall =
+    hostRect.width < targetWidth - 2 ||
+    hostRect.height < targetHeight - 2 ||
+    canvasRect.width < targetWidth - 2 ||
+    canvasRect.height < targetHeight - 2;
+  const bufferTooSmall =
+    canvas.width < minBufferWidth - 4 ||
+    canvas.height < minBufferHeight - 4;
+
+  if (!cssTooSmall && !bufferTooSmall) return;
+
+  if (!map.isMoving()) {
+    map.resize();
+  }
+
+  if (canvas.width < minBufferWidth - 4 || canvas.height < minBufferHeight - 4) {
+    canvas.width = minBufferWidth;
+    canvas.height = minBufferHeight;
+    canvas.style.setProperty("width", `${targetWidth}px`, "important");
+    canvas.style.setProperty("height", `${targetHeight}px`, "important");
+    map.triggerRepaint();
+  }
+}
+
+export function scheduleMapViewportSync() {
+  cancelAnimationFrame(_syncRAF);
+  clearTimeout(_syncTimeout);
+  _syncRAF = requestAnimationFrame(() => {
+    _syncRAF = 0;
+    syncMapViewportNow();
+  });
+  _syncTimeout = setTimeout(() => {
+    _syncTimeout = 0;
+    syncMapViewportNow();
+  }, 250);
+}
+
+map.on("load", () => {
+  // WebGL context loss recovery — critical for mobile browsers that
+  // aggressively reclaim GPU resources under memory pressure.
+  const canvas = map.getCanvas();
+  let _ctxLostTimer = 0;
+  if (canvas) {
+    canvas.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault(); // allow browser to restore the context
+      _contextLost = true;
+      // Fallback: some mobile browsers silently restore without firing
+      // 'webglcontextrestored'. Poll gl.isContextLost() every 2 s.
+      if (!_ctxLostTimer) {
+        _ctxLostTimer = setInterval(() => {
+          try {
+            const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+            if (gl && !gl.isContextLost()) {
+              _contextLost = false;
+              clearInterval(_ctxLostTimer); _ctxLostTimer = 0;
+              map.resize();
+              map.triggerRepaint();
+            }
+          } catch (_) {}
+        }, 2000);
+      }
+    });
+    canvas.addEventListener("webglcontextrestored", () => {
+      _contextLost = false;
+      if (_ctxLostTimer) { clearInterval(_ctxLostTimer); _ctxLostTimer = 0; }
+      map.resize();
+      map.triggerRepaint();
+    });
+  }
+
+  scheduleMapViewportSync();
+
+  if (typeof ResizeObserver === "function" && mapHost) {
+    const observer = new ResizeObserver(() => {
+      scheduleMapViewportSync();
+    });
+    observer.observe(mapHost);
+  }
+
+  window.addEventListener("resize", scheduleMapViewportSync, { passive: true });
+  window.addEventListener("orientationchange", scheduleMapViewportSync, { passive: true });
+  window.visualViewport?.addEventListener("resize", scheduleMapViewportSync, { passive: true });
+  window.visualViewport?.addEventListener("scroll", scheduleMapViewportSync, { passive: true });
+});
+
+map.on("moveend", scheduleMapViewportSync);
+
 // Pan bounds set AFTER init so they don't cap zoom-out.
 map.setMaxBounds([[-2, 56], [52, 72]]);
 

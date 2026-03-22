@@ -1,4 +1,4 @@
-import { map } from "./map-init.js";
+import { map, scheduleMapViewportSync } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
@@ -24,16 +24,6 @@ let _editOriginalPlace = null;
 let _lastSubmit = 0;
 const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
 
-let _resizeRAF = 0;
-let _resizeTimeout = 0;
-
-function scheduleMapResize() {
-  cancelAnimationFrame(_resizeRAF);
-  clearTimeout(_resizeTimeout);
-  _resizeRAF = requestAnimationFrame(() => { _resizeRAF = 0; map.resize(); });
-  _resizeTimeout = setTimeout(() => { _resizeTimeout = 0; map.resize(); }, 250);
-}
-
 function clearActivePlacePopup() {
   if (_activePlacePopup) {
     try { _activePlacePopup.remove(); } catch (_) {}
@@ -41,6 +31,44 @@ function clearActivePlacePopup() {
   }
   _activePlacePopupId = null;
   document.querySelectorAll(".place-popup-wrap.maplibregl-popup").forEach((p) => p.remove());
+}
+
+let _sheetCloseRAF1 = 0;
+let _sheetCloseRAF2 = 0;
+let _mobilePlaceFocusLocked = false;
+let _mobilePlaceFocusUnlockTimer = 0;
+
+function isPhoneViewport() {
+  return window.innerWidth <= 768;
+}
+
+function lockMobilePlaceFocus() {
+  if (!isPhoneViewport()) return true;
+  if (_mobilePlaceFocusLocked) return false;
+  _mobilePlaceFocusLocked = true;
+  clearTimeout(_mobilePlaceFocusUnlockTimer);
+  _mobilePlaceFocusUnlockTimer = setTimeout(() => {
+    _mobilePlaceFocusLocked = false;
+    _mobilePlaceFocusUnlockTimer = 0;
+  }, 450);
+  return true;
+}
+
+function runAfterPlacesSheetClose(task) {
+  // Cancel any in-flight chain from a previous rapid click
+  cancelAnimationFrame(_sheetCloseRAF1);
+  cancelAnimationFrame(_sheetCloseRAF2);
+  closePlacesSheet();
+  _sheetCloseRAF1 = requestAnimationFrame(() => {
+    _sheetCloseRAF1 = 0;
+    scheduleMapViewportSync();
+    _sheetCloseRAF2 = requestAnimationFrame(() => {
+      _sheetCloseRAF2 = 0;
+      task();
+      // No sync here — showPlacePopup's flyTo handles its own rendering,
+      // and extra resize calls exhaust mobile GPU memory.
+    });
+  });
 }
 
 // When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
@@ -804,12 +832,18 @@ export function showPlacePopup(place) {
   });
 
   map.stop();
-  map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+  const targetZoom = Math.max(map.getZoom(), 15);
+  if (isPhoneViewport()) {
+    map.jumpTo({ center: [place.lng, place.lat], zoom: targetZoom });
+    scheduleMapViewportSync();
+    return;
+  }
+  map.flyTo({ center: [place.lng, place.lat], zoom: targetZoom, duration: 600 });
 }
 
 function openPlaceAfterSheetClose(place) {
-  closePlacesSheet();
-  showPlacePopup(place);
+  if (!lockMobilePlaceFocus()) return;
+  runAfterPlacesSheetClose(() => showPlacePopup(place));
 }
 
 export function checkShareUrl() {
@@ -985,7 +1019,7 @@ export function openPlacesSheet() {
   if (_placesDirty) _placesDirty = false;
   renderPlacesList();
   placesSnap.open();                           // measure content → set initial snap height → reveal
-  scheduleMapResize();
+  scheduleMapViewportSync();
 }
 
 export function closePlacesSheet() {
@@ -996,7 +1030,7 @@ export function closePlacesSheet() {
   placesSheet.hidden = true;
   scrim.classList.add("hide");
   setActiveTab(null);
-  scheduleMapResize();
+  scheduleMapViewportSync();
 }
 
 document.getElementById("places-btn").addEventListener("click", () =>
@@ -1649,9 +1683,10 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   if (pinLi) {
     const pin = getSavedPins().find(p => p.id === pinLi.dataset.customPinId);
     if (pin) {
-      closePlacesSheet();
-      window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
-      map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+      runAfterPlacesSheetClose(() => {
+        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+        map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+      });
     }
     return;
   }

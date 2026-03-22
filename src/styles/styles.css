@@ -71,6 +71,25 @@
   inset: 0;
   z-index: var(--z-map);
   background: #f0f1f2;
+  /* Floor: prevent transient layout glitches from ever shrinking this element
+     below the viewport. MapLibre's resize() reads clientWidth/clientHeight;
+     without this floor, a mid-transition measurement can permanently shrink
+     the WebGL buffer (canvas renders at 1/4 height → 3/4 white screen). */
+  min-width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+#map .maplibregl-canvas-container,
+#map .maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+#map .maplibregl-canvas-container {
+  position: absolute;
+  inset: 0;
+}
+#map .maplibregl-canvas {
+  display: block;
 }
 .maplibregl-canvas-container.maplibregl-interactive {
   cursor: grab !important;
