@@ -37,21 +37,50 @@ let _sheetCloseRAF1 = 0;
 let _sheetCloseRAF2 = 0;
 let _mobilePlaceFocusLocked = false;
 let _mobilePlaceFocusUnlockTimer = 0;
+let _mobilePlaceFocusToken = 0;
 
 function isPhoneViewport() {
   return window.innerWidth <= 768;
 }
 
-function lockMobilePlaceFocus() {
+function unlockMobilePlaceFocus() {
+  _mobilePlaceFocusLocked = false;
+  clearTimeout(_mobilePlaceFocusUnlockTimer);
+  _mobilePlaceFocusUnlockTimer = 0;
+}
+
+function lockMobilePlaceFocus(fallbackMs = 650) {
   if (!isPhoneViewport()) return true;
   if (_mobilePlaceFocusLocked) return false;
   _mobilePlaceFocusLocked = true;
   clearTimeout(_mobilePlaceFocusUnlockTimer);
   _mobilePlaceFocusUnlockTimer = setTimeout(() => {
-    _mobilePlaceFocusLocked = false;
-    _mobilePlaceFocusUnlockTimer = 0;
-  }, 450);
+    unlockMobilePlaceFocus();
+  }, fallbackMs);
   return true;
+}
+
+function focusPlaceOnPhone(place, token) {
+  clearActivePlacePopup();
+  map.stop();
+
+  const targetZoom = Math.max(map.getZoom(), 15);
+  let settled = false;
+  const finish = () => {
+    if (settled || token !== _mobilePlaceFocusToken) return;
+    settled = true;
+    unlockMobilePlaceFocus();
+    showPlacePopup(place, { skipMove: true });
+    scheduleMapViewportSync();
+  };
+
+  map.once("moveend", finish);
+  map.easeTo({
+    center: [place.lng, place.lat],
+    zoom: targetZoom,
+    duration: 280,
+    essential: true,
+  });
 }
 
 function runAfterPlacesSheetClose(task) {
@@ -675,7 +704,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
   if (activeTypeFilter === "saved") renderPlacesList();
 });
 
-export function showPlacePopup(place) {
+export function showPlacePopup(place, { skipMove = false } = {}) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[place.type] || cfg.color;
@@ -831,18 +860,29 @@ export function showPlacePopup(place) {
     if (_activePlacePopup === popup) _activePlacePopup = null;
   });
 
+  if (skipMove) return;
+
   map.stop();
   const targetZoom = Math.max(map.getZoom(), 15);
   if (isPhoneViewport()) {
-    map.jumpTo({ center: [place.lng, place.lat], zoom: targetZoom });
-    scheduleMapViewportSync();
+    map.easeTo({
+      center: [place.lng, place.lat],
+      zoom: targetZoom,
+      duration: 320,
+      essential: true,
+    });
     return;
   }
   map.flyTo({ center: [place.lng, place.lat], zoom: targetZoom, duration: 600 });
 }
 
 function openPlaceAfterSheetClose(place) {
-  if (!lockMobilePlaceFocus()) return;
+  if (isPhoneViewport()) {
+    if (!lockMobilePlaceFocus(900)) return;
+    const token = ++_mobilePlaceFocusToken;
+    runAfterPlacesSheetClose(() => focusPlaceOnPhone(place, token));
+    return;
+  }
   runAfterPlacesSheetClose(() => showPlacePopup(place));
 }
 
