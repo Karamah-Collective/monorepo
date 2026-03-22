@@ -10,7 +10,6 @@ export let tagsData = {};
 export let placesLoaded = false;
 let placeMarkers = [];
 let savedPinMarkers = [];
-let _pendingPlaceSelection = null;
 let _activePlacePopupId = null;
 let _activePlacePopup = null;
 export let activeTypeFilter = "all";
@@ -25,17 +24,14 @@ let _editOriginalPlace = null;
 let _lastSubmit = 0;
 const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
 
-function cancelPendingPlaceSelection() {
-  if (!_pendingPlaceSelection) return;
-  cancelAnimationFrame(_pendingPlaceSelection.raf1);
-  cancelAnimationFrame(_pendingPlaceSelection.raf2);
-  clearTimeout(_pendingPlaceSelection.timeout);
-  _pendingPlaceSelection = null;
-}
+let _resizeRAF = 0;
+let _resizeTimeout = 0;
 
 function scheduleMapResize() {
-  requestAnimationFrame(() => map.resize());
-  setTimeout(() => map.resize(), 250);
+  cancelAnimationFrame(_resizeRAF);
+  clearTimeout(_resizeTimeout);
+  _resizeRAF = requestAnimationFrame(() => { _resizeRAF = 0; map.resize(); });
+  _resizeTimeout = setTimeout(() => { _resizeTimeout = 0; map.resize(); }, 250);
 }
 
 function clearActivePlacePopup() {
@@ -652,7 +648,6 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 });
 
 export function showPlacePopup(place) {
-  cancelPendingPlaceSelection();
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[place.type] || cfg.color;
@@ -813,31 +808,8 @@ export function showPlacePopup(place) {
 }
 
 function openPlaceAfterSheetClose(place) {
-  cancelPendingPlaceSelection();
-
   closePlacesSheet();
-
-  let done = false;
-
-  const run = () => {
-    if (done) return;
-    done = true;
-    if (_pendingPlaceSelection) {
-      clearTimeout(_pendingPlaceSelection.timeout);
-      _pendingPlaceSelection = null;
-    }
-    map.resize();
-    showPlacePopup(place);
-    scheduleMapResize();
-  };
-
-  const raf1 = requestAnimationFrame(() => {
-    const raf2 = requestAnimationFrame(run);
-    if (_pendingPlaceSelection) _pendingPlaceSelection.raf2 = raf2;
-  });
-  const timeout = setTimeout(run, 80);
-
-  _pendingPlaceSelection = { raf1, raf2: 0, timeout };
+  showPlacePopup(place);
 }
 
 export function checkShareUrl() {
@@ -1000,7 +972,6 @@ const placesSheet = document.getElementById("places-sheet");
 const scrim = document.getElementById("scrim");
 
 export function openPlacesSheet() {
-  cancelPendingPlaceSelection();
   const dirPanel = document.getElementById("dir-panel");
   if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
   dirPanel.classList.add("shut");
@@ -1018,7 +989,6 @@ export function openPlacesSheet() {
 }
 
 export function closePlacesSheet() {
-  cancelPendingPlaceSelection();
   // Cancel any pending animateSheetHeight cleanup that could corrupt a future open
   if (placesSheet._animCleanup) { clearTimeout(placesSheet._animCleanup); placesSheet._animCleanup = null; }
   placesSheet.classList.add("shut");
