@@ -1,7 +1,20 @@
 // Register service worker for instant tile/shell caching (stale-while-revalidate).
-// Must be registered from a module at the same origin; /sw.js scope covers everything.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => { /* non-critical */ });
+// For localhost dev, actively unregister it so testing always hits current files
+// rather than a stale cached shell from a previous run.
+const _isLocalDevHost = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
+if ("serviceWorker" in navigator) {
+  if (_isLocalDevHost) {
+    navigator.serviceWorker.getRegistrations().then((regs) =>
+      Promise.all(regs.map((reg) => reg.unregister())),
+    ).catch(() => {});
+    if (window.caches) {
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((key) => key.startsWith("hf-")).map((key) => caches.delete(key))),
+      ).catch(() => {});
+    }
+  } else {
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* non-critical */ });
+  }
 }
 
 import { map } from "./map-init.js";

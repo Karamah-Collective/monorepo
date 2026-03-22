@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { showToast, haversineDistance, requestLocation } from "./utils.js";
 import { dir, openDirPanel, placeOriginMarker, placeDestMarker, updateGoButton, reverseGeocode, setFindingNearestMosque } from "./directions.js";
-import { placesData, activeTagFilters } from "./places.js";
+import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 
 // --- Constants / state ---
 const PRAYER_NAMES = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
@@ -220,7 +220,7 @@ function findNearestMosque() {
         placeDestMarker(nearest.lng, nearest.lat);
         updateGoButton();
         dismissPrayerSnack();
-        document.getElementById("places-sheet").classList.add("shut");
+        closePlacesSheet();
         openDirPanel();
         setFindingNearestMosque(false);
         map.fitBounds(new maplibregl.LngLatBounds().extend([userLng, userLat]).extend([nearest.lng, nearest.lat]), { padding: 80, duration: 600 });
@@ -230,7 +230,7 @@ function findNearestMosque() {
       console.error("Geolocation error:", error);
       showToast("Location is off", "loc", error.message);
       dismissPrayerSnack();
-      document.getElementById("places-sheet").classList.add("shut");
+      closePlacesSheet();
       openDirPanel();
       setFindingNearestMosque(false);
     },

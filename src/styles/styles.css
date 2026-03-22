@@ -1075,6 +1075,8 @@ body.dark-mode .sp-tip {
 }
 .sheet.shut {
   transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 .sheet.dragging {
@@ -1159,6 +1161,7 @@ body.dark-mode .sp-tip {
   .sheet.shut {
     transform: translateX(40px);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
   }
   .sheet-drag {

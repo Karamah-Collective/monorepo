@@ -112,7 +112,8 @@ dirWaypointsCt.addEventListener("click", (e) => {
 
 // --- Panel open/close ---
 export function openDirPanel() {
-  document.getElementById("places-sheet").classList.add("shut");
+  closePlacesSheet();
+  dirPanel.hidden = false;
   dirPanel.style.height = "";
   document.getElementById("scrim").classList.remove("hide");
   routeSnackbar.classList.add("hide");
@@ -125,8 +126,10 @@ export function openDirPanel() {
 }
 
 export function closeDirPanel() {
+  if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
   dirPanel.classList.add("shut");
-  dirSnap.close();
+  dirSnap.close();                               // nuclear: cancels rAF, wipes all inline styles
+  dirPanel.hidden = true;
   document.getElementById("scrim").classList.add("hide");
   stopPick();
   updateSnackbar();
@@ -610,11 +613,7 @@ function closeOpenPanelOnMapInteract() {
   const placesSheet = document.getElementById("places-sheet");
   if (!dirPanel.classList.contains("shut")) { closeDirPanel(); return; }
   if (!placesSheet.classList.contains("shut")) {
-    placesSheet.classList.add("shut");
-    placesSheet.classList.remove("full");
-    placesSheet.style.height = "";
-    document.getElementById("scrim").classList.add("hide");
-    setActiveTab(null);
+    closePlacesSheet();
   }
 }
 map.getCanvas().addEventListener("touchstart", closeOpenPanelOnMapInteract, { passive: true });

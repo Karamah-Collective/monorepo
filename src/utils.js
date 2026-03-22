@@ -394,6 +394,9 @@ export function initSegPill(container) {
  * height → FLIP-animate from old → new → restore fit-content.
  */
 export function animateSheetHeight(sheet, changeFn) {
+  // Cancel any pending cleanup from a previous animation
+  if (sheet._animCleanup) { clearTimeout(sheet._animCleanup); sheet._animCleanup = null; }
+
   if (window.innerWidth <= 768 || sheet.classList.contains("shut")) {
     changeFn();
     return;
@@ -427,12 +430,14 @@ export function animateSheetHeight(sheet, changeFn) {
   sheet.style.setProperty("height", newH + "px", "important");
 
   const cleanup = () => {
-    sheet.style.removeProperty("height");
+    sheet._animCleanup = null;
     sheet.removeEventListener("transitionend", onEnd);
+    // Don't touch a closed sheet — a new open() may have set fresh styles
+    if (!sheet.classList.contains("shut")) sheet.style.removeProperty("height");
   };
   const onEnd = (e) => { if (e.propertyName === "height") cleanup(); };
   sheet.addEventListener("transitionend", onEnd);
-  setTimeout(cleanup, 400); // safety fallback
+  sheet._animCleanup = setTimeout(cleanup, 400); // safety fallback
 }
 
 export function initSheetDrag(sheet, closeFn) {
@@ -516,6 +521,11 @@ export function initSheetDrag(sheet, closeFn) {
     if (!dragging) return;
     dragging = false;
 
+    sheet.classList.remove("dragging");            // re-enable CSS transition
+
+    // If someone already closed the sheet while we were dragging, bail out
+    if (sheet.classList.contains("shut")) return;
+
     const currentH = sheet.offsetHeight;
     const { mode, cap } = cached || freshCalc();
     // Clamp to content cap — if user dragged above it, snap back down
@@ -525,8 +535,6 @@ export function initSheetDrag(sheet, closeFn) {
     // Commit current height so the transition has a known start value
     sheet.style.height = currentH + "px";
     void sheet.offsetHeight;                       // force reflow
-
-    sheet.classList.remove("dragging");            // re-enable CSS transition
 
     if (target === 0) {
       closeFn();
@@ -570,12 +578,17 @@ export function initSheetDrag(sheet, closeFn) {
   document.addEventListener("mouseup",   ()  => { if (dragging) onEnd(); });
 
   /* ── public controller ── */
+  let openRAF = null;                              // track pending rAF from open()
+
   return {
     /**
      * Open the sheet at its correct initial snap height.
      * Briefly remove .shut → measure → re-add .shut → rAF remove = smooth reveal.
      */
     open() {
+      // Cancel any stale open rAF so it can't fight a close that came in between
+      if (openRAF) { cancelAnimationFrame(openRAF); openRAF = null; }
+
       if (!isMobile()) {
         // Desktop/tablet: just reveal — CSS handles height via fit-content
         sheet.classList.remove("shut", "full");
@@ -599,7 +612,8 @@ export function initSheetDrag(sheet, closeFn) {
       void sheet.offsetHeight;                     // force layout with .shut
 
       // 4. Remove .shut in next frame → CSS transition slides up
-      requestAnimationFrame(() => {
+      openRAF = requestAnimationFrame(() => {
+        openRAF = null;
         sheet.classList.remove("shut");
       });
     },
@@ -655,10 +669,13 @@ export function initSheetDrag(sheet, closeFn) {
       cached = freshCalc();
       sheet.style.height = prev;
     },
-    /** Mark as closing — inline height is kept so the slide-down
-     *  transition doesn't jump.  open() clears it next time. */
+    /** Nuclear close — cancel pending opens, kill drag state,
+     *  wipe ALL inline styles so .shut CSS has total control. */
     close() {
-      sheet.classList.remove("full");
+      if (openRAF) { cancelAnimationFrame(openRAF); openRAF = null; }
+      dragging = false;
+      sheet.classList.remove("full", "dragging");
+      sheet.removeAttribute("style");
       cached = null;
     }
   };

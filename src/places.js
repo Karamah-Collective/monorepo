@@ -10,6 +10,7 @@ export let tagsData = {};
 export let placesLoaded = false;
 let placeMarkers = [];
 let savedPinMarkers = [];
+let _pendingPlaceSelection = null;
 let _activePlacePopupId = null;
 let _activePlacePopup = null;
 export let activeTypeFilter = "all";
@@ -23,6 +24,28 @@ let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
 let _lastSubmit = 0;
 const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
+
+function cancelPendingPlaceSelection() {
+  if (!_pendingPlaceSelection) return;
+  cancelAnimationFrame(_pendingPlaceSelection.raf1);
+  cancelAnimationFrame(_pendingPlaceSelection.raf2);
+  clearTimeout(_pendingPlaceSelection.timeout);
+  _pendingPlaceSelection = null;
+}
+
+function scheduleMapResize() {
+  requestAnimationFrame(() => map.resize());
+  setTimeout(() => map.resize(), 250);
+}
+
+function clearActivePlacePopup() {
+  if (_activePlacePopup) {
+    try { _activePlacePopup.remove(); } catch (_) {}
+    _activePlacePopup = null;
+  }
+  _activePlacePopupId = null;
+  document.querySelectorAll(".place-popup-wrap.maplibregl-popup").forEach((p) => p.remove());
+}
 
 // When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
 // would read "✗ No Alcohol" — a confusing double negative. Map tag IDs to the label
@@ -536,8 +559,7 @@ function _setupClusterLayers(geojson) {
     const place = placesData.find((p) => p.id === feature.properties.id);
     if (!place) return;
     if (_activePlacePopupId === place.id) {
-      if (_activePlacePopup) { fadeAndRemovePopup(_activePlacePopup); _activePlacePopup = null; }
-      _activePlacePopupId = null;
+      clearActivePlacePopup();
     } else {
       showPlacePopup(place);
     }
@@ -587,8 +609,7 @@ export function addPlaceMarkers() {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       if (_activePlacePopupId === place.id) {
-        if (_activePlacePopup) { fadeAndRemovePopup(_activePlacePopup); _activePlacePopup = null; }
-        _activePlacePopupId = null;
+        clearActivePlacePopup();
       } else {
         showPlacePopup(place);
       }
@@ -631,6 +652,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 });
 
 export function showPlacePopup(place) {
+  cancelPendingPlaceSelection();
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[place.type] || cfg.color;
@@ -716,7 +738,7 @@ export function showPlacePopup(place) {
     placeDestMarker(place.lng, place.lat);
     updateGoButton();
     fadeAndRemovePopup(popup);
-    document.getElementById("places-sheet").classList.add("shut");
+    closePlacesSheet();
     openDirPanel();
   });
 
@@ -769,8 +791,7 @@ export function showPlacePopup(place) {
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
   });
   root.appendChild(favBtn);
-
-  document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
+  clearActivePlacePopup();
 
   // Track the open popup id for toggle-close
   _activePlacePopupId = place.id;
@@ -787,7 +808,36 @@ export function showPlacePopup(place) {
     if (_activePlacePopup === popup) _activePlacePopup = null;
   });
 
+  map.stop();
   map.flyTo({ center: [place.lng, place.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+}
+
+function openPlaceAfterSheetClose(place) {
+  cancelPendingPlaceSelection();
+
+  closePlacesSheet();
+
+  let done = false;
+
+  const run = () => {
+    if (done) return;
+    done = true;
+    if (_pendingPlaceSelection) {
+      clearTimeout(_pendingPlaceSelection.timeout);
+      _pendingPlaceSelection = null;
+    }
+    map.resize();
+    showPlacePopup(place);
+    scheduleMapResize();
+  };
+
+  const raf1 = requestAnimationFrame(() => {
+    const raf2 = requestAnimationFrame(run);
+    if (_pendingPlaceSelection) _pendingPlaceSelection.raf2 = raf2;
+  });
+  const timeout = setTimeout(run, 80);
+
+  _pendingPlaceSelection = { raf1, raf2: 0, timeout };
 }
 
 export function checkShareUrl() {
@@ -950,9 +1000,13 @@ const placesSheet = document.getElementById("places-sheet");
 const scrim = document.getElementById("scrim");
 
 export function openPlacesSheet() {
-  document.getElementById("dir-panel").classList.add("shut");
+  cancelPendingPlaceSelection();
+  const dirPanel = document.getElementById("dir-panel");
+  if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
+  dirPanel.classList.add("shut");
+  dirPanel.removeAttribute("style");
+  placesSheet.hidden = false;
   stopPick();
-  placesSheet.style.height = "";
   scrim.classList.remove("hide");
   setActiveTab("places-btn");
   tryGetUserLocation();
@@ -960,13 +1014,19 @@ export function openPlacesSheet() {
   if (_placesDirty) _placesDirty = false;
   renderPlacesList();
   placesSnap.open();                           // measure content → set initial snap height → reveal
+  scheduleMapResize();
 }
 
 export function closePlacesSheet() {
+  cancelPendingPlaceSelection();
+  // Cancel any pending animateSheetHeight cleanup that could corrupt a future open
+  if (placesSheet._animCleanup) { clearTimeout(placesSheet._animCleanup); placesSheet._animCleanup = null; }
   placesSheet.classList.add("shut");
-  placesSnap.close();
+  placesSnap.close();                            // nuclear: cancels rAF, wipes all inline styles
+  placesSheet.hidden = true;
   scrim.classList.add("hide");
   setActiveTab(null);
+  scheduleMapResize();
 }
 
 document.getElementById("places-btn").addEventListener("click", () =>
@@ -998,6 +1058,7 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   activeTypeFilter = chip.dataset.type;
   activeTagFilters.clear();
   renderTagFilterBar();
+  document.getElementById("places-scroll").scrollTop = 0;
   animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();
   // Defer heavy marker rebuild so the list appears instantly
@@ -1026,6 +1087,7 @@ placesClearBtn.addEventListener("click", () => {
   updateSortButton();
   renderTagFilterBar();
   addPlaceMarkers();
+  document.getElementById("places-scroll").scrollTop = 0;
   animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();
   updateClearButton();
@@ -1294,6 +1356,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   }
   updateTagCount();
   addPlaceMarkers();
+  document.getElementById("places-scroll").scrollTop = 0;
   animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();                    // update drag cap for filtered content
   updateClearButton();
@@ -1627,7 +1690,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   if (!li) return;
   const placeId = li.dataset.placeId;
   const place = placesData.find((p) => String(p.id) === placeId);
-  if (place) { closePlacesSheet(); showPlacePopup(place); }
+  if (place) openPlaceAfterSheetClose(place);
 });
 
 document.getElementById("suggest-close").addEventListener("click", () => {
