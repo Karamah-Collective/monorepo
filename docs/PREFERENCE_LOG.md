@@ -175,3 +175,27 @@ what you like, what you've decided, and how you want things done.
 - Result: 25/26 colors pass ≥3:1 in both modes. One extreme yellow (`#ffcd42`, Hämeenlinna only) improved from 1.5:1 to 2.6:1.
 - Existing HSL/Föli colors unaffected (still 4.7–7.1 light, 5.0–8.4 dark).
 - Files modified: `src/styles/styles.css`, `src/transit-stops.js`.
+
+### 2026-03-24 — Kokkola and Seinäjoki city bus support added
+- User noticed Kokkola train station was already showing on the map — that was
+  due to the Finland-wide rail bbox (Helsinki–Oulu main line passes through it).
+- Added dedicated bounding boxes for Kokkola and Seinäjoki city bus networks
+  (both have full Waltti GTFS feeds in Digitransit).
+- Transit cache grew from 26,897 → 27,582 stops: +219 Kokkola, +475 Seinäjoki.
+- Both cities added to WALTTI routing array in `directions.js` so Digitransit
+  Waltti endpoint is used when both origin and destination are within either city.
+- Files modified: `src/transit-stops.js`, `src/directions.js`, `scripts/build-cache.js`,
+  `scripts/transit-cache.json`.
+
+### 2026-03-24 — OSM ref tag filter removed (codeless stops fix)
+- Root cause of sparse stops in Lahti, Pori, Lappeenranta, Mikkeli, Kouvola,
+  Rovaniemi, Kajaani: build-cache.js and transit-stops.js filtered out any
+  bus/tram stop lacking an OSM `ref` tag (the stop code).
+- These cities have incomplete OSM tagging — their bus stops exist in the DB
+  but lack ref tags because local transit authorities never contributed them.
+- Fix: removed `!el.tags.ref` guard; codeless stops now reach the existing
+  name+location fallback matching logic (was already in place, just unreachable).
+- Result: 14,371 → 26,897 stops across all 17 regions.
+- Pattern to follow: never gate OSM data inclusion on a secondary tag; use it
+  only as a matching signal, not a filter.
+- Files modified: `scripts/build-cache.js`, `src/transit-stops.js`.

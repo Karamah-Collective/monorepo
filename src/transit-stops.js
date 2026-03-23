@@ -462,7 +462,7 @@ ${railTypes.map(t => `${t}(${RAIL_BBOX})`).join(";")};);out body;`;
   }
 }
 
-const TRANSIT_CACHE_KEY = "hf_transit_v2";
+const TRANSIT_CACHE_KEY = "hf_transit_v3";
 const TRANSIT_TTL = 24 * 60 * 60 * 1000; // 24 h
 
 export async function loadTransitCache() {
