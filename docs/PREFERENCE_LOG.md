@@ -153,3 +153,25 @@ what you like, what you've decided, and how you want things done.
 - Refactored `styles.css` — all marker classes now use token-based templates for shared visual properties and only define unique overrides (background, animation, custom shadows).
 - All popup `::after` rules now reference `--popup-tip-*` tokens instead of hardcoded values.
 - Updated `DESIGN_SYSTEM.md` with §10–§12 covering puck markers, location indicator, and curvy popup tip pattern.
+
+### 2026-03-23 — Multi-Region Transit Support (All Waltti Cities)
+- Expanded transit stop coverage from 2 regions (Helsinki HSL + Turku Föli) to 17 Finnish transit cities.
+- New cities: Tampere, Lahti, Jyväskylä, Kuopio, Oulu, Joensuu, Lappeenranta, Hämeenlinna, Kotka, Kouvola, Mikkeli, Vaasa, Pori, Rovaniemi, Kajaani.
+- Added Finland-wide rail bbox for VR intercity train stations between cities.
+- All new cities use the existing Digitransit Waltti endpoint (same API key, no new keys needed).
+- Transit cache builder (`build-cache.js`) now fetches in batches of 3 regions with auto-retry for failed batches.
+- Cache version bumped to v3; localStorage cache key bumped to `hf_transit_v2`.
+- Transit routing in `directions.js` now routes within any Waltti city pair via the Waltti endpoint.
+- No visual changes — new stops use the same rendering pipeline (GTFS dotColor → type fallback).
+- Files modified: `src/transit-stops.js`, `src/directions.js`, `scripts/build-cache.js`, `scripts/transit-cache.json`.
+
+### 2026-03-23 — GTFS Color Contrast Fix for Multi-Region Stops
+- Audited all 26 unique GTFS route colors from Waltti + HSL transit agencies.
+- Found 12 bright colors (yellows, cyans, limes, pinks) with <3:1 contrast on light backgrounds, and 2 deep colors (navy, magenta) with <3:1 on dark surfaces.
+- Fix strategy: `color-mix()` in CSS — blend 72% original + 28% `#222` for light mode, 62% original + 38% white for dark mode.
+- Applied to `.sp-chip` (route chips), `.sp-badge` (stop type badge), `.sp-icon` (stop icon).
+- Added `labelColor` property computation in `processTransitStops()` for map text labels: bright GTFS colors (luminance > 0.38) get darkened for readable map labels with white halo.
+- All 3 label layers (`transit-major-label`, `transit-tram-label`, `transit-bus-label`) now prefer `labelColor` → `dotColor` → static fallback.
+- Result: 25/26 colors pass ≥3:1 in both modes. One extreme yellow (`#ffcd42`, Hämeenlinna only) improved from 1.5:1 to 2.6:1.
+- Existing HSL/Föli colors unaffected (still 4.7–7.1 light, 5.0–8.4 dark).
+- Files modified: `src/styles/styles.css`, `src/transit-stops.js`.

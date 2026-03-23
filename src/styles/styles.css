@@ -649,11 +649,11 @@ body.dark-mode .pp-badge {
   filter: brightness(0.92);
 }
 body.dark-mode .sp-icon {
-  color: color-mix(in srgb, var(--stop-c, var(--accent)) 80%, white);
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 62%, white);
 }
 body.dark-mode .sp-badge {
-  color: color-mix(in srgb, var(--stop-c, var(--accent)) 80%, white);
-  background: color-mix(in srgb, var(--stop-c, var(--accent)) 16%, transparent);
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 62%, white);
+  background: color-mix(in srgb, var(--stop-c, var(--accent)) 18%, transparent);
 }
 
 /* Leg badges with GTFS inline color — brighten for contrast */
@@ -4548,7 +4548,7 @@ body.dark-mode .loc-ring {
   display: inline-flex;
   align-items: center;
   line-height: 1;
-  color: var(--stop-c, var(--accent));
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 72%, #222);
 }
 .sp-icon svg {
   width: 14px;
@@ -4561,7 +4561,7 @@ body.dark-mode .loc-ring {
   letter-spacing: 0.04em;
   border-radius: var(--r-pill);
   padding: 2px 8px;
-  color: var(--stop-c, var(--accent));
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 72%, #222);
   background: color-mix(in srgb, var(--stop-c, var(--accent)) 12%, transparent);
 }
 .sp-title {
@@ -4631,13 +4631,16 @@ body.dark-mode .loc-ring {
   padding: 0;
 }
 
-/* Route chip — bridges --rc (per-route color) into the shared --chip-c token */
+/* Route chip — bridges --rc (per-route color) into the shared --chip-c token.
+   Light: darken bright GTFS colors (yellows/cyans) for contrast on white bg.
+   Dark:  lighten deep colors (navy/magenta) for contrast on dark surface. */
 .sp-chip {
   --chip-c: var(--rc, var(--accent));
+  color: color-mix(in srgb, var(--chip-c, var(--accent)) 72%, #222);
 }
 body.dark-mode .sp-chip {
-  color: color-mix(in srgb, var(--chip-c, var(--accent)) 80%, white);
-  background: color-mix(in srgb, var(--chip-c, var(--accent)) 16%, transparent);
+  color: color-mix(in srgb, var(--chip-c, var(--accent)) 62%, white);
+  background: color-mix(in srgb, var(--chip-c, var(--accent)) 18%, transparent);
 }
 .sp-chip small {
   font-weight: var(--fw-semibold);

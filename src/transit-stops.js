@@ -315,8 +315,31 @@ window.addEventListener("hf:open-stop", ({ detail: { lat, lng } }) => {
   }
 });
 
-const HKI_BBOX = "59.90,24.30,60.70,25.80";
-const TKU_BBOX = "60.15,21.70,60.70,22.60"; // Turku / Föli service area
+// ── Region bounding boxes (south,west,north,east) ─────────────────────────────
+// Each city served by Digitransit HSL or Waltti. Used by Overpass fallback and
+// route-endpoint selection. Keep in sync with build-cache.js & directions.js.
+const REGION_BBOXES = [
+  { id: "hsl",          bbox: "59.90,24.30,60.70,25.80" },
+  { id: "turku",        bbox: "60.15,21.70,60.70,22.60" },
+  { id: "tampere",      bbox: "61.30,23.30,61.70,24.20" },
+  { id: "lahti",        bbox: "60.85,25.45,61.15,25.95" },
+  { id: "jyvaskyla",    bbox: "62.10,25.50,62.40,26.10" },
+  { id: "kuopio",       bbox: "62.75,27.40,63.05,27.95" },
+  { id: "oulu",         bbox: "64.85,25.20,65.15,25.75" },
+  { id: "joensuu",      bbox: "62.50,29.55,62.72,29.95" },
+  { id: "lappeenranta", bbox: "60.95,28.00,61.20,28.40" },
+  { id: "hameenlinna",  bbox: "60.90,24.30,61.10,24.65" },
+  { id: "kotka",        bbox: "60.38,26.75,60.55,27.10" },
+  { id: "kouvola",      bbox: "60.78,26.55,60.98,26.95" },
+  { id: "mikkeli",      bbox: "61.60,27.10,61.75,27.50" },
+  { id: "vaasa",        bbox: "63.00,21.45,63.20,21.80" },
+  { id: "pori",         bbox: "61.40,21.60,61.65,22.00" },
+  { id: "rovaniemi",    bbox: "66.40,25.55,66.60,25.95" },
+  { id: "kajaani",      bbox: "64.13,27.60,64.30,27.95" },
+];
+// Finland-wide bbox for rail stations (VR intercity trains between cities)
+const RAIL_BBOX = "59.40,19.00,70.20,31.70";
+
 const OVERPASS_SERVERS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -376,7 +399,7 @@ function deduplicateStops(features) {
 }
 
 async function loadTransitStopsFromAPI(retries = 0) {
-  const bboxes = [HKI_BBOX, TKU_BBOX];
+  const bboxes = REGION_BBOXES.map(r => r.bbox);
   const nodeTypes = [
     `node["railway"="station"]["station"!="abandoned"]`,
     `node["railway"="halt"]`,
@@ -388,7 +411,13 @@ async function loadTransitStopsFromAPI(retries = 0) {
     `node["highway"="bus_stop"]["bus"="yes"]`,
     `node["highway"="bus_stop"]["public_transport"="platform"]`,
   ];
-  const query = `[out:json][timeout:60];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(";")};);out body;`;
+  // Rail-only types for Finland-wide coverage (intercity VR trains)
+  const railTypes = [
+    `node["railway"="station"]["station"!="abandoned"]`,
+    `node["railway"="halt"]`,
+  ];
+  const query = `[out:json][timeout:90];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(";")};\
+${railTypes.map(t => `${t}(${RAIL_BBOX})`).join(";")};);out body;`;
   const server = OVERPASS_SERVERS[retries % OVERPASS_SERVERS.length];
   console.log(`[Transit] Fallback: loading from ${server} (attempt ${retries + 1})…`);
   try {
@@ -396,7 +425,7 @@ async function loadTransitStopsFromAPI(retries = 0) {
       method: "POST",
       body: "data=" + encodeURIComponent(query),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000),
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
@@ -406,8 +435,6 @@ async function loadTransitStopsFromAPI(retries = 0) {
       data.elements
         .filter((el) => {
           if (!el.tags || !(el.tags.name || el.tags["name:en"])) return false;
-          const type = classifyStop(el);
-          if ((type === "bus" || type === "tram") && !el.tags.ref) return false;
           return true;
         })
         .map((el) => ({
@@ -433,7 +460,7 @@ async function loadTransitStopsFromAPI(retries = 0) {
   }
 }
 
-const TRANSIT_CACHE_KEY = "hf_transit_v1";
+const TRANSIT_CACHE_KEY = "hf_transit_v2";
 const TRANSIT_TTL = 24 * 60 * 60 * 1000; // 24 h
 
 export async function loadTransitCache() {
@@ -485,7 +512,25 @@ function processTransitStops(geojson) {
     if (Array.isArray(raw)) routes = raw;
     else { try { routes = raw ? JSON.parse(raw) : []; } catch (_) {} }
     const firstColored = routes.find(r => r.c);
-    if (firstColored) f.properties.dotColor = `#${firstColored.c}`;
+    if (firstColored) {
+      f.properties.dotColor = `#${firstColored.c}`;
+      // Compute a contrast-safe label color for map text.
+      // Bright GTFS colors (yellow, cyan, lime) are near-invisible as text on
+      // light map backgrounds even with a white halo. Darken those by mixing
+      // with a dark tone when relative luminance exceeds the threshold.
+      const hex = firstColored.c;
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (lum > 0.38) {
+        // Mix 72% original + 28% dark (#222) to pull bright colors into readable range
+        const dr = Math.round(parseInt(hex.substring(0, 2), 16) * 0.72 + 0x22 * 0.28);
+        const dg = Math.round(parseInt(hex.substring(2, 4), 16) * 0.72 + 0x22 * 0.28);
+        const db = Math.round(parseInt(hex.substring(4, 6), 16) * 0.72 + 0x22 * 0.28);
+        f.properties.labelColor = `#${dr.toString(16).padStart(2, "0")}${dg.toString(16).padStart(2, "0")}${db.toString(16).padStart(2, "0")}`;
+      }
+    }
     // Cache data has confirmed route info; Overpass data has no route info.
     // Hide only stops confirmed to have zero routes (from cache).
     const fromCache = f.properties._cached === 1;
@@ -526,7 +571,7 @@ function processTransitStops(geojson) {
       "text-optional": true,
     },
     paint: {
-      "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#555"]],
+      "text-color": ["coalesce", ["get", "labelColor"], ["get", "dotColor"], ["match", ["get", "type"], "train", TRANSIT_COLORS.train, "metro", TRANSIT_COLORS.metro, "ferry", TRANSIT_COLORS.ferry, "#555"]],
       "text-halo-color": "#fff",
       "text-halo-width": 1.5,
     },
@@ -560,7 +605,7 @@ function processTransitStops(geojson) {
       "text-max-width": 7,
       "text-optional": true,
     },
-    paint: { "text-color": ["coalesce", ["get", "dotColor"], TRANSIT_COLORS.tram], "text-halo-color": "#fff", "text-halo-width": 1.2 },
+    paint: { "text-color": ["coalesce", ["get", "labelColor"], ["get", "dotColor"], TRANSIT_COLORS.tram], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
   map.addLayer({
     id: "transit-bus-bg",
@@ -591,7 +636,7 @@ function processTransitStops(geojson) {
       "text-max-width": 7,
       "text-optional": true,
     },
-    paint: { "text-color": ["coalesce", ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]], "text-halo-color": "#fff", "text-halo-width": 1.2 },
+    paint: { "text-color": ["coalesce", ["get", "labelColor"], ["get", "dotColor"], ["match", ["get", "region"], "turku", TRANSIT_COLORS.foli_bus, TRANSIT_COLORS.bus]], "text-halo-color": "#fff", "text-halo-width": 1.2 },
   });
 
   STOP_INTERACTIVE_LAYERS.forEach((layerId) => {
@@ -649,10 +694,11 @@ function renderStopRoutes(divId, routes, fallbackColor) {
 }
 
 // Pick the right Digitransit endpoint based on stop coordinates.
-// Turku/Föli stops use the Waltti endpoint; everything else defaults to HSL.
+// HSL stops use the HSL endpoint; all other Finnish cities use Waltti.
 function pickDtEndpoint(lat, lon) {
-  if (lat >= 60.1 && lat <= 60.75 && lon >= 21.5 && lon <= 22.9) return DIGITRANSIT_WALTTI_URL;
-  return DIGITRANSIT_URL;
+  // HSL region check (Helsinki / Espoo / Vantaa / etc.)
+  if (lat >= 59.9 && lat <= 60.7 && lon >= 24.3 && lon <= 25.8) return DIGITRANSIT_URL;
+  return DIGITRANSIT_WALTTI_URL;
 }
 
 async function fetchStopRoutes(lat, lon, stopCode, expectedMode) {

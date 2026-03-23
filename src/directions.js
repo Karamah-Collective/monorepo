@@ -1149,10 +1149,29 @@ async function autoResolveLocation(inputEl) {
 // Returns the correct Digitransit routing endpoint for a given pair of coordinates,
 // or null if the route spans multiple/unknown regions (caller should use Transitous).
 function pickTransitEndpoint(lat1, lon1, lat2, lon2) {
-  const inHSL   = (la, lo) => la >= 59.9 && la <= 60.75 && lo >= 24.0 && lo <= 26.0;
-  const inTurku = (la, lo) => la >= 60.1 && la <= 60.75 && lo >= 21.5 && lo <= 22.9;
-  if (inHSL(lat1, lon1)   && inHSL(lat2, lon2))   return DIGITRANSIT_URL;
-  if (inTurku(lat1, lon1) && inTurku(lat2, lon2)) return DIGITRANSIT_WALTTI_URL;
+  const inHSL    = (la, lo) => la >= 59.9 && la <= 60.75 && lo >= 24.0 && lo <= 26.0;
+  // Waltti bounding boxes for all supported Finnish transit cities
+  const WALTTI = [
+    [60.15, 21.70, 60.70, 22.60], // Turku
+    [61.30, 23.30, 61.70, 24.20], // Tampere
+    [60.85, 25.45, 61.15, 25.95], // Lahti
+    [62.10, 25.50, 62.40, 26.10], // Jyväskylä
+    [62.75, 27.40, 63.05, 27.95], // Kuopio
+    [64.85, 25.20, 65.15, 25.75], // Oulu
+    [62.50, 29.55, 62.72, 29.95], // Joensuu
+    [60.95, 28.00, 61.20, 28.40], // Lappeenranta
+    [60.90, 24.30, 61.10, 24.65], // Hämeenlinna
+    [60.38, 26.75, 60.55, 27.10], // Kotka
+    [60.78, 26.55, 60.98, 26.95], // Kouvola
+    [61.60, 27.10, 61.75, 27.50], // Mikkeli
+    [63.00, 21.45, 63.20, 21.80], // Vaasa
+    [61.40, 21.60, 61.65, 22.00], // Pori
+    [66.40, 25.55, 66.60, 25.95], // Rovaniemi
+    [64.13, 27.60, 64.30, 27.95], // Kajaani
+  ];
+  const inWaltti = (la, lo) => WALTTI.some(([s, w, n, e]) => la >= s && la <= n && lo >= w && lo <= e);
+  if (inHSL(lat1, lon1)    && inHSL(lat2, lon2))    return DIGITRANSIT_URL;
+  if (inWaltti(lat1, lon1)  && inWaltti(lat2, lon2)) return DIGITRANSIT_WALTTI_URL;
   return null; // cross-regional or outside known areas
 }
 

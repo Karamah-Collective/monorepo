@@ -10,10 +10,32 @@
 const fs = require('fs');
 const path = require('path');
 
-const HKI_BBOX   = '59.90,24.30,60.70,25.80';
-const TKU_BBOX   = '60.15,21.70,60.70,22.60'; // Turku / Föli service area
+// ── Region definitions ──────────────────────────────────────────────────────
+// Keep bounding boxes in sync with src/transit-stops.js & src/directions.js.
+const REGIONS = [
+  { id: 'hsl',          bbox: '59.90,24.30,60.70,25.80',  dtEndpoint: 'hsl',    name: 'Helsinki' },
+  { id: 'turku',        bbox: '60.15,21.70,60.70,22.60',  dtEndpoint: 'waltti', name: 'Turku' },
+  { id: 'tampere',      bbox: '61.30,23.30,61.70,24.20',  dtEndpoint: 'waltti', name: 'Tampere' },
+  { id: 'lahti',        bbox: '60.85,25.45,61.15,25.95',  dtEndpoint: 'waltti', name: 'Lahti' },
+  { id: 'jyvaskyla',    bbox: '62.10,25.50,62.40,26.10',  dtEndpoint: 'waltti', name: 'Jyväskylä' },
+  { id: 'kuopio',       bbox: '62.75,27.40,63.05,27.95',  dtEndpoint: 'waltti', name: 'Kuopio' },
+  { id: 'oulu',         bbox: '64.85,25.20,65.15,25.75',  dtEndpoint: 'waltti', name: 'Oulu' },
+  { id: 'joensuu',      bbox: '62.50,29.55,62.72,29.95',  dtEndpoint: 'waltti', name: 'Joensuu' },
+  { id: 'lappeenranta', bbox: '60.95,28.00,61.20,28.40',  dtEndpoint: 'waltti', name: 'Lappeenranta' },
+  { id: 'hameenlinna',  bbox: '60.90,24.30,61.10,24.65',  dtEndpoint: 'waltti', name: 'Hämeenlinna' },
+  { id: 'kotka',        bbox: '60.38,26.75,60.55,27.10',  dtEndpoint: 'waltti', name: 'Kotka' },
+  { id: 'kouvola',      bbox: '60.78,26.55,60.98,26.95',  dtEndpoint: 'waltti', name: 'Kouvola' },
+  { id: 'mikkeli',      bbox: '61.60,27.10,61.75,27.50',  dtEndpoint: 'waltti', name: 'Mikkeli' },
+  { id: 'vaasa',        bbox: '63.00,21.45,63.20,21.80',  dtEndpoint: 'waltti', name: 'Vaasa' },
+  { id: 'pori',         bbox: '61.40,21.60,61.65,22.00',  dtEndpoint: 'waltti', name: 'Pori' },
+  { id: 'rovaniemi',    bbox: '66.40,25.55,66.60,25.95',  dtEndpoint: 'waltti', name: 'Rovaniemi' },
+  { id: 'kajaani',      bbox: '64.13,27.60,64.30,27.95',  dtEndpoint: 'waltti', name: 'Kajaani' },
+];
+// Finland-wide bbox for rail stations (VR intercity trains)
+const RAIL_BBOX = '59.40,19.00,70.20,31.70';
+
 const DT_URL     = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const WALTTI_URL = 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1'; // Waltti cities (incl. Turku/Föli)
+const WALTTI_URL = 'https://api.digitransit.fi/routing/v2/waltti/gtfs/v1';
 const DT_KEY     = '67e7adc2e4fe4d649753b3b8eb872c23';
 
 const OVERPASS_SERVERS = [
@@ -40,14 +62,16 @@ function stopRank(type) { return { train: 3, metro: 3, ferry: 2, tram: 1 }[type]
 
 // ─── Region helper ───
 function getRegion(lat, lon) {
-  if (lat >= 60.1 && lat <= 60.75 && lon >= 21.5 && lon <= 22.9) return 'turku';
-  if (lat >= 59.9 && lat <= 60.75 && lon >= 24.0 && lon <= 26.0) return 'hsl';
+  for (const r of REGIONS) {
+    const [s, w, n, e] = r.bbox.split(',').map(Number);
+    if (lat >= s && lat <= n && lon >= w && lon <= e) return r.id;
+  }
   return 'other';
 }
 
 // ─── Overpass ───
+// Fetches in batches to avoid query-size timeouts.
 async function fetchOverpassStops() {
-  const bboxes = [HKI_BBOX, TKU_BBOX];
   const nodeTypes = [
     `node["railway"="station"]["station"!="abandoned"]`,
     `node["railway"="halt"]`,
@@ -59,24 +83,120 @@ async function fetchOverpassStops() {
     `node["highway"="bus_stop"]["bus"="yes"]`,
     `node["highway"="bus_stop"]["public_transport"="platform"]`,
   ];
-  const query = `[out:json][timeout:90];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(';')};);out body;`;
-  for (let i = 0; i < OVERPASS_SERVERS.length; i++) {
-    const server = OVERPASS_SERVERS[i];
-    console.log(`  Trying ${server}...`);
-    try {
-      const resp = await fetch(server, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(query),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(30000),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if (!data.elements?.length) throw new Error('Empty');
-      return data.elements;
-    } catch (err) { console.warn(`  Failed: ${err.message}`); }
+  const railTypes = [
+    `node["railway"="station"]["station"!="abandoned"]`,
+    `node["railway"="halt"]`,
+  ];
+
+  // Split regions into batches of 3 to keep individual queries manageable
+  const BATCH_SIZE = 3;
+  const batches = [];
+  for (let i = 0; i < REGIONS.length; i += BATCH_SIZE) {
+    batches.push(REGIONS.slice(i, i + BATCH_SIZE));
   }
-  throw new Error('All Overpass servers failed');
+  // One extra batch for Finland-wide rail
+  batches.push(null); // sentinel for rail-only query
+
+  const allElements = [];
+  const seenIds = new Set();
+
+  for (let b = 0; b < batches.length; b++) {
+    const batch = batches[b];
+    let query;
+    if (batch === null) {
+      // Finland-wide rail stations only
+      query = `[out:json][timeout:60];(${railTypes.map(t => `${t}(${RAIL_BBOX})`).join(';')};);out body;`;
+      console.log(`  Batch ${b + 1}/${batches.length}: Finland-wide rail…`);
+    } else {
+      const bboxes = batch.map(r => r.bbox);
+      const names = batch.map(r => r.name).join(', ');
+      query = `[out:json][timeout:60];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(';')};);out body;`;
+      console.log(`  Batch ${b + 1}/${batches.length}: ${names}…`);
+    }
+
+    let fetched = false;
+    for (let i = 0; i < OVERPASS_SERVERS.length && !fetched; i++) {
+      const server = OVERPASS_SERVERS[i];
+      try {
+        const resp = await fetch(server, {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(query),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          signal: AbortSignal.timeout(45000),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (!data.elements?.length) throw new Error('Empty');
+        // Deduplicate cross-batch (rail bbox overlaps city bboxes)
+        for (const el of data.elements) {
+          if (!seenIds.has(el.id)) { seenIds.add(el.id); allElements.push(el); }
+        }
+        console.log(`    → ${data.elements.length} elements`);
+        fetched = true;
+      } catch (err) {
+        console.warn(`    ${server}: ${err.message}`);
+        if (i < OVERPASS_SERVERS.length - 1) await sleep(2000);
+      }
+    }
+    if (!fetched) console.warn(`  ⚠ Batch ${b + 1} failed on all servers, skipping`);
+    if (b < batches.length - 1) await sleep(3000); // rate-limit between batches
+  }
+
+  if (!allElements.length) throw new Error('All Overpass batches failed');
+
+  // Retry any failed batches once more after a longer cooldown
+  const failedBatches = [];
+  for (let b = 0; b < batches.length; b++) {
+    const batch = batches[b];
+    const label = batch === null ? 'Finland-wide rail' : batch.map(r => r.name).join(', ');
+    // Check if we got any elements in this batch's region
+    if (batch !== null) {
+      const batchRegionIds = batch.map(r => r.id);
+      const got = allElements.filter(el => {
+        if (!el.lat || !el.lon) return false;
+        const region = getRegion(el.lat, el.lon);
+        return batchRegionIds.includes(region);
+      }).length;
+      if (got < 10) failedBatches.push({ idx: b, label });
+    }
+  }
+  if (failedBatches.length) {
+    console.log(`  Retrying ${failedBatches.length} sparse batches after 10s cooldown…`);
+    await sleep(10000);
+    for (const fb of failedBatches) {
+      const batch = batches[fb.idx];
+      const bboxes = batch.map(r => r.bbox);
+      const query = `[out:json][timeout:60];(${bboxes.flatMap(bb => nodeTypes.map(t => `${t}(${bb})`)).join(';')};);out body;`;
+      console.log(`  Retry: ${fb.label}…`);
+      for (let i = 0; i < OVERPASS_SERVERS.length; i++) {
+        const server = OVERPASS_SERVERS[i];
+        try {
+          const resp = await fetch(server, {
+            method: 'POST',
+            body: 'data=' + encodeURIComponent(query),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            signal: AbortSignal.timeout(60000),
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+          if (data.elements?.length) {
+            let added = 0;
+            for (const el of data.elements) {
+              if (!seenIds.has(el.id)) { seenIds.add(el.id); allElements.push(el); added++; }
+            }
+            console.log(`    → ${added} new elements`);
+            break;
+          }
+        } catch (err) {
+          console.warn(`    ${server}: ${err.message}`);
+          if (i < OVERPASS_SERVERS.length - 1) await sleep(3000);
+        }
+      }
+      await sleep(3000);
+    }
+  }
+
+  return allElements;
 }
 
 // ─── Digitransit bulk query ───
@@ -118,17 +238,16 @@ async function fetchRoutesByMode(mode) {
   return routes;
 }
 
-async function fetchFoliRoutes(mode) {
-  console.log(`  Fetching Föli ${mode} routes...`);
-  // Feed ID "FOLI" is the Turku/Föli GTFS feed within the Waltti endpoint.
+async function fetchWalttiRoutes(mode) {
+  console.log(`  Fetching Waltti ${mode} routes (all feeds)...`);
   const data = await dtQuery(`{
-    routes(feeds: ["FOLI"], transportModes: ${mode}) {
+    routes(transportModes: ${mode}) {
       shortName longName mode type color textColor
       patterns { stops { code name lat lon } }
     }
   }`, 3, WALTTI_URL);
   const routes = data?.routes || [];
-  console.log(`    ${routes.length} Föli ${mode} routes`);
+  console.log(`    ${routes.length} Waltti ${mode} routes`);
   return routes;
 }
 
@@ -186,8 +305,6 @@ async function main() {
   const features = elements
     .filter(el => {
       if (!el.tags || !(el.tags.name || el.tags['name:en'])) return false;
-      const type = classifyStop(el);
-      if ((type === 'bus' || type === 'tram') && !el.tags.ref) return false;
       return true;
     })
     .map(el => ({
@@ -207,12 +324,16 @@ async function main() {
     const [lng, lat] = f.geometry.coordinates;
     f.properties.region = getRegion(lat, lng);
   }
-  const hslCount = deduped.filter(f => f.properties.region === 'hsl').length;
-  const tkuCount = deduped.filter(f => f.properties.region === 'turku').length;
-  console.log(`  ${features.length} valid → ${deduped.length} after dedup (${hslCount} HSL, ${tkuCount} Turku)\n`);
+  const regionCounts = {};
+  for (const f of deduped) {
+    const r = f.properties.region;
+    regionCounts[r] = (regionCounts[r] || 0) + 1;
+  }
+  const countSummary = Object.entries(regionCounts).map(([k, v]) => `${v} ${k}`).join(', ');
+  console.log(`  ${features.length} valid → ${deduped.length} after dedup (${countSummary})\n`);
 
-  // 3) Fetch all transit routes (HSL + Föli bulk approach)
-  console.log('[3/4] Fetching transit routes (HSL + Turku/Föli)...');
+  // 3) Fetch all transit routes (HSL + all Waltti cities)
+  console.log('[3/4] Fetching transit routes (HSL + Waltti)...');
   const allRoutes = [];
 
   // 3a) HSL routes (Helsinki region)
@@ -224,15 +345,15 @@ async function main() {
   }
   console.log(`  HSL subtotal: ${allRoutes.length} routes`);
 
-  // 3b) Föli routes (Turku region, Waltti endpoint)
-  console.log('  [Föli] Fetching routes...');
-  const foliStart = allRoutes.length;
-  for (const mode of ['BUS', 'FERRY']) {
-    const routes = await fetchFoliRoutes(mode);
+  // 3b) All Waltti routes (Turku, Tampere, Oulu, Jyväskylä, Lahti, Kuopio, etc.)
+  console.log('  [Waltti] Fetching routes (all feeds)...');
+  const walttiStart = allRoutes.length;
+  for (const mode of ['BUS', 'TRAM', 'RAIL', 'FERRY']) {
+    const routes = await fetchWalttiRoutes(mode);
     allRoutes.push(...routes);
     await sleep(500);
   }
-  console.log(`  Föli subtotal: ${allRoutes.length - foliStart} routes`);
+  console.log(`  Waltti subtotal: ${allRoutes.length - walttiStart} routes`);
   console.log(`  Combined total: ${allRoutes.length} routes\n`);
 
   // 4) Build reverse index: stopCode → routes, name+loc → routes
@@ -347,9 +468,9 @@ async function main() {
 
   // Build & write cache
   const cache = {
-    version: 2,
+    version: 3,
     generated: new Date().toISOString(),
-    bbox: HKI_BBOX,
+    regions: REGIONS.map(r => r.id),
     stopCount: deduped.length,
     geojson: {
       type: 'FeatureCollection',
