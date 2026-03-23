@@ -225,6 +225,10 @@ export function showCurrentLocation() {
     return;
   }
 
+  // iOS 13+ requires DeviceOrientation permission from a user gesture.
+  // This click handler IS a user gesture, so request it here before async work.
+  _requestOrientationPermission();
+
   locBtn.classList.add("tracking");
   setLocateIcon(true);
   showLoadingToast("Finding your location\u2026");
@@ -245,6 +249,7 @@ export function showCurrentLocation() {
     } else {
       _lerpLocMarkerTo(lng, lat);
     }
+    _updateGpsHeading(lat, lng);
     if (firstFix) {
       map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
       firstFix = false;
@@ -270,6 +275,25 @@ export function showCurrentLocation() {
 
 let _locConeEl = null;
 let _headingCleanup = null;
+let _orientationPermissionState = "unknown"; // "unknown" | "granted" | "denied"
+let _hasCompassHeading = false;  // true once any compass event delivers a heading
+
+/**
+ * Request DeviceOrientation permission (iOS 13+).
+ * Must be called inside a user-gesture handler (click/tap).
+ */
+function _requestOrientationPermission() {
+  if (_orientationPermissionState !== "unknown") return;
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission()
+      .then((state) => { _orientationPermissionState = state; })
+      .catch(() => { _orientationPermissionState = "denied"; });
+  } else {
+    // Non-iOS: no permission needed
+    _orientationPermissionState = "granted";
+  }
+}
 
 function _startHeadingWatch() {
   if (_headingCleanup) return;
@@ -287,28 +311,30 @@ function _startHeadingWatch() {
   }
 
   function onOrientation(e) {
-    // iOS Safari uses webkitCompassHeading (degrees from north, clockwise)
-    // Android Chrome uses e.alpha (degrees, but needs inversion)
+    let heading = null;
+    // iOS Safari: webkitCompassHeading (degrees from north, clockwise)
     if (typeof e.webkitCompassHeading === "number") {
-      _lastHeading = e.webkitCompassHeading;
-    } else if (e.absolute && typeof e.alpha === "number") {
-      _lastHeading = (360 - e.alpha) % 360;
+      heading = e.webkitCompassHeading;
     }
+    // deviceorientationabsolute: e.absolute is true, alpha is compass heading
+    else if (e.absolute && typeof e.alpha === "number") {
+      heading = (360 - e.alpha) % 360;
+    }
+    // Fallback for Android Chrome: non-absolute alpha is still useful as a
+    // relative compass value on most devices (backed by magnetometer)
+    else if (typeof e.alpha === "number" && e.alpha !== null) {
+      heading = (360 - e.alpha) % 360;
+    }
+    if (heading === null) return;
+    _hasCompassHeading = true;
+    _lastHeading = heading;
     _applyConeRotation(_lastHeading);
   }
 
-  // iOS 13+ requires explicit permission for DeviceOrientation
-  if (typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then((state) => {
-        if (state === "granted") {
-          window.addEventListener("deviceorientationabsolute", onOrientation, true);
-          window.addEventListener("deviceorientation", onOrientation, true);
-        }
-      })
-      .catch(() => {});
-  } else if (typeof DeviceOrientationEvent !== "undefined") {
+  // Listen for both absolute and regular orientation events.
+  // deviceorientationabsolute is preferred (true north) but Chromium-only;
+  // deviceorientation fires on all platforms and is our primary fallback.
+  if (_orientationPermissionState !== "denied") {
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
     window.addEventListener("deviceorientation", onOrientation, true);
   }
@@ -319,15 +345,70 @@ function _startHeadingWatch() {
   }
   map.on("rotate", onMapRotate);
 
+  // Expose applyConeRotation for GPS-derived heading fallback
+  _applyConeFn = _applyConeRotation;
+
   _headingCleanup = () => {
     window.removeEventListener("deviceorientationabsolute", onOrientation, true);
     window.removeEventListener("deviceorientation", onOrientation, true);
     map.off("rotate", onMapRotate);
+    _applyConeFn = null;
   };
 }
 
 function _stopHeadingWatch() {
   if (_headingCleanup) { _headingCleanup(); _headingCleanup = null; }
+  _hasCompassHeading = false;
+  _gpsHeadingPrev = null;
+}
+
+/* ── GPS-derived heading fallback ─────────────────────────────────────────── */
+// When the device has no magnetometer (or the API is blocked), compute heading
+// from successive GPS positions once the user moves > 5 m.
+
+let _applyConeFn = null;
+let _gpsHeadingPrev = null;  // { lat, lng, time }
+const GPS_HEADING_MIN_DIST = 5; // metres
+
+function _updateGpsHeading(lat, lng) {
+  // Only act as fallback — compass takes priority
+  if (_hasCompassHeading) { _gpsHeadingPrev = null; return; }
+
+  const now = performance.now();
+  if (!_gpsHeadingPrev) {
+    _gpsHeadingPrev = { lat, lng, time: now };
+    return;
+  }
+
+  const dist = _haversineM(_gpsHeadingPrev.lat, _gpsHeadingPrev.lng, lat, lng);
+  if (dist < GPS_HEADING_MIN_DIST) return;
+
+  const heading = _bearing(_gpsHeadingPrev.lat, _gpsHeadingPrev.lng, lat, lng);
+  _gpsHeadingPrev = { lat, lng, time: now };
+  if (_applyConeFn) _applyConeFn(heading);
+}
+
+/** Haversine distance in metres between two lat/lng points */
+function _haversineM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad;
+  const dLng = (lng2 - lng1) * toRad;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+            Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Initial bearing (degrees, clockwise from north) between two lat/lng points */
+function _bearing(lat1, lng1, lat2, lng2) {
+  const toRad = Math.PI / 180;
+  const toDeg = 180 / Math.PI;
+  const dLng = (lng2 - lng1) * toRad;
+  const y = Math.sin(dLng) * Math.cos(lat2 * toRad);
+  const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+            Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLng);
+  return (Math.atan2(y, x) * toDeg + 360) % 360;
 }
 
 /* ── Smooth location interpolation ────────────────────────────────────────── */
