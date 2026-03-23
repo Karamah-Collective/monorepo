@@ -22,7 +22,7 @@ let locWatchId = null;
 let homeMarker = null;
 
 const HOME_VIEW_ZOOM = 14.2;
-const HOME_MARKER_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
+const HOME_MARKER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
 
 export let currentTheme = "light";     // "light" | "dark"
 export let isSatelliteActive = false;
@@ -110,7 +110,7 @@ function openHomePopup() {
       <div class="pp pp--pin">
         <div class="pp-inner">
           <div class="pp-hdr">
-            <span class="pp-icon" style="color:var(--home)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg></span>
+            <span class="pp-icon" style="color:var(--home)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg></span>
             <span class="pp-badge" style="background:var(--home-soft);color:var(--home)">Home</span>
           </div>
           <div class="pp-addr">${esc(home.address || home.name)}</div>
@@ -241,8 +241,8 @@ export function showCurrentLocation() {
     if (!locMarker) {
       const el = document.createElement("div");
       el.className = "loc-marker";
-      el.innerHTML = '<div class="loc-ring"></div><div class="loc-cone"></div><div class="loc-dot"></div>';
-      _locConeEl = el.querySelector(".loc-cone");
+      el.innerHTML = '<div class="loc-ring"></div><div class="loc-puck"></div>';
+      _locConeEl = el.querySelector(".loc-puck");
       locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
       _locLerpPos = { lng, lat };
       _startHeadingWatch();
@@ -304,7 +304,7 @@ function _startHeadingWatch() {
     if (heading === null || !_locConeEl) return;
     const mapBearing = map.getBearing();
     const rotation = (heading - mapBearing + 360) % 360;
-    _locConeEl.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+    _locConeEl.style.transform = `translate(-50%, -50%) rotate(${rotation - 135}deg)`;
     if (!_locConeEl.classList.contains("has-heading")) {
       _locConeEl.classList.add("has-heading");
     }

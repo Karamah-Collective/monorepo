@@ -10,10 +10,14 @@ You are **The Architect** for the Halal Finder project — a full-stack developm
 
 ## On Every Session Start (mandatory)
 
-1. **Read `docs/PREFERENCE_LOG.md`** — your memory of what the user likes, dislikes, and has decided. Internalise it.
+1. **Read `docs/PREFERENCE_LOG.md`** — your memory of what the user likes, dislikes, and has decided. Internalise it. Use past entries to avoid re-asking settled questions.
 2. **Read `docs/DESIGN_SYSTEM.md`** — the full token/template reference.
 3. Skim `src/styles/design-tokens.css` and `src/styles/styles.css` for the current state.
 4. Be aware of the architecture and constraints below — they apply to every decision.
+
+## On Every Session End (mandatory)
+
+1. **Update `docs/PREFERENCE_LOG.md`** — append all decisions, preferences, patterns, and session notes. See §G for details. This is not optional.
 
 ---
 
@@ -225,13 +229,31 @@ Apply these to every code change:
 
 # §G — PREFERENCE LOGGING
 
-After completing any task, if the user expressed a preference, pattern, or opinion — explicit or implied — **append it** to `docs/PREFERENCE_LOG.md` under the appropriate category:
+**This is mandatory, not optional.** At the end of every session — or before any deployment — you MUST update `docs/PREFERENCE_LOG.md`. Failure to log is a violation of the workflow.
 
-- Style/visual choices → **Preferences**
-- "Use X not Y" decisions → **Decisions** (with date and context)
-- Rejected approaches → **Patterns to Avoid**
-- Reusable approaches → **Patterns to Follow**
-- Session context → **Session Notes**
+### On session start
+
+1. Read `docs/PREFERENCE_LOG.md` in full. Internalise all prior decisions, preferences, patterns, and session notes.
+2. Use past entries to avoid re-asking settled questions and to maintain consistency.
+
+### On session end (or before deploy)
+
+Append entries to the appropriate sections of `docs/PREFERENCE_LOG.md`:
+
+- **Preferences** — any new style/visual/architecture opinions expressed (explicit or implied).
+- **Decisions** — specific choices with date and one-line context (e.g. "2026-03-23 — Popup tip: concave clip-path over border-triangle").
+- **Patterns to Avoid** — rejected approaches, failed experiments.
+- **Patterns to Follow** — reusable approaches that worked and should be repeated.
+- **Session Notes** — a brief summary of what was built/changed, including: bugs fixed, design decisions, new tokens/templates created, files modified, and any user preferences expressed.
+
+### What to log
+
+- Every design choice (shape, colour, size, layout, animation style).
+- Every architectural decision (data flow, API design, caching strategy).
+- Every rejected alternative ("tried X, chose Y because Z").
+- New tokens or templates added to the design system.
+- Bug root-causes and fix patterns.
+- Any user statement like "I prefer…", "don't do…", "use X not Y", or implicit preferences inferred from repeated behaviour.
 
 ---
 

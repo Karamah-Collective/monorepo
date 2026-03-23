@@ -609,30 +609,10 @@ body.dark-mode .stop-popup-wrap .maplibregl-popup-content {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
-/* Popup tip (arrow) — match the dark surface for all anchor directions */
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: var(--surface) !important;
-}
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: var(--surface) !important;
-}
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--surface) !important;
-}
-body.dark-mode .place-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-tip,
-body.dark-mode .stop-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--surface) !important;
+/* Dark mode — curvy popup tip uses ::after background, no border-color needed */
+body.dark-mode .place-popup-wrap .maplibregl-popup-content::after,
+body.dark-mode .stop-popup-wrap .maplibregl-popup-content::after {
+  background: var(--surface);
 }
 
 /* Skeletons */
@@ -2031,58 +2011,25 @@ body.dark-mode .sp-tip {
   transition: none !important;
 }
 .place-mk {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-md);
-  height: var(--icon-md);
   background: var(--place-c, var(--accent));
-  border: 2.5px solid #fff;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(-45deg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
-}
-.place-mk svg {
-  transform: rotate(45deg);
-  flex-shrink: 0;
 }
 .place-mk-tip {
   display: none;
 }
 
 .search-mk {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-md);
-  height: var(--icon-md);
   background: var(--accent);
-  border: 2.5px solid #fff;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(-45deg);
   box-shadow:
     0 2px 8px rgba(26, 115, 184, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.12);
   position: relative;
   animation: fadeIn 0.2s ease;
 }
-.search-mk svg {
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
 
 .custom-mk,
 .home-mk {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-md);
-  height: var(--icon-md);
   background: var(--accent);
-  border: 2.5px solid #fff;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(-45deg);
   box-shadow:
     0 2px 8px rgba(26, 115, 184, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.12);
@@ -2095,15 +2042,13 @@ body.dark-mode .sp-tip {
     0 2px 8px rgba(71, 85, 105, 0.35),
     0 1px 3px rgba(0, 0, 0, 0.12);
 }
-.custom-mk svg,
-.home-mk svg {
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
 
+.place-popup-wrap .maplibregl-popup-tip {
+  display: none !important;
+}
 .place-popup-wrap .maplibregl-popup-content {
   padding: 0 !important;
-  overflow: hidden;
+  overflow: visible !important;
   border-radius: var(--r-md) !important;
   width: auto;
   min-width: 200px;
@@ -2113,6 +2058,40 @@ body.dark-mode .sp-tip {
     0 1px 3px rgba(0, 0, 0, 0.08) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
+}
+.place-popup-wrap .maplibregl-popup-content::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  background: var(--surface);
+  pointer-events: none;
+}
+.place-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-content::after,
+.place-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content::after,
+.place-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content::after {
+  bottom: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-down);
+}
+.place-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-content::after,
+.place-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-content::after,
+.place-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-content::after {
+  top: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-up);
+}
+.place-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-content::after {
+  left: var(--popup-tip-offset); top: 50%;
+  transform: translateY(-50%);
+  width: var(--popup-tip-h); height: var(--popup-tip-w);
+  clip-path: var(--popup-tip-clip-left);
+}
+.place-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-content::after {
+  left: auto; right: var(--popup-tip-offset); top: 50%;
+  transform: translateY(-50%);
+  width: var(--popup-tip-h); height: var(--popup-tip-w);
+  clip-path: var(--popup-tip-clip-right);
 }
 .place-popup-wrap .maplibregl-popup-close-button {
   display: none !important;
@@ -4432,73 +4411,49 @@ body.dark-mode #route-snackbar {
 }
 
 .loc-marker {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   position: relative;
 }
-.loc-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+.loc-puck {
+  width: 24px;
+  height: 24px;
   background: var(--accent);
-  border: 3.5px solid #fff;
-  box-shadow: 0 1px 8px rgba(26, 115, 184, 0.4);
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) rotate(-135deg);
   z-index: 3;
+  transition: transform var(--t-med);
 }
-.loc-cone {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 56px;
-  height: 56px;
-  transform: translate(-50%, -50%) rotate(0deg);
-  z-index: 2;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--t-med);
+body.dark-mode .loc-puck {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.loc-cone.has-heading {
-  opacity: 1;
-}
-.loc-cone::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
-  border-bottom: 28px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: 4px 4px 0 0;
-}
-body.dark-mode .loc-cone::before {
-  border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
+.loc-puck.has-heading {
+  /* rotation set via JS — transition smooths it */
 }
 .loc-ring {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
-  animation: locPulse 2.2s ease-out infinite;
+  animation: locPulse 2.8s ease-out infinite;
+}
+body.dark-mode .loc-ring {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 @keyframes locPulse {
   0% {
-    transform: translate(-50%, -50%) scale(0.5);
+    transform: translate(-50%, -50%) scale(0.6);
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2.2);
+    transform: translate(-50%, -50%) scale(2);
     opacity: 0;
   }
 }
@@ -4567,9 +4522,12 @@ body.dark-mode .loc-cone::before {
   }
 }
 
+.stop-popup-wrap .maplibregl-popup-tip {
+  display: none !important;
+}
 .stop-popup-wrap .maplibregl-popup-content {
   padding: 0 !important;
-  overflow: hidden;
+  overflow: visible !important;
   border-radius: var(--r-md) !important;
   width: auto;
   min-width: 160px;
@@ -4579,6 +4537,40 @@ body.dark-mode .loc-cone::before {
     0 1px 3px rgba(0, 0, 0, 0.08) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
+}
+.stop-popup-wrap .maplibregl-popup-content::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  background: var(--surface);
+  pointer-events: none;
+}
+.stop-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-content::after,
+.stop-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content::after,
+.stop-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content::after {
+  bottom: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-down);
+}
+.stop-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-content::after,
+.stop-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-content::after,
+.stop-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-content::after {
+  top: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-up);
+}
+.stop-popup-wrap.maplibregl-popup-anchor-left .maplibregl-popup-content::after {
+  left: var(--popup-tip-offset); top: 50%;
+  transform: translateY(-50%);
+  width: var(--popup-tip-h); height: var(--popup-tip-w);
+  clip-path: var(--popup-tip-clip-left);
+}
+.stop-popup-wrap.maplibregl-popup-anchor-right .maplibregl-popup-content::after {
+  left: auto; right: var(--popup-tip-offset); top: 50%;
+  transform: translateY(-50%);
+  width: var(--popup-tip-h); height: var(--popup-tip-w);
+  clip-path: var(--popup-tip-clip-right);
 }
 .stop-popup-wrap .maplibregl-popup-close-button {
   display: none !important;
@@ -5970,31 +5962,21 @@ body.dark-mode .mse-export {
   transition: opacity 0.15s ease;
 }
 .eid-mk {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-md);
-  height: var(--icon-md);
   background: var(--gold);
-  border: 2.5px solid #fff;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(-45deg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
   animation: fadeIn 0.2s ease;
-}
-.eid-mk svg {
-  transform: rotate(45deg);
-  flex-shrink: 0;
 }
 .eid-mk-tip {
   display: none;
 }
 
 /* ── Eid popup ─── */
+.eid-popup-wrap .maplibregl-popup-tip {
+  display: none !important;
+}
 .eid-popup-wrap .maplibregl-popup-content {
   padding: 0 !important;
-  overflow: hidden;
+  overflow: visible !important;
   border-radius: var(--r-md) !important;
   width: auto;
   min-width: 200px;
@@ -6004,6 +5986,28 @@ body.dark-mode .mse-export {
     0 1px 3px rgba(0, 0, 0, 0.08) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
+}
+.eid-popup-wrap .maplibregl-popup-content::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  background: var(--surface);
+  pointer-events: none;
+}
+.eid-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-content::after,
+.eid-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content::after,
+.eid-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content::after {
+  bottom: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-down);
+}
+.eid-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-content::after,
+.eid-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-content::after,
+.eid-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-content::after {
+  top: var(--popup-tip-offset);
+  clip-path: var(--popup-tip-clip-up);
 }
 .eid-popup-wrap .maplibregl-popup-close-button {
   display: none !important;
@@ -6112,15 +6116,8 @@ body.dark-mode .mse-export {
 body.dark-mode .eid-popup-wrap .maplibregl-popup-content {
   background: var(--surface) !important;
 }
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
-  border-top-color: var(--surface);
-}
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-body.dark-mode .eid-popup-wrap.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
-  border-bottom-color: var(--surface);
+body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
+  background: var(--surface);
 }
 
 /* ── Eid pill button ─── */

@@ -160,6 +160,27 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--btn-roundel-sm-size` | `30px` | Compact roundels (calendar nav, focused-back) |
 | `--tab-h` | `56px` | Tab bar height — used in positioning calculations |
 
+### Puck shape
+
+| Token | Value | Usage |
+|---|---|---|
+| `--puck-r` | `50% 50% 50% 8px` | Asymmetric puck border-radius — place/search/custom/eid markers |
+| `--puck-r-sm` | `50% 50% 50% 7px` | Smaller puck radius — location indicator |
+| `--puck-border` | `2.5px solid #fff` | Marker border |
+| `--puck-border-sm` | `2.5px solid #fff` | Location indicator border |
+
+### Popup tip
+
+| Token | Value | Usage |
+|---|---|---|
+| `--popup-tip-w` | `30px` | Curvy tip width (horizontal anchors) |
+| `--popup-tip-h` | `12px` | Curvy tip height (horizontal anchors) |
+| `--popup-tip-offset` | `-11px` | Tip position offset from card edge |
+| `--popup-tip-clip-down` | `path('M 0,0 C … 30,0 Z')` | Clip-path for bottom-anchored popups |
+| `--popup-tip-clip-up` | `path('M 0,12 C … 30,12 Z')` | Clip-path for top-anchored popups |
+| `--popup-tip-clip-left` | `path('M 12,0 C … 12,30 Z')` | Clip-path for left-anchored popups |
+| `--popup-tip-clip-right` | `path('M 0,0 C … 0,30 Z')` | Clip-path for right-anchored popups |
+
 ### Safe areas
 
 | Token | Maps to |
@@ -489,6 +510,107 @@ The `.t-scroll` utility class (and its auto-included component aliases) applies 
 - `flex: 1; min-height: 0` (layout)
 - `scroll-behavior: smooth` (behaviour override, component-specific)
 - `max-height` constraints
+
+---
+
+## §10 — Puck Map Marker Template
+
+Convention: `.puck-mk`
+
+The asymmetric teardrop ("puck") is the app's universal marker shape — a rounded shape with one flat corner, rotated -45 deg so the flat corner points down.
+
+| Class | Purpose |
+|---|---|
+| `.puck-mk` | Standalone puck marker (generic) |
+
+**Aliased classes** (added to the same selector in `design-tokens.css`):
+
+| Alias | Component |
+|---|---|
+| `.place-mk` | Place markers on the map |
+| `.search-mk` | Search result marker |
+| `.custom-mk` | Custom dropped-pin marker |
+| `.home-mk` | Home pin marker |
+| `.eid-mk` | Eid prayer location marker |
+
+### What the template provides
+
+- `display: flex; align-items: center; justify-content: center`
+- `width/height: var(--icon-md)` (38 px)
+- `border: var(--puck-border)` (2.5 px white)
+- `border-radius: var(--puck-r)` (50% 50% 50% 8 px)
+- `transform: rotate(-45deg)`
+- `box-shadow: 0 2px 8px rgba(0,0,0,0.2)`
+- Child `svg` counter-rotated 45 deg
+
+### What stays in styles.css
+
+- `background` colour per-type (`--place-c`, `--accent`, `--gold`, `--home`)
+- `position: relative` (for popup anchoring)
+- `animation` (fadeIn on search/custom/eid markers)
+- Unique `box-shadow` overrides (e.g. search-mk has accent-coloured shadow)
+
+---
+
+## §11 — Puck Location Indicator Template
+
+Convention: `.puck-loc`
+
+A smaller puck pointing backward (-135 deg) for "you are here".
+
+**Aliased class:** `.loc-puck`
+
+### What the template provides
+
+- `border: var(--puck-border-sm)`
+- `border-radius: var(--puck-r-sm)` (50% 50% 50% 7 px)
+- `box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)`
+
+### What stays in styles.css
+
+- `width/height` (24 px — different from `--icon-md`)
+- `background: var(--accent)`
+- Absolute positioning within `.loc-marker`
+- `transform: translate(-50%, -50%) rotate(-135deg)`
+- `z-index`, `transition`
+- Dark-mode shadow override
+
+---
+
+## §12 — Curvy Popup Tip Pattern
+
+Not a class template (pseudo-elements can't take class names). Instead, a documented pattern using `--popup-tip-*` tokens applied via `::after` on `.maplibregl-popup-content`.
+
+### Pattern (applied in styles.css for each popup type)
+
+```css
+.{type}-popup-wrap .maplibregl-popup-tip { display: none !important; }
+
+.{type}-popup-wrap .maplibregl-popup-content::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  background: var(--surface);
+  pointer-events: none;
+}
+
+/* Per anchor direction: */
+/* bottom → bottom: var(--popup-tip-offset); clip-path: var(--popup-tip-clip-down) */
+/* top    → top:    var(--popup-tip-offset); clip-path: var(--popup-tip-clip-up)   */
+/* left   → swap w/h, clip-path: var(--popup-tip-clip-left)                       */
+/* right  → swap w/h, clip-path: var(--popup-tip-clip-right)                      */
+```
+
+### Applied to
+
+| Popup type | Anchors supported |
+|---|---|
+| `.place-popup-wrap` | bottom, top, left, right |
+| `.stop-popup-wrap` | bottom, top, left, right |
+| `.eid-popup-wrap` | bottom, top |
 
 ---
 

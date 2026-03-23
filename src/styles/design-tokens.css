@@ -127,10 +127,25 @@
   --r-inner: 8px; /* inner icon / thumbnail containers */
 
   /* — icon & component sizes — */
-  --icon-md: 36px; /* medium content-icon container    */
+  --icon-md: 38px; /* medium content-icon container    */
   --h-field: 46px; /* direction / date input row       */
   --h-submit: 44px; /* form submit button               */
   --h-search: 48px; /* search box                       */
+
+  /* — puck shape system — */
+  --puck-r: 50% 50% 50% 8px;     /* asymmetric puck border-radius       */
+  --puck-r-sm: 50% 50% 50% 7px;  /* smaller puck (location indicator)   */
+  --puck-border: 2.5px solid #fff;
+  --puck-border-sm: 2.5px solid #fff;
+
+  /* — popup tip — */
+  --popup-tip-w: 30px;
+  --popup-tip-h: 12px;
+  --popup-tip-offset: -11px;
+  --popup-tip-clip-down: path('M 0,0 C 0,0 4,0 8,6 C 11,10 13,12 15,12 C 17,12 19,10 22,6 C 26,0 30,0 30,0 Z');
+  --popup-tip-clip-up:   path('M 0,12 C 0,12 4,12 8,6 C 11,2 13,0 15,0 C 17,0 19,2 22,6 C 26,12 30,12 30,12 Z');
+  --popup-tip-clip-left: path('M 12,0 C 12,0 12,4 6,8 C 2,11 0,13 0,15 C 0,17 2,19 6,22 C 12,26 12,30 12,30 Z');
+  --popup-tip-clip-right:path('M 0,0 C 0,0 0,4 6,8 C 10,11 12,13 12,15 C 12,17 10,19 6,22 C 0,26 0,30 0,30 Z');
 
   /* — layout — */
   --map-edge: 12px; /* map-control inset from viewport edges */
@@ -1323,4 +1338,55 @@ body {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   color: var(--danger);
+}
+
+/* ─── Puck Map Marker ──────────────────────────────────────────────────────── */
+/* Upward teardrop with rounded asymmetric corner — the app's marker shape.    */
+/* Use --place-c or --c to override the fill colour per-type.                  */
+.puck-mk,
+.place-mk,
+.search-mk,
+.custom-mk,
+.home-mk,
+.eid-mk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  border: var(--puck-border);
+  border-radius: var(--puck-r);
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.puck-mk svg,
+.place-mk svg,
+.search-mk svg,
+.custom-mk svg,
+.home-mk svg,
+.eid-mk svg {
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+/* ─── Puck Location Indicator ──────────────────────────────────────────────── */
+/* Smaller puck pointing backward (-135deg) for "you are here".                */
+.puck-loc,
+.loc-puck {
+  border: var(--puck-border-sm);
+  border-radius: var(--puck-r-sm);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* ─── Curvy Popup Tip ──────────────────────────────────────────────────────── */
+/* Replaces MapLibre's default border-triangle with a concave S-curve.         */
+/* Applied via ::after on .maplibregl-popup-content.                           */
+.popup-tip-base {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  pointer-events: none;
 }
