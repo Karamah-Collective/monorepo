@@ -2850,65 +2850,8 @@ body.dark-mode .sp-tip {
   flex-shrink: 0;
 }
 
-.direct-card {
+.itin-card.direct-card {
   cursor: default;
-}
-.direct-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-light);
-}
-.direct-mode-icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--dc) 12%, transparent);
-  color: var(--dc);
-  border-radius: var(--r-sm);
-}
-.direct-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.direct-dur {
-  font-size: var(--txt-xl);
-  font-weight: var(--fw-bold);
-  color: var(--text);
-  line-height: 1.2;
-}
-.direct-meta {
-  font-size: var(--txt-sm);
-  color: var(--text-3);
-  font-weight: var(--fw-medium);
-}
-.direct-endpoints {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  flex-shrink: 0;
-  max-width: 120px;
-  overflow: hidden;
-}
-.direct-endpoints svg {
-  flex-shrink: 0;
-  color: var(--text-3);
-}
-.direct-ep {
-  font-size: var(--txt-xs);
-  color: var(--text-2);
-  font-weight: var(--fw-semibold);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 48px;
 }
 
 .direct-steps {
@@ -3368,17 +3311,22 @@ body.dark-mode .fallback-notice {
 }
 
 .itin-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template:
+    "dur time expand" auto
+    "walk walk  .   " auto
+    / auto 1fr auto;
+  align-items: center;
+  column-gap: var(--sp-3);
+  row-gap: 1px;
   margin-bottom: 6px;
-  gap: var(--sp-3);
   transition: margin 0.2s;
 }
 .itin-card:not(.active) .itin-header {
   margin-bottom: 2px;
 }
 .itin-dur {
+  grid-area: dur;
   font-size: var(--txt-3xl);
   font-weight: var(--fw-bold);
   color: var(--text);
@@ -3392,6 +3340,8 @@ body.dark-mode .fallback-notice {
   color: var(--accent);
 }
 .itin-time {
+  grid-area: time;
+  align-self: center;
   font-size: var(--txt-base);
   color: var(--text-3);
   font-weight: var(--fw-semibold);
@@ -3402,9 +3352,9 @@ body.dark-mode .fallback-notice {
   font-size: var(--txt-sm);
 }
 .itin-walk {
+  grid-area: walk;
   font-size: var(--txt-base);
   color: var(--text-3);
-  margin-top: 2px;
   display: flex;
   align-items: center;
   gap: var(--sp-1);
@@ -3496,8 +3446,9 @@ body.dark-mode .fallback-notice {
   grid-template-rows: 1fr;
 }
 
-.itin-expand,
-.direct-expand {
+.itin-expand {
+  grid-area: expand;
+  align-self: center;
   width: 30px;
   height: 30px;
   flex-shrink: 0;
@@ -3509,26 +3460,21 @@ body.dark-mode .fallback-notice {
   border-radius: var(--r-sm);
   cursor: pointer;
   color: #fff;
-  margin-top: 1px;
   transition: filter 0.15s;
 }
 @media (hover: hover) {
-  .itin-expand:hover,
-  .direct-expand:hover {
+  .itin-expand:hover {
     filter: brightness(1.12);
   }
 }
-.itin-expand svg,
-.direct-expand svg {
+.itin-expand svg {
   width: 14px;
   height: 14px;
 }
-.itin-card.active .itin-expand,
-.direct-card .direct-expand {
+.itin-card.active .itin-expand {
   display: flex;
 }
-.itin-card.focused .itin-expand,
-.direct-card.focused .direct-expand {
+.itin-card.focused .itin-expand {
   display: none;
 }
 

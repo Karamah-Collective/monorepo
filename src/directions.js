@@ -1644,23 +1644,9 @@ async function findRoutesDirect(mode) {
   dirErr.classList.add("hide");
   dirItins.innerHTML = `
       <div class="itin-card direct-card active" style="--dc:${cssColor}">
-        <div class="direct-header">
-          <div class="direct-mode-icon">${dirModeIconSvg(mode, 20)}</div>
-          <div class="direct-summary">
-            <span class="direct-dur">${durLabel}</span>
-            <span class="direct-meta">${OSRM_LABELS[mode]} · ${distKm} km</span>
-          </div>
-          <div class="direct-endpoints">
-            <span class="direct-ep">${esc(dir.origin.name)}</span>
-            ${dir.waypoints.filter(Boolean).map(wp => `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span class="direct-ep">${esc(wp.name)}</span>`).join("")}
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            <span class="direct-ep">${esc(dir.dest.name)}</span>
-          </div>
-          <button class="direct-expand" title="Full screen directions">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-          </button>
-        </div>
-        <div class="direct-steps">${stepsHTML}</div>
+        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + duration * 1000))}</div><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${distKm} km</div></div>
+        <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
+        <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${stepsHTML}</div></div></div>
       </div>`;
   document.getElementById("dir-btn").classList.add("route-active");
   dirClearBtn.classList.remove("hide");
@@ -1683,7 +1669,7 @@ function renderItineraries() {
     const transitLegs = itin.legs.filter((l) => l.mode !== "WALK").length;
     const hdr = document.createElement("div");
     hdr.className = "itin-header";
-    hdr.innerHTML = `<div><div class="itin-dur">${durMin} min</div><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div></div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>`;
+    hdr.innerHTML = `<div class="itin-dur">${durMin} min</div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div>`;
     const chain = document.createElement("div"); chain.className = "itin-chain";
     itin.legs.forEach((leg, li) => {
       if (li > 0) chain.insertAdjacentHTML("beforeend", '<span class="leg-arrow">›</span>');
