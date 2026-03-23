@@ -361,6 +361,7 @@
   gap: var(--sp-6);
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -2381,6 +2382,7 @@ body.dark-mode .sp-tip {
   gap: var(--sp-6);
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .sg-label {
   display: flex;
@@ -2525,6 +2527,7 @@ body.dark-mode .sp-tip {
   gap: var(--sp-6);
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 #ed-submit {

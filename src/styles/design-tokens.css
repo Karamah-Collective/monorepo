@@ -928,7 +928,7 @@ body {
   background: var(--surface);
   overflow: hidden;
   transition: padding 0.25s ease, border-color 0.25s ease;
-  width: fit-content;
+  min-width: 0;
 }
 .sg-subtags.shut .sg-subtags-inner {
   padding-top: 0;

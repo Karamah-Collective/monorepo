@@ -221,6 +221,10 @@
     {
       "id": "cuisine_steak",
       "label": "Steak"
+    },
+    {
+      "id": "cuisine_fried_chicken",
+      "label": "Fried Chicken"
     }
   ]
 }

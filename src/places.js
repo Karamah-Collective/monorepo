@@ -10,6 +10,16 @@ export let tagsData = {};
 export let placesLoaded = false;
 let placeMarkers = [];
 let savedPinMarkers = [];
+
+// Sort subtag arrays (e.g. cuisine) alphabetically by label.
+// Called after every tagsData assignment so all consumers get sorted data.
+function sortSubtags() {
+  for (const key in tagsData) {
+    if (key.indexOf("_") !== -1 && Array.isArray(tagsData[key])) {
+      tagsData[key].sort((a, b) => a.label.localeCompare(b.label));
+    }
+  }
+}
 let _activePlacePopupId = null;
 let _activePlacePopup = null;
 export let activeTypeFilter = "all";
@@ -402,6 +412,7 @@ export async function loadPlacesData() {
     if (cached) {
       placesData = normalizePlacesData(cached.places);
       tagsData = cached.tags || {};
+      sortSubtags();
       placesLoaded = true;
       hideLoadingToast();
       addPlaceMarkers();
@@ -425,6 +436,7 @@ export async function loadPlacesData() {
           }
           placesData = normalizePlacesData(data.places);
           tagsData = data.tags || {};
+          sortSubtags();
           addPlaceMarkers();
           renderPlacesList();
           updatePlacesBadge();
@@ -440,6 +452,7 @@ export async function loadPlacesData() {
       if (pRes.ok && tRes.ok) {
         placesData = normalizePlacesData(await pRes.json());
         tagsData = await tRes.json();
+        sortSubtags();
         console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);
       }
     } catch { /* static files missing — fall through */ }
@@ -466,6 +479,7 @@ export async function loadPlacesData() {
         }
         placesData = normalizePlacesData(data.places);
         tagsData = data.tags || {};
+        sortSubtags();
         addPlaceMarkers();  // Full refresh removes old + adds new
         renderPlacesList();
         updatePlacesBadge();

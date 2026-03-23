@@ -1160,22 +1160,6 @@
     "notes": "The chicken is Halal--the people are helpful and aware of halal/haram. They also have a fully halal, no alcohol restaurant named Jump Chick"
   },
   {
-    "id": "h1twdw",
-    "name": "Jump Chick",
-    "type": "restaurant",
-    "address": "Töölöntullinkatu 8c, 00250 Helsinki",
-    "city": "Helsinki",
-    "lat": 60.1900916,
-    "lng": 24.9133727,
-    "tags": {
-      "fully_halal": true,
-      "no_alcohol": true,
-      "cuisine_korean": true,
-      "cuisine_buffet": true
-    },
-    "notes": ""
-  },
-  {
     "id": "8jp8hr",
     "name": "面师傅 Noodle Master",
     "type": "restaurant",
@@ -1709,5 +1693,69 @@
       "cuisine_steak": true
     },
     "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\""
+  },
+  {
+    "id": "1dzuhd",
+    "name": "Jump Chick",
+    "type": "restaurant",
+    "address": "Töölöntullinkatu 8c, 00250 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1900916,
+    "lng": 24.9133727,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_korean": true,
+      "cuisine_fried_chicken": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "3zau87",
+    "name": "Restaurant Haru Sushi",
+    "type": "restaurant",
+    "address": "Fredrikinkatu 30, 00120 Helsinki, Finland",
+    "city": "Helsinki",
+    "lat": 60.1652275,
+    "lng": 24.9355066,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_sushi": true,
+      "no_alcohol": false
+    },
+    "notes": "Fully halal sushi buffet. Serves alcohol."
+  },
+  {
+    "id": "sow6vc",
+    "name": "Haru Plus Sushi",
+    "type": "restaurant",
+    "address": "Annankatu 6, 00120 Helsinki, Finland",
+    "city": "Helsinki",
+    "lat": 60.1635007,
+    "lng": 24.9414105,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_sushi": true,
+      "no_alcohol": false
+    },
+    "notes": "Fully halal. Serves alcohol."
+  },
+  {
+    "id": "98gx71",
+    "name": "Hanami Sushi",
+    "type": "restaurant",
+    "address": "Kirkkotallintie 2 A 2, 02400 Kirkkonummi, Finland",
+    "city": "Kirkkonummi",
+    "lat": 60.1232946,
+    "lng": 24.4399644,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_sushi": true,
+      "no_alcohol": false
+    },
+    "notes": "Sushi and chicken are halal. Serves alcohol."
   }
 ]
