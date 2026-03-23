@@ -215,7 +215,10 @@ export function showCurrentLocation() {
   if (locWatchId !== null) {
     navigator.geolocation.clearWatch(locWatchId);
     locWatchId = null;
+    _stopHeadingWatch();
+    _cancelLocLerp();
     if (locMarker) { locMarker.remove(); locMarker = null; }
+    _locConeEl = null;
     clearCurrentLocationState();
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
@@ -234,10 +237,13 @@ export function showCurrentLocation() {
     if (!locMarker) {
       const el = document.createElement("div");
       el.className = "loc-marker";
-      el.innerHTML = '<div class="loc-ring"></div><div class="loc-dot"></div>';
+      el.innerHTML = '<div class="loc-ring"></div><div class="loc-cone"></div><div class="loc-dot"></div>';
+      _locConeEl = el.querySelector(".loc-cone");
       locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+      _locLerpPos = { lng, lat };
+      _startHeadingWatch();
     } else {
-      locMarker.setLngLat([lng, lat]);
+      _lerpLocMarkerTo(lng, lat);
     }
     if (firstFix) {
       map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
@@ -258,6 +264,113 @@ export function showCurrentLocation() {
     locWatchId = null;
     map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
   });
+}
+
+/* ── Heading (compass direction) ──────────────────────────────────────────── */
+
+let _locConeEl = null;
+let _headingCleanup = null;
+
+function _startHeadingWatch() {
+  if (_headingCleanup) return;
+
+  let _lastHeading = null;
+
+  function _applyConeRotation(heading) {
+    if (heading === null || !_locConeEl) return;
+    const mapBearing = map.getBearing();
+    const rotation = (heading - mapBearing + 360) % 360;
+    _locConeEl.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+    if (!_locConeEl.classList.contains("has-heading")) {
+      _locConeEl.classList.add("has-heading");
+    }
+  }
+
+  function onOrientation(e) {
+    // iOS Safari uses webkitCompassHeading (degrees from north, clockwise)
+    // Android Chrome uses e.alpha (degrees, but needs inversion)
+    if (typeof e.webkitCompassHeading === "number") {
+      _lastHeading = e.webkitCompassHeading;
+    } else if (e.absolute && typeof e.alpha === "number") {
+      _lastHeading = (360 - e.alpha) % 360;
+    }
+    _applyConeRotation(_lastHeading);
+  }
+
+  // iOS 13+ requires explicit permission for DeviceOrientation
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission()
+      .then((state) => {
+        if (state === "granted") {
+          window.addEventListener("deviceorientationabsolute", onOrientation, true);
+          window.addEventListener("deviceorientation", onOrientation, true);
+        }
+      })
+      .catch(() => {});
+  } else if (typeof DeviceOrientationEvent !== "undefined") {
+    window.addEventListener("deviceorientationabsolute", onOrientation, true);
+    window.addEventListener("deviceorientation", onOrientation, true);
+  }
+
+  // Re-apply cone rotation when the map bearing changes
+  function onMapRotate() {
+    _applyConeRotation(_lastHeading);
+  }
+  map.on("rotate", onMapRotate);
+
+  _headingCleanup = () => {
+    window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+    window.removeEventListener("deviceorientation", onOrientation, true);
+    map.off("rotate", onMapRotate);
+  };
+}
+
+function _stopHeadingWatch() {
+  if (_headingCleanup) { _headingCleanup(); _headingCleanup = null; }
+}
+
+/* ── Smooth location interpolation ────────────────────────────────────────── */
+
+let _locLerpPos = null;   // current rendered { lng, lat }
+let _locLerpRaf = null;
+const LOC_LERP_DURATION = 1000;  // ms for smooth transition
+
+function _lerpLocMarkerTo(lng, lat) {
+  if (!locMarker || !_locLerpPos) {
+    if (locMarker) locMarker.setLngLat([lng, lat]);
+    _locLerpPos = { lng, lat };
+    return;
+  }
+
+  const from = { lng: _locLerpPos.lng, lat: _locLerpPos.lat };
+  const to = { lng, lat };
+  const start = performance.now();
+
+  // Cancel any in-progress lerp
+  if (_locLerpRaf) cancelAnimationFrame(_locLerpRaf);
+
+  function tick(now) {
+    const t = Math.min((now - start) / LOC_LERP_DURATION, 1);
+    // Ease-out cubic for natural deceleration
+    const ease = 1 - Math.pow(1 - t, 3);
+    const cLng = from.lng + (to.lng - from.lng) * ease;
+    const cLat = from.lat + (to.lat - from.lat) * ease;
+    locMarker.setLngLat([cLng, cLat]);
+    _locLerpPos = { lng: cLng, lat: cLat };
+    if (t < 1) {
+      _locLerpRaf = requestAnimationFrame(tick);
+    } else {
+      _locLerpRaf = null;
+    }
+  }
+
+  _locLerpRaf = requestAnimationFrame(tick);
+}
+
+function _cancelLocLerp() {
+  if (_locLerpRaf) { cancelAnimationFrame(_locLerpRaf); _locLerpRaf = null; }
+  _locLerpPos = null;
 }
 
 export function setActiveTab(id) {

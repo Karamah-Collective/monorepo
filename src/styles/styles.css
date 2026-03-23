@@ -4432,28 +4432,59 @@ body.dark-mode #route-snackbar {
 }
 
 .loc-marker {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   position: relative;
 }
 .loc-dot {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--accent);
-  border: 3px solid #fff;
-  box-shadow: 0 1px 6px rgba(26, 115, 184, 0.35);
+  border: 3.5px solid #fff;
+  box-shadow: 0 1px 8px rgba(26, 115, 184, 0.4);
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  z-index: 3;
+}
+.loc-cone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  transform: translate(-50%, -50%) rotate(0deg);
   z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--t-med);
+}
+.loc-cone.has-heading {
+  opacity: 1;
+}
+.loc-cone::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 28px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 4px 4px 0 0;
+}
+body.dark-mode .loc-cone::before {
+  border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .loc-ring {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: rgba(26, 115, 184, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -4467,7 +4498,7 @@ body.dark-mode #route-snackbar {
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2.4);
+    transform: translate(-50%, -50%) scale(2.2);
     opacity: 0;
   }
 }
