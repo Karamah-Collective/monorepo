@@ -336,6 +336,8 @@ const REGION_BBOXES = [
   { id: "pori",         bbox: "61.40,21.60,61.65,22.00" },
   { id: "rovaniemi",    bbox: "66.40,25.55,66.60,25.95" },
   { id: "kajaani",      bbox: "64.13,27.60,64.30,27.95" },
+  { id: "kokkola",      bbox: "63.80,23.00,63.90,23.25" },
+  { id: "seinajoki",   bbox: "62.70,22.75,62.87,22.95" },
 ];
 // Finland-wide bbox for rail stations (VR intercity trains between cities)
 const RAIL_BBOX = "59.40,19.00,70.20,31.70";

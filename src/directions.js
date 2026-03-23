@@ -1168,6 +1168,8 @@ function pickTransitEndpoint(lat1, lon1, lat2, lon2) {
     [61.40, 21.60, 61.65, 22.00], // Pori
     [66.40, 25.55, 66.60, 25.95], // Rovaniemi
     [64.13, 27.60, 64.30, 27.95], // Kajaani
+    [63.80, 23.00, 63.90, 23.25], // Kokkola
+    [62.70, 22.75, 62.87, 22.95], // Seinäjoki
   ];
   const inWaltti = (la, lo) => WALTTI.some(([s, w, n, e]) => la >= s && la <= n && lo >= w && lo <= e);
   if (inHSL(lat1, lon1)    && inHSL(lat2, lon2))    return DIGITRANSIT_URL;
