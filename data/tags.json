@@ -225,6 +225,26 @@
     {
       "id": "cuisine_fried_chicken",
       "label": "Fried Chicken"
+    },
+    {
+      "id": "cuisine_vietnamese",
+      "label": "Vietnamese"
+    },
+    {
+      "id": "cuisine_syrian",
+      "label": "Syrian"
+    },
+    {
+      "id": "cuisine_sri_lankan",
+      "label": "Sri Lankan"
+    },
+    {
+      "id": "cuisine_nepalese",
+      "label": "Nepalese"
+    },
+    {
+      "id": "cuisine_yemeni",
+      "label": "Yemeni"
     }
   ]
 }

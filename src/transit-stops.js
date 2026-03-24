@@ -245,7 +245,10 @@ function _openStopFeaturePopup(f) {
     const el = document.getElementById(routesDivId);
     if (el) el.innerHTML = '<span class="sp-loading"><span class="sp-spin"></span>Loading…</span>';
     const expectedMode = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || null;
-    fetchStopRoutes(lngLat[1], lngLat[0], code, expectedMode)
+    const fetchPromise = f.properties.noCoverage
+      ? fetchStopRoutesFromOSM(lngLat[1], lngLat[0])
+      : fetchStopRoutes(lngLat[1], lngLat[0], code, expectedMode);
+    fetchPromise
       .then((routes) => {
         const compact = (routes || []).map((r) => ({
           s: r.shortName || "?", m: r.mode, l: r.longName || "", t: r.type || 0,
@@ -535,8 +538,9 @@ function processTransitStops(geojson) {
     }
     // Cache data has confirmed route info; Overpass data has no route info.
     // Hide only stops confirmed to have zero routes (from cache).
+    // Stops flagged noCoverage=1 lack GTFS data for their region — keep visible.
     const fromCache = f.properties._cached === 1;
-    f.properties.hasRoutes = (fromCache && routes.length === 0) ? 0 : 1;
+    f.properties.hasRoutes = (fromCache && routes.length === 0 && !f.properties.noCoverage) ? 0 : 1;
     if (!f.properties.hasRoutes) hidden++;
   }
   if (hidden) console.log(`[Transit] Hiding ${hidden} stops with no active routes`);
@@ -748,5 +752,36 @@ async function fetchStopRoutes(lat, lon, stopCode, expectedMode) {
   }
   const nearest = edges[0]?.node?.place;
   return filterMode(nearest?.routes || []);
+}
+
+async function fetchStopRoutesFromOSM(lat, lon) {
+  const query = `[out:json][timeout:10];(node(around:80,${lat},${lon})["highway"="bus_stop"];node(around:80,${lat},${lon})["public_transport"="stop_position"];node(around:80,${lat},${lon})["public_transport"="platform"];)->.nearby;rel(bn.nearby)["route"="bus"];out tags;`;
+  for (const server of OVERPASS_SERVERS) {
+    try {
+      const resp = await fetch(server, {
+        method: "POST",
+        body: "data=" + encodeURIComponent(query),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      return (data.elements || [])
+        .filter(el => el.type === "relation")
+        .map(rel => {
+          const rawColour = rel.tags?.colour || "";
+          const hex = rawColour.replace("#", "");
+          const color = /^[0-9a-f]{6}$/i.test(hex) ? hex : null;
+          return {
+            shortName: rel.tags?.ref || "?",
+            mode: "BUS",
+            longName: rel.tags?.name || "",
+            type: 0,
+            color,
+          };
+        });
+    } catch { continue; }
+  }
+  return [];
 }
 // 

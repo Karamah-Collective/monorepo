@@ -253,6 +253,135 @@ async function fetchWalttiRoutes(mode) {
   return routes;
 }
 
+// ─── OSM route relations for no-coverage regions ───
+async function fetchOSMRoutesForNoCoverageRegions(noCoverageRegions, deduped) {
+  const bboxes = [];
+  for (const regionId of noCoverageRegions) {
+    const region = REGIONS.find(r => r.id === regionId);
+    if (region) bboxes.push(region.bbox);
+  }
+  if (!bboxes.length) return;
+
+  console.log('  Fetching OSM bus route relations for no-coverage regions…');
+
+  // Query Overpass: get bus route relations + all their member nodes
+  const query = `[out:json][timeout:90];(${
+    bboxes.map(bb => `relation["route"="bus"](${bb})`).join(';')
+  };)->.routes;.routes out body;node(r.routes)->.members;.members out skel;`;
+
+  let data;
+  for (let i = 0; i < OVERPASS_SERVERS.length; i++) {
+    try {
+      const resp = await fetch(OVERPASS_SERVERS[i], {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(60000),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      data = await resp.json();
+      if (data.elements?.length) break;
+    } catch (err) {
+      console.warn(`    ${OVERPASS_SERVERS[i]}: ${err.message}`);
+      if (i < OVERPASS_SERVERS.length - 1) await sleep(3000);
+    }
+  }
+
+  if (!data?.elements?.length) {
+    console.warn('    Failed to fetch OSM route relations — skipping');
+    return;
+  }
+
+  const relations = data.elements.filter(el => el.type === 'relation');
+  const nodes = data.elements.filter(el => el.type === 'node');
+  console.log(`    ${relations.length} route relations, ${nodes.length} member nodes`);
+
+  // Build nodeId → coordinates
+  const nodeCoords = new Map();
+  for (const n of nodes) nodeCoords.set(n.id, { lat: n.lat, lon: n.lon });
+
+  // Build nodeId → routes (from relation members)
+  const nodeToRoutes = new Map();
+  for (const rel of relations) {
+    const rawColour = rel.tags?.colour || '';
+    const hex = rawColour.replace('#', '');
+    const rd = {
+      s: rel.tags?.ref || '?',
+      m: 'BUS',
+      l: rel.tags?.name || '',
+      t: 0,
+      ...(/^[0-9a-f]{6}$/i.test(hex) ? { c: hex } : {}),
+    };
+    for (const member of (rel.members || [])) {
+      if (member.type !== 'node') continue;
+      if (!nodeToRoutes.has(member.ref)) nodeToRoutes.set(member.ref, []);
+      nodeToRoutes.get(member.ref).push(rd);
+    }
+  }
+
+  // 1) Direct match by OSM node ID
+  let directMatched = 0;
+  const unmatchedStops = [];
+  for (const f of deduped) {
+    if (!noCoverageRegions.has(f.properties.region)) continue;
+    if (f.properties.routes.length > 0) continue;
+    const osmId = f.properties._osmId;
+    if (osmId && nodeToRoutes.has(osmId)) {
+      f.properties.routes = dedupeRouteList(nodeToRoutes.get(osmId));
+      directMatched++;
+    } else {
+      unmatchedStops.push(f);
+    }
+  }
+  console.log(`    Direct OSM ID match: ${directMatched} stops`);
+
+  // 2) Proximity match for remaining stops
+  const GRID_CELL = 0.001;
+  const grid = new Map();
+  for (const [nodeId, routes] of nodeToRoutes) {
+    const coords = nodeCoords.get(nodeId);
+    if (!coords) continue;
+    const cellKey = `${Math.round(coords.lat / GRID_CELL)}_${Math.round(coords.lon / GRID_CELL)}`;
+    if (!grid.has(cellKey)) grid.set(cellKey, []);
+    grid.get(cellKey).push({ lat: coords.lat, lon: coords.lon, routes });
+  }
+
+  const MAX_DIST_SQ = 0.0008 ** 2; // ~80 m
+  let proximityMatched = 0;
+  for (const f of unmatchedStops) {
+    const [lng, lat] = f.geometry.coordinates;
+    const cellLat = Math.round(lat / GRID_CELL);
+    const cellLon = Math.round(lng / GRID_CELL);
+    let bestRoutes = null, bestDist = MAX_DIST_SQ;
+    for (let dLat = -1; dLat <= 1; dLat++) {
+      for (let dLon = -1; dLon <= 1; dLon++) {
+        const candidates = grid.get(`${cellLat + dLat}_${cellLon + dLon}`);
+        if (!candidates) continue;
+        for (const c of candidates) {
+          const dist = (c.lat - lat) ** 2 + (c.lon - lng) ** 2;
+          if (dist < bestDist) { bestDist = dist; bestRoutes = c.routes; }
+        }
+      }
+    }
+    if (bestRoutes) {
+      f.properties.routes = dedupeRouteList(bestRoutes);
+      proximityMatched++;
+    }
+  }
+  console.log(`    Proximity match: ${proximityMatched} stops`);
+  console.log(`    Total OSM-matched: ${directMatched + proximityMatched} stops`);
+}
+
+function dedupeRouteList(routes) {
+  const seen = new Set();
+  return routes.filter(r => {
+    const key = `${r.s}_${r.m}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ─── Dedup (same as app.js) ───
 function deduplicateStops(features) {
   const NAME_CELL = 0.001;
@@ -318,6 +447,7 @@ async function main() {
         type: classifyStop(el),
         rank: stopRank(classifyStop(el)),
         routes: [],
+        _osmId: el.id,
       },
     }));
   const deduped = deduplicateStops(features);
@@ -466,9 +596,47 @@ async function main() {
     if (f.properties.routes.length > 0) matched++;
     else unmatched++;
   }
-  console.log(`  Matched: ${matched}, Unmatched: ${unmatched}\n`);
+  console.log(`  Matched: ${matched}, Unmatched: ${unmatched}`);
+
+  // Detect regions where Waltti/Digitransit has no bus GTFS coverage.
+  // If < 10% of bus stops matched routes, tag unmatched stops so the client
+  // keeps them visible instead of hiding them as "confirmed no routes".
+  const busRegionStats = {};
+  for (const f of deduped) {
+    if (f.properties.type !== 'bus') continue;
+    const r = f.properties.region;
+    if (!busRegionStats[r]) busRegionStats[r] = { total: 0, matched: 0 };
+    busRegionStats[r].total++;
+    if (f.properties.routes.length > 0) busRegionStats[r].matched++;
+  }
+  const noCoverageRegions = new Set();
+  for (const [region, stats] of Object.entries(busRegionStats)) {
+    if (stats.total > 10 && stats.matched / stats.total < 0.1) {
+      noCoverageRegions.add(region);
+      console.log(`  ⚠ ${region}: only ${stats.matched}/${stats.total} bus stops matched — no GTFS coverage`);
+    }
+  }
+  if (noCoverageRegions.size) {
+    let tagged = 0;
+    for (const f of deduped) {
+      if (noCoverageRegions.has(f.properties.region) && f.properties.routes.length === 0) {
+        f.properties.noCoverage = 1;
+        tagged++;
+      }
+    }
+    console.log(`  Tagged ${tagged} stops in ${noCoverageRegions.size} no-coverage regions`);
+  }
+
+  // Fetch OSM bus route relations for no-coverage regions and map to stops
+  if (noCoverageRegions.size) {
+    await fetchOSMRoutesForNoCoverageRegions(noCoverageRegions, deduped);
+  }
+  console.log();
 
   // Build & write cache
+  // Clean up temporary _osmId before serialisation
+  for (const f of deduped) delete f.properties._osmId;
+
   const cache = {
     version: 3,
     generated: new Date().toISOString(),
