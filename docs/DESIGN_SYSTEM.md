@@ -45,6 +45,8 @@ All tokens are CSS custom properties on `:root`.
 | `--accent-muted` | `#6da8d2` | De-emphasised blue, pulse animations |
 | `--gold` | `#D8B56A` | Prayer / current-time highlight |
 | `--gold-soft` | `#faf5eb` | Gold tint surface |
+| `--sponsor` | `var(--gold)` | Alias — sponsor badge/chip colour |
+| `--sponsor-soft` | `var(--gold-soft)` | Alias — sponsor badge/chip background |
 | `--success` | `#1FA86A` | Green — mosques, confirmed features |
 | `--success-soft` | `#e8f6ee` | Green tint surface |
 | `--danger` | `#d64545` | Red — errors, destructive actions |
@@ -405,8 +407,17 @@ Display badge chip. Set `--chip-c` to control tint (text colour + 14% background
 | `.chip-yes` / `.pp-chip-yes` | `--chip-c: var(--success)` | Positive / confirmed (green) |
 | `.chip-no` / `.pp-chip-no` | `--chip-c: var(--danger)` | Negative / missing (red) |
 | `.chip-warn` / `.pp-chip-warn` | `--chip-c: var(--gold)` | Partial / cautionary (amber) |
+| `.chip-sponsor` / `.pp-chip-sponsor` / `.pl-sponsor-chip` | `--chip-c: var(--sponsor)` | Sponsored place (gold) |
 
-**Usage:** Popup tag chips, stop popup route chips. `partially_halal` uses `.pp-chip-warn`.
+**Usage:** Popup tag chips, stop popup route chips. `partially_halal` uses `.pp-chip-warn`. Sponsored places use `.pl-sponsor-chip` in list cards and `.pp-sponsor-badge` in popups.
+
+### `.sponsor-badge` / `.pp-sponsor-badge`
+
+Inline gold badge indicating a sponsored place. Used in popup headers and anywhere a compact "Sponsored" label is needed. Tinted from `--sponsor` token.
+
+### `.pp-promo-btn`
+
+Icon-only CTA button in the popup action row for sponsored places with a CTA link. Gold-tinted outline style.
 
 ### `.tag-chip` / `.sg-tag`
 
@@ -550,6 +561,40 @@ The asymmetric teardrop ("puck") is the app's universal marker shape — a round
 - `animation` (fadeIn on search/custom/eid markers)
 - Unique `box-shadow` overrides (e.g. search-mk has accent-coloured shadow)
 
+### Sponsor marker modifiers
+
+| Class | Effect |
+|---|---|
+| `.place-mk--sponsor-basic` | White marker border plus outer gold ring. Applied to basic tier. |
+| `.place-mk--sponsored` | White marker border plus static gold ring and warm glow. Applied to featured & spotlight. |
+| `.place-mk--spotlight` | Pulsing gold ring/glow via `@keyframes sponsorPulse`. Applied to spotlight only (stacks with `--sponsored`). |
+
+### Sponsor carousel (places panel)
+
+Horizontal scroll strip at the top of `#places-scroll` listing all sponsored places. Rendered by `_renderSponsorCarousel()` in `places.js`.
+
+| Class | Purpose |
+|---|---|
+| `.sponsor-carousel` | Container with bottom border |
+| `.sponsor-carousel-hdr` | Section header — aliased onto `pl-section-hdr` for visual alignment |
+| `.sponsor-carousel-track` | Flex row, `overflow-x: auto`, `scroll-snap-type: x mandatory`, hidden scrollbar |
+| `.sponsor-card` | 180px horizontal card (type dot + name/addr body), `scroll-snap-align: start` |
+| `.sponsor-card-dot` | 22px type icon circle |
+| `.sponsor-card-body` | Flex column (name + address), `min-width: 0` for ellipsis |
+
+Auto-scroll: 3s tick interval, pauses on interaction, resumes after 8s. Desktop wheel → horizontal scroll.
+
+### Promos overlay panel
+
+Centralized promo code listing. Button + overlay following the Eid panel pattern.
+
+| Element | Class/ID | Purpose |
+|---|---|---|
+| Trigger button | `#promos-pill` `.btn-icon-card` | Standalone icon button, positioned beside prayer pill |
+| Overlay backdrop | `#promos-overlay` | Fixed inset, `--overlay-bg`, uses `.hide` for open/close |
+| Card | `#promos-card` | Centered card (380px max-width), `suggest-head` header, scrollable list |
+| Promo item | `.promo-item` | Horizontal button: `.promo-dot` (28px circle) + `.promo-body` (name, code, text) |
+
 ---
 
 ## §11 — Puck Location Indicator Template
@@ -645,3 +690,75 @@ Uses `.sheet-x` class (rendered on a blue `--accent` background). In `styles.css
 ### Suggest / Edit overlays on mobile
 
 On `max-width: 768px`, the overlays transition from centred modal to bottom-sheet. `display: none` cannot animate, so `.hide` on `#suggest-overlay` and `#edit-overlay` is overridden to `display: flex` with `opacity: 0; pointer-events: none`, and the card slides in via `translateY`.
+
+---
+
+## §8 — Sponsorship Templates
+
+Templates for sponsored place UI elements. All sponsorship visuals use `--sponsor` / `--sponsor-soft` token aliases (mapped to the gold palette). Boycott always suppresses sponsorship — client code checks `!place.boycott` before rendering any sponsor UI.
+
+### `.pp-sponsor`
+
+Gold badge pill displayed in popup header row next to the type badge. Contains an ℹ️ SVG that opens a tooltip on tap.
+
+**Shape:** pill (`--r-pill`)
+**Colours:** `--sponsor-soft` background, `--sponsor` text
+**Used by:** `showPlacePopup()` in `places.js`
+
+### `.pl-sponsor-chip`
+
+Inline gold chip next to place name in list cards. Identical pattern to `.pl-boycott-chip` but uses sponsor colours.
+
+**Used by:** `_buildCard()` in `places.js`
+
+### `.r-sponsor-label`
+
+Inline "· Sponsored" label in search result rows.
+
+**Used by:** `showResults()` in `search.js`
+
+### `.pp-sponsor-tip`
+
+Tooltip shown when tapping the ℹ️ icon on the sponsor badge. Positioned absolutely below the badge, auto-removed after 5 seconds.
+
+### Marker glow classes
+
+| Class | Tier | Effect |
+|---|---|---|
+| `.place-mk--sponsor-basic` | Basic | B3: white border + outer gold ring |
+| `.place-mk--sponsored` | Featured | F2: white border + static gold ring and glow |
+| `.place-mk--spotlight` | Spotlight | S2: F2 base plus pulsing gold ring/glow |
+
+### Sponsor carousel
+
+| Class | Purpose |
+|---|---|
+| `.sponsor-carousel` | Container `<li>` at top of places list |
+| `.sponsor-carousel-title` | "Sponsored Places" heading |
+| `.sponsor-carousel-track` | Horizontal scroll flex container |
+| `.sponsor-carousel-card` | Individual card (140px wide, snap-to-start) |
+| `.sponsor-carousel-dot` | Type icon dot (20px, coloured by place type) |
+| `.sponsor-carousel-name` | Place name (truncated) |
+| `.sponsor-carousel-addr` | Address (truncated) |
+
+### Promos Pill (`#promos-snack`)
+
+Pill-expand element beside the Prayer Times pill. Lists all places with active promo codes (`sponsor_promo`). Hidden when no promos exist.
+
+| Class | Purpose |
+|---|---|
+| `#promos-snack` | Container, uses `.pill-expand` pattern |
+| `#promos-pill` | Icon button (tag icon, gold colour) |
+| `#promos-header` | Header row with icon + "Promos" text |
+| `#promos-list` | Scrollable list of promo items |
+| `.promo-item` | Single promo row (click to copy code) |
+| `.promo-item-icon` | Coloured type icon (24px) |
+| `.promo-item-body` | Name + description |
+| `.promo-item-code` | Promo code badge (gold) |
+
+### Keyframes
+
+| Name | Cycle | Used by |
+|---|---|---|
+| `sponsorPulse` | 2.2s ease-in-out | `.place-mk--sponsored` |
+| `sponsorPulseStrong` | 2s ease-in-out | `.place-mk--spotlight` |

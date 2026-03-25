@@ -1,0 +1,621 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halal Finder — Sponsorship Visual Mockups</title>
+<style>
+  :root {
+    --accent: #1a73b8;
+    --accent-soft: #e8f1f8;
+    --gold: #b08830;
+    --gold-soft: #faf5eb;
+    --success: #1fa86a;
+    --success-soft: #e8f6ee;
+    --danger: #d64545;
+    --danger-soft: #fce8e8;
+    --home: #475569;
+    --hsl-trunk: #ff6319;
+    --hsl-ferry: #00b9e4;
+    --hsl-rail: #8c4799;
+    --surface: #ffffff;
+    --surface-2: #e6ebef;
+    --surface-3: #cdd5dc;
+    --text: #1a2433;
+    --text-2: #506070;
+    --text-3: #8d99a5;
+    --border: #d5dce3;
+    --border-light: #e6ebef;
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-pill: 999px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.07);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+    --txt-xs: 11px;
+    --txt-sm: 12px;
+    --txt-base: 13px;
+    --txt-md: 14px;
+    --txt-lg: 15px;
+    --txt-xl: 16px;
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+    --sp-1: 4px;
+    --sp-2: 6px;
+    --sp-3: 8px;
+    --sp-4: 10px;
+    --sp-5: 12px;
+    --sp-7: 16px;
+    --sp-9: 24px;
+    --t-fast: 0.15s ease;
+    --icon-md: 38px;
+    --puck-r: 50% 50% 50% 8px;
+    --puck-border: 2.5px solid #fff;
+    --sponsor: #b08830;
+    --sponsor-soft: #faf5eb;
+    --sponsor-glow: 0 0 12px rgba(176,136,48,0.35);
+  }
+  body.dark-mode {
+    --accent: #3d9be8; --accent-soft: #1e2d40;
+    --gold: #d4a94e; --gold-soft: #2e2818;
+    --success: #34d08a; --success-soft: #162a1e;
+    --danger: #ef6b6b; --danger-soft: #3b1c1c;
+    --hsl-trunk: #ff8a50; --hsl-ferry: #3dd4f7; --hsl-rail: #E896E3;
+    --surface: #1a1d2e; --surface-2: #2e3348; --surface-3: #3d4260;
+    --text: #e2e4ed; --text-2: #a8aebf; --text-3: #6e7590;
+    --border: #3d4260; --border-light: #2e3348;
+    --sponsor: #d4a94e; --sponsor-soft: #2e2818;
+    --sponsor-glow: 0 0 16px rgba(212,169,78,0.45);
+  }
+  body.dark-mode { background: #0f111a; color: var(--text); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f0f1f2; color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1040px; margin: 0 auto; padding: 40px 24px 80px; }
+  .page h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .page .subtitle { font-size: 15px; color: var(--text-2); margin-bottom: 40px; }
+  .section-title { font-size: 20px; font-weight: 700; margin: 48px 0 8px; letter-spacing: -0.01em; }
+  .section-desc { font-size: 14px; color: var(--text-2); margin-bottom: 24px; max-width: 680px; }
+  .tier-label { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 999px; margin-bottom: 14px; }
+  .tier-label--basic { background: var(--sponsor-soft); color: var(--sponsor); }
+  .tier-label--featured { background: var(--sponsor-soft); color: var(--sponsor); border: 1.5px solid var(--sponsor); }
+  .tier-label--spotlight { background: var(--sponsor); color: #fff; }
+  .dark-toggle { position: fixed; top: 16px; right: 16px; z-index: 100; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text); box-shadow: var(--shadow-md); }
+  .tier-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 32px; }
+  .tier-col { display: flex; flex-direction: column; align-items: flex-start; }
+
+  /* Popup */
+  .pp-wrap { background: var(--surface); border-radius: var(--r-md); box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08); width: 280px; overflow: hidden; }
+  .pp { display: flex; flex-direction: column; position: relative; }
+  .pp-inner { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .pp-hdr { display: flex; align-items: center; gap: 6px; padding-right: 24px; flex-wrap: wrap; }
+  .pp-icon { display: inline-flex; align-items: center; line-height: 1; }
+  .pp-badge { font-size: var(--txt-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; border-radius: var(--r-pill); padding: 2px 8px; }
+  .pp-title { font-size: var(--txt-md); font-weight: var(--fw-bold); color: var(--text); line-height: 1.3; }
+  .pp-group { font-size: var(--txt-xs); color: var(--text-3); font-style: italic; }
+  .pp-addr { font-size: var(--txt-sm); color: var(--text-3); }
+  .pp-tags { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+  .pp-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: var(--r-pill); font-size: var(--txt-xs); font-weight: var(--fw-bold); cursor: default; white-space: nowrap; }
+  .pp-chip-yes { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .pp-chip-warn { color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); }
+  .pp-chip-no { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .pp-actions { display: flex; gap: var(--sp-2); padding-top: 10px; border-top: 1px solid var(--border-light); }
+  .pp-actions button { flex: 1; height: 34px; padding: 0; background: none; border: 1px solid var(--border); border-radius: var(--r-xs); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 12px; gap: 4px; transition: all 0.15s; }
+  .pp-actions button:hover { color: var(--text); border-color: var(--surface-3); }
+  .pp-fav-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-3); display: inline-flex; line-height: 1; }
+  .pp-sponsor { display: inline-flex; align-items: center; gap: 4px; font-size: var(--txt-xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: 0.04em; border-radius: var(--r-pill); padding: 2px 8px; background: var(--sponsor-soft); color: var(--sponsor); cursor: default; white-space: nowrap; }
+  .pp-sponsor .info-icon { width: 11px; height: 11px; opacity: 0.6; cursor: help; }
+  .pp-promo-btn { background: var(--sponsor-soft) !important; color: var(--sponsor) !important; border-color: color-mix(in srgb, var(--sponsor) 30%, var(--border)) !important; position: relative; }
+  .pp-promo-btn:hover { background: color-mix(in srgb, var(--sponsor) 18%, transparent) !important; color: var(--sponsor) !important; }
+  .pp-promo-btn::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 40%, rgba(176,136,48,0.15) 50%, transparent 60%); opacity: 0; transition: opacity 0.3s; }
+  .pp-promo-btn:hover::after { opacity: 1; }
+
+  /* List cards */
+  .pl-card { padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); display: grid; grid-template: "icon name meta acts" auto "icon addr meta acts" auto / auto 1fr auto auto; align-items: center; column-gap: var(--sp-5); cursor: pointer; transition: background-color 0.15s; width: 100%; max-width: 480px; }
+  .pl-card:hover { background: var(--surface-2); }
+  .pl-dot { grid-area: icon; width: 28px; height: 28px; border-radius: var(--r-xs); display: flex; align-items: center; justify-content: center; color: #fff; }
+  .pl-dot svg { width: 14px; height: 14px; }
+  .pl-name { grid-area: name; align-self: end; font-size: var(--txt-base); min-width: 0; font-weight: var(--fw-semibold); color: var(--text); }
+  .pl-addr { grid-area: addr; align-self: start; font-size: var(--txt-sm); color: var(--text-3); min-width: 0; }
+  .pl-dist { display: inline-block; margin-left: var(--sp-2); font-size: var(--txt-xs); font-weight: var(--fw-semibold); color: var(--text-3); white-space: nowrap; }
+  .pl-meta { grid-area: meta; display: flex; align-items: center; }
+  .pl-tags-summary { width: 4.2em; text-align: center; font-size: var(--txt-xs); font-weight: var(--fw-bold); color: var(--type-c, var(--accent)); white-space: nowrap; line-height: 1.3; padding: 3px 0; background: color-mix(in srgb, var(--type-c, var(--accent)) 12%, transparent); border: none; border-radius: var(--r-pill); }
+  .pl-acts { grid-area: acts; display: flex; align-items: center; }
+  .pl-acts button { background: none; border: none; padding: 8px 5px; min-width: 28px; min-height: 36px; cursor: pointer; color: var(--text-3); display: flex; align-items: center; justify-content: center; }
+  .pl-sponsor-chip { display: inline-block; margin-left: var(--sp-2); vertical-align: middle; font-size: 10px; font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border-radius: var(--r-pill); background: var(--sponsor-soft); color: var(--sponsor); white-space: nowrap; line-height: 1.6; }
+
+  /* Carousel */
+  .sponsor-carousel-wrap { margin-bottom: 24px; max-width: 480px; }
+  .sponsor-carousel-title { font-size: var(--txt-xs); font-weight: var(--fw-bold); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sponsor-carousel-title svg { color: var(--sponsor); }
+  .sponsor-carousel { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .sponsor-carousel::-webkit-scrollbar { height: 3px; }
+  .sponsor-carousel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .sponsor-carousel-card { flex: 0 0 180px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+  .sponsor-carousel-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--sponsor), color-mix(in srgb, var(--sponsor) 40%, transparent)); }
+  .sponsor-carousel-card:hover { border-color: var(--sponsor); }
+  .sponsor-carousel-card .sc-icon-row { display: flex; align-items: center; gap: 6px; }
+  .sponsor-carousel-card .sc-dot { width: 22px; height: 22px; border-radius: var(--r-xs); display: flex; align-items: center; justify-content: center; color: #fff; }
+  .sponsor-carousel-card .sc-dot svg { width: 11px; height: 11px; }
+  .sponsor-carousel-card .sc-type { font-size: 10px; font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+  .sponsor-carousel-card .sc-name { font-size: var(--txt-base); font-weight: var(--fw-bold); color: var(--text); line-height: 1.3; }
+  .sponsor-carousel-card .sc-view { font-size: 11px; font-weight: var(--fw-semibold); color: var(--sponsor); align-self: flex-start; padding: 0; background: none; border: none; cursor: pointer; }
+
+  /* Map pins */
+  .pin-demo { display: flex; align-items: flex-end; gap: 48px; padding: 40px 24px; background: var(--surface-2); border-radius: var(--r-md); margin-bottom: 32px; flex-wrap: wrap; }
+  .pin-item { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .pin-item-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); text-align: center; }
+  .place-mk { display: flex; align-items: center; justify-content: center; width: var(--icon-md); height: var(--icon-md); border: var(--puck-border); border-radius: var(--puck-r); transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: relative; }
+  .place-mk svg { transform: rotate(45deg); flex-shrink: 0; }
+
+  @keyframes sponsorPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(176,136,48,0), 0 0 8px rgba(176,136,48,0.2), 0 2px 8px rgba(0,0,0,0.15); }
+    50% { box-shadow: 0 0 0 5px rgba(176,136,48,0.12), 0 0 14px rgba(176,136,48,0.3), 0 2px 8px rgba(0,0,0,0.15); }
+  }
+  @keyframes sponsorPulseDark {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,169,78,0), 0 0 10px rgba(212,169,78,0.25), 0 2px 8px rgba(0,0,0,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(212,169,78,0.15), 0 0 18px rgba(212,169,78,0.4), 0 2px 8px rgba(0,0,0,0.3); }
+  }
+  .place-mk--sponsored { width: calc(var(--icon-md) * 1.1); height: calc(var(--icon-md) * 1.1); border: 2.5px solid rgba(176,136,48,0.5); animation: sponsorPulse 2.5s ease-in-out infinite; }
+  body.dark-mode .place-mk--sponsored { border-color: rgba(212,169,78,0.6); animation-name: sponsorPulseDark; }
+  .place-mk--spotlight { width: calc(var(--icon-md) * 1.2); height: calc(var(--icon-md) * 1.2); border: 3px solid rgba(176,136,48,0.65); animation: sponsorPulse 2s ease-in-out infinite; }
+  body.dark-mode .place-mk--spotlight { border-color: rgba(212,169,78,0.75); animation-name: sponsorPulseDark; animation-duration: 2s; }
+
+  /* Search */
+  .search-dropdown { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-lg); overflow: hidden; max-width: 360px; width: 100%; }
+  .search-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background 0.12s; }
+  .search-item:hover { background: var(--surface-2); }
+  .search-item + .search-item { border-top: 1px solid var(--border-light); }
+  .r-icon { flex-shrink: 0; color: var(--text-3); display: flex; align-items: center; }
+  .r-body { flex: 1; min-width: 0; }
+  .r-name { font-size: var(--txt-base); font-weight: var(--fw-semibold); color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .r-addr { font-size: var(--txt-sm); color: var(--text-3); }
+  .r-halal-badge { font-size: 10px; font-weight: 700; color: var(--success); }
+  .r-sponsor-prefix { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--sponsor); letter-spacing: 0.03em; white-space: nowrap; }
+
+  /* Toast */
+  .snack { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-lg); padding: 10px 16px; max-width: 380px; width: fit-content; }
+  .snack-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--r-xs); display: flex; align-items: center; justify-content: center; }
+  .snack-icon--success { background: var(--success-soft); color: var(--success); }
+  .snack-icon--info { background: var(--sponsor-soft); color: var(--sponsor); }
+  .snack-body { flex: 1; }
+  .snack-label { font-size: var(--txt-base); font-weight: var(--fw-semibold); color: var(--text); }
+  .snack-sub { font-size: var(--txt-sm); color: var(--text-3); }
+  .snack-close { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; display: flex; align-items: center; line-height: 1; border-radius: var(--r-xs); transition: color 0.15s; }
+  .snack-close:hover { color: var(--text); }
+
+  /* Promo panel */
+  .promo-panel { max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-lg); overflow: hidden; }
+  .promo-panel-hdr { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: var(--txt-md); font-weight: var(--fw-bold); color: var(--text); border-bottom: 1px solid var(--border-light); }
+  .promo-panel-hdr svg { color: var(--sponsor); flex-shrink: 0; }
+  .promo-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; transition: background 0.12s; cursor: pointer; }
+  .promo-item:hover { background: var(--surface-2); }
+  .promo-item + .promo-item { border-top: 1px solid var(--border-light); }
+  .promo-item-icon { width: 28px; height: 28px; border-radius: var(--r-xs); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+  .promo-item-icon svg { width: 14px; height: 14px; }
+  .promo-item-body { flex: 1; min-width: 0; }
+  .promo-item-name { font-size: var(--txt-base); font-weight: var(--fw-semibold); color: var(--text); }
+  .promo-item-desc { font-size: var(--txt-sm); color: var(--text-3); }
+  .promo-item-code { flex-shrink: 0; font-size: var(--txt-xs); font-weight: var(--fw-bold); color: var(--sponsor); background: var(--sponsor-soft); padding: 3px 8px; border-radius: var(--r-pill); cursor: pointer; border: 1px solid color-mix(in srgb, var(--sponsor) 20%, transparent); transition: all 0.15s; }
+  .promo-item-code:hover { background: color-mix(in srgb, var(--sponsor) 16%, transparent); }
+
+  /* Pill buttons */
+  .pill-row { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; max-width: 400px; flex-wrap: wrap; }
+  .mock-pill { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pill); box-shadow: var(--shadow-md); font-size: var(--txt-sm); font-weight: var(--fw-semibold); color: var(--text-2); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .mock-pill:hover { border-color: var(--surface-3); color: var(--text); }
+  .mock-pill svg { flex-shrink: 0; }
+  .mock-pill--promo { color: var(--sponsor); border-color: color-mix(in srgb, var(--sponsor) 25%, var(--border)); background: var(--sponsor-soft); }
+  .mock-pill--promo:hover { background: color-mix(in srgb, var(--sponsor) 14%, transparent); }
+
+  /* Note box */
+  .note-box { border-left: 3px solid var(--sponsor); padding: 10px 14px; background: var(--sponsor-soft); border-radius: 0 var(--r-xs) var(--r-xs) 0; font-size: var(--txt-sm); color: var(--text-2); max-width: 520px; line-height: 1.6; margin: 16px 0; }
+  .note-box strong { color: var(--text); }
+
+  /* Sheet */
+  .sheet-preview { overflow-x: auto; margin-bottom: 32px; }
+  .sheet-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; min-width: 100%; }
+  .sheet-table th { background: var(--surface-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: var(--text-3); padding: 8px 12px; border: 1px solid var(--border); position: sticky; top: 0; }
+  .sheet-table td { padding: 7px 12px; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+  .sheet-table .new-col { background: var(--sponsor-soft); }
+  .sheet-table th.new-col { background: color-mix(in srgb, var(--sponsor) 20%, var(--surface-2)); color: var(--sponsor); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  .compare-col { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .compare-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+
+  @media (max-width: 680px) { .tier-row { grid-template-columns: 1fr; } .compare { grid-template-columns: 1fr; } .page { padding: 24px 16px 60px; } .page h1 { font-size: 22px; } }
+  hr { border: none; border-top: 1px solid var(--border-light); margin: 48px 0; }
+</style>
+</head>
+<body>
+
+<button class="dark-toggle" onclick="document.body.classList.toggle('dark-mode'); this.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light' : '🌙 Dark'">🌙 Dark</button>
+
+<div class="page">
+
+<h1>Sponsorship Visual Mockups</h1>
+<p class="subtitle">How sponsorship appears across the Halal Finder app — popups, map pins, list cards, search, promos, and the promo panel. Toggle dark mode with the top-right button.</p>
+
+<hr>
+<h2 class="section-title">1. Place Popups — Before &amp; After</h2>
+<p class="section-desc">The popup is the primary detail view. Sponsored restaurants get a "Sponsored ✦" badge (same label for all tiers — users don't see which tier) and a promo icon button in the action bar. The promo button is icon-only; tapping it copies a unique promo code and shows a persistent toast.</p>
+
+<h3 style="margin:24px 0 12px; font-size:15px; font-weight:600; color:var(--text-2)">Non-Sponsored (current)</h3>
+<div class="pp-wrap">
+  <div class="pp">
+    <div class="pp-inner">
+      <div class="pp-hdr">
+        <span class="pp-icon" style="color:var(--hsl-trunk)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+        <span class="pp-badge" style="background:color-mix(in srgb, var(--hsl-trunk) 12%, transparent);color:var(--hsl-trunk)">Restaurant</span>
+      </div>
+      <div class="pp-title">Hanami Sushi</div>
+      <div class="pp-addr">Hämeentie 45, 00500 Helsinki</div>
+      <div class="pp-tags">
+        <span class="pp-chip pp-chip-yes">Fully Halal</span>
+        <span class="pp-chip pp-chip-yes">Alcohol-free</span>
+        <span class="pp-chip pp-chip-yes">Japanese</span>
+      </div>
+      <div class="pp-actions">
+        <button title="Directions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg></button>
+        <button title="Share"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+        <button title="Suggest edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      </div>
+    </div>
+    <button class="pp-fav-btn" style="color:var(--text-3)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+  </div>
+</div>
+
+<div style="margin-top:36px"></div>
+<div class="tier-row">
+  <div class="tier-col">
+    <span class="tier-label tier-label--basic">Sponsored (no promo)</span>
+    <div class="pp-wrap">
+      <div class="pp">
+        <div class="pp-inner">
+          <div class="pp-hdr">
+            <span class="pp-icon" style="color:var(--hsl-trunk)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+            <span class="pp-badge" style="background:color-mix(in srgb, var(--hsl-trunk) 12%, transparent);color:var(--hsl-trunk)">Restaurant</span>
+            <span class="pp-sponsor">Sponsored ✦ <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          </div>
+          <div class="pp-title">Hanami Sushi</div>
+          <div class="pp-addr">Hämeentie 45, 00500 Helsinki</div>
+          <div class="pp-tags">
+            <span class="pp-chip pp-chip-yes">Fully Halal</span>
+            <span class="pp-chip pp-chip-yes">Alcohol-free</span>
+            <span class="pp-chip pp-chip-yes">Japanese</span>
+          </div>
+          <div class="pp-actions">
+            <button title="Directions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg></button>
+            <button title="Share"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button title="Suggest edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          </div>
+        </div>
+        <button class="pp-fav-btn" style="color:var(--text-3)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tier-col">
+    <span class="tier-label tier-label--featured">Sponsored + Promo</span>
+    <div class="pp-wrap">
+      <div class="pp">
+        <div class="pp-inner">
+          <div class="pp-hdr">
+            <span class="pp-icon" style="color:var(--hsl-trunk)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+            <span class="pp-badge" style="background:color-mix(in srgb, var(--hsl-trunk) 12%, transparent);color:var(--hsl-trunk)">Restaurant</span>
+            <span class="pp-sponsor">Sponsored ✦ <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          </div>
+          <div class="pp-title">Hanami Sushi</div>
+          <div class="pp-group">Part of Hanami Group</div>
+          <div class="pp-addr">Hämeentie 45, 00500 Helsinki</div>
+          <div class="pp-tags">
+            <span class="pp-chip pp-chip-yes">Fully Halal</span>
+            <span class="pp-chip pp-chip-yes">Alcohol-free</span>
+            <span class="pp-chip pp-chip-yes">Japanese</span>
+          </div>
+          <div class="pp-actions">
+            <button title="Directions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg></button>
+            <button title="Share"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button class="pp-promo-btn" title="Get promo code"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></button>
+            <button title="Suggest edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          </div>
+        </div>
+        <button class="pp-fav-btn" style="color:var(--gold)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+      </div>
+    </div>
+    <p style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.5">Promo button is icon-only (tag icon). Tapping it → copies a unique code → shows a persistent toast (see section 7).</p>
+  </div>
+</div>
+
+<hr>
+<h2 class="section-title">2. Map Pins — Normal vs. Sponsored</h2>
+<p class="section-desc">Sponsored restaurant pins are slightly larger and have a soft, breathing gold glow that pulses gently — subtle enough not to distract but eye-catching enough to notice. Spotlight pins are even bigger with a stronger glow. The animation runs continuously at a slow pace (2–2.5s cycle).</p>
+
+<div class="pin-demo">
+  <div class="pin-item">
+    <div class="place-mk" style="background: var(--hsl-trunk);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+    </div>
+    <div class="pin-item-label">Normal</div>
+  </div>
+  <div class="pin-item">
+    <div class="place-mk" style="background: var(--success);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+    </div>
+    <div class="pin-item-label">Normal<br>(mosque)</div>
+  </div>
+  <div class="pin-item">
+    <div class="place-mk place-mk--sponsored" style="background: var(--hsl-trunk);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+    </div>
+    <div class="pin-item-label">Sponsored<br>(glow pulse)</div>
+  </div>
+  <div class="pin-item">
+    <div class="place-mk place-mk--spotlight" style="background: var(--hsl-trunk);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+    </div>
+    <div class="pin-item-label">Spotlight<br>(bigger glow)</div>
+  </div>
+</div>
+
+<hr>
+<h2 class="section-title">3. Place List Cards — Before &amp; After</h2>
+<p class="section-desc">Sponsored restaurants show a unified "Sponsored" chip next to the name — same label regardless of tier.</p>
+
+<div class="compare">
+  <div class="compare-col">
+    <span class="compare-label">Non-Sponsored</span>
+    <div class="pl-card">
+      <span class="pl-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+      <span class="pl-name">Hanami Sushi</span>
+      <span class="pl-addr">Hämeentie 45, 00500 Helsinki <span class="pl-dist">1.2 km</span></span>
+      <div class="pl-meta"><span class="pl-tags-summary" style="--type-c:var(--hsl-trunk)">3 tags</span></div>
+      <div class="pl-acts">
+        <button><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg></button>
+        <button><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="compare-col">
+    <span class="compare-label">Sponsored</span>
+    <div class="pl-card">
+      <span class="pl-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+      <span class="pl-name">Hanami Sushi <span class="pl-sponsor-chip">Sponsored</span></span>
+      <span class="pl-addr">Hämeentie 45, 00500 Helsinki <span class="pl-dist">1.2 km</span></span>
+      <div class="pl-meta"><span class="pl-tags-summary" style="--type-c:var(--hsl-trunk)">3 tags</span></div>
+      <div class="pl-acts">
+        <button><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg></button>
+        <button><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h2 class="section-title">4. Sponsored Restaurants Carousel (Spotlight tier)</h2>
+<p class="section-desc">Appears at the top of the places list for Spotlight sponsors. Titled "Sponsored Restaurants" for transparency. All restaurants only.</p>
+
+<div class="sponsor-carousel-wrap">
+  <div class="sponsor-carousel-title">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    Sponsored Restaurants
+  </div>
+  <div class="sponsor-carousel">
+    <div class="sponsor-carousel-card">
+      <div class="sc-icon-row">
+        <div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+        <span class="sc-type">Restaurant</span>
+      </div>
+      <span class="sc-name">Hanami Sushi</span>
+      <button class="sc-view">View on map →</button>
+    </div>
+    <div class="sponsor-carousel-card">
+      <div class="sc-icon-row">
+        <div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+        <span class="sc-type">Restaurant</span>
+      </div>
+      <span class="sc-name">Ravintola Falafel King</span>
+      <button class="sc-view">View on map →</button>
+    </div>
+    <div class="sponsor-carousel-card">
+      <div class="sc-icon-row">
+        <div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></button>
+        <span class="sc-type">Restaurant</span>
+      </div>
+      <span class="sc-name">Biryani House</span>
+      <button class="sc-view">View on map →</button>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h2 class="section-title">5. Promo Panel — "All Restaurant Promos"</h2>
+<p class="section-desc">A new <strong>Promos</strong> pill button sits next to the existing Prayer Times pill. Tapping it opens a panel listing all sponsored restaurants that have promo codes. Tapping a code copies it. Each code is unique per IP to prevent abuse.</p>
+
+<h3 style="margin:24px 0 10px; font-size:14px; font-weight:600; color:var(--text-2)">Pill buttons (bottom-right controls)</h3>
+<div class="pill-row">
+  <div class="mock-pill">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Prayer Times
+  </div>
+  <div class="mock-pill mock-pill--promo">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    Promos
+  </div>
+</div>
+
+<h3 style="margin:24px 0 10px; font-size:14px; font-weight:600; color:var(--text-2)">Promo panel (opens on tap)</h3>
+<div class="promo-panel">
+  <div class="promo-panel-hdr">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    Restaurant Promos
+  </div>
+  <div class="promo-item">
+    <div class="promo-item-icon" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+    <div class="promo-item-body">
+      <div class="promo-item-name">Hanami Sushi</div>
+      <div class="promo-item-desc">10% off for Halal Finder users</div>
+    </div>
+    <button class="promo-item-code">HANAMI10</button>
+  </div>
+  <div class="promo-item">
+    <div class="promo-item-icon" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+    <div class="promo-item-body">
+      <div class="promo-item-name">Ravintola Falafel King</div>
+      <div class="promo-item-desc">Free side dish with any main</div>
+    </div>
+    <button class="promo-item-code">FALAFEL1</button>
+  </div>
+  <div class="promo-item">
+    <div class="promo-item-icon" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+    <div class="promo-item-body">
+      <div class="promo-item-name">Biryani House</div>
+      <div class="promo-item-desc">15% off your first order</div>
+    </div>
+    <button class="promo-item-code">BIRYANI15</button>
+  </div>
+</div>
+
+<div class="note-box">
+  <strong>Anti-abuse: unique codes per IP.</strong> When a user taps a promo code (either in the popup or the promo panel), the server generates a unique code variant tied to their IP hash. This prevents one person from sharing the same code publicly. The restaurant can verify codes against a simple lookup. Users see their personal code; if they clear cookies/use a new device, the same IP hash generates the same code again.
+</div>
+
+<hr>
+<h2 class="section-title">6. Search Results — Sponsored Label</h2>
+<p class="section-desc">Sponsored restaurants in search show a "Sponsored ·" prefix. Max 2 sponsored results in the top 4.</p>
+
+<div style="max-width:360px">
+  <div class="search-dropdown">
+    <div class="search-item">
+      <span class="r-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+      <div class="r-body">
+        <div class="r-name"><span class="r-sponsor-prefix">Sponsored ·</span> Hanami Sushi <span class="r-halal-badge">✓ verified</span></div>
+        <div class="r-addr">Hämeentie 45, Helsinki</div>
+      </div>
+    </div>
+    <div class="search-item">
+      <span class="r-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+      <div class="r-body">
+        <div class="r-name">Shalimar Restaurant <span class="r-halal-badge">✓ verified</span></div>
+        <div class="r-addr">Lönnrotinkatu 3, Helsinki</div>
+      </div>
+    </div>
+    <div class="search-item">
+      <span class="r-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
+      <div class="r-body">
+        <div class="r-name">Ravintola Kashmir <span class="r-halal-badge">✓ verified</span></div>
+        <div class="r-addr">Annankatu 28, Helsinki</div>
+      </div>
+    </div>
+    <div class="search-item">
+      <span class="r-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+      <div class="r-body">
+        <div class="r-name">Sushi Street</div>
+        <div class="r-addr">Kallio, Helsinki</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h2 class="section-title">7. Toast Notifications</h2>
+<p class="section-desc">The promo toast is <strong>persistent</strong> (not auto-closed) — it stays until the user taps the ✕ button. This gives them time to note the code.</p>
+
+<div style="display:flex; flex-direction:column; gap:16px; max-width:420px;">
+  <div class="snack">
+    <div class="snack-icon snack-icon--success">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="snack-body">
+      <div class="snack-label">Code HANAMI10-X7K copied!</div>
+      <div class="snack-sub">Show this at Hanami Sushi for 10% off</div>
+    </div>
+    <button class="snack-close" title="Dismiss">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="snack">
+    <div class="snack-icon snack-icon--info">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    </div>
+    <div class="snack-body">
+      <div class="snack-label">Some restaurants support Halal Finder through sponsorship</div>
+      <div class="snack-sub">Tap ℹ️ on any sponsor badge to learn more</div>
+    </div>
+  </div>
+</div>
+
+<div class="note-box" style="margin-top:20px">
+  <strong>Note:</strong> The promo code includes a short unique suffix (e.g., <code>-X7K</code>) derived from the user's IP hash. This makes each code unique while keeping it short enough to say at a counter.
+</div>
+
+<hr>
+<h2 class="section-title">8. Google Sheets — New Columns</h2>
+<p class="section-desc">Four new columns added to the Places sheet. Only restaurants are expected to use sponsorship, but the schema supports any type. Highlighted in gold below.</p>
+
+<div class="sheet-preview">
+  <table class="sheet-table">
+    <thead>
+      <tr>
+        <th>id</th><th>name</th><th>type</th><th>address</th><th>lat</th><th>lng</th><th>tags</th><th>boycott</th>
+        <th class="new-col">sponsor_tier</th><th class="new-col">sponsor_promo</th><th class="new-col">sponsor_promo_text</th><th class="new-col">sponsor_group</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>a1b2c3</td><td>Hanami Sushi</td><td>restaurant</td><td>Hämeentie 45, 00500 Helsinki</td><td>60.1870</td><td>24.9580</td><td>{"fully_halal":true}</td><td></td>
+        <td class="new-col"><strong>spotlight</strong></td><td class="new-col">HANAMI10</td><td class="new-col">10% off for Halal Finder users</td><td class="new-col">Hanami Group</td>
+      </tr>
+      <tr>
+        <td>d4e5f6</td><td>Hanami Express</td><td>restaurant</td><td>Mannerheimintie 10, 00100 Helsinki</td><td>60.1690</td><td>24.9410</td><td>{"fully_halal":true}</td><td></td>
+        <td class="new-col"><strong>basic</strong></td><td class="new-col"></td><td class="new-col"></td><td class="new-col">Hanami Group</td>
+      </tr>
+      <tr>
+        <td>g7h8i9</td><td>Ravintola Falafel King</td><td>restaurant</td><td>Vaasankatu 12, 00500 Helsinki</td><td>60.1860</td><td>24.9510</td><td>{"fully_halal":true}</td><td></td>
+        <td class="new-col"><strong>featured</strong></td><td class="new-col">FALAFEL1</td><td class="new-col">Free side dish with any main</td><td class="new-col"></td>
+      </tr>
+      <tr>
+        <td>j1k2l3</td><td>Helsinki Mosque</td><td>mosque</td><td>Fredrikinkatu 33, 00120 Helsinki</td><td>60.1650</td><td>24.9340</td><td>{"daily_prayers":true}</td><td></td>
+        <td class="new-col"></td><td class="new-col"></td><td class="new-col"></td><td class="new-col"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+<h2 class="section-title">9. Tier Comparison Matrix (internal)</h2>
+<p class="section-desc">Internal reference — users see only "Sponsored" regardless of tier. The tiers control what features are enabled.</p>
+
+<div class="sheet-preview">
+  <table class="sheet-table">
+    <thead>
+      <tr><th style="text-align:left">Feature</th><th>Basic</th><th>Featured</th><th>Spotlight</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>User-visible label</td><td style="text-align:center" colspan="3">"Sponsored ✦" (same for all)</td></tr>
+      <tr><td>Popup sponsor badge</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+      <tr><td>List card "Sponsored" chip</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+      <tr><td>Promo code (popup + panel)</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+      <tr><td>Search ranking boost</td><td style="text-align:center">—</td><td style="text-align:center">Small (+0.15)</td><td style="text-align:center">Larger (+0.25)</td></tr>
+      <tr><td>Enhanced map pin (glow pulse)</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅ (bigger)</td></tr>
+      <tr><td>Sponsored carousel</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
+      <tr><td>Enhanced social sharing</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
+      <tr><td>Chain grouping ("Part of…")</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+      <tr><td>Promos pill (visible in UI)</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<hr>
+
+<p style="text-align:center; color:var(--text-3); font-size:12px; margin-top:40px">
+  Halal Finder Sponsorship Mockups — Karamah Collective — March 2026<br>
+  Toggle dark mode to preview both themes. Open in browser and print/save as PDF.
+</p>
+
+</div>
+</body>
+</html>

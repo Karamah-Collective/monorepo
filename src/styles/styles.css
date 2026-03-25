@@ -2019,6 +2019,23 @@ body.dark-mode .sp-tip {
   display: none;
 }
 
+/* Sponsor marker glow — basic, featured & spotlight tiers */
+.place-mk--sponsor-basic {
+  border-color: #fff !important;
+  box-shadow:
+    0 0 0 3px var(--sponsor),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.place-mk--sponsored {
+  border-color: #fff !important;
+  box-shadow:
+    0 0 0 3px var(--sponsor),
+    0 0 12px 3px color-mix(in srgb, var(--sponsor) 40%, transparent);
+}
+.place-mk--spotlight {
+  animation: sponsorPulse 2s ease-in-out infinite;
+}
+
 .search-mk {
   background: var(--accent);
   box-shadow:
@@ -2154,6 +2171,24 @@ body.dark-mode .sp-tip {
   transition: color var(--t-fast);
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Promo copy button — positioned beside fav star */
+.pp .pp-promo-btn {
+  position: absolute;
+  top: 12px;
+  right: 34px;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--sponsor);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
+}
 @media (hover: hover) {
   .pp-fav-btn:hover {
     color: var(--gold);
@@ -2252,6 +2287,45 @@ body.dark-mode .sp-tip {
   border-left: 2px solid var(--gold);
   padding-left: 14px; /* 16px default − 2px for the extra border width */
 }
+
+/* ── Sponsor UI in list / popup / search ─────────────────────────────────── */
+.pl-sponsor-chip {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  vertical-align: middle;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
+  color: var(--sponsor);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* Sponsor badge in popup header */
+.pp-sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: var(--sp-2);
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--sponsor);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
+  white-space: nowrap;
+}
+
+/* Search dropdown sponsor label */
+.r-sponsor-label {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--sponsor);
+  margin-left: var(--sp-1);
+}
+
 
 .pp-actions {
   display: flex;
@@ -4007,6 +4081,247 @@ body.dark-mode #route-snackbar {
   background: #1a73b8;
 }
 
+/* ── Promos Button + Overlay ──────────────────────────────────────── */
+#promos-pill {
+  position: absolute;
+  z-index: var(--z-prayer);
+  top: calc(var(--safe-t) + 14px);
+  left: calc(16px + 44px + 8px);
+  color: var(--sponsor);
+  border-color: var(--gold-soft);
+  transition:
+    left 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+    background var(--t-fast);
+}
+@media (hover: hover) {
+  #promos-pill:hover { background: var(--surface-2); }
+}
+/* Shift right when prayer pill is expanded */
+#prayer-snack:not(.collapsed) ~ #promos-pill {
+  left: calc(16px + min(80vw, 210px) + 8px);
+}
+/* Stack after Eid pill when it's visible */
+#eid-pill:not(.hide) ~ #promos-pill {
+  left: calc(16px + 44px + 8px + 44px + 8px);
+}
+/* Prayer expanded + Eid visible */
+#prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #promos-pill {
+  left: calc(16px + min(80vw, 210px) + 8px + 44px + 8px);
+}
+
+/* ── Promos overlay panel (matches Eid pattern) ─── */
+#promos-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: 20px;
+  transition: opacity 0.25s ease;
+}
+#promos-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#promos-card {
+  width: 100%;
+  max-width: 380px;
+  max-height: min(500px, 80vh);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease;
+}
+#promos-overlay.hide #promos-card {
+  transform: scale(0.96);
+}
+#promos-card .suggest-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.promos-heading-icon {
+  color: var(--sponsor);
+  flex-shrink: 0;
+}
+#promos-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.promo-item {
+  display: grid;
+  grid-template: "icon name code" auto "icon addr code" auto / auto 1fr auto;
+  align-items: center;
+  column-gap: var(--sp-5);
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  transition: background var(--t-fast);
+}
+.promo-item + .promo-item {
+  border-top: 1px solid var(--border-light);
+}
+@media (hover: hover) {
+  .promo-item:hover { background: var(--surface-2); }
+}
+.promo-item:active { background: var(--accent-soft); }
+
+.promo-dot {
+  grid-area: icon;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-xs);
+  flex-shrink: 0;
+}
+.promo-name {
+  grid-area: name;
+  align-self: end;
+  font-size: var(--txt-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.promo-addr {
+  grid-area: addr;
+  align-self: start;
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.promo-code-wrap {
+  grid-area: code;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.promo-code {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  color: var(--sponsor);
+  white-space: nowrap;
+}
+.promo-text {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── Sponsor Carousel (places panel) ─────────────────────────────── */
+.sponsor-carousel {
+  border-bottom: 1px solid var(--border-light);
+}
+.sponsor-carousel-hdr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 16px var(--sp-2);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: default;
+}
+.sponsor-carousel-icon {
+  color: var(--sponsor);
+  flex-shrink: 0;
+}
+.sponsor-carousel-viewport {
+  padding: var(--sp-2) 16px var(--sp-4);
+}
+.sponsor-carousel-track {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.sponsor-carousel-track::-webkit-scrollbar { display: none; }
+
+.sponsor-card {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 200px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--sponsor) 25%, var(--border));
+  background: color-mix(in srgb, var(--sponsor) 4%, var(--surface));
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .sponsor-card:hover {
+    background: color-mix(in srgb, var(--sponsor) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--sponsor) 40%, var(--border));
+  }
+}
+.sponsor-card:active {
+  background: color-mix(in srgb, var(--sponsor) 14%, var(--surface));
+}
+.sponsor-card-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-xs);
+  flex-shrink: 0;
+}
+.sponsor-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.sponsor-card-name {
+  font-size: var(--txt-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sponsor-card-addr {
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #prayer-snack {
   position: absolute;
   z-index: var(--z-prayer);
@@ -4380,6 +4695,7 @@ body.dark-mode .loc-puck {
 }
 .loc-puck.has-heading {
   /* rotation set via JS — transition smooths it */
+  transition: transform var(--t-med);
 }
 .loc-ring {
   width: 40px;

@@ -41,15 +41,22 @@ function _localPlaceSearch(q) {
   if (!_localPlaces || !_localPlaces.length) return [];
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
   const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return _localPlaces
+  const matched = _localPlaces
     .filter(p => {
       const hay = normalize(`${p.name} ${p.address} ${p.type}`);
       return terms.every(t => hay.includes(normalize(t)));
-    })
+    });
+  // Boost: sponsored (non-boycott) places sort first, then alphabetical
+  matched.sort((a, b) => {
+    const sa = (a.sponsor && !a.boycott) ? 1 : 0;
+    const sb = (b.sponsor && !b.boycott) ? 1 : 0;
+    return sb - sa;
+  });
+  return matched
     .slice(0, 4)
     .map(p => {
       const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
-      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true };
+      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true, sponsor: (p.sponsor && !p.boycott) ? p.sponsor : null };
     });
 }
 
@@ -363,7 +370,7 @@ function showResults(items) {
   const html = items
     .map((r) => {
       const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
-      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}${r.sponsor ? ' <span class="r-sponsor-label">Sponsored</span>' : ''}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
     })
     .join("");
   rList.innerHTML = html;

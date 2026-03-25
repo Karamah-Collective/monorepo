@@ -63,7 +63,8 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": "KFC branch in Kamppi centre."
+    "notes": "KFC branch in Kamppi centre.",
+    "boycott": true
   },
   {
     "id": "m90m87",
@@ -77,7 +78,8 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": "Inside Itis shopping centre."
+    "notes": "Inside Itis shopping centre.",
+    "boycott": true
   },
   {
     "id": "hdgwe2",
@@ -91,7 +93,8 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": "Mall of Tripla branch."
+    "notes": "Mall of Tripla branch.",
+    "boycott": true
   },
   {
     "id": "7gp6mz",
@@ -105,7 +108,8 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": "Sello mall branch in Espoo."
+    "notes": "Sello mall branch in Espoo.",
+    "boycott": true
   },
   {
     "id": "eyvteo",
@@ -119,7 +123,8 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "Located in Kamppi centre."
+    "notes": "Located in Kamppi centre.",
+    "boycott": true
   },
   {
     "id": "t87tko",
@@ -133,7 +138,8 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "City-centre Burger King near Forum."
+    "notes": "City-centre Burger King near Forum.",
+    "boycott": true
   },
   {
     "id": "ets6od",
@@ -147,7 +153,8 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "Inside Itis area."
+    "notes": "Inside Itis area.",
+    "boycott": true
   },
   {
     "id": "zneup4",
@@ -161,7 +168,8 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "Mall of Tripla branch."
+    "notes": "Mall of Tripla branch.",
+    "boycott": true
   },
   {
     "id": "xnc8up",
@@ -175,11 +183,12 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "Redi shopping centre."
+    "notes": "Redi shopping centre.",
+    "boycott": true
   },
   {
     "id": "z7k66e",
-    "name": "Burger King Jumbo",
+    "name": "Burger King Dixi",
     "type": "restaurant",
     "address": "Vantaanportinkatu 7, 01510 Vantaa",
     "city": "Vantaa",
@@ -189,7 +198,8 @@
       "partially_halal": true,
       "no_alcohol": true
     },
-    "notes": "Burger King in Jumbo shopping centre."
+    "notes": "Burger King in Jumbo shopping centre.",
+    "boycott": true
   },
   {
     "id": "lf5l20",
@@ -270,11 +280,11 @@
     "lat": 60.1709733,
     "lng": 24.7268367,
     "tags": {
-      "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "daily_prayers": false
     },
     "notes": ""
   },
@@ -1146,7 +1156,7 @@
   },
   {
     "id": "6morhi",
-    "name": "Hanami Vallila",
+    "name": "Hanami Street Kitchen",
     "type": "restaurant",
     "address": "Sturenkatu 31, 00550 Helsinki",
     "city": "Helsinki",
@@ -1157,7 +1167,10 @@
       "cuisine_japanese": true,
       "no_alcohol": false
     },
-    "notes": "The chicken is Halal--the people are helpful and aware of halal/haram. They also have a fully halal, no alcohol restaurant named Jump Chick"
+    "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram.",
+    "sponsor": {
+      "tier": "basic"
+    }
   },
   {
     "id": "8jp8hr",
@@ -1172,7 +1185,12 @@
       "cuisine_chinese": true,
       "no_alcohol": false
     },
-    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination."
+    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination.",
+    "sponsor": {
+      "tier": "featured",
+      "cta": "Halal_10",
+      "text": "Featured mock"
+    }
   },
   {
     "id": "5x7lmi",
@@ -1186,7 +1204,12 @@
       "halal_meat": true,
       "halal_groceries": true
     },
-    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy."
+    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy.",
+    "sponsor": {
+      "tier": "spotlight",
+      "cta": "Halal_15",
+      "text": "Spotlight mock"
+    }
   },
   {
     "id": "qo8fs0",
@@ -1605,12 +1628,12 @@
     "lat": 60.1854763,
     "lng": 24.9159709,
     "tags": {
-      "no_alcohol": true,
-      "fully_halal": true,
+      "partially_halal": true,
       "cuisine_buffet": true,
-      "cuisine_sushi": true
+      "cuisine_sushi": true,
+      "no_alcohol": false
     },
-    "notes": ""
+    "notes": "Sushi and chicken are halal. Serves alcohol."
   },
   {
     "id": "w4u80v",
@@ -1685,7 +1708,7 @@
     "id": "zqnplx",
     "name": "Woolshed Helsinki - Australian Gastropub",
     "type": "restaurant",
-    "address": "Töölönlahdenkatu 3B, 00100 Helsinki, Finland",
+    "address": "Töölönlahdenkatu 3B, 00100 Helsinki",
     "city": "Helsinki",
     "lat": 60.1735388,
     "lng": 24.9390951,
@@ -1714,7 +1737,7 @@
     "id": "3zau87",
     "name": "Restaurant Haru Sushi",
     "type": "restaurant",
-    "address": "Fredrikinkatu 30, 00120 Helsinki, Finland",
+    "address": "Fredrikinkatu 30, 00120 Helsinki",
     "city": "Helsinki",
     "lat": 60.1652275,
     "lng": 24.9355066,
@@ -1730,7 +1753,7 @@
     "id": "sow6vc",
     "name": "Haru Plus Sushi",
     "type": "restaurant",
-    "address": "Annankatu 6, 00120 Helsinki, Finland",
+    "address": "Annankatu 6, 00120 Helsinki",
     "city": "Helsinki",
     "lat": 60.1635007,
     "lng": 24.9414105,
@@ -1746,7 +1769,7 @@
     "id": "98gx71",
     "name": "Hanami Sushi",
     "type": "restaurant",
-    "address": "Kirkkotallintie 2 A 2, 02400 Kirkkonummi, Finland",
+    "address": "Kirkkotallintie 2 A 2, 02400 Kirkkonummi",
     "city": "Kirkkonummi",
     "lat": 60.1232946,
     "lng": 24.4399644,
@@ -1757,5 +1780,231 @@
       "no_alcohol": false
     },
     "notes": "Sushi and chicken are halal. Serves alcohol."
+  },
+  {
+    "id": "m8mf0p",
+    "name": "Ahaan Tam Sang",
+    "type": "restaurant",
+    "address": "Itäkatu 1, 00930 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2122154,
+    "lng": 25.0828953,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_thai": true,
+      "no_alcohol": false
+    },
+    "notes": "Chicken imported from Thailand (halal)"
+  },
+  {
+    "id": "bjdubw",
+    "name": "Orient Express",
+    "type": "restaurant",
+    "address": "Markkinakatu 2a, 02230 Espoo",
+    "city": "Espoo",
+    "lat": 60.160354,
+    "lng": 24.7382225,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_turkish": true,
+      "cuisine_buffet": true
+    },
+    "notes": "Inside Iso Omena, foodcourt"
+  },
+  {
+    "id": "20revp",
+    "name": "Istanbul Grilli",
+    "type": "restaurant",
+    "address": "Fredrikinkatu 29, 00120 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1630055,
+    "lng": 24.939169,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_turkish": true,
+      "cuisine_buffet": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "zo9423",
+    "name": "Pho Viet",
+    "type": "restaurant",
+    "address": "Eerikinkatu 1, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1678989,
+    "lng": 24.9375574,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_vietnamese": true,
+      "no_alcohol": false
+    },
+    "notes": "The chicken supply is halal (at the moment), but please confirm on the counter before ordering."
+  },
+  {
+    "id": "luazrl",
+    "name": "Street Canteen",
+    "type": "restaurant",
+    "address": "Länsituuli 2, 02100 Espoo",
+    "city": "Espoo",
+    "lat": 60.1754787,
+    "lng": 24.803661,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_malaysian": true,
+      "no_alcohol": false
+    },
+    "notes": "Chicken is halal."
+  },
+  {
+    "id": "scbd9a",
+    "name": "Itsuyaki Ainoa",
+    "type": "restaurant",
+    "address": "Kauppakeskus Ainoa 3.krs, Länsituuli 5, 02100 Espoo",
+    "city": "Espoo",
+    "lat": 60.1755694,
+    "lng": 24.804628,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_japanese": true,
+      "no_alcohol": false
+    },
+    "notes": "The chicken and beef is halal, please check with the staff just in case."
+  },
+  {
+    "id": "8fq5x6",
+    "name": "Tawook Lab",
+    "type": "restaurant",
+    "address": "Citykäytävä, Aleksanterinkatu 21, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1693947,
+    "lng": 24.9413238,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_middle_eastern": true,
+      "cuisine_syrian": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "3i1yjb",
+    "name": "Restaurant Sri",
+    "type": "restaurant",
+    "address": "Keilaniementori 2, 02150 Espoo",
+    "city": "Espoo",
+    "lat": 60.1744922,
+    "lng": 24.82924,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_indian": true,
+      "cuisine_sri_lankan": true
+    },
+    "notes": "Please check on the counter for full halal verification."
+  },
+  {
+    "id": "zt6ipb",
+    "name": "Ravintola Villa Nepal (Kamppi)",
+    "type": "restaurant",
+    "address": "Urho Kekkosen katu 1, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1691567,
+    "lng": 24.9332274,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_indian": true,
+      "cuisine_nepalese": true
+    },
+    "notes": "Please check on the counter for full halal verification."
+  },
+  {
+    "id": "s2m2g6",
+    "name": "SHIN Cafe Citycenter",
+    "type": "restaurant",
+    "address": "Kaivokatu 8, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1701167,
+    "lng": 24.9418203,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_cafe": true,
+      "cuisine_pastries": true
+    },
+    "notes": "Some items are labeled halal, please check on the counter"
+  },
+  {
+    "id": "qazhwu",
+    "name": "Yemeni restaurant",
+    "type": "restaurant",
+    "address": "Abraham Wetterin tie 6, 00880 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.192812,
+    "lng": 25.0430965,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_middle_eastern": true,
+      "cuisine_yemeni": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "6llkdn",
+    "name": "Tandoori Villa Kalasatama",
+    "type": "restaurant",
+    "address": "Sörnäistenlaituri 3, 00540 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1853484,
+    "lng": 24.983638,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_indian": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "rbw2fc",
+    "name": "Taste of Uyghur Restaurant",
+    "type": "restaurant",
+    "address": "Vilhonvuorenkatu 11 a, 00500 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1864793,
+    "lng": 24.966985,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_uyghur": true,
+      "cuisine_central_asia": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "72pehq",
+    "name": "Alshifa koivukylän moskeija, Rautkallionkatu 3, 01360 Vantaa",
+    "type": "mosque",
+    "address": "Rautkallionkatu 3, 01360 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.3230465,
+    "lng": 25.0639189,
+    "tags": {
+      "daily_prayers": true,
+      "female_prayer": true,
+      "female_wudu": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "a46hp3",
+    "name": "Sid Bou Said",
+    "type": "restaurant",
+    "address": "Sahaajankatu 26, 00880 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.201299208377776,
+    "lng": 25.04689825506935,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_arab": true,
+      "cuisine_middle_eastern": true,
+      "cuisine_tunisian": true
+    },
+    "notes": ""
   }
 ]

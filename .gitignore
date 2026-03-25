@@ -8,6 +8,7 @@ src/config.local.js
 .env
 .env.local
 .env.*.local
+.dev.vars
 scripts/apps-script/Code.gs
 
 

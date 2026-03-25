@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsored Pin Options — Halal Finder</title>
+<style>
+  :root {
+    --gold: #b08830;
+    --gold-light: #d4a94e;
+    --gold-bright: #f0c040;
+    --icon-md: 38px;
+    --puck-r: 50% 50% 50% 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #e8e8e8;
+    color: #1a1a1a;
+    padding: 24px;
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .subtitle { color: #666; margin-bottom: 32px; font-size: 14px; }
+
+  .tier-section {
+    margin-bottom: 48px;
+  }
+  .tier-title {
+    font-size: 17px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ccc;
+  }
+  .tier-title.basic { color: #888; }
+  .tier-title.featured { color: var(--gold); }
+  .tier-title.spotlight { color: #c07a00; }
+
+  .tier-desc {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 20px;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .option-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .option-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .option-desc {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Map background to simulate the real map surface */
+  .pin-stage {
+    width: 120px;
+    height: 100px;
+    background: #d4e7c5;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: visible;
+  }
+
+  /* Base puck shape — matches the real app */
+  .pin {
+    width: var(--icon-md);
+    height: var(--icon-md);
+    border-radius: var(--puck-r);
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .pin svg {
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     REGULAR PIN (reference — what all non-sponsored pins look like)
+     ═══════════════════════════════════════════════════════════════════════ */
+  .pin-regular {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     BASIC TIER OPTIONS
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* B1: Gold border (current) */
+  .pin-b1 {
+    background: #e67632;
+    border: 2.5px solid var(--gold);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* B2: Thicker gold border */
+  .pin-b2 {
+    background: #e67632;
+    border: 3.5px solid var(--gold-light);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* B3: White border + outer gold ring */
+  .pin-b3 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 0 2.5px var(--gold),
+      0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* B4: Double border (white inner + gold outline) */
+  .pin-b4 {
+    background: #e67632;
+    border: 2px solid #fff;
+    outline: 2.5px solid var(--gold);
+    outline-offset: 0px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* B5: Gold bottom notch / badge dot */
+  .pin-b5 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .pin-b5::after {
+    content: "★";
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 14px;
+    height: 14px;
+    background: var(--gold);
+    color: #fff;
+    font-size: 8px;
+    line-height: 14px;
+    text-align: center;
+    border-radius: 50%;
+    transform: rotate(45deg);
+    border: 1.5px solid #fff;
+    z-index: 1;
+  }
+
+  /* B6: Slightly larger pin */
+  .pin-b6 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    width: 42px;
+    height: 42px;
+  }
+
+  /* B7: Gold tinted shadow */
+  .pin-b7 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 2px 8px rgba(176, 136, 48, 0.5),
+      0 4px 14px rgba(176, 136, 48, 0.25);
+  }
+
+  /* B8: Bright gold border */
+  .pin-b8 {
+    background: #e67632;
+    border: 3px solid var(--gold-bright);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FEATURED TIER OPTIONS
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* F1: Current — gold border + static glow */
+  .pin-f1 {
+    background: #e67632;
+    border: 2.5px solid var(--gold);
+    box-shadow:
+      0 0 0 3px rgba(176, 136, 48, 0.5),
+      0 0 10px 2px rgba(176, 136, 48, 0.3);
+  }
+
+  /* F2: White border + gold glow ring */
+  .pin-f2 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 12px 3px rgba(176, 136, 48, 0.4);
+  }
+
+  /* F3: Double ring — white inner, gold outer + glow */
+  .pin-f3 {
+    background: #e67632;
+    border: 2px solid #fff;
+    outline: 2.5px solid var(--gold);
+    outline-offset: 0px;
+    box-shadow:
+      0 0 10px 3px rgba(176, 136, 48, 0.35),
+      0 0 20px 6px rgba(176, 136, 48, 0.15);
+    position: relative;
+  }
+
+  /* F4: Larger pin + gold glow */
+  .pin-f4 {
+    background: #e67632;
+    border: 3px solid var(--gold-light);
+    width: 44px;
+    height: 44px;
+    box-shadow:
+      0 0 0 3px rgba(212, 169, 78, 0.4),
+      0 0 14px 4px rgba(176, 136, 48, 0.25);
+  }
+
+  /* F5: Bright gold border + strong warm glow */
+  .pin-f5 {
+    background: #e67632;
+    border: 3px solid var(--gold-bright);
+    box-shadow:
+      0 0 0 2px rgba(240, 192, 64, 0.5),
+      0 0 14px 4px rgba(240, 192, 64, 0.35),
+      0 0 24px 8px rgba(240, 192, 64, 0.12);
+  }
+
+  /* F6: White border + golden halo (wide soft glow, no hard ring) */
+  .pin-f6 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 12px 4px rgba(212, 169, 78, 0.5),
+      0 0 24px 8px rgba(176, 136, 48, 0.2);
+  }
+
+  /* F7: Gold gradient border effect (via background clip trick) */
+  .pin-f7 {
+    background:
+      linear-gradient(#e67632, #e67632) padding-box,
+      linear-gradient(135deg, #f0c040, #b08830, #f0c040) border-box;
+    border: 3px solid transparent;
+    box-shadow:
+      0 0 10px 2px rgba(176, 136, 48, 0.35);
+  }
+
+  /* F8: Star badge + glow */
+  .pin-f8 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 12px 3px rgba(176, 136, 48, 0.35);
+  }
+  .pin-f8::after {
+    content: "★";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    background: var(--gold);
+    color: #fff;
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 50%;
+    transform: rotate(45deg);
+    border: 1.5px solid #fff;
+    z-index: 1;
+  }
+
+  /* F9: Concentric rings */
+  .pin-f9 {
+    background: #e67632;
+    border: 2.5px solid var(--gold-light);
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,0.6),
+      0 0 0 4.5px var(--gold),
+      0 0 10px 5px rgba(176, 136, 48, 0.2);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     SPOTLIGHT TIER OPTIONS
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* S1: Current — pulsing glow ring */
+  .pin-s1 {
+    background: #e67632;
+    border: 2.5px solid var(--gold);
+    animation: s1-pulse 2s ease-in-out infinite;
+  }
+  @keyframes s1-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px rgba(176,136,48,0.5),
+        0 0 10px 2px rgba(176,136,48,0.3);
+    }
+    50% {
+      box-shadow:
+        0 0 0 6px rgba(176,136,48,0.35),
+        0 0 16px 4px rgba(176,136,48,0.2);
+    }
+  }
+
+  /* S2: Pulsing halo + white border (more visible) */
+  .pin-s2 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    animation: s2-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes s2-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px var(--gold),
+        0 0 12px 4px rgba(212,169,78,0.45);
+    }
+    50% {
+      box-shadow:
+        0 0 0 6px var(--gold),
+        0 0 20px 8px rgba(212,169,78,0.3);
+    }
+  }
+
+  /* S3: Radiating rings (ripple out) */
+  .pin-s3-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pin-s3-wrap::before,
+  .pin-s3-wrap::after {
+    content: "";
+    position: absolute;
+    width: var(--icon-md);
+    height: var(--icon-md);
+    border-radius: var(--puck-r);
+    transform: rotate(-45deg);
+    border: 2px solid var(--gold);
+    opacity: 0;
+    animation: s3-ripple 2.5s ease-out infinite;
+  }
+  .pin-s3-wrap::after { animation-delay: 1.25s; }
+  @keyframes s3-ripple {
+    0% { opacity: 0.6; transform: rotate(-45deg) scale(1); }
+    100% { opacity: 0; transform: rotate(-45deg) scale(1.8); }
+  }
+  .pin-s3 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 10px 3px rgba(176,136,48,0.3);
+    z-index: 1;
+  }
+
+  /* S4: Breathing size + glow */
+  .pin-s4 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 12px 4px rgba(176,136,48,0.35);
+    animation: s4-breathe 2.5s ease-in-out infinite;
+  }
+  @keyframes s4-breathe {
+    0%, 100% {
+      transform: rotate(-45deg) scale(1);
+      box-shadow:
+        0 0 0 3px var(--gold),
+        0 0 12px 4px rgba(176,136,48,0.35);
+    }
+    50% {
+      transform: rotate(-45deg) scale(1.12);
+      box-shadow:
+        0 0 0 4px var(--gold),
+        0 0 18px 6px rgba(176,136,48,0.25);
+    }
+  }
+
+  /* S5: Bright gold pulse + larger */
+  .pin-s5 {
+    background: #e67632;
+    border: 3px solid var(--gold-bright);
+    width: 44px;
+    height: 44px;
+    animation: s5-pulse 2s ease-in-out infinite;
+  }
+  @keyframes s5-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 3px rgba(240,192,64,0.5),
+        0 0 14px 4px rgba(240,192,64,0.3),
+        0 0 28px 8px rgba(240,192,64,0.1);
+    }
+    50% {
+      box-shadow:
+        0 0 0 6px rgba(240,192,64,0.4),
+        0 0 22px 8px rgba(240,192,64,0.25),
+        0 0 36px 12px rgba(240,192,64,0.08);
+    }
+  }
+
+  /* S6: Double ring + pulse */
+  .pin-s6 {
+    background: #e67632;
+    border: 2px solid #fff;
+    outline: 2.5px solid var(--gold-light);
+    outline-offset: 0px;
+    animation: s6-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes s6-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 10px 3px rgba(176,136,48,0.4),
+        0 0 22px 6px rgba(176,136,48,0.15);
+    }
+    50% {
+      box-shadow:
+        0 0 14px 5px rgba(176,136,48,0.3),
+        0 0 30px 10px rgba(176,136,48,0.1);
+    }
+  }
+
+  /* S7: Gradient border + pulse + star badge */
+  .pin-s7 {
+    background:
+      linear-gradient(#e67632, #e67632) padding-box,
+      linear-gradient(135deg, #f0c040, #b08830, #f0c040) border-box;
+    border: 3px solid transparent;
+    animation: s7-pulse 2s ease-in-out infinite;
+  }
+  .pin-s7::after {
+    content: "★";
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #f0c040, #b08830);
+    color: #fff;
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 50%;
+    transform: rotate(45deg);
+    border: 1.5px solid #fff;
+    z-index: 1;
+  }
+  @keyframes s7-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px 2px rgba(176,136,48,0.4),
+        0 0 18px 6px rgba(176,136,48,0.2);
+    }
+    50% {
+      box-shadow:
+        0 0 14px 4px rgba(176,136,48,0.3),
+        0 0 26px 10px rgba(176,136,48,0.12);
+    }
+  }
+
+  /* S8: Warm pulsing halo — soft wide glow, no hard ring */
+  .pin-s8 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    animation: s8-glow 2.5s ease-in-out infinite;
+  }
+  @keyframes s8-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 10px 5px rgba(212,169,78,0.45),
+        0 0 24px 10px rgba(176,136,48,0.2);
+    }
+    50% {
+      box-shadow:
+        0 0 16px 8px rgba(212,169,78,0.35),
+        0 0 32px 14px rgba(176,136,48,0.12);
+    }
+  }
+
+  /* S9: Concentric gold rings + breathe */
+  .pin-s9 {
+    background: #e67632;
+    border: 2.5px solid var(--gold-bright);
+    animation: s9-pulse 2s ease-in-out infinite;
+  }
+  @keyframes s9-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.6),
+        0 0 0 5px var(--gold),
+        0 0 12px 6px rgba(176,136,48,0.3);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px rgba(255,255,255,0.5),
+        0 0 0 7px var(--gold),
+        0 0 18px 8px rgba(176,136,48,0.2);
+    }
+  }
+
+  /* S10: Shadow-only pulse (no border change, just glowing shadow) */
+  .pin-s10 {
+    background: #e67632;
+    border: 2.5px solid #fff;
+    animation: s10-shadow 2s ease-in-out infinite;
+  }
+  @keyframes s10-shadow {
+    0%, 100% {
+      box-shadow:
+        0 0 6px 2px rgba(212,169,78,0.6),
+        0 0 16px 6px rgba(176,136,48,0.3),
+        0 0 30px 10px rgba(176,136,48,0.1);
+    }
+    50% {
+      box-shadow:
+        0 0 10px 4px rgba(212,169,78,0.5),
+        0 0 24px 10px rgba(176,136,48,0.25),
+        0 0 40px 16px rgba(176,136,48,0.08);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DARK MODE TOGGLE
+     ═══════════════════════════════════════════════════════════════════════ */
+  .toggle-bar {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+  }
+  .toggle-bar button {
+    padding: 6px 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  body.dark {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+  body.dark .option-card {
+    background: #2a2a2a;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  body.dark .option-desc { color: #999; }
+  body.dark .pin-stage { background: #2d3a25; }
+  body.dark .tier-desc { color: #999; }
+  body.dark .toggle-bar button { background: #333; color: #ddd; border-color: #555; }
+</style>
+</head>
+<body>
+
+<div class="toggle-bar">
+  <button onclick="document.body.classList.toggle('dark')">Toggle Dark Mode</button>
+</div>
+
+<h1>Sponsored Pin Options</h1>
+<p class="subtitle">Each pin shown on a map-green background. Regular (non-sponsored) pin shown for comparison. Toggle dark mode top-right.</p>
+
+<!-- ───────────────── REFERENCE ───────────────── -->
+<div class="tier-section">
+  <div class="tier-title" style="color:#e67632">Reference — Regular Pin</div>
+  <div class="tier-desc">This is what all non-sponsored pins look like. Sponsored options must stand out from this.</div>
+  <div class="options-grid">
+    <div class="option-card">
+      <div class="pin-stage">
+        <div class="pin pin-regular"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+      </div>
+      <div class="option-label">Regular Pin</div>
+      <div class="option-desc">White border, subtle drop shadow. The baseline.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────── BASIC TIER ───────────────── -->
+<div class="tier-section">
+  <div class="tier-title basic">Basic Tier</div>
+  <div class="tier-desc">Subtle differentiation — enough to notice, not enough to dominate the map.</div>
+  <div class="options-grid">
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b1"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B1 — Gold Border (current)</div>
+      <div class="option-desc">Gold replaces white border. Subtle but doesn't stand out enough.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b2"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B2 — Thick Gold Border</div>
+      <div class="option-desc">Thicker (3.5px) + lighter gold. More visible than B1.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b3"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B3 — White Border + Gold Ring</div>
+      <div class="option-desc">Keeps familiar white border. Gold ring OUTSIDE — visible contrast layer.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b4"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B4 — Double Border (white + gold)</div>
+      <div class="option-desc">White inner border, gold outline. Clean two-tone ring effect.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b5"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B5 — Star Badge</div>
+      <div class="option-desc">Normal pin + small gold star badge on corner. Unambiguous "sponsored" signal.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b6"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B6 — Larger Pin</div>
+      <div class="option-desc">42px instead of 38px. Bigger = more prominent, same white border.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b7"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B7 — Gold Shadow</div>
+      <div class="option-desc">White border, but shadow is warm gold instead of grey. Subtle warm glow.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-b8"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">B8 — Bright Gold Border</div>
+      <div class="option-desc">3px border in bright gold (#f0c040). Maximum border visibility.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────── FEATURED TIER ───────────────── -->
+<div class="tier-section">
+  <div class="tier-title featured">Featured Tier</div>
+  <div class="tier-desc">Clearly stands out — static glow/ring effects, no animation.</div>
+  <div class="options-grid">
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f1"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F1 — Gold Border + Glow (current)</div>
+      <div class="option-desc">Gold border, static gold box-shadow ring + spread glow.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f2"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F2 — White Border + Gold Glow</div>
+      <div class="option-desc">Keeps the familiar white border. Gold ring + glow outside. Best of both worlds.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f3"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F3 — Double Ring + Wide Glow</div>
+      <div class="option-desc">White inner border, gold outline, plus wide soft glow. Very premium.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f4"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F4 — Larger + Light Gold Glow</div>
+      <div class="option-desc">44px pin, light gold border, gold ring glow. Size + glow = maximum visual weight.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f5"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F5 — Bright Gold + Triple Glow</div>
+      <div class="option-desc">Bright gold border (#f0c040), 3-layer glow (ring + mid + wide). Eye-catching.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f6"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F6 — White Border + Warm Halo</div>
+      <div class="option-desc">No hard ring — just a wide warm golden halo. Soft and elegant.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f7"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F7 — Gradient Gold Border</div>
+      <div class="option-desc">Gold gradient border (bright to dark gold). Shimmer effect + subtle glow.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f8"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F8 — Gold Ring + Star Badge</div>
+      <div class="option-desc">Gold outer ring + glow, plus a star badge on top-right corner.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-f9"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">F9 — Concentric Rings</div>
+      <div class="option-desc">Gold border, white gap, gold outer ring, soft glow. Bullseye effect.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────── SPOTLIGHT TIER ───────────────── -->
+<div class="tier-section">
+  <div class="tier-title spotlight">Spotlight Tier</div>
+  <div class="tier-desc">Maximum attention — animated effects. Should be the most eye-catching pin on the map.</div>
+  <div class="options-grid">
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s1"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S1 — Pulsing Glow Ring (current)</div>
+      <div class="option-desc">Gold border, box-shadow ring pulses in/out. Current implementation.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s2"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S2 — White Border + Pulsing Gold</div>
+      <div class="option-desc">Keeps white border for familiarity. Pulsing gold ring + glow outside.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage">
+        <div class="pin-s3-wrap"><div class="pin pin-s3"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      </div>
+      <div class="option-label">S3 — Radiating Ripples</div>
+      <div class="option-desc">Puck-shaped rings radiate outward from the pin. Strong "broadcasting" feel.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s4"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S4 — Breathing Scale + Glow</div>
+      <div class="option-desc">Pin gently grows/shrinks (1.0→1.12) with gold glow. Alive, not aggressive.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s5"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S5 — Larger + Bright Gold Pulse</div>
+      <div class="option-desc">44px pin, bright gold (#f0c040) border, 3-layer pulsing glow. Maximum presence.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s6"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S6 — Double Ring + Pulse</div>
+      <div class="option-desc">White inner border, gold outline, pulsing wide glow. Premium layered look.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s7"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S7 — Gradient Border + Star + Pulse</div>
+      <div class="option-desc">Gradient gold border, pulsing glow, star badge. The kitchen sink option.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s8"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S8 — Warm Pulsing Halo</div>
+      <div class="option-desc">White border, wide warm golden halo that breathes. Elegant, not aggressive.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s9"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S9 — Concentric Rings + Pulse</div>
+      <div class="option-desc">Bright gold border, white gap, gold ring — all pulsing. Bullseye broadcast.</div>
+    </div>
+    <div class="option-card">
+      <div class="pin-stage"><div class="pin pin-s10"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div></div>
+      <div class="option-label">S10 — Shadow-Only Pulse</div>
+      <div class="option-desc">White border stays constant. Only the golden shadow pulses. Clean and modern.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

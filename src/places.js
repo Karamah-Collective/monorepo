@@ -349,9 +349,12 @@ function _buildCard(p, i) {
   const boycottBadge = p.boycott
     ? `<span class="pl-boycott-chip">Boycott Watch</span>`
     : "";
+  const sponsorBadge = (p.sponsor && !p.boycott)
+    ? `<span class="pl-sponsor-chip">Sponsored</span>`
+    : "";
   return `<li class="pl-card${p.boycott ? " pl-card--boycott" : ""}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${esc(p.name)}${boycottBadge}</span>
+    <span class="pl-name">${esc(p.name)}${boycottBadge}${sponsorBadge}</span>
     <span class="pl-addr">${esc(p.address)}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
@@ -463,6 +466,8 @@ export async function loadPlacesData() {
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
+    renderPromosPill();
+
 
     // 4. Background refresh from API — update cache + UI if data changed
     fetchFresh().then(data => {
@@ -483,6 +488,7 @@ export async function loadPlacesData() {
         addPlaceMarkers();  // Full refresh removes old + adds new
         renderPlacesList();
         updatePlacesBadge();
+        renderPromosPill();
       }
       writeCache(normalizePlacesData(data.places), data.tags || {});
     });
@@ -672,6 +678,16 @@ export function addPlaceMarkers() {
     const el = document.createElement("div");
     el.className = "place-mk-wrap";
     el.innerHTML = makePlaceMarkerHTML(place.type);
+    // Sponsor glow on the puck — basic gets gold border, featured gets glow, spotlight gets pulse
+    // Higher z-index so sponsored pins render on top when overlapping
+    if (place.sponsor && !place.boycott) {
+      const puck = el.querySelector(".place-mk");
+      if (puck) {
+        if (place.sponsor.tier === "spotlight") { puck.classList.add("place-mk--sponsored", "place-mk--spotlight"); el.style.zIndex = "4"; }
+        else if (place.sponsor.tier === "featured") { puck.classList.add("place-mk--sponsored"); el.style.zIndex = "3"; }
+        else { puck.classList.add("place-mk--sponsor-basic"); el.style.zIndex = "2"; }
+      }
+    }
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([place.lng, place.lat]).addTo(map);
     el.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -735,7 +751,8 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   hdr.className = "pp-hdr";
   hdr.innerHTML =
     `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
-    `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>`;
+    `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>` +
+    (place.sponsor && !place.boycott ? `<span class="pp-sponsor-badge">Sponsored</span>` : ``);
   inner.appendChild(hdr);
 
   // Title
@@ -857,6 +874,23 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
   });
   root.appendChild(favBtn);
+
+  // Promo copy button — beside fav star, only for sponsors with a CTA (promo code)
+  if (place.sponsor?.cta && !place.boycott) {
+    const promoBtn = document.createElement("button");
+    promoBtn.className = "pp-promo-btn";
+    promoBtn.title = "Copy promo";
+    promoBtn.setAttribute("aria-label", "Copy promo code");
+    promoBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+    promoBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copyToClipboard(place.sponsor.cta);
+      const sub = place.sponsor.text || null;
+      showToast(place.sponsor.cta, "check", sub);
+    });
+    root.appendChild(promoBtn);
+  }
+
   clearActivePlacePopup();
 
   // Track the open popup id for toggle-close
@@ -1529,6 +1563,322 @@ function renderPlacesList() {
   }
 
   list.innerHTML = recentHtml + regularHTML + pinHTML;
+
+  // Render sponsored carousel at the top of the places list
+  _renderSponsorCarousel(filtered);
+}
+
+// ── Promos Button + Overlay ──────────────────────────────────────────────────
+const _promosPill = document.getElementById("promos-pill");
+const _promosOverlay = document.getElementById("promos-overlay");
+const _promosList = document.getElementById("promos-list");
+
+function _getPromoPlaces() {
+  return placesData.filter(p => p.sponsor?.cta && !p.boycott);
+}
+
+export function renderPromosPill() {
+  const promos = _getPromoPlaces();
+  if (!promos.length) {
+    _promosPill.classList.add("hide");
+    return;
+  }
+  _promosPill.classList.remove("hide");
+  _promosList.innerHTML = promos.map(p => {
+    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+    return `<button class="promo-item" data-promo-code="${escA(p.sponsor.cta)}" data-promo-text="${escA(p.sponsor.text || "")}">
+      <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span>
+      <span class="promo-name">${esc(p.name)}</span>
+      <span class="promo-addr">${esc(p.address)}</span>
+      <div class="promo-code-wrap">
+        <span class="promo-code">${esc(p.sponsor.cta)}</span>
+        ${p.sponsor.text ? `<span class="promo-text">${esc(p.sponsor.text)}</span>` : ""}
+      </div>
+    </button>`;
+  }).join("");
+}
+
+_promosPill.addEventListener("click", () => {
+  _promosOverlay.classList.remove("hide");
+});
+
+document.getElementById("promos-close").addEventListener("click", () => {
+  _promosOverlay.classList.add("hide");
+});
+
+_promosOverlay.addEventListener("click", (e) => {
+  if (e.target === _promosOverlay) _promosOverlay.classList.add("hide");
+});
+
+_promosList.addEventListener("click", (e) => {
+  const btn = e.target.closest(".promo-item");
+  if (!btn) return;
+  e.stopPropagation();
+  const code = btn.dataset.promoCode;
+  const text = btn.dataset.promoText;
+  copyToClipboard(code);
+  showToast(code, "check", text || null);
+});
+
+// ── Sponsored Carousel in places list ───────────────────────────────────────
+let _carouselAutoTimer = 0;
+let _carouselResumeTimer = 0;
+let _carouselAutoActive = false;
+let _carouselAnimId = 0;
+
+function _renderSponsorCarousel(filteredPlaces) {
+  const scroll = document.getElementById("places-scroll");
+  const old = scroll.querySelector(".sponsor-carousel");
+  if (old) old.remove();
+  _clearCarouselAuto();
+
+  const sponsored = filteredPlaces.filter(p => p.sponsor && !p.boycott);
+  if (!sponsored.length) return;
+
+  const carousel = document.createElement("div");
+  carousel.className = "sponsor-carousel";
+
+  // Section header matching the city-group pattern
+  const hdr = `<div class="sponsor-carousel-hdr"><svg class="sponsor-carousel-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><span>Sponsored</span><span class="pl-city-count">${sponsored.length}</span></div>`;
+
+  const cards = sponsored.map(p => {
+    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
+    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+    return `<button class="sponsor-card" data-place-id="${p.id}"><span class="sponsor-card-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span><div class="sponsor-card-body"><span class="sponsor-card-name">${esc(p.name)}</span><span class="sponsor-card-addr">${esc(p.address)}</span></div></button>`;
+  }).join("");
+
+  // 5x duplicated for seamless infinite loop — gives plenty of runway
+  // for fast manual swipes before the normalize jump fires
+  const loopCards = sponsored.length > 1 ? cards + cards + cards + cards + cards : cards;
+  carousel.innerHTML = `${hdr}<div class="sponsor-carousel-viewport"><div class="sponsor-carousel-track">${loopCards}</div></div>`;
+
+  const list = document.getElementById("places-list");
+  scroll.insertBefore(carousel, list);
+
+  const track = carousel.querySelector(".sponsor-carousel-track");
+  const viewport = carousel.querySelector(".sponsor-carousel-viewport");
+  const count = sponsored.length;
+  let touchCooldownActive = false;
+
+  if (count > 1) {
+    requestAnimationFrame(() => {
+      _setCarouselToMiddle(track, count);
+      _startCarouselAuto(track, count);
+    });
+  }
+
+  // Click → open place popup
+  track.addEventListener("click", (e) => {
+    const card = e.target.closest(".sponsor-card");
+    if (!card) return;
+    const place = placesData.find(p => p.id === card.dataset.placeId);
+    if (place) { closePlacesSheet(); showPlacePopup(place); }
+  });
+
+  // Desktop: mouse wheel over carousel → scroll horizontally, not vertically
+  viewport.addEventListener("wheel", (e) => {
+    if (!track.scrollWidth) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      track.scrollLeft += e.deltaY;
+    }
+    _pauseCarouselAuto(track, count);
+  }, { passive: false });
+
+  // Normalize loop position after manual scroll settles
+  track.addEventListener("scroll", () => {
+    // Skip recentering during auto-scroll and touch interaction —
+    // modifying scrollLeft mid-momentum kills native inertia on mobile.
+    if (!_carouselAutoActive && !touchCooldownActive) {
+      _recenterCarouselLoop(track, count);
+    }
+  }, { passive: true });
+
+  // Desktop: pause while cursor hovers over the carousel area
+  viewport.addEventListener("mouseenter", () => _pauseCarouselAuto(track, count));
+  viewport.addEventListener("mouseleave", () => {
+    _clearCarouselAuto();
+    _carouselResumeTimer = setTimeout(() => {
+      if (track.isConnected && count > 1) _startCarouselAuto(track, count);
+    }, 600);
+  });
+
+  // Mobile: 4s cooldown from last touch — no snap, no auto-scroll during cooldown
+  let _touchCooldownTimer = 0;
+  const touchPause = () => {
+    touchCooldownActive = true;
+    _clearCarouselAuto();
+    clearTimeout(_touchCooldownTimer);
+  };
+  const touchRelease = () => {
+    touchCooldownActive = true;
+    _clearCarouselAuto();
+    clearTimeout(_touchCooldownTimer);
+    _touchCooldownTimer = setTimeout(() => {
+      if (!track.isConnected || count < 2) return;
+      touchCooldownActive = false;
+      _recenterCarouselLoop(track, count);
+      // Resume auto-scroll after cooldown
+      if (track.isConnected && count > 1) _startCarouselAuto(track, count);
+    }, 4000);
+  };
+  viewport.addEventListener("touchstart", touchPause, { passive: true });
+  viewport.addEventListener("touchend", touchRelease, { passive: true });
+}
+
+function _startCarouselAuto(track, count) {
+  _clearCarouselAuto();
+  _carouselAutoActive = true;
+
+  const advance = () => {
+    if (!track.isConnected || count < 2) {
+      _clearCarouselAuto();
+      return;
+    }
+
+    const metrics = _getCarouselMetrics(track, count);
+    if (!metrics) {
+      _clearCarouselAuto();
+      return;
+    }
+
+    // Recenter into a safe forward band first, then use our own rAF
+    // animation instead of scrollTo({ behavior: "smooth" }) which on
+    // mobile can be cancelled/reversed by scroll-event recentering.
+    _recenterCarouselLoop(track, count);
+    const aligned = _prepareCarouselForwardAdvance(track, count, metrics);
+    const nextLeft = aligned + metrics.span;
+    _animateCarouselTo(track, nextLeft, 1000);
+
+    // Schedule next advance (keep looping forever)
+    _carouselAutoTimer = window.setTimeout(advance, 2800);
+  };
+
+  _carouselAutoTimer = window.setTimeout(advance, 1200);
+}
+
+function _pauseCarouselAuto(track, count) {
+  _clearCarouselAuto();
+  _carouselResumeTimer = setTimeout(() => {
+    if (track.isConnected && count > 1) _startCarouselAuto(track, count);
+  }, 2500);
+}
+
+function _clearCarouselAuto() {
+  _carouselAutoActive = false;
+  if (_carouselAnimId) { cancelAnimationFrame(_carouselAnimId); _carouselAnimId = 0; }
+  if (_carouselAutoTimer) { clearTimeout(_carouselAutoTimer); _carouselAutoTimer = 0; }
+  if (_carouselResumeTimer) { clearTimeout(_carouselResumeTimer); _carouselResumeTimer = 0; }
+}
+
+function _getCarouselMetrics(track, count) {
+  const card = track.querySelector(".sponsor-card");
+  if (!card || count < 2) return null;
+  const style = getComputedStyle(track);
+  const gap = parseFloat(style.columnGap) || parseFloat(style.gap) || 0;
+  const span = card.offsetWidth + gap;
+  return { span, oneSet: span * count };
+}
+
+function _setCarouselToMiddle(track, count) {
+  const metrics = _getCarouselMetrics(track, count);
+  if (!metrics) return;
+  track.scrollLeft = _getCarouselLoopBounds(metrics).centre;
+}
+
+function _getCarouselLoopBounds(metrics) {
+  return {
+    min: metrics.oneSet,
+    centre: metrics.oneSet * 2,
+    max: metrics.oneSet * 3,
+  };
+}
+
+function _recenterCarouselLoop(track, count) {
+  const metrics = _getCarouselMetrics(track, count);
+  if (!metrics) return null;
+  const bounds = _getCarouselLoopBounds(metrics);
+
+  while (track.scrollLeft < bounds.min) {
+    track.scrollLeft += metrics.oneSet;
+  }
+  while (track.scrollLeft >= bounds.max) {
+    track.scrollLeft -= metrics.oneSet;
+  }
+
+  return metrics;
+}
+
+function _getAlignedCarouselLeft(track, count) {
+  const metrics = _getCarouselMetrics(track, count);
+  if (!metrics) return track.scrollLeft;
+  const bounds = _getCarouselLoopBounds(metrics);
+  const offset = track.scrollLeft - bounds.centre;
+  let aligned = bounds.centre + Math.round(offset / metrics.span) * metrics.span;
+  // Clamp into [min, max) — Math.round can overshoot at boundaries
+  if (aligned >= bounds.max) aligned -= metrics.oneSet;
+  if (aligned < bounds.min) aligned += metrics.oneSet;
+  return aligned;
+}
+
+function _prepareCarouselForwardAdvance(track, count, metrics) {
+  const bounds = _getCarouselLoopBounds(metrics);
+  let alignedLeft = _getAlignedCarouselLeft(track, count);
+
+  // Keep the starting point inside the middle loop band with enough room to
+  // advance one full card to the right without wrapping the absolute scroll
+  // position backwards.
+  while (alignedLeft + metrics.span >= bounds.max) {
+    alignedLeft -= metrics.oneSet;
+  }
+  while (alignedLeft < bounds.min) {
+    alignedLeft += metrics.oneSet;
+  }
+
+  if (track.scrollLeft !== alignedLeft) {
+    track.scrollLeft = alignedLeft;
+  }
+
+  return alignedLeft;
+}
+
+function _getForwardCarouselLeft(alignedLeft, metrics) {
+  const bounds = _getCarouselLoopBounds(metrics);
+  let nextLeft = alignedLeft + metrics.span;
+  while (nextLeft >= bounds.max) {
+    nextLeft -= metrics.oneSet;
+  }
+  while (nextLeft < bounds.min) {
+    nextLeft += metrics.oneSet;
+  }
+  return nextLeft;
+}
+
+// Manual rAF animation — immune to mobile browser smooth-scroll quirks
+function _animateCarouselTo(track, target, duration) {
+  if (_carouselAnimId) cancelAnimationFrame(_carouselAnimId);
+  const start = track.scrollLeft;
+  const dist = target - start;
+  if (Math.abs(dist) < 1) { _carouselAnimId = 0; return; }
+  const t0 = performance.now();
+  // Cubic ease-out — gentle deceleration, feels natural on mobile
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function frame(now) {
+    const p = Math.min((now - t0) / duration, 1);
+    track.scrollLeft = start + dist * ease(p);
+    if (p < 1) _carouselAnimId = requestAnimationFrame(frame);
+    else _carouselAnimId = 0;
+  }
+  _carouselAnimId = requestAnimationFrame(frame);
+}
+
+// Snaps scrollLeft to the nearest card-aligned position
+function _snapToNearestCard(track, count) {
+  const metrics = _recenterCarouselLoop(track, count);
+  if (!metrics) return;
+  const aligned = _getAlignedCarouselLeft(track, count);
+  _animateCarouselTo(track, aligned, 300);
 }
 
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }

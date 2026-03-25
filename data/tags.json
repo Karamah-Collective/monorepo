@@ -245,6 +245,10 @@
     {
       "id": "cuisine_yemeni",
       "label": "Yemeni"
+    },
+    {
+      "id": "cuisine_tunisian",
+      "label": "Tunisian"
     }
   ]
 }

@@ -18,6 +18,10 @@
   --gold: #b08830;
   --gold-soft: #faf5eb;
 
+  /* sponsor aliases — always reference these, not --gold directly */
+  --sponsor: var(--gold);
+  --sponsor-soft: var(--gold-soft);
+
   --success: #1fa86a;
   --success-soft: #e8f6ee;
 
@@ -1170,6 +1174,41 @@ body {
 .chip-warn,
 .pp-chip-warn {
   --chip-c: var(--gold);
+}
+
+/* ── Sponsor chip / badge ──────────────────────────────────────────────────── */
+.chip-sponsor,
+.pp-chip-sponsor,
+.pl-sponsor-chip {
+  --chip-c: var(--sponsor);
+}
+
+/* Shared "Sponsored" inline badge — reuse chip sizing but with gold tint */
+.sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--sponsor);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
+  white-space: nowrap;
+}
+
+/* Sponsor glow ring for map markers — featured + spotlight */
+@keyframes sponsorPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px var(--sponsor),
+      0 0 12px 4px color-mix(in srgb, var(--sponsor) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px var(--sponsor),
+      0 0 20px 8px color-mix(in srgb, var(--sponsor) 30%, transparent);
+  }
 }
 
 /* ── Eid location card (panel list item) ─── */

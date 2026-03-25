@@ -169,7 +169,8 @@ export async function onRequest(context) {
       if (place) {
         const typeLabel = PLACE_TYPES[place.type] || place.type;
         ogTitle = `${place.name} — Halal Finder Helsinki`;
-        ogDescription = `${typeLabel} at ${place.address}`;
+        const sponsorSuffix = (place.sponsor?.tier === 'spotlight' && !place.boycott) ? ' — Sponsored Partner' : '';
+        ogDescription = `${typeLabel} at ${place.address}${sponsorSuffix}`;
       }
     } catch { /* fall through to default tags */ }
   } else if (pinToken) {
