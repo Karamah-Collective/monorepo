@@ -403,6 +403,13 @@ function writeCache(places, tags) {
   catch { /* quota exceeded — ignore */ }
 }
 
+/** Strip sponsor fields so stale cache/static data never shows outdated sponsors.
+ *  Live API (Google Sheets) is the only source of truth for sponsor status. */
+function stripSponsorFields(places) {
+  for (const p of places) delete p.sponsor;
+  return places;
+}
+
 async function fetchFresh() {
   const urls = ['/api/places?action=all'];
   for (const url of urls) {
@@ -429,7 +436,7 @@ export async function loadPlacesData() {
     // 1. Instant load from localStorage cache (returning visitors)
     const cached = readCache();
     if (cached) {
-      placesData = normalizePlacesData(cached.places);
+      placesData = stripSponsorFields(normalizePlacesData(cached.places));
       tagsData = cached.tags || {};
       sortSubtags();
       placesLoaded = true;
@@ -459,6 +466,7 @@ export async function loadPlacesData() {
           addPlaceMarkers();
           renderPlacesList();
           updatePlacesBadge();
+          renderPromosPill();
         }
         writeCache(normalizePlacesData(data.places), data.tags || {});
       });
@@ -469,7 +477,7 @@ export async function loadPlacesData() {
     try {
       const [pRes, tRes] = await Promise.all([fetch('data/places.json'), fetch('data/tags.json')]);
       if (pRes.ok && tRes.ok) {
-        placesData = normalizePlacesData(await pRes.json());
+        placesData = stripSponsorFields(normalizePlacesData(await pRes.json()));
         tagsData = await tRes.json();
         sortSubtags();
         console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);

@@ -14,10 +14,7 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings.",
-    "sponsor": {
-      "tier": "spotlight"
-    }
+    "notes": "Updated female_wudu to true based on external mosque listings."
   },
   {
     "id": "cxjnht",
@@ -1188,12 +1185,7 @@
       "cuisine_chinese": true,
       "no_alcohol": false
     },
-    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination.",
-    "sponsor": {
-      "tier": "featured",
-      "cta": "Halal_10",
-      "text": "Featured mock"
-    }
+    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination."
   },
   {
     "id": "5x7lmi",

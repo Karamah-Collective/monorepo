@@ -22,12 +22,7 @@ const _homePinSVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"
 const _popupPinSVG   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>`;
 const _popupSearchSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
 
-// ─── Local places cache (data/places.json) — loaded once at startup ───────────────
-let _localPlaces = null;
-fetch("data/places.json")
-  .then(r => r.json())
-  .then(data => { _localPlaces = data; })
-  .catch(() => { _localPlaces = []; });
+// ─── Local places: uses live placesData from places.js (always fresh from API) ────
 
 // Map our place types to icons compatible with typeIcon(type, cls)
 const _localTypeCls = {
@@ -38,10 +33,10 @@ const _localTypeCls = {
 };
 
 function _localPlaceSearch(q) {
-  if (!_localPlaces || !_localPlaces.length) return [];
+  if (!placesData || !placesData.length) return [];
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
   const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const matched = _localPlaces
+  const matched = placesData
     .filter(p => {
       const hay = normalize(`${p.name} ${p.address} ${p.type}`);
       return terms.every(t => hay.includes(normalize(t)));
