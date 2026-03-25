@@ -275,16 +275,27 @@
 .r-halal-badge {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  margin-left: 6px;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semi);
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   color: var(--accent);
   background: var(--accent-soft);
-  border-radius: 999px;
-  padding: 1px 6px;
-  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.r-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: 2px;
+}
+
+.r-meta .r-addr {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 
@@ -2190,6 +2201,9 @@ body.dark-mode .sp-tip {
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
+  .pp .pp-promo-btn:hover {
+    color: color-mix(in srgb, var(--sponsor) 70%, var(--text));
+  }
   .pp-fav-btn:hover {
     color: var(--gold);
   }
@@ -2282,11 +2296,13 @@ body.dark-mode .sp-tip {
   line-height: 1.6;
 }
 
-/* Subtle amber left accent on boycott cards */
-.pl-card.pl-card--boycott {
+/* Featured (sponsored) card — subtle gold left accent */
+.pl-card.pl-card--featured {
   border-left: 2px solid var(--gold);
-  padding-left: 14px; /* 16px default − 2px for the extra border width */
+  padding-left: 14px; /* 16px default − 2px for border width */
 }
+
+
 
 /* ── Sponsor UI in list / popup / search ─────────────────────────────────── */
 .pl-sponsor-chip {
@@ -2316,14 +2332,26 @@ body.dark-mode .sp-tip {
   color: var(--sponsor);
   background: color-mix(in srgb, var(--sponsor) 14%, transparent);
   white-space: nowrap;
+  cursor: help;
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .pp-sponsor-badge:hover {
+    background: color-mix(in srgb, var(--sponsor) 24%, transparent);
+  }
 }
 
 /* Search dropdown sponsor label */
 .r-sponsor-label {
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   color: var(--sponsor);
-  margin-left: var(--sp-1);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
+  flex-shrink: 0;
 }
 
 
@@ -4094,7 +4122,7 @@ body.dark-mode #route-snackbar {
     background var(--t-fast);
 }
 @media (hover: hover) {
-  #promos-pill:hover { background: var(--surface-2); }
+  #promos-pill:hover { color: color-mix(in srgb, var(--sponsor) 70%, var(--text)); }
 }
 /* Shift right when prayer pill is expanded */
 #prayer-snack:not(.collapsed) ~ #promos-pill {

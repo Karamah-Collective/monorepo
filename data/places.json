@@ -14,7 +14,10 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings."
+    "notes": "Updated female_wudu to true based on external mosque listings.",
+    "sponsor": {
+      "tier": "spotlight"
+    }
   },
   {
     "id": "cxjnht",

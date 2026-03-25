@@ -3,7 +3,7 @@ import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
-import { placesData, showPlacePopup } from "./places.js";
+import { placesData, showPlacePopup, activeSponsor } from "./places.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -46,17 +46,17 @@ function _localPlaceSearch(q) {
       const hay = normalize(`${p.name} ${p.address} ${p.type}`);
       return terms.every(t => hay.includes(normalize(t)));
     });
-  // Boost: sponsored (non-boycott) places sort first, then alphabetical
+  // Boost: sponsored (non-boycott, active dates) places sort first, then alphabetical
   matched.sort((a, b) => {
-    const sa = (a.sponsor && !a.boycott) ? 1 : 0;
-    const sb = (b.sponsor && !b.boycott) ? 1 : 0;
+    const sa = activeSponsor(a) ? 1 : 0;
+    const sb = activeSponsor(b) ? 1 : 0;
     return sb - sa;
   });
   return matched
     .slice(0, 4)
     .map(p => {
       const { type, cls } = _localTypeCls[p.type] ?? { type: p.type, cls: "amenity" };
-      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true, sponsor: (p.sponsor && !p.boycott) ? p.sponsor : null };
+      return { id: p.id, lat: p.lat, lng: p.lng, name: p.name, addr: p.address, type, cls, local: true, sponsor: activeSponsor(p) };
     });
 }
 
@@ -370,7 +370,8 @@ function showResults(items) {
   const html = items
     .map((r) => {
       const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
-      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}${r.local ? ' <span class="r-halal-badge">✓ verified</span>' : ''}${r.sponsor ? ' <span class="r-sponsor-label">Sponsored</span>' : ''}</div><div class="r-addr">${esc(r.addr)}</div></div></li>`;
+      const badges = `${r.local ? '<span class="r-halal-badge" title="Community verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>' : ''}${r.sponsor ? '<span class="r-sponsor-label" title="Featured place"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>' : ''}`;
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}</div><div class="r-meta"><span class="r-addr">${esc(r.addr)}</span>${badges}</div></div></li>`;
     })
     .join("");
   rList.innerHTML = html;

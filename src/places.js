@@ -8,6 +8,15 @@ import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadShare
 export let placesData = [];
 export let tagsData = {};
 export let placesLoaded = false;
+
+/** Returns place.sponsor if sponsorship is active today, otherwise null. */
+export function activeSponsor(place) {
+  if (!place.sponsor || place.boycott) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (place.sponsor.startDate && today < place.sponsor.startDate) return null;
+  if (place.sponsor.endDate && today > place.sponsor.endDate) return null;
+  return place.sponsor;
+}
 let placeMarkers = [];
 let savedPinMarkers = [];
 
@@ -239,6 +248,10 @@ function getCityMinDistances(places, anchor) {
 }
 
 function compareMostRelevantPlaces(a, b, anchor, viewportCounts, cityDistances) {
+  // Featured places get a slight boost within the same city
+  const aFeatured = activeSponsor(a) ? 1 : 0;
+  const bFeatured = activeSponsor(b) ? 1 : 0;
+
   const aCity = getPlaceCity(a);
   const bCity = getPlaceCity(b);
 
@@ -262,6 +275,8 @@ function compareMostRelevantPlaces(a, b, anchor, viewportCounts, cityDistances) 
     const alpha = aCity.localeCompare(bCity);
     if (alpha) return alpha;
   }
+  // Featured boost: within same city, featured places sort first
+  if (aFeatured !== bFeatured) return bFeatured - aFeatured;
   return a.name.localeCompare(b.name);
 }
 
@@ -349,10 +364,11 @@ function _buildCard(p, i) {
   const boycottBadge = p.boycott
     ? `<span class="pl-boycott-chip">Boycott Watch</span>`
     : "";
-  const sponsorBadge = (p.sponsor && !p.boycott)
-    ? `<span class="pl-sponsor-chip">Sponsored</span>`
+  const sponsorBadge = activeSponsor(p)
+    ? `<span class="pl-sponsor-chip">Featured</span>`
     : "";
-  return `<li class="pl-card${p.boycott ? " pl-card--boycott" : ""}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+  const isFeatured = !!activeSponsor(p);
+  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
     <span class="pl-name">${esc(p.name)}${boycottBadge}${sponsorBadge}</span>
     <span class="pl-addr">${esc(p.address)}${distBadge}</span>
@@ -680,11 +696,12 @@ export function addPlaceMarkers() {
     el.innerHTML = makePlaceMarkerHTML(place.type);
     // Sponsor glow on the puck — basic gets gold border, featured gets glow, spotlight gets pulse
     // Higher z-index so sponsored pins render on top when overlapping
-    if (place.sponsor && !place.boycott) {
+    const sp = activeSponsor(place);
+    if (sp) {
       const puck = el.querySelector(".place-mk");
       if (puck) {
-        if (place.sponsor.tier === "spotlight") { puck.classList.add("place-mk--sponsored", "place-mk--spotlight"); el.style.zIndex = "4"; }
-        else if (place.sponsor.tier === "featured") { puck.classList.add("place-mk--sponsored"); el.style.zIndex = "3"; }
+        if (sp.tier === "spotlight") { puck.classList.add("place-mk--sponsored", "place-mk--spotlight"); el.style.zIndex = "4"; }
+        else if (sp.tier === "featured") { puck.classList.add("place-mk--sponsored"); el.style.zIndex = "3"; }
         else { puck.classList.add("place-mk--sponsor-basic"); el.style.zIndex = "2"; }
       }
     }
@@ -752,8 +769,17 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   hdr.innerHTML =
     `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
     `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>` +
-    (place.sponsor && !place.boycott ? `<span class="pp-sponsor-badge">Sponsored</span>` : ``);
+    (activeSponsor(place) ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
+
+  // Tap-to-show tooltip on mobile for the Featured badge
+  const featBadge = hdr.querySelector(".pp-sponsor-badge");
+  if (featBadge) {
+    featBadge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showToast("Featured place", "info", "All listings are community-sourced");
+    });
+  }
 
   // Title
   const title = document.createElement("div");
@@ -876,7 +902,8 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   root.appendChild(favBtn);
 
   // Promo copy button — beside fav star, only for sponsors with a CTA (promo code)
-  if (place.sponsor?.cta && !place.boycott) {
+  const popupSponsor = activeSponsor(place);
+  if (popupSponsor?.cta) {
     const promoBtn = document.createElement("button");
     promoBtn.className = "pp-promo-btn";
     promoBtn.title = "Copy promo";
@@ -884,9 +911,9 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     promoBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
     promoBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyToClipboard(place.sponsor.cta);
-      const sub = place.sponsor.text || null;
-      showToast(place.sponsor.cta, "check", sub);
+      copyToClipboard(popupSponsor.cta);
+      const sub = popupSponsor.text || null;
+      showToast(popupSponsor.cta, "check", sub);
     });
     root.appendChild(promoBtn);
   }
@@ -1574,7 +1601,7 @@ const _promosOverlay = document.getElementById("promos-overlay");
 const _promosList = document.getElementById("promos-list");
 
 function _getPromoPlaces() {
-  return placesData.filter(p => p.sponsor?.cta && !p.boycott);
+  return placesData.filter(p => { const s = activeSponsor(p); return s && s.cta; });
 }
 
 export function renderPromosPill() {
@@ -1633,7 +1660,7 @@ function _renderSponsorCarousel(filteredPlaces) {
   if (old) old.remove();
   _clearCarouselAuto();
 
-  const sponsored = filteredPlaces.filter(p => p.sponsor && !p.boycott);
+  const sponsored = filteredPlaces.filter(p => activeSponsor(p));
   if (!sponsored.length) return;
 
   const carousel = document.createElement("div");

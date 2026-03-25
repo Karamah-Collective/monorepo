@@ -444,3 +444,16 @@ what you like, what you've decided, and how you want things done.
 - Manual scrolling remains fully bidirectional because only the auto-scroll direction is constrained.
 
 **Files modified:** `src/places.js`, `src/styles/styles.css`
+
+### 2026-03-25 — Sponsorship date gating (start/end dates)
+**What changed:** Code.gs already had `sponsor_start_date` (col M) and `sponsor_end_date` (col N) in the Places sheet, with `getPlacesJSON()` emitting `sponsor.startDate` / `sponsor.endDate` (YYYY-MM-DD strings). Client code was not respecting these dates.
+
+**Fix:**
+- Added `activeSponsor(place)` helper in `places.js` — returns `place.sponsor` if sponsorship is currently active (today is between startDate and endDate, both inclusive, both optional), otherwise `null`. Exported for cross-module use.
+- Replaced all `place.sponsor && !place.boycott` checks in `places.js` (list cards, map markers, popup badge, popup promo button, promos pill, sponsor carousel) with `activeSponsor(place)`.
+- Updated `search.js` to import `activeSponsor` and use it for search result boosting and sponsor label display.
+- Re-fetched `data/places.json` to pick up sponsor date fields from GAS.
+
+**Data shape update:** `place.sponsor = { tier, cta?, text?, startDate?, endDate? }`. Missing dates = no bound (always active if no start, never expires if no end).
+
+**Files modified:** `src/places.js`, `src/search.js`, `data/places.json`
