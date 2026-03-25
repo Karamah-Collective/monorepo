@@ -14,7 +14,10 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings."
+    "notes": "Updated female_wudu to true based on external mosque listings.",
+    "sponsor": {
+      "tier": "spotlight"
+    }
   },
   {
     "id": "cxjnht",
@@ -1169,7 +1172,8 @@
     },
     "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram.",
     "sponsor": {
-      "tier": "basic"
+      "tier": "basic",
+      "endDate": "2026-03-25"
     }
   },
   {
@@ -1199,12 +1203,7 @@
       "halal_meat": true,
       "halal_groceries": true
     },
-    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy.",
-    "sponsor": {
-      "tier": "spotlight",
-      "cta": "Halal_15",
-      "text": "Spotlight mock"
-    }
+    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy."
   },
   {
     "id": "qo8fs0",

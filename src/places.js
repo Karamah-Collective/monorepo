@@ -259,10 +259,6 @@ function compareMostRelevantPlaces(a, b, anchor, viewportCounts, cityDistances) 
     const aDist = cityDistances.get(aCity) ?? Number.POSITIVE_INFINITY;
     const bDist = cityDistances.get(bCity) ?? Number.POSITIVE_INFINITY;
     if (aDist !== bDist) return aDist - bDist;
-
-    const itemDistA = haversineDistance(anchor.lat, anchor.lng, a.lat, a.lng);
-    const itemDistB = haversineDistance(anchor.lat, anchor.lng, b.lat, b.lng);
-    if (itemDistA !== itemDistB) return itemDistA - itemDistB;
   }
 
   const aVisible = viewportCounts.get(aCity) || 0;
@@ -275,8 +271,16 @@ function compareMostRelevantPlaces(a, b, anchor, viewportCounts, cityDistances) 
     const alpha = aCity.localeCompare(bCity);
     if (alpha) return alpha;
   }
-  // Featured boost: within same city, featured places sort first
+
+  // Featured boost: within same city group, featured places float to top
   if (aFeatured !== bFeatured) return bFeatured - aFeatured;
+
+  // Per-item distance within the same city (non-featured tiebreak)
+  if (anchor) {
+    const itemDistA = haversineDistance(anchor.lat, anchor.lng, a.lat, a.lng);
+    const itemDistB = haversineDistance(anchor.lat, anchor.lng, b.lat, b.lng);
+    if (itemDistA !== itemDistB) return itemDistA - itemDistB;
+  }
   return a.name.localeCompare(b.name);
 }
 
