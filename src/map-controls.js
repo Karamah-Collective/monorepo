@@ -38,7 +38,7 @@ const VECTOR_BASE_IDS = [
   "background", "landcover_grass", "landcover_wood", "landcover_farmland",
   "landcover_sand", "landcover_ice", "landuse_residential", "landuse_industrial",
   "landuse_hospital", "landuse_school", "landuse_cemetery", "landuse_pitch",
-  "park", "waterway", "water", "aeroway_fill", "aeroway_runway",
+  "park", "waterway", "water", "water_shoreline", "aeroway_fill", "aeroway_runway",
   "building_shadow", "building", "building_outline",
   "tunnel_path", "tunnel_minor", "tunnel_major",
   "road_path", "road_service", "road_secondary_casing", "road_secondary",
@@ -717,9 +717,9 @@ export function toggleSatellite() {
     map.once("idle", () => { hideLoadingToast(); });
 
     // Keep the Finland mask above satellite — dark fill, only covering land.
-    // Place it before label_place_city so only city + country labels show above.
+    // Place it before label_road so labels remain visible above the mask.
     if (map.getLayer("finland-mask")) {
-      map.moveLayer("finland-mask", "label_place_city");
+      map.moveLayer("finland-mask", "label_road");
       map.setPaintProperty("finland-mask", "fill-color", "#1a1a1a");
       map.setPaintProperty("finland-mask", "fill-opacity", 0.65);
     }
@@ -729,9 +729,24 @@ export function toggleSatellite() {
     if (map.getLayer("water")) {
       if (!origWaterColor) origWaterColor = map.getPaintProperty("water", "fill-color");
       map.setLayoutProperty("water", "visibility", "visible");
-      map.moveLayer("water", "label_place_city");
+      map.moveLayer("water", "label_road");
       map.setPaintProperty("water", "fill-color", "#0a1e33");
     }
+    // Restyle bridges for satellite — dark semi-transparent to blend with imagery
+    ["bridge_minor_casing", "bridge_major_casing"].forEach(id => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.moveLayer(id, "label_road");
+        map.setPaintProperty(id, "line-color", "rgba(60, 60, 60, 0.6)");
+      }
+    });
+    ["bridge_minor", "bridge_major"].forEach(id => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", "visible");
+        map.moveLayer(id, "label_road");
+        map.setPaintProperty(id, "line-color", "rgba(120, 115, 105, 0.7)");
+      }
+    });
     // Hide waterways (thin lines not useful in satellite)
     if (map.getLayer("waterway")) {
       map.setLayoutProperty("waterway", "visibility", "none");
@@ -774,19 +789,29 @@ export function toggleSatellite() {
         "interpolate", ["linear"], ["zoom"], 7, "#d3e3bb", 9, "#f0f1f2",
       ]);
       map.setPaintProperty("finland-mask", "fill-opacity", 1);
-      if (map.getLayer("label_place_city")) map.moveLayer("finland-mask", "label_place_city");
+      if (map.getLayer("label_road")) map.moveLayer("finland-mask", "label_road");
     }
 
-    // Restore water layers above mask (same as initial setup in app.js)
-    ["waterway", "water", "label_water", "admin_country"].forEach(id => {
-      if (map.getLayer(id) && map.getLayer("label_place_city")) {
-        map.moveLayer(id, "label_place_city");
+    // Restore water, bridges above mask but below labels (same as initial setup in app.js)
+    ["water", "water_shoreline", "waterway",
+     "bridge_minor_casing", "bridge_minor",
+     "bridge_major_casing", "bridge_major",
+     "admin_country"].forEach(id => {
+      if (map.getLayer(id) && map.getLayer("label_road")) {
+        map.moveLayer(id, "label_road");
       }
     });
     // Restore water paint to vector defaults
     if (origWaterColor && map.getLayer("water")) {
       map.setPaintProperty("water", "fill-color", origWaterColor);
     }
+    // Restore bridge colors to vector defaults
+    ["bridge_minor_casing", "bridge_major_casing"].forEach(id => {
+      if (map.getLayer(id)) map.setPaintProperty(id, "line-color", "#ccc");
+    });
+    ["bridge_minor", "bridge_major"].forEach(id => {
+      if (map.getLayer(id)) map.setPaintProperty(id, "line-color", "#fff");
+    });
 
     // Restore all label visibility and paint
     LABEL_IDS.forEach((id) => {

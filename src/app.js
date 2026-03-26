@@ -142,8 +142,9 @@ map.on("load", async () => {
   syncHomeMarker();
   if (!hasIncomingSharedState()) centerStoredHomeIfAvailable({ instant: true });
 
-  // Mask everything outside Finland — placed just below city/country labels.
-  // Water layers are then promoted above the mask so seas/lakes stay visible.
+  // Mask everything outside Finland — placed just below the first label layer.
+  // Water and bridges are then promoted above the mask so seas/lakes/bridges stay visible,
+  // while all labels (road, park, poi, village, town, city, country) remain on top.
   map.addSource("finland-mask", {
     type: "geojson",
     data: "/data/finland-outside-mask.geojson",
@@ -162,14 +163,19 @@ map.on("load", async () => {
         "fill-opacity": 1,
       },
     },
-    "label_place_city",          // ← inserted right below city labels
+    "label_road",                // ← inserted right below all labels
   );
 
-  // Lift water + country borders above the mask so they remain visible everywhere
-  map.moveLayer("waterway",      "label_place_city");
-  map.moveLayer("water",         "label_place_city");
-  map.moveLayer("label_water",   "label_place_city");
-  map.moveLayer("admin_country", "label_place_city");
+  // Lift water, bridges, and country borders above the mask so they remain visible.
+  // Using "label_road" keeps them below all label layers.
+  map.moveLayer("water",               "label_road");
+  map.moveLayer("water_shoreline",     "label_road");
+  map.moveLayer("waterway",            "label_road");
+  map.moveLayer("bridge_minor_casing", "label_road");
+  map.moveLayer("bridge_minor",        "label_road");
+  map.moveLayer("bridge_major_casing", "label_road");
+  map.moveLayer("bridge_major",        "label_road");
+  map.moveLayer("admin_country",       "label_road");
 
   const loadPromise = loadPlacesData();
 

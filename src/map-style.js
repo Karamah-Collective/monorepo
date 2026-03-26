@@ -41,7 +41,32 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "water",
-      paint: { "fill-color": "#bee4f8" },
+      paint: {
+        "fill-color": "#bee4f8",
+        "fill-antialias": true,
+        "fill-outline-color": "#a8d4ec",
+      },
+    },
+    {
+      id: "water_shoreline",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "water",
+      paint: {
+        "line-color": "#bee4f8",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1,
+          14, 2.5,
+          18, 4,
+        ],
+        "line-blur": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1,
+          14, 2.5,
+          18, 4,
+        ],
+      },
     },
     {
       id: "landcover_grass",
@@ -575,7 +600,7 @@ export const HSL_STYLE = {
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
-        ["in", "class", "minor", "service"],
+        ["!in", "class", "primary", "secondary", "tertiary", "trunk", "motorway", "rail", "path"],
       ],
       layout: { "line-cap": "butt" },
       paint: {
@@ -599,7 +624,7 @@ export const HSL_STYLE = {
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
-        ["in", "class", "minor", "service"],
+        ["!in", "class", "primary", "secondary", "tertiary", "trunk", "motorway", "rail", "path"],
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
