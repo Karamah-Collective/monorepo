@@ -2036,15 +2036,18 @@ body.dark-mode .sp-tip {
   box-shadow:
     0 0 0 3px var(--sponsor),
     0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: sponsorFloat 4s ease-in-out infinite;
 }
 .place-mk--sponsored {
   border-color: #fff !important;
   box-shadow:
     0 0 0 3px var(--sponsor),
     0 0 12px 3px color-mix(in srgb, var(--sponsor) 40%, transparent);
+  animation: sponsorBounce 3s ease-in-out infinite;
 }
 .place-mk--spotlight {
-  animation: sponsorPulse 2s ease-in-out infinite;
+  animation: sponsorPulse 2s ease-in-out infinite,
+             sponsorBounceScale 2.2s ease-in-out infinite;
 }
 
 .search-mk {

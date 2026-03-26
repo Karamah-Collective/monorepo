@@ -37,7 +37,7 @@ A lightweight tier for small businesses wanting to show community support.
 | "Sponsored" chip on list card | ✅ |
 | Promo code / offer | ❌ |
 | Search ranking boost | ❌ |
-| Enhanced map pin (breathing gold glow) | ✅ |
+| Enhanced map pin (gentle float + gold border) | ✅ |
 | Featured carousel slot | ❌ |
 | Enhanced link sharing | ❌ |
 | Promos pill listing | ❌ |
@@ -56,7 +56,7 @@ The mid-tier — visible search boost and the ability to offer promotions to use
 | "Sponsored" chip on list card | ✅ |
 | Promo code icon button in popup | ✅ |
 | Search ranking boost (small, labelled) | ✅ |
-| Enhanced map pin (breathing gold glow) | ✅ |
+| Enhanced map pin (soft bounce + gold glow) | ✅ |
 | Featured carousel slot | ❌ |
 | Enhanced link sharing | ❌ |
 | Promos pill listing | ✅ |
@@ -75,7 +75,7 @@ Maximum presence — the flagship tier for chains or high-commitment sponsors.
 | "Sponsored" chip on list card | ✅ |
 | Promo code icon button in popup | ✅ |
 | Search ranking boost (larger, labelled) | ✅ |
-| Enhanced map pin (stronger gold glow + 20% larger) | ✅ |
+| Enhanced map pin (lively bounce + scale + stronger gold glow) | ✅ |
 | Featured carousel slot (top of places list) | ✅ |
 | Enhanced link sharing (OG metadata includes "Sponsored Partner") | ✅ |
 | Promos pill listing | ✅ |
@@ -125,12 +125,13 @@ This gives users a single place to discover all active restaurant promotions wit
 
 ### 4.4 Enhanced Map Pin (All tiers)
 
-All sponsored pins have a **soft, breathing gold glow** that pulses gently on a 2–2.5 second cycle. This is subtle enough not to distract but eye-catching enough to notice.
+All sponsored pins have **tier-differentiated movement** that gets progressively more eye-catching:
 
-- **Basic / Featured:** Pin is ~10% larger, with a semi-transparent gold border and a gentle pulse animation
-- **Spotlight:** Pin is ~20% larger, with a stronger gold border and a more prominent pulse
+- **Basic:** A barely-perceptible gentle float — the pin drifts up 1.5 px and back on a slow 4-second cycle. Subtle gold border, no glow.
+- **Featured:** A soft bounce (3 px, 3-second cycle) combined with a breathing gold glow that pulses the ring and ambient shadow.
+- **Spotlight:** A lively bounce with a 6% scale pulse (4 px, 2.2-second cycle) plus a stronger gold glow pulse (2-second cycle). The most attention-grabbing tier.
 
-The pin retains its original type colour (green for mosque, orange for restaurant, etc.). The gold glow is an ambient accent, not a replacement — so type identity is always clear.
+All animations use GPU-composited `transform` only for silky performance. The pin retains its original type colour (green for mosque, orange for restaurant, etc.). The gold glow is an ambient accent, not a replacement — so type identity is always clear.
 
 ### 4.5 Search Ranking Boost (Featured & Spotlight)
 

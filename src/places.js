@@ -416,6 +416,12 @@ function stripSponsorFields(places) {
 
 async function fetchFresh() {
   const urls = ['/api/places?action=all'];
+  // Local dev: config.local.js provides SHEETS_URL as direct GAS fallback
+  // (CF Functions aren't running on localhost, so /api/places 404s)
+  try {
+    const cfg = await import("./config.local.js");
+    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=all`);
+  } catch { /* config.local.js absent in production — expected */ }
   for (const url of urls) {
     try {
       const res = await fetch(url);

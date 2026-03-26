@@ -159,10 +159,23 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(212,169,78,0), 0 0 10px rgba(212,169,78,0.25), 0 2px 8px rgba(0,0,0,0.3); }
     50% { box-shadow: 0 0 0 6px rgba(212,169,78,0.15), 0 0 18px rgba(212,169,78,0.4), 0 2px 8px rgba(0,0,0,0.3); }
   }
-  .place-mk--sponsored { width: calc(var(--icon-md) * 1.1); height: calc(var(--icon-md) * 1.1); border: 2.5px solid rgba(176,136,48,0.5); animation: sponsorPulse 2.5s ease-in-out infinite; }
-  body.dark-mode .place-mk--sponsored { border-color: rgba(212,169,78,0.6); animation-name: sponsorPulseDark; }
-  .place-mk--spotlight { width: calc(var(--icon-md) * 1.2); height: calc(var(--icon-md) * 1.2); border: 3px solid rgba(176,136,48,0.65); animation: sponsorPulse 2s ease-in-out infinite; }
-  body.dark-mode .place-mk--spotlight { border-color: rgba(212,169,78,0.75); animation-name: sponsorPulseDark; animation-duration: 2s; }
+  @keyframes sponsorFloat {
+    0%, 100% { transform: translateY(0) rotate(-45deg); }
+    50%      { transform: translateY(-1.5px) rotate(-45deg); }
+  }
+  @keyframes sponsorBounce {
+    0%, 100% { transform: translateY(0) rotate(-45deg); }
+    50%      { transform: translateY(-3px) rotate(-45deg); }
+  }
+  @keyframes sponsorBounceScale {
+    0%, 100% { transform: translateY(0) rotate(-45deg) scale(1); }
+    50%      { transform: translateY(-4px) rotate(-45deg) scale(1.06); }
+  }
+  .place-mk--sponsor-basic { border-color: rgba(176,136,48,0.5); box-shadow: 0 0 0 3px rgba(176,136,48,0.25), 0 2px 8px rgba(0,0,0,0.15); animation: sponsorFloat 4s ease-in-out infinite; }
+  .place-mk--sponsored { width: calc(var(--icon-md) * 1.1); height: calc(var(--icon-md) * 1.1); border: 2.5px solid rgba(176,136,48,0.5); animation: sponsorPulse 2.5s ease-in-out infinite, sponsorBounce 3s ease-in-out infinite; }
+  body.dark-mode .place-mk--sponsored { border-color: rgba(212,169,78,0.6); animation: sponsorPulseDark 2.5s ease-in-out infinite, sponsorBounce 3s ease-in-out infinite; }
+  .place-mk--spotlight { width: calc(var(--icon-md) * 1.2); height: calc(var(--icon-md) * 1.2); border: 3px solid rgba(176,136,48,0.65); animation: sponsorPulse 2s ease-in-out infinite, sponsorBounceScale 2.2s ease-in-out infinite; }
+  body.dark-mode .place-mk--spotlight { border-color: rgba(212,169,78,0.75); animation: sponsorPulseDark 2s ease-in-out infinite, sponsorBounceScale 2.2s ease-in-out infinite; }
 
   /* Search */
   .search-dropdown { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-lg); overflow: hidden; max-width: 360px; width: 100%; }
@@ -332,7 +345,7 @@
 
 <hr>
 <h2 class="section-title">2. Map Pins — Normal vs. Sponsored</h2>
-<p class="section-desc">Sponsored restaurant pins are slightly larger and have a soft, breathing gold glow that pulses gently — subtle enough not to distract but eye-catching enough to notice. Spotlight pins are even bigger with a stronger glow. The animation runs continuously at a slow pace (2–2.5s cycle).</p>
+<p class="section-desc">Sponsored pins have tier-differentiated movement that gets progressively more noticeable. <strong>Basic:</strong> a barely-perceptible gentle float (4s cycle). <strong>Featured:</strong> a soft bounce + breathing gold glow (3s). <strong>Spotlight:</strong> a lively bounce with scale pulse + stronger glow (2.2s). All use GPU-composited transforms for silky smoothness.</p>
 
 <div class="pin-demo">
   <div class="pin-item">
@@ -348,16 +361,22 @@
     <div class="pin-item-label">Normal<br>(mosque)</div>
   </div>
   <div class="pin-item">
+    <div class="place-mk place-mk--sponsor-basic" style="background: var(--hsl-trunk);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+    </div>
+    <div class="pin-item-label">Basic<br>(gentle float)</div>
+  </div>
+  <div class="pin-item">
     <div class="place-mk place-mk--sponsored" style="background: var(--hsl-trunk);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
     </div>
-    <div class="pin-item-label">Sponsored<br>(glow pulse)</div>
+    <div class="pin-item-label">Featured<br>(bounce + glow)</div>
   </div>
   <div class="pin-item">
     <div class="place-mk place-mk--spotlight" style="background: var(--hsl-trunk);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
     </div>
-    <div class="pin-item-label">Spotlight<br>(bigger glow)</div>
+    <div class="pin-item-label">Spotlight<br>(bounce + scale + glow)</div>
   </div>
 </div>
 
@@ -600,7 +619,7 @@
       <tr><td>List card "Sponsored" chip</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
       <tr><td>Promo code (popup + panel)</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
       <tr><td>Search ranking boost</td><td style="text-align:center">—</td><td style="text-align:center">Small (+0.15)</td><td style="text-align:center">Larger (+0.25)</td></tr>
-      <tr><td>Enhanced map pin (glow pulse)</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅ (bigger)</td></tr>
+      <tr><td>Enhanced map pin (glow + movement)</td><td style="text-align:center">Float</td><td style="text-align:center">Bounce + glow</td><td style="text-align:center">Bounce + scale + glow</td></tr>
       <tr><td>Sponsored carousel</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
       <tr><td>Enhanced social sharing</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
       <tr><td>Chain grouping ("Part of…")</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>

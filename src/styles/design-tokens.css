@@ -1211,6 +1211,20 @@ body {
   }
 }
 
+/* Sponsor pin movement — tier-differentiated, GPU-composited (transform only) */
+@keyframes sponsorFloat {
+  0%, 100% { transform: translateY(0) rotate(-45deg); }
+  50%      { transform: translateY(-1.5px) rotate(-45deg); }
+}
+@keyframes sponsorBounce {
+  0%, 100% { transform: translateY(0) rotate(-45deg); }
+  50%      { transform: translateY(-3px) rotate(-45deg); }
+}
+@keyframes sponsorBounceScale {
+  0%, 100% { transform: translateY(0) rotate(-45deg) scale(1); }
+  50%      { transform: translateY(-4px) rotate(-45deg) scale(1.06); }
+}
+
 /* ── Eid location card (panel list item) ─── */
 .eid-loc-card {
   display: flex;

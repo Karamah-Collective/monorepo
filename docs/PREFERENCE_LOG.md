@@ -457,3 +457,21 @@ what you like, what you've decided, and how you want things done.
 **Data shape update:** `place.sponsor = { tier, cta?, text?, startDate?, endDate? }`. Missing dates = no bound (always active if no start, never expires if no end).
 
 **Files modified:** `src/places.js`, `src/search.js`, `data/places.json`
+
+### 2026-03-26 — Sponsor pin movement animations (tier-differentiated)
+**User request:** Add physical movement to sponsored map pins, with different intensity per tier.
+
+**Animation design:**
+- **Basic** (`sponsorFloat`): very subtle 1.5px vertical float, 4s cycle. Barely perceptible unless you look for it.
+- **Featured** (`sponsorBounce`): soft 3px vertical bounce, 3s cycle. Clearly noticeable but not distracting.
+- **Spotlight** (`sponsorBounceScale`): lively 4px bounce + 6% scale pulse, 2.2s cycle. Combined with `sponsorPulse` glow. Eye-catching.
+
+All use GPU-composited `transform` only (preserving the `-45deg` puck rotation). No layout-triggering properties.
+
+**New keyframes:** `sponsorFloat`, `sponsorBounce`, `sponsorBounceScale`
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `docs/sponsorship-mockups.html`, `docs/sponsorship-plan-print.html`, `docs/SPONSORSHIP_PLAN.md`, `docs/DESIGN_SYSTEM.md`
+**Decisions:**
+- Movement intensity scales with tier: basic=barely visible, featured=noticeable, spotlight=eye-catching.
+- Movement is separate from glow — they compose independently (spotlight gets both glow pulse + bounce+scale as two concurrent animations).
+- Pin demo sections in both mockup HTMLs updated to show all 3 tiers + basic tier added to demo.
+- Tier comparison tables updated to describe movement type per tier.

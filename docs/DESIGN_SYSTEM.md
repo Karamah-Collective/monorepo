@@ -725,9 +725,9 @@ Tooltip shown when tapping the ℹ️ icon on the sponsor badge. Positioned abso
 
 | Class | Tier | Effect |
 |---|---|---|
-| `.place-mk--sponsor-basic` | Basic | B3: white border + outer gold ring |
-| `.place-mk--sponsored` | Featured | F2: white border + static gold ring and glow |
-| `.place-mk--spotlight` | Spotlight | S2: F2 base plus pulsing gold ring/glow |
+| `.place-mk--sponsor-basic` | Basic | Gold border + gentle float animation (4s) |
+| `.place-mk--sponsored` | Featured | Gold ring + glow pulse + soft bounce (3s) |
+| `.place-mk--spotlight` | Spotlight | Stronger glow pulse + lively bounce with 6% scale (2.2s) |
 
 ### Sponsor carousel
 
@@ -760,5 +760,7 @@ Pill-expand element beside the Prayer Times pill. Lists all places with active p
 
 | Name | Cycle | Used by |
 |---|---|---|
-| `sponsorPulse` | 2.2s ease-in-out | `.place-mk--sponsored` |
-| `sponsorPulseStrong` | 2s ease-in-out | `.place-mk--spotlight` |
+| `sponsorPulse` | 2s ease-in-out | `.place-mk--sponsored`, `.place-mk--spotlight` (glow ring) |
+| `sponsorFloat` | 4s ease-in-out | `.place-mk--sponsor-basic` (subtle vertical drift) |
+| `sponsorBounce` | 3s ease-in-out | `.place-mk--sponsored` (soft vertical bounce) |
+| `sponsorBounceScale` | 2.2s ease-in-out | `.place-mk--spotlight` (bounce + 6% scale pulse) |
