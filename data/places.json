@@ -14,10 +14,7 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings.",
-    "sponsor": {
-      "tier": "spotlight"
-    }
+    "notes": "Updated female_wudu to true based on external mosque listings."
   },
   {
     "id": "cxjnht",
@@ -1170,11 +1167,7 @@
       "cuisine_japanese": true,
       "no_alcohol": false
     },
-    "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram.",
-    "sponsor": {
-      "tier": "basic",
-      "endDate": "2026-03-25"
-    }
+    "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram."
   },
   {
     "id": "8jp8hr",
@@ -1998,6 +1991,22 @@
       "cuisine_arab": true,
       "cuisine_middle_eastern": true,
       "cuisine_tunisian": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "msue5i",
+    "name": "Kung Food Panda",
+    "type": "restaurant",
+    "address": "Piispansilta 9 A, 02230 Espoo",
+    "city": "Espoo",
+    "lat": 60.1603473,
+    "lng": 24.7390115,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_chinese": true,
+      "cuisine_fast_food": true
     },
     "notes": ""
   }
