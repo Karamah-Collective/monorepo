@@ -248,7 +248,7 @@ This copies only the deployment-relevant files to the `preview` branch.
 
 ```bash
 # 1. Protect gitignored local files that branch switches would delete
-if (Test-Path 'scripts/local-backups') { Copy-Item -Recurse -Force 'scripts/local-backups' "$env:TEMP/halal-local-backups" }
+if (Test-Path 'scripts/local-backups') { New-Item -ItemType Directory -Force "$env:TEMP/halal-local-backups" | Out-Null; Copy-Item -Recurse -Force 'scripts/local-backups/*' "$env:TEMP/halal-local-backups/" }
 
 # 2. Switch to preview
 git checkout preview
@@ -275,7 +275,7 @@ git push origin preview
 
 # 7. Return to main and restore local backups
 git checkout main
-if (Test-Path "$env:TEMP/halal-local-backups") { Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups" 'scripts/local-backups'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
+if (Test-Path "$env:TEMP/halal-local-backups") { New-Item -ItemType Directory -Force 'scripts/local-backups' | Out-Null; Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups/*" 'scripts/local-backups/'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
 After completing, confirm:
@@ -293,7 +293,7 @@ This copies only the deployment-relevant files directly to the `deploy` branch, 
 
 ```bash
 # 1. Protect gitignored local files that branch switches would delete
-if (Test-Path 'scripts/local-backups') { Copy-Item -Recurse -Force 'scripts/local-backups' "$env:TEMP/halal-local-backups" }
+if (Test-Path 'scripts/local-backups') { New-Item -ItemType Directory -Force "$env:TEMP/halal-local-backups" | Out-Null; Copy-Item -Recurse -Force 'scripts/local-backups/*' "$env:TEMP/halal-local-backups/" }
 
 # 2. Switch to deploy
 git checkout deploy
@@ -319,7 +319,7 @@ git push origin deploy
 
 # 7. Return to main and restore local backups
 git checkout main
-if (Test-Path "$env:TEMP/halal-local-backups") { Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups" 'scripts/local-backups'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
+if (Test-Path "$env:TEMP/halal-local-backups") { New-Item -ItemType Directory -Force 'scripts/local-backups' | Out-Null; Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups/*" 'scripts/local-backups/'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
 Confirm after:
