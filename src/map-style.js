@@ -37,6 +37,13 @@ export const HSL_STYLE = {
       },
     },
     {
+      id: "water",
+      type: "fill",
+      source: "openmaptiles",
+      "source-layer": "water",
+      paint: { "fill-color": "#bee4f8" },
+    },
+    {
       id: "landcover_grass",
       type: "fill",
       source: "openmaptiles",
@@ -158,13 +165,6 @@ export const HSL_STYLE = {
           15,
         ],
       },
-    },
-    {
-      id: "water",
-      type: "fill",
-      source: "openmaptiles",
-      "source-layer": "water",
-      paint: { "fill-color": "#bee4f8" },
     },
     {
       id: "aeroway_fill",
