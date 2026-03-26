@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -1343,16 +1343,26 @@
             <h4>3. What We Don't Do</h4>
             <ul>
               <li>No cookies or advertising pixels</li>
-              <li>No behavioural tracking or analytics</li>
+              <li>No behavioural tracking, ad targeting, or user profiling</li>
               <li>No location data stored — your position is used only in your browser for the map and is never sent to our servers</li>
               <li>We will never sell or share personal information</li>
               <li>Contact details (name, email, phone) are used solely to respond to your enquiry and are never shared with third parties</li>
             </ul>
 
-            <h4>4. Google reCAPTCHA</h4>
+            <h4>4. Cloudflare Web Analytics</h4>
+            <p>We use <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener">Cloudflare Web Analytics</a> to count visitors and understand general usage patterns. It is privacy-first by design:</p>
+            <ul>
+              <li>No cookies are set</li>
+              <li>No personal data is collected or stored</li>
+              <li>No cross-site tracking or fingerprinting</li>
+              <li>Data is processed by Cloudflare, who already handles all traffic to this site</li>
+            </ul>
+            <p>Cloudflare's privacy practices are described in the <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare Privacy Policy</a>.</p>
+
+            <h4>5. Google reCAPTCHA</h4>
             <p>We use Google reCAPTCHA v3 to protect forms from automated abuse. This service may collect hardware and software information. It is governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a>.</p>
 
-            <h4>5. Third-Party Services</h4>
+            <h4>6. Third-Party Services</h4>
             <p>Halal Finder relies on the following external services. Each handles its own data independently:</p>
             <ul>
               <li><strong><a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransit (HSL &amp; Waltti)</a></strong> — Our primary routing and geocoding API. The HSL endpoint, provided by Helsinki Regional Transport Authority (HSL), covers the Greater Helsinki area. The Waltti endpoint covers the Turku / F&ouml;li region. Both are used to calculate public transport routes and to search for addresses in Finland. Governed by the <a href="https://digitransit.fi/en/developers/apis/1-routing-api/0-graphql/" target="_blank" rel="noopener">Digitransit API terms</a>.</li>
@@ -1365,17 +1375,17 @@
               <li><strong><a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></strong> — Open-source map rendering library used to display the map.</li>
             </ul>
 
-            <h4>6. Data Storage &amp; Security</h4>
+            <h4>7. Data Storage &amp; Security</h4>
             <p>Form submissions (place suggestions and contact messages) are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
-            <h4>7. Your Rights (GDPR)</h4>
+            <h4>8. Your Rights (GDPR)</h4>
             <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form submissions, we can locate your data using the email address you provided.</p>
             <p>Contact: <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
 
-            <h4>8. Children's Privacy</h4>
+            <h4>9. Children's Privacy</h4>
             <p>This service is not directed at children under 16. We do not knowingly collect personal data from anyone under 16.</p>
 
-            <h4>9. Featured Places</h4>
+            <h4>10. Featured Places</h4>
             <p>Some places in the app are marked as <strong>Featured</strong>. These are sponsored placements — businesses that support Halal Finder in exchange for increased visibility. In the app we call them "Featured" to keep the interface clean, but we want to be fully transparent: featured places are sponsored.</p>
             <p>What this means in practice:</p>
             <ul>
@@ -1387,10 +1397,10 @@
               <li>Featured places are clearly labelled in-app so users are always aware</li>
             </ul>
 
-            <h4>10. Changes to This Policy</h4>
+            <h4>11. Changes to This Policy</h4>
             <p>We may update this policy from time to time. The "Last updated" date above will be revised accordingly.</p>
 
-            <h4>11. Contact</h4>
+            <h4>12. Contact</h4>
             <p>Questions about this policy? Reach us at <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
             <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
           </div>
@@ -1442,5 +1452,8 @@
 
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js" integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW" crossorigin="anonymous"></script>
     <script type="module" src="src/app.js"></script>
+    <!-- Cloudflare Web Analytics -->
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "b0a6f4a4052f40cda13548852abfd250"}'></script>
+    <!-- End Cloudflare Web Analytics -->
   </body>
 </html>
