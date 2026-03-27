@@ -328,7 +328,27 @@ function trackRecentlyViewed(id) {
 
 // User location for distance badges
 let userLocLat = null, userLocLng = null;
+
+// Resolve the best available location: live GPS (priority) → home (fallback).
+// Sets userLocLat/Lng so distance badges and sort work.
+function _resolveUserLocation() {
+  const live = getCurrentLocationState();
+  if (live.active && live.lat !== null) {
+    userLocLat = live.lat;
+    userLocLng = live.lng;
+    return;
+  }
+  // Fall back to home when live location is inactive
+  const home = getHomeLocation();
+  if (home && home.lat !== null) {
+    userLocLat = home.lat;
+    userLocLng = home.lng;
+  }
+}
+
 async function tryGetUserLocation() {
+  // Always refresh from live/home first
+  _resolveUserLocation();
   if (userLocLat !== null || !navigator.geolocation) return;
   // Only silently grab location if already granted — don't trigger a prompt
   // just for distance badges. The prompt should appear on explicit user actions.
@@ -1175,17 +1195,53 @@ const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
 
 let _placesDirty = false;
 
-function refreshDefaultPlacesSort() {
-  if (activeSortField !== "default") return;
+// Re-sync userSortLat/Lng from the best location source (live > home > null).
+function _resolveSortLocation() {
+  const live = getCurrentLocationState();
+  if (live.active && live.lat !== null) {
+    userSortLat = live.lat;
+    userSortLng = live.lng;
+  } else {
+    const home = getHomeLocation();
+    if (home && home.lat !== null) {
+      userSortLat = home.lat;
+      userSortLng = home.lng;
+    } else {
+      userSortLat = null;
+      userSortLng = null;
+    }
+  }
+}
+
+function refreshPlacesSort() {
+  if (activeSortField !== "default" && activeSortField !== "distance") return;
+
+  // If distance sort is active but no location source remains, fall back
+  if (activeSortField === "distance" && userSortLat === null) {
+    activeSortField = "default";
+    updateSortButton();
+    showToast("Location unavailable", "loc", "Switched to Most Relevant");
+  }
+
   if (!placesSheet.classList.contains("shut")) {
-    _placesDirty = true;
+    if (activeSortField === "distance" || activeSortField === "default") {
+      renderPlacesList();
+    }
     return;
   }
   _placesDirty = false;
 }
 
-window.addEventListener("hf:home-updated", refreshDefaultPlacesSort);
-window.addEventListener("hf:current-location-updated", refreshDefaultPlacesSort);
+window.addEventListener("hf:home-updated", () => {
+  _resolveUserLocation();
+  _resolveSortLocation();
+  refreshPlacesSort();
+});
+window.addEventListener("hf:current-location-updated", () => {
+  _resolveUserLocation();
+  _resolveSortLocation();
+  refreshPlacesSort();
+});
 
 document.getElementById("places-type-chips").addEventListener("click", (e) => {
   const chip = e.target.closest(".pf-chip");
@@ -1280,6 +1336,7 @@ sortDropdown.addEventListener("click", (e) => {
     const field = opt.dataset.sortField;
     if (field === "distance") {
       if (userSortLat === null) {
+        // Try live GPS first
         requestLocation().then((pos) => {
           userSortLat = pos.coords.latitude;
           userSortLng = pos.coords.longitude;
@@ -1288,8 +1345,20 @@ sortDropdown.addEventListener("click", (e) => {
           activeSortField = "distance";
           updateSortButton();
           animateSheetHeight(placesSheet, () => renderPlacesList());
-        }).catch((e) => {
-          showToast("Location is off", "loc", e.message);
+        }).catch(() => {
+          // Fall back to home location
+          const home = getHomeLocation();
+          if (home && home.lat !== null) {
+            userSortLat = home.lat;
+            userSortLng = home.lng;
+            userLocLat = home.lat;
+            userLocLng = home.lng;
+            activeSortField = "distance";
+            updateSortButton();
+            animateSheetHeight(placesSheet, () => renderPlacesList());
+          } else {
+            showToast("Enable location or set a home address", "loc", "Needed to sort by distance");
+          }
         });
         return;
       }
@@ -1499,10 +1568,24 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   updateClearButton();
 });
 
+function _placeSkeletonHTML(count = 6) {
+  return Array.from({ length: count }, (_, i) =>
+    `<li class="pl-skeleton" style="--i:${i}"><div class="skel-bone skel-icon"></div><div class="skel-body"><div class="skel-bone skel-line skel-line-long"></div><div class="skel-bone skel-line skel-line-short"></div></div><div class="skel-bone skel-badge"></div></li>`
+  ).join("");
+}
+
 function renderPlacesList() {
   const list = document.getElementById("places-list");
   const empty = document.getElementById("places-empty");
   const ct = document.getElementById("places-ct");
+
+  // Show skeleton placeholders while data is still loading
+  if (!placesLoaded) {
+    empty.classList.add("hide");
+    ct.textContent = "";
+    list.innerHTML = _placeSkeletonHTML();
+    return;
+  }
 
   let filtered =
     activeTypeFilter === "all"

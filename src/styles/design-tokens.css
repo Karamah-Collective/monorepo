@@ -1331,6 +1331,25 @@ body {
   border-radius: var(--r-pill);
 }
 
+/* ─── Skeleton Loading ──────────────────────────────────────────────────────── */
+/* Reusable shimmer placeholders for any loading state.                         */
+
+@keyframes shimmer {
+  from { opacity: 1; }
+  to   { opacity: 0.45; }
+}
+
+.skel-bone {
+  background: var(--surface-2);
+  border-radius: var(--r-xs);
+  animation: shimmer 1.2s ease-in-out infinite alternate;
+}
+
+.skel-line {
+  height: 12px;
+  border-radius: var(--r-xs);
+}
+
 /* ─── Place list card ───────────────────────────────────────────────────────── */
 /* Shared base for every card in the places list: regular li AND the empty state */
 .pl-card {

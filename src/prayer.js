@@ -167,11 +167,9 @@ function togglePrayerExpanded() {
     const listEl = document.getElementById("prayer-times-inner");
     listEl.innerHTML = "";
     if (!prayerTimesToday) {
-      const item = document.createElement("div");
-      item.className = "prayer-time-item";
-      item.style.justifyContent = "center"; item.style.opacity = "0.6";
-      item.textContent = "Loading prayer times…";
-      listEl.appendChild(item);
+      listEl.innerHTML = Array.from({ length: 5 }, () =>
+        '<div class="prayer-skel-item"><div class="skel-bone skel-line prayer-skel-name"></div><div class="skel-bone skel-line prayer-skel-time"></div></div>'
+      ).join("");
     } else {
       const current = getCurrentPrayer(), next = getNextPrayer();
       for (const name of PRAYER_NAMES) {

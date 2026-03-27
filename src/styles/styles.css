@@ -1550,9 +1550,15 @@ body.dark-mode .sp-tip {
   #places-list li:hover {
     background: var(--surface-2);
   }
+  #places-list li.pl-skeleton:hover {
+    background: var(--surface);
+  }
 }
 #places-list li:active {
   background: var(--accent-soft);
+}
+#places-list li.pl-skeleton:active {
+  background: var(--surface);
 }
 
 /* Section divider headers inside the places list */
@@ -1958,7 +1964,13 @@ body.dark-mode .sp-tip {
   display: block;
 }
 
-.pl-skeleton {
+/* ─── Skeleton layout variants ──────────────────────────────────────────────── */
+/* .skel-bone, .skel-line, and @keyframes shimmer live in design-tokens.css.    */
+/* These rules are layout + sizing overrides for each skeleton context.         */
+
+/* Places card skeleton — mirrors .pl-card grid */
+.pl-skeleton,
+#places-list li.pl-skeleton {
   display: flex;
   align-items: center;
   gap: var(--sp-6);
@@ -1966,16 +1978,13 @@ body.dark-mode .sp-tip {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-}
-.skel-bone {
-  background: var(--surface-2);
-  border-radius: var(--r-xs);
+  cursor: default;
   animation: shimmer 1.2s ease-in-out infinite alternate;
 }
 .skel-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--r-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-xs);
   flex-shrink: 0;
 }
 .skel-body {
@@ -1984,33 +1993,94 @@ body.dark-mode .sp-tip {
   flex-direction: column;
   gap: var(--sp-2);
 }
-.skel-line {
-  height: 12px;
-  border-radius: var(--r-xs);
-}
-.skel-line-short {
-  width: 60%;
-}
-.skel-line-long {
-  width: 85%;
-}
-.skel-line-xs {
-  width: 35%;
-  height: 10px;
-}
+.skel-line-short { width: 60%; }
+.skel-line-long  { width: 85%; }
+.skel-line-xs    { width: 35%; height: 10px; }
 .skel-badge {
   width: 56px;
   height: 24px;
   border-radius: var(--r-pill);
   flex-shrink: 0;
 }
-@keyframes shimmer {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.45;
-  }
+
+/* Prayer time skeleton — mirrors .prayer-time-item */
+.prayer-skel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+}
+.prayer-skel-item + .prayer-skel-item {
+  border-top: 1px solid var(--border-light);
+}
+.prayer-skel-name { width: 56px; height: 12px; }
+.prayer-skel-time { width: 40px; height: 12px; }
+
+/* Itinerary card skeleton — mirrors .itin-card */
+.itin-skeleton {
+  margin: 6px 16px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  animation: fadeStateIn 0.25s ease both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.itin-skel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+.itin-skel-dur   { width: 54px; height: 18px; border-radius: var(--r-xs); }
+.itin-skel-time  { width: 90px; height: 12px; }
+.itin-skel-chain {
+  display: flex;
+  gap: var(--sp-1);
+}
+.itin-skel-badge {
+  width: 32px;
+  height: 20px;
+  border-radius: var(--r-pill);
+}
+
+/* Search result skeleton — mirrors #results-list li */
+.search-skel-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+.search-skel-item:last-child { border-bottom: none; }
+.search-skel-icon {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+.search-skel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.search-skel-name { width: 65%; height: 12px; }
+.search-skel-addr { width: 45%; height: 10px; }
+
+/* Transit stop routes skeleton — mirrors .sp-chip row */
+.sp-skel-routes {
+  display: flex;
+  gap: var(--sp-1);
+  padding: 6px 10px;
+  flex-wrap: wrap;
+}
+.sp-skel-chip {
+  width: 36px;
+  height: 18px;
+  border-radius: var(--r-pill);
 }
 
 .place-mk-wrap {

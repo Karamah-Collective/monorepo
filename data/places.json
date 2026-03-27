@@ -14,10 +14,7 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings.",
-    "sponsor": {
-      "tier": "basic"
-    }
+    "notes": "Updated female_wudu to true based on external mosque listings."
   },
   {
     "id": "cxjnht",
@@ -35,10 +32,7 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Rabita central mosque.",
-    "sponsor": {
-      "tier": "featured"
-    }
+    "notes": "Rabita central mosque."
   },
   {
     "id": "0v9lwu",
@@ -55,10 +49,7 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": "",
-    "sponsor": {
-      "tier": "spotlight"
-    }
+    "notes": ""
   },
   {
     "id": "9m5ck3",

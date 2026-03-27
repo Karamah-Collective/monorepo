@@ -1956,7 +1956,12 @@ function enterResultsMode() {
 function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
 dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); dirSnap.remeasure(); });
 
-function showDirLoading() { dirEmpty.classList.add("hide"); dirErr.classList.add("hide"); dirItins.innerHTML = ""; }
+function _itinSkeletonHTML() {
+  return Array.from({ length: 3 }, (_, i) =>
+    `<div class="itin-skeleton" style="--i:${i}"><div class="itin-skel-header"><div class="skel-bone itin-skel-dur"></div><div class="skel-bone skel-line itin-skel-time"></div></div><div class="itin-skel-chain"><div class="skel-bone itin-skel-badge"></div><div class="skel-bone itin-skel-badge"></div><div class="skel-bone itin-skel-badge"></div></div></div>`
+  ).join("");
+}
+function showDirLoading() { dirEmpty.classList.add("hide"); dirErr.classList.add("hide"); dirItins.innerHTML = _itinSkeletonHTML(); }
 function showDirError(msg) { setGoLoading(false); dirLoad.classList.add("hide"); dirEmpty.classList.add("hide"); dirErr.textContent = msg; dirErr.classList.remove("hide"); }
 
 // --- Nearest mosque from origin ---

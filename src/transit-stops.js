@@ -243,7 +243,7 @@ function _openStopFeaturePopup(f) {
     renderStopRoutes(routesDivId, cachedRoutes, color);
   } else {
     const el = document.getElementById(routesDivId);
-    if (el) el.innerHTML = '<span class="sp-loading"><span class="sp-spin"></span>Loading…</span>';
+    if (el) el.innerHTML = '<div class="sp-skel-routes"><div class="skel-bone sp-skel-chip"></div><div class="skel-bone sp-skel-chip"></div><div class="skel-bone sp-skel-chip"></div><div class="skel-bone sp-skel-chip"></div></div>';
     const expectedMode = { bus: "BUS", tram: "TRAM", metro: "SUBWAY", train: "RAIL", ferry: "FERRY" }[type] || null;
     const fetchPromise = f.properties.noCoverage
       ? fetchStopRoutesFromOSM(lngLat[1], lngLat[0])

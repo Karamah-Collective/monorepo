@@ -520,6 +520,59 @@ The `.t-scroll` utility class (and its auto-included component aliases) applies 
 
 - `flex: 1; min-height: 0` (layout)
 - `scroll-behavior: smooth` (behaviour override, component-specific)
+
+---
+
+## §13 — Skeleton Loading System
+
+Animated placeholder UI for any content that loads asynchronously. Skeletons shimmer in place of real content so the layout feels instant.
+
+### Base classes (in `design-tokens.css`)
+
+| Class | Purpose |
+|---|---|
+| `.skel-bone` | Apply to any skeleton element — sets `--surface-2` background, `--r-xs` radius, and shimmer animation (1.2 s alternate pulse to 45 % opacity). Dark mode overrides to `--surface-3`. |
+| `.skel-line` | Generic line placeholder (12 px tall, pill radius). Combine with `.skel-bone`. |
+| `@keyframes shimmer` | Shared animation — `opacity: 1 → 0.45`, 1.2 s ease-in-out, infinite alternate. |
+
+### Layout variants (in `styles.css`)
+
+Each variant mirrors the corresponding real component's dimensions so content doesn't shift when the skeleton is replaced.
+
+| Variant | Mirrors | Structure |
+|---|---|---|
+| `.pl-skeleton` | Place card (`.pl-card` grid) | Icon (28 × 28) + body (2 lines) + badge pill |
+| `.prayer-skel-item` | Prayer time row | Name line (56 px) + time line (40 px), spaced between |
+| `.itin-skeleton` | Itinerary card (`.itin-card`) | Duration bar + time line + 3 badge pills |
+| `.search-skel-item` | Search result (`#results-list li`) | Icon (38 × 38) + name line + address line |
+| `.sp-skel-routes` | Stop popup route chips | 4 pill chips (36 × 18) |
+
+### Usage pattern
+
+```js
+// Show skeleton while data loads
+container.innerHTML = Array.from({ length: 6 }, (_, i) =>
+  '<li class="pl-skeleton" style="--i:' + i + '">' +
+    '<div class="skel-bone skel-icon"></div>' +
+    '<div class="skel-body">' +
+      '<div class="skel-bone skel-line skel-line-long"></div>' +
+      '<div class="skel-bone skel-line skel-line-short"></div>' +
+    '</div>' +
+    '<div class="skel-bone skel-badge"></div>' +
+  '</li>'
+).join("");
+
+// Replace with real content when data arrives
+container.innerHTML = realHTML;
+```
+
+### Rules
+
+1. Every async-loaded content area should show a skeleton, never a blank space or plain "Loading…" text.
+2. Skeleton dimensions should approximate the real content height to minimise layout shift.
+3. Use `.skel-bone` on every placeholder element — it carries the shimmer animation.
+4. Match the skeleton count to the typical content count (e.g. 5 prayer rows, 3 itinerary cards, 6 place cards).
+5. Dark mode is automatic via the `.skel-bone` override in `styles.css`.
 - `max-height` constraints
 
 ---

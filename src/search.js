@@ -292,6 +292,10 @@ const drop = document.getElementById("search-drop");
 const rList = document.getElementById("results-list");
 let debounce = null;
 
+const _searchSkeletonHTML = Array.from({ length: 4 }, () =>
+  '<li class="search-skel-item"><div class="skel-bone search-skel-icon"></div><div class="search-skel-body"><div class="skel-bone skel-line search-skel-name"></div><div class="skel-bone skel-line search-skel-addr"></div></div></li>'
+).join("");
+
 async function search(q) {
   q = q.trim();
   if (!q) { hideDrop(); return; }
@@ -300,6 +304,14 @@ async function search(q) {
     // 1. Instant local results from our own data/places.json
     const localItems = _localPlaceSearch(q);
     const localNames = new Set(localItems.map(r => r.name.toLowerCase()));
+
+    // Show local results + skeleton rows for pending API results
+    if (localItems.length) {
+      showResults(localItems);
+    } else {
+      rList.innerHTML = _searchSkeletonHTML;
+      showDrop();
+    }
 
     // 2. API results (Digitransit first, Nominatim as fallback)
     let apiItems = await _dtGeoSearch(q);

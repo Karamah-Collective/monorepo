@@ -19,6 +19,9 @@ what you like, what you've decided, and how you want things done.
 - For pin popups, use the subtitle text "Dropped pin" (no "Custom location" wording).
 - Expand/collapse UI should reveal by clipping container height/opacity, not by moving or squashing inner text/icons.
 - Date/time picker: drum roller style (iOS-like) with gradient depth tiers, not calendar grid or dropdown selects. Compact, unified, smooth drag interaction.
+- When exploring major UI redesigns, the user prefers a true architectural rethink over cosmetic restyling of the existing floating-control layout.
+- Avoid redesign directions that feel scattered, overly glassy, or HUD-like. The user wants compact, advanced, beautiful product-shell layouts with stronger structural order.
+- Redesign mockups should stay lightweight and visual. Use minimal copy and minimal feature detail so the user can judge look, feel, and layout without reading through dense UI content.
 
 ### Architecture / Development
 - Static site only — no bundler, no SSR, no frameworks. Vanilla JS ES modules.
@@ -44,6 +47,8 @@ what you like, what you've decided, and how you want things done.
 > Specific choices made during development sessions. Include date and context.
 
 <!-- Append new entries below this line -->
+
+- **2026-03-27 — Full UI redesign direction: product shell over floating HUD.** User rejected two floating-control redesign concepts as too scattered / not beautiful enough. Preferred next-step direction is a complete layout rethink with stronger structure, such as a navigation rail, dedicated workspace pane, and map as canvas rather than stacking independent floating controls.
 
 - **2026-03-17 — Shared purple by theme: light `#8C4799`, dark `#E896E3` (shops + trains).** Use the original HSL purple in light mode and the brighter purple in dark mode, consistently for place shop color and rail visuals.
 - **2026-03-17 — Popup redesign direction: Design A as the base.** User prefers the Design A popup structure for regular places, wants the existing live popup button treatment preserved, and wants note support included in A-based variants.
@@ -76,6 +81,8 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- Avoid redesign concepts that mainly rearrange floating pills, bottom docks, or glass overlays without changing the underlying layout architecture.
+
 - Don't use Cloudflare KV or any paid/tiered storage for link shortening. Keep sharing fully stateless.
 - Don't use NLP libraries, ML models, or external language-processing APIs for search intent detection. Keep it lightweight with curated regex patterns.
 
@@ -100,6 +107,15 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-03-27 — UI Redesign Mock v3 (full architectural shift)
+- User rejected the first two mock directions as not cohesive or beautiful enough.
+- New mock created at `docs/ui-redesign-v3.html` using a fundamentally different layout: vertical navigation rail, dedicated left workspace, large map canvas, and right contextual inspector.
+- This direction intentionally avoids the earlier floating-dock / glass-HUD concepts and treats the interface more like a structured product shell.
+
+### 2026-03-27 — UI Redesign Mock v4 (lighter presentation)
+- User felt the previous redesign mock contained too much information and wanted a cleaner visual mockup.
+- New mock created at `docs/ui-redesign-v4.html` with the same high-level shell direction but stripped down to minimal content so the evaluation focuses on visual feel and layout only.
 
 ### 2026-03-24 — Missing bus stops in Kokkola & Seinäjoki
 **Problem:** Kokkola (219 stops) and Seinäjoki (475 stops) had no visible bus stops except the train station. Root cause: Digitransit Waltti has no GTFS data for those cities' local bus networks, so all bus stops got `routes: []` in the cache → `hasRoutes=0` → hidden on map.
@@ -388,6 +404,33 @@ what you like, what you've decided, and how you want things done.
 - Ensures sponsored pins render above regular pins when zoomed out
 
 **b. Promos button DOM order + Eid stacking:**
+
+### 2026-03-27 — Skeleton Loading States
+**What was built:** Replaced all blank/spinner loading states with animated skeleton placeholders across the app.
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `src/places.js`, `src/prayer.js`, `src/directions.js`, `src/search.js`, `src/transit-stops.js`, `docs/DESIGN_SYSTEM.md`.
+**Design system changes:**
+- Promoted `.skel-bone`, `.skel-line`, and `@keyframes shimmer` to `design-tokens.css` as reusable templates.
+- Added 5 skeleton layout variants to `styles.css`: `.pl-skeleton` (places cards), `.prayer-skel-item` (prayer times), `.itin-skeleton` (itinerary cards), `.search-skel-item` (search results), `.sp-skel-routes` (transit stop routes).
+- Documented skeleton system in `DESIGN_SYSTEM.md` §13.
+**Decisions:**
+- 2026-03-27 — Skeleton shimmer: opacity pulse (1 → 0.45, 1.2s ease-in-out alternate) over gradient sweep. Simpler, GPU-friendly, consistent with existing flat design.
+- 2026-03-27 — Skeleton counts: 6 place cards, 5 prayer rows, 3 itinerary cards, 4 search results, 4 transit route chips — match typical content visible without scrolling.
+- 2026-03-27 — Search shows local results instantly + skeletons for pending API results. If no local matches, full skeleton.
+- 2026-03-27 — Transit stop routes: skeleton chip pills replace old spinner+text pattern.
+- 2026-03-27 — Places skeleton shown via `!placesLoaded` guard in `renderPlacesList()` — first-visit users see shimmer while data fetches.
+
+### 2026-03-27 — Location priority & distance sort guard
+**What was built:** (a) Toast when user tries to sort by distance with no location and no home set. (b) Live location takes priority over home for all distance features; home is a fallback.
+**Files modified:** `src/places.js`
+**Changes:**
+- Added `_resolveUserLocation()` helper: checks live GPS first → falls back to home → sets `userLocLat/Lng` for distance badges and card rendering.
+- `tryGetUserLocation()` now calls `_resolveUserLocation()` first, so home-location users see distance badges without needing GPS.
+- Distance sort handler: tries GPS → falls back to home → shows toast "Enable location or set a home address" if neither available.
+- `hf:current-location-updated` listener now also updates `userSortLat/Lng` and re-resolves location, so switching GPS on mid-session immediately updates distance sort.
+- `hf:home-updated` listener now re-resolves location, so setting a home address immediately enables distance badges.
+**Decisions:**
+- 2026-03-27 — Live location always takes priority over home for distance features (badges, sort, "Most Relevant" anchor). Home is only used when live location is inactive.
+- 2026-03-27 — Distance sort toast: "Enable location or set a home address" with sub "Needed to sort by distance" — clear, actionable.
 - Root cause: `#promos-pill` was before `#prayer-snack` in DOM → CSS `~` sibling combinator couldn't work
 - Fix: moved `#promos-pill` + `#promos-overlay` in `index.html` to after `#eid-pill` section
 - DOM order now: `#prayer-snack` → `#eid-pill` → `#promos-pill` (all siblings)
