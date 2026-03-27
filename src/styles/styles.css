@@ -2095,9 +2095,16 @@ body.dark-mode .sp-tip {
 .place-mk {
   background: var(--place-c, var(--accent));
   position: relative;
+  transition: transform var(--t-fast);
 }
 .place-mk-tip {
   display: none;
+}
+@media (hover: hover) {
+  .place-mk-wrap:hover .place-mk,
+  .place-mk-wrap:hover .custom-mk {
+    transform: rotate(-45deg) scale(1.15);
+  }
 }
 
 /* Sponsor marker glow — basic, featured & spotlight tiers */
@@ -5687,6 +5694,30 @@ body.dark-mode .sp-chip {
     color: #fff;
     border-color: var(--accent);
     filter: brightness(1.12);
+  }
+}
+/* “Explore” outline pill — secondary option on first tutorial slide */
+.tut-explore-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-roundel-size);
+  padding: 0 var(--sp-7);
+  background: transparent;
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--txt-base);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .tut-explore-btn:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
   }
 }
 

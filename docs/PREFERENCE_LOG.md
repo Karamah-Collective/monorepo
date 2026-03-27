@@ -108,6 +108,11 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-03-27 — Pin hover scale + tutorial skip button
+- **Pin hover:** Added `transition: transform var(--t-fast)` to `.place-mk` and `.custom-mk`. Hover on `.place-mk-wrap` scales inner puck to `rotate(-45deg) scale(1.15)`. Uses `@media (hover: hover)`. No interference with sponsored pin animations (transitions are on the child, animations run on same element but override).
+- **Tutorial skip:** First "Assalamu Alaikum" slide now shows a "Just explore" ghost pill button (left side of footer via `justify-content: space-between`) alongside the "Get started" primary pill. Clicking it calls `dismiss()` immediately — marks tutorial done without stepping through. New `.tut-skip-btn` template added to `styles.css`.
+- Files: `src/styles/styles.css`, `src/tutorial.js`.
+
 ### 2026-03-27 — UI Redesign Mock v3 (full architectural shift)
 - User rejected the first two mock directions as not cohesive or beautiful enough.
 - New mock created at `docs/ui-redesign-v3.html` using a fundamentally different layout: vertical navigation rail, dedicated left workspace, large map canvas, and right contextual inspector.

@@ -36,17 +36,17 @@ const ALL_STEPS = [
     phoneOrder: 1,
   },
   {
-    target: "#dir-btn",
-    title: "Routes",
-    body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times",
-    icon: '<path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/>',
-    phoneOrder: 2,
-  },
-  {
     target: "#places-btn",
     title: "Places",
     body: "Browse mosques, prayer rooms, halal restaurants &amp; shops \u2014 filter by category and save favourites",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
+    phoneOrder: 2,
+  },
+  {
+    target: "#dir-btn",
+    title: "Routes",
+    body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times",
+    icon: '<path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/>',
     phoneOrder: 3,
   },
   {
@@ -326,13 +326,14 @@ function _render(index) {
     </div>
     <p class="tut-body">${s.body}</p>
     <div class="tut-foot">
-      ${!isCenter ? `<div class="step-dots">${dots}</div>` : ""}
+      ${isFirst ? `<button class="tut-explore-btn" id="tut-explore">Explore</button>` : (!isCenter ? `<div class="step-dots">${dots}</div>` : "")}
       <div class="tut-nav">${backBtn}${nextBtn}</div>
     </div>
   `;
 
   cardEl.querySelector("#tut-next").addEventListener("click", advance);
   if (!isFirst) cardEl.querySelector("#tut-back").addEventListener("click", retreat);
+  if (isFirst) cardEl.querySelector("#tut-explore").addEventListener("click", dismiss);
   cardEl.querySelector(".tut-close").addEventListener("click", dismiss);
 
   // ── Card class ─────────────────────────────────────────────────────────────
