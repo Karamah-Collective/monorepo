@@ -73,6 +73,7 @@
   --txt-xl: 16px;
   --txt-2xl: 18px;
   --txt-3xl: 22px;
+  --txt-display: 26px;
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -92,6 +93,11 @@
   --t-fast: 0.15s ease;
   --t-med: 0.25s ease;
   --t-spring: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Slight overshoot — playful spring-pop for small elements (pills, chips) */
+  --ease-spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --btn-icon-size: 42px;
   --btn-roundel-size: 32px;
@@ -634,7 +640,7 @@ body {
   overflow-x: hidden;
   scrollbar-gutter: stable;
   will-change: height;
-  transition: height 0.25s ease;
+  transition: height var(--t-spring);
 }
 .tf-group-inner {
   display: flex;
@@ -747,9 +753,9 @@ body {
 
 .t-panel-heading {
   font-size: var(--txt-2xl);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1.25;
 }
 
@@ -910,7 +916,7 @@ body {
 .sg-subtags {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 0.25s ease, margin 0.25s ease, flex-basis 0.25s ease;
+  transition: grid-template-rows var(--t-spring), margin var(--t-spring), flex-basis var(--t-spring);
   flex-basis: 100%;
   order: 1;
   margin-top: 2px;
@@ -931,7 +937,7 @@ body {
   border-radius: var(--r-md);
   background: var(--surface);
   overflow: hidden;
-  transition: padding 0.25s ease, border-color 0.25s ease;
+  transition: padding var(--t-spring), border-color var(--t-spring);
   min-width: 0;
 }
 .sg-subtags.shut .sg-subtags-inner {
@@ -1027,9 +1033,9 @@ body {
   box-shadow: var(--shadow-md);
   width: 44px;
   transition:
-    width 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    border-radius 0.3s ease,
-    box-shadow 0.3s ease;
+    width var(--t-spring),
+    border-radius var(--t-spring),
+    box-shadow var(--t-spring);
 }
 .pill-expand:not(.collapsed) {
   border-radius: var(--r-xl);
@@ -1049,13 +1055,14 @@ body {
 
 .pill-expand-body {
   opacity: 1;
-  transition: opacity 0.2s ease 0.08s;
+  transition: opacity 0.2s ease 0.05s;
 }
 .pill-expand.collapsed .pill-expand-body {
   opacity: 0;
   pointer-events: none;
   height: 0;
   overflow: hidden;
+  transition: opacity 0.15s ease;
 }
 
 .pill-panel {
@@ -1070,8 +1077,8 @@ body {
   transform-origin: right center;
   transform: translateY(-50%);
   transition:
-    opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    opacity var(--t-spring),
+    transform var(--t-spring);
 }
 
 .pill-panel.hide {

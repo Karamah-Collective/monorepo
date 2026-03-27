@@ -1159,6 +1159,7 @@ const placesSheet = document.getElementById("places-sheet");
 const scrim = document.getElementById("scrim");
 
 export function openPlacesSheet() {
+  if (placesSheet._hideTimeout) { clearTimeout(placesSheet._hideTimeout); placesSheet._hideTimeout = null; }
   const dirPanel = document.getElementById("dir-panel");
   if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
   dirPanel.classList.add("shut");
@@ -1178,12 +1179,13 @@ export function openPlacesSheet() {
 export function closePlacesSheet() {
   // Cancel any pending animateSheetHeight cleanup that could corrupt a future open
   if (placesSheet._animCleanup) { clearTimeout(placesSheet._animCleanup); placesSheet._animCleanup = null; }
+  if (placesSheet._hideTimeout) { clearTimeout(placesSheet._hideTimeout); placesSheet._hideTimeout = null; }
   placesSheet.classList.add("shut");
   placesSnap.close();                            // nuclear: cancels rAF, wipes all inline styles
-  placesSheet.hidden = true;
   scrim.classList.add("hide");
   setActiveTab(null);
   scheduleMapViewportSync();
+  placesSheet._hideTimeout = setTimeout(() => { placesSheet.hidden = true; placesSheet._hideTimeout = null; }, 400);
 }
 
 document.getElementById("places-btn").addEventListener("click", () =>
@@ -2148,6 +2150,8 @@ document.getElementById("places-list").addEventListener("click", (e) => {
         const group = _lastGroupedData.get(city);
         if (group && list) list.innerHTML = group.map((p, i) => _buildCard(p, i)).join("");
         delete body.dataset.lazy;
+        // Force reflow so browser measures content at 0fr before transitioning to 1fr
+        void body.offsetHeight;
       }
       collapsedCityGroups.delete(city);
       cityHdr.classList.remove("is-collapsed");

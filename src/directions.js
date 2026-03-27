@@ -112,6 +112,7 @@ dirWaypointsCt.addEventListener("click", (e) => {
 
 // --- Panel open/close ---
 export function openDirPanel() {
+  if (dirPanel._hideTimeout) { clearTimeout(dirPanel._hideTimeout); dirPanel._hideTimeout = null; }
   closePlacesSheet();
   dirPanel.hidden = false;
   dirPanel.style.height = "";
@@ -127,9 +128,9 @@ export function openDirPanel() {
 
 export function closeDirPanel() {
   if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
+  if (dirPanel._hideTimeout) { clearTimeout(dirPanel._hideTimeout); dirPanel._hideTimeout = null; }
   dirPanel.classList.add("shut");
   dirSnap.close();                               // nuclear: cancels rAF, wipes all inline styles
-  dirPanel.hidden = true;
   document.getElementById("scrim").classList.add("hide");
   stopPick();
   updateSnackbar();
@@ -139,6 +140,7 @@ export function closeDirPanel() {
     if (dir.destMarker) dir.destMarker.getElement().style.display = "none";
     dir.waypointMarkers.forEach(m => { if (m) m.getElement().style.display = "none"; });
   }
+  dirPanel._hideTimeout = setTimeout(() => { dirPanel.hidden = true; dirPanel._hideTimeout = null; }, 400);
 }
 
 export function fullCloseDirPanel() {

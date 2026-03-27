@@ -935,10 +935,11 @@ body.dark-mode .sp-tip {
   #style-picker {
     opacity: 0;
     pointer-events: none;
+    /* Exit: quick fade + ease-in pull-away */
     transition:
-      opacity 0.2s ease,
-      transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
-      width 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 0.12s ease-in,
+      transform 0.18s ease-in,
+      width 0.3s var(--ease-expo),
       border-radius 0.3s ease,
       box-shadow 0.3s ease;
   }
@@ -948,23 +949,24 @@ body.dark-mode .sp-tip {
   #app.tools-open #style-picker {
     opacity: 1;
     pointer-events: auto;
+    /* Enter: spring-pop overshoot + slower fade-in */
     transition:
-      opacity 0.2s ease,
-      transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
-      width 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 0.22s ease-out,
+      transform 0.38s var(--ease-spring-pop),
+      width 0.3s var(--ease-expo),
       border-radius 0.3s ease,
       box-shadow 0.3s ease;
   }
 
   /* Stagger reveal */
   #app.tools-open #search-card       { transition-delay: 0s; }
-  #app.tools-open #style-picker      { transition-delay: 0.06s; }
-  #app.tools-open #contact-pill-wrap { transition-delay: 0.12s; }
+  #app.tools-open #style-picker      { transition-delay: 0.04s; }
+  #app.tools-open #contact-pill-wrap { transition-delay: 0.08s; }
 
   /* Stagger hide (reverse) */
   #app:not(.tools-open) #contact-pill-wrap { transition-delay: 0s; }
-  #app:not(.tools-open) #style-picker      { transition-delay: 0.04s; }
-  #app:not(.tools-open) #search-card       { transition-delay: 0.08s; }
+  #app:not(.tools-open) #style-picker      { transition-delay: 0.02s; }
+  #app:not(.tools-open) #search-card       { transition-delay: 0.04s; }
 
   /* Active state for toggle */
   #app.tools-open #tools-toggle,
@@ -987,9 +989,9 @@ body.dark-mode .sp-tip {
   #style-picker      { right: var(--map-edge); bottom: 269px; }
   #contact-pill-wrap { right: var(--map-edge); bottom: 321px; }
 
-  #search-card       { transform: translateY(8px) scale(0.92); }
-  #style-picker      { transform: translateY(8px) scale(0.92); }
-  #contact-pill-wrap { transform: translateY(8px) scale(0.92); }
+  #search-card       { transform: translateY(14px) scale(0.82); }
+  #style-picker      { transform: translateY(14px) scale(0.82); }
+  #contact-pill-wrap { transform: translateY(14px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
@@ -1015,9 +1017,9 @@ body.dark-mode .sp-tip {
     width: min(50vw, 360px);
   }
 
-  #search-card       { transform: translateX(12px) scale(0.92); }
-  #style-picker      { transform: translateX(12px) scale(0.92); }
-  #contact-pill-wrap { transform: translateX(12px) scale(0.92); }
+  #search-card       { transform: translateX(16px) scale(0.82); }
+  #style-picker      { transform: translateX(16px) scale(0.82); }
+  #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
@@ -1041,9 +1043,9 @@ body.dark-mode .sp-tip {
     width: min(40vw, 360px);
   }
 
-  #search-card       { transform: translateX(12px) scale(0.92); }
-  #style-picker      { transform: translateX(12px) scale(0.92); }
-  #contact-pill-wrap { transform: translateX(12px) scale(0.92); }
+  #search-card       { transform: translateX(16px) scale(0.82); }
+  #style-picker      { transform: translateX(16px) scale(0.82); }
+  #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
@@ -1080,12 +1082,15 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: bottom center;
   transition:
-    transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-    height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    transform 0.32s var(--ease-expo),
+    opacity 0.2s var(--ease-expo),
+    visibility 0.32s,
+    height 0.3s var(--ease-expo);
 }
 .sheet.shut {
-  transform: translateY(100%);
+  transform: translateY(100%) scale(0.92);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1144,9 +1149,9 @@ body.dark-mode .sp-tip {
 .sheet-head h2 {
   flex: 1;
   font-size: var(--txt-2xl);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 @media (min-width: 769px) {
@@ -1165,12 +1170,13 @@ body.dark-mode .sp-tip {
     box-shadow: var(--shadow-lg);
     opacity: 1;
     transition:
-      transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-      opacity 0.25s ease,
-      height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      transform 0.28s var(--ease-expo),
+      opacity 0.2s var(--ease-expo),
+      visibility 0.28s,
+      height 0.28s var(--ease-expo);
   }
   .sheet.shut {
-    transform: translateX(40px);
+    transform: translateX(20px) scale(0.97);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -1214,7 +1220,7 @@ body.dark-mode .sp-tip {
   inset: 0;
   z-index: var(--z-scrim);
   background: var(--scrim-bg);
-  transition: opacity 0.3s;
+  transition: opacity 0.2s var(--ease-expo);
   pointer-events: auto;
 }
 #scrim.hide {
@@ -1505,7 +1511,7 @@ body.dark-mode .sp-tip {
 #tag-filter-chips {
   overflow: hidden;
   touch-action: manipulation;
-  transition: height 0.25s ease;
+  transition: height var(--t-spring);
 }
 #tag-filter-chips.shut {
   height: 0 !important;
@@ -1680,15 +1686,12 @@ body.dark-mode .sp-tip {
   display: grid;
   grid-template-rows: 1fr;
   overflow: hidden;
-  /* Expand: ease-in-out so it builds up gradually rather than snapping instantly */
-  transition: grid-template-rows 0.35s ease, opacity var(--t-med);
+  transition: grid-template-rows var(--t-spring), opacity 0.2s ease;
   opacity: 1;
 }
 .pl-city-group-body.shut .pl-city-group-inner {
   grid-template-rows: 0fr;
   opacity: 0;
-  /* Collapse: spring (ease-out) so it snaps shut with the same feel as the sheet */
-  transition: grid-template-rows var(--t-spring), opacity var(--t-med);
 }
 .pl-city-group-list {
   list-style: none;
@@ -2552,9 +2555,9 @@ body.dark-mode .sp-tip {
 }
 .suggest-head h3 {
   font-size: var(--txt-2xl);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 #suggest-form {
@@ -2985,7 +2988,7 @@ body.dark-mode .sp-tip {
   display: grid;
   grid-template-rows: 0fr;
   flex-shrink: 0;
-  transition: grid-template-rows 0.25s ease;
+  transition: grid-template-rows var(--t-spring);
 }
 .time-bar-inner {
   min-height: 0;
@@ -3179,7 +3182,7 @@ body.dark-mode .sp-tip {
 #dir-custom-time-row {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.25s ease;
+  transition: grid-template-rows var(--t-spring);
 }
 .custom-time-inner {
   min-height: 0;
@@ -3515,7 +3518,7 @@ body.dark-mode .fallback-notice {
   font-size: var(--txt-3xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   transition: font-size 0.2s;
 }
 .itin-card:not(.active) .itin-dur {
@@ -3622,7 +3625,7 @@ body.dark-mode .fallback-notice {
   display: grid;
   grid-template-rows: 0fr;
   margin-top: 6px;
-  transition: grid-template-rows 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: grid-template-rows var(--t-spring);
 }
 .itin-legs-inner {
   overflow: hidden;
@@ -3985,7 +3988,7 @@ body.dark-mode .fallback-notice {
   grid-template-rows: 0fr;
   margin: 6px 0 2px;
   border-left: 2px solid var(--border);
-  transition: grid-template-rows 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: grid-template-rows var(--t-spring);
 }
 .leg-inter-inner {
   overflow: hidden;
@@ -4436,6 +4439,19 @@ body.dark-mode #route-snackbar {
   top: calc(var(--safe-t) + 14px);
   left: 16px;
 }
+#prayer-expanded-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+#prayer-snack.collapsed #prayer-expanded-wrap {
+  grid-template-rows: 0fr;
+}
+#prayer-expanded {
+  overflow: hidden;
+}
+#prayer-snack.collapsed #prayer-expanded {
+  height: auto;
+}
 
 #prayer-pill:active {
   color: var(--text-2);
@@ -4526,8 +4542,8 @@ body.dark-mode #route-snackbar {
   pointer-events: none;
 
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0s,
-    opacity 0.25s ease 0s;
+    grid-template-rows var(--t-spring),
+    opacity 0.2s ease;
 }
 #prayer-snack.expanded.ramadan-active #ramadan-card {
   grid-template-rows: 1fr;
@@ -4535,19 +4551,19 @@ body.dark-mode #route-snackbar {
   pointer-events: auto;
 
   transition:
-    grid-template-rows 0.4s cubic-bezier(0.32, 0.72, 0, 1) 0s,
-    opacity 0.3s ease 0.1s;
+    grid-template-rows var(--t-spring),
+    opacity 0.2s ease 0.05s;
 }
 #ramadan-inner {
   overflow: hidden;
   transform: translateY(-8px);
 
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0s;
+  transition: transform var(--t-spring);
 }
 #prayer-snack.expanded.ramadan-active #ramadan-inner {
   transform: translateY(0);
 
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0.06s;
+  transition: transform var(--t-spring) 0.04s;
 }
 .ramadan-header {
   display: flex;
@@ -4608,9 +4624,9 @@ body.dark-mode #route-snackbar {
   border-top: 1px solid transparent;
 
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0s,
-    opacity 0.25s ease 0s,
-    border-color 0.1s ease 0s;
+    grid-template-rows var(--t-spring),
+    opacity 0.2s ease,
+    border-color 0.1s ease;
 }
 #prayer-snack.expanded #prayer-times-list {
   grid-template-rows: 1fr;
@@ -4618,21 +4634,21 @@ body.dark-mode #route-snackbar {
   border-color: var(--border);
 
   transition:
-    grid-template-rows 0.4s cubic-bezier(0.32, 0.72, 0, 1) 0s,
-    opacity 0.3s ease 0.1s,
-    border-color 0.1s ease 0s;
+    grid-template-rows var(--t-spring),
+    opacity 0.2s ease 0.05s,
+    border-color 0.1s ease;
 }
 #prayer-times-inner {
   overflow: hidden;
   border-radius: 0 0 var(--r-xl) var(--r-xl);
   transform: translateY(-10px);
 
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0s;
+  transition: transform var(--t-spring);
 }
 #prayer-snack.expanded #prayer-times-inner {
   transform: translateY(0);
 
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) 0.06s;
+  transition: transform var(--t-spring) 0.04s;
 }
 .prayer-time-item {
   display: flex;

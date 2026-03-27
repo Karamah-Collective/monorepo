@@ -151,7 +151,9 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 |---|---|---|
 | `--t-fast` | `.15s ease` | Hover colour swaps |
 | `--t-med` | `.25s ease` | Subtle open / close |
-| `--t-spring` | `.35s cubic-bezier(.32,.72,0,1)` | Sheets, slide-ins |
+| `--t-spring` | `.35s cubic-bezier(.32,.72,0,1)` | Content expand/collapse (grid-template-rows) |
+| `--ease-expo` | `cubic-bezier(.16,1,.3,1)` | Sheets, panels — aggressive deceleration |
+| `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
 
 ### Component size constants
 

@@ -186,7 +186,8 @@ function togglePrayerExpanded() {
       }
     }
   } else {
-    document.getElementById("prayer-times-inner").innerHTML = "";
+    const inner = document.getElementById("prayer-times-inner");
+    setTimeout(() => { if (!el.classList.contains("expanded")) inner.innerHTML = ""; }, 350);
   }
 }
 

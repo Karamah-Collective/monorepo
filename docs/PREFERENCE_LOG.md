@@ -85,6 +85,9 @@ what you like, what you've decided, and how you want things done.
 
 - Don't use Cloudflare KV or any paid/tiered storage for link shortening. Keep sharing fully stateless.
 - Don't use NLP libraries, ML models, or external language-processing APIs for search intent detection. Keep it lightweight with curated regex patterns.
+- Don't use asymmetric easing for expand vs collapse — both directions must use `--t-spring`. No `ease` for expand + `spring` for collapse.
+- Don't use `height: 0` without transition for collapse — use `grid-template-rows: 0fr` pattern instead.
+- React / any framework rejected for this project — vanilla JS + design tokens delivers the same UX with zero build overhead.
 
 ---
 
@@ -99,6 +102,11 @@ what you like, what you've decided, and how you want things done.
 - Popup tips use `clip-path: path()` for organic concave curves — never CSS border-triangles or rotated squares with border-radius.
 - Puck marker shape is a template (`.puck-mk` in `design-tokens.css`). New marker types should be added as aliases on the template selector, not as duplicate rule blocks.
 - For regions without GTFS coverage, use OpenStreetMap Overpass `relation["route"="bus"]` queries to get bus route data. Build-time bulk matching + runtime per-stop fallback.
+- All expand/collapse animations must use `--t-spring` (`0.35s cubic-bezier(0.32, 0.72, 0, 1)`) symmetrically in both directions. Use `grid-template-rows` for content collapsing.
+- Sheet transitions must include all four properties: `transform`, `opacity`, `visibility`, `height`. Never omit `opacity` — it causes instant-disappear on close even if `transform` has a transition.
+- When delaying DOM cleanup after a CSS transition (e.g. `hidden = true`, `innerHTML = ""`), use `setTimeout` with a guard check on the expected state, and cancel the timeout on re-open.
+- Asymmetric open/close transitions for discrete UI elements (tool pills, popups): bouncy `--ease-spring-pop` for enter, quick `ease-in` for exit. Sheets and content areas keep symmetric easing.
+- Use `--ease-expo` for sheet/panel transitions — aggressive deceleration feels modern. Pair with `scale()` in the start state for depth cues.
 
 ---
 
@@ -117,6 +125,14 @@ what you like, what you've decided, and how you want things done.
 - User rejected the first two mock directions as not cohesive or beautiful enough.
 - New mock created at `docs/ui-redesign-v3.html` using a fundamentally different layout: vertical navigation rail, dedicated left workspace, large map canvas, and right contextual inspector.
 - This direction intentionally avoids the earlier floating-dock / glass-HUD concepts and treats the interface more like a structured product shell.
+
+### 2026-03-27 — Animation uniformity + typography refinement
+- **User complaint:** "fed up with ununiformity" — prayer opens smooth/closes suddenly, city groups expand suddenly/collapse smoothly.
+- **Root causes:** City groups used `ease` for expand (slow start) vs `spring` for collapse. Prayer snack body used `height: 0` with no transition on close. Prayer-times-list/ramadan-card had different durations for open vs close (0.4s vs 0.35s).
+- **Fix:** All expand/collapse animations standardized to `--t-spring` symmetrically. Prayer snack close now uses `grid-template-rows: 0fr` on `#prayer-expanded-wrap`. Subtag groups, filter chips, itinerary legs, intermediate stops, dir-time-bar, custom-time-row, pill-expand width, pill-panel all normalized.
+- **Typography:** Sheet headings and form headings bumped from `semibold` to `bold`, letter-spacing tightened to `-0.02em` for more visual hierarchy. Panel heading template updated. Added `--txt-display: 26px` token. Itinerary duration tracking tightened to `-0.03em`.
+- **Decision:** `--t-spring` is the universal expand/collapse timing. Framework (React) rejected — not needed for design quality.
+- Files: `src/styles/styles.css`, `src/styles/design-tokens.css`.
 
 ### 2026-03-27 — UI Redesign Mock v4 (lighter presentation)
 - User felt the previous redesign mock contained too much information and wanted a cleaner visual mockup.
@@ -216,10 +232,42 @@ what you like, what you've decided, and how you want things done.
 - Added dedicated bounding boxes for Kokkola and Seinäjoki city bus networks
   (both have full Waltti GTFS feeds in Digitransit).
 - Transit cache grew from 26,897 → 27,582 stops: +219 Kokkola, +475 Seinäjoki.
+
+### 2026-03-28 — Animation JS-driven close fixes (round 2)
+- **Context:** Previous CSS-only fix standardized all transitions to `--t-spring`, but 4 animations still had JS-driven abruptness where code defeated the CSS transitions.
+- **Prayer vertical close:** `togglePrayerExpanded()` cleared `innerHTML = ""` immediately on collapse, removing DOM content before the `grid-template-rows: 1fr → 0fr` transition could play. Fix: delay the innerHTML clear by 350ms with a guard check (`if (!el.classList.contains("expanded"))`).
+- **Prayer horizontal close:** `#prayer-expanded-wrap` had a `grid-template-rows` transition that the search bar doesn't have, making the prayer pill shrink both vertically and horizontally (search only shrinks horizontally via `width` transition + instant `height: 0`). Fix: removed the `transition` from `#prayer-expanded-wrap` so grid changes are instant, matching the search bar's `.pill-expand-body` pattern.
+- **Sheet close (places + directions):** Both `closePlacesSheet()` and `closeDirPanel()` set `hidden = true` immediately after adding `.shut`, which removed elements from layout before the CSS `transform: translateY(100%)` transition could play. Fix: delay `hidden = true` by 400ms via `_hideTimeout`, with cancellation on re-open to prevent stale timeouts.
+- **City group expand:** Lazy content injection and `.shut` removal in the same JS frame caused the browser to skip the intermediate `0fr` layout state, preventing the `grid-template-rows: 0fr → 1fr` transition. Fix: forced reflow via `void body.offsetHeight` after lazy content injection, before removing `.shut`.
+- **Decision:** Use `setTimeout` with duration matching CSS transition for deferred cleanup. Cancel pending timeouts on re-open. Guard innerHTML clearing with state checks.
+- Files: `src/prayer.js`, `src/places.js`, `src/directions.js`, `src/styles/styles.css`.
+
+### 2026-03-27 — Sheet close animation (CSS transition fix)
+- **Problem:** Places and routes sheets had smooth open animations (slide up/in + fade in) but no visible close animation — they disappeared instantly.
+- **Root cause:** Mobile `.sheet` CSS transition only covered `transform` and `height`, but `.sheet.shut` also sets `opacity: 0` and `visibility: hidden`. Without `opacity` in the transition list, the sheet snapped invisible before the `transform: translateY(100%)` slide could play. Desktop already had `opacity` in the transition but was missing `visibility`.
+- **Fix:** Added `opacity` (with spring curve) and `visibility` to the `.sheet` transition on both mobile and desktop breakpoints. Now closing matches the tools-toggle pattern: smooth slide + fade out, then `visibility: hidden` flips at the end.
+- **Decision:** Sheet transitions must include all four properties: `transform`, `opacity`, `visibility`, `height`. The `visibility` transition keeps the element rendered during the animation, then hides it discretely at the end (CSS spec: `visibility` stays at the start value for the full duration, then flips).
+- Files: `src/styles/styles.css`.
+
+### 2026-03-27 — Modern animation overhaul (sheets + tools toggle)
+- **User feedback:** Open/close animations for places, routes, and tools toggle felt "old fashioned" — wanted something modern and sleek.
+- **New easing tokens:** Added `--ease-expo: cubic-bezier(0.16, 1, 0.3, 1)` (aggressive deceleration for sheets/panels) and `--ease-spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1)` (bouncy overshoot for small elements like pills).
+- **Mobile sheets:** Duration 0.4s → 0.32s, easing → `--ease-expo`, `.shut` now `translateY(100%) scale(0.92)` (adds shrink depth cue during slide), `transform-origin: bottom center` added. Opacity fades at 0.2s (faster than transform for "materialize" effect).
+- **Desktop sheets:** Duration 0.35s → 0.28s, easing → `--ease-expo`, `.shut` now `translateX(20px) scale(0.97)` (less travel + scale depth, was `translateX(40px)` no scale).
+- **Tools toggle — asymmetric open/close:** Enter uses `--ease-spring-pop` at 0.38s (bouncy pop with overshoot), exit uses `ease-in` at 0.18s (quick pull-away). Start scale 0.92 → 0.82 (more dramatic pop). Stagger tightened: open 0/0.04/0.08s, close 0/0.02/0.04s.
+- **Scrim:** Matched to faster sheet timing (0.3s → 0.2s with `--ease-expo`).
+- **Decision:** Asymmetric easing (bouncy enter, fast exit) is acceptable for discrete UI elements like tool pills. Sheets keep symmetric easing.
+- Files: `src/styles/design-tokens.css`, `src/styles/styles.css`.
+
+### 2026-03-24 — Kokkola and Seinäjoki city bus support added
+- User noticed Kokkola train station was already showing on the map — that was
+  due to the Finland-wide rail bbox (Helsinki–Oulu main line passes through it).
+- Added dedicated bounding boxes for Kokkola and Seinäjoki city bus networks
+  (both have full Waltti GTFS feeds in Digitransit).
+- Transit cache grew from 26,897 → 27,582 stops: +219 Kokkola, +475 Seinäjoki.
 - Both cities added to WALTTI routing array in `directions.js` so Digitransit
   Waltti endpoint is used when both origin and destination are within either city.
-- Files modified: `src/transit-stops.js`, `src/directions.js`, `scripts/build-cache.js`,
-  `scripts/transit-cache.json`.
+- Files modified: `src/transit-stops.js`, `src/directions.js`, `scripts/build-cache.js`, `scripts/transit-cache.json`.
 
 ### 2026-03-24 — OSM ref tag filter removed (codeless stops fix)
 - Root cause of sparse stops in Lahti, Pori, Lappeenranta, Mikkeli, Kouvola,
