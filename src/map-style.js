@@ -32,7 +32,7 @@ export const HSL_STYLE = {
           7,
           "#d3e3bb",
           9,
-          "#f2f2f2",
+          "#ffffff",
         ],
       },
     },

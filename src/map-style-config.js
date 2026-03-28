@@ -10,7 +10,7 @@ export const EDITOR_ENABLED = false;
 // Dark appearance comes entirely from the canvas filter below, not from different
 // layer colors — so both themes start from the same values.
 const BASE_COLORS = {
-  background:             '#f2f2f2',
+  background:             '#ffffff',
   landcover_grass:        '#ddeacd',
   landcover_wood:         '#d0e3b8',
   landcover_farmland:     '#e3ecc5',

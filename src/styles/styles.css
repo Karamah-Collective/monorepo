@@ -70,7 +70,7 @@
   position: absolute;
   inset: 0;
   z-index: var(--z-map);
-  background: #f2f2f2;
+  background: #ffffff;
   /* Floor: prevent transient layout glitches from ever shrinking this element
      below the viewport. MapLibre's resize() reads clientWidth/clientHeight;
      without this floor, a mid-transition measurement can permanently shrink
@@ -512,14 +512,14 @@ body.theme-transition .maplibregl-canvas {
 
 /* ─── Dark Mode: override design tokens for all UI ─── */
 body.dark-mode {
-  --surface:      #141414;
-  --surface-2:    #232323;
-  --surface-3:    #303030;
+  --surface:      #000000;
+  --surface-2:    #111111;
+  --surface-3:    #1c1c1c;
   --text:         #e8e8e8;
   --text-2:       #a8a8a8;
   --text-3:       #787878;
-  --border:       #2d2d2d;
-  --border-light: #222222;
+  --border:       #1a1a1a;
+  --border-light: #0e0e0e;
   --accent:       #0e8a6f;
   --accent-soft:  rgba(14, 138, 111, 0.18);
   --accent-muted: #4a9a88;
@@ -552,12 +552,12 @@ body.dark-mode {
 
 /* Map background behind tiles */
 body.dark-mode #map {
-  background: #111111;
+  background: #000000;
 }
 
 /* Attribution & scale bar */
 body.dark-mode .maplibregl-ctrl-attrib {
-  background: rgba(20, 20, 20, 0.80) !important;
+  background: rgba(0, 0, 0, 0.80) !important;
   color: var(--text-3) !important;
 }
 body.dark-mode .maplibregl-ctrl-attrib a {
@@ -1083,6 +1083,7 @@ body.dark-mode .sp-tip {
   flex-direction: column;
   overflow: hidden;
   transform-origin: bottom center;
+  will-change: transform, opacity;
   transition:
     transform 0.32s var(--ease-expo),
     opacity 0.2s var(--ease-expo),

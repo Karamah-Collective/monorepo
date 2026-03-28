@@ -859,7 +859,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     callout.className = "pp-boycott-callout";
     callout.innerHTML =
       `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` +
-      `<span>On the boycott list for supporting genocide in Gaza</span>`;
+      `<span>Boycotted for supporting the genocide in Gaza</span>`;
     inner.appendChild(callout);
   }
 
@@ -1180,12 +1180,11 @@ export function closePlacesSheet() {
   // Cancel any pending animateSheetHeight cleanup that could corrupt a future open
   if (placesSheet._animCleanup) { clearTimeout(placesSheet._animCleanup); placesSheet._animCleanup = null; }
   if (placesSheet._hideTimeout) { clearTimeout(placesSheet._hideTimeout); placesSheet._hideTimeout = null; }
-  placesSheet.classList.add("shut");
-  placesSnap.close();                            // nuclear: cancels rAF, wipes all inline styles
+  placesSnap.close();                            // cleanup → reflow → adds .shut with real transition
   scrim.classList.add("hide");
   setActiveTab(null);
   scheduleMapViewportSync();
-  placesSheet._hideTimeout = setTimeout(() => { placesSheet.hidden = true; placesSheet._hideTimeout = null; }, 400);
+  placesSheet._hideTimeout = setTimeout(() => { placesSheet.hidden = true; placesSnap.cleanup(); placesSheet._hideTimeout = null; }, 400);
 }
 
 document.getElementById("places-btn").addEventListener("click", () =>

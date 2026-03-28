@@ -669,14 +669,26 @@ export function initSheetDrag(sheet, closeFn) {
       cached = freshCalc();
       sheet.style.height = prev;
     },
-    /** Nuclear close — cancel pending opens, kill drag state,
-     *  wipe ALL inline styles so .shut CSS has total control. */
+    /** Prepare the sheet for a CSS-transitioned close.
+     *  Cleans up drag state and inline overrides, forces a reflow so
+     *  the browser commits the current "open" state, then adds .shut
+     *  — guaranteeing a proper from→to transition on every engine. */
     close() {
       if (openRAF) { cancelAnimationFrame(openRAF); openRAF = null; }
       dragging = false;
       sheet.classList.remove("full", "dragging");
-      sheet.removeAttribute("style");
+      sheet.style.removeProperty("transition");
+      sheet.style.removeProperty("will-change");
       cached = null;
+      // Commit the clean "open" layout as the transition origin
+      void sheet.offsetHeight;
+      // Now .shut triggers a real transition from the committed state
+      sheet.classList.add("shut");
+    },
+    /** Wipe ALL inline styles — call after the close transition ends
+     *  (or immediately for instant force-close). */
+    cleanup() {
+      sheet.removeAttribute("style");
     }
   };
 }

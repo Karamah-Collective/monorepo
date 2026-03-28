@@ -786,7 +786,7 @@ export function toggleSatellite() {
     // Restore mask to its original position and vector-style paint
     if (map.getLayer("finland-mask")) {
       map.setPaintProperty("finland-mask", "fill-color", [
-        "interpolate", ["linear"], ["zoom"], 7, "#d3e3bb", 9, "#f2f2f2",
+        "interpolate", ["linear"], ["zoom"], 7, "#d3e3bb", 9, "#ffffff",
       ]);
       map.setPaintProperty("finland-mask", "fill-opacity", 1);
       if (map.getLayer("label_road")) map.moveLayer("finland-mask", "label_road");
