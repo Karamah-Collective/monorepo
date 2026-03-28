@@ -1,7 +1,7 @@
 // SVG icons, place/transit type configs, and marker HTML builders
 
 const PURPLE_LIGHT = "#8C4799";
-const PURPLE_DARK = "#E896E3";
+const PURPLE_DARK = "#C47EC8";
 
 export function getThemeRailShopPurple() {
   return document.body.classList.contains("dark-mode") ? PURPLE_DARK : PURPLE_LIGHT;

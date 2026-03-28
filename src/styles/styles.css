@@ -452,7 +452,7 @@
 }
 .thumb-dark {
   background: url("../../data/thumbs/default.png") center/cover no-repeat;
-  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+  filter: invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04);
 }
 
 /* When dark theme is active, show heatmap thumb on dark bg */
@@ -479,14 +479,14 @@ body.dark-mode .thumb-heatmap {
       transparent            22%
     ),
     url("../../data/thumbs/default.png") center/cover no-repeat;
-  filter: invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02);
+  filter: invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04);
 }
 
 /* ─── Dark Mode: CSS filter on MapLibre canvas (not during satellite) ─── */
 /* The --mse-dark-filter variable is set by map-style-editor.js once loaded.  */
 /* Before the editor loads, fall back to the original invert-based preset.    */
 #map.dark-mode:not(.satellite-active) .maplibregl-canvas {
-  filter: var(--mse-dark-filter, invert(0.78) hue-rotate(190deg) brightness(1.28) contrast(1.25) saturate(2.30) sepia(0.02));
+  filter: var(--mse-dark-filter, invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04));
 }
 /* Optional light-mode filter (no-op by default; editor can add subtle toning) */
 #map:not(.dark-mode):not(.satellite-active) .maplibregl-canvas {
@@ -512,77 +512,77 @@ body.theme-transition .maplibregl-canvas {
 
 /* ─── Dark Mode: override design tokens for all UI ─── */
 body.dark-mode {
-  --surface:      #1a1d2e;
-  --surface-2:    #232738;
-  --surface-3:    #2e3348;
-  --text:         #e2e4ed;
-  --text-2:       #b0b8c8;
-  --text-3:       #808a9e;
-  --border:       #2a2f42;
-  --border-light: #232738;
-  --accent:       #3d9be8;
-  --accent-soft:  rgba(61, 155, 232, 0.18);
-  --accent-muted: #3588d0;
-  --gold:         #e8c87a;
-  --gold-soft:    rgba(232, 200, 122, 0.12);
-  --success:      #34d08a;
-  --success-soft: rgba(52, 208, 138, 0.14);
-  --home:         #64748b;
-  --home-soft:    rgba(100, 116, 139, 0.15);
-  --danger:       #ef6b6b;
-  --danger-dark:  #ff9494;
-  --danger-soft:  rgba(239, 107, 107, 0.14);
-  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.25);
-  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.30);
-  --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.35);
-  --overlay-bg:   rgba(6, 6, 14, 0.65);
-  --overlay-dim:  rgba(6, 6, 14, 0.75);
-  --scrim-bg:     rgba(6, 6, 14, 0.25);
-  --hsl-bus:      #4da8e8;
-  --hsl-trunk:    #ff8a50;
-  --hsl-tram:     #3ee09a;
-  --hsl-metro:    #ff8a50;
-  --hsl-rail:     #E896E3;
-  --hsl-ferry:    #40d0f0;
-  --hsl-foli:     #2ee8b7;
+  --surface:      #111114;
+  --surface-2:    #1a1b1f;
+  --surface-3:    #242529;
+  --text:         #ececef;
+  --text-2:       #b3b5bd;
+  --text-3:       #84868f;
+  --border:       #28292e;
+  --border-light: #1a1b1f;
+  --accent:       #4a9be5;
+  --accent-soft:  rgba(74, 155, 229, 0.15);
+  --accent-muted: #3d88cc;
+  --gold:         #debb58;
+  --gold-soft:    rgba(222, 187, 88, 0.12);
+  --success:      #2ebe78;
+  --success-soft: rgba(46, 190, 120, 0.13);
+  --home:         #6b7280;
+  --home-soft:    rgba(107, 114, 128, 0.15);
+  --danger:       #e85c5c;
+  --danger-dark:  #f08080;
+  --danger-soft:  rgba(232, 92, 92, 0.14);
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.36);
+  --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.42);
+  --overlay-bg:   rgba(10, 10, 12, 0.65);
+  --overlay-dim:  rgba(10, 10, 12, 0.75);
+  --scrim-bg:     rgba(10, 10, 12, 0.25);
+  --hsl-bus:      #4a9be5;
+  --hsl-trunk:    #e87840;
+  --hsl-tram:     #2ebe78;
+  --hsl-metro:    #e87840;
+  --hsl-rail:     #C47EC8;
+  --hsl-ferry:    #38c0e0;
+  --hsl-foli:     #28c8a0;
 
-  --walk:         #94a3b8;
-  --funicular:    #a1a1aa;
+  --walk:         #8a96a8;
+  --funicular:    #9898a0;
 }
 
 /* Map background behind tiles */
 body.dark-mode #map {
-  background: #14162a;
+  background: #0e0e11;
 }
 
 /* Attribution & scale bar */
 body.dark-mode .maplibregl-ctrl-attrib {
-  background: rgba(26, 29, 46, 0.7) !important;
+  background: rgba(17, 17, 20, 0.80) !important;
   color: var(--text-3) !important;
 }
 body.dark-mode .maplibregl-ctrl-attrib a {
   color: var(--accent) !important;
 }
 body.dark-mode .maplibregl-ctrl-scale {
-  border-color: rgba(255, 255, 255, 0.40) !important;
-  color: rgba(255, 255, 255, 0.58) !important;
+  border-color: rgba(255, 255, 255, 0.30) !important;
+  color: rgba(255, 255, 255, 0.48) !important;
 }
 
 /* Credits & attribution links */
 body.dark-mode #privacy-link {
-  color: rgba(255, 255, 255, 0.58) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
 }
 @media (hover: hover) {
   body.dark-mode #privacy-link:hover {
-    color: rgba(255, 255, 255, 1) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
   }
 }
 body.dark-mode #osm-link {
-  color: rgba(255, 255, 255, 0.58) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
 }
 @media (hover: hover) {
   body.dark-mode #osm-link:hover {
-    color: rgba(255, 255, 255, 1) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
   }
 }
 
@@ -610,8 +610,8 @@ body.dark-mode .search-mk,
 body.dark-mode .custom-mk,
 body.dark-mode .home-mk,
 body.dark-mode .eid-mk {
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.50);
 }
 
 /* Popup card */
@@ -657,19 +657,19 @@ body.dark-mode .tut-card::before {
 
 /* Popup & stop popup — dark mode contrast adjustments */
 body.dark-mode .pp-badge {
-  filter: brightness(0.92);
+  filter: brightness(0.88);
 }
 body.dark-mode .sp-icon {
-  color: color-mix(in srgb, var(--stop-c, var(--accent)) 62%, white);
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 82%, #ccd0d8);
 }
 body.dark-mode .sp-badge {
-  color: color-mix(in srgb, var(--stop-c, var(--accent)) 62%, white);
-  background: color-mix(in srgb, var(--stop-c, var(--accent)) 18%, transparent);
+  color: color-mix(in srgb, var(--stop-c, var(--accent)) 82%, #ccd0d8);
+  background: color-mix(in srgb, var(--stop-c, var(--accent)) 14%, transparent);
 }
 
-/* Leg badges with GTFS inline color — brighten for contrast */
+/* Leg badges with GTFS inline color — no extra brightness needed */
 body.dark-mode .leg-badge[style] {
-  filter: brightness(1.12);
+  filter: none;
 }
 /* Leg timeline elements — boost visibility on dark surface */
 body.dark-mode .leg-line {
@@ -679,23 +679,23 @@ body.dark-mode .leg-inter-dot {
   opacity: 0.7;
 }
 
-/* Place card dot icons — ensure visibility in dark mode */
+/* Place card dot icons — natural on dark surfaces */
 body.dark-mode .pl-dot {
-  filter: brightness(1.15) saturate(1.1);
+  filter: none;
 }
 
-/* Place filter chips — dim the icon backgrounds */
+/* Place filter chips — natural saturation */
 body.dark-mode .pf-chip.active .pf-icon {
-  filter: brightness(0.85) saturate(1.1);
+  filter: brightness(0.88);
 }
 
 /* Tag count badge for toggle */
 body.dark-mode #tf-count {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--text-2);
   color: var(--surface);
 }
 body.dark-mode #tf-toggle.open #tf-count {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--text-2);
   color: var(--accent);
 }
 
@@ -715,10 +715,10 @@ body.dark-mode .zone-badge.zone-default {
   color: var(--surface);
 }
 
-/* Fav star — brighter amber in dark mode */
+/* Fav star — warm amber in dark mode */
 body.dark-mode .pl-fav-btn:hover,
 body.dark-mode .pl-fav-btn.active {
-  color: #fbbf24;
+  color: #e5b020;
 }
 
 /* Tooltip — invert for dark mode */
@@ -3429,9 +3429,9 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-sm);
 }
 body.dark-mode .fallback-notice {
-  color: #fcd34d;
-  background: rgba(253, 211, 77, 0.1);
-  border-color: rgba(253, 211, 77, 0.3);
+  color: #e8c45c;
+  background: rgba(232, 196, 92, 0.08);
+  border-color: rgba(232, 196, 92, 0.25);
 }
 .itin-card {
   margin: 6px 16px;
@@ -5079,8 +5079,8 @@ body.dark-mode .loc-ring {
   color: color-mix(in srgb, var(--chip-c, var(--accent)) 72%, #222);
 }
 body.dark-mode .sp-chip {
-  color: color-mix(in srgb, var(--chip-c, var(--accent)) 62%, white);
-  background: color-mix(in srgb, var(--chip-c, var(--accent)) 18%, transparent);
+  color: color-mix(in srgb, var(--chip-c, var(--accent)) 82%, #ccd0d8);
+  background: color-mix(in srgb, var(--chip-c, var(--accent)) 14%, transparent);
 }
 .sp-chip small {
   font-weight: var(--fw-semibold);
