@@ -3,8 +3,15 @@
 const PURPLE_LIGHT = "#8C4799";
 const PURPLE_DARK = "#C47EC8";
 
+const WALK_LIGHT = "#52525b";
+const WALK_DARK = "#8a96a8";
+
 export function getThemeRailShopPurple() {
   return document.body.classList.contains("dark-mode") ? PURPLE_DARK : PURPLE_LIGHT;
+}
+
+export function getThemeWalkColor() {
+  return document.body.classList.contains("dark-mode") ? WALK_DARK : WALK_LIGHT;
 }
 
 export const TRANSIT_COLORS = {

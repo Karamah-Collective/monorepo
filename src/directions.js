@@ -1,7 +1,7 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
 import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
-import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple } from "./icons.js";
+import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple, getThemeWalkColor } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
@@ -17,7 +17,8 @@ const OSRM_URLS = {
   cycle: "https://routing.openstreetmap.de/routed-bike/route/v1/bike",
   walk: "https://routing.openstreetmap.de/routed-foot/route/v1/foot",
 };
-const OSRM_COLORS = { walk: "#52525b", cycle: "#1FA86A", drive: "#FF6319" };
+function osrmColor(mode) { return mode === "walk" ? getThemeWalkColor() : OSRM_COLORS[mode]; }
+const OSRM_COLORS = { cycle: "#1FA86A", drive: "#FF6319" };
 const OSRM_CSS_COLORS = { walk: "var(--walk)", cycle: "var(--hsl-tram)", drive: "var(--hsl-trunk)" };
 const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
 const OSRM_ALT_COLORS = { walk: "#94A3B8", cycle: "#34D399", drive: "#FBBF24" };
@@ -1419,7 +1420,7 @@ function modeClass(m, leg) {
 function legColor(m, leg) {
   if (leg?.trip?.route?.color) return "#" + leg.trip.route.color;
   if (leg && isTrunkBus(leg)) return "#FF6319";
-  return { WALK: "#52525b", BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: getThemeRailShopPurple(), FERRY: "#00B9E4" }[m] || "#1A73B8";
+  return { WALK: getThemeWalkColor(), BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: getThemeRailShopPurple(), FERRY: "#00B9E4" }[m] || "#1A73B8";
 }
 // CSS variable version for HTML panels (auto-adapts to dark mode)
 function legCssColor(m, leg) {
@@ -1634,7 +1635,7 @@ async function findRoutesDirect(mode) {
     }
   }
   const { coords, duration, distance, stepsHTML, stepGeometries, srcData, stepFeatures } = data;
-  const color = OSRM_COLORS[mode], altColor = data.altColor || OSRM_ALT_COLORS[mode];
+  const color = osrmColor(mode), altColor = data.altColor || OSRM_ALT_COLORS[mode];
   const cssColor = OSRM_CSS_COLORS[mode];
   const durMin = Math.round(duration / 60);
   const distKm = (distance / 1000).toFixed(1);
@@ -1902,7 +1903,7 @@ function drawRoute(itin) {
     if (!coords.length) return;
     coords.forEach((c) => bounds.extend(c));
     const srcId = `dir-src-${i}`, casingId = `dir-cas-${i}`, lineId = `dir-ln-${i}`;
-    const isWalk = leg.mode === "WALK", mapColor = isWalk ? "#1e293b" : legColor(leg.mode, leg);
+    const isWalk = leg.mode === "WALK", mapColor = isWalk ? getThemeWalkColor() : legColor(leg.mode, leg);
     map.addSource(srcId, { type: "geojson", data: { type: "Feature", geometry: { type: "LineString", coordinates: coords } } });
     map.addLayer({ id: casingId, type: "line", source: srcId, paint: { "line-color": "#ffffff", "line-width": isWalk ? 8 : 9, "line-opacity": 0.95 }, layout: { "line-cap": "round", "line-join": "round" } });
     map.addLayer({ id: lineId, type: "line", source: srcId, paint: { "line-color": mapColor, "line-width": isWalk ? 4 : 5, "line-dasharray": isWalk ? [1.5, 2] : [1], "line-opacity": isWalk ? 0.9 : 0.85 }, layout: { "line-cap": "round", "line-join": "round" } });

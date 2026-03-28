@@ -292,3 +292,13 @@ document.querySelector(".prayer-snack-clickable").addEventListener("click", (e) 
 // "Find mosque" button inside the prayer snack
 const mosqueBtn = document.getElementById("prayer-mosque-btn");
 if (mosqueBtn) mosqueBtn.addEventListener("click", findNearestMosque);
+
+// Outside-click: collapse vertical expansion (keep horizontal state unchanged)
+document.addEventListener("click", (e) => {
+  const snack = document.getElementById("prayer-snack");
+  if (!snack.classList.contains("expanded")) return;
+  if (e.target.closest("#prayer-snack")) return;
+  snack.classList.remove("expanded");
+  const inner = document.getElementById("prayer-times-inner");
+  setTimeout(() => { if (!snack.classList.contains("expanded")) inner.innerHTML = ""; }, 350);
+});

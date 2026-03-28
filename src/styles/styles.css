@@ -307,9 +307,9 @@
   border-left: 1px solid rgba(0, 0, 0, 0.5) !important;
   border-right: 1px solid rgba(0, 0, 0, 0.5) !important;
   border-radius: 0 !important;
-  font-size: 8px !important;
+  font-size: 9px !important;
   font-weight: var(--fw-regular) !important;
-  color: rgba(0, 0, 0, 0.5) !important;
+  color: rgba(0, 0, 0, 0.65) !important;
   padding: 0 2px 1px !important;
   line-height: 10px !important;
   text-align: right !important;
@@ -511,27 +511,28 @@ body.theme-transition .maplibregl-canvas {
 }
 
 /* ─── Dark Mode: override design tokens for all UI ─── */
+html.dark-mode,
 body.dark-mode {
   --surface:      #000000;
-  --surface-2:    #111111;
-  --surface-3:    #1c1c1c;
-  --text:         #e8e8e8;
-  --text-2:       #a8a8a8;
-  --text-3:       #787878;
-  --border:       #1a1a1a;
-  --border-light: #0e0e0e;
+  --surface-2:    #222222;
+  --surface-3:    #333333;
+  --text:         #efefef;
+  --text-2:       #b8b8b8;
+  --text-3:       #909090;
+  --border:       #2a2a2a;
+  --border-light: #262626;
   --accent:       #0e8a6f;
-  --accent-soft:  rgba(14, 138, 111, 0.18);
+  --accent-soft:  rgba(14, 138, 111, 0.35);
   --accent-muted: #4a9a88;
   --gold:         #c49838;
-  --gold-soft:    rgba(196, 152, 56, 0.13);
+  --gold-soft:    rgba(196, 152, 56, 0.18);
   --success:      #2ebe78;
-  --success-soft: rgba(46, 190, 120, 0.13);
+  --success-soft: rgba(46, 190, 120, 0.18);
   --home:         #6b7280;
-  --home-soft:    rgba(107, 114, 128, 0.15);
+  --home-soft:    rgba(107, 114, 128, 0.20);
   --danger:       #e85c5c;
   --danger-dark:  #f08080;
-  --danger-soft:  rgba(232, 92, 92, 0.14);
+  --danger-soft:  rgba(232, 92, 92, 0.18);
   --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.30);
   --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.36);
   --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.42);
@@ -565,7 +566,7 @@ body.dark-mode .maplibregl-ctrl-attrib a {
 }
 body.dark-mode .maplibregl-ctrl-scale {
   border-color: rgba(255, 255, 255, 0.30) !important;
-  color: rgba(255, 255, 255, 0.48) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
 }
 
 /* Credits & attribution links */
@@ -657,7 +658,8 @@ body.dark-mode .tut-card::before {
 
 /* Popup & stop popup — dark mode contrast adjustments */
 body.dark-mode .pp-badge {
-  filter: brightness(0.88);
+  filter: none;
+  background: color-mix(in srgb, currentColor 22%, transparent) !important;
 }
 body.dark-mode .sp-icon {
   color: color-mix(in srgb, var(--stop-c, var(--accent)) 55%, #ccd0d8);
@@ -5354,6 +5356,17 @@ body.dark-mode .sp-chip {
 
   .sheet {
     padding-bottom: var(--safe-b);
+  }
+
+  /* Mobile sheet CLOSE: pure translateY slide — matches form card behavior.
+   * Root cause of "closes instantly" was --ease-expo (0.16,1,0.3,1) completing
+   * ~90% of the transform in the first 50ms, plus opacity:0 fading simultaneously.
+   * Fix: gentler curve (matching forms), no opacity fade, delay visibility to end. */
+  .sheet.shut {
+    transform: translateY(106%);  /* extra 6% clears rounded corner */
+    opacity: 1;                   /* no fade — pure slide like form cards */
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                visibility 0s 0.4s; /* snap hidden only after slide completes */
   }
 
   .place-popup-wrap .maplibregl-popup-content {

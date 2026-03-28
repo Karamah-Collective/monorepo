@@ -12,6 +12,7 @@ import {
   shareUrl,
   fadeAndRemovePopup,
   setCurrentLocationState,
+  getCurrentLocationState,
   clearCurrentLocationState,
 } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
@@ -212,7 +213,18 @@ export function centerStoredHomeIfAvailable({ instant = false } = {}) {
 export function showCurrentLocation() {
   const locBtn = document.getElementById("locate-btn");
 
+  // ── Already tracking ──
   if (locWatchId !== null) {
+    const loc = getCurrentLocationState();
+    // If we have a fix AND the user's position is off-screen, re-center instead of toggling off
+    if (loc.active && loc.lat !== null) {
+      const bounds = map.getBounds();
+      if (!bounds.contains([loc.lng, loc.lat])) {
+        map.flyTo({ center: [loc.lng, loc.lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+        return;
+      }
+    }
+    // Position is on screen (or no fix) → turn off
     navigator.geolocation.clearWatch(locWatchId);
     locWatchId = null;
     _stopHeadingWatch();
@@ -649,6 +661,7 @@ export function setTheme(theme) {
   currentTheme = theme;
   const isDark = theme === "dark";
   document.body.classList.add("theme-transition");
+  document.documentElement.classList.toggle("dark-mode", isDark);
   document.body.classList.toggle("dark-mode", isDark);
   document.getElementById("map").classList.toggle("dark-mode", isDark);
   setTimeout(() => document.body.classList.remove("theme-transition"), 500);
@@ -663,6 +676,7 @@ export function setTheme(theme) {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
       currentTheme = "dark";
+      document.documentElement.classList.add("dark-mode");
       document.body.classList.add("dark-mode");
       document.getElementById("map")?.classList.add("dark-mode");
       _syncStyleButtons();

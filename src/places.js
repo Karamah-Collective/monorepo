@@ -859,7 +859,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     callout.className = "pp-boycott-callout";
     callout.innerHTML =
       `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` +
-      `<span>Boycotted for supporting the genocide in Gaza</span>`;
+      `<span>Boycott: Supports genocide in Gaza</span>`;
     inner.appendChild(callout);
   }
 
@@ -2073,7 +2073,7 @@ window.addEventListener("hf:add-place-from-pin", (e) => {
 /* ── Floating tag tooltip ── */
 const tagTip = document.createElement("div");
 tagTip.className = "pl-tag-tip";
-document.getElementById("places-sheet").appendChild(tagTip);
+document.getElementById("app").appendChild(tagTip);
 let tagTipTarget = null;
 
 function showTagTip(el) {

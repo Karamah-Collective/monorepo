@@ -222,6 +222,10 @@ body {
   touch-action: manipulation;
   -ms-touch-action: manipulation;
 }
+html.dark-mode,
+html.dark-mode body {
+  background: #000000;
+}
 
 .btn-icon {
   width: var(--btn-icon-size);
