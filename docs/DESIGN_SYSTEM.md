@@ -40,11 +40,11 @@ All tokens are CSS custom properties on `:root`.
 
 | Token | Value | Usage |
 |---|---|---|
-| `--accent` | `#1A73B8` | Primary blue — interactive elements, active states |
-| `--accent-soft` | `#e8f1f8` | Blue tint surface, soft backgrounds |
-| `--accent-muted` | `#6da8d2` | De-emphasised blue, pulse animations |
-| `--gold` | `#D8B56A` | Prayer / current-time highlight |
-| `--gold-soft` | `#faf5eb` | Gold tint surface |
+| `--accent` | `#08705B` | Brand teal — interactive elements, active states |
+| `--accent-soft` | `#e6f2ef` | Teal tint surface, soft backgrounds |
+| `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |
+| `--gold` | `#b89030` | Sponsor / Eid highlight, partially-halal chip |
+| `--gold-soft` | `#fdf6e8` | Gold tint surface |
 | `--sponsor` | `var(--gold)` | Alias — sponsor badge/chip colour |
 | `--sponsor-soft` | `var(--gold-soft)` | Alias — sponsor badge/chip background |
 | `--success` | `#1FA86A` | Green — mosques, confirmed features |
@@ -80,13 +80,13 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | Token | Value | Usage |
 |---|---|---|
 | `--surface` | `#ffffff` | Primary card / sheet background |
-| `--surface-2` | `#E6EBEF` | Secondary fill, disabled backgrounds, segment bar bg |
-| `--surface-3` | `#cdd5dc` | Stronger fill, hover border colour |
-| `--text` | `#1a2433` | Primary body text |
-| `--text-2` | `#506070` | Secondary / subdued text |
-| `--text-3` | `#8d99a5` | Placeholder / muted / icon default |
-| `--border` | `#d5dce3` | Default border |
-| `--border-light` | `#E6EBEF` | Separator / divider lines |
+| `--surface-2` | `#f0f0f0` | Secondary fill, disabled backgrounds, segment bar bg |
+| `--surface-3` | `#d9d9d9` | Stronger fill, hover border colour |
+| `--text` | `#191919` | Primary body text |
+| `--text-2` | `#525252` | Secondary / subdued text |
+| `--text-3` | `#8c8c8c` | Placeholder / muted / icon default |
+| `--border` | `#dedede` | Default border |
+| `--border-light` | `#efefef` | Separator / divider lines |
 
 ### Border radii
 

@@ -11,12 +11,12 @@
 }
 
 :root {
-  --accent: #1a73b8;
-  --accent-soft: #e8f1f8;
-  --accent-muted: #6da8d2;
+  --accent: #08705B;
+  --accent-soft: #e6f2ef;
+  --accent-muted: #4a9a88;
 
-  --gold: #b08830;
-  --gold-soft: #faf5eb;
+  --gold: #b89030;
+  --gold-soft: #fdf6e8;
 
   /* sponsor aliases — always reference these, not --gold directly */
   --sponsor: var(--gold);
@@ -44,15 +44,15 @@
   --funicular: #71717a;
 
   --surface: #ffffff;
-  --surface-2: #e6ebef;
-  --surface-3: #cdd5dc;
+  --surface-2: #f0f0f0;
+  --surface-3: #d9d9d9;
 
-  --text: #1a2433;
-  --text-2: #506070;
-  --text-3: #8d99a5;
+  --text: #191919;
+  --text-2: #525252;
+  --text-3: #8c8c8c;
 
-  --border: #d5dce3;
-  --border-light: #e6ebef;
+  --border: #dedede;
+  --border-light: #efefef;
 
   --r-xs: 6px;
   --r-sm: 10px;
@@ -215,7 +215,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #f0f1f2;
+  background: #f2f2f2;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
@@ -711,13 +711,13 @@ body {
 .btn-tab:active,
 .btn-tab:focus,
 .btn-tab:focus-visible {
-  color: var(--accent);
+  color: var(--text);
   outline: none;
   box-shadow: none;
 }
 
 .btn-tab.active-tab {
-  color: var(--accent);
+  color: var(--text);
 }
 .btn-tab::after {
   content: "";
@@ -735,19 +735,19 @@ body {
 }
 
 .btn-tab.tracking {
-  color: var(--accent);
+  color: var(--text);
   animation: tab-track-pulse 2s ease-in-out infinite;
 }
 .btn-tab.route-active {
-  color: var(--accent);
+  color: var(--text);
 }
 @keyframes tab-track-pulse {
   0%,
   100% {
-    color: var(--accent);
+    color: var(--text);
   }
   50% {
-    color: var(--accent-muted);
+    color: var(--text-2);
   }
 }
 

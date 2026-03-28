@@ -73,6 +73,8 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-24 — noCoverage regions: OSM Overpass as fallback route source.** Cities without Digitransit/Waltti GTFS coverage (Kokkola, Seinäjoki) get route data from OpenStreetMap route relations instead. Build-time: bulk Overpass query for route relations + proximity matching to stops. Runtime: per-stop Overpass query as fallback when cached routes are empty.
 - **2026-03-24 — Admin dashboard: separate CF Pages project.** Admin dashboard lives in `admin/` folder, deployed as its own Cloudflare Pages project (root dir = `admin/`). Completely isolated from the main maps app — own HTML, JS, CSS, Functions, headers. Only shared touchpoint is `Code.gs` (Apps Script). Auth via invite-only tokens stored in admin CF env vars (`ADMIN_TOKENS` JSON). Double-gate: CF validates user token, passes `ADMIN_SECRET` to GAS. Session stored in `sessionStorage` (clears on tab close). Design tokens copied from main app for visual consistency. All free-tier, zero paid services.
 
+- **2026-03-28 — Brand color integration: neutral surfaces + teal accent.** Brand teal `#08705B` replaces blue as `--accent`. All surfaces, text, and borders are **pure neutral** grays (no warm tint). Brand color `#FDFCF8` explicitly rejected — never use it; warm-tinted surfaces feel ugly. Other brand colors (`#0B3C49`, `#BAB397`, `#F2C879`) available as solid fills where appropriate but not forced into the palette. Dark-mode brand colors stay nearly identical to light (`--accent: #0a7a63`, only ~5% lighter). Transit/Digitransit colors untouched.
+
 ---
 
 ## Patterns to Avoid

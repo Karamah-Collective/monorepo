@@ -608,7 +608,7 @@ function _setupClusterLayers(geojson) {
     filter: ["has", "point_count"],
     maxzoom: CLUSTER_ZOOM,
     paint: {
-      "circle-color": "#1A73B8",
+      "circle-color": "#08705B",
       "circle-opacity": 0.18,
       "circle-radius": ["step", ["get", "point_count"], 26, 10, 32, 30, 38],
       "circle-stroke-width": 0,
@@ -623,7 +623,7 @@ function _setupClusterLayers(geojson) {
     filter: ["has", "point_count"],
     maxzoom: CLUSTER_ZOOM,
     paint: {
-      "circle-color": "#1A73B8",
+      "circle-color": "#08705B",
       "circle-opacity": 0.92,
       "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 30, 24],
       "circle-stroke-width": 2.5,
@@ -658,7 +658,7 @@ function _setupClusterLayers(geojson) {
         "prayer_room", "#00B9E4",
         "restaurant",  "#FF6319",
         "shop",        getThemeRailShopPurple(),
-        "#1A73B8",
+        "#08705B",
       ],
       "circle-radius": 7,
       "circle-stroke-width": 2,

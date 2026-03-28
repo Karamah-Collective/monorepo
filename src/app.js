@@ -158,7 +158,7 @@ map.on("load", async () => {
         "fill-color": [
           "interpolate", ["linear"], ["zoom"],
           7, "#d3e3bb",
-          9, "#f0f1f2",
+          9, "#f2f2f2",
         ],
         "fill-opacity": 1,
       },
