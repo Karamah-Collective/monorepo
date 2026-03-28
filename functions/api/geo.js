@@ -8,12 +8,21 @@
  *
  * Response: { "country": "FI" }  (ISO 3166-1 alpha-2, or "XX" if unknown)
  */
+const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
+
+function allowedOrigin(request) {
+  const origin = request.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 export async function onRequestGet(context) {
-  const country = context.request.headers.get('CF-IPCountry') || 'XX';
+  const { request } = context;
+  const country = request.headers.get('CF-IPCountry') || 'XX';
   return new Response(JSON.stringify({ country }), {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': allowedOrigin(request),
     },
   });
 }

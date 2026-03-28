@@ -40,10 +40,10 @@ export async function onRequestPost(context) {
 
   // ── Guard: env vars must be present ──
   if (!env.RECAPTCHA_SECRET) {
-    return json({ error: 'Server misconfiguration: RECAPTCHA_SECRET not set' }, 500, responseHeaders);
+    return json({ error: 'Service temporarily unavailable' }, 500, responseHeaders);
   }
   if (!env.GAS_URL) {
-    return json({ error: 'Server misconfiguration: GAS_URL not set' }, 500, responseHeaders);
+    return json({ error: 'Service temporarily unavailable' }, 500, responseHeaders);
   }
 
   // ── Reject oversized payloads ──
@@ -108,14 +108,14 @@ export async function onRequestPost(context) {
     });
     captcha = await verifyRes.json();
   } catch (err) {
-    return json({ error: 'reCAPTCHA verification request failed', detail: err.message }, 502, responseHeaders);
+    return json({ error: 'Verification unavailable. Please try again.' }, 502, responseHeaders);
   }
 
   if (!captcha.success) {
-    return json({ error: 'reCAPTCHA failed', codes: captcha['error-codes'] }, 403, responseHeaders);
+    return json({ error: 'Verification failed. Please try again.' }, 403, responseHeaders);
   }
   if (captcha.score < MIN_SCORE) {
-    return json({ error: 'Submission blocked (low reCAPTCHA score)', score: captcha.score }, 403, responseHeaders);
+    return json({ error: 'Submission blocked. Please try again later.' }, 403, responseHeaders);
   }
 
   // ── 2. Forward to Google Apps Script ───────────────────────────────────────

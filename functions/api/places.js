@@ -26,9 +26,9 @@ export async function onRequestGet(context) {
   const sheetsUrl = env.SHEETS_URL;
 
   if (!sheetsUrl) {
-    return new Response(JSON.stringify({ error: 'SHEETS_URL not configured' }), {
+    return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin(request) },
     });
   }
 
@@ -50,7 +50,7 @@ export async function onRequestGet(context) {
   } catch {
     return new Response(JSON.stringify({ error: 'Data temporarily unavailable' }), {
       status: 502,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin(request) },
     });
   }
 }

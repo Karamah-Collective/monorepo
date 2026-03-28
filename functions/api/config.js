@@ -19,8 +19,15 @@
  *   NOMINATIM_REV       – Nominatim reverse geocoding endpoint
  *   NOMINATIM_VB        – Helsinki bounding box
  */
+const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
+
+function allowedOrigin(request) {
+  const origin = request.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 export async function onRequestGet(context) {
-  const { env } = context;
+  const { env, request } = context;
 
   const cfg = {
     DIGITRANSIT_URL:        env.DIGITRANSIT_URL        || 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1',
@@ -39,6 +46,7 @@ export async function onRequestGet(context) {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': allowedOrigin(request),
     },
   });
 }
