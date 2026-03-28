@@ -76,6 +76,10 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-28 — Brand color integration: neutral surfaces + teal accent.** Brand teal `#08705B` replaces blue as `--accent`. All surfaces, text, and borders are **pure neutral** grays (no warm tint). Brand color `#FDFCF8` explicitly rejected — never use it; warm-tinted surfaces feel ugly. Other brand colors (`#0B3C49`, `#BAB397`, `#F2C879`) available as solid fills where appropriate but not forced into the palette. Dark-mode brand colors stay nearly identical to light (`--accent: #0a7a63`, only ~5% lighter). Transit/Digitransit colors untouched.
 - **2026-03-28 — AMOLED-black dark mode + pure-white light mode.** Dark mode surface is now `#000000` (true black) for AMOLED power savings, with stepped grays `#111111` / `#1c1c1c`. Light mode body + map background is pure `#ffffff`. No warm tint on any surface or background — ever.
 
+- **2026-03-28 — `--on-accent` token for white-on-colored backgrounds.** All `color: #fff` / `stroke: #fff` on accent/danger/success backgrounds replaced with `var(--on-accent)`. Literal `#fff` kept only for marker border outlines and body background.
+- **2026-03-28 — Half-step spacing tokens.** Added `--sp-0` through `--sp-11` with half-steps (0h, 1h, 2h, 3h, 4h, 7h) to cover all values used in templates without bare px.
+- **2026-03-28 — `--t-slow` and `--t-x-slow` for theme transitions.** Theme color crossfade uses `--t-slow` (0.4s), map canvas filter uses `--t-x-slow` (0.5s). All other transitions use `--t-fast`/`--t-med`/`--t-spring`.
+
 ---
 
 ## Patterns to Avoid
@@ -474,6 +478,23 @@ what you like, what you've decided, and how you want things done.
 - 2026-03-27 — Search shows local results instantly + skeletons for pending API results. If no local matches, full skeleton.
 - 2026-03-27 — Transit stop routes: skeleton chip pills replace old spinner+text pattern.
 - 2026-03-27 — Places skeleton shown via `!placesLoaded` guard in `renderPlacesList()` — first-visit users see shimmer while data fetches.
+
+### 2026-03-28 — CSS Design System Compliance Sweep
+**What was fixed:** Comprehensive tokenization of hardcoded values across `design-tokens.css` and `styles.css`.
+**New tokens created:**
+- `--on-accent: #fff` — text/icons on any accent or colored background (stable across light/dark mode)
+- `--shadow-xs: 0 1px 2px rgba(0,0,0,0.06)` — micro-subtle shadow for filter toggles (+ dark override)
+- `--sp-0: 2px`, `--sp-0h: 3px`, `--sp-1h: 5px`, `--sp-2h: 7px`, `--sp-3h: 9px`, `--sp-4h: 11px`, `--sp-7h: 18px`, `--sp-10: 28px`, `--sp-11: 36px` — half-step spacing tokens
+- `--t-slow: 0.4s ease` — theme transition duration
+- `--t-x-slow: 0.5s ease` — heavy transitions (map canvas filter)
+**Hardcoded `#fff` → `var(--on-accent)`:** 37 instances across both CSS files — all `color: #fff`, `stroke: #fff` on colored backgrounds. Kept literal `#fff` for marker border rings and body/surface backgrounds.
+**Hardcoded transitions → tokens:** ~53 instances. `0.12s/0.15s` → `--t-fast`, `0.2s` → `--t-fast`, `0.25s ease` → `--t-med`, `0.4s ease` → `--t-slow`, `0.5s ease` → `--t-x-slow`.
+**Hardcoded gap/padding → `--sp-*`:** ~25 instances in design-tokens.css template classes tokenized.
+**480px breakpoint → 380px:** Tutorial card responsive breakpoint corrected to approved set.
+**Box-shadow on `#tf-toggle`/`#sort-toggle`:** `0 1px 2px rgba(0,0,0,0.06)` → `var(--shadow-xs)`.
+**Tests:** 132/136 passed (4 failures are pre-existing `sg-gmaps required` test, unrelated).
+**Docs updated:** `DESIGN_SYSTEM.md` — new tokens documented in spacing, shadow, transition, and brand palette tables.
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`.
 
 ### 2026-03-27 — Location priority & distance sort guard
 **What was built:** (a) Toast when user tries to sort by distance with no location and no home set. (b) Live location takes priority over home for all distance features; home is a fallback.

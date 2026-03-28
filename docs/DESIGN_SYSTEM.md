@@ -42,7 +42,7 @@ All tokens are CSS custom properties on `:root`.
 |---|---|---|
 | `--accent` | `#08705B` | Brand teal — interactive elements, active states |
 | `--accent-soft` | `#e6f2ef` | Teal tint surface, soft backgrounds |
-| `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |
+| `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |\n| `--on-accent` | `#fff` | Text/icons on any accent or coloured background |
 | `--gold` | `#b89030` | Sponsor / Eid highlight, partially-halal chip |
 | `--gold-soft` | `#fdf6e8` | Gold tint surface |
 | `--sponsor` | `var(--gold)` | Alias — sponsor badge/chip colour |
@@ -103,6 +103,7 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 
 | Token | Value | Typical use |
 |---|---|---|
+| `--shadow-xs` | `0 1px 2px rgba(0,0,0,.06)` | Micro-subtle — filter toggles, small tags |
 | `--shadow-sm` | `0 1px 3px rgba(0,0,0,.06)` | Segment active state |
 | `--shadow-md` | `0 2px 8px rgba(0,0,0,.07)` | Floating pills, zoom pill |
 | `--shadow-lg` | `0 4px 16px rgba(0,0,0,.08)` | Sheets, overlays, search dropdown |
@@ -135,15 +136,24 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 
 | Token | Value |
 |---|---|
+| `--sp-0` | `2px` |
+| `--sp-0h` | `3px` |
 | `--sp-1` | `4px` |
+| `--sp-1h` | `5px` |
 | `--sp-2` | `6px` |
+| `--sp-2h` | `7px` |
 | `--sp-3` | `8px` |
+| `--sp-3h` | `9px` |
 | `--sp-4` | `10px` |
+| `--sp-4h` | `11px` |
 | `--sp-5` | `12px` |
 | `--sp-6` | `14px` |
 | `--sp-7` | `16px` |
+| `--sp-7h` | `18px` |
 | `--sp-8` | `20px` |
 | `--sp-9` | `24px` |
+| `--sp-10` | `28px` |
+| `--sp-11` | `36px` |
 
 ### Transitions
 
@@ -152,6 +162,8 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--t-fast` | `.15s ease` | Hover colour swaps |
 | `--t-med` | `.25s ease` | Subtle open / close |
 | `--t-spring` | `.35s cubic-bezier(.32,.72,0,1)` | Content expand/collapse (grid-template-rows) |
+| `--t-slow` | `.4s ease` | Theme transition — whole-page color shifts |
+| `--t-x-slow` | `.5s ease` | Heavy transitions — map canvas filter |
 | `--ease-expo` | `cubic-bezier(.16,1,.3,1)` | Sheets, panels — aggressive deceleration |
 | `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
 

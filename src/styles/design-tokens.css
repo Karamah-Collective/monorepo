@@ -61,6 +61,7 @@
   --r-xl: 24px;
   --r-pill: 999px;
 
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -80,19 +81,32 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
+  --sp-0: 2px;
+  --sp-0h: 3px;
   --sp-1: 4px;
+  --sp-1h: 5px;
   --sp-2: 6px;
+  --sp-2h: 7px;
   --sp-3: 8px;
+  --sp-3h: 9px;
   --sp-4: 10px;
+  --sp-4h: 11px;
   --sp-5: 12px;
   --sp-6: 14px;
   --sp-7: 16px;
+  --sp-7h: 18px;
   --sp-8: 20px;
   --sp-9: 24px;
+  --sp-10: 28px;
+  --sp-11: 36px;
+
+  --on-accent: #fff; /* text/icons on accent or colored backgrounds */
 
   --t-fast: 0.15s ease;
   --t-med: 0.25s ease;
   --t-spring: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  --t-slow: 0.4s ease;
+  --t-x-slow: 0.5s ease;
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -272,7 +286,7 @@ html.dark-mode body {
 .btn-icon-card.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-primary,
@@ -285,7 +299,7 @@ html.dark-mode body {
   gap: var(--sp-3);
   padding: 0 var(--sp-9);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--r-sm);
   font-size: var(--txt-lg);
   font-weight: var(--fw-bold);
@@ -388,9 +402,9 @@ html.dark-mode body {
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  padding: 7px var(--sp-6);
+  padding: var(--sp-2h) var(--sp-6);
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--r-sm);
   font-size: var(--txt-base);
   font-weight: var(--fw-bold);
@@ -406,7 +420,7 @@ html.dark-mode body {
 .btn-success-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1h);
   padding: var(--sp-2) var(--sp-5);
   background: var(--success-soft);
   color: var(--success);
@@ -422,12 +436,12 @@ html.dark-mode body {
 @media (hover: hover) {
   .btn-success-pill:hover {
     background: var(--success);
-    color: #fff;
+    color: var(--on-accent);
   }
 }
 @media (hover: hover) {
   .btn-success-pill:hover svg {
-    stroke: #fff;
+    stroke: var(--on-accent);
   }
 }
 .btn-success-pill svg {
@@ -476,7 +490,7 @@ html.dark-mode body {
   justify-content: center;
   background: var(--accent);
   border-radius: 50%;
-  color: #fff;
+  color: var(--on-accent);
   transition: filter var(--t-fast);
 }
 @media (hover: hover) {
@@ -529,7 +543,7 @@ html.dark-mode body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: var(--sp-1h);
   padding: var(--sp-3) var(--sp-1);
   border-radius: calc(var(--r-sm) - 2px);
   font-size: var(--txt-base);
@@ -557,7 +571,7 @@ html.dark-mode body {
 .tf-chip {
   display: inline-flex;
   align-items: center;
-  padding: 5px 11px;
+  padding: var(--sp-1h) var(--sp-4h);
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-pill);
@@ -580,23 +594,23 @@ html.dark-mode body {
 .btn-chip.active,
 .tf-chip.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
 /* ─── Filter bar: expandable subtag groups ─── */
 .tf-group-toggle {
-  gap: 4px;
+  gap: var(--sp-1);
   cursor: pointer;
   border-color: var(--border);
 }
 .tf-group-toggle.open {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .tf-group-toggle.open svg {
-  stroke: #fff;
+  stroke: var(--on-accent);
 }
 .tf-group-toggle.has-active:not(.open) {
   border-color: var(--accent);
@@ -606,7 +620,7 @@ html.dark-mode body {
   stroke: var(--accent);
 }
 .tf-group-arrow {
-  transition: transform 0.2s ease;
+  transition: transform var(--t-fast);
   margin-left: 1px;
   flex-shrink: 0;
 }
@@ -619,19 +633,19 @@ html.dark-mode body {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--r-pill);
   min-width: 16px;
   height: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
-  margin-left: 2px;
+  padding: 0 var(--sp-1);
+  margin-left: var(--sp-0);
   line-height: 1;
 }
 .tf-group-toggle.open .tf-group-count {
-  background: #fff;
+  background: var(--surface);
   color: var(--accent);
 }
 .tf-group-count.hide {
@@ -649,8 +663,8 @@ html.dark-mode body {
 .tf-group-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  padding-left: 8px;
+  gap: var(--sp-1h);
+  padding-left: var(--sp-3);
   border-left: 2px solid var(--accent-soft);
 }
 .tf-group-chips.shut {
@@ -664,7 +678,7 @@ html.dark-mode body {
 .style-divider {
   width: 1px;
   align-self: stretch;
-  margin: 6px 0;
+  margin: var(--sp-2) 0;
   background: var(--border);
 }
 
@@ -850,7 +864,7 @@ html.dark-mode body {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  padding: 5px var(--sp-5);
+  padding: var(--sp-1h) var(--sp-5);
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-pill);
@@ -935,8 +949,8 @@ html.dark-mode body {
 .sg-subtags-inner {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
   border: 1.5px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
@@ -953,13 +967,13 @@ html.dark-mode body {
 .sg-subtag-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: var(--sp-1h);
 }
 
 .sg-subtag {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: var(--sp-0h) var(--sp-4);
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-pill);
@@ -988,13 +1002,13 @@ html.dark-mode body {
 
 .sg-cuisine-add-row {
   display: flex;
-  gap: 5px;
+  gap: var(--sp-1h);
   align-items: center;
 }
 .sg-cuisine-add-row .sg-cuisine-input {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
+  padding: var(--sp-1) var(--sp-3);
   border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
@@ -1002,7 +1016,7 @@ html.dark-mode body {
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   color: var(--text);
-  transition: border-color 0.15s;
+  transition: border-color var(--t-fast);
 }
 .sg-cuisine-add-row .sg-cuisine-input:focus {
   outline: none;
@@ -1012,11 +1026,11 @@ html.dark-mode body {
   color: var(--text-3);
 }
 .sg-cuisine-add-btn {
-  padding: 4px 10px;
+  padding: var(--sp-1) var(--sp-4);
   border: 1.5px solid var(--accent);
   border-radius: var(--r-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-family: inherit;
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
@@ -1049,7 +1063,7 @@ html.dark-mode body {
 .pill-expand-icon {
   transition:
     color var(--t-fast),
-    opacity 0.2s ease;
+    opacity var(--t-fast);
 }
 .pill-expand:not(.collapsed) .pill-expand-icon {
   opacity: 0;
@@ -1059,14 +1073,14 @@ html.dark-mode body {
 
 .pill-expand-body {
   opacity: 1;
-  transition: opacity 0.2s ease 0.05s;
+  transition: opacity var(--t-fast) 0.05s;
 }
 .pill-expand.collapsed .pill-expand-body {
   opacity: 0;
   pointer-events: none;
   height: 0;
   overflow: hidden;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--t-fast);
 }
 
 .pill-panel {
@@ -1097,10 +1111,10 @@ html.dark-mode body {
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  padding: 10px;
+  padding: var(--sp-4);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-4);
 }
 
 .snack-icon {
@@ -1143,7 +1157,7 @@ html.dark-mode body {
 .eid-time-chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: var(--sp-0h) var(--sp-4);
   border-radius: var(--r-pill);
   background: var(--gold-soft);
   color: var(--gold);
@@ -1161,8 +1175,8 @@ html.dark-mode body {
 .sp-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
+  gap: var(--sp-0h);
+  padding: var(--sp-0h) var(--sp-3);
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
@@ -1198,8 +1212,8 @@ html.dark-mode body {
 .sponsor-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 7px;
+  gap: var(--sp-0h);
+  padding: var(--sp-0) var(--sp-2h);
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
@@ -1240,9 +1254,9 @@ html.dark-mode body {
 .eid-loc-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
   width: 100%;
-  padding: 12px 16px;
+  padding: var(--sp-5) var(--sp-7);
   background: none;
   border: none;
   text-align: left;
@@ -1364,7 +1378,7 @@ html.dark-mode body {
 /* ─── Place list card ───────────────────────────────────────────────────────── */
 /* Shared base for every card in the places list: regular li AND the empty state */
 .pl-card {
-  padding: 14px 16px;
+  padding: var(--sp-6) var(--sp-7);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);

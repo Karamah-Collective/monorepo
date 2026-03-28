@@ -672,7 +672,8 @@ function renderStopRoutes(divId, routes, fallbackColor) {
   if (!routes || routes.length === 0) { el.innerHTML = '<span class="sp-empty">No routes</span>'; return null; }
   const modeOrder = { RAIL: 0, SUBWAY: 1, FERRY: 2, TRAM: 3, BUS: 4 };
   routes.sort((a, b) => (modeOrder[a.m] ?? 5) - (modeOrder[b.m] ?? 5));
-  const primaryColor = routes.find(r => r.c) ? `#${routes.find(r => r.c).c}` : null;
+  const firstColored = routes.find(r => r.c);
+  const primaryColor = firstColored ? `#${firstColored.c}` : null;
   let lastMode = null;
   const CSS_MODE_VAR = { BUS: "var(--hsl-bus)", TRAM: "var(--hsl-tram)", SUBWAY: "var(--hsl-metro)", RAIL: "var(--hsl-rail)", FERRY: "var(--hsl-ferry)" };
   el.innerHTML = routes

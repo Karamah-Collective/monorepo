@@ -747,20 +747,14 @@ export function toggleSatellite() {
       map.setPaintProperty("water", "fill-color", "#0a1e33");
     }
     // Restyle bridges for satellite — dark semi-transparent to blend with imagery
-    ["bridge_minor_casing", "bridge_major_casing"].forEach(id => {
+    const SAT_BRIDGE_COLORS = { bridge_minor_casing: "rgba(60, 60, 60, 0.6)", bridge_major_casing: "rgba(60, 60, 60, 0.6)", bridge_minor: "rgba(120, 115, 105, 0.7)", bridge_major: "rgba(120, 115, 105, 0.7)" };
+    for (const id in SAT_BRIDGE_COLORS) {
       if (map.getLayer(id)) {
         map.setLayoutProperty(id, "visibility", "visible");
         map.moveLayer(id, "label_road");
-        map.setPaintProperty(id, "line-color", "rgba(60, 60, 60, 0.6)");
+        map.setPaintProperty(id, "line-color", SAT_BRIDGE_COLORS[id]);
       }
-    });
-    ["bridge_minor", "bridge_major"].forEach(id => {
-      if (map.getLayer(id)) {
-        map.setLayoutProperty(id, "visibility", "visible");
-        map.moveLayer(id, "label_road");
-        map.setPaintProperty(id, "line-color", "rgba(120, 115, 105, 0.7)");
-      }
-    });
+    }
     // Hide waterways (thin lines not useful in satellite)
     if (map.getLayer("waterway")) {
       map.setLayoutProperty("waterway", "visibility", "none");
@@ -820,18 +814,15 @@ export function toggleSatellite() {
       map.setPaintProperty("water", "fill-color", origWaterColor);
     }
     // Restore bridge colors to vector defaults
-    ["bridge_minor_casing", "bridge_major_casing"].forEach(id => {
-      if (map.getLayer(id)) map.setPaintProperty(id, "line-color", "#ccc");
-    });
-    ["bridge_minor", "bridge_major"].forEach(id => {
-      if (map.getLayer(id)) map.setPaintProperty(id, "line-color", "#fff");
-    });
+    const VEC_BRIDGE_COLORS = { bridge_minor_casing: "#ccc", bridge_major_casing: "#ccc", bridge_minor: "#fff", bridge_major: "#fff" };
+    for (const id in VEC_BRIDGE_COLORS) {
+      if (map.getLayer(id)) map.setPaintProperty(id, "line-color", VEC_BRIDGE_COLORS[id]);
+    }
 
-    // Restore all label visibility and paint
+    // Restore all label visibility and paint in a single pass
     LABEL_IDS.forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
-    });
-    LABEL_IDS.forEach((id) => {
+      if (!map.getLayer(id)) return;
+      map.setLayoutProperty(id, "visibility", "visible");
       const o = origLabelPaint[id];
       if (o) {
         map.setPaintProperty(id, "text-color", o.color);
