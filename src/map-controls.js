@@ -265,6 +265,9 @@ export function showCurrentLocation() {
     if (firstFix) {
       map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
       firstFix = false;
+    } else if (dir.routeLayers.length > 0) {
+      // Route is active — auto-pan to follow the user's position
+      map.easeTo({ center: [lng, lat], duration: 600 });
     }
   }
 
@@ -316,7 +319,7 @@ function _startHeadingWatch() {
     if (heading === null || !_locConeEl) return;
     const mapBearing = map.getBearing();
     const rotation = (heading - mapBearing + 360) % 360;
-    _locConeEl.style.transform = `translate(-50%, -50%) rotate(${rotation - 135}deg)`;
+    _locConeEl.style.transform = `translate(-50%, -50%) rotate(${rotation + 135}deg)`;
     if (!_locConeEl.classList.contains("has-heading")) {
       _locConeEl.classList.add("has-heading");
     }

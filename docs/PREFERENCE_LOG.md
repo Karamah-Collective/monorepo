@@ -194,6 +194,13 @@ what you like, what you've decided, and how you want things done.
 - Scroll position preserved across expand/collapse toggles.
 
 ### 2026-03-23 — Map Canvas Shrink / White-Screen Root Cause
+
+### 2026-03-28 — GPS Puck Rotation Fix + Route Follow Mode
+- **Bug fix:** GPS puck arrow was pointing 90° to the right (east) instead of north when heading was 0. Root cause: the rotation offset in `_applyConeRotation()` was `-135` but should be `+135` to compensate for the sharp corner being at the bottom-left (225° from north) of the teardrop shape. CSS default rotation also updated from `-135deg` to `135deg`.
+- **New feature:** When GPS tracking is active AND a route is displayed (`dir.routeLayers.length > 0`), the map now auto-pans to follow the user's position on each GPS update using `easeTo` (600 ms). This lets users follow a route hands-free without repeatedly re-centering.
+- Files: `src/map-controls.js`, `src/styles/styles.css`.
+
+### 2026-03-23 — Map Canvas Shrink / White-Screen Root Cause
 - Desktop root cause: during Places sheet transitions, `#map` could be measured below the real app viewport for a moment, and MapLibre `resize()` then locked the WebGL canvas buffer to that undersized measurement, leaving part of the app white.
 - Phone root cause: the same undersized resize path existed, but repeated fast place switches also stacked sheet-close, popup-open, and map movement work at once, which made the mobile renderer more likely to hit the bad canvas state and blank the screen.
 - Fix pattern: enforce viewport floor sizing on the map host/canvas, resync the MapLibre viewport after transitions, and serialize phone place focus so animation settles before the popup opens.

@@ -4815,7 +4815,7 @@ body.dark-mode #route-snackbar {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(-135deg);
+  transform: translate(-50%, -50%) rotate(135deg);
   z-index: 3;
   transition: transform var(--t-med);
 }
