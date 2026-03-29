@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design E — Visual Variants</title>
+  <link rel="stylesheet" href="../src/styles/design-tokens.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: #111; overflow: auto !important; scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      color: #ccc; overflow: auto !important;
+    }
+
+    .page { max-width: 1320px; margin: 0 auto; padding: 48px 28px 120px; }
+
+    /* Header */
+    .page-head { margin-bottom: 52px; }
+    .page-head h1 {
+      font-size: 32px; font-weight: 800; color: #fff;
+      letter-spacing: -0.04em; line-height: 1.1;
+    }
+    .page-head .accent { color: var(--accent); }
+    .page-head p { font-size: 13px; color: #666; margin-top: 8px; line-height: 1.6; max-width: 640px; }
+
+    /* Section dividers */
+    .section {
+      margin-top: 64px; padding-top: 28px;
+      border-top: 1px solid #222;
+    }
+    .section:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+    }
+    .section-title {
+      font-size: 20px; font-weight: 700; color: #fff;
+      letter-spacing: -0.02em; margin-bottom: 4px;
+    }
+    .section-sub { font-size: 12px; color: #555; margin-bottom: 24px; line-height: 1.5; }
+
+    /* Phone grid */
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 32px;
+    }
+    .phone-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .phone-name {
+      font-size: 13px; font-weight: 700; color: #fff; letter-spacing: -0.01em;
+    }
+    .phone-desc { font-size: 11px; color: #555; line-height: 1.4; }
+
+    /* Phone frame */
+    .phone {
+      width: 360px; height: 340px;
+      background: linear-gradient(170deg, #6aab9a 0%, #4a9080 50%, #357568 100%);
+      border-radius: 24px; position: relative; overflow: hidden;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.4),
+        0 2px 8px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .phone::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 44px, rgba(0,0,0,0.025) 44px 45px),
+        repeating-linear-gradient(90deg, transparent 0 44px, rgba(0,0,0,0.025) 44px 45px);
+    }
+    /* Fake route line on map */
+    .phone::after {
+      content: ''; position: absolute; z-index: 0;
+      width: 4px; height: 120px;
+      background: var(--accent); border-radius: 2px;
+      top: 40px; left: 170px; opacity: 0.3;
+      transform: rotate(-20deg);
+    }
+    .phone.no-route::after { display: none; }
+
+    /* Shared HUD anchoring */
+    .hud {
+      position: absolute; z-index: 1;
+      left: 50%; transform: translateX(-50%);
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E1 — Clean Baseline                                   */
+    /* The "reference" Design E. Sharp corners, minimal decoration.   */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e1 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-xl);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    }
+    .e1 .bar { height: 2px; background: var(--surface-2); }
+    .e1 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 0 2px 2px 0; }
+    .e1 .body { padding: 12px 14px; }
+    .e1 .row1 { display: flex; align-items: center; gap: 10px; }
+    .e1 .icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: var(--r-sm); color: var(--on-accent);
+    }
+    .e1 .icon svg { width: 20px; height: 20px; }
+    .e1 .col { flex: 1; min-width: 0; }
+    .e1 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e1 .detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .e1 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e1 .x svg { width: 14px; height: 14px; }
+    .e1 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .e1 .tags { display: flex; gap: 6px; }
+    .e1 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e1 .c-dist { background: var(--accent-soft); color: var(--accent); }
+    .e1 .c-eta { background: var(--surface-2); color: var(--text-2); }
+    .e1 .btns { display: flex; gap: 6px; }
+    .e1 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e1 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E2 — Soft Frosted                                     */
+    /* Frosted glass bg, softer radius, blurred backdrop, muted tones */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e2 {
+      bottom: 16px; width: 328px;
+      border-radius: 28px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.5);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .e2 .bar { height: 3px; background: rgba(0,0,0,0.04); border-radius: 28px 28px 0 0; }
+    .e2 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 28px 0 0 0; opacity: 0.8; }
+    .e2 .body { padding: 14px 16px; }
+    .e2 .row1 { display: flex; align-items: center; gap: 12px; }
+    .e2 .icon {
+      width: 42px; height: 42px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: 14px; color: var(--on-accent);
+      box-shadow: 0 2px 8px rgba(8,112,91,0.25);
+    }
+    .e2 .icon svg { width: 20px; height: 20px; }
+    .e2 .col { flex: 1; min-width: 0; }
+    .e2 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e2 .detail { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .e2 .x {
+      width: 30px; height: 30px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.05); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e2 .x svg { width: 13px; height: 13px; }
+    .e2 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .e2 .tags { display: flex; gap: 6px; }
+    .e2 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 4px 9px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e2 .c-dist { background: rgba(8,112,91,0.1); color: var(--accent); }
+    .e2 .c-eta { background: rgba(0,0,0,0.04); color: var(--text-2); }
+    .e2 .btns { display: flex; gap: 6px; }
+    .e2 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.05); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e2 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E3 — Accent Spine                                     */
+    /* Left accent border strip, tighter padding, more vertical feel  */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e3 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-lg);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+      border-left: 3px solid var(--accent);
+    }
+    .e3 .body { padding: 12px 14px 12px 12px; }
+    .e3 .row1 { display: flex; align-items: center; gap: 10px; }
+    .e3 .icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent-soft); border-radius: var(--r-sm); color: var(--accent);
+    }
+    .e3 .icon svg { width: 18px; height: 18px; }
+    .e3 .col { flex: 1; min-width: 0; }
+    .e3 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e3 .detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .e3 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e3 .x svg { width: 14px; height: 14px; }
+    .e3 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .e3 .tags { display: flex; gap: 6px; }
+    .e3 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e3 .c-dist { background: var(--accent-soft); color: var(--accent); }
+    .e3 .c-eta { background: var(--surface-2); color: var(--text-2); }
+    .e3 .btns { display: flex; gap: 6px; }
+    .e3 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e3 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E4 — Inset Track                                      */
+    /* Sunken progress track, elevated icon, bolder distance chip     */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e4 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-xl);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    }
+    .e4 .bar {
+      height: 4px; background: var(--surface-2);
+      margin: 0 14px; margin-top: 10px; border-radius: 2px;
+    }
+    .e4 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 2px; }
+    .e4 .body { padding: 10px 14px 12px; }
+    .e4 .row1 { display: flex; align-items: center; gap: 10px; }
+    .e4 .icon {
+      width: 44px; height: 44px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: var(--r-md); color: var(--on-accent);
+      box-shadow: 0 3px 10px rgba(8,112,91,0.3);
+    }
+    .e4 .icon svg { width: 22px; height: 22px; }
+    .e4 .col { flex: 1; min-width: 0; }
+    .e4 .inst { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.01em; }
+    .e4 .detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .e4 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e4 .x svg { width: 14px; height: 14px; }
+    .e4 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .e4 .tags { display: flex; gap: 6px; }
+    .e4 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 4px 9px; border-radius: var(--r-pill); font-size: 10px; font-weight: 700;
+    }
+    .e4 .c-dist { background: var(--accent); color: var(--on-accent); }
+    .e4 .c-eta { background: var(--surface-2); color: var(--text-2); font-weight: 600; }
+    .e4 .btns { display: flex; gap: 6px; }
+    .e4 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e4 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E5 — Dark Slab                                        */
+    /* Dark surface, light text, glowing accent. Night-mode feel.     */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e5 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-xl);
+      background: #1c1c1e;
+      border: 1px solid #2c2c2e;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03);
+    }
+    .e5 .bar { height: 2px; background: #2c2c2e; }
+    .e5 .bar-fill { height: 100%; width: 35%; background: #2dd4a0; border-radius: 0 2px 2px 0; }
+    .e5 .body { padding: 12px 14px; }
+    .e5 .row1 { display: flex; align-items: center; gap: 10px; }
+    .e5 .icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #2dd4a0; border-radius: var(--r-sm); color: #111;
+    }
+    .e5 .icon svg { width: 20px; height: 20px; }
+    .e5 .col { flex: 1; min-width: 0; }
+    .e5 .inst { font-size: 14px; font-weight: 600; color: #f0f0f0; line-height: 1.2; }
+    .e5 .detail { font-size: 11px; color: #777; margin-top: 2px; }
+    .e5 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #2c2c2e; border-radius: 50%; color: #888;
+      border: none; cursor: pointer;
+    }
+    .e5 .x svg { width: 14px; height: 14px; }
+    .e5 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .e5 .tags { display: flex; gap: 6px; }
+    .e5 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e5 .c-dist { background: rgba(45,212,160,0.15); color: #2dd4a0; }
+    .e5 .c-eta { background: #2c2c2e; color: #999; }
+    .e5 .btns { display: flex; gap: 6px; }
+    .e5 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: #2c2c2e; border: none; border-radius: 50%; cursor: pointer; color: #888;
+    }
+    .e5 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E6 — Divided Band                                     */
+    /* Row2 gets its own bg strip, chips sit on an accent-soft band   */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e6 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-xl);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    }
+    .e6 .bar { height: 2px; background: var(--surface-2); }
+    .e6 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 0 2px 2px 0; }
+    .e6 .top { padding: 12px 14px 10px; }
+    .e6 .row1 { display: flex; align-items: center; gap: 10px; }
+    .e6 .icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: var(--r-sm); color: var(--on-accent);
+    }
+    .e6 .icon svg { width: 20px; height: 20px; }
+    .e6 .col { flex: 1; min-width: 0; }
+    .e6 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e6 .detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .e6 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e6 .x svg { width: 14px; height: 14px; }
+    .e6 .band {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px;
+      background: var(--accent-soft);
+      border-radius: 0 0 var(--r-xl) var(--r-xl);
+    }
+    .e6 .tags { display: flex; gap: 6px; }
+    .e6 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e6 .c-dist { background: var(--accent); color: var(--on-accent); }
+    .e6 .c-eta { background: rgba(255,255,255,0.7); color: var(--text-2); }
+    .e6 .btns { display: flex; gap: 6px; }
+    .e6 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.6); border: none; border-radius: 50%; cursor: pointer; color: var(--accent);
+    }
+    .e6 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E7 — Outlined                                         */
+    /* No fill bg, outlined icon, hairline border, breathing space    */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e7 {
+      bottom: 16px; width: 328px;
+      border-radius: var(--r-xl);
+      background: var(--surface);
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .e7 .bar { height: 2px; background: var(--accent-soft); }
+    .e7 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 0 2px 2px 0; }
+    .e7 .body { padding: 14px 16px; }
+    .e7 .row1 { display: flex; align-items: center; gap: 12px; }
+    .e7 .icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: 2px solid var(--accent);
+      border-radius: var(--r-sm); color: var(--accent);
+    }
+    .e7 .icon svg { width: 20px; height: 20px; }
+    .e7 .col { flex: 1; min-width: 0; }
+    .e7 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e7 .detail { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .e7 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: 1.5px solid var(--border);
+      border-radius: 50%; color: var(--text-3);
+      cursor: pointer;
+    }
+    .e7 .x svg { width: 14px; height: 14px; }
+    .e7 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .e7 .tags { display: flex; gap: 6px; }
+    .e7 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 8px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+      border: 1.5px solid;
+    }
+    .e7 .c-dist { border-color: var(--accent); color: var(--accent); background: transparent; }
+    .e7 .c-eta { border-color: var(--border); color: var(--text-2); background: transparent; }
+    .e7 .btns { display: flex; gap: 6px; }
+    .e7 .btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: transparent; border: 1.5px solid var(--border);
+      border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e7 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* VARIANT E8 — Floating Island                                  */
+    /* Extra rounded, elevated shadow, subtle inner glow, generous pad */
+    /* ═══════════════════════════════════════════════════════════════ */
+    .e8 {
+      bottom: 16px; width: 328px;
+      border-radius: 30px;
+      background: var(--surface);
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow:
+        0 16px 48px rgba(0,0,0,0.14),
+        0 4px 12px rgba(0,0,0,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+    .e8 .bar { height: 3px; background: var(--surface-2); border-radius: 30px 30px 0 0; }
+    .e8 .bar-fill { height: 100%; width: 35%; background: var(--accent); border-radius: 30px 0 0 0; }
+    .e8 .body { padding: 14px 18px 14px 16px; }
+    .e8 .row1 { display: flex; align-items: center; gap: 12px; }
+    .e8 .icon {
+      width: 44px; height: 44px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: 14px; color: var(--on-accent);
+    }
+    .e8 .icon svg { width: 22px; height: 22px; }
+    .e8 .col { flex: 1; min-width: 0; }
+    .e8 .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .e8 .detail { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .e8 .x {
+      width: 32px; height: 32px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      border: none; cursor: pointer;
+    }
+    .e8 .x svg { width: 14px; height: 14px; }
+    .e8 .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .e8 .tags { display: flex; gap: 6px; }
+    .e8 .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 4px 10px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .e8 .c-dist { background: var(--accent-soft); color: var(--accent); }
+    .e8 .c-eta { background: var(--surface-2); color: var(--text-2); }
+    .e8 .btns { display: flex; gap: 6px; }
+    .e8 .btn {
+      width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .e8 .btn svg { width: 12px; height: 12px; }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* TRANSIT VARIANTS — showing bus on E1 vs E6 vs E8              */
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* reuse the same hud classes, just swap icon color via inline */
+
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-head">
+    <h1>Design <span class="accent">E</span> — Visual Variants</h1>
+    <p>Same two-row chip-tag layout, eight different visual treatments. Each one changes the surface, icon style, border treatment, chip look, and overall vibe. Pick the one that feels right.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- DIRECT MODE: DRIVE                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Direct Mode</div>
+    <div class="section-title">Driving — Turn Right</div>
+    <div class="section-sub">Each variant showing the same instruction. Compare surface, icon, chips, and buttons.</div>
+  </div>
+
+  <div class="phone-grid">
+
+    <!-- E1 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E1 — Clean Baseline</span><div class="phone-desc">Standard surface, teal filled icon, soft chip fills. The reference.</div></div>
+      <div class="phone">
+        <div class="hud e1">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E2 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E2 — Soft Frosted</span><div class="phone-desc">Frosted glass, blurred backdrop, softer rounding. Airy and modern.</div></div>
+      <div class="phone">
+        <div class="hud e2">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E3 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E3 — Accent Spine</span><div class="phone-desc">Left teal border, soft-filled icon (not solid), no progress bar. Structured feel.</div></div>
+      <div class="phone">
+        <div class="hud e3">
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E4 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E4 — Inset Track</span><div class="phone-desc">Inset progress bar, larger elevated icon with shadow, bold solid distance chip.</div></div>
+      <div class="phone">
+        <div class="hud e4">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E5 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E5 — Dark Slab</span><div class="phone-desc">Dark surface, mint-green accent, glow. For if the app ever gets dark mode.</div></div>
+      <div class="phone">
+        <div class="hud e5">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E6 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E6 — Divided Band</span><div class="phone-desc">Teal-soft footer band separates chips from instruction. Solid distance chip.</div></div>
+      <div class="phone">
+        <div class="hud e6">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="top">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+          </div>
+          <div class="band">
+            <div class="tags">
+              <span class="chip c-dist">280 m</span>
+              <span class="chip c-eta">ETA 14:32 · 8 min</span>
+            </div>
+            <div class="btns">
+              <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E7 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E7 — Outlined</span><div class="phone-desc">Teal border on card, outlined icon, outlined chips. Clean and airy.</div></div>
+      <div class="phone">
+        <div class="hud e7">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E8 -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E8 — Floating Island</span><div class="phone-desc">Extra rounded (30px), deep shadow, generous padding, inner glow. Premium feel.</div></div>
+      <div class="phone">
+        <div class="hud e8">
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg></div>
+              <div class="col">
+                <div class="inst">Turn right onto Hämeentie</div>
+                <div class="detail">Then continue straight for 800 m</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip c-dist">280 m</span>
+                <span class="chip c-eta">ETA 14:32 · 8 min</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TRANSIT: Showing E1, E4, E6, E8 with a Bus                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Transit Mode</div>
+    <div class="section-title">Board Bus — Top 4 Variants</div>
+    <div class="section-sub">Same variants adapted for transit: mode-coloured icon, route chip, stop count chip.</div>
+  </div>
+
+  <div class="phone-grid">
+
+    <!-- E1 Bus -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E1 — Clean Baseline (Bus)</span></div>
+      <div class="phone no-route">
+        <div class="hud e1">
+          <div class="bar"><div class="bar-fill" style="width:25%; background:var(--hsl-bus)"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon" style="background:var(--hsl-bus)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg></div>
+              <div class="col">
+                <div class="inst">Board bus 550 → Itäkeskus</div>
+                <div class="detail">From Rautatientori (H0428) · Departs 14:18</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip" style="background:var(--hsl-bus);color:#fff;font-weight:700">550</span>
+                <span class="chip c-eta">5 stops · 12 min</span>
+                <span class="chip c-eta">ETA 14:47</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E4 Bus -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E4 — Inset Track (Bus)</span></div>
+      <div class="phone no-route">
+        <div class="hud e4">
+          <div class="bar"><div class="bar-fill" style="width:25%; background:var(--hsl-bus)"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon" style="background:var(--hsl-bus); box-shadow: 0 3px 10px rgba(26,115,184,0.3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg></div>
+              <div class="col">
+                <div class="inst">Board bus 550 → Itäkeskus</div>
+                <div class="detail">From Rautatientori (H0428) · Departs 14:18</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip" style="background:var(--hsl-bus);color:#fff;font-weight:700">550</span>
+                <span class="chip c-eta">5 stops · 12 min</span>
+                <span class="chip c-eta">ETA 14:47</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E6 Bus -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E6 — Divided Band (Bus)</span></div>
+      <div class="phone no-route">
+        <div class="hud e6">
+          <div class="bar"><div class="bar-fill" style="width:25%; background:var(--hsl-bus)"></div></div>
+          <div class="top">
+            <div class="row1">
+              <div class="icon" style="background:var(--hsl-bus)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg></div>
+              <div class="col">
+                <div class="inst">Board bus 550 → Itäkeskus</div>
+                <div class="detail">From Rautatientori (H0428) · Departs 14:18</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+          </div>
+          <div class="band" style="background:rgba(26,115,184,0.08)">
+            <div class="tags">
+              <span class="chip" style="background:var(--hsl-bus);color:#fff;font-weight:700">550</span>
+              <span class="chip" style="background:rgba(255,255,255,0.7);color:var(--text-2);font-weight:600">5 stops · 12 min</span>
+              <span class="chip" style="background:rgba(255,255,255,0.7);color:var(--text-2);font-weight:600">ETA 14:47</span>
+            </div>
+            <div class="btns">
+              <button class="btn" style="background:rgba(255,255,255,0.6);color:var(--hsl-bus)"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="btn" style="background:rgba(255,255,255,0.6);color:var(--hsl-bus)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E8 Bus -->
+    <div class="phone-wrap">
+      <div><span class="phone-name">E8 — Floating Island (Bus)</span></div>
+      <div class="phone no-route">
+        <div class="hud e8">
+          <div class="bar"><div class="bar-fill" style="width:25%; background:var(--hsl-bus)"></div></div>
+          <div class="body">
+            <div class="row1">
+              <div class="icon" style="background:var(--hsl-bus)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg></div>
+              <div class="col">
+                <div class="inst">Board bus 550 → Itäkeskus</div>
+                <div class="detail">From Rautatientori (H0428) · Departs 14:18</div>
+              </div>
+              <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="row2">
+              <div class="tags">
+                <span class="chip" style="background:var(--hsl-bus);color:#fff;font-weight:700">550</span>
+                <span class="chip c-eta">5 stops · 12 min</span>
+                <span class="chip c-eta">ETA 14:47</span>
+              </div>
+              <div class="btns">
+                <button class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

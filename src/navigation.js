@@ -78,26 +78,38 @@ function distAlongRoute(fromIdx) {
 
 // ─── Build unified steps from route data ────────────────────────────
 
+function _findNearestCoordIdx(lat, lng) {
+  let best = 0, minD = Infinity;
+  for (let ci = 0; ci < navRouteCoords.length; ci++) {
+    const d = haversineDistance(lat, lng, navRouteCoords[ci][1], navRouteCoords[ci][0]);
+    if (d < minD) { minD = d; best = ci; }
+  }
+  return best;
+}
+
 function buildDirectStepsFromData(mode) {
   // Use raw step data stored by directions.js during route calculation
   const rawSteps = dir.directSteps;
   if (!rawSteps?.length) return buildDirectStepsFallback(mode);
 
-  return rawSteps.map((raw, i) => ({
-    type: "direct",
-    mode,
-    instruction: raw.instruction,
-    distance: raw.distance || 0,
-    duration: raw.duration || 0,
-    iconHtml: raw.iconHtml,
-    lng: raw.lng || navRouteCoords[0]?.[0] || 0,
-    lat: raw.lat || navRouteCoords[0]?.[1] || 0,
-    coordIdx: 0,
-    isDepart: raw.isFirst || i === 0,
-    isArrive: raw.isLast || i === rawSteps.length - 1,
-    maneuverType: raw.maneuverType || "",
-    maneuverMod: raw.maneuverMod || "",
-  }));
+  return rawSteps.map((raw, i) => {
+    const lng = raw.lng || navRouteCoords[0]?.[0] || 0;
+    const lat = raw.lat || navRouteCoords[0]?.[1] || 0;
+    return {
+      type: "direct",
+      mode,
+      instruction: raw.instruction,
+      distance: raw.distance || 0,
+      duration: raw.duration || 0,
+      iconHtml: raw.iconHtml,
+      lng, lat,
+      coordIdx: _findNearestCoordIdx(lat, lng),
+      isDepart: raw.isFirst || i === 0,
+      isArrive: raw.isLast || i === rawSteps.length - 1,
+      maneuverType: raw.maneuverType || "",
+      maneuverMod: raw.maneuverMod || "",
+    };
+  });
 }
 
 function buildDirectStepsFallback(mode) {
@@ -483,7 +495,7 @@ export function processPosition(lat, lng) {
 
 function _advanceStep(lat, lng, snap) {
   // For transit: advance based on proximity to each step's coordinate
-  // For direct: advance based on proximity to next step's maneuver point
+  // For direct: advance based on proximity AND route progress
   const step = navSteps[navStepIdx];
   if (!step || step.isArrive) return;
 
@@ -495,7 +507,6 @@ function _advanceStep(lat, lng, snap) {
   // Advance thresholds depend on mode
   let threshold;
   if (navMode === "transit") {
-    // Transit stops: advance when within 80m
     threshold = nextStep.type === "transit-stop" ? 80 : 60;
   } else if (navMode === "walk") {
     threshold = 25;
@@ -506,7 +517,14 @@ function _advanceStep(lat, lng, snap) {
     threshold = 40;
   }
 
-  if (distToNext < threshold) {
+  // Route progress gate: user's snap position on the route must have
+  // reached (or nearly reached) the next step's coordinate index.
+  // This prevents advancing through steps while stationary — proximity
+  // alone isn't enough; you must actually travel along the route.
+  const routeReached = navMode === "transit"
+    || snap.segIdx >= (nextStep.coordIdx - 2);
+
+  if (distToNext < threshold && routeReached) {
     navStepIdx++;
     // Update distance on current step
     if (navSteps[navStepIdx]) {
