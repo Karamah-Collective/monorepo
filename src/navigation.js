@@ -33,6 +33,14 @@ const REROUTE_COOLDOWN = 15000; // don't reroute more than once per 15s
 let lastRerouteTime = 0;
 let offRouteCount = 0;
 
+// Step advancement cooldown — prevents cascading through steps on rapid GPS ticks
+const STEP_ADVANCE_COOLDOWN = 3000; // ms — minimum time between step advances
+let lastStepAdvanceTime = 0;
+
+// GPS processing throttle
+const GPS_PROCESS_INTERVAL = 2000; // ms — process GPS at most every 2s
+let lastGpsProcessTime = 0;
+
 // ─── DOM refs ───────────────────────────────────────────────────────
 const hud = document.getElementById("nav-hud");
 const hudManeuver = document.getElementById("nav-maneuver-icon");
@@ -382,6 +390,8 @@ export function startNavigation() {
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
+  lastStepAdvanceTime = 0;
+  lastGpsProcessTime = 0;
 
   // Hide snackbar, show HUD
   if (snackbar) snackbar.classList.add("hide");
@@ -476,6 +486,11 @@ function _onLocationUpdate(e) {
 export function processPosition(lat, lng) {
   if (!navActive || !navRouteCoords.length) return;
 
+  // Throttle GPS processing to avoid rapid-fire updates
+  const now = Date.now();
+  if (now - lastGpsProcessTime < GPS_PROCESS_INTERVAL) return;
+  lastGpsProcessTime = now;
+
   // Snap to route
   const snap = snapToRoute(lat, lng);
 
@@ -501,39 +516,37 @@ export function processPosition(lat, lng) {
   map.easeTo({ center: [lng, lat], duration: 600 });
 }
 
-function _advanceStep(lat, lng, snap) {
-  // For transit: advance based on proximity to each step's coordinate
-  // For direct: advance based on proximity AND route progress
+function _advanceStep(lat, lng, _snap) {
+  // ONLY advance when user's GPS is physically at the next step's location.
+  // No route-progress heuristics, no cascading — pure GPS proximity check.
+  // At most one step advances per call, and calls are throttled.
   const step = navSteps[navStepIdx];
   if (!step || step.isArrive) return;
 
   const nextStep = navSteps[navStepIdx + 1];
   if (!nextStep) return;
 
-  const distToNext = haversineDistance(lat, lng, nextStep.lat, nextStep.lng);
-
-  // Advance thresholds depend on mode
+  // Hard proximity threshold: GPS must be AT the maneuver point
   let threshold;
   if (navMode === "transit") {
     threshold = nextStep.type === "transit-stop" ? 80 : 60;
   } else if (navMode === "walk") {
-    threshold = 25;
+    threshold = 20;
   } else if (navMode === "cycle") {
-    threshold = 35;
+    threshold = 30;
   } else {
-    // drive
-    threshold = 40;
+    threshold = 35; // drive
   }
 
-  // Route progress gate: user's snap position on the route must have
-  // reached (or nearly reached) the next step's coordinate index.
-  // This prevents advancing through steps while stationary — proximity
-  // alone isn't enough; you must actually travel along the route.
-  const routeReached = navMode === "transit"
-    || snap.segIdx >= (nextStep.coordIdx - 2);
+  const distToNext = haversineDistance(lat, lng, nextStep.lat, nextStep.lng);
 
-  if (distToNext < threshold && routeReached) {
+  // Cooldown: don't advance again within STEP_ADVANCE_COOLDOWN ms
+  const now = Date.now();
+  if (now - lastStepAdvanceTime < STEP_ADVANCE_COOLDOWN) return;
+
+  if (distToNext < threshold) {
     navStepIdx++;
+    lastStepAdvanceTime = now;
   }
 }
 
