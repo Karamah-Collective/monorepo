@@ -21,6 +21,7 @@ let navPaused = false;     // true when HUD is hidden but state is preserved
 let navSteps = [];         // unified step objects for all modes
 let navStepIdx = 0;
 let navRouteCoords = [];   // flat [lng,lat] array of the entire route
+let navRouteProgress = []; // cumulative metres at each route coordinate
 let navMode = "drive";     // drive | walk | cycle | transit
 let navItinerary = null;   // the active itinerary (transit) or null
 let navStartTime = null;
@@ -64,14 +65,27 @@ function _nearestPointOnSegment(px, py, ax, ay, bx, by) {
 
 function snapToRoute(lat, lng) {
   let minDist = Infinity, bestIdx = 0, bestLng = lng, bestLat = lat;
+  let bestT = 0;
   for (let i = 0; i < navRouteCoords.length - 1; i++) {
     const [ax, ay] = navRouteCoords[i];
     const [bx, by] = navRouteCoords[i + 1];
     const p = _nearestPointOnSegment(lng, lat, ax, ay, bx, by);
     const d = haversineDistance(lat, lng, p.y, p.x);
-    if (d < minDist) { minDist = d; bestIdx = i; bestLng = p.x; bestLat = p.y; }
+    if (d < minDist) {
+      minDist = d;
+      bestIdx = i;
+      bestLng = p.x;
+      bestLat = p.y;
+      bestT = p.t;
+    }
   }
-  return { dist: minDist, segIdx: bestIdx, lng: bestLng, lat: bestLat };
+  const segStart = navRouteCoords[bestIdx];
+  const segEnd = navRouteCoords[bestIdx + 1] || segStart;
+  const segLen = segStart && segEnd
+    ? haversineDistance(segStart[1], segStart[0], segEnd[1], segEnd[0])
+    : 0;
+  const progressM = (navRouteProgress[bestIdx] || 0) + segLen * bestT;
+  return { dist: minDist, segIdx: bestIdx, lng: bestLng, lat: bestLat, t: bestT, progressM };
 }
 
 function distAlongRoute(fromIdx) {
@@ -81,6 +95,58 @@ function distAlongRoute(fromIdx) {
       navRouteCoords[i + 1][1], navRouteCoords[i + 1][0]);
   }
   return d;
+}
+
+function _buildRouteProgress() {
+  navRouteProgress = [];
+  if (!navRouteCoords.length) return;
+
+  navRouteProgress[0] = 0;
+  for (let i = 1; i < navRouteCoords.length; i++) {
+    navRouteProgress[i] = navRouteProgress[i - 1] + haversineDistance(
+      navRouteCoords[i - 1][1], navRouteCoords[i - 1][0],
+      navRouteCoords[i][1], navRouteCoords[i][0],
+    );
+  }
+}
+
+function _routeProgressAtCoordIdx(coordIdx) {
+  if (!navRouteProgress.length) return 0;
+  const safeIdx = Math.max(0, Math.min(coordIdx, navRouteProgress.length - 1));
+  return navRouteProgress[safeIdx] || 0;
+}
+
+function _stepTriggerThreshold(step) {
+  if (navMode === "transit") {
+    return step.type === "transit-stop" ? 80 : 60;
+  }
+  if (navMode === "walk") return 20;
+  if (navMode === "cycle") return 30;
+  return 35;
+}
+
+function _stepProgressWindow(step, threshold) {
+  if (navMode === "walk") return Math.min(threshold, 12);
+  if (navMode === "cycle") return Math.min(threshold, 18);
+  if (navMode === "transit") {
+    return step.type === "transit-stop" ? Math.min(threshold, 35) : Math.min(threshold, 25);
+  }
+  return Math.min(threshold, 20);
+}
+
+function _isGpsConfirmedAtStep(lat, lng, accuracy, snap, step) {
+  const threshold = _stepTriggerThreshold(step);
+  const distToStep = haversineDistance(lat, lng, step.lat, step.lng);
+  if (distToStep > threshold) return false;
+
+  if (Number.isFinite(accuracy) && accuracy > threshold) return false;
+
+  if (!Number.isFinite(step.routeProgressM) || !Number.isFinite(snap?.progressM)) {
+    return true;
+  }
+
+  const progressWindow = _stepProgressWindow(step, threshold);
+  return Math.abs(snap.progressM - step.routeProgressM) <= progressWindow;
 }
 
 // Precompute remaining distance and duration from each step to the end.
@@ -115,6 +181,7 @@ function buildDirectStepsFromData(mode) {
   return rawSteps.map((raw, i) => {
     const lng = raw.lng || navRouteCoords[0]?.[0] || 0;
     const lat = raw.lat || navRouteCoords[0]?.[1] || 0;
+    const coordIdx = _findNearestCoordIdx(lat, lng);
     return {
       type: "direct",
       mode,
@@ -123,7 +190,8 @@ function buildDirectStepsFromData(mode) {
       duration: raw.duration || 0,
       iconHtml: raw.iconHtml,
       lng, lat,
-      coordIdx: _findNearestCoordIdx(lat, lng),
+      coordIdx,
+      routeProgressM: _routeProgressAtCoordIdx(coordIdx),
       isDepart: raw.isFirst || i === 0,
       isArrive: raw.isLast || i === rawSteps.length - 1,
       maneuverType: raw.maneuverType || "",
@@ -163,6 +231,7 @@ function buildDirectStepsFallback(mode) {
       lng: coord[0],
       lat: coord[1],
       coordIdx,
+      routeProgressM: _routeProgressAtCoordIdx(coordIdx),
       isDepart: i === 0,
       isArrive: i === totalSteps - 1,
     });
@@ -185,6 +254,7 @@ function buildTransitSteps(itin) {
     if (isWalk) {
       // Walking segment — single instruction
       const distM = Math.round(leg.distance || 0);
+      const coordIdx = _findNearestCoordIdx(startCoord[1], startCoord[0]);
       steps.push({
         type: "transit-walk",
         mode: "WALK",
@@ -197,6 +267,8 @@ function buildTransitSteps(itin) {
         iconHtml: modeIcon("WALK", 24),
         lng: startCoord[0], lat: startCoord[1],
         endLng: endCoord[0], endLat: endCoord[1],
+        coordIdx,
+        routeProgressM: _routeProgressAtCoordIdx(coordIdx),
         duration: leg.duration,
         fromName: leg.from.name,
         toName: leg.to.name,
@@ -211,6 +283,7 @@ function buildTransitSteps(itin) {
       const color = legCssColor(leg.mode, leg);
 
       // Board instruction
+      const boardCoordIdx = _findNearestCoordIdx(startCoord[1], startCoord[0]);
       steps.push({
         type: "transit-board",
         mode: leg.mode,
@@ -218,6 +291,8 @@ function buildTransitSteps(itin) {
         distance: 0,
         iconHtml: modeIcon(leg.mode, 24),
         lng: startCoord[0], lat: startCoord[1],
+        coordIdx: boardCoordIdx,
+        routeProgressM: _routeProgressAtCoordIdx(boardCoordIdx),
         fromName: leg.from.name,
         stopCode: leg.from.stop?.code,
         departTime: leg.start.scheduledTime,
@@ -234,6 +309,7 @@ function buildTransitSteps(itin) {
         leg.intermediateStops.forEach((stop, si) => {
           const stopCoordIdx = Math.floor(((si + 1) / (leg.intermediateStops.length + 1)) * fromCoord.length);
           const sc = fromCoord[Math.min(stopCoordIdx, fromCoord.length - 1)] || startCoord;
+          const coordIdx = _findNearestCoordIdx(sc[1], sc[0]);
           steps.push({
             type: "transit-stop",
             mode: leg.mode,
@@ -241,6 +317,8 @@ function buildTransitSteps(itin) {
             distance: 0,
             iconHtml: `<span class="nav-stop-dot" style="background:${color}"></span>`,
             lng: sc[0], lat: sc[1],
+            coordIdx,
+            routeProgressM: _routeProgressAtCoordIdx(coordIdx),
             stopName: stop.name,
             stopCode: stop.code,
             routeName,
@@ -255,6 +333,7 @@ function buildTransitSteps(itin) {
       }
 
       // Alight instruction
+      const alightCoordIdx = _findNearestCoordIdx(endCoord[1], endCoord[0]);
       steps.push({
         type: "transit-alight",
         mode: leg.mode,
@@ -262,6 +341,8 @@ function buildTransitSteps(itin) {
         distance: 0,
         iconHtml: modeIcon(leg.mode, 24),
         lng: endCoord[0], lat: endCoord[1],
+        coordIdx: alightCoordIdx,
+        routeProgressM: _routeProgressAtCoordIdx(alightCoordIdx),
         toName: leg.to.name,
         stopCode: leg.to.stop?.code,
         arriveTime: leg.end.scheduledTime,
@@ -304,14 +385,11 @@ function renderHUD() {
 
   // Next step preview
   if (hudNextInfo) {
-    const nextStep = navSteps[navStepIdx + 1];
-    if (nextStep && !step.isArrive) {
-      hudNextInfo.innerHTML = esc(nextStep.instruction);
-      hudNextInfo.classList.remove("hide");
-    } else if (step.isArrive) {
+    if (step.isArrive) {
       hudNextInfo.innerHTML = `You have reached your destination`;
       hudNextInfo.classList.remove("hide");
     } else {
+      hudNextInfo.textContent = "";
       hudNextInfo.classList.add("hide");
     }
   }
@@ -368,6 +446,7 @@ export function startNavigation() {
       const coords = decodePolyline(leg.legGeometry.points, leg.legGeometry.precision);
       coords.forEach(c => navRouteCoords.push(c));
     });
+    _buildRouteProgress();
     navSteps = buildTransitSteps(navItinerary);
     const startT = new Date(navItinerary.start);
     const endT = new Date(navItinerary.end);
@@ -378,6 +457,7 @@ export function startNavigation() {
     if (dir.directRouteCoords?.length) {
       dir.directRouteCoords.forEach(c => navRouteCoords.push(c));
     }
+    _buildRouteProgress();
     navSteps = buildDirectStepsFromData(navMode);
     navTotalDist = dir.directInfo?.distKm ? dir.directInfo.distKm * 1000 : 0;
     navTotalDur = dir.directInfo?.durMin ? dir.directInfo.durMin * 60 : 0;
@@ -456,6 +536,7 @@ export function stopNavigation() {
   navSteps = [];
   navStepIdx = 0;
   navRouteCoords = [];
+  navRouteProgress = [];
   navItinerary = null;
 
   if (hud) {
@@ -480,10 +561,10 @@ function _onLocationUpdate(e) {
   const loc = e.detail?.location;
   if (!loc?.active || loc.lat === null) return;
 
-  processPosition(loc.lat, loc.lng);
+  processPosition(loc.lat, loc.lng, loc.accuracy);
 }
 
-export function processPosition(lat, lng) {
+export function processPosition(lat, lng, accuracy = null) {
   if (!navActive || !navRouteCoords.length) return;
 
   // Throttle GPS processing to avoid rapid-fire updates
@@ -507,7 +588,7 @@ export function processPosition(lat, lng) {
 
   // Determine which step we're at based on proximity
   const prevIdx = navStepIdx;
-  _advanceStep(lat, lng, snap);
+  _advanceStep(lat, lng, accuracy, snap);
 
   // Only re-render HUD when the step actually changes (or first GPS tick)
   if (navStepIdx !== prevIdx) renderHUD();
@@ -516,9 +597,9 @@ export function processPosition(lat, lng) {
   map.easeTo({ center: [lng, lat], duration: 600 });
 }
 
-function _advanceStep(lat, lng, _snap) {
+function _advanceStep(lat, lng, accuracy, snap) {
   // ONLY advance when user's GPS is physically at the next step's location.
-  // No route-progress heuristics, no cascading — pure GPS proximity check.
+  // Route progress must also confirm the GPS fix is at that exact trigger point.
   // At most one step advances per call, and calls are throttled.
   const step = navSteps[navStepIdx];
   if (!step || step.isArrive) return;
@@ -526,25 +607,11 @@ function _advanceStep(lat, lng, _snap) {
   const nextStep = navSteps[navStepIdx + 1];
   if (!nextStep) return;
 
-  // Hard proximity threshold: GPS must be AT the maneuver point
-  let threshold;
-  if (navMode === "transit") {
-    threshold = nextStep.type === "transit-stop" ? 80 : 60;
-  } else if (navMode === "walk") {
-    threshold = 20;
-  } else if (navMode === "cycle") {
-    threshold = 30;
-  } else {
-    threshold = 35; // drive
-  }
-
-  const distToNext = haversineDistance(lat, lng, nextStep.lat, nextStep.lng);
-
   // Cooldown: don't advance again within STEP_ADVANCE_COOLDOWN ms
   const now = Date.now();
   if (now - lastStepAdvanceTime < STEP_ADVANCE_COOLDOWN) return;
 
-  if (distToNext < threshold) {
+  if (_isGpsConfirmedAtStep(lat, lng, accuracy, snap, nextStep)) {
     navStepIdx++;
     lastStepAdvanceTime = now;
   }

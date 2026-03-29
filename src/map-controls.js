@@ -247,8 +247,8 @@ export function showCurrentLocation() {
   let firstFix = true;
 
   function onPosition(pos) {
-    const { latitude: lat, longitude: lng } = pos.coords;
-    setCurrentLocationState({ lat, lng, active: true });
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    setCurrentLocationState({ lat, lng, accuracy, active: true });
     if (firstFix) hideLoadingToast();
     if (!locMarker) {
       const el = document.createElement("div");

@@ -84,6 +84,7 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-29 — Navigation: explicit Navigate button, no auto-start.** Reversed earlier auto-start decision. Navigate buttons (teal, turn-right arrow) added to route cards. HUD close only stops nav; route stays on map.
 - **2026-03-29 — Hook pattern for circular module dependencies.** When module A needs to call module B's functions but B already imports from A, use a `setHooks()` export in A that B calls at module evaluation time to register its callbacks. Avoids import cycles.
 - **2026-03-29 — Simulator always visible.** The nav simulator button is always shown (not dev-gated) so the user can verify step-by-step progression without GPS.
+- **2026-03-29 — Navigation step changes require GPS confirmation at the actual trigger point.** Turn-by-turn navigation must not preview future instructions early or advance from generic movement alone. A step advances only when the live GPS fix is inside that step's proximity threshold and the snapped route progress matches that maneuver's exact route position.
 
 ---
 
@@ -120,6 +121,7 @@ what you like, what you've decided, and how you want things done.
 - Asymmetric open/close transitions for discrete UI elements (tool pills, popups): bouncy `--ease-spring-pop` for enter, quick `ease-in` for exit. Sheets and content areas keep symmetric easing.
 - Use `--ease-expo` for sheet/panel transitions — aggressive deceleration feels modern. Pair with `scale()` in the start state for depth cues.
 - Hook pattern for circular imports: export a `setHooks()` function from module A, call it from module B at evaluation time to register callbacks. Never create `import` cycles between modules.
+- Navigation step advancement must use dual confirmation: GPS proximity to the maneuver point plus matching progress along the route geometry. Do not reveal future turn text before that trigger is confirmed.
 
 ---
 
@@ -205,6 +207,13 @@ what you like, what you've decided, and how you want things done.
 - **Bug fix:** GPS puck arrow was pointing 90° to the right (east) instead of north when heading was 0. Root cause: the rotation offset in `_applyConeRotation()` was `-135` but should be `+135` to compensate for the sharp corner being at the bottom-left (225° from north) of the teardrop shape. CSS default rotation also updated from `-135deg` to `135deg`.
 - **New feature:** When GPS tracking is active AND a route is displayed (`dir.routeLayers.length > 0`), the map now auto-pans to follow the user's position on each GPS update using `easeTo` (600 ms). This lets users follow a route hands-free without repeatedly re-centering.
 - Files: `src/map-controls.js`, `src/styles/styles.css`.
+
+### 2026-03-29 — Navigation trigger confirmation hardening
+- User requirement: no amount of generic movement should advance turn-by-turn steps; the next step should appear only after GPS confirms the user is actually inside that step's trigger point.
+- Fix: navigation now stores GPS accuracy, computes cumulative route-progress checkpoints for each maneuver, and only advances when both conditions pass: the live GPS fix is within the step threshold and the snapped route progress matches that maneuver's point on the route.
+- HUD change: removed premature next-step preview text so future instructions are not shown before the trigger is confirmed.
+- Validation: targeted Playwright smoke run passed app-load checks; one unrelated pre-existing failure remains in `tests/01-dom-elements.spec.js` for the suggest-form Google Maps field requirement.
+- Files: `src/navigation.js`, `src/map-controls.js`, `src/utils.js`.
 
 ### 2026-03-23 — Map Canvas Shrink / White-Screen Root Cause
 - Desktop root cause: during Places sheet transitions, `#map` could be measured below the real app viewport for a moment, and MapLibre `resize()` then locked the WebGL canvas buffer to that undersized measurement, leaving part of the app white.

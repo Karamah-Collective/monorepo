@@ -4,7 +4,7 @@ import { map } from "./map-init.js";
 // ─── Saved custom pins ─────────────────────────────────────────────────────────────
 const SAVED_PINS_KEY = "hf_saved_pins";
 const HOME_LOCATION_KEY = "hf_home_location";
-let _currentLocationState = { active: false, lat: null, lng: null };
+let _currentLocationState = { active: false, lat: null, lng: null, accuracy: null };
 export function pinId(lat, lng) { return `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
 function _loadPins() { try { return JSON.parse(localStorage.getItem(SAVED_PINS_KEY) || "[]"); } catch { return []; } }
 export function getSavedPins() { return _loadPins(); }
@@ -77,11 +77,13 @@ export function getCurrentLocationState() {
   return { ..._currentLocationState };
 }
 
-export function setCurrentLocationState({ lat, lng, active = true } = {}) {
+export function setCurrentLocationState({ lat, lng, accuracy, active = true } = {}) {
+  const accuracyNum = Number(accuracy);
   const next = {
     active: !!active && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)),
     lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
     lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
+    accuracy: Number.isFinite(accuracyNum) ? accuracyNum : null,
   };
   _currentLocationState = next;
   _emitWindowEvent("hf:current-location-updated", { location: { ...next } });
