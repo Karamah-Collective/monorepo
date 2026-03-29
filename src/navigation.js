@@ -27,6 +27,7 @@ let navStartTime = null;
 let navTotalDist = 0;      // metres
 let navTotalDur = 0;       // seconds
 let navRemainingDist = 0;
+let navDistToNextManeuver = 0; // metres — distance along route to next step
 
 // Off-route detection
 const OFF_ROUTE_THRESHOLD = 50; // metres
@@ -67,9 +68,10 @@ function snapToRoute(lat, lng) {
   return { dist: minDist, segIdx: bestIdx, lng: bestLng, lat: bestLat };
 }
 
-function distAlongRoute(fromIdx) {
+function distAlongRoute(fromIdx, toIdx) {
+  const end = toIdx !== undefined ? Math.min(toIdx, navRouteCoords.length - 1) : navRouteCoords.length - 1;
   let d = 0;
-  for (let i = fromIdx; i < navRouteCoords.length - 1; i++) {
+  for (let i = fromIdx; i < end; i++) {
     d += haversineDistance(navRouteCoords[i][1], navRouteCoords[i][0],
       navRouteCoords[i + 1][1], navRouteCoords[i + 1][0]);
   }
@@ -272,10 +274,11 @@ function renderHUD() {
   // Instruction text
   if (hudInstruction) hudInstruction.textContent = step.instruction;
 
-  // Distance chip
+  // Distance chip — show remaining distance to next maneuver
   if (hudDistChip) {
-    if (step.distance > 0) {
-      hudDistChip.textContent = fmtDist(step.distance);
+    const distToShow = navDistToNextManeuver > 0 ? navDistToNextManeuver : step.distance;
+    if (distToShow > 0) {
+      hudDistChip.textContent = fmtDist(distToShow);
       hudDistChip.classList.remove("hide");
     } else {
       hudDistChip.classList.add("hide");
@@ -366,6 +369,7 @@ export function startNavigation() {
 
   navStepIdx = 0;
   navRemainingDist = navTotalDist;
+  navDistToNextManeuver = 0;
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
@@ -434,6 +438,7 @@ export function stopNavigation() {
   navStepIdx = 0;
   navRouteCoords = [];
   navItinerary = null;
+  navDistToNextManeuver = 0;
 
   if (hud) {
     hud.classList.add("hide");
@@ -480,13 +485,18 @@ export function processPosition(lat, lng) {
   // Determine which step we're at based on proximity
   _advanceStep(lat, lng, snap);
 
-  // Update remaining distance
+  // Update remaining distance (along route from snapped position to end)
   navRemainingDist = distAlongRoute(snap.segIdx);
 
-  // Update ETA
-  updateETADisplay();
+  // Update distance to next maneuver (along route from snap to next step's coordIdx)
+  const nextStep = navSteps[navStepIdx + 1];
+  if (nextStep && nextStep.coordIdx !== undefined) {
+    navDistToNextManeuver = distAlongRoute(snap.segIdx, nextStep.coordIdx);
+  } else {
+    navDistToNextManeuver = navRemainingDist;
+  }
 
-  // Re-render
+  // Re-render (includes ETA update)
   renderHUD();
 
   // Pan map to follow
@@ -526,17 +536,6 @@ function _advanceStep(lat, lng, snap) {
 
   if (distToNext < threshold && routeReached) {
     navStepIdx++;
-    // Update distance on current step
-    if (navSteps[navStepIdx]) {
-      const upcomingStep = navSteps[navStepIdx + 1];
-      if (upcomingStep) {
-        navSteps[navStepIdx].distance = haversineDistance(lat, lng, upcomingStep.lat, upcomingStep.lng);
-      }
-    }
-    renderHUD();
-  } else {
-    // Update distance display to next maneuver
-    step.distance = distToNext;
   }
 }
 

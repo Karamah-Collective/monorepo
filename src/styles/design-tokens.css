@@ -1608,8 +1608,8 @@ html.dark-mode body {
 
 /* ─── Navigation HUD dark mode ──────────────────────────────────────────────── */
 html.dark-mode #nav-hud {
-  background: #1c1c1e;
-  border-color: #2c2c2e;
+  background: #000000;
+  border-color: #1c1c1e;
 }
 html.dark-mode .nav-maneuver-icon {
   background: var(--accent);
