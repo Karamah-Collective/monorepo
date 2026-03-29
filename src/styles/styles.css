@@ -3506,9 +3506,9 @@ body.dark-mode .fallback-notice {
 .itin-header {
   display: grid;
   grid-template:
-    "dur time expand" auto
-    "walk walk  .   " auto
-    / auto 1fr auto;
+    "dur time nav expand" auto
+    "walk walk  .    .  " auto
+    / auto 1fr auto auto;
   align-items: center;
   column-gap: var(--sp-3);
   row-gap: 1px;
@@ -3668,6 +3668,37 @@ body.dark-mode .fallback-notice {
   display: flex;
 }
 .itin-card.focused .itin-expand {
+  display: none;
+}
+.itin-navigate {
+  grid-area: nav;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--on-accent);
+  transition: filter var(--t-fast);
+}
+@media (hover: hover) {
+  .itin-navigate:hover {
+    filter: brightness(1.12);
+  }
+}
+.itin-navigate svg {
+  width: 14px;
+  height: 14px;
+}
+.itin-card.active .itin-navigate {
+  display: flex;
+}
+.itin-card.focused .itin-navigate {
   display: none;
 }
 
@@ -4076,26 +4107,108 @@ body.dark-mode .fallback-notice {
   margin-left: 2px;
 }
 
-/* #10 — Route snackbar enter + exit animations */
-#route-snackbar {
+/* ─── Navigation HUD ────────────────────────────────────────────────────── */
+#nav-hud {
   position: absolute;
-  z-index: var(--z-bar);
+  z-index: var(--z-nav-hud);
   bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
   left: 50%;
   transform: translateX(-50%);
+  width: min(calc(100vw - 24px), 400px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: none;
+}
+#nav-hud.nav-active {
+  display: block;
+  animation: snackUp 0.28s var(--ease-expo) forwards;
+}
+#nav-hud.nav-active.hide {
+  display: block !important;
+  animation: snackDown 0.2s ease-in forwards;
+  pointer-events: none;
+}
+#nav-hud.hide:not(.nav-active) {
+  display: none;
+}
+
+.nav-hud-body {
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+
+.nav-hud-row1 {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  background: var(--accent);
-  border: 1px solid transparent;
+}
+.nav-hud-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-hud-row1 .btn-roundel {
+  flex-shrink: 0;
+}
+
+.nav-hud-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Mobile: hide all controls during navigation for full-screen map */
+@media (max-width: 768px) {
+  body.nav-mode #search-card,
+  body.nav-mode #tools-toggle,
+  body.nav-mode .tool-pill,
+  body.nav-mode #zoom-pill,
+  body.nav-mode #prayer-snack,
+  body.nav-mode #eid-pill,
+  body.nav-mode #promos-pill,
+  body.nav-mode #tab-bar,
+  body.nav-mode #route-snackbar {
+    display: none !important;
+  }
+  body.nav-mode #nav-hud {
+    bottom: calc(var(--safe-b) + 12px);
+  }
+}
+
+/* #10 — Route snackbar (Design E — Elevated Tag Card) */
+#route-snackbar {
+  position: absolute;
+  z-index: var(--z-bar);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
-  padding: 8px 8px 8px 12px;
-  cursor: pointer;
-  animation: snackUp 0.3s ease-out forwards;
-
-  max-width: min(calc(100vw - 128px), 360px);
+  padding: var(--sp-2) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  animation: snackUp 0.3s var(--ease-expo) forwards;
+  max-width: min(calc(100vw - 24px), 360px);
   min-width: 0;
+  width: max-content;
 }
 #route-snackbar.hide {
   display: flex !important;
@@ -4122,33 +4235,19 @@ body.dark-mode .fallback-notice {
     transform: translateX(-50%) translateY(16px);
   }
 }
-#snackbar-body {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
+
+.snack-body {
   flex: 1;
   min-width: 0;
-}
-.snackbar-icon-wrap {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: var(--r-xs);
-  color: var(--on-accent);
-}
-#snackbar-content {
-  flex: 1;
-  min-width: 0;
-  line-height: 1.3;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
 }
 #snackbar-title {
   font-size: var(--txt-base);
   font-weight: var(--fw-semibold);
-  color: var(--on-accent);
+  color: var(--text);
   display: flex;
   align-items: baseline;
   overflow: hidden;
@@ -4165,37 +4264,94 @@ body.dark-mode .fallback-notice {
 }
 .snack-arrow {
   flex-shrink: 0;
+  color: var(--text-3);
 }
-#snackbar-sub {
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-medium);
-  color: rgba(255, 255, 255, 0.78);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 1px;
+.snack-btns {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
 }
-#snackbar-sub:empty {
-  display: none;
+.snack-nav-btn,
+.snack-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: filter var(--t-fast);
 }
-
-#snackbar-close.sheet-x {
-  background: rgba(255, 255, 255, 0.18);
+.snack-nav-btn {
+  background: var(--accent);
   color: var(--on-accent);
 }
-@media (hover: hover) {
-  #snackbar-close.sheet-x:hover {
-    background: rgba(255, 255, 255, 0.28);
-    color: var(--on-accent);
-  }
+.snack-close-btn {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+.snack-nav-btn:hover,
+.snack-close-btn:hover {
+  filter: brightness(1.12);
+}
+.snack-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.snack-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  line-height: 1;
+}
+.snack-tag-mode {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.snack-tag-dur {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.snack-tag-dist {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+/* Transit chain badges (inside .snack-tag-mode for transit routes) */
+.snack-tc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 1px var(--sp-1);
+  border-radius: var(--r-xs);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  color: #fff;
+  line-height: 1.2;
+}
+.snack-tc-arrow {
+  font-size: 10px;
+  color: var(--text-3);
+  margin: 0 1px;
+}
+.snack-tc-walk {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
 }
 
-/* Route snackbar — keep the same dark-blue background in dark mode.
-   The snackbar uses --accent which lightens in dark mode; override it
-   back to the light-mode value so it stays consistently dark. */
-body.dark-mode #route-snackbar {
-  background: #08705B;
-}
+
 
 /* ── Promos Button + Overlay ──────────────────────────────────────── */
 #promos-pill {
@@ -4758,6 +4914,9 @@ body.dark-mode #route-snackbar {
   #route-snackbar {
     bottom: 24px;
   }
+  #nav-hud {
+    bottom: 24px;
+  }
   .share-toast,
   #geo-notice,
   #dev-notice,
@@ -5297,6 +5456,9 @@ body.dark-mode .sp-chip {
   }
 
   #route-snackbar {
+    bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+  }
+  #nav-hud {
     bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
   }
 

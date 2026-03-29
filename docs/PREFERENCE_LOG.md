@@ -80,6 +80,11 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-28 — Half-step spacing tokens.** Added `--sp-0` through `--sp-11` with half-steps (0h, 1h, 2h, 3h, 4h, 7h) to cover all values used in templates without bare px.
 - **2026-03-28 — `--t-slow` and `--t-x-slow` for theme transitions.** Theme color crossfade uses `--t-slow` (0.4s), map canvas filter uses `--t-x-slow` (0.5s). All other transitions use `--t-fast`/`--t-med`/`--t-spring`.
 
+- **2026-03-29 — Navigation auto-starts on panel close.** No explicit "Start navigation" button. Closing the directions panel when a route is active automatically starts turn-by-turn. Opening the panel or clearing the route stops it.
+- **2026-03-29 — Navigation: explicit Navigate button, no auto-start.** Reversed earlier auto-start decision. Navigate buttons (teal, turn-right arrow) added to route cards. HUD close only stops nav; route stays on map.
+- **2026-03-29 — Hook pattern for circular module dependencies.** When module A needs to call module B's functions but B already imports from A, use a `setHooks()` export in A that B calls at module evaluation time to register its callbacks. Avoids import cycles.
+- **2026-03-29 — Simulator always visible.** The nav simulator button is always shown (not dev-gated) so the user can verify step-by-step progression without GPS.
+
 ---
 
 ## Patterns to Avoid
@@ -114,6 +119,7 @@ what you like, what you've decided, and how you want things done.
 - When delaying DOM cleanup after a CSS transition (e.g. `hidden = true`, `innerHTML = ""`), use `setTimeout` with a guard check on the expected state, and cancel the timeout on re-open.
 - Asymmetric open/close transitions for discrete UI elements (tool pills, popups): bouncy `--ease-spring-pop` for enter, quick `ease-in` for exit. Sheets and content areas keep symmetric easing.
 - Use `--ease-expo` for sheet/panel transitions — aggressive deceleration feels modern. Pair with `scale()` in the start state for depth cues.
+- Hook pattern for circular imports: export a `setHooks()` function from module A, call it from module B at evaluation time to register callbacks. Never create `import` cycles between modules.
 
 ---
 
@@ -498,6 +504,55 @@ what you like, what you've decided, and how you want things done.
 **Hardcoded transitions → tokens:** ~53 instances. `0.12s/0.15s` → `--t-fast`, `0.2s` → `--t-fast`, `0.25s ease` → `--t-med`, `0.4s ease` → `--t-slow`, `0.5s ease` → `--t-x-slow`.
 **Hardcoded gap/padding → `--sp-*`:** ~25 instances in design-tokens.css template classes tokenized.
 **480px breakpoint → 380px:** Tutorial card responsive breakpoint corrected to approved set.
+
+### 2026-03-29 — Turn-by-Turn Navigation Module
+**What was built:** Google Maps–style turn-by-turn navigation engine with HUD overlay that replaces the route snackbar when the directions panel is closed.
+
+**Architecture:**
+- New module `src/navigation.js` (~560 lines) — navigation engine, HUD controller, GPS handler, simulator.
+- **Hook pattern** to avoid circular imports: `directions.js` exports `setNavHooks()`, `navigation.js` calls it at module evaluation time to register `maybeStart`, `stop`, `isActive`. This lets `directions.js` call nav functions without importing from `navigation.js`.
+- Unified step model: all modes (drive/walk/cycle/transit) produce normalized step objects with `{ type, mode, instruction, distance, iconHtml, lat, lng, ... }`.
+
+**Modes supported:**
+- **Direct (drive/walk/cycle):** Uses raw OSRM step data stored in `dir.directSteps` during route calculation. Includes maneuver type/modifier, location coordinates, and pre-rendered instruction text. Fallback: DOM-parsing from `.direct-step` elements.
+- **Transit:** Builds steps from OTP itinerary legs — walk segments (single instruction), board (route + headsign), intermediate stops (passing notifications), alight (get off). Color-coded route chips using `legCssColor()`.
+
+**GPS integration:**
+- Listens for custom `hf:current-location-updated` event (already dispatched by `map-controls.js`).
+- `snapToRoute()` — nearest-point-on-polyline algorithm for route snapping.
+- `_advanceStep()` — proximity-based step advancement with mode-specific thresholds: walk 25m, cycle 35m, drive 40m, transit stops 80m, transit board/alight 60m.
+- Off-route detection: 50m threshold, 3 consecutive off-route readings → `_triggerReroute()`. Cooldown of 15s.
+- Rerouting: updates `dir.origin` to current position, calls `findRoutes()`, restarts navigation with new data.
+
+**HUD:**
+- Replaces route snackbar when nav is active (`updateSnackbar()` returns early if `_navHooks.isActive()`).
+- Top bar: maneuver icon (48px accent square with SVG), instruction text, distance to next maneuver, mode badge, expand/exit buttons.
+- Bottom bar: ETA, remaining time, progress bar, simulator button.
+- Transit mode: color-coded route chips (`nav-route-chip`), stop dots, mode-specific icons.
+- Uses `snackUp` animation for entry, `snackDown` for exit.
+
+**Integration points in directions.js:**
+- `closeDirPanel()` → calls `_navHooks.maybeStart()` (auto-start on panel close)
+- `openDirPanel()` → calls `_navHooks.stop()` (return to itinerary view)
+- `clearRoute()` → calls `_navHooks.stop()` + clears `dir.directRouteCoords/directSteps`
+- `findRoutesDirect()` → stores `dir.directRouteCoords` and `dir.directSteps` for nav module access
+- `_dtDirectRoute()` and `_osrmDirectRoute()` → return `rawSteps` arrays with coordinates
+
+**Simulator:** `simNextStep()` advances step index and `easeTo` step coordinates. Allows full testing without GPS.
+
+**Bug fixes applied (from code review):**
+- All DOM element references in `renderHUD()`, `updateETADisplay()`, `_triggerReroute()`, `simNextStep()` guarded with null checks.
+- `leg.legGeometry?.points` guard in `buildTransitSteps()` and `startNavigation()` — transit legs without geometry are safely skipped.
+
+**New design tokens:** `--z-nav-hud: 10`
+**New template classes:** `.nav-maneuver-icon`, `.nav-instruction`, `.nav-distance`, `.nav-next-info`, `.nav-eta`, `.nav-progress`, `.nav-progress-fill`, `.nav-route-chip`, `.nav-stop-dot`, `.nav-mode-badge`, `.nav-sim-btn`
+**Files modified:** `src/navigation.js` (new), `src/directions.js`, `index.html`, `src/styles/styles.css`, `src/styles/design-tokens.css`, `src/app.js`, `sw.js`
+**Decisions:**
+- 2026-03-29 — Auto-start navigation on panel close, not via explicit button.
+- 2026-03-29 — Hook pattern for circular dependency avoidance between directions.js ↔ navigation.js.
+- 2026-03-29 — Simulator button always visible (not gated to dev mode) so user can test without GPS.
+- 2026-03-29 — Off-route threshold 50m, reroute after 3 consecutive OOR readings, 15s cooldown.
+- 2026-03-29 — Mode-specific step advancement thresholds (walk=25m, cycle=35m, drive=40m, transit=60-80m).
 **Box-shadow on `#tf-toggle`/`#sort-toggle`:** `0 1px 2px rgba(0,0,0,0.06)` → `var(--shadow-xs)`.
 **Tests:** 132/136 passed (4 failures are pre-existing `sg-gmaps required` test, unrelated).
 **Docs updated:** `DESIGN_SYSTEM.md` — new tokens documented in spacing, shadow, transition, and brand palette tables.
@@ -602,3 +657,65 @@ All use GPU-composited `transform` only (preserving the `-45deg` puck rotation).
 - Movement is separate from glow — they compose independently (spotlight gets both glow pulse + bounce+scale as two concurrent animations).
 - Pin demo sections in both mockup HTMLs updated to show all 3 tiers + basic tier added to demo.
 - Tier comparison tables updated to describe movement type per tier.
+
+### 2026-03-29 — Navigation HUD Redesign (E1 Clean Baseline) + UX Changes
+**What changed:** Major navigation UX overhaul based on user feedback.
+
+**UX behavior changes:**
+- **No auto-start navigation.** Closing the directions panel no longer auto-starts nav. Instead, Navigate buttons (teal, turn-right arrow icon) are added to both direct and transit route cards. User must explicitly tap Navigate.
+- **Closing HUD doesn't clear route.** Exit button on HUD only stops navigation and re-shows the route snackbar. The route remains on the map.
+- **Mobile full-screen nav.** `body.nav-mode` class hides search card, tool pills, zoom pill, prayer snack, eid pill, promos pill, tab bar, and route snackbar. HUD repositions to bottom of screen without tab bar offset.
+
+**HUD redesign (E1 — Clean Baseline chosen from 8 variants):**
+- Two-row chip layout replaces hero/footer structure.
+- **Row 1:** 40px maneuver icon (accent bg, r-sm) + column (instruction + detail text) + 32px roundel close button (standard ✕).
+- **Row 2:** Tag chips (distance chip in accent-soft, ETA chip in surface-2) + 28px circular control buttons (sim, expand).
+- Progress bar: 2px with surface-2 track background.
+- Compact padding: sp-3/sp-4 (was sp-4/sp-5).
+
+**Dark mode added for HUD:**
+- `html.dark-mode #nav-hud`: `#1c1c1e` bg, `#2c2c2e` border.
+- Distance chip: `rgba(8,112,91,0.2)` bg, `#5ac8ad` text.
+- ETA chip: `#2c2c2e` bg, `#adadad` text.
+- Control buttons: `#2c2c2e` bg, hover `#3a3a3c`.
+- Progress bar track: `#2c2c2e`.
+
+**Navigate button redesign:**
+- Icon: paper plane → turn-right arrow (`M5 12h14M13 6l6 6-6 6`).
+- Color: green (`--success`) → teal (`--accent`).
+
+**Removed from HUD:** `.nav-distance` standalone span, `.nav-mode-badge`, `.nav-exit-btn`, `.nav-sim-btn`, `.nav-hud-hero`, `.nav-hud-footer`, `.nav-hud-meta`, `.nav-eta`, `.nav-remaining`, `.nav-eta-sep`.
+**Added to HUD:** `.nav-chip`, `.nav-chip-dist`, `.nav-chip-eta`, `.nav-detail`, `.nav-progress-bar`, `.nav-hud-row1`, `.nav-hud-row2`, `.nav-hud-col`, `.nav-tags`.
+**Removed import:** `dirModeIconSvg` (was only used for mode badge, now removed).
+
+**Files modified:** `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`, `src/navigation.js`, `src/directions.js`, `sw.js`.
+
+**Decisions:**
+- 2026-03-29 — E1 Clean Baseline chosen over E2–E8 variants (Frosted, Accent Spine, Inset Track, Dark Slab, Divided Band, Outlined, Floating Island). User wanted the cleanest, most standard option.
+- 2026-03-29 — Navigate button uses teal accent, not green success. Turn-right arrow icon, not paper plane.
+- 2026-03-29 — No auto-start on panel close. Explicit Navigate button required (reverses earlier auto-start decision).
+- 2026-03-29 — HUD close = stop nav only, route stays on map. User can re-enter nav or clear from snackbar.
+- 2026-03-29 — Standard roundel close button on HUD (not a small ctrl-btn).
+- 2026-03-29 — Chip-based info display (distance + ETA as tag chips) preferred over separate text elements.
+- 2026-03-29 — Navigation starts with pan to first step, not route overview.
+- 2026-03-29 — Expand/maximize pauses nav, doesn't stop it. Navigate button resumes from exact position if route unchanged. New route calculation invalidates paused state.
+
+### 2026-03-29 — Navigation Start Pan + Pause/Resume
+**a. Pan to first step on start:**
+- `startNavigation()` now calls `map.easeTo()` to the first step's coordinates after rendering the HUD, so the user immediately sees where to go instead of the route overview.
+- `resumeNavigation()` similarly pans to the current step position.
+
+**b. Expand pauses instead of stopping:**
+- Added `navPaused` state flag + `pauseNavigation()` and `resumeNavigation()` exports.
+- `pauseNavigation()`: hides HUD, removes GPS listener, but preserves all state (steps, stepIdx, coords, etc.).
+- `resumeNavigation()`: restores HUD, re-attaches GPS listener, pans to current step. Returns `true` if resumed, `false` if nothing to resume.
+- HUD expand button now calls `pauseNavigation()` + `openDirPanel()` instead of `stopNavigation()`.
+- `openDirPanel()` now calls `_navHooks.pause()` instead of `_navHooks.stop()`.
+- Navigate button handlers: try `_navHooks.resume()` first; only call `_navHooks.startNav()` if resume returns false.
+- `findRoutes()` invalidates paused state (`_navHooks.stop()`) when recalculating, so changed routes don't stale-resume.
+- `clearRoute()` already calls `stop()` which resets `navPaused = false`.
+- Hook interface expanded: `{ startNav, stop, pause, resume, isActive, isPaused }`.
+
+**Stale ref cleanup:** Fixed 2 remaining `hudDistance` references in `_triggerReroute()` and `simNextStep()` → changed to `hudDistChip`.
+
+**Files modified:** `src/navigation.js`, `src/directions.js`, `sw.js`.

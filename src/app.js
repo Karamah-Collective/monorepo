@@ -29,6 +29,7 @@ import {
 } from "./utils.js";
 import { preloadSatelliteSource, centerStoredHomeIfAvailable, syncHomeMarker } from "./map-controls.js";
 import "./directions.js";
+import "./navigation.js"; // registers nav hooks with directions.js
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup

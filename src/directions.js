@@ -6,13 +6,19 @@ import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
 
+// Navigation module hooks — set by navigation.js to avoid circular import
+let _navHooks = { startNav: () => {}, stop: () => {}, pause: () => {}, resume: () => false, isActive: () => false, isPaused: () => false };
+export function setNavHooks(hooks) { _navHooks = hooks; }
+// Called by navigation.js when nav stops — re-shows snackbar if route is still active
+export function onNavStopped() { updateSnackbar(); }
+
 // --- State ---
-let dirTravelMode = "drive";
+export let dirTravelMode = "drive";
 let routeRequested = false;
 export let findingNearestMosque = false;
 export function setFindingNearestMosque(v) { findingNearestMosque = v; }
 
-const OSRM_URLS = {
+export const OSRM_URLS = {
   drive: "https://routing.openstreetmap.de/routed-car/route/v1/driving",
   cycle: "https://routing.openstreetmap.de/routed-bike/route/v1/bike",
   walk: "https://routing.openstreetmap.de/routed-foot/route/v1/foot",
@@ -20,7 +26,7 @@ const OSRM_URLS = {
 function osrmColor(mode) { return mode === "walk" ? getThemeWalkColor() : OSRM_COLORS[mode]; }
 const OSRM_COLORS = { cycle: "#1FA86A", drive: "#FF6319" };
 const OSRM_CSS_COLORS = { walk: "var(--walk)", cycle: "var(--hsl-tram)", drive: "var(--hsl-trunk)" };
-const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
+export const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
 const OSRM_ALT_COLORS = { walk: "#94A3B8", cycle: "#34D399", drive: "#FBBF24" };
 
 export const dir = {
@@ -29,6 +35,8 @@ export const dir = {
   originMarker: null, destMarker: null,
   waypoints: [], waypointMarkers: [],
   routeLayers: [], routeSources: [], usingFallback: false,
+  directRouteCoords: null, // [lng,lat][] for direct routes — used by navigation
+  directSteps: null,       // raw OSRM/OTP steps — used by navigation
 };
 
 // --- DOM refs ---
@@ -41,7 +49,7 @@ const dirLoad = document.getElementById("dir-loading");
 const dirErr = document.getElementById("dir-error");
 const dirItins = document.getElementById("dir-itineraries");
 const routeSnackbar = document.getElementById("route-snackbar");
-const snackbarSub = document.getElementById("snackbar-sub");
+const snackTags = document.getElementById("snack-tags");
 const dirClearBtn = document.getElementById("dir-clear-route");
 const dirShareBtn = document.getElementById("dir-share-route");
 const dirWaypointsCt = document.getElementById("dir-waypoints");
@@ -115,6 +123,7 @@ dirWaypointsCt.addEventListener("click", (e) => {
 export function openDirPanel() {
   if (dirPanel._hideTimeout) { clearTimeout(dirPanel._hideTimeout); dirPanel._hideTimeout = null; }
   closePlacesSheet();
+  if (_navHooks.isActive()) _navHooks.pause();
   dirPanel.hidden = false;
   dirPanel.style.height = "";
   document.getElementById("scrim").classList.remove("hide");
@@ -133,6 +142,8 @@ export function closeDirPanel() {
   dirSnap.close();                               // cleanup → reflow → adds .shut with real transition
   document.getElementById("scrim").classList.add("hide");
   stopPick();
+  // If nav was paused (user opened panel via expand), resume it on close
+  if (_navHooks.isPaused()) { _navHooks.resume(); }
   updateSnackbar();
   setActiveTab(null);
   if ((dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) && !dir.directInfo) {
@@ -240,8 +251,12 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
   });
 });
 
-document.getElementById("snackbar-body").addEventListener("click", () => {
+document.querySelector(".snack-body").addEventListener("click", () => {
   if (dirPanel.classList.contains("shut")) openDirPanel();
+});
+document.getElementById("snackbar-nav").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
 });
 document.getElementById("snackbar-close").addEventListener("click", (e) => {
   e.stopPropagation();
@@ -407,6 +422,12 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
 }
 
 dirItins.addEventListener("click", (e) => {
+  if (e.target.closest(".itin-navigate")) {
+    e.stopPropagation();
+    closeDirPanel();
+    if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
+    return;
+  }
   if (e.target.closest(".direct-expand")) {
     e.stopPropagation();
     if (dir.directInfo) focusDirectRoute();
@@ -1112,7 +1133,7 @@ dirTimeNow.addEventListener("click", () => {
 });
 
 // --- Routing ---
-function decodePolyline(encoded, precision) {
+export function decodePolyline(encoded, precision) {
   const factor = Math.pow(10, precision || 5);
   const coords = [];
   let i = 0, lat = 0, lng = 0;
@@ -1181,9 +1202,11 @@ function pickTransitEndpoint(lat1, lon1, lat2, lon2) {
 
 dirGo.addEventListener("click", findRoutes);
 
-async function findRoutes() {
+export async function findRoutes() {
   setGoLoading(true);
   routeRequested = true;
+  // New route calculation invalidates any paused navigation state
+  if (_navHooks.isPaused()) _navHooks.stop();
   if (!dir.origin && dirFrom.value.trim()) {
     showDirLoading();
     const r = await autoResolveLocation(dirFrom);
@@ -1410,8 +1433,8 @@ async function _transitSegment(from, to, departureTime) {
 }
 
 // --- Route rendering helpers ---
-function fmtTime(d) { return d.toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" }); }
-function fmtDist(m) { if (m >= 1000) return (m / 1000).toFixed(1) + " km"; if (m >= 100) return Math.round(m / 10) * 10 + " m"; return Math.round(m) + " m"; }
+export function fmtTime(d) { return d.toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" }); }
+export function fmtDist(m) { if (m >= 1000) return (m / 1000).toFixed(1) + " km"; if (m >= 100) return Math.round(m / 10) * 10 + " m"; return Math.round(m) + " m"; }
 function isTrunkBus(leg) { return leg.mode === "BUS" && leg.trip?.route?.type === 702; }
 function modeClass(m, leg) {
   if (leg && isTrunkBus(leg)) return "trunk";
@@ -1423,13 +1446,13 @@ function legColor(m, leg) {
   return { WALK: getThemeWalkColor(), BUS: "#1A73B8", TRAM: "#1FA86A", SUBWAY: "#FF6319", METRO: "#FF6319", RAIL: getThemeRailShopPurple(), FERRY: "#00B9E4" }[m] || "#1A73B8";
 }
 // CSS variable version for HTML panels (auto-adapts to dark mode)
-function legCssColor(m, leg) {
+export function legCssColor(m, leg) {
   if (leg?.trip?.route?.color) return "#" + leg.trip.route.color;
   if (leg && isTrunkBus(leg)) return "var(--hsl-trunk)";
   return { WALK: "var(--walk)", BUS: "var(--hsl-bus)", TRAM: "var(--hsl-tram)", SUBWAY: "var(--hsl-metro)", METRO: "var(--hsl-metro)", RAIL: "var(--hsl-rail)", FERRY: "var(--hsl-ferry)" }[m] || "var(--accent)";
 }
 
-function dirModeIconSvg(mode, size = 20) {
+export function dirModeIconSvg(mode, size = 20) {
   const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`;
   if (mode === "walk") return `<svg ${s}>${MODE_PATHS.WALK}</svg>`;
   if (mode === "cycle") return `<svg ${s}><circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5"/><circle cx="13.5" cy="7" r="2" fill="currentColor" stroke="none"/></svg>`;
@@ -1437,11 +1460,11 @@ function dirModeIconSvg(mode, size = 20) {
   return modeIcon("BUS", size);
 }
 
-function bearingName(deg) {
+export function bearingName(deg) {
   return ["north","north-east","east","south-east","south","south-west","west","north-west"][Math.round((deg || 0) / 45) % 8];
 }
 
-function stepInstruction(step) {
+export function stepInstruction(step) {
   const type = step.maneuver.type, mod = step.maneuver.modifier || "", road = step.name || step.ref || "";
   const on = road ? ` on ${road}` : "", onto = road ? ` onto ${road}` : "";
   const modText = { "sharp left": "sharp left", left: "left", "slight left": "slightly left", straight: "straight", "slight right": "slightly right", right: "right", "sharp right": "sharp right", uturn: "U-turn" }[mod] || mod;
@@ -1465,7 +1488,7 @@ function stepInstruction(step) {
   }
 }
 
-function maneuverIconSvg(type, mod) {
+export function maneuverIconSvg(type, mod) {
   const a = `width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
   if (type === "depart") return `<svg ${a}><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>`;
   if (type === "arrive") return `<svg ${a}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/></svg>`;
@@ -1479,8 +1502,8 @@ function maneuverIconSvg(type, mod) {
   if (mod === "uturn") return `<svg ${a}><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>`;
   if (mod === "sharp left") return `<svg ${a}><path d="M18 18l-9-9m0 0v7m0-7h7"/></svg>`;
   if (mod === "left") return `<svg ${a}><path d="M17 12H5M11 6l-6 6 6 6"/></svg>`;
-  if (mod === "slight left") return `<svg ${a}><path d="M7 17l9-9M7 9v8h8"/></svg>`;
-  if (mod === "slight right") return `<svg ${a}><path d="M17 17l-9-9M17 9v8h-8"/></svg>`;
+  if (mod === "slight left") return `<svg ${a}><path d="M7 7l9 9"/><path d="M7 15V7h8"/></svg>`;
+  if (mod === "slight right") return `<svg ${a}><path d="M17 7l-9 9"/><path d="M9 7h8v8"/></svg>`;
   if (mod === "right") return `<svg ${a}><path d="M7 12h12M13 6l6 6-6 6"/></svg>`;
   if (mod === "sharp right") return `<svg ${a}><path d="M6 18l9-9m0 0v7m0-7h-7"/></svg>`;
   return `<svg ${a}><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
@@ -1493,7 +1516,7 @@ function stepSegType(manType) {
 }
 
 // --- OTP step helpers (Digitransit direct routing) ---
-function _otpStepInstruction(step, isFirst, isLast) {
+export function _otpStepInstruction(step, isFirst, isLast) {
   const road = step.streetName && step.streetName !== "road" && step.streetName !== "Track" ? step.streetName : "";
   const on = road ? ` on ${road}` : "", onto = road ? ` onto ${road}` : "";
   const rd = step.relativeDirection;
@@ -1514,7 +1537,7 @@ function _otpStepInstruction(step, isFirst, isLast) {
   return `Continue${on}`;
 }
 
-function _otpManeuverIcon(step, isFirst, isLast) {
+export function _otpManeuverIcon(step, isFirst, isLast) {
   const rd = step.relativeDirection;
   if (isFirst) return maneuverIconSvg("depart", "");
   if (isLast) return maneuverIconSvg("arrive", "");
@@ -1583,6 +1606,14 @@ async function _dtDirectRoute(mode) {
     coords: allCoords, duration: totalDuration, distance: totalDistance, stepsHTML,
     stepGeometries: null, stepFeatures: null,
     srcData: { type: "Feature", geometry: { type: "LineString", coordinates: allCoords } },
+    rawSteps: allSteps.map((step, i) => ({
+      source: "otp",
+      instruction: _otpStepInstruction(step, i === 0, i === allSteps.length - 1),
+      iconHtml: _otpManeuverIcon(step, i === 0, i === allSteps.length - 1),
+      distance: step.distance || 0,
+      lat: step.lat, lng: step.lon,
+      isFirst: i === 0, isLast: i === allSteps.length - 1,
+    })),
   };
 }
 
@@ -1615,10 +1646,23 @@ async function _osrmDirectRoute(mode) {
   return {
     coords: route.geometry.coordinates, duration: route.duration, distance: route.distance, stepsHTML,
     stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData,
+    rawSteps: allSteps.map((step, si) => ({
+      source: "osrm",
+      instruction: stepInstruction(step),
+      iconHtml: maneuverIconSvg(step.maneuver.type, step.maneuver.modifier || ""),
+      distance: step.distance || 0,
+      duration: step.duration || 0,
+      lat: step.maneuver.location[1],
+      lng: step.maneuver.location[0],
+      maneuverType: step.maneuver.type,
+      maneuverMod: step.maneuver.modifier || "",
+      geometry: step.geometry,
+      isFirst: si === 0, isLast: si === allSteps.length - 1,
+    })),
   };
 }
 
-async function findRoutesDirect(mode) {
+export async function findRoutesDirect(mode) {
   showDirLoading();
   dirPanel.classList.remove("search-editing");
   // Digitransit OTP (WALK/BICYCLE/CAR) primary — OSRM demo server fallback
@@ -1660,6 +1704,9 @@ async function findRoutesDirect(mode) {
   const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
   map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
   dir.directInfo = { mode, durMin, distKm, stepGeometries };
+  // Store for navigation module (must be after clearRoute which wipes these)
+  dir.directRouteCoords = coords;
+  dir.directSteps = data.rawSteps || null;
   dir.activeIdx = 0;
   const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
   dirEmpty.classList.add("hide");
@@ -1667,7 +1714,7 @@ async function findRoutesDirect(mode) {
   dirErr.classList.add("hide");
   dirItins.innerHTML = `
       <div class="itin-card direct-card active" style="--dc:${cssColor}">
-        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + duration * 1000))}</div><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${distKm} km</div></div>
+        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + duration * 1000))}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${distKm} km</div></div>
         <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
         <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${stepsHTML}</div></div></div>
       </div>`;
@@ -1692,7 +1739,7 @@ function renderItineraries() {
     const transitLegs = itin.legs.filter((l) => l.mode !== "WALK").length;
     const hdr = document.createElement("div");
     hdr.className = "itin-header";
-    hdr.innerHTML = `<div class="itin-dur">${durMin} min</div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div>`;
+    hdr.innerHTML = `<div class="itin-dur">${durMin} min</div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div>`;
     const chain = document.createElement("div"); chain.className = "itin-chain";
     itin.legs.forEach((leg, li) => {
       if (li > 0) chain.insertAdjacentHTML("beforeend", '<span class="leg-arrow">›</span>');
@@ -1746,6 +1793,7 @@ function renderItineraries() {
     card.appendChild(legsDiv);
     dirItins.appendChild(card);
     card.addEventListener("click", (e) => {
+      if (e.target.closest(".itin-navigate")) { e.stopPropagation(); selectItinerary(idx); closeDirPanel(); if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav(); return; }
       if (e.target.closest(".itin-expand")) { e.stopPropagation(); selectItinerary(idx); focusRoute(idx); return; }
       selectItinerary(idx);
     });
@@ -1863,9 +1911,11 @@ document.getElementById("dir-focused-back").addEventListener("click", unfocusRou
 document.getElementById("dir-focused-close").addEventListener("click", () => { unfocusRoute(); closeDirPanel(); });
 
 export function clearRoute() {
+  if (_navHooks.isActive()) _navHooks.stop();
   dir.routeLayers.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
   dir.routeSources.forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = []; dir.directInfo = null;
+  dir.directRouteCoords = null; dir.directSteps = null;
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
   dirClearBtn.classList.add("hide");
@@ -1873,19 +1923,31 @@ export function clearRoute() {
 }
 
 function updateSnackbar() {
+  // Don't show the snackbar when navigation HUD is active
+  if (_navHooks.isActive()) { routeSnackbar.classList.add("hide"); return; }
   if (dir.activeIdx >= 0 && dirPanel.classList.contains("shut")) {
     document.getElementById("snackbar-from").textContent = dir.origin?.name || "Origin";
     document.getElementById("snackbar-to").textContent = dir.dest?.name || "Destination";
     if (dir.directInfo) {
       const { mode, durMin, distKm } = dir.directInfo;
-      snackbarSub.textContent = `${OSRM_LABELS[mode]} · ${durMin} min · ${distKm} km`;
+      snackTags.innerHTML = [
+        `<span class="snack-tag snack-tag-mode">${esc(OSRM_LABELS[mode])}</span>`,
+        `<span class="snack-tag snack-tag-dur">${durMin} min</span>`,
+        `<span class="snack-tag snack-tag-dist">${distKm} km</span>`,
+      ].join("");
       routeSnackbar.classList.remove("hide");
     } else if (dir.itineraries[dir.activeIdx]) {
       const itin = dir.itineraries[dir.activeIdx];
       const startT = new Date(itin.start), endT = new Date(itin.end);
       const durMin = Math.round((endT - startT) / 60000);
-      const modes = itin.legs.filter((l) => l.mode !== "WALK").map((l) => l.trip?.routeShortName || l.mode.charAt(0) + l.mode.slice(1).toLowerCase()).join(" → ");
-      snackbarSub.textContent = modes ? `${durMin} min · ${modes}` : `${durMin} min walk`;
+      const transitLegs = itin.legs.filter((l) => l.mode !== "WALK");
+      const chainHtml = transitLegs.length
+        ? transitLegs.map((l) => `<span class="snack-tc-badge" style="background:${legCssColor(l.mode, l)}">${esc(l.trip?.routeShortName || l.mode.charAt(0))}</span>`).join('<span class="snack-tc-arrow">›</span>')
+        : `<span class="snack-tc-walk">Walk</span>`;
+      snackTags.innerHTML = [
+        `<span class="snack-tag snack-tag-mode">${chainHtml}</span>`,
+        `<span class="snack-tag snack-tag-dur">${durMin} min</span>`,
+      ].join("");
       routeSnackbar.classList.remove("hide");
     } else {
       routeSnackbar.classList.add("hide");

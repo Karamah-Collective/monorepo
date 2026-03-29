@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260328-7" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260329-6" />
   </head>
   <body>
     <div id="app">
@@ -1144,50 +1144,51 @@
         </div>
       </div>
 
-      <!-- ─── Route Snackbar ─── -->
-      <div id="route-snackbar" class="hide">
-        <div id="snackbar-body">
-          <div class="snackbar-icon-wrap">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M14 4l6 6-6 6" />
-              <path d="M4 20v-6a4 4 0 0 1 4-4h12" />
-            </svg>
-          </div>
-          <div id="snackbar-content">
-            <div id="snackbar-title">
-              <span id="snackbar-from"></span
-              ><span class="snack-arrow"> → </span
-              ><span id="snackbar-to"></span>
+      <!-- ─── Navigation HUD ─── -->
+      <div id="nav-hud" class="hide">
+        <div id="nav-progress-bar" class="nav-progress-bar"><div id="nav-progress-fill" class="nav-progress-fill"></div></div>
+        <div class="nav-hud-body">
+          <div class="nav-hud-row1">
+            <div id="nav-maneuver-icon" class="nav-maneuver-icon"></div>
+            <div class="nav-hud-col">
+              <span id="nav-instruction" class="nav-instruction"></span>
+              <span id="nav-next-info" class="nav-detail hide"></span>
             </div>
-            <div id="snackbar-sub"></div>
+            <button id="nav-exit" class="btn-roundel" aria-label="Exit navigation" title="Exit navigation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="nav-hud-row2">
+            <div id="nav-tags" class="nav-tags">
+              <span id="nav-dist-chip" class="nav-chip nav-chip-dist"></span>
+              <span id="nav-eta-chip" class="nav-chip nav-chip-eta"></span>
+            </div>
           </div>
         </div>
-        <button
-          id="snackbar-close"
-          class="sheet-x btn-roundel"
-          aria-label="Clear route"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-          >
-            <path d="M18 6L6 18M6 6l12 12" />
+      </div>
+
+      <!-- ─── Route Snackbar ─── -->
+      <div id="route-snackbar" class="hide">
+        <div class="snack-icon snack-icon--info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4l6 6-6 6"/>
+            <path d="M4 20v-6a4 4 0 0 1 4-4h12"/>
           </svg>
-        </button>
+        </div>
+        <div class="snack-body">
+          <div id="snackbar-title">
+            <span id="snackbar-from"></span><span class="snack-arrow"> → </span><span id="snackbar-to"></span>
+          </div>
+          <div id="snack-tags" class="snack-tags"></div>
+        </div>
+        <div class="snack-btns">
+          <button id="snackbar-nav" class="snack-nav-btn" aria-label="Start navigation" title="Start navigation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button id="snackbar-close" class="snack-close-btn" aria-label="Clear route">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- ─── Prayer Times Card ─── -->
