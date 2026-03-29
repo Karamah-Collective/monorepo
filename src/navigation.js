@@ -26,8 +26,6 @@ let navItinerary = null;   // the active itinerary (transit) or null
 let navStartTime = null;
 let navTotalDist = 0;      // metres
 let navTotalDur = 0;       // seconds
-let navRemainingDist = 0;
-let navDistToNextManeuver = 0; // metres — distance along route to next step
 
 // Off-route detection
 const OFF_ROUTE_THRESHOLD = 50; // metres
@@ -68,14 +66,26 @@ function snapToRoute(lat, lng) {
   return { dist: minDist, segIdx: bestIdx, lng: bestLng, lat: bestLat };
 }
 
-function distAlongRoute(fromIdx, toIdx) {
-  const end = toIdx !== undefined ? Math.min(toIdx, navRouteCoords.length - 1) : navRouteCoords.length - 1;
+function distAlongRoute(fromIdx) {
   let d = 0;
-  for (let i = fromIdx; i < end; i++) {
+  for (let i = fromIdx; i < navRouteCoords.length - 1; i++) {
     d += haversineDistance(navRouteCoords[i][1], navRouteCoords[i][0],
       navRouteCoords[i + 1][1], navRouteCoords[i + 1][0]);
   }
   return d;
+}
+
+// Precompute remaining distance and duration from each step to the end.
+// Called once after steps are built, so renderHUD just reads the values.
+function _precomputeStepRemaining() {
+  // Sum distance + duration from the last step backward
+  let distAcc = 0, durAcc = 0;
+  for (let i = navSteps.length - 1; i >= 0; i--) {
+    navSteps[i].remainDist = distAcc;
+    navSteps[i].remainDur = durAcc;
+    distAcc += navSteps[i].distance || 0;
+    durAcc += navSteps[i].duration || 0;
+  }
 }
 
 // ─── Build unified steps from route data ────────────────────────────
@@ -274,11 +284,10 @@ function renderHUD() {
   // Instruction text
   if (hudInstruction) hudInstruction.textContent = step.instruction;
 
-  // Distance chip — show remaining distance to next maneuver
+  // Distance chip — precomputed distance of this step (to next maneuver)
   if (hudDistChip) {
-    const distToShow = navDistToNextManeuver > 0 ? navDistToNextManeuver : step.distance;
-    if (distToShow > 0) {
-      hudDistChip.textContent = fmtDist(distToShow);
+    if (step.distance > 0) {
+      hudDistChip.textContent = fmtDist(step.distance);
       hudDistChip.classList.remove("hide");
     } else {
       hudDistChip.classList.add("hide");
@@ -309,15 +318,16 @@ function renderHUD() {
 
 function updateETADisplay() {
   if (!hudEtaChip) return;
+  const step = navSteps[navStepIdx];
+  if (!step) return;
   const now = new Date();
   if (navMode === "transit" && navItinerary) {
     const endTime = new Date(navItinerary.end);
     const remainMin = Math.max(0, Math.round((endTime - now) / 60000));
     hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(endTime)} · ${remainMin} min` : "Arriving";
   } else {
-    // Use distance ratio for more accurate ETA based on actual GPS progress
-    const fraction = navTotalDist > 0 ? navRemainingDist / navTotalDist : 0;
-    const remainSec = Math.max(0, navTotalDur * fraction);
+    // Precomputed remaining duration from this step onward
+    const remainSec = (step.remainDur || 0) + (step.duration || 0);
     const remainMin = Math.ceil(remainSec / 60);
     const eta = new Date(now.getTime() + remainSec * 1000);
     hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(eta)} · ${remainMin} min` : "Arriving";
@@ -368,8 +378,7 @@ export function startNavigation() {
   if (!navSteps.length) return;
 
   navStepIdx = 0;
-  navRemainingDist = navTotalDist;
-  navDistToNextManeuver = 0;
+  _precomputeStepRemaining();
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
@@ -438,7 +447,6 @@ export function stopNavigation() {
   navStepIdx = 0;
   navRouteCoords = [];
   navItinerary = null;
-  navDistToNextManeuver = 0;
 
   if (hud) {
     hud.classList.add("hide");
@@ -483,21 +491,11 @@ export function processPosition(lat, lng) {
   }
 
   // Determine which step we're at based on proximity
+  const prevIdx = navStepIdx;
   _advanceStep(lat, lng, snap);
 
-  // Update remaining distance (along route from snapped position to end)
-  navRemainingDist = distAlongRoute(snap.segIdx);
-
-  // Update distance to next maneuver (along route from snap to next step's coordIdx)
-  const nextStep = navSteps[navStepIdx + 1];
-  if (nextStep && nextStep.coordIdx !== undefined) {
-    navDistToNextManeuver = distAlongRoute(snap.segIdx, nextStep.coordIdx);
-  } else {
-    navDistToNextManeuver = navRemainingDist;
-  }
-
-  // Re-render (includes ETA update)
-  renderHUD();
+  // Only re-render HUD when the step actually changes (or first GPS tick)
+  if (navStepIdx !== prevIdx) renderHUD();
 
   // Pan map to follow
   map.easeTo({ center: [lng, lat], duration: 600 });
