@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260329-11" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260330" />
   </head>
   <body>
     <div id="app">
@@ -888,7 +888,7 @@
               <span class="btn-chip-icon">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
               </span>
-              Filter<span id="tf-count" class="hide">0</span>
+              <span class="tf-btn-label">Filter</span><span id="tf-count" class="hide">0</span>
               <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
             <div id="sort-wrap">
@@ -896,7 +896,7 @@
                 <span class="btn-chip-icon">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
                 </span>
-                <span id="sort-label">Most Relevant</span>
+                <span id="sort-label" class="tf-btn-label">Most Relevant</span>
                 <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
               </button>
               <div id="sort-dropdown" class="sort-dropdown shut">
@@ -910,6 +910,12 @@
                 <button class="sort-opt active" data-sort-dir="asc">Ascending</button>
                 <button class="sort-opt" data-sort-dir="desc">Descending</button>
               </div>
+            </div>
+            <div id="pl-search-wrap" class="pl-search-wrap">
+              <input id="pl-search-input" type="text" placeholder="Search places…" autocomplete="off" maxlength="100">
+              <button id="pl-search-icn-btn" class="pl-search-icn" type="button" aria-label="Search places">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
             </div>
           </div>
           <div id="tag-filter-chips" class="shut"></div>

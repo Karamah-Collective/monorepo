@@ -1331,6 +1331,137 @@ body.dark-mode .sp-tip {
   padding: 6px 16px 4px;
 }
 
+/* ── Places search bar (pill-expand in tf-row) ───────────────────── */
+.pl-search-wrap {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  width: 34px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  will-change: width;
+  transition:
+    width var(--t-spring),
+    flex var(--t-spring),
+    border-color var(--t-fast),
+    box-shadow var(--t-fast);
+}
+@media (hover: hover) {
+  .pl-search-wrap:not(.open):hover {
+    border-color: var(--surface-3);
+  }
+  .pl-search-wrap:not(.open):hover .pl-search-icn {
+    color: var(--text-2);
+  }
+}
+.pl-search-wrap:not(.open):active .pl-search-icn {
+  color: var(--text);
+}
+.pl-search-wrap.open {
+  flex: 1 1 0%;
+  width: auto;
+  cursor: text;
+}
+.pl-search-wrap.open:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Icon button — always visible, pinned right */
+.pl-search-icn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 31px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-3);
+  cursor: pointer;
+  z-index: 1;
+  transform: translateZ(0);
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .pl-search-icn:hover {
+    color: var(--text-2);
+  }
+}
+.pl-search-wrap.open:focus-within .pl-search-icn {
+  color: var(--accent);
+}
+
+/* Input — hidden when collapsed, fades in on expand */
+#pl-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  line-height: 30px;
+  padding: 0 31px 0 var(--sp-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast);
+}
+.pl-search-wrap.open #pl-search-input {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity var(--t-fast) 0.05s;
+}
+#pl-search-input::placeholder {
+  color: var(--text-3);
+  font-weight: var(--fw-normal);
+}
+
+/* When search is open: smoothly shrink button labels + arrows */
+.tf-btn-label {
+  display: inline-flex;
+  overflow: hidden;
+  max-width: 120px;
+  opacity: 1;
+  transition:
+    max-width var(--t-spring),
+    opacity var(--t-fast);
+}
+.tf-btn-label,
+.tf-arrow {
+  overflow: hidden;
+  max-width: 120px;
+}
+#tf-row.pl-searching .tf-btn-label,
+#tf-row.pl-searching .tf-arrow {
+  max-width: 0;
+  opacity: 0;
+}
+#tf-row.pl-searching #tf-toggle,
+#tf-row.pl-searching #sort-toggle {
+  gap: 0;
+  padding: var(--sp-1h) var(--sp-2h);
+}
+
+/* Search result highlight */
+.pl-name mark {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* Shared icon pill inside filter/sort buttons */
 .btn-chip-icon {
   width: 20px;
@@ -1356,6 +1487,11 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-md);
   border-color: var(--border);
   box-shadow: var(--shadow-xs);
+  transition:
+    padding var(--t-spring),
+    background-color var(--t-fast),
+    color var(--t-fast),
+    border-color var(--t-fast);
 }
 @media (hover: hover) {
   #tf-toggle:hover .btn-chip-icon,
@@ -1394,7 +1530,10 @@ body.dark-mode .sp-tip {
   color: var(--accent);
 }
 .tf-arrow {
-  transition: transform var(--t-fast);
+  transition:
+    transform var(--t-fast),
+    max-width var(--t-spring),
+    opacity var(--t-fast);
   transform: translateZ(0);
   backface-visibility: hidden;
 }
@@ -1435,7 +1574,9 @@ body.dark-mode .sp-tip {
   position: relative;
 }
 .sort-dropdown {
-  position: fixed;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
   min-width: 176px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1706,7 +1847,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   margin: 0;
   padding: 0 0 0 var(--sp-7);
-  border-left: 2px solid var(--accent-soft);
+  border-left: 2px solid var(--border);
 }
 #places-list .pl-city-group-list li {
   animation: none;

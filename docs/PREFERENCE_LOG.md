@@ -86,6 +86,11 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-29 — Simulator always visible.** The nav simulator button is always shown (not dev-gated) so the user can verify step-by-step progression without GPS.
 - **2026-03-29 — Navigation step changes require GPS confirmation at the actual trigger point.** Turn-by-turn navigation must not preview future instructions early or advance from generic movement alone. A step advances only when the live GPS fix is inside that step's proximity threshold and the snapped route progress matches that maneuver's exact route position.
 
+- **2026-03-30 — Navigation step advancement: movement guard replaces cooldown timers.** The root cause of the cascade bug was a time-based `STEP_ADVANCE_COOLDOWN` that only slowed cascading (3s per step) rather than stopping it. The new mechanism uses two conditions that must both hold: (1) user must have moved `_minMoveDist()` metres from `_lastTriggerPos` (set to GPS position at nav start, updated on every step fire); (2) user must be within `_triggerRadius()` of the next step's lat/lng. GPS noise is bounded by the accuracy circle (~15-20 m), so a 25 m drive threshold makes it physically impossible to cascade from a standstill. Also removed `buildDirectStepsFallback` (DOM-parsing, proportional coord estimation — fundamentally broken) and the `_isGpsConfirmedAtStep` route-progress window check (shortcircuited to `true` when `routeProgressM` was `0`, causing early fires). `_stepFired[]` array prevents any already-passed step from re-triggering.
+
+- **2026-03-30 — Places panel inline search: expand-to-search pattern.** Search button (icon-only) sits right of sort, expands into full input on click. Filter/sort labels collapse to icon-only via `.pl-searching` class to make room. 120 ms debounce. Scoped to current tab (mosque tab searches only mosques, etc.). Searches name + address from database only (not OSM). `<mark>` highlight on matching text. Context-aware placeholder per tab.
+- **2026-03-30 — Neutral border-left for expandable groups.** City group list and filter tag group inner borders changed from `--accent-soft` (teal in dark mode) to `--border` (neutral gray) for theme consistency. User dislikes teal in structural/decorative lines.
+
 ---
 
 ## Patterns to Avoid
@@ -131,7 +136,30 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
-### 2026-03-27 — Pin hover scale + tutorial skip button
+### 2026-03-30 — Places panel inline search + border color fix
+- **Inline search:** Added a search bar to the places panel `#tf-row`. A magnifying glass button on the right expands into a full input field. Filter/sort text labels collapse to icon-only (via `.pl-searching` parent class) to free space. Search is scoped to the active tab — if on "Mosques", only mosques are searched (name + address). 120 ms debounced input triggers a re-render with `<mark>` highlights on matched text. Custom empty state when search yields no results. Search cleared on tab switch or clear-all.
+- **Border color fix:** `.pl-city-group-list` and `.tf-group-inner` border-left changed from `var(--accent-soft)` to `var(--border)`. The teal/green hue in dark mode was undesirable for structural lines.
+- **Preference:** User dislikes accent/teal coloring on structural decorative lines — keep them neutral gray.
+- Files: `index.html`, `src/styles/styles.css`, `src/places.js`, `src/styles/design-tokens.css`.
+
+### 2026-03-30 — Navigation step-advancement logic rewrite
+
+**Problem:** Turn-by-turn navigation cascaded through all steps in ~15 seconds even when the user didn't physically move. Root causes:
+1. `STEP_ADVANCE_COOLDOWN` (3s) only slowed cascading — one step per 3s until route end.
+2. `_isGpsConfirmedAtStep` shortcircuited to `true` when `step.routeProgressM` was `0` or non-finite, bypassing the route-progress guard entirely.
+3. `buildDirectStepsFallback` estimated step coordinates proportionally from DOM elements — inaccurate and unreliable.
+
+**Fix (complete rewrite of advancement logic):**
+- Replaced cooldown timer with **movement guard**: `_lastTriggerPos` is set to the GPS position at nav start and updated when each step fires. A step can only advance after the user has physically moved `_minMoveDist()` metres from `_lastTriggerPos`.
+- Movement thresholds: drive=25m, cycle=12m, walk=8m, transit=20m — all above GPS noise (~15-20m) and below shortest real inter-maneuver distances.
+- Trigger radius per step type: drive=40m, walk=18m, cycle=25m, transit-board/alight=50m, transit-stop=80m.
+- Added `_stepFired[]` boolean array — once-fired guard prevents any step from re-triggering.
+- Removed `buildDirectStepsFallback` entirely.
+- Removed `_isGpsConfirmedAtStep`, `_stepProgressWindow`, `_stepTriggerThreshold`, `STEP_ADVANCE_COOLDOWN`.
+- Simulator (`simNextStep`) now also updates `_lastTriggerPos` so GPS nav can resume sensibly after simulation.
+- Files modified: `src/navigation.js`.
+
+
 - **Pin hover:** Added `transition: transform var(--t-fast)` to `.place-mk` and `.custom-mk`. Hover on `.place-mk-wrap` scales inner puck to `rotate(-45deg) scale(1.15)`. Uses `@media (hover: hover)`. No interference with sponsored pin animations (transitions are on the child, animations run on same element but override).
 - **Tutorial skip:** First "Assalamu Alaikum" slide now shows a "Just explore" ghost pill button (left side of footer via `justify-content: space-between`) alongside the "Get started" primary pill. Clicking it calls `dismiss()` immediately — marks tutorial done without stepping through. New `.tut-skip-btn` template added to `styles.css`.
 - Files: `src/styles/styles.css`, `src/tutorial.js`.

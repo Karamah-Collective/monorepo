@@ -666,7 +666,7 @@ html.dark-mode body {
   flex-wrap: wrap;
   gap: var(--sp-1h);
   padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent-soft);
+  border-left: 2px solid var(--border);
 }
 .tf-group-chips.shut {
   height: 0 !important;

@@ -37,6 +37,7 @@ let activeSortField = "default"; // "default" | "name" | "distance" | "date"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
+let placeSearchQuery = "";       // inline places-panel search text
 const collapsedCityGroups = new Set();
 let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
@@ -373,6 +374,12 @@ function formatDist(km) {
 
 const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
 
+function _highlightMatch(escaped, q) {
+  if (!q) return escaped;
+  const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escaped.replace(new RegExp(`(${safe})`, "gi"), "<mark>$1</mark>");
+}
+
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
@@ -394,8 +401,8 @@ function _buildCard(p, i) {
   const isFeatured = !!activeSponsor(p);
   return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${esc(p.name)}${boycottBadge}${sponsorBadge}</span>
-    <span class="pl-addr">${esc(p.address)}${distBadge}</span>
+    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
+    <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
     </div>
@@ -1251,6 +1258,10 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   chip.classList.add("active");
   activeTypeFilter = chip.dataset.type;
   activeTagFilters.clear();
+  // Update search placeholder if search is open, re-run filter with same query
+  if (_tfRow.classList.contains("pl-searching")) {
+    _plSearchInput.placeholder = _SEARCH_PLACEHOLDERS[activeTypeFilter] || _SEARCH_PLACEHOLDERS.all;
+  }
   renderTagFilterBar();
   document.getElementById("places-scroll").scrollTop = 0;
   animateSheetHeight(placesSheet, () => renderPlacesList());
@@ -1267,8 +1278,75 @@ const sortDropdown = document.getElementById("sort-dropdown");
 const sortLabel = document.getElementById("sort-label");
 const placesClearBtn = document.getElementById("places-clear-filters");
 
+// ── Inline places search ─────────────────────────────────────────────────────
+const _tfRow = document.getElementById("tf-row");
+const _plSearchWrap = document.getElementById("pl-search-wrap");
+const _plSearchInput = document.getElementById("pl-search-input");
+const _plSearchIcnBtn = document.getElementById("pl-search-icn-btn");
+let _plSearchDebounce = 0;
+
+const _SEARCH_PLACEHOLDERS = {
+  all: "Search places\u2026",
+  mosque: "Search mosques\u2026",
+  prayer_room: "Search prayer rooms\u2026",
+  restaurant: "Search restaurants\u2026",
+  shop: "Search shops\u2026",
+  saved: "Search saved\u2026",
+};
+
+function _openPlaceSearch() {
+  _tfRow.classList.add("pl-searching");
+  _plSearchWrap.classList.add("open");
+  _plSearchInput.placeholder = _SEARCH_PLACEHOLDERS[activeTypeFilter] || _SEARCH_PLACEHOLDERS.all;
+  setTimeout(() => _plSearchInput.focus(), 60);
+}
+
+function _closePlaceSearch() {
+  _tfRow.classList.remove("pl-searching");
+  _plSearchWrap.classList.remove("open");
+  if (placeSearchQuery) {
+    placeSearchQuery = "";
+    _plSearchInput.value = "";
+    renderPlacesList();
+  }
+  _plSearchInput.value = "";
+}
+
+// Icon toggles open/close
+_plSearchIcnBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (_plSearchWrap.classList.contains("open")) {
+    _closePlaceSearch();
+    _plSearchInput.blur();
+  } else {
+    _openPlaceSearch();
+  }
+});
+
+// Click outside closes search
+document.addEventListener("click", (e) => {
+  if (_plSearchWrap.classList.contains("open") && !e.target.closest("#pl-search-wrap")) {
+    _closePlaceSearch();
+  }
+});
+
+_plSearchInput.addEventListener("input", () => {
+  clearTimeout(_plSearchDebounce);
+  _plSearchDebounce = setTimeout(() => {
+    placeSearchQuery = _plSearchInput.value;
+    renderPlacesList();
+  }, 120);
+});
+
+_plSearchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    _closePlaceSearch();
+    _plSearchInput.blur();
+  }
+});
+
 function updateClearButton() {
-  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default";
+  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery;
   placesClearBtn.classList.toggle("hide", !dirty);
 }
 
@@ -1278,6 +1356,9 @@ placesClearBtn.addEventListener("click", () => {
   activeTagFilters.clear();
   activeSortField = "default";
   activeSortDir = "asc";
+  placeSearchQuery = "";
+  _plSearchInput.value = "";
+  _closePlaceSearch();
   updateSortButton();
   renderTagFilterBar();
   addPlaceMarkers();
@@ -1307,24 +1388,15 @@ function closeSortDropdown() {
   sortToggle.classList.remove("open");
 }
 
-function positionSortDropdown() {
-  const r = sortToggle.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - r.bottom - 12;
-  const dh = sortDropdown.offsetHeight || 200;
-  if (spaceBelow >= dh) {
-    sortDropdown.style.top = `${r.bottom + 6}px`;
-    sortDropdown.style.bottom = "";
-  } else {
-    sortDropdown.style.bottom = `${window.innerHeight - r.top + 6}px`;
-    sortDropdown.style.top = "";
-  }
-  sortDropdown.style.left = `${r.left}px`;
-}
-
 sortToggle.addEventListener("click", (e) => {
   e.stopPropagation();
+  if (_plSearchWrap.classList.contains("open")) {
+    _closePlaceSearch();
+    _plSearchInput.blur();
+    setTimeout(() => sortToggle.click(), 350);
+    return;
+  }
   const isOpen = !sortDropdown.classList.contains("shut");
-  if (!isOpen) positionSortDropdown();
   sortDropdown.classList.toggle("shut", isOpen);
   sortToggle.classList.toggle("open", !isOpen);
 });
@@ -1457,6 +1529,12 @@ function syncPlacesSnap() {
 }
 
 tfToggle.addEventListener("click", () => {
+  if (_plSearchWrap.classList.contains("open")) {
+    _closePlaceSearch();
+    _plSearchInput.blur();
+    setTimeout(() => tfToggle.click(), 350);
+    return;
+  }
   const isOpen = !tfChips.classList.contains("shut");
   if (isOpen) {
     // Closing: animate height to 0, then add .shut
@@ -1601,8 +1679,23 @@ function renderPlacesList() {
     );
   }
 
+  // Inline search filter
+  const q = placeSearchQuery.trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const addr = (p.address || "").toLowerCase();
+      return name.includes(q) || addr.includes(q);
+    });
+  }
+
   const sorted = applySort(filtered);
-  const customPins = activeTypeFilter === "saved" ? getSavedPins() : [];
+  let customPins = activeTypeFilter === "saved" ? getSavedPins() : [];
+  if (q && customPins.length) {
+    customPins = customPins.filter((pin) =>
+      (pin.name || "").toLowerCase().includes(q) || (pin.id || "").toLowerCase().includes(q),
+    );
+  }
   const totalCount = sorted.length + customPins.length;
 
   if (!totalCount) {
@@ -1618,6 +1711,16 @@ function renderPlacesList() {
         <div class="empty-text">
           <span class="empty-title">Nothing saved yet</span>
           <span class="empty-sub">Tap ★ on any place or pin to save it here</span>
+        </div>`;
+    } else if (q) {
+      empty.innerHTML = `
+        <div class="empty-anim">
+          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <div class="empty-ping"></div>
+        </div>
+        <div class="empty-text">
+          <span class="empty-title">No matches for &ldquo;${esc(placeSearchQuery.trim())}&rdquo;</span>
+          <span class="empty-sub">Try a different search term</span>
         </div>`;
     } else {
       empty.innerHTML = `

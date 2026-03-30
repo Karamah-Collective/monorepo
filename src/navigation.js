@@ -34,13 +34,18 @@ const REROUTE_COOLDOWN = 15000; // don't reroute more than once per 15s
 let lastRerouteTime = 0;
 let offRouteCount = 0;
 
-// Step advancement cooldown — prevents cascading through steps on rapid GPS ticks
-const STEP_ADVANCE_COOLDOWN = 3000; // ms — minimum time between step advances
-let lastStepAdvanceTime = 0;
-
 // GPS processing throttle
-const GPS_PROCESS_INTERVAL = 2000; // ms — process GPS at most every 2s
+const GPS_PROCESS_INTERVAL = 1500; // ms — process GPS at most every 1.5s
 let lastGpsProcessTime = 0;
+
+// ─── Movement-guard state ────────────────────────────────────────────
+// The core anti-cascade mechanism. A step can ONLY advance after the user
+// has physically moved _minMoveDist() metres from where the last step fired
+// (or from the nav-start position). GPS noise is bounded by the accuracy
+// circle (~15-20 m), so a 25 m drive threshold makes it impossible to
+// cascade through multiple steps without actual movement.
+let _lastTriggerPos = null;  // {lat, lng} — position where last step fired (set to GPS pos at nav start)
+let _stepFired = [];         // boolean[] — once a step fires it never fires again
 
 // ─── DOM refs ───────────────────────────────────────────────────────
 const hud = document.getElementById("nav-hud");
@@ -116,37 +121,26 @@ function _routeProgressAtCoordIdx(coordIdx) {
   return navRouteProgress[safeIdx] || 0;
 }
 
-function _stepTriggerThreshold(step) {
-  if (navMode === "transit") {
-    return step.type === "transit-stop" ? 80 : 60;
-  }
-  if (navMode === "walk") return 20;
-  if (navMode === "cycle") return 30;
-  return 35;
+// ─── Movement-guard thresholds ───────────────────────────────────────
+// Minimum metres the user must travel from _lastTriggerPos before the next
+// step can fire. Chosen to be above GPS noise (typically ≤ 20 m for accuracy
+// ≤ 15 m) but below the shortest realistic inter-maneuver distance.
+function _minMoveDist() {
+  if (navMode === "walk")    return 8;
+  if (navMode === "cycle")   return 12;
+  if (navMode === "transit") return 20;
+  return 25; // drive
 }
 
-function _stepProgressWindow(step, threshold) {
-  if (navMode === "walk") return Math.min(threshold, 12);
-  if (navMode === "cycle") return Math.min(threshold, 18);
-  if (navMode === "transit") {
-    return step.type === "transit-stop" ? Math.min(threshold, 35) : Math.min(threshold, 25);
-  }
-  return Math.min(threshold, 20);
-}
-
-function _isGpsConfirmedAtStep(lat, lng, accuracy, snap, step) {
-  const threshold = _stepTriggerThreshold(step);
-  const distToStep = haversineDistance(lat, lng, step.lat, step.lng);
-  if (distToStep > threshold) return false;
-
-  if (Number.isFinite(accuracy) && accuracy > threshold) return false;
-
-  if (!Number.isFinite(step.routeProgressM) || !Number.isFinite(snap?.progressM)) {
-    return true;
-  }
-
-  const progressWindow = _stepProgressWindow(step, threshold);
-  return Math.abs(snap.progressM - step.routeProgressM) <= progressWindow;
+// How close to a step's lat/lng the user must be to trigger that step.
+function _triggerRadius(step) {
+  if (!step) return 40;
+  if (step.type === "transit-stop")  return 80; // passing intermediate stop in a vehicle
+  if (step.type === "transit-board" || step.type === "transit-alight") return 50;
+  if (step.type === "transit-walk")  return 30;
+  if (navMode === "walk")  return 18;
+  if (navMode === "cycle") return 25;
+  return 40; // drive
 }
 
 // Precompute remaining distance and duration from each step to the end.
@@ -174,13 +168,15 @@ function _findNearestCoordIdx(lat, lng) {
 }
 
 function buildDirectStepsFromData(mode) {
-  // Use raw step data stored by directions.js during route calculation
+  // Use raw step data stored by directions.js during route calculation.
+  // rawSteps come directly from OSRM (lat/lng from maneuver.location) or OTP
+  // (lat/lng from step.lat/lon), so coordinates are accurate route points.
   const rawSteps = dir.directSteps;
-  if (!rawSteps?.length) return buildDirectStepsFallback(mode);
+  if (!rawSteps?.length) return [];
 
   return rawSteps.map((raw, i) => {
-    const lng = raw.lng || navRouteCoords[0]?.[0] || 0;
-    const lat = raw.lat || navRouteCoords[0]?.[1] || 0;
+    const lng = raw.lng ?? navRouteCoords[0]?.[0] ?? 0;
+    const lat = raw.lat ?? navRouteCoords[0]?.[1] ?? 0;
     const coordIdx = _findNearestCoordIdx(lat, lng);
     return {
       type: "direct",
@@ -198,45 +194,6 @@ function buildDirectStepsFromData(mode) {
       maneuverMod: raw.maneuverMod || "",
     };
   });
-}
-
-function buildDirectStepsFallback(mode) {
-  // Fallback: parse from DOM if raw steps aren't available
-  const steps = [];
-  const stepEls = document.querySelectorAll(".direct-step");
-  if (!stepEls.length) return steps;
-
-  // Collect step coordinates from the route geometry
-  const coords = navRouteCoords;
-  const totalSteps = stepEls.length;
-
-  stepEls.forEach((el, i) => {
-    const inst = el.querySelector(".step-inst")?.textContent || "";
-    const meta = el.querySelector(".step-meta")?.textContent || "";
-    const iconHtml = el.querySelector(".step-icon-wrap")?.innerHTML || "";
-    const distMatch = meta.match(/([\d.]+)\s*(km|m)/);
-    let distM = 0;
-    if (distMatch) distM = distMatch[2] === "km" ? parseFloat(distMatch[1]) * 1000 : parseFloat(distMatch[1]);
-
-    // Estimate coordinate index for this step (proportional distribution)
-    const coordIdx = Math.min(Math.floor((i / totalSteps) * coords.length), coords.length - 1);
-    const coord = coords[coordIdx] || coords[0];
-
-    steps.push({
-      type: "direct",
-      mode,
-      instruction: inst,
-      distance: distM,
-      iconHtml,
-      lng: coord[0],
-      lat: coord[1],
-      coordIdx,
-      routeProgressM: _routeProgressAtCoordIdx(coordIdx),
-      isDepart: i === 0,
-      isArrive: i === totalSteps - 1,
-    });
-  });
-  return steps;
 }
 
 function buildTransitSteps(itin) {
@@ -470,8 +427,15 @@ export function startNavigation() {
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
-  lastStepAdvanceTime = 0;
   lastGpsProcessTime = 0;
+
+  // Seed the movement guard from the current GPS position so the first step
+  // can only fire once the user has actually moved _minMoveDist() metres.
+  const locNow = getCurrentLocationState();
+  _lastTriggerPos = (locNow.active && locNow.lat !== null)
+    ? { lat: locNow.lat, lng: locNow.lng }
+    : null;
+  _stepFired = new Array(navSteps.length).fill(false);
 
   // Hide snackbar, show HUD
   if (snackbar) snackbar.classList.add("hide");
@@ -538,6 +502,8 @@ export function stopNavigation() {
   navRouteCoords = [];
   navRouteProgress = [];
   navItinerary = null;
+  _lastTriggerPos = null;
+  _stepFired = [];
 
   if (hud) {
     hud.classList.add("hide");
@@ -567,12 +533,12 @@ function _onLocationUpdate(e) {
 export function processPosition(lat, lng, accuracy = null) {
   if (!navActive || !navRouteCoords.length) return;
 
-  // Throttle GPS processing to avoid rapid-fire updates
+  // Throttle GPS processing — no need to evaluate every raw hardware tick
   const now = Date.now();
   if (now - lastGpsProcessTime < GPS_PROCESS_INTERVAL) return;
   lastGpsProcessTime = now;
 
-  // Snap to route
+  // Snap to route for off-route detection and progress display
   const snap = snapToRoute(lat, lng);
 
   // Off-route detection
@@ -586,35 +552,61 @@ export function processPosition(lat, lng, accuracy = null) {
     offRouteCount = 0;
   }
 
-  // Determine which step we're at based on proximity
+  // Attempt to advance to the next step
   const prevIdx = navStepIdx;
-  _advanceStep(lat, lng, accuracy, snap);
+  _advanceStep(lat, lng);
 
-  // Only re-render HUD when the step actually changes (or first GPS tick)
+  // Re-render HUD only when the step changes
   if (navStepIdx !== prevIdx) renderHUD();
 
-  // Pan map to follow
+  // Pan map to follow user
   map.easeTo({ center: [lng, lat], duration: 600 });
 }
 
-function _advanceStep(lat, lng, accuracy, snap) {
-  // ONLY advance when user's GPS is physically at the next step's location.
-  // Route progress must also confirm the GPS fix is at that exact trigger point.
-  // At most one step advances per call, and calls are throttled.
-  const step = navSteps[navStepIdx];
-  if (!step || step.isArrive) return;
+// ─── Step advancement ────────────────────────────────────────────────
+// To advance from step N to step N+1 BOTH conditions must hold:
+//
+// 1. MOVEMENT GUARD — the user must have travelled _minMoveDist() metres from
+//    _lastTriggerPos (set to the GPS fix when nav started, updated on every
+//    step fire). This makes it physically impossible for GPS noise or a
+//    cluster of close maneuver points to cascade steps forward from a
+//    stationary position.
+//
+// 2. PROXIMITY — the user must be within _triggerRadius(nextStep) metres of
+//    the next step's lat/lng coordinate (sourced directly from OSRM/OTP, not
+//    an estimate). For transit, the vehicle's GPS position suffices.
+//
+// One step maximum per call (each GPS tick can advance by at most one).
 
-  const nextStep = navSteps[navStepIdx + 1];
+function _advanceStep(lat, lng) {
+  if (navStepIdx >= navSteps.length - 1) return;
+
+  const nextIdx = navStepIdx + 1;
+  const nextStep = navSteps[nextIdx];
   if (!nextStep) return;
 
-  // Cooldown: don't advance again within STEP_ADVANCE_COOLDOWN ms
-  const now = Date.now();
-  if (now - lastStepAdvanceTime < STEP_ADVANCE_COOLDOWN) return;
-
-  if (_isGpsConfirmedAtStep(lat, lng, accuracy, snap, nextStep)) {
-    navStepIdx++;
-    lastStepAdvanceTime = now;
+  // Once-fired guard — can't re-trigger an already-passed step
+  if (_stepFired[nextIdx]) {
+    // Step was already fired: just move the index forward without re-checking
+    // (shouldn't normally happen, but protects state consistency)
+    navStepIdx = nextIdx;
+    return;
   }
+
+  // ── Condition 1: movement guard ──────────────────────────────────
+  if (_lastTriggerPos !== null) {
+    const moved = haversineDistance(lat, lng, _lastTriggerPos.lat, _lastTriggerPos.lng);
+    if (moved < _minMoveDist()) return;
+  }
+
+  // ── Condition 2: proximity to next step's maneuver point ─────────
+  const distToNext = haversineDistance(lat, lng, nextStep.lat, nextStep.lng);
+  if (distToNext > _triggerRadius(nextStep)) return;
+
+  // Both conditions met — advance
+  navStepIdx = nextIdx;
+  _stepFired[nextIdx] = true;
+  _lastTriggerPos = { lat, lng };
 }
 
 async function _triggerReroute(lat, lng) {
@@ -642,15 +634,19 @@ async function _triggerReroute(lat, lng) {
 }
 
 // ─── Simulator ──────────────────────────────────────────────────────
-// Advances to the next step without GPS. Button visible only in dev.
+// Advances to the next step without GPS. Always visible so the user can
+// verify step-by-step progression without needing to physically move.
 
 export function simNextStep() {
   if (!navActive) return;
   if (navStepIdx < navSteps.length - 1) {
     navStepIdx++;
-    // Simulate position at the new step's coordinate
+    _stepFired[navStepIdx] = true;
+    // Update the trigger position to the simulated step so that if GPS nav
+    // resumes later, the movement guard is seeded from the simulated location.
     const step = navSteps[navStepIdx];
     if (step) {
+      _lastTriggerPos = { lat: step.lat, lng: step.lng };
       map.easeTo({ center: [step.lng, step.lat], duration: 600, zoom: Math.max(map.getZoom(), 16) });
     }
     renderHUD();
