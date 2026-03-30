@@ -35,7 +35,7 @@ let lastRerouteTime = 0;
 let offRouteCount = 0;
 
 // GPS processing throttle
-const GPS_PROCESS_INTERVAL = 1500; // ms — process GPS at most every 1.5s
+const GPS_PROCESS_INTERVAL = 1000; // ms — process GPS at most every 1s
 let lastGpsProcessTime = 0;
 
 // ─── Movement-guard state ────────────────────────────────────────────
@@ -123,24 +123,25 @@ function _routeProgressAtCoordIdx(coordIdx) {
 
 // ─── Movement-guard thresholds ───────────────────────────────────────
 // Minimum metres the user must travel from _lastTriggerPos before the next
-// step can fire. Chosen to be above GPS noise (typically ≤ 20 m for accuracy
-// ≤ 15 m) but below the shortest realistic inter-maneuver distance.
+// step can fire. Kept low because _stepFired[] already prevents re-triggers;
+// the movement guard only needs to stop a stationary GPS fix from advancing
+// through a cluster of nearby maneuver points.
 function _minMoveDist() {
-  if (navMode === "walk")    return 8;
-  if (navMode === "cycle")   return 12;
-  if (navMode === "transit") return 20;
-  return 25; // drive
+  if (navMode === "walk")    return 3;
+  if (navMode === "cycle")   return 5;
+  if (navMode === "transit") return 8;
+  return 10; // drive
 }
 
 // How close to a step's lat/lng the user must be to trigger that step.
 function _triggerRadius(step) {
-  if (!step) return 40;
-  if (step.type === "transit-stop")  return 80; // passing intermediate stop in a vehicle
-  if (step.type === "transit-board" || step.type === "transit-alight") return 50;
-  if (step.type === "transit-walk")  return 30;
-  if (navMode === "walk")  return 18;
-  if (navMode === "cycle") return 25;
-  return 40; // drive
+  if (!step) return 50;
+  if (step.type === "transit-stop")  return 100;
+  if (step.type === "transit-board" || step.type === "transit-alight") return 60;
+  if (step.type === "transit-walk")  return 35;
+  if (navMode === "walk")  return 25;
+  if (navMode === "cycle") return 35;
+  return 50; // drive
 }
 
 // Precompute remaining distance and duration from each step to the end.
@@ -346,8 +347,15 @@ function renderHUD() {
       hudNextInfo.innerHTML = `You have reached your destination`;
       hudNextInfo.classList.remove("hide");
     } else {
-      hudNextInfo.textContent = "";
-      hudNextInfo.classList.add("hide");
+      const peek = navSteps[navStepIdx + 1];
+      if (peek && peek.instruction) {
+        const prefix = peek.distance > 0 ? `Then in ${fmtDist(peek.distance)}: ` : "Then: ";
+        hudNextInfo.textContent = prefix + peek.instruction;
+        hudNextInfo.classList.remove("hide");
+      } else {
+        hudNextInfo.textContent = "";
+        hudNextInfo.classList.add("hide");
+      }
     }
   }
 
@@ -564,48 +572,49 @@ export function processPosition(lat, lng, accuracy = null) {
 }
 
 // ─── Step advancement ────────────────────────────────────────────────
-// To advance from step N to step N+1 BOTH conditions must hold:
+// Scans forward from the current step to find the FURTHEST step the user
+// is within trigger range of. This handles cases where the user skips past
+// a maneuver point (e.g. long platform, GPS drift, fast driving) — if
+// you're at step 5's trigger zone, you've clearly completed steps 2-4.
 //
-// 1. MOVEMENT GUARD — the user must have travelled _minMoveDist() metres from
-//    _lastTriggerPos (set to the GPS fix when nav started, updated on every
-//    step fire). This makes it physically impossible for GPS noise or a
-//    cluster of close maneuver points to cascade steps forward from a
-//    stationary position.
-//
-// 2. PROXIMITY — the user must be within _triggerRadius(nextStep) metres of
-//    the next step's lat/lng coordinate (sourced directly from OSRM/OTP, not
-//    an estimate). For transit, the vehicle's GPS position suffices.
-//
-// One step maximum per call (each GPS tick can advance by at most one).
+// Guards:
+// 1. MOVEMENT — must have moved _minMoveDist() from last trigger position
+//    to prevent GPS noise from advancing steps while stationary.
+// 2. PROXIMITY — must be within _triggerRadius() of at least one future step.
+// 3. ONCE-FIRED — _stepFired[] prevents any step from re-triggering.
 
 function _advanceStep(lat, lng) {
   if (navStepIdx >= navSteps.length - 1) return;
 
-  const nextIdx = navStepIdx + 1;
-  const nextStep = navSteps[nextIdx];
-  if (!nextStep) return;
-
-  // Once-fired guard — can't re-trigger an already-passed step
-  if (_stepFired[nextIdx]) {
-    // Step was already fired: just move the index forward without re-checking
-    // (shouldn't normally happen, but protects state consistency)
-    navStepIdx = nextIdx;
-    return;
-  }
-
-  // ── Condition 1: movement guard ──────────────────────────────────
+  // ── Movement guard — must have physically moved ──────────────────
   if (_lastTriggerPos !== null) {
     const moved = haversineDistance(lat, lng, _lastTriggerPos.lat, _lastTriggerPos.lng);
     if (moved < _minMoveDist()) return;
   }
 
-  // ── Condition 2: proximity to next step's maneuver point ─────────
-  const distToNext = haversineDistance(lat, lng, nextStep.lat, nextStep.lng);
-  if (distToNext > _triggerRadius(nextStep)) return;
+  // ── Scan ahead: find the furthest reachable step ─────────────────
+  // Look up to 5 steps ahead (enough for tight maneuver clusters or
+  // skipped platform stops) and pick the furthest one within range.
+  const scanLimit = Math.min(navStepIdx + 6, navSteps.length);
+  let bestIdx = -1;
 
-  // Both conditions met — advance
-  navStepIdx = nextIdx;
-  _stepFired[nextIdx] = true;
+  for (let i = navStepIdx + 1; i < scanLimit; i++) {
+    const step = navSteps[i];
+    if (!step) break;
+    const dist = haversineDistance(lat, lng, step.lat, step.lng);
+    if (dist <= _triggerRadius(step)) {
+      bestIdx = i; // keep scanning — we want the furthest match
+    }
+  }
+
+  if (bestIdx === -1) return; // not close to any upcoming step
+
+  // Mark all skipped steps + the target step as fired
+  for (let i = navStepIdx + 1; i <= bestIdx; i++) {
+    _stepFired[i] = true;
+  }
+
+  navStepIdx = bestIdx;
   _lastTriggerPos = { lat, lng };
 }
 

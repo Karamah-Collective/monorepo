@@ -1409,8 +1409,8 @@ body.dark-mode .sp-tip {
   border: none;
   outline: none;
   background: transparent;
-  font-size: var(--txt-sm);
-  font-weight: var(--fw-medium);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-semibold);
   color: var(--text);
   line-height: 30px;
   padding: 0 31px 0 var(--sp-3);
@@ -1425,7 +1425,7 @@ body.dark-mode .sp-tip {
 }
 #pl-search-input::placeholder {
   color: var(--text-3);
-  font-weight: var(--fw-normal);
+  font-weight: var(--fw-semibold);
 }
 
 /* When search is open: smoothly shrink button labels + arrows */
