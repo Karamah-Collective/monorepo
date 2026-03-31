@@ -169,14 +169,20 @@
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: var(--txt-lg);
+  font-size: var(--txt-md);
   font-weight: var(--fw-medium);
   color: var(--text);
   min-width: 0;
+  line-height: 1;
+  height: 100%;
+  padding: 0;
+  margin: 0;
 }
 #search-input::placeholder {
   color: var(--text-3);
   font-weight: var(--fw-regular);
+  font-size: var(--txt-md);
+  line-height: 1;
 }
 
 .clear-btn {
@@ -822,14 +828,17 @@ body.dark-mode .sp-tip {
   right: calc(50% - 22px);
   min-width: 16px;
   height: 16px;
-  line-height: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 9px;
   font-weight: var(--fw-bold);
-  text-align: center;
   color: var(--on-accent);
   background: var(--accent);
   border-radius: var(--r-pill);
-  padding: 0 4px;
+  padding: 0 4px 1px;
   pointer-events: none;
   transform: scale(1);
   opacity: 1;
@@ -1155,7 +1164,7 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-2xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ls-tight);
 }
 
 @media (min-width: 769px) {
@@ -1410,7 +1419,7 @@ body.dark-mode .sp-tip {
   outline: none;
   background: transparent;
   font-size: var(--txt-base);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text);
   line-height: 30px;
   padding: 0 31px 0 var(--sp-3);
@@ -1425,7 +1434,7 @@ body.dark-mode .sp-tip {
 }
 #pl-search-input::placeholder {
   color: var(--text-3);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-regular);
 }
 
 /* When search is open: smoothly shrink button labels + arrows */
@@ -1544,7 +1553,7 @@ body.dark-mode .sp-tip {
 #tf-count {
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 4px 1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1553,16 +1562,15 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
-  line-height: 18px;
-  text-align: center;
+  line-height: 1;
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 #tf-count.one-digit {
   width: 18px;
   min-width: 18px;
-  padding: 0;
+  padding: 0 0 1px;
 }
 #tf-toggle.open #tf-count {
   background: var(--surface);
@@ -1603,7 +1611,7 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-bold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ls-caps);
   pointer-events: none;
   user-select: none;
 }
@@ -1724,7 +1732,7 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-bold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--ls-caps);
   background: none;
   border: none;
   border-radius: 0;
@@ -2383,7 +2391,7 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   border-radius: var(--r-pill);
   padding: 2px 8px;
 }
@@ -2516,7 +2524,7 @@ body.dark-mode .sp-tip {
   font-size: 10px;
   font-weight: var(--fw-bold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   padding: 1px 5px;
   border-radius: var(--r-pill);
   background: var(--gold-soft);
@@ -2703,7 +2711,7 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-2xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ls-tight);
 }
 
 #suggest-form {
@@ -2763,7 +2771,7 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-medium);
   color: var(--text-3);
   opacity: 0.6;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--ls-wide);
 }
 
 .sg-label input,
@@ -2904,7 +2912,7 @@ body.dark-mode .sp-tip {
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: var(--txt-lg);
+  font-size: var(--txt-md);
   font-weight: var(--fw-medium);
   color: var(--text);
   min-width: 0;
@@ -2912,6 +2920,7 @@ body.dark-mode .sp-tip {
 .dir-field input::placeholder {
   color: var(--text-3);
   font-weight: var(--fw-regular);
+  font-size: var(--txt-md);
 }
 
 .dir-field-btn {
@@ -3664,7 +3673,7 @@ body.dark-mode .fallback-notice {
   font-size: var(--txt-3xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.03em;
+  letter-spacing: var(--ls-tight);
   transition: font-size var(--t-fast);
 }
 .itin-card:not(.active) .itin-dur {
@@ -4215,7 +4224,7 @@ body.dark-mode .fallback-notice {
   border-radius: var(--r-xs);
   font-size: var(--txt-sm);
   font-weight: var(--fw-bold);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--ls-wide);
   color: var(--on-accent);
   line-height: 1;
 }
@@ -4658,7 +4667,7 @@ body.dark-mode .fallback-notice {
   font-weight: var(--fw-bold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--ls-caps);
   cursor: default;
 }
 .sponsor-carousel-icon {
@@ -4882,7 +4891,7 @@ body.dark-mode .fallback-notice {
   font-size: var(--txt-sm);
   font-weight: var(--fw-bold);
   color: var(--gold);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--ls-wide);
 }
 
 .ramadan-row {
@@ -5303,7 +5312,7 @@ body.dark-mode .loc-ring {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   border-radius: var(--r-pill);
   padding: 2px 8px;
   color: color-mix(in srgb, var(--stop-c, var(--accent)) 72%, #222);
@@ -5459,7 +5468,7 @@ body.dark-mode .sp-chip {
     padding: 0 44px 0 14px;
   }
   #search-input {
-    font-size: var(--txt-xl);
+    font-size: var(--txt-lg);
   }
   #search-drop {
     max-height: calc(100dvh - 290px);
@@ -5514,7 +5523,7 @@ body.dark-mode .sp-chip {
   }
 
   .dir-field input {
-    font-size: var(--txt-xl);
+    font-size: var(--txt-lg);
   }
   .sg-label input,
   .sg-label select,
@@ -5939,7 +5948,7 @@ body.dark-mode .sp-chip {
   color: var(--text);
   margin: 0;
   line-height: 1.3;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--ls-tight);
 }
 .tut-card--center .tut-title {
   font-size: var(--txt-lg);
@@ -6227,7 +6236,7 @@ body.dark-mode .sp-chip {
   font-weight: var(--fw-bold);
   color: var(--text);
   margin: 20px 0 6px;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--ls-tight);
 }
 #privacy-body h4:first-of-type {
   margin-top: 8px;
@@ -6432,7 +6441,7 @@ body.dark-mode .sp-chip {
 .mse-section-title {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
   color: var(--text-3);
   margin-bottom: 8px;
@@ -6768,7 +6777,7 @@ body.dark-mode .mse-export {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   color: var(--gold);
   background: var(--gold-soft);
   border-radius: var(--r-pill);
@@ -6799,7 +6808,7 @@ body.dark-mode .mse-export {
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   color: var(--text-3);
 }
 .eid-popup-time-chips {

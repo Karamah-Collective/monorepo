@@ -1,13 +1,24 @@
-/* ── Inter — self-hosted variable font (SIL Open Font License) ──────────────── */
+/* ── Plus Jakarta Sans — self-hosted variable font (SIL Open Font License 1.1) ── */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Plus Jakarta Sans';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('./fonts/Inter-Variable-Latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  src: url('./fonts/PlusJakartaSans-Variable-LatinExt.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./fonts/PlusJakartaSans-Variable-Latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
@@ -67,19 +78,24 @@
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
 
   --txt-xs: 11px;
-  --txt-sm: 12px;
-  --txt-base: 13px;
-  --txt-md: 14px;
-  --txt-lg: 15px;
-  --txt-xl: 16px;
-  --txt-2xl: 18px;
-  --txt-3xl: 22px;
-  --txt-display: 26px;
+  --txt-sm: 13px;
+  --txt-base: 14px;
+  --txt-md: 15px;
+  --txt-lg: 16px;
+  --txt-xl: 18px;
+  --txt-2xl: 20px;
+  --txt-3xl: 24px;
+  --txt-display: 30px;
 
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
+
+  --ls-tight: -0.025em;
+  --ls-normal: 0;
+  --ls-wide: 0.015em;
+  --ls-caps: 0.06em;
 
   --sp-0: 2px;
   --sp-0h: 3px;
@@ -105,6 +121,7 @@
   --t-fast: 0.15s ease;
   --t-med: 0.25s ease;
   --t-spring: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  --t-collapse: 0.25s cubic-bezier(0.4, 0, 1, 1);
   --t-slow: 0.4s ease;
   --t-x-slow: 0.5s ease;
 
@@ -177,19 +194,17 @@
   --sheet-h: 55vh; /* default bottom-sheet height           */
 
   font-family:
-    'Inter',
+    'Plus Jakarta Sans',
     -apple-system,
     BlinkMacSystemFont,
     system-ui,
     'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
 }
 
 *,
@@ -337,7 +352,7 @@ html.dark-mode body {
   border-radius: var(--r-sm);
   color: var(--text-2);
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   transition:
     border-color var(--t-fast),
     color var(--t-fast);
@@ -365,7 +380,7 @@ html.dark-mode body {
   border: 1.5px solid var(--danger);
   border-radius: var(--r-pill);
   font-size: var(--txt-sm);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   transition: color var(--t-fast);
 }
@@ -386,7 +401,7 @@ html.dark-mode body {
   border: 1.5px solid var(--border);
   border-radius: var(--r-pill);
   font-size: var(--txt-sm);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   transition: color var(--t-fast), border-color var(--t-fast);
 }
@@ -577,7 +592,8 @@ html.dark-mode body {
   background: var(--surface);
   border-radius: var(--r-pill);
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
   color: var(--text-2);
   white-space: nowrap;
   transition:
@@ -630,9 +646,9 @@ html.dark-mode body {
 }
 .tf-group-count {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   background: var(--accent);
   color: var(--on-accent);
   border-radius: var(--r-pill);
@@ -641,7 +657,7 @@ html.dark-mode body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--sp-1);
+  padding: 0 var(--sp-1) 1px;
   margin-left: var(--sp-0);
   line-height: 1;
 }
@@ -713,8 +729,8 @@ html.dark-mode body {
   position: relative;
   color: var(--text-3);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.01em;
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
   -webkit-tap-highlight-color: transparent;
   transition: color var(--t-fast);
 }
@@ -774,8 +790,8 @@ html.dark-mode body {
   font-size: var(--txt-2xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  letter-spacing: -0.02em;
-  line-height: 1.25;
+  letter-spacing: var(--ls-tight);
+  line-height: 1.2;
 }
 
 .t-item-title,
@@ -783,9 +799,10 @@ html.dark-mode body {
 .pl-name,
 .ds-name {
   font-size: var(--txt-lg);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text);
-  line-height: 1.3;
+  letter-spacing: var(--ls-tight);
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -806,23 +823,28 @@ html.dark-mode body {
 .t-micro-label,
 .itin-zones-label {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
 }
 
 .t-caption {
   font-size: var(--txt-sm);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-regular);
   color: var(--text-3);
-  line-height: 1.4;
+  letter-spacing: var(--ls-wide);
+  line-height: 1.45;
 }
 
 .t-body-sm {
   font-size: var(--txt-base);
   color: var(--text-2);
   line-height: 1.5;
+}
+
+.t-tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 .t-field-wrap {
@@ -945,6 +967,7 @@ html.dark-mode body {
   grid-template-rows: 0fr;
   flex-basis: 0;
   margin: 0;
+  transition: grid-template-rows var(--t-collapse), margin var(--t-collapse), flex-basis var(--t-collapse);
 }
 
 .sg-subtags-inner {
@@ -963,6 +986,7 @@ html.dark-mode body {
   padding-top: 0;
   padding-bottom: 0;
   border-color: transparent;
+  transition: padding var(--t-collapse), border-color var(--t-collapse);
 }
 
 .sg-subtag-chips {
@@ -980,7 +1004,8 @@ html.dark-mode body {
   border-radius: var(--r-pill);
   font-family: inherit;
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
   color: var(--text-2);
   cursor: pointer;
   -webkit-user-select: none;
@@ -1163,7 +1188,7 @@ html.dark-mode body {
   background: var(--gold-soft);
   color: var(--gold);
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
 }
@@ -1180,7 +1205,8 @@ html.dark-mode body {
   padding: var(--sp-0h) var(--sp-3);
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
   color: var(--chip-c, var(--accent));
   background: color-mix(in srgb, var(--chip-c, var(--accent)) 14%, transparent);
   cursor: default;
@@ -1429,12 +1455,12 @@ html.dark-mode body {
 
 .drum-sep {
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
 }
 .drum-toast {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--danger);
 }
 
@@ -1511,7 +1537,8 @@ html.dark-mode body {
   font-size: var(--txt-xl);
   font-weight: var(--fw-bold);
   color: var(--text);
-  line-height: 1.25;
+  letter-spacing: var(--ls-tight);
+  line-height: 1.2;
 }
 
 .nav-detail {
@@ -1526,7 +1553,7 @@ html.dark-mode body {
   font-weight: var(--fw-semibold);
   color: var(--text-2);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ls-caps);
   font-size: 9px;
 }
 
@@ -1553,7 +1580,8 @@ html.dark-mode body {
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-xs);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
   line-height: 1;
   white-space: nowrap;
 }

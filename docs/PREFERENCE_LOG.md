@@ -91,6 +91,12 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-30 — Places panel inline search: expand-to-search pattern.** Search button (icon-only) sits right of sort, expands into full input on click. Filter/sort labels collapse to icon-only via `.pl-searching` class to make room. 120 ms debounce. Scoped to current tab (mosque tab searches only mosques, etc.). Searches name + address from database only (not OSM). `<mark>` highlight on matching text. Context-aware placeholder per tab.
 - **2026-03-30 — Neutral border-left for expandable groups.** City group list and filter tag group inner borders changed from `--accent-soft` (teal in dark mode) to `--border` (neutral gray) for theme consistency. User dislikes teal in structural/decorative lines.
 
+- **2026-03-31 — Font swap: Inter → General Sans → Plus Jakarta Sans.** Inter was the most overused AI-default font. General Sans was tried but user found it renders thin/soft at small sizes with poor visibility. Replaced with Plus Jakarta Sans (Google Fonts, SIL OFL 1.1, variable 200–800). High x-height, excellent ClearType hinting, crisp at all sizes. Self-hosted with latin + latin-ext subsets (Finnish ä/ö/å). Total: ~49KB (27KB latin + 22KB latin-ext).
+- **2026-03-31 — Type scale bumped for readability.** `--txt-xs`: 10→11px, `--txt-sm`: 12→13px, `--txt-base`: 13→14px, `--txt-md`: 14→15px. Upper scale unchanged (lg=16, xl=18, 2xl=20, 3xl=24, display=30). User explicitly asked for fonts that aren't "barely visible" — the old 10/12/13px floor was too small.
+- **2026-03-31 — Weight tier system: regular→medium→bold.** Reduced semibold/bold overuse. Item titles, chips, tabs, secondary buttons demoted from semibold (600) to medium (500). Micro-labels and badges from bold (700) to semibold (600). Creates three clear tiers: regular (body/captions), medium (interactive), bold (headings/CTAs).
+- **2026-03-31 — Letter-spacing token system.** Four tokens: `--ls-tight` (-0.025em) for headings, `--ls-normal` (0) default, `--ls-wide` (0.015em) for small text, `--ls-caps` (0.06em) for uppercase labels. All hardcoded values in both CSS files replaced with token references.
+- **2026-03-31 — OpenType features enabled globally.** `font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1` on `:root`. Added `.t-tabular-nums` template class for alignment in numeric columns.
+
 ---
 
 ## Patterns to Avoid
@@ -105,6 +111,10 @@ what you like, what you've decided, and how you want things done.
 - Don't use NLP libraries, ML models, or external language-processing APIs for search intent detection. Keep it lightweight with curated regex patterns.
 - Don't use asymmetric easing for expand vs collapse — both directions must use `--t-spring`. No `ease` for expand + `spring` for collapse.
 - Don't use `height: 0` without transition for collapse — use `grid-template-rows: 0fr` pattern instead.
+- Don't use Inter, Roboto, Arial, General Sans, or system-font-first stacks as the primary typeface. Plus Jakarta Sans is the project font.
+- Don't use fonts that render thin/soft at small sizes. The user demands crisp, visible, modern typography with proper weight.
+- Don't hardcode `letter-spacing` values — always use `--ls-tight`, `--ls-wide`, or `--ls-caps` tokens.
+- Don't use `font-weight: 600` (semibold) as the default "emphasis" weight — reserve it for badges/labels. Use medium (500) for interactive elements and titles.
 - React / any framework rejected for this project — vanilla JS + design tokens delivers the same UX with zero build overhead.
 
 ---
@@ -127,6 +137,7 @@ what you like, what you've decided, and how you want things done.
 - Use `--ease-expo` for sheet/panel transitions — aggressive deceleration feels modern. Pair with `scale()` in the start state for depth cues.
 - Hook pattern for circular imports: export a `setHooks()` function from module A, call it from module B at evaluation time to register callbacks. Never create `import` cycles between modules.
 - Navigation step advancement must use dual confirmation: GPS proximity to the maneuver point plus matching progress along the route geometry. Do not reveal future turn text before that trigger is confirmed.
+- All letter-spacing must use tokens: `--ls-tight` for headings (≥18px), `--ls-wide` for small text (≤12px) and chips, `--ls-caps` for uppercase labels. Never hardcode em values.
 
 ---
 
@@ -135,6 +146,18 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-03-31 — Typography overhaul: font, scale, weights, tracking
+- **Font swap (two rounds):**
+  1. First replaced Inter with General Sans — user hated it, found it thin/soft at small sizes with poor visibility.
+  2. Replaced General Sans with **Plus Jakarta Sans** (Google Fonts, SIL OFL 1.1, variable 200–800). High x-height gives excellent readability. Crisp ClearType hinting on Windows. Clean geometric with slightly rounded terminals. Self-hosted with latin + latin-ext (Finnish ä/ö/å): 27KB + 22KB = 49KB total.
+- **Type scale bumped for readability:** xs 10→11, sm 12→13, base 13→14, md 14→15. Upper scale unchanged. User explicitly demanded fonts that aren't "barely visible" — old 10/12/13px floor was too small.
+- **Weight rebalancing:** Demoted ~20 template selectors from semibold→medium (item titles, chips, tabs, secondary buttons, subtags, nav chips). Micro-labels/badges from bold→semibold. Three-tier system: regular (body) → medium (interactive) → bold (headings/CTAs).
+- **Letter-spacing tokens:** Created `--ls-tight` (-0.025em), `--ls-normal` (0), `--ls-wide` (0.015em), `--ls-caps` (0.06em). Replaced all ~18 hardcoded letter-spacing values across both CSS files.
+- **OpenType features:** Enabled `kern`, `liga`, `calt` globally. Added `.t-tabular-nums` template for numeric alignment.
+- **Font stack pruned:** Removed Roboto, Helvetica Neue, Arial from fallback chain. Now: `'General Sans', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif`.
+- **Files modified:** `design-tokens.css`, `styles.css`, `index.html` (preload), `sw.js` (cache), `DESIGN_SYSTEM.md`, `PREFERENCE_LOG.md`.
+- **New font file:** `src/styles/fonts/GeneralSans-Variable.woff2` (38,132 bytes).
 
 ### 2026-03-30 — Places panel inline search + border color fix
 - **Inline search:** Added a search bar to the places panel `#tf-row`. A magnifying glass button on the right expands into a full input field. Filter/sort text labels collapse to icon-only (via `.pl-searching` parent class) to free space. Search is scoped to the active tab — if on "Mosques", only mosques are searched (name + address). 120 ms debounced input triggers a re-render with `<mark>` highlights on matched text. Custom empty state when search yields no results. Search cleared on tab switch or clear-all.

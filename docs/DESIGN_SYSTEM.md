@@ -110,27 +110,43 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 
 ### Typography scale
 
+**Font:** Plus Jakarta Sans (variable, 200–800 weight, SIL OFL 1.1). Self-hosted in `src/styles/fonts/` with latin + latin-ext subsets (covers Finnish ä/ö/å).
+
+**OpenType:** `font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1` enabled globally.
+
 #### Sizes
 
 | Token | Value |
 |---|---|
 | `--txt-xs` | `11px` |
-| `--txt-sm` | `12px` |
-| `--txt-base` | `13px` |
-| `--txt-md` | `14px` |
-| `--txt-lg` | `15px` |
-| `--txt-xl` | `16px` |
-| `--txt-2xl` | `18px` |
-| `--txt-3xl` | `22px` |
+| `--txt-sm` | `13px` |
+| `--txt-base` | `14px` |
+| `--txt-md` | `15px` |
+| `--txt-lg` | `16px` |
+| `--txt-xl` | `18px` |
+| `--txt-2xl` | `20px` |
+| `--txt-3xl` | `24px` |
+| `--txt-display` | `30px` |
 
 #### Weights
 
-| Token | Value |
-|---|---|
-| `--fw-regular` | `400` |
-| `--fw-medium` | `500` |
-| `--fw-semibold` | `600` |
-| `--fw-bold` | `700` |
+Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive/titles) → **bold** (headings/CTAs). Semibold is for emphasis within a group (labels, badges).
+
+| Token | Value | Tier |
+|---|---|---|
+| `--fw-regular` | `400` | Body text, captions, muted content |
+| `--fw-medium` | `500` | Item titles, chips, tabs, secondary buttons |
+| `--fw-semibold` | `600` | Badges, form labels, micro-labels |
+| `--fw-bold` | `700` | Panel headings, primary CTAs, hero text |
+
+#### Letter-spacing
+
+| Token | Value | Use |
+|---|---|---|
+| `--ls-tight` | `-0.025em` | Headings, display text (large text needs tighter tracking) |
+| `--ls-normal` | `0` | Body, default |
+| `--ls-wide` | `0.015em` | Small text, chips (helps legibility below 13px) |
+| `--ls-caps` | `0.06em` | Uppercase micro-labels, badges |
 
 ### Spacing scale
 

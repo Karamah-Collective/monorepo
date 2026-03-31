@@ -63,7 +63,7 @@ test.describe("Core DOM Structure", () => {
 
   test("search input has correct attributes", async ({ page }) => {
     const inp = page.locator("#search-input");
-    await expect(inp).toHaveAttribute("placeholder", /Search Helsinki/);
+    await expect(inp).toHaveAttribute("placeholder", /Search places/);
     await expect(inp).toHaveAttribute("autocomplete", "off");
     await expect(inp).toHaveAttribute("spellcheck", "false");
   });

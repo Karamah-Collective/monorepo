@@ -1508,6 +1508,8 @@ function updateTagCount() {
 // Smooth slide helper: animates element height from current to target
 function slideHeight(el, to, onDone) {
   const from = el.offsetHeight;
+  // Collapse uses ease-in so the last few % don't creep; expand keeps the spring settle
+  if (to === 0) el.style.transition = "height 0.25s cubic-bezier(0.4, 0, 1, 1)";
   el.style.height = from + "px";
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -1516,6 +1518,7 @@ function slideHeight(el, to, onDone) {
         const done = (e) => {
           if (e.propertyName !== "height" || e.target !== el) return;
           el.removeEventListener("transitionend", done);
+          el.style.transition = "";
           onDone();
         };
         el.addEventListener("transitionend", done);
