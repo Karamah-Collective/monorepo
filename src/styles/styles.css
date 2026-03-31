@@ -2787,6 +2787,17 @@ body.dark-mode .sp-tip {
   color: var(--text);
   transition: border-color var(--t-fast);
 }
+.sg-label input::placeholder,
+.sg-label textarea::placeholder {
+  color: var(--text-3);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-regular);
+}
+.sg-label select.placeholder {
+  color: var(--text-3);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-regular);
+}
 .sg-label input:focus,
 .sg-label select:focus,
 .sg-label textarea:focus {

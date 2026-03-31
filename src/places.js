@@ -2119,6 +2119,7 @@ function _snapToNearestCard(track, count) {
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
 document.getElementById("suggest-place-btn").addEventListener("click", () => {
   document.getElementById("suggest-form").reset();
+  sgTypeSelect.classList.add("placeholder");
   clearPinLocation();
   renderSuggestTags();
   openSuggestOverlay();
@@ -2127,6 +2128,7 @@ document.getElementById("suggest-place-btn").addEventListener("click", () => {
 document.getElementById("places-scroll").addEventListener("click", (e) => {
   if (e.target.closest("#suggest-place-btn-empty")) {
     document.getElementById("suggest-form").reset();
+    sgTypeSelect.classList.add("placeholder");
     clearPinLocation();
     renderSuggestTags();
     openSuggestOverlay();
@@ -2171,6 +2173,7 @@ document.getElementById("sg-pin-clear").addEventListener("click", clearPinLocati
 window.addEventListener("hf:add-place-from-pin", (e) => {
   const { lat, lng, address } = e.detail;
   document.getElementById("suggest-form").reset();
+  sgTypeSelect.classList.add("placeholder");
   renderSuggestTags();
   setPinLocation(lat, lng, address);
   openSuggestOverlay();
@@ -2392,6 +2395,8 @@ function renderSuggestTags() {
 }
 
 sgTypeSelect.addEventListener("change", renderSuggestTags);
+sgTypeSelect.addEventListener("change", () => sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value));
+sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
 renderSuggestTags();
 
 sgTagsContainer.addEventListener("click", (e) => {
@@ -2568,6 +2573,7 @@ suggestForm.addEventListener("submit", async (e) => {
     if (data.success) {
       _lastSubmit = Date.now();
       document.getElementById("suggest-form").reset();
+      sgTypeSelect.classList.add("placeholder");
       clearPinLocation();
       renderSuggestTags();
       document.getElementById("suggest-overlay").classList.add("hide");
