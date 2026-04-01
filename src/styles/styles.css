@@ -1010,6 +1010,22 @@ body.dark-mode .sp-tip {
   #app.tools-open #contact-pill-wrap {
     transform: translateY(0) scale(1);
   }
+
+  /* Safety net: cap panel width to available space (harmless on wider phones) */
+  #style-panel {
+    max-width: calc(100vw - var(--map-edge) - var(--btn-icon-size) - 16px);
+  }
+}
+
+/* Shrink thumbnails only on viewports too narrow for the full 337 px panel */
+@media (max-width: 399px) {
+  #style-panel .style-thumb {
+    width: 44px;
+    height: 44px;
+  }
+  #style-panel .style-opt {
+    padding: 4px 6px;
+  }
 }
 
 /* ─── Tablet: pills fan out horizontally left of toggle ─── */
@@ -1334,6 +1350,7 @@ body.dark-mode .sp-tip {
 }
 
 #tf-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1360,14 +1377,12 @@ body.dark-mode .sp-tip {
     box-shadow var(--t-fast);
 }
 @media (hover: hover) {
-  .pl-search-wrap:not(.open):hover {
+  .pl-search-wrap:not(.open):hover,
+  #tf-row:has(.pl-search-icn:hover) .pl-search-wrap:not(.open) {
     border-color: var(--surface-3);
   }
-  .pl-search-wrap:not(.open):hover .pl-search-icn {
-    color: var(--text-2);
-  }
 }
-.pl-search-wrap:not(.open):active .pl-search-icn {
+.pl-search-icn:active {
   color: var(--text);
 }
 .pl-search-wrap.open {
@@ -1379,13 +1394,13 @@ body.dark-mode .sp-tip {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
-/* Icon button — always visible, pinned right */
+/* Icon button — anchored to #tf-row (not the expanding wrap) so it never shifts */
 .pl-search-icn {
   position: absolute;
-  right: 0;
+  right: 16px;
   top: 0;
+  bottom: 0;
   width: 34px;
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1402,7 +1417,7 @@ body.dark-mode .sp-tip {
     color: var(--text-2);
   }
 }
-.pl-search-wrap.open:focus-within .pl-search-icn {
+.pl-search-wrap.open:focus-within + .pl-search-icn {
   color: var(--accent);
 }
 

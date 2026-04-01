@@ -97,6 +97,9 @@ what you like, what you've decided, and how you want things done.
 - **2026-03-31 — Letter-spacing token system.** Four tokens: `--ls-tight` (-0.025em) for headings, `--ls-normal` (0) default, `--ls-wide` (0.015em) for small text, `--ls-caps` (0.06em) for uppercase labels. All hardcoded values in both CSS files replaced with token references.
 - **2026-03-31 — OpenType features enabled globally.** `font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1` on `:root`. Added `.t-tabular-nums` template class for alignment in numeric columns.
 
+- **2026-04-01 — Search icon anchored to `#tf-row`, not the expanding wrapper.** `flex-grow` + `margin-left: auto` on `.pl-search-wrap` causes subtle right-edge jitter on mobile during the expand animation. Fix: icon button (`#pl-search-icn-btn`) moved out of `.pl-search-wrap` to be a sibling; anchored with `position: absolute; right: 16px` on `#tf-row` (which gets `position: relative`). Descendant selectors that referenced `.pl-search-icn` inside `.pl-search-wrap` updated: focus-within → adjacent sibling combinator (`+`), hover border → `:has()` on `#tf-row`.
+- **2026-04-01 — Style picker panel: keep left-opening, shrink only on narrow viewports.** User rejected "open above" fix AND blanket 768px shrink. Correct approach: `max-width: calc(100vw - edge - btn - 16px)` safety net at `≤768px`; thumbnail/padding shrink only at `≤399px` (the breakpoint below which the full 337px panel can't fit). iPhone 13 Pro Max (428px) keeps full 52px thumbnails; iPhone 15 (393px) gets 44px. User wants maximum size retained on devices that support it.
+
 ---
 
 ## Patterns to Avoid
@@ -779,3 +782,10 @@ All use GPU-composited `transform` only (preserving the `-45deg` puck rotation).
 **Stale ref cleanup:** Fixed 2 remaining `hudDistance` references in `_triggerReroute()` and `simNextStep()` → changed to `hudDistChip`.
 
 **Files modified:** `src/navigation.js`, `src/directions.js`, `sw.js`.
+
+### 2026-04-01 — Refactoring agent + code quality standards for open-source readiness
+- **Created `.github/agents/refactorer.agent.md`** — a dedicated safe-refactoring agent that works file-by-file in three tiers: (T1) JSDoc, console.log removal, `_` prefix standardisation, dead code removal; (T2) magic number extraction, custom event constants, function decomposition; (T3) CF Function error handling standardisation, import ordering.
+- **Added §I (Code Quality Standards) to The Architect** (`.github/agents/the-architect.agent.md`) — 9 rules that all new code must follow: JSDoc on exports, no magic numbers, `_` prefix on private state, no debug logging, ≤100-line functions, import ordering, event name constants, CF error patterns, no dead code. This prevents new code from needing future refactoring.
+- **Codebase audit findings** (informing the refactorer): ~8,500 LOC across 22 JS files. Consistent: camelCase, UPPER_CASE constants, named exports, no `var`, `esc()` usage, `.join("")`. Inconsistent: no JSDoc on 40+ exports, ~15 console.logs in prod, mixed `_` prefix usage on module state, ~40 magic numbers, 3 functions >150 lines (findRoutes, encodeCompactRoute, initSheetDrag).
+- **Files created:** `.github/agents/refactorer.agent.md`
+- **Files modified:** `.github/agents/the-architect.agent.md`, `docs/PREFERENCE_LOG.md`

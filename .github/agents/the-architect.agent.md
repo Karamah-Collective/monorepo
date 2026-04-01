@@ -265,3 +265,95 @@ Append entries to the appropriate sections of `docs/PREFERENCE_LOG.md`:
 - If a change might break mobile, flag responsive concerns.
 - If a change adds a new external dependency or API call, flag it against the constraints.
 - Never suggest a bundler, framework, or server-side rendering solution.
+
+---
+
+# §I — CODE QUALITY STANDARDS
+
+All new and modified JS code must meet these standards. The Refactorer agent brings existing code up to these standards; The Architect enforces them on all new code.
+
+### 1 — JSDoc on Exports
+
+Every `export function` and `export async function` must have a JSDoc block:
+```js
+/**
+ * One-line description of what the function does.
+ * @param {string} name - Place name
+ * @param {number} [zoom=15] - Optional map zoom level
+ * @returns {Promise<void>}
+ */
+export async function flyToPlace(name, zoom = 15) {
+```
+- `@param` with type, name, and description for each parameter
+- `@returns` with type (use `void` / `Promise<void>` when appropriate)
+- Optional params: `@param {number} [zoom=15]`
+- Nullable params: `@param {string?} text`
+
+### 2 — No Magic Numbers
+
+Hard-coded numeric or string literals with domain meaning must be named constants at the top of the file:
+```js
+const MIN_MARKER_ZOOM = 12.2;
+const DEBOUNCE_MS = 120;
+const STORAGE_KEY_PINS = "hf_saved_pins";
+```
+- Use `UPPER_SNAKE_CASE`
+- Group by purpose with a one-line comment
+- Exempt: `0`, `1`, `-1`, `""`, `null`, `true`, `false`, CSS token references
+
+### 3 — Private State Naming
+
+Module-scoped variables that are NOT exported must use the `_` prefix:
+```js
+let _activePopupId = null;     // ✅ private state
+const CACHE_TTL = 3600;        // ✅ UPPER_CASE constant (exempt)
+export let currentTab = "all"; // ✅ exported (no prefix)
+```
+
+### 4 — No Debug Logging in Production
+
+- **Remove** `console.log()` from production code paths
+- **Keep** `console.error()` for genuine error conditions
+- **Keep** `console.warn()` only for degraded-but-functional fallback states
+- Do NOT introduce a logging framework or debug flag
+
+### 5 — Function Size Limit
+
+Functions should be ≤100 lines. If a function exceeds this:
+- Extract logical phases into `_`-prefixed private helper functions in the same file
+- Keep the original function as the orchestrator with the same signature
+- Name helpers descriptively: `_fetchRouteData()`, `_renderResults()`, `_parseItinerary()`
+
+### 6 — Import Ordering
+
+Imports at the top of every file, in this order, separated by blank lines:
+1. External/library imports (rare — MapLibre is loaded via CDN)
+2. Internal module imports (`./config.js`, `./utils.js`, etc.)
+3. Side-effect imports (if any)
+
+### 7 — Custom Event Names
+
+All `CustomEvent` names dispatched via `window.dispatchEvent` or listened via `window.addEventListener` must be defined in `src/events.js` and imported. Never use string literals for event names:
+```js
+// ✅ Good
+import { EVT } from "./events.js";
+window.dispatchEvent(new CustomEvent(EVT.LOCATION_UPDATED, { detail }));
+
+// ❌ Bad
+window.dispatchEvent(new CustomEvent("hf:current-location-updated", { detail }));
+```
+
+### 8 — Consistent Error Handling (Cloudflare Functions)
+
+Every function in `functions/api/` must:
+- Wrap logic in `try/catch`
+- Return JSON error responses with generic messages (no stack traces, no internal URLs)
+- Include CORS headers on error responses too
+- Validate all inputs before processing
+
+### 9 — No Dead Code
+
+- Don't leave commented-out code blocks (>3 lines)
+- Don't keep unused variables or imports
+- Don't keep functions that are never called
+- If preserving for reference, note the intent in a single `// Removed: [reason]` comment, not the full code block
