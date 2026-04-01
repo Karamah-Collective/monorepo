@@ -1783,9 +1783,9 @@ function renderPlacesList() {
     </li>`)
     .join("");
 
-  // Recently viewed section (skip on saved tab)
+  // Recently viewed section (skip on saved tab and when searching)
   let recentHtml = "";
-  if (activeTypeFilter !== "saved" && recentIds.length) {
+  if (activeTypeFilter !== "saved" && !q && recentIds.length) {
     const recentPlaces = recentIds.map((id) => filtered.find((p) => p.id === id)).filter(Boolean);
     if (recentPlaces.length) {
       const recentCollapsed = collapsedCityGroups.has("__recent__");

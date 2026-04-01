@@ -1347,18 +1347,15 @@ body.dark-mode .sp-tip {
   display: flex;
   align-items: center;
   height: 32px;
-  width: 34px;
+  flex: 0 0 34px;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
   cursor: pointer;
-  flex-shrink: 0;
-  will-change: width;
   transition:
-    width var(--t-spring),
-    flex var(--t-spring),
+    flex-grow 0.5s cubic-bezier(0.32, 0.72, 0, 1),
     border-color var(--t-fast),
     box-shadow var(--t-fast);
 }
@@ -1374,8 +1371,7 @@ body.dark-mode .sp-tip {
   color: var(--text);
 }
 .pl-search-wrap.open {
-  flex: 1 1 0%;
-  width: auto;
+  flex-grow: 1;
   cursor: text;
 }
 .pl-search-wrap.open:focus-within {
@@ -1388,7 +1384,7 @@ body.dark-mode .sp-tip {
   position: absolute;
   right: 0;
   top: 0;
-  width: 31px;
+  width: 34px;
   height: 100%;
   display: flex;
   align-items: center;
@@ -1399,7 +1395,6 @@ body.dark-mode .sp-tip {
   color: var(--text-3);
   cursor: pointer;
   z-index: 1;
-  transform: translateZ(0);
   transition: color var(--t-fast);
 }
 @media (hover: hover) {
@@ -1422,7 +1417,7 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-medium);
   color: var(--text);
   line-height: 30px;
-  padding: 0 31px 0 var(--sp-3);
+  padding: 0 34px 0 var(--sp-3);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-fast);
@@ -1444,7 +1439,7 @@ body.dark-mode .sp-tip {
   max-width: 120px;
   opacity: 1;
   transition:
-    max-width var(--t-spring),
+    max-width 0.5s cubic-bezier(0.32, 0.72, 0, 1),
     opacity var(--t-fast);
 }
 .tf-btn-label,
