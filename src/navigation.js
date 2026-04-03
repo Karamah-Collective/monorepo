@@ -15,6 +15,11 @@ import {
 import { esc, getCurrentLocationState, haversineDistance, showToast } from "./utils.js";
 import { modeIcon } from "./icons.js";
 
+/** Haversine distance in metres (haversineDistance returns km). */
+function _hDistM(lat1, lon1, lat2, lon2) {
+  return haversineDistance(lat1, lon1, lat2, lon2) * 1000;
+}
+
 // ─── State ──────────────────────────────────────────────────────────
 let navActive = false;
 let navPaused = false;     // true when HUD is hidden but state is preserved
@@ -38,6 +43,30 @@ let offRouteCount = 0;
 const GPS_PROCESS_INTERVAL = 1000; // ms — process GPS at most every 1s
 let lastGpsProcessTime = 0;
 
+// ─── Speed tracking ─────────────────────────────────────────────────
+let _prevSpeedPos = null;  // { lat, lng, time }
+let _speedKmh = 0;
+const SPEED_MIN_DIST_M = 5;       // ignore micro-movements (noise floor)
+const SPEED_MAX_REASONABLE = 200;  // km/h — discard insane spikes
+const SPEED_HISTORY_SIZE = 4;      // median filter window
+let _speedHistory = [];            // last N raw speed samples for median
+
+// ─── Continue / approach detection ──────────────────────────────────
+let _liveDistToNextM = 0;       // live GPS distance to the next step's maneuver point
+let _liveRemainDistM = 0;       // live remaining distance to destination along route
+const CONTINUE_DIST_M = 300;    // show "Continue on road" when further than this from next step
+const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than this
+
+// ─── Follow-mode state ──────────────────────────────────────────────
+// Always auto-recenter on the GPS position during navigation.
+// If the user manually pans away, stop following and show recenter button.
+let _following = true;         // true = auto-follow, false = user panned away
+let _programmaticMove = false; // guard to distinguish our easeTo from user drag
+
+// ─── Speed limit data ───────────────────────────────────────────────
+let _maxspeeds = [];           // per-segment speed limit array from OSRM
+let _currentSpeedLimit = 0;    // km/h, 0 = unknown
+
 // ─── Movement-guard state ────────────────────────────────────────────
 // The core anti-cascade mechanism. A step can ONLY advance after the user
 // has physically moved _minMoveDist() metres from where the last step fired
@@ -47,6 +76,46 @@ let lastGpsProcessTime = 0;
 let _lastTriggerPos = null;  // {lat, lng} — position where last step fired (set to GPS pos at nav start)
 let _stepFired = [];         // boolean[] — once a step fires it never fires again
 
+// ─── Approach-tracking state ─────────────────────────────────────────
+// Entering the trigger radius doesn't immediately fire the step.
+// Instead we track the closest distance reached. The step fires when:
+//   1. Distance is within _approachFireM() (speed-scaled "very close"), OR
+//   2. Distance starts increasing (user passed the closest point)
+// This prevents premature step advancement at ALL speeds — at highway
+// speed the fire radius grows to account for GPS tick spacing, while
+// at walking speed it stays tight for maximum precision.
+const APPROACH_FIRE_MIN_M = 2;  // metres — floor (very slow walk / stationary)
+const APPROACH_FIRE_MAX_M = 30; // metres — cap to avoid absurd values
+let _approachIdx = -1;          // step index currently being approached (-1 = none)
+let _approachMinDist = Infinity; // closest distance seen while approaching
+
+/**
+ * Speed-scaled fire distance. Uses an exponential time-factor that gives
+ * ~3 seconds of lead time at walking speed (tight, precise) and decays
+ * to ~0.8 seconds at highway speed (accounts for GPS tick spacing).
+ *
+ * Vehicles naturally decelerate before turns, so the live speed drops
+ * and the fire distance shrinks automatically — no special braking logic.
+ *
+ * | Speed       | Time factor | Fire dist |
+ * |-------------|-------------|----------|
+ * | Walk 3 km/h | 2.6s        | ~2m      |
+ * | Walk 5 km/h | 2.4s        | ~3m      |
+ * | Cycle 15    | 1.6s        | ~7m      |
+ * | Cycle 20    | 1.4s        | ~8m      |
+ * | Drive 50    | 0.84s       | ~12m     |
+ * | Drive 80    | 0.81s       | ~18m     |
+ * | Drive 120   | 0.80s       | ~27m     |
+ *
+ * @returns {number} metres
+ */
+function _approachFireM() {
+  const speedMs = _speedKmh / 3.6;
+  // Time factor: ~3s at walking speed, decays to ~0.8s at driving speed.
+  const timeFactor = 0.8 + 2.2 * Math.exp(-_speedKmh / 15);
+  return Math.max(APPROACH_FIRE_MIN_M, Math.min(APPROACH_FIRE_MAX_M, speedMs * timeFactor));
+}
+
 // ─── DOM refs ───────────────────────────────────────────────────────
 const hud = document.getElementById("nav-hud");
 const hudManeuver = document.getElementById("nav-maneuver-icon");
@@ -54,9 +123,13 @@ const hudInstruction = document.getElementById("nav-instruction");
 const hudNextInfo = document.getElementById("nav-next-info");
 const hudDistChip = document.getElementById("nav-dist-chip");
 const hudEtaChip = document.getElementById("nav-eta-chip");
+const hudTurnChip = document.getElementById("nav-turn-chip");
 const hudProgress = document.getElementById("nav-progress-fill");
+const hudSpeedEl = document.getElementById("nav-speed");
+const hudSpeedVal = document.getElementById("nav-speed-val");
 const hudExitBtn = document.getElementById("nav-exit");
 const hudBody = document.querySelector(".nav-hud-body");
+const recenterBtn = document.getElementById("nav-recenter");
 const snackbar = document.getElementById("route-snackbar");
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -75,7 +148,7 @@ function snapToRoute(lat, lng) {
     const [ax, ay] = navRouteCoords[i];
     const [bx, by] = navRouteCoords[i + 1];
     const p = _nearestPointOnSegment(lng, lat, ax, ay, bx, by);
-    const d = haversineDistance(lat, lng, p.y, p.x);
+    const d = _hDistM(lat, lng, p.y, p.x);
     if (d < minDist) {
       minDist = d;
       bestIdx = i;
@@ -87,7 +160,7 @@ function snapToRoute(lat, lng) {
   const segStart = navRouteCoords[bestIdx];
   const segEnd = navRouteCoords[bestIdx + 1] || segStart;
   const segLen = segStart && segEnd
-    ? haversineDistance(segStart[1], segStart[0], segEnd[1], segEnd[0])
+    ? _hDistM(segStart[1], segStart[0], segEnd[1], segEnd[0])
     : 0;
   const progressM = (navRouteProgress[bestIdx] || 0) + segLen * bestT;
   return { dist: minDist, segIdx: bestIdx, lng: bestLng, lat: bestLat, t: bestT, progressM };
@@ -96,7 +169,7 @@ function snapToRoute(lat, lng) {
 function distAlongRoute(fromIdx) {
   let d = 0;
   for (let i = fromIdx; i < navRouteCoords.length - 1; i++) {
-    d += haversineDistance(navRouteCoords[i][1], navRouteCoords[i][0],
+    d += _hDistM(navRouteCoords[i][1], navRouteCoords[i][0],
       navRouteCoords[i + 1][1], navRouteCoords[i + 1][0]);
   }
   return d;
@@ -108,7 +181,7 @@ function _buildRouteProgress() {
 
   navRouteProgress[0] = 0;
   for (let i = 1; i < navRouteCoords.length; i++) {
-    navRouteProgress[i] = navRouteProgress[i - 1] + haversineDistance(
+    navRouteProgress[i] = navRouteProgress[i - 1] + _hDistM(
       navRouteCoords[i - 1][1], navRouteCoords[i - 1][0],
       navRouteCoords[i][1], navRouteCoords[i][0],
     );
@@ -139,6 +212,14 @@ function _triggerRadius(step) {
   if (step.type === "transit-stop")  return 100;
   if (step.type === "transit-board" || step.type === "transit-alight") return 60;
   if (step.type === "transit-walk")  return 35;
+  // Roundabout steps are spatially compact — use a much tighter radius.
+  // OSRM places the "roundabout" maneuver at the entry point and "exit
+  // roundabout" at the exit point; these can be 10–30 m apart on small
+  // roundabouts. A wide radius triggers both at once.
+  const mt = step.maneuverType || "";
+  if (mt === "roundabout" || mt === "rotary" || mt === "exit roundabout" || mt === "exit rotary" || mt === "roundabout turn") {
+    return navMode === "walk" ? 12 : 15;
+  }
   if (navMode === "walk")  return 25;
   if (navMode === "cycle") return 35;
   return 50; // drive
@@ -162,7 +243,7 @@ function _precomputeStepRemaining() {
 function _findNearestCoordIdx(lat, lng) {
   let best = 0, minD = Infinity;
   for (let ci = 0; ci < navRouteCoords.length; ci++) {
-    const d = haversineDistance(lat, lng, navRouteCoords[ci][1], navRouteCoords[ci][0]);
+    const d = _hDistM(lat, lng, navRouteCoords[ci][1], navRouteCoords[ci][0]);
     if (d < minD) { minD = d; best = ci; }
   }
   return best;
@@ -193,6 +274,7 @@ function buildDirectStepsFromData(mode) {
       isArrive: raw.isLast || i === rawSteps.length - 1,
       maneuverType: raw.maneuverType || "",
       maneuverMod: raw.maneuverMod || "",
+      name: raw.name || "",
     };
   });
 }
@@ -331,16 +413,6 @@ function renderHUD() {
   // Instruction text
   if (hudInstruction) hudInstruction.textContent = step.instruction;
 
-  // Distance chip — precomputed distance of this step (to next maneuver)
-  if (hudDistChip) {
-    if (step.distance > 0) {
-      hudDistChip.textContent = fmtDist(step.distance);
-      hudDistChip.classList.remove("hide");
-    } else {
-      hudDistChip.classList.add("hide");
-    }
-  }
-
   // Next step preview
   if (hudNextInfo) {
     if (step.isArrive) {
@@ -349,8 +421,7 @@ function renderHUD() {
     } else {
       const peek = navSteps[navStepIdx + 1];
       if (peek && peek.instruction) {
-        const prefix = peek.distance > 0 ? `Then in ${fmtDist(peek.distance)}: ` : "Then: ";
-        hudNextInfo.textContent = prefix + peek.instruction;
+        hudNextInfo.textContent = `Then: ${peek.instruction}`;
         hudNextInfo.classList.remove("hide");
       } else {
         hudNextInfo.textContent = "";
@@ -359,15 +430,50 @@ function renderHUD() {
     }
   }
 
-  // ETA chip
-  updateETADisplay();
+  // Row 2 chips — updated every render + every live tick
+  _updateChips();
 
   // Progress bar
   const progress = navSteps.length > 1 ? (navStepIdx / (navSteps.length - 1)) * 100 : 0;
   if (hudProgress) hudProgress.style.width = `${progress}%`;
 }
 
-function updateETADisplay() {
+/**
+ * Update the three row-2 chips: distance to next turn, distance to dest, ETA.
+ * Called on step change (renderHUD) and on every GPS tick (_updateLiveHUD).
+ */
+function _updateChips() {
+  const step = navSteps[navStepIdx];
+  if (!step) return;
+
+  // Chip 1: Distance to next turn (live countdown) with maneuver icon
+  if (hudTurnChip) {
+    const nextStep = navSteps[navStepIdx + 1];
+    if (_liveDistToNextM > 0 && !step.isArrive && nextStep) {
+      const icon = nextStep.iconHtml || "↱";
+      hudTurnChip.innerHTML = `<span class="nav-chip-icon">${icon}</span> ${esc(fmtDist(_liveDistToNextM))}`;
+      hudTurnChip.classList.remove("hide");
+    } else {
+      hudTurnChip.classList.add("hide");
+    }
+  }
+
+  // Chip 2: Distance remaining to destination (live from route progress)
+  if (hudDistChip) {
+    const remainDistM = _liveRemainDistM > 0 ? _liveRemainDistM : (step.remainDist || 0) + (step.distance || 0);
+    if (remainDistM > 0) {
+      hudDistChip.textContent = fmtDist(remainDistM);
+      hudDistChip.classList.remove("hide");
+    } else {
+      hudDistChip.classList.add("hide");
+    }
+  }
+
+  // Chip 3: ETA
+  _updateETAChip();
+}
+
+function _updateETAChip() {
   if (!hudEtaChip) return;
   const step = navSteps[navStepIdx];
   if (!step) return;
@@ -375,13 +481,12 @@ function updateETADisplay() {
   if (navMode === "transit" && navItinerary) {
     const endTime = new Date(navItinerary.end);
     const remainMin = Math.max(0, Math.round((endTime - now) / 60000));
-    hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(endTime)} · ${remainMin} min` : "Arriving";
+    hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(endTime)}` : "Arriving";
   } else {
-    // Precomputed remaining duration from this step onward
     const remainSec = (step.remainDur || 0) + (step.duration || 0);
     const remainMin = Math.ceil(remainSec / 60);
     const eta = new Date(now.getTime() + remainSec * 1000);
-    hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(eta)} · ${remainMin} min` : "Arriving";
+    hudEtaChip.textContent = remainMin > 0 ? `ETA ${fmtTime(eta)}` : "Arriving";
   }
 }
 
@@ -424,6 +529,7 @@ export function startNavigation() {
     }
     _buildRouteProgress();
     navSteps = buildDirectStepsFromData(navMode);
+    _maxspeeds = dir.directMaxspeeds || [];
     navTotalDist = dir.directInfo?.distKm ? dir.directInfo.distKm * 1000 : 0;
     navTotalDur = dir.directInfo?.durMin ? dir.directInfo.durMin * 60 : 0;
   }
@@ -444,6 +550,16 @@ export function startNavigation() {
     ? { lat: locNow.lat, lng: locNow.lng }
     : null;
   _stepFired = new Array(navSteps.length).fill(false);
+  _approachIdx = -1;
+  _approachMinDist = Infinity;
+  _prevSpeedPos = null;
+  _speedKmh = 0;
+  _speedHistory = [];
+  _liveDistToNextM = 0;
+  _liveRemainDistM = 0;
+  _following = true;
+  _programmaticMove = false;
+  if (recenterBtn) recenterBtn.classList.add("hide");
 
   // Hide snackbar, show HUD
   if (snackbar) snackbar.classList.add("hide");
@@ -458,7 +574,9 @@ export function startNavigation() {
   // Pan to the first step so the user sees where to go
   const firstStep = navSteps[0];
   if (firstStep) {
+    _programmaticMove = true;
     map.easeTo({ center: [firstStep.lng, firstStep.lat], duration: 600, zoom: Math.max(map.getZoom(), 16) });
+    map.once("moveend", () => { _programmaticMove = false; });
   }
 
   // Listen for GPS updates
@@ -469,6 +587,9 @@ export function resumeNavigation() {
   if (!navPaused || !navSteps.length) return false;
   navPaused = false;
   navActive = true;
+  _following = true;
+  _programmaticMove = false;
+  if (recenterBtn) recenterBtn.classList.add("hide");
 
   if (snackbar) snackbar.classList.add("hide");
   if (hud) {
@@ -482,7 +603,9 @@ export function resumeNavigation() {
   // Pan back to current step
   const step = navSteps[navStepIdx];
   if (step) {
+    _programmaticMove = true;
     map.easeTo({ center: [step.lng, step.lat], duration: 600, zoom: Math.max(map.getZoom(), 16) });
+    map.once("moveend", () => { _programmaticMove = false; });
   }
 
   window.addEventListener("hf:current-location-updated", _onLocationUpdate);
@@ -498,6 +621,8 @@ export function pauseNavigation() {
     hud.classList.add("hide");
     hud.classList.remove("nav-active");
   }
+  if (hudSpeedEl) hudSpeedEl.classList.add("hide");
+  if (recenterBtn) recenterBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
 }
@@ -512,11 +637,24 @@ export function stopNavigation() {
   navItinerary = null;
   _lastTriggerPos = null;
   _stepFired = [];
+  _approachIdx = -1;
+  _approachMinDist = Infinity;
+  _prevSpeedPos = null;
+  _speedKmh = 0;
+  _speedHistory = [];
+  _liveDistToNextM = 0;
+  _liveRemainDistM = 0;
+  _maxspeeds = [];
+  _currentSpeedLimit = 0;
+  _following = true;
+  _programmaticMove = false;
 
   if (hud) {
     hud.classList.add("hide");
     hud.classList.remove("nav-active");
   }
+  if (hudSpeedEl) hudSpeedEl.classList.add("hide");
+  if (recenterBtn) recenterBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
 
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
@@ -562,48 +700,329 @@ export function processPosition(lat, lng, accuracy = null) {
 
   // Attempt to advance to the next step
   const prevIdx = navStepIdx;
-  _advanceStep(lat, lng);
+  _advanceStep(lat, lng, snap.progressM);
+
+  // Compute live distance to next maneuver point
+  const nextForDist = navSteps[navStepIdx + 1];
+  _liveDistToNextM = nextForDist ? _hDistM(lat, lng, nextForDist.lat, nextForDist.lng) : 0;
+
+  // Compute live remaining distance along route
+  const totalRouteM = navRouteProgress.length ? navRouteProgress[navRouteProgress.length - 1] : 0;
+  _liveRemainDistM = Math.max(0, totalRouteM - snap.progressM);
+
+  // Look up speed limit for this route segment
+  _currentSpeedLimit = _lookupSpeedLimit(snap.segIdx);
 
   // Re-render HUD only when the step changes
   if (navStepIdx !== prevIdx) renderHUD();
 
-  // Pan map to follow user
+  // Lightweight live update — distance countdown + continue/approach instructions
+  _updateLiveHUD();
+
+  // Update speed from consecutive GPS samples
+  _updateSpeed(lat, lng, now);
+
+  // Smooth follow: keep GPS position centered without animation overlap
+  _smartFollow(lng, lat);
+}
+
+// ─── Smooth follow mode ─────────────────────────────────────────────
+
+function _smartFollow(lng, lat) {
+  if (!_following) {
+    if (recenterBtn) recenterBtn.classList.remove("hide");
+    return;
+  }
+
+  // Smooth animated recenter on every GPS tick
+  _programmaticMove = true;
   map.easeTo({ center: [lng, lat], duration: 600 });
+  map.once("moveend", () => { _programmaticMove = false; });
+}
+
+function _onUserDrag() {
+  if (!navActive || _programmaticMove) return;
+  _following = false;
+  if (recenterBtn) recenterBtn.classList.remove("hide");
+}
+
+function _recenter() {
+  _following = true;
+  if (recenterBtn) recenterBtn.classList.add("hide");
+
+  // Immediately center on latest known position
+  const loc = getCurrentLocationState();
+  if (loc.active && loc.lat !== null) {
+    _programmaticMove = true;
+    map.easeTo({ center: [loc.lng, loc.lat], duration: 400 });
+    map.once("moveend", () => { _programmaticMove = false; });
+  }
+}
+
+// ─── Speedometer ────────────────────────────────────────────────────
+
+function _medianOfArray(arr) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function _updateSpeed(lat, lng, now) {
+  if (_prevSpeedPos) {
+    const dtSec = (now - _prevSpeedPos.time) / 1000;
+    if (dtSec > 0.5) { // need at least 0.5s between samples for accuracy
+      const distM = _hDistM(lat, lng, _prevSpeedPos.lat, _prevSpeedPos.lng);
+      if (distM >= SPEED_MIN_DIST_M) {
+        const rawKmh = (distM / dtSec) * 3.6;
+        // Discard physically impossible spikes (GPS teleport)
+        if (rawKmh <= SPEED_MAX_REASONABLE) {
+          // Push into history buffer for median filtering
+          _speedHistory.push(rawKmh);
+          if (_speedHistory.length > SPEED_HISTORY_SIZE) _speedHistory.shift();
+          // Use median to reject outliers, then smooth
+          const medianKmh = _medianOfArray(_speedHistory);
+          _speedKmh = _speedKmh === 0 ? medianKmh : _speedKmh * 0.3 + medianKmh * 0.7;
+        }
+        _prevSpeedPos = { lat, lng, time: now };
+      }
+      // If distance is tiny (noise/stationary), decay speed toward 0
+      else if (dtSec > 3) {
+        _speedKmh *= 0.4;
+        if (_speedKmh < 2) _speedKmh = 0;
+        _speedHistory = [];
+        _prevSpeedPos = { lat, lng, time: now };
+      }
+    }
+  } else {
+    _prevSpeedPos = { lat, lng, time: now };
+  }
+  _renderSpeedChip();
+}
+
+function _renderSpeedChip() {
+  if (!hudSpeedEl || !hudSpeedVal) return;
+  const display = Math.round(_speedKmh);
+  hudSpeedVal.textContent = display;
+  if (display > 0) {
+    hudSpeedEl.classList.remove("hide");
+  } else {
+    hudSpeedEl.classList.add("hide");
+  }
+  // Color: green under limit, red over limit, default when unknown
+  if (_currentSpeedLimit > 0) {
+    hudSpeedVal.style.color = _speedKmh > _currentSpeedLimit ? "var(--danger)" : "var(--success)";
+  } else {
+    hudSpeedVal.style.color = "";
+  }
+}
+
+/**
+ * Look up the speed limit for the route segment nearest to the given coord index.
+ * OSRM maxspeed annotations align with route coordinate segments (N-1 entries for N coords).
+ */
+function _lookupSpeedLimit(coordIdx) {
+  if (!_maxspeeds.length) return 0;
+  const segIdx = Math.max(0, Math.min(coordIdx, _maxspeeds.length - 1));
+  const seg = _maxspeeds[segIdx];
+  if (!seg || seg.none) return 0;
+  // OSRM returns { speed: number, unit: "km/h" | "mph" }
+  let kmh = seg.speed || 0;
+  if (seg.unit === "mph") kmh = Math.round(kmh * 1.60934);
+  return kmh;
+}
+
+// ─── Live HUD updates (continue / approach) ─────────────────────────
+// Maneuver types that represent a completed action — after executing these,
+// the user is on a straight road segment and benefits from "Continue on X".
+const _COMPLETED_MANEUVERS = new Set([
+  "turn", "fork", "merge", "on ramp", "off ramp", "end of road",
+  "exit roundabout", "exit rotary", "roundabout turn", "use lane",
+]);
+
+/**
+ * Lightweight per-tick HUD update — live distance countdown, chips,
+ * continue/approach instruction overrides, and speed limit lookup.
+ * Called every GPS tick (after renderHUD on step change).
+ */
+function _updateLiveHUD() {
+  if (!navActive || !hud || !navSteps.length) return;
+  const step = navSteps[navStepIdx];
+  const next = navSteps[navStepIdx + 1];
+
+  // Always update chips (they show live distance data)
+  _updateChips();
+
+  if (!step || step.isArrive || !next) return;
+
+  // Only override instruction for direct (non-transit) steps
+  if (step.type !== "direct") return;
+
+  // Approaching next maneuver — preview the upcoming turn
+  if (_liveDistToNextM > 0 && _liveDistToNextM <= APPROACH_DIST_M) {
+    if (hudInstruction) hudInstruction.textContent = next.instruction;
+    if (hudManeuver) hudManeuver.innerHTML = next.iconHtml || "";
+    if (hudNextInfo) {
+      const afterNext = navSteps[navStepIdx + 2];
+      if (next.isArrive) {
+        hudNextInfo.textContent = "Arriving at destination";
+        hudNextInfo.classList.remove("hide");
+      } else if (afterNext && afterNext.instruction) {
+        hudNextInfo.textContent = `Then: ${afterNext.instruction}`;
+        hudNextInfo.classList.remove("hide");
+      } else {
+        hudNextInfo.textContent = "";
+        hudNextInfo.classList.add("hide");
+      }
+    }
+    return;
+  }
+
+  // Long segment — show "Continue on [road]" for completed maneuvers
+  // or append distance to depart/continue/new name steps
+  if (_liveDistToNextM > CONTINUE_DIST_M) {
+    const road = step.name || "";
+    const mt = step.maneuverType;
+    if (_COMPLETED_MANEUVERS.has(mt)) {
+      if (hudInstruction) {
+        hudInstruction.textContent = road
+          ? `Continue on ${road}`
+          : `Continue straight`;
+      }
+      if (hudManeuver) {
+        hudManeuver.innerHTML = maneuverIconSvg("new name", "straight");
+      }
+    }
+  }
 }
 
 // ─── Step advancement ────────────────────────────────────────────────
-// Scans forward from the current step to find the FURTHEST step the user
-// is within trigger range of. This handles cases where the user skips past
-// a maneuver point (e.g. long platform, GPS drift, fast driving) — if
-// you're at step 5's trigger zone, you've clearly completed steps 2-4.
+// Scans forward from the current step to find the step the user has reached.
+//
+// For driving/cycling, entering the trigger radius does NOT immediately fire.
+// Instead, the approach-tracking algorithm waits until:
+//   a) The user is within APPROACH_FIRE_M (8m) of the maneuver point, OR
+//   b) The distance starts increasing (user passed the closest point).
+// This prevents premature step changes on highway exits where the next
+// maneuver is nearby — seeing the wrong instruction at speed is dangerous.
+//
+// Walking mode fires immediately on trigger-radius entry (no approach needed).
+//
+// Additional detection methods:
+// - ROUTE PROGRESS catch-up for missed maneuvers.
+// - DIVERGENCE detection for turns never entered.
 //
 // Guards:
-// 1. MOVEMENT — must have moved _minMoveDist() from last trigger position
-//    to prevent GPS noise from advancing steps while stationary.
-// 2. PROXIMITY — must be within _triggerRadius() of at least one future step.
-// 3. ONCE-FIRED — _stepFired[] prevents any step from re-triggering.
+// - MOVEMENT — must have moved _minMoveDist() from last trigger position.
+// - ONCE-FIRED — _stepFired[] prevents any step from re-triggering.
 
-function _advanceStep(lat, lng) {
+function _advanceStep(lat, lng, snapProgressM) {
   if (navStepIdx >= navSteps.length - 1) return;
 
   // ── Movement guard — must have physically moved ──────────────────
   if (_lastTriggerPos !== null) {
-    const moved = haversineDistance(lat, lng, _lastTriggerPos.lat, _lastTriggerPos.lng);
+    const moved = _hDistM(lat, lng, _lastTriggerPos.lat, _lastTriggerPos.lng);
     if (moved < _minMoveDist()) return;
   }
 
-  // ── Scan ahead: find the furthest reachable step ─────────────────
-  // Look up to 5 steps ahead (enough for tight maneuver clusters or
-  // skipped platform stops) and pick the furthest one within range.
   const scanLimit = Math.min(navStepIdx + 6, navSteps.length);
   let bestIdx = -1;
+  const fireM = _approachFireM();
+  // Hysteresis scales with speed: min 2m (walk), grows at higher speeds
+  // to absorb larger GPS jitter when moving fast.
+  const hysteresisM = Math.max(2, fireM * 0.4);
 
-  for (let i = navStepIdx + 1; i < scanLimit; i++) {
-    const step = navSteps[i];
-    if (!step) break;
-    const dist = haversineDistance(lat, lng, step.lat, step.lng);
-    if (dist <= _triggerRadius(step)) {
-      bestIdx = i; // keep scanning — we want the furthest match
+  // ── Approach-then-fire proximity scan (all modes) ────────────────
+  // Check the step we're currently approaching (if any)
+  if (_approachIdx > navStepIdx && _approachIdx < scanLimit) {
+    const step = navSteps[_approachIdx];
+    if (step) {
+      const dist = _hDistM(lat, lng, step.lat, step.lng);
+      if (dist <= fireM) {
+        // Within speed-scaled fire distance — fire immediately
+        bestIdx = _approachIdx;
+        _approachIdx = -1;
+        _approachMinDist = Infinity;
+      } else if (dist > _approachMinDist + hysteresisM) {
+        // Distance is increasing — user has passed the closest point.
+        // Hysteresis prevents GPS jitter from triggering false pass-through.
+        bestIdx = _approachIdx;
+        _approachIdx = -1;
+        _approachMinDist = Infinity;
+      } else {
+        // Still approaching — update min distance
+        if (dist < _approachMinDist) _approachMinDist = dist;
+      }
+    }
+  }
+
+  // If no approach in progress, scan for new entries into trigger radius
+  if (bestIdx === -1 && _approachIdx === -1) {
+    for (let i = navStepIdx + 1; i < scanLimit; i++) {
+      const step = navSteps[i];
+      if (!step) break;
+      const dist = _hDistM(lat, lng, step.lat, step.lng);
+      if (dist <= _triggerRadius(step)) {
+        if (dist <= fireM) {
+          bestIdx = i; // already within fire distance — fire
+        } else {
+          // Start approach tracking for this step
+          _approachIdx = i;
+          _approachMinDist = dist;
+        }
+        break; // only track one approach at a time
+      }
+    }
+  }
+
+  // ── Route-progress catch-up ──────────────────────────────────────
+  // If proximity didn't match (user blew past the trigger zone between
+  // GPS samples), check if the user's route progress has moved beyond
+  // the next step's route position. This means they've already crossed
+  // that maneuver point — mark it as passed and advance to the step
+  // AFTER it so the HUD shows the upcoming instruction, not the one
+  // the user already completed.
+  if (bestIdx === -1 && snapProgressM > 0) {
+    let lastPassedIdx = -1;
+    for (let i = navStepIdx + 1; i < scanLimit; i++) {
+      const step = navSteps[i];
+      if (!step || !Number.isFinite(step.routeProgressM)) break;
+      if (snapProgressM >= step.routeProgressM) {
+        lastPassedIdx = i; // user is past this step along the route
+      } else {
+        break; // steps are ordered by route progress — stop scanning
+      }
+    }
+    // Advance to the step AFTER the last one we've passed, so the HUD
+    // shows the next upcoming instruction. If the passed step is the
+    // last step, just show it (arrival).
+    if (lastPassedIdx !== -1) {
+      if (lastPassedIdx < navSteps.length - 1) {
+        bestIdx = lastPassedIdx + 1;
+      } else {
+        bestIdx = lastPassedIdx; // final step — show arrival
+      }
+    }
+  }
+
+  // ── Divergence-based early advance ────────────────────────────────
+  // If still no match: check if the user is moving AWAY from the
+  // next step and TOWARD the step after it. This means they've already
+  // passed the next step even though they never entered its trigger
+  // radius. Safety: only fire when distance to next+1 is < distance to
+  // next AND the user is closer to next+1 than its trigger radius × 3
+  // (generous but bounded).
+  if (bestIdx === -1) {
+    const nextStep = navSteps[navStepIdx + 1];
+    const afterStep = navSteps[navStepIdx + 2];
+    if (nextStep && afterStep) {
+      const distToNext = _hDistM(lat, lng, nextStep.lat, nextStep.lng);
+      const distToAfter = _hDistM(lat, lng, afterStep.lat, afterStep.lng);
+      // User is closer to the step-after-next than to the next step,
+      // AND within a reasonable distance of it (not miles away)
+      if (distToAfter < distToNext && distToAfter < _triggerRadius(afterStep) * 3) {
+        // Skip the missed step, show the one we're approaching
+        bestIdx = navStepIdx + 2;
+      }
     }
   }
 
@@ -616,6 +1035,9 @@ function _advanceStep(lat, lng) {
 
   navStepIdx = bestIdx;
   _lastTriggerPos = { lat, lng };
+  // Reset approach tracking — the fired step (or any in-flight approach) is consumed
+  _approachIdx = -1;
+  _approachMinDist = Infinity;
 }
 
 async function _triggerReroute(lat, lng) {
@@ -656,7 +1078,9 @@ export function simNextStep() {
     const step = navSteps[navStepIdx];
     if (step) {
       _lastTriggerPos = { lat: step.lat, lng: step.lng };
+      _programmaticMove = true;
       map.easeTo({ center: [step.lng, step.lat], duration: 600, zoom: Math.max(map.getZoom(), 16) });
+      map.once("moveend", () => { _programmaticMove = false; });
     }
     renderHUD();
   } else {
@@ -687,6 +1111,15 @@ if (hudBody) {
     openDirPanel();
   });
 }
+
+if (recenterBtn) {
+  recenterBtn.addEventListener("click", _recenter);
+}
+
+// Detect user-initiated map panning during navigation.
+// MapLibre fires "dragstart" on user touch/mouse drag. Our programmatic
+// easeTo doesn't fire "dragstart", so this reliably distinguishes the two.
+map.on("dragstart", _onUserDrag);
 
 // Register hooks with directions.js to avoid circular imports
 setNavHooks({

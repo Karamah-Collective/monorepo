@@ -1579,7 +1579,7 @@ html.dark-mode body {
   gap: var(--sp-1);
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-xs);
-  font-size: var(--txt-xs);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-medium);
   letter-spacing: var(--ls-wide);
   line-height: 1;
@@ -1592,6 +1592,18 @@ html.dark-mode body {
 .nav-chip-eta {
   background: var(--surface-2);
   color: var(--text-2);
+}
+.nav-chip-turn {
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning);
+}
+.nav-chip-icon {
+  display: inline-flex;
+  align-items: center;
+}
+.nav-chip-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .nav-route-chip {
@@ -1650,6 +1662,10 @@ html.dark-mode .nav-chip-eta {
   background: #2c2c2e;
   color: #adadad;
 }
+html.dark-mode .nav-chip-turn {
+  background: rgba(255, 159, 10, 0.15);
+  color: #ffb340;
+}
 html.dark-mode .nav-ctrl-btn {
   background: #2c2c2e;
   color: #adadad;
@@ -1660,4 +1676,68 @@ html.dark-mode .nav-ctrl-btn:hover {
 }
 html.dark-mode .nav-progress-bar {
   background: #2c2c2e;
+}
+
+/* ─── Navigation Speedometer ────────────────────────────────────────────────── */
+.nav-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+.nav-speed-val {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  letter-spacing: var(--ls-tight);
+}
+.nav-speed-unit {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  letter-spacing: var(--ls-wide);
+  margin-top: 1px;
+}
+html.dark-mode .nav-speed {
+  background: #000000;
+  border-color: #1c1c1e;
+}
+
+/* ─── Navigation Recenter Button ────────────────────────────────────────────── */
+.nav-recenter {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: transform var(--t-fast), opacity var(--t-fast);
+}
+@media (hover: hover) {
+  .nav-recenter:hover {
+    transform: scale(1.08);
+  }
+}
+.nav-recenter:active {
+  transform: scale(0.95);
+}
+html.dark-mode .nav-recenter {
+  background: #000000;
+  border-color: #1c1c1e;
+  color: var(--accent);
 }

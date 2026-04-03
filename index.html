@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260401-2" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260404" />
   </head>
   <body>
     <div id="app">
@@ -1166,12 +1166,26 @@
           </div>
           <div class="nav-hud-row2">
             <div id="nav-tags" class="nav-tags">
+              <span id="nav-turn-chip" class="nav-chip nav-chip-turn"></span>
               <span id="nav-dist-chip" class="nav-chip nav-chip-dist"></span>
               <span id="nav-eta-chip" class="nav-chip nav-chip-eta"></span>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- ─── Navigation Speedometer ─── -->
+      <div id="nav-speed" class="nav-speed hide" aria-label="Current speed">
+        <span id="nav-speed-val" class="nav-speed-val">0</span>
+        <span class="nav-speed-unit">km/h</span>
+      </div>
+
+      <!-- ─── Navigation Recenter Button ─── -->
+      <button id="nav-recenter" class="nav-recenter hide" aria-label="Re-center on location" title="Re-center on location">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+        </svg>
+      </button>
 
       <!-- ─── Route Snackbar ─── -->
       <div id="route-snackbar" class="hide">

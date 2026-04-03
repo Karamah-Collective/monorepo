@@ -4343,21 +4343,61 @@ body.dark-mode .fallback-notice {
   min-width: 0;
 }
 
-/* Mobile: hide all controls during navigation for full-screen map */
+/* Hide non-essential controls during navigation for clean map */
+body.nav-mode #search-card,
+body.nav-mode #tools-toggle,
+body.nav-mode .tool-pill,
+body.nav-mode #zoom-pill,
+body.nav-mode #prayer-snack,
+body.nav-mode #eid-pill,
+body.nav-mode #promos-pill,
+body.nav-mode #tab-bar,
+body.nav-mode #route-snackbar,
+body.nav-mode #contact-pill-wrap,
+body.nav-mode #style-picker {
+  display: none !important;
+}
+
+/* Mobile: adjust nav element positions without tab bar */
 @media (max-width: 768px) {
-  body.nav-mode #search-card,
-  body.nav-mode #tools-toggle,
-  body.nav-mode .tool-pill,
-  body.nav-mode #zoom-pill,
-  body.nav-mode #prayer-snack,
-  body.nav-mode #eid-pill,
-  body.nav-mode #promos-pill,
-  body.nav-mode #tab-bar,
-  body.nav-mode #route-snackbar {
-    display: none !important;
-  }
   body.nav-mode #nav-hud {
     bottom: calc(var(--safe-b) + 12px);
+  }
+  body.nav-mode .nav-speed {
+    bottom: calc(var(--safe-b) + 126px);
+  }
+  body.nav-mode .nav-recenter {
+    bottom: calc(var(--safe-b) + 126px);
+  }
+}
+
+/* ─── Navigation Speedometer layout ──────────────────────────────────────── */
+.nav-speed {
+  position: absolute;
+  z-index: var(--z-nav-hud);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 130px);
+  left: var(--sp-4);
+}
+.nav-speed.hide { display: none; }
+
+/* ─── Navigation Recenter Button layout ──────────────────────────────────── */
+.nav-recenter {
+  position: absolute;
+  z-index: var(--z-nav-hud);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 130px);
+  right: var(--sp-4);
+}
+.nav-recenter.hide { display: none; }
+
+/* Desktop: position speed/recenter flanking the HUD */
+@media (min-width: 769px) {
+  .nav-speed {
+    bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
+    left: calc(50% - 260px);
+  }
+  .nav-recenter {
+    bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
+    right: calc(50% - 260px);
   }
 }
 
@@ -5180,6 +5220,35 @@ body.dark-mode .loc-ring {
     transform: translate(-50%, -50%) scale(2);
     opacity: 0;
   }
+}
+
+/* ─── GPS Simulation Badge ─────────────────────────────────────────────────── */
+.gps-sim-badge {
+  position: fixed;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--danger);
+  color: var(--on-accent);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: gpsSimPulse 2s ease-in-out infinite;
+}
+.gps-sim-badge svg { flex-shrink: 0; }
+
+@keyframes gpsSimPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .maplibregl-popup-content {

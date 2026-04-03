@@ -37,6 +37,7 @@ export const dir = {
   routeLayers: [], routeSources: [], usingFallback: false,
   directRouteCoords: null, // [lng,lat][] for direct routes — used by navigation
   directSteps: null,       // raw OSRM/OTP steps — used by navigation
+  directMaxspeeds: null,   // OSRM per-segment maxspeed annotations
 };
 
 // --- DOM refs ---
@@ -1611,6 +1612,7 @@ async function _dtDirectRoute(mode) {
       instruction: _otpStepInstruction(step, i === 0, i === allSteps.length - 1),
       iconHtml: _otpManeuverIcon(step, i === 0, i === allSteps.length - 1),
       distance: step.distance || 0,
+      name: (step.streetName && step.streetName !== "road" && step.streetName !== "Track") ? step.streetName : "",
       lat: step.lat, lng: step.lon,
       isFirst: i === 0, isLast: i === allSteps.length - 1,
     })),
@@ -1629,6 +1631,8 @@ async function _osrmDirectRoute(mode) {
   const json = await res.json();
   if (json.code !== "Ok" || !json.routes?.length) throw new Error("No route found");
   const route = json.routes[0];
+  // Extract per-segment maxspeed annotations if available (not all OSRM servers support this)
+  const maxspeeds = route.legs?.flatMap(leg => leg.annotation?.maxspeed || []) || [];
   const allSteps = route.legs.flatMap(leg => leg.steps || []);
   const altColor = OSRM_ALT_COLORS[mode];
   let segIdx = 0;
@@ -1645,7 +1649,7 @@ async function _osrmDirectRoute(mode) {
   }).join("");
   return {
     coords: route.geometry.coordinates, duration: route.duration, distance: route.distance, stepsHTML,
-    stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData,
+    stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData, maxspeeds,
     rawSteps: allSteps.map((step, si) => ({
       source: "osrm",
       instruction: stepInstruction(step),
@@ -1656,6 +1660,7 @@ async function _osrmDirectRoute(mode) {
       lng: step.maneuver.location[0],
       maneuverType: step.maneuver.type,
       maneuverMod: step.maneuver.modifier || "",
+      name: step.name || "",
       geometry: step.geometry,
       isFirst: si === 0, isLast: si === allSteps.length - 1,
     })),
@@ -1707,6 +1712,7 @@ export async function findRoutesDirect(mode) {
   // Store for navigation module (must be after clearRoute which wipes these)
   dir.directRouteCoords = coords;
   dir.directSteps = data.rawSteps || null;
+  dir.directMaxspeeds = data.maxspeeds || null;
   dir.activeIdx = 0;
   const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
   dirEmpty.classList.add("hide");
@@ -1915,7 +1921,7 @@ export function clearRoute() {
   dir.routeLayers.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
   dir.routeSources.forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = []; dir.directInfo = null;
-  dir.directRouteCoords = null; dir.directSteps = null;
+  dir.directRouteCoords = null; dir.directSteps = null; dir.directMaxspeeds = null;
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
   dirClearBtn.classList.add("hide");

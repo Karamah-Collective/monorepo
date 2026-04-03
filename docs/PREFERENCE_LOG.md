@@ -100,6 +100,17 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-01 — Search icon anchored to `#tf-row`, not the expanding wrapper.** `flex-grow` + `margin-left: auto` on `.pl-search-wrap` causes subtle right-edge jitter on mobile during the expand animation. Fix: icon button (`#pl-search-icn-btn`) moved out of `.pl-search-wrap` to be a sibling; anchored with `position: absolute; right: 16px` on `#tf-row` (which gets `position: relative`). Descendant selectors that referenced `.pl-search-icn` inside `.pl-search-wrap` updated: focus-within → adjacent sibling combinator (`+`), hover border → `:has()` on `#tf-row`.
 - **2026-04-01 — Style picker panel: keep left-opening, shrink only on narrow viewports.** User rejected "open above" fix AND blanket 768px shrink. Correct approach: `max-width: calc(100vw - edge - btn - 16px)` safety net at `≤768px`; thumbnail/padding shrink only at `≤399px` (the breakpoint below which the full 337px panel can't fit). iPhone 13 Pro Max (428px) keeps full 52px thumbnails; iPhone 15 (393px) gets 44px. User wants maximum size retained on devices that support it.
 
+- **2026-04-03 — Speedometer: standalone floating puck, not inline chip.** User found the inline HUD chip too small and barely visible. Speedometer must be prominent, beautiful, conform to design language, compact, and non-blocking. Standalone 56px circular puck, bottom-left of map.
+- **2026-04-03 — Navigation: divergence detection for missed turns.** If GPS distance to the current step is increasing while distance to the next step is decreasing, skip the current step early. Don't wait for threshold entry — react when the trajectory proves the maneuver was passed.
+- **2026-04-03 — Navigation: always-follow recentering.** Always `easeTo` to GPS position on every tick (revised from edge-only). If user pans away, yield immediately and show a recenter button. The user wants the map to always track them during navigation, not wait until they reach the edge.
+- **2026-04-03 — Speedometer: median filter + accuracy gating.** GPS jitter can produce 24 km/h while stationary. Robust pipeline: 5m min distance, 0.5s min interval, 200 km/h cap, 4-sample median filter before exponential smoothing.
+- **2026-04-03 — Roundabout trigger radius: 15m drive, 12m walk.** Small Finnish roundabouts need very tight triggers. Route-progress catch-up and divergence detection handle any misses.
+- **2026-04-04 — Recenter button: white surface + green icon, location arrow.** Same icon as the main app Locate button. White bg with accent-colored icon matches the speedometer's visual weight.
+- **2026-04-04 — Navigation follow: jumpTo instead of easeTo.** Overlapping easeTo animations at 1s intervals cause visible jitter. jumpTo is instant — no animation overlap, perfectly smooth tracking.
+- **2026-04-04 — HUD row2: 3 chips (turn distance, dest distance, ETA).** Distance-to-next-turn is the primary cruising info. Destination distance and ETA are secondary context. All live-updating.
+- **2026-04-04 — Approach-then-fire: exponential time-factor, not linear.** The fire distance uses an exponential decay on the time factor: `0.8 + 2.2 × e^(-speed/15)`. This gives ~3s lead at walking (tight, precise — user explicitly wants turns to fire "at the very turn point"), decaying to ~0.8s at highway speed (GPS tick spacing). Floor 2m, cap 30m. Vehicles naturally decelerate before turns so the live speed drops automatically — no special braking logic needed. Hysteresis also scales: `max(2, fireM × 0.4)`. User rejected the previous 5m floor as "too gracious for walking" (6 seconds of lead at 3 km/h).
+- **2026-04-04 — Turn chip shows actual next maneuver icon.** Replaced generic `↱` arrow with the next step's real `iconHtml` SVG (turn-left, turn-right, roundabout, etc.) scaled to 14px via `.nav-chip-icon` class.
+
 ---
 
 ## Patterns to Avoid
@@ -119,6 +130,7 @@ what you like, what you've decided, and how you want things done.
 - Don't hardcode `letter-spacing` values — always use `--ls-tight`, `--ls-wide`, or `--ls-caps` tokens.
 - Don't use `font-weight: 600` (semibold) as the default "emphasis" weight — reserve it for badges/labels. Use medium (500) for interactive elements and titles.
 - React / any framework rejected for this project — vanilla JS + design tokens delivers the same UX with zero build overhead.
+- Don't auto-recenter the map on every GPS tick during navigation unless the user is actively following. The user wants always-follow as the default, but if they pan away, stop recentering and show a recenter button. Never fight the user's intentional map panning.
 
 ---
 
@@ -141,6 +153,8 @@ what you like, what you've decided, and how you want things done.
 - Hook pattern for circular imports: export a `setHooks()` function from module A, call it from module B at evaluation time to register callbacks. Never create `import` cycles between modules.
 - Navigation step advancement must use dual confirmation: GPS proximity to the maneuver point plus matching progress along the route geometry. Do not reveal future turn text before that trigger is confirmed.
 - All letter-spacing must use tokens: `--ls-tight` for headings (≥18px), `--ls-wide` for small text (≤12px) and chips, `--ls-caps` for uppercase labels. Never hardcode em values.
+- Approach-then-fire for all modes: entering trigger radius starts tracking, fires only on closest-point pass-through or speed-scaled proximity. Route-progress and divergence detection remain as safety nets.
+- Approach fire distance and hysteresis both scale with speed — never use static metre values for speed-dependent navigation thresholds.
 
 ---
 
@@ -149,6 +163,190 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-04-04 — Approach-then-fire step advancement + maneuver icons in turn chip
+
+**a. Approach-then-fire algorithm — speed-dynamic, all modes:**
+- **User feedback:** Static 8m fire distance is fine for cars but should scale with speed. Walking should use the same approach logic — firing 20m before the actual turn feels like misfiring.
+- **Change:** Replaced static `APPROACH_FIRE_M = 8` with `_approachFireM()` function: `max(5, speed_m/s × 0.8)` clamped to [5m, 30m]. At walking 5 km/h → 5m, cycling 20 km/h → 5m, driving 60 km/h → 13m, driving 100 km/h → 22m, driving 120 km/h → 27m.
+- **Hysteresis also speed-scaled:** `max(3, fireM × 0.4)` — prevents GPS jitter false-triggers at all speeds.
+- **Walk mode now uses approach-then-fire** instead of immediate trigger-radius fire. Removed the `navMode !== "walk"` branch split.
+- Constants: `APPROACH_FIRE_MIN_M = 5`, `APPROACH_FIRE_MAX_M = 30`.
+
+**b. Turn chip shows actual maneuver icon:**
+- Replaced generic `↱` text with the next step's real SVG icon (`navSteps[navStepIdx + 1].iconHtml`).
+- Added `.nav-chip-icon` class in design-tokens.css: `display: inline-flex; align-items: center`, SVG scaled to `14px × 14px`.
+- Uses `innerHTML` instead of `textContent` since we're inserting SVG markup. Distance text escaped with `esc()`.
+
+**Files:** `src/navigation.js`, `src/styles/design-tokens.css`.
+
+### 2026-04-04 — Recenter icon, speed limits, 3-chip HUD, smooth follow
+
+**a. Recenter button restyled:**
+- Icon changed to the same location arrow SVG used by the main app's Locate button (`M3 11l19-9-9 19-2-8-8-2z`).
+- Background changed from accent (teal) to white surface with green accent icon. Dark mode: AMOLED black background.
+- Consistent with the app's visual language — users recognise it instantly.
+
+**b. Speed limit overlay from OSRM:**
+- Added `annotations=maxspeed` to OSRM route request URL.
+- OSRM returns per-segment speed limits from OSM data (array of `{speed, unit}` or `{none: true}`).
+- Stored as `dir.directMaxspeeds`, carried into navigation as `_maxspeeds[]`.
+- `_lookupSpeedLimit(segIdx)` maps the snapped route segment index to the speed limit.
+- When current speed exceeds the limit, `hudSpeedVal.style.color = "var(--danger)"` (red).
+- When under limit or limit unknown (0), color resets to default.
+- Gracefully handles: no maxspeed data (OTP fallback routes), `{none: true}` segments, mph→km/h conversion.
+
+**c. km/h text enlarged:**
+- Changed from hardcoded `9px` to `var(--txt-xs)` (11px). Now legible.
+
+**d. HUD row2 redesigned — 3 chips:**
+- **Turn chip** (amber/warning): `↱ 2.3 km` — live distance to next turn, real-time countdown.
+- **Destination chip** (accent/teal): `📍 14.2 km` — remaining distance to destination.
+- **ETA chip** (surface-2/neutral): `ETA 14:32` — estimated arrival time.
+- Removed old pattern of showing "for X km" in the instruction text (moved to dedicated chip).
+- Dark mode styles for turn chip: amber tint background.
+
+**e. Smooth auto-recentering:**
+- Replaced `map.easeTo()` (600ms animation) with `map.jumpTo()` in `_smartFollow`.
+- `easeTo` at 1s GPS intervals caused overlapping animations → visible jitter/stuttering.
+- `jumpTo` is instant — no animation to overlap. The GPS puck is always centered with zero lag.
+- `_programmaticMove` flag still wraps jumpTo to prevent `_onUserDrag` false-triggers.
+
+**Files:** `src/navigation.js`, `src/directions.js`, `src/styles/design-tokens.css`, `index.html`.
+
+### 2026-04-03 — Follow mode, robust speedo, desktop layout, live distance
+
+**a. Always auto-recenter (not edge-only):**
+- Changed from edge-detection recentering to always-follow: every GPS tick calls `map.easeTo` to center on user. User panning still sets `_following = false` and shows recenter button.
+- Removed `EDGE_MARGIN_PX` constant — no longer needed.
+- Works identically on desktop and mobile.
+
+**b. Desktop speed/recenter positioning:**
+- Mobile: above the HUD (bottom + 130px / 126px nav-mode). Unchanged — already perfect.
+- Desktop (≥769px): flanking the HUD at same height (`bottom: 28px`), using `calc(50% - 260px)` left/right to sit just outside the 400px-wide HUD.
+
+**c. Robust speedometer:**
+- **Min distance raised:** 2m → 5m noise floor. Rejects more GPS jitter.
+- **Min time interval:** 0.1s → 0.5s. Short intervals amplify small GPS errors into huge speeds.
+- **Median filter:** 4-sample sliding window. Rejects outlier spikes before smoothing.
+- **Speed cap:** Discard raw readings > 200 km/h (GPS teleport).
+- **Heavier smoothing:** 0.3/0.7 old/new (was 0.4/0.6) for more stable reading.
+- **Faster decay:** When stationary >3s (was 2s), decay factor 0.4 (was 0.5), cutoff at <2 km/h (was 1).
+- **History reset:** `_speedHistory = []` on start/stop nav.
+
+**d. Recenter button icon:**
+- Replaced compass arrow (`M3 11l19-9`) with GPS crosshair (circle + crosshairs) — properly centered, universally recognized as "re-center on location".
+- SVG: 20×20 with `stroke-width: 2`.
+
+**e. Real-time distance to next turn:**
+- The distance chip already had live `fmtDist(_liveDistToNextM)` — shows km when ≥1km, metres when <1km.
+- **New:** "Continue on [road] for X km" — the instruction text now includes the live distance when cruising on a long segment (>300m from next maneuver).
+- For depart/new name/continue steps, appends "— X km" to the existing instruction.
+- Both the chip AND the instruction text update every GPS tick, giving a prominent countdown.
+
+**Files:** `src/navigation.js`, `src/styles/styles.css`, `index.html`.
+
+### 2026-04-03 — Nav overlap fix, button hiding, live "Continue for X km"
+
+**a. Speedometer/recenter positioned above HUD:**
+- Changed `bottom` from `14px` (same as HUD) to `130px` on desktop, `126px` on mobile nav-mode. Clears the HUD with ~14px gap.
+- Previously overlapped the HUD on mobile (HUD is nearly full-width on small screens).
+
+**b. All non-essential buttons hidden during navigation:**
+- Moved hide rules from mobile-only `@media (max-width: 768px)` to apply at ALL screen sizes.
+- Added `#contact-pill-wrap` and `#style-picker` to the existing nav-mode hide list.
+- Now hidden: search, tools, zoom, prayer, eid, promos, tab bar, route snackbar, contact, style picker.
+
+**c. "Continue for X km" live navigation instructions:**
+- **Problem:** After completing a turn onto a 10km road, the HUD showed the old turn instruction with the static step distance. No "Continue on E12 for 10 km" countdown.
+- **Solution:** Added `_updateLiveHUD()` called every GPS tick (1s throttle):
+  - **Live distance chip:** Always shows `_liveDistToNextM` (GPS distance to next maneuver point) instead of the static step distance.
+  - **Continue mode:** When `_liveDistToNextM > 300m` and the current step is a completed maneuver (turn, fork, merge, exit roundabout, etc.), shows "Continue on [road name]" with straight-ahead icon.
+  - **Approach preview:** When `_liveDistToNextM <= 150m`, previews the NEXT step's instruction and icon (e.g., "Turn right onto Road Y" with the turn icon), giving advance warning. "Then:" line updates to show the step after the approaching one.
+- Added `name` (road name) field to rawSteps in directions.js for both OSRM (`step.name`) and OTP (`step.streetName`), carried through `buildDirectStepsFromData`.
+- `_COMPLETED_MANEUVERS` set: turn, fork, merge, on/off ramp, end of road, exit roundabout/rotary, roundabout turn, use lane. Excludes depart (its instruction IS the continue message) and roundabout entry (user is inside the roundabout, not on a straight road).
+- Transit steps: live distance chip updates but instruction override is skipped (`step.type !== "direct"`).
+
+**Files:** `src/navigation.js`, `src/directions.js`, `src/styles/styles.css`.
+
+### 2026-04-03 — Roundabout radius tightened + smart follow mode
+
+**a. Roundabout radius reduced to 15m (drive) / 12m (walk):**
+- Previous 30m/20m was still too wide for small Finnish roundabouts where OSRM entry/exit maneuver points can be 10–30m apart. Now 15m requires being essentially at the maneuver point, combined with route-progress catch-up and divergence detection as safety nets.
+
+**b. Smart follow mode replaces aggressive recentering:**
+- **Old:** `map.easeTo` on every single GPS update — yanked the map to center on every tick.
+- **New:** Edge-detection recentering. Auto-recenter only when the GPS puck approaches within 60px of the viewport edge. Smooth `easeTo` with 600ms duration.
+- **User pan detection:** `map.on("dragstart")` sets `_following = false`. A `_programmaticMove` guard prevents our own `easeTo` calls from triggering this.
+- **Recenter button:** When user pans away, a teal accent-colored 44px circle button appears bottom-right with a compass arrow icon. Clicking it re-centers on the current GPS position and re-enables auto-follow.
+- **State reset:** `_following` reset to `true` on start/resume/stop. Button hidden on pause/stop.
+- All existing `map.easeTo` calls in nav (start, resume, sim, reroute) wrapped with `_programmaticMove` guard.
+
+**Decision:** Navigation must never fight the user for map control. Auto-follow is the default, but any manual pan immediately yields to the user. Re-center is always one tap away.
+
+**Files:** `src/navigation.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`.
+
+### 2026-04-03 — Roundabout fixes, divergence advance, speedometer redesign
+
+**a. Roundabout exit detection fix:**
+- Roundabout/rotary maneuver steps (`roundabout`, `exit roundabout`, `rotary`, `exit rotary`, `roundabout turn`) now get a tighter `_triggerRadius`: 30m for driving (was 50m), 20m for walking. Roundabouts are spatially compact — the 50m radius was triggering both "enter" and "exit" simultaneously.
+
+**b. Divergence-based early advance (3rd detection method):**
+- Added to `_advanceStep` after proximity scan and route-progress catch-up.
+- Logic: if distance to the next step is increasing but distance to the step after that is decreasing (`distToAfter < distToNext`), the user has passed the next step. Advance to the step after it.
+- Safety bound: `distToAfter < _triggerRadius(afterStep) * 3` — prevents false triggers when the user is nowhere near the upcoming step.
+- This catches turns missed by both proximity (never entered radius) and route-progress (coords may not have perfect routeProgressM ordering).
+
+**c. Speedometer redesigned — standalone floating puck:**
+- Moved from inside HUD (tiny chip, barely visible) to a standalone circular indicator.
+- 56px circle with large speed number + small "km/h" label below.
+- Positioned bottom-left of the map, same vertical level as the HUD.
+- Uses design tokens throughout: `--surface`, `--border`, `--shadow-md`, `--txt-lg`, `--fw-bold`, `--text`, `--text-3`.
+- Dark mode: AMOLED black background matching HUD.
+- Hidden at 0 km/h, hidden on pause/stop.
+- `pointer-events: none` — doesn't interfere with map interaction.
+- User preference: speedometer must be visible, beautiful, conform to design language, compact, non-blocking.
+
+**Files:** `src/navigation.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`.
+
+### 2026-04-03 — Catch-up shows NEXT instruction + speedometer
+
+**Bug fix — catch-up showed wrong instruction:**
+When route-progress catch-up detected the user had passed step N, it set `navStepIdx = N` — the HUD then displayed step N's instruction (already passed), not step N+1 (the one the user actually needs). Fix: catch-up now advances to `lastPassedIdx + 1` so the HUD always shows the upcoming instruction the user needs to follow. If the passed step is the last step (arrival), it stays on that step.
+
+**Speedometer:**
+- Speed computed from consecutive GPS samples in `processPosition`. Uses `_hDistM / timeDelta * 3.6` for km/h.
+- Exponential smoothing (0.4/0.6 old/new) avoids jitter from GPS noise.
+- 2-metre minimum distance filter ignores micro-movements (stationary noise).
+- Speed decays toward 0 when stationary for >2s — no perpetual ghost speed.
+- Displayed as a `nav-chip-speed` chip in the HUD row2, left of distance/ETA.
+- Uses `font-variant-numeric: tabular-nums` so digits don't jitter horizontally.
+- Hidden when speed is 0 (stationary), shown with `X km/h` when moving.
+- Dark mode styled to match existing nav chips.
+- State (`_prevSpeedPos`, `_speedKmh`) reset on start/stop navigation.
+
+**Files:** `src/navigation.js`, `index.html`, `src/styles/design-tokens.css`.
+
+### 2026-04-03 — Navigation step-advancement unit bug fix + route-progress catch-up
+- **Root cause:** `haversineDistance()` returns **km** but every threshold in `navigation.js` was in **metres**. The movement guard required 10 km of movement (impossible) — navigation was permanently stuck at step 0.
+- **Fix:** Added `_hDistM()` wrapper (`haversineDistance * 1000`) and replaced all 6 call sites in navigation.js. Now `snapToRoute`, `_buildRouteProgress`, `_advanceStep`, `distAlongRoute`, and `_findNearestCoordIdx` all compute in metres, matching their threshold constants.
+- **Collateral fix:** Off-route detection (`snap.dist > 50`) was also broken (comparing km vs metres) — now works at 50m as intended.
+- **Route-progress catch-up (user request b):** Added second detection method in `_advanceStep`. When proximity scan misses (user moved past the trigger zone between GPS samples), fall back to route-progress comparison: if the user's snapped `progressM` exceeds a step's `routeProgressM`, that step is marked as passed. Steps are ordered by route progress so scanning stops at the first un-passed step.
+- **User preference:** Navigation should never get stuck — if a turn is missed, catch up to the next relevant instruction rather than staying on the old one.
+- Files: `src/navigation.js`.
+
+### 2026-04-03 — GPS Simulation Module for Navigation Testing
+- **New module:** `src/gps-sim.js` — mouse cursor on map becomes the GPS signal. Activate with **Shift+G**.
+- **How it works:** `mousemove` on map → `map.unproject()` → `setCurrentLocationState()` dispatches `"hf:current-location-updated"` — the exact same event real GPS produces. The app is completely unaware it's simulated.
+- **Integration:** Navigation.js receives positions via `_onLocationUpdate` → `processPosition()` — step advancement, off-route detection, rerouting all run naturally. Places.js uses it for distance sorting.
+- **Marker:** Reuses existing `.loc-marker` / `.loc-puck` / `.loc-ring` CSS. When sim starts, if real GPS tracking is active, it auto-stops it (clicks locate button to toggle off) to avoid competing sources.
+- **Indicator:** Red pulsing "GPS SIM" pill badge fixed top-center with `--danger` background, `--z-overlay`, crosshair cursor on map canvas.
+- **Throttle:** 100 ms mousemove throttle (10 Hz). Navigation.js has its own 1000 ms GPS_PROCESS_INTERVAL, so nav updates happen at realistic ~1 Hz.
+- **Click:** Clicking the map gives an immediate precise fix — useful for testing exact trigger points.
+- **Lazy-loaded** in `app.js` after `map.on("load")` alongside other non-critical modules.
+- **Files:** `src/gps-sim.js` (new), `src/app.js` (lazy-load), `src/styles/styles.css` (badge CSS).
+
+- **2026-04-03 — GPS sim: cursor-as-GPS for navigation testing.** Mouse position feeds `setCurrentLocationState()` at 10 Hz. Toggle via Shift+G. Red badge indicator. Auto-stops real GPS on activation.
 
 ### 2026-03-31 — Typography overhaul: font, scale, weights, tracking
 - **Font swap (two rounds):**
