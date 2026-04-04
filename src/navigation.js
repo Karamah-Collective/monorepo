@@ -63,6 +63,12 @@ const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than th
 let _following = true;         // true = auto-follow, false = user panned away
 let _programmaticMove = false; // guard to distinguish our easeTo from user drag
 
+// ─── Covered-route state ─────────────────────────────────────────────
+// Tracks the portion of the route already traversed so the overlay layer
+// can dim it to clearly distinguish where the user has been vs. ahead.
+const NAV_COVERED_SRC   = "nav-covered-src";
+const NAV_COVERED_LAYER = "nav-covered-ln";
+
 // ─── Speed limit data ───────────────────────────────────────────────
 let _maxspeeds = [];           // per-segment speed limit array from OSRM
 let _currentSpeedLimit = 0;    // km/h, 0 = unknown
@@ -567,8 +573,11 @@ export function startNavigation() {
     hud.classList.remove("hide");
     hud.classList.add("nav-active");
   }
+  if (hudSpeedEl) hudSpeedEl.classList.remove("hide"); // show speedometer immediately
+  if (hudSpeedVal) hudSpeedVal.textContent = "0";
   document.body.classList.add("nav-mode");
 
+  _initCoveredRouteLayer();
   renderHUD();
 
   // Pan to the first step so the user sees where to go
@@ -657,6 +666,7 @@ export function stopNavigation() {
   if (recenterBtn) recenterBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
 
+  _removeCoveredRouteLayer();
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
 
   // Re-show the route snackbar so the user can re-enter nav or clear route
@@ -719,11 +729,76 @@ export function processPosition(lat, lng, accuracy = null) {
   // Lightweight live update — distance countdown + continue/approach instructions
   _updateLiveHUD();
 
+  // Dim already-covered portion of the route
+  _updateCoveredRoute(snap);
+
   // Update speed from consecutive GPS samples
   _updateSpeed(lat, lng, now);
 
   // Smooth follow: keep GPS position centered without animation overlap
   _smartFollow(lng, lat);
+}
+
+// ─── Covered-route overlay ──────────────────────────────────────────
+
+/**
+ * Update the "already covered" route overlay up to the user's current
+ * snapped position. Called on every GPS tick.
+ * @param {{ segIdx: number, lng: number, lat: number }} snap - snapToRoute result
+ */
+function _updateCoveredRoute(snap) {
+  const src = map.getSource(NAV_COVERED_SRC);
+  if (!src) return;
+
+  // Collect all coordinates from the route start up to the snapped segment
+  const coords = [];
+  for (let i = 0; i <= snap.segIdx && i < navRouteCoords.length; i++) {
+    coords.push(navRouteCoords[i]);
+  }
+  // Append the interpolated point on the current segment so the line
+  // ends exactly at the user's position rather than the last vertex.
+  if (coords.length > 0 && (snap.lng !== coords[coords.length - 1][0] || snap.lat !== coords[coords.length - 1][1])) {
+    coords.push([snap.lng, snap.lat]);
+  }
+
+  if (coords.length < 2) return;
+
+  src.setData({
+    type: "Feature",
+    geometry: { type: "LineString", coordinates: coords },
+  });
+}
+
+/**
+ * Add the covered-route source and layer onto the map.
+ * Called once when navigation starts.
+ */
+function _initCoveredRouteLayer() {
+  if (map.getSource(NAV_COVERED_SRC)) return; // already exists (shouldn't happen)
+
+  map.addSource(NAV_COVERED_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addLayer({
+    id: NAV_COVERED_LAYER,
+    type: "line",
+    source: NAV_COVERED_SRC,
+    paint: {
+      "line-color": "rgba(55, 55, 65, 0.58)",
+      "line-width": navMode === "walk" ? 5 : 6,
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
+}
+
+/**
+ * Remove the covered-route source and layer from the map.
+ * Called when navigation stops.
+ */
+function _removeCoveredRouteLayer() {
+  if (map.getLayer(NAV_COVERED_LAYER)) map.removeLayer(NAV_COVERED_LAYER);
+  if (map.getSource(NAV_COVERED_SRC))  map.removeSource(NAV_COVERED_SRC);
 }
 
 // ─── Smooth follow mode ─────────────────────────────────────────────
@@ -741,8 +816,13 @@ function _smartFollow(lng, lat) {
 }
 
 function _onUserDrag() {
-  if (!navActive || _programmaticMove) return;
+  if (!navActive) return;
+  // Stop any in-flight programmatic animation so the user's drag takes effect
+  // immediately. On mobile, _programmaticMove can be true for most of the time
+  // between GPS ticks (600ms easeTo), which silently swallowed touch drags.
+  map.stop();
   _following = false;
+  _programmaticMove = false;
   if (recenterBtn) recenterBtn.classList.remove("hide");
 }
 
@@ -803,11 +883,7 @@ function _renderSpeedChip() {
   if (!hudSpeedEl || !hudSpeedVal) return;
   const display = Math.round(_speedKmh);
   hudSpeedVal.textContent = display;
-  if (display > 0) {
-    hudSpeedEl.classList.remove("hide");
-  } else {
-    hudSpeedEl.classList.add("hide");
-  }
+  hudSpeedEl.classList.remove("hide"); // always visible while nav is active
   // Color: green under limit, red over limit, default when unknown
   if (_currentSpeedLimit > 0) {
     hudSpeedVal.style.color = _speedKmh > _currentSpeedLimit ? "var(--danger)" : "var(--success)";
