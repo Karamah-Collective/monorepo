@@ -15,6 +15,13 @@ const SUBMIT_COOLDOWN = 60_000;
 const FETCH_CACHE_MS = 120_000;
 const OVERFLOW_EPSILON_PX = 1;
 
+// ─── Status constants ─────────────────────────────────────────────────────────
+const STATUS_ACTIVE = "";
+const STATUS_INPROGRESS = "inprogress";
+const STATUS_IMPLEMENTED = "yes";
+const STATUS_OUT_OF_SCOPE = "out of scope";
+const STATUS_ORDER = { [STATUS_ACTIVE]: 0, [STATUS_INPROGRESS]: 1, [STATUS_IMPLEMENTED]: 2, [STATUS_OUT_OF_SCOPE]: 3 };
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let _wishes = [];
 let _lastFetch = 0;
@@ -43,6 +50,31 @@ function _getVoted() {
 }
 function _saveVoted(set) {
   localStorage.setItem(STORAGE_KEY_VOTED, JSON.stringify([...set]));
+}
+
+/**
+ * Sort wishes: active → in-progress → implemented → out of scope, each by votes desc.
+ */
+function _sortWishes() {
+  _wishes.sort((a, b) => {
+    const oa = STATUS_ORDER[a.status || ""] ?? 0;
+    const ob = STATUS_ORDER[b.status || ""] ?? 0;
+    if (oa !== ob) return oa - ob;
+    return (b.votes || 0) - (a.votes || 0);
+  });
+}
+
+/**
+ * Return badge HTML for a wish status, or empty string for active wishes.
+ * Uses the same pp-badge visual style as place type badges.
+ * @param {string} status
+ * @returns {string}
+ */
+function _statusBadgeHtml(status) {
+  if (status === STATUS_INPROGRESS) return `<span class="pp-badge wish-status-badge" style="background:color-mix(in srgb, var(--hsl-ferry) 12%, transparent);color:var(--hsl-ferry)">In Progress</span>`;
+  if (status === STATUS_IMPLEMENTED) return `<span class="pp-badge wish-status-badge" style="background:color-mix(in srgb, var(--success) 12%, transparent);color:var(--success)">Implemented</span>`;
+  if (status === STATUS_OUT_OF_SCOPE) return `<span class="pp-badge wish-status-badge" style="background:color-mix(in srgb, var(--hsl-trunk) 12%, transparent);color:var(--hsl-trunk)">Out of Scope</span>`;
+  return "";
 }
 
 function _setVoteState(wishId, isVoted, exactVotes) {
@@ -211,7 +243,7 @@ async function _fetchWishes() {
     const wishes = await _fetchWishesApi();
     if (!wishes) throw new Error();
     _wishes = wishes;
-    _wishes.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    _sortWishes();
     _lastFetch = Date.now();
   } catch {
     _list.innerHTML = `<div class="wish-empty">Could not load wishes</div>`;
@@ -236,14 +268,18 @@ function _render() {
       const isVoted = voted.has(w.id);
       const isOpen = _expanded.has(w.id);
       const desc = w.description || "";
+      const st = w.status || "";
+      const voteLocked = st === STATUS_INPROGRESS || st === STATUS_IMPLEMENTED;
+      const chipHtml = _statusBadgeHtml(st);
 
       return `<div class="wish-card" data-id="${esc(w.id)}">
         <div class="wish-card-body">
           <h4 class="wish-title">${esc(w.title)}</h4>
+          ${chipHtml}
           ${desc ? `<p class="wish-desc ${isOpen ? "wish-desc--open" : ""}">${esc(desc)}</p>
           <button class="wish-expand" data-id="${esc(w.id)}" hidden>${isOpen ? "Show less" : "Read more"}</button>` : ""}
         </div>
-        <button class="wish-vote ${isVoted ? "wish-vote--voted" : ""}" data-id="${esc(w.id)}" aria-label="${isVoted ? "Remove vote" : "Vote"}" aria-pressed="${isVoted ? "true" : "false"}">
+        <button class="wish-vote ${isVoted ? "wish-vote--voted" : ""}${voteLocked ? " wish-vote--locked" : ""}" data-id="${esc(w.id)}"${voteLocked ? " disabled" : ""} aria-label="${voteLocked ? "Voting closed" : isVoted ? "Remove vote" : "Vote"}" aria-pressed="${isVoted ? "true" : "false"}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${isVoted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 9V5a3 3 0 0 0-3-3l-1 4-4 4v11h11.28a2 2 0 0 0 1.98-1.74l1-7A2 2 0 0 0 18.28 10H14Z"/>
             <path d="M6 10H3v11h3"/>
@@ -266,6 +302,9 @@ function _render() {
 
 // ─── Vote ─────────────────────────────────────────────────────────────────────
 async function _handleVote(wishId) {
+  const wish = _wishes.find((entry) => entry.id === wishId);
+  if (wish && (wish.status === STATUS_INPROGRESS || wish.status === STATUS_IMPLEMENTED)) return;
+
   const voted = _getVoted();
   const wasVoted = voted.has(wishId);
   const nextVoted = !wasVoted;
@@ -372,7 +411,7 @@ export function preloadWishes() {
   _preloadPromise = _fetchWishesApi().then((wishes) => {
     if (wishes) {
       _wishes = wishes;
-      _wishes.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+      _sortWishes();
     }
     _preloaded = true;
   }).catch(() => { _preloaded = true; });

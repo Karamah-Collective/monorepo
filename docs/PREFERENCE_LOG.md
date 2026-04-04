@@ -115,6 +115,8 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-04 — HUD row2: 3 chips (turn distance, dest distance, ETA).** Distance-to-next-turn is the primary cruising info. Destination distance and ETA are secondary context. All live-updating.
 - **2026-04-04 — Approach-then-fire: exponential time-factor, not linear.** The fire distance uses an exponential decay on the time factor: `0.8 + 2.2 × e^(-speed/15)`. This gives ~3s lead at walking (tight, precise — user explicitly wants turns to fire "at the very turn point"), decaying to ~0.8s at highway speed (GPS tick spacing). Floor 2m, cap 30m. Vehicles naturally decelerate before turns so the live speed drops automatically — no special braking logic needed. Hysteresis also scales: `max(2, fireM × 0.4)`. User rejected the previous 5m floor as "too gracious for walking" (6 seconds of lead at 3 km/h).
 - **2026-04-04 — Turn chip shows actual next maneuver icon.** Replaced generic `↱` arrow with the next step's real `iconHtml` SVG (turn-left, turn-right, roundabout, etc.) scaled to 14px via `.nav-chip-icon` class.
+- **2026-04-04 — Implemented wishes sink to bottom with locked votes.** Wishes marked `implemented = yes` in the Sheet always appear below active wishes. They show a green "Implemented" chip and their vote button is disabled (read-only). Sort within each group is by votes desc.
+- **2026-04-04 — Wishlist 4-tier status: Active → In Progress → Implemented → Out of Scope.** `implemented` column accepts blank/Inprogress/Yes/Out of Scope. Badges use place-type colors: In Progress = `--hsl-ferry` (prayer room cyan), Implemented = `--success` (mosque green), Out of Scope = `--hsl-trunk` (restaurant orange). In Progress + Implemented lock votes; Out of Scope keeps votes open.
 
 ---
 
@@ -258,6 +260,32 @@ what you like, what you've decided, and how you want things done.
 - Mobile overlay selectors in `styles.css` must exclude `#wish-overlay` / `#wish-card` and include only `#wish-form-overlay` / `#wish-form-card` for bottom-sheet behavior.
 
 **Files:** `src/styles/styles.css`.
+
+### 2026-04-04 — Wishlist: 4-tier status system
+
+**Replaces** the earlier "implemented wishes sink to bottom" section.
+
+**a. Sort order: Active → In Progress → Implemented → Out of Scope:**
+- `implemented` column in Wishes sheet now accepts: blank (active), `Inprogress`, `Yes`, `Out of Scope`.
+- Server-side (`getWishesJSON`) and client-side (`_sortWishes`) apply the same 4-tier priority sort.
+- Within each tier, sorted by votes descending.
+
+**b. Status badges (pp-badge style, matching place type badges):**
+- **In Progress** → `--hsl-ferry` (cyan) — same as Prayer Room badge
+- **Implemented** → `--success` (green) — same as Mosque badge
+- **Out of Scope** → `--hsl-trunk` (orange) — same as Restaurant badge
+- Uses `.wish-status-badge` class: uppercase, pill, `--txt-xs`, `--fw-semibold`, `--ls-caps`, 12% tint background. Same visual as `pp-badge` in place popups, no icons.
+- Active wishes have no badge.
+
+**c. Vote locking:**
+- **In Progress** and **Implemented** wishes have disabled vote buttons (`.wish-vote--locked`).
+- **Out of Scope** wishes remain votable — users can still express demand for future scaling.
+- **Active** wishes remain votable as before.
+
+**d. Admin validation updated:**
+- `adminUpdateWishField` now accepts `Yes`, `Inprogress`, `Out of Scope`, or blank for col 10. Col 9 (approved) unchanged.
+
+**Files:** `scripts/apps-script/Code.gs`, `src/wishlist.js`, `src/styles/design-tokens.css`.
 
 ### 2026-04-04 — Wishlist votes should toggle and use a like icon
 

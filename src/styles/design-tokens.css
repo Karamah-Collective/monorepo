@@ -1828,6 +1828,16 @@ html.dark-mode .nav-recenter {
   cursor: default;
 }
 
+.wish-vote--locked {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
+.wish-status-badge {
+  margin-top: var(--sp-1);
+}
+
 .wish-vote-count {
   font-size: var(--txt-sm);
   font-weight: var(--fw-semibold);
