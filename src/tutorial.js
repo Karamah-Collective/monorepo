@@ -59,6 +59,13 @@ const ALL_STEPS = [
 
   // ─── Desktop-only: pills are always visible ─────────────────────────
   {
+    target: "#wish-pill",
+    title: "Wishlist",
+    body: "Vote on feature ideas or suggest your own \u2014 the community shapes what we build next",
+    icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
+    layout: ["desktop"],
+  },
+  {
     target: "#contact-pill",
     title: "Contact",
     body: "Have feedback or a question? Reach us directly from the map",
@@ -84,7 +91,7 @@ const ALL_STEPS = [
   {
     target: "#tools-toggle",
     title: "Tools",
-    body: "Tap to reveal <b>Search</b>, <b>Map Style</b> and <b>Contact</b> \u2014 all tucked away to save space",
+    body: "Tap to reveal <b>Search</b>, <b>Map Style</b>, <b>Contact</b> and <b>Wishlist</b> \u2014 all tucked away to save space",
     icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     layout: ["phone", "tablet"],
     before() { return closeToolsMenu(); },
@@ -115,6 +122,14 @@ const ALL_STEPS = [
     layout: ["phone", "tablet"],
     phoneOrder: 9,
   },
+  {
+    target: "#wish-pill",
+    title: "Wishlist",
+    body: "Vote on feature ideas or suggest your own \u2014 the community shapes what we build next",
+    icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
+    layout: ["phone", "tablet"],
+    phoneOrder: 10,
+  },
 
   // ─── Shared: always visible on all layouts ──────────────────────────
   {
@@ -130,14 +145,14 @@ const ALL_STEPS = [
     title: "Prayer Times",
     body: "Today\u2019s prayer schedule with a live countdown \u2014 Ramadan times appear automatically",
     icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    phoneOrder: 10,
+    phoneOrder: 11,
   },
   {
     target: "#eid-pill",
     title: "Eid Prayers",
     body: "Find Eid prayer locations, jamaat times and organizers \u2014 tap to see all locations on the map",
     icon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-    phoneOrder: 11,
+    phoneOrder: 12,
   },
   {
     target: null,

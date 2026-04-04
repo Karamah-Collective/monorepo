@@ -336,6 +336,14 @@
   bottom: calc(var(--tab-h) + var(--safe-b) + 215px);
 }
 
+/* ─── Wishlist Pill ─── */
+#wish-pill-wrap {
+  position: absolute;
+  z-index: var(--z-ctrl-mid);
+  right: var(--map-edge);
+  bottom: calc(var(--tab-h) + var(--safe-b) + 267px);
+}
+
 /* ─── Contact Overlay ─── */
 #contact-overlay {
   position: fixed;
@@ -384,6 +392,111 @@
 }
 
 #ct-submit {
+  display: flex;
+  height: var(--h-submit);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Wishlist Overlay ─── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+#wish-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: 20px;
+  transition: opacity var(--t-med);
+}
+#wish-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med);
+}
+
+#wish-card {
+  width: 100%;
+  max-width: 440px;
+  max-height: min(640px, 85vh);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--t-med);
+}
+#wish-overlay.hide #wish-card {
+  transform: scale(0.96);
+}
+
+.wish-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wish-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ─── Make a Wish Overlay ─── */
+
+#wish-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: 20px;
+  transition: opacity var(--t-med);
+}
+#wish-form-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med);
+}
+
+#wish-form-card {
+  width: 100%;
+  max-width: 400px;
+  max-height: min(600px, 85vh);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--t-med);
+}
+#wish-form-overlay.hide #wish-form-card {
+  transform: scale(0.96);
+}
+
+#wish-form {
+  padding: 16px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#wish-submit {
   display: flex;
   height: var(--h-submit);
   flex-shrink: 0;
@@ -911,6 +1024,10 @@ body.dark-mode .sp-tip {
     right: 26px;
     bottom: 224px;
   }
+  #wish-pill-wrap {
+    right: 26px;
+    bottom: 276px;
+  }
   #search-card {
     right: 26px;
     bottom: 119px;
@@ -944,6 +1061,7 @@ body.dark-mode .sp-tip {
 @media (max-width: 1199px), (min-width: 1200px) and (max-height: 779px) {
   #search-card,
   #contact-pill-wrap,
+  #wish-pill-wrap,
   #style-picker {
     opacity: 0;
     pointer-events: none;
@@ -958,6 +1076,7 @@ body.dark-mode .sp-tip {
 
   #app.tools-open #search-card,
   #app.tools-open #contact-pill-wrap,
+  #app.tools-open #wish-pill-wrap,
   #app.tools-open #style-picker {
     opacity: 1;
     pointer-events: auto;
@@ -974,11 +1093,13 @@ body.dark-mode .sp-tip {
   #app.tools-open #search-card       { transition-delay: 0s; }
   #app.tools-open #style-picker      { transition-delay: 0.04s; }
   #app.tools-open #contact-pill-wrap { transition-delay: 0.08s; }
+  #app.tools-open #wish-pill-wrap    { transition-delay: 0.12s; }
 
   /* Stagger hide (reverse) */
-  #app:not(.tools-open) #contact-pill-wrap { transition-delay: 0s; }
-  #app:not(.tools-open) #style-picker      { transition-delay: 0.02s; }
-  #app:not(.tools-open) #search-card       { transition-delay: 0.04s; }
+  #app:not(.tools-open) #wish-pill-wrap    { transition-delay: 0s; }
+  #app:not(.tools-open) #contact-pill-wrap { transition-delay: 0.02s; }
+  #app:not(.tools-open) #style-picker      { transition-delay: 0.04s; }
+  #app:not(.tools-open) #search-card       { transition-delay: 0.06s; }
 
   /* Active state for toggle */
   #app.tools-open #tools-toggle,
@@ -996,18 +1117,21 @@ body.dark-mode .sp-tip {
     bottom: 165px; /* sits just above zoom pill top (~157px) */
   }
 
-  /* Stack pills above the toggle: 165 + 52 = 217, +52 = 269, +52 = 321 */
+  /* Stack pills above the toggle: 165 + 52 = 217, +52 = 269, +52 = 321, +52 = 373 */
   #search-card       { right: var(--map-edge); bottom: 217px; }
   #style-picker      { right: var(--map-edge); bottom: 269px; }
   #contact-pill-wrap { right: var(--map-edge); bottom: 321px; }
+  #wish-pill-wrap    { right: var(--map-edge); bottom: 373px; }
 
   #search-card       { transform: translateY(14px) scale(0.82); }
   #style-picker      { transform: translateY(14px) scale(0.82); }
   #contact-pill-wrap { transform: translateY(14px) scale(0.82); }
+  #wish-pill-wrap    { transform: translateY(14px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap {
+  #app.tools-open #contact-pill-wrap,
+  #app.tools-open #wish-pill-wrap {
     transform: translateY(0) scale(1);
   }
 
@@ -1039,6 +1163,7 @@ body.dark-mode .sp-tip {
   #search-card       { right: 82px;  bottom: 119px; }
   #style-picker      { right: 138px; bottom: 119px; }
   #contact-pill-wrap { right: 194px; bottom: 119px; }
+  #wish-pill-wrap    { right: 250px; bottom: 119px; }
 
   /* Search expands leftward */
   #search-card:not(.collapsed) {
@@ -1048,10 +1173,12 @@ body.dark-mode .sp-tip {
   #search-card       { transform: translateX(16px) scale(0.82); }
   #style-picker      { transform: translateX(16px) scale(0.82); }
   #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
+  #wish-pill-wrap    { transform: translateX(16px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap {
+  #app.tools-open #contact-pill-wrap,
+  #app.tools-open #wish-pill-wrap {
     transform: translateX(0) scale(1);
   }
 }
@@ -1066,6 +1193,7 @@ body.dark-mode .sp-tip {
   #search-card       { right: 82px;  bottom: 119px; }
   #style-picker      { right: 138px; bottom: 119px; }
   #contact-pill-wrap { right: 194px; bottom: 119px; }
+  #wish-pill-wrap    { right: 250px; bottom: 119px; }
 
   #search-card:not(.collapsed) {
     width: min(40vw, 360px);
@@ -1074,10 +1202,12 @@ body.dark-mode .sp-tip {
   #search-card       { transform: translateX(16px) scale(0.82); }
   #style-picker      { transform: translateX(16px) scale(0.82); }
   #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
+  #wish-pill-wrap    { transform: translateX(16px) scale(0.82); }
 
   #app.tools-open #search-card,
   #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap {
+  #app.tools-open #contact-pill-wrap,
+  #app.tools-open #wish-pill-wrap {
     transform: translateX(0) scale(1);
   }
 }
@@ -4354,6 +4484,7 @@ body.nav-mode #promos-pill,
 body.nav-mode #tab-bar,
 body.nav-mode #route-snackbar,
 body.nav-mode #contact-pill-wrap,
+body.nav-mode #wish-pill-wrap,
 body.nav-mode #style-picker {
   display: none !important;
 }
@@ -5704,26 +5835,30 @@ body.dark-mode .sp-chip {
 
   #suggest-overlay,
   #edit-overlay,
-  #contact-overlay {
+  #contact-overlay,
+  #wish-form-overlay {
     padding: 0;
     align-items: flex-end;
   }
 
   #suggest-overlay.hide,
   #edit-overlay.hide,
-  #contact-overlay.hide {
+  #contact-overlay.hide,
+  #wish-form-overlay.hide {
     display: flex !important;
     opacity: 0;
     pointer-events: none;
   }
   #suggest-overlay,
   #edit-overlay,
-  #contact-overlay {
+  #contact-overlay,
+  #wish-form-overlay {
     transition: opacity var(--t-med);
   }
   #suggest-card,
   #edit-card,
-  #contact-card {
+  #contact-card,
+  #wish-form-card {
     max-width: 100%;
     height: auto;
     max-height: calc(100vh - 40px);
@@ -5733,7 +5868,8 @@ body.dark-mode .sp-chip {
   }
   #suggest-overlay.hide #suggest-card,
   #edit-overlay.hide #edit-card,
-  #contact-overlay.hide #contact-card {
+  #contact-overlay.hide #contact-card,
+  #wish-form-overlay.hide #wish-form-card {
     transform: translateY(100%);
   }
   #suggest-card {
@@ -5748,6 +5884,10 @@ body.dark-mode .sp-chip {
     -webkit-overflow-scrolling: touch;
   }
   #contact-form {
+    padding-bottom: calc(20px + var(--safe-b));
+    -webkit-overflow-scrolling: touch;
+  }
+  #wish-form {
     padding-bottom: calc(20px + var(--safe-b));
     -webkit-overflow-scrolling: touch;
   }

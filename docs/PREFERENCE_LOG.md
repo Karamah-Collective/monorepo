@@ -218,6 +218,15 @@ what you like, what you've decided, and how you want things done.
 
 **a. Always auto-recenter (not edge-only):**
 - Changed from edge-detection recentering to always-follow: every GPS tick calls `map.easeTo` to center on user. User panning still sets `_following = false` and shows recenter button.
+
+### 2026-04-04 — Wishlist mobile behavior split
+
+**a. Wishlist stays modal, form slides from bottom:**
+- User explicitly wants the wishlist itself to remain a centered window on phones, matching its prior behavior.
+- Only the “Make a Wish” form should open like the other phone forms: bottom-aligned sheet with slide-up motion.
+- Mobile overlay selectors in `styles.css` must exclude `#wish-overlay` / `#wish-card` and include only `#wish-form-overlay` / `#wish-form-card` for bottom-sheet behavior.
+
+**Files:** `src/styles/styles.css`.
 - Removed `EDGE_MARGIN_PX` constant — no longer needed.
 - Works identically on desktop and mobile.
 
@@ -987,3 +996,25 @@ All use GPU-composited `transform` only (preserving the `-45deg` puck rotation).
 - **Codebase audit findings** (informing the refactorer): ~8,500 LOC across 22 JS files. Consistent: camelCase, UPPER_CASE constants, named exports, no `var`, `esc()` usage, `.join("")`. Inconsistent: no JSDoc on 40+ exports, ~15 console.logs in prod, mixed `_` prefix usage on module state, ~40 magic numbers, 3 functions >150 lines (findRoutes, encodeCompactRoute, initSheetDrag).
 - **Files created:** `.github/agents/refactorer.agent.md`
 - **Files modified:** `.github/agents/the-architect.agent.md`, `docs/PREFERENCE_LOG.md`
+
+### 2026-04-04 — Wishlist feature: community feature request board
+
+**New feature — Wishlist:**
+A full community wishlist / feature-request board integrated into the app.
+
+**Architecture decisions:**
+- **Storage:** Google Sheets "Wishes" tab (cols: id, title, description, votes, created, votedDevices). Same pattern as all other data — Sheet → Apps Script → CF Function proxy → client.
+- **Vote dedup:** Dual approach — `hf_device_id` in localStorage (stable per browser profile) sent with each vote; server-side comma-separated device ID list per wish in column F. Same device can't vote twice (server is authoritative). Incognito/different browser can bypass — acceptable without auth.
+- **API:** Single CF Function `functions/api/wishes.js` handles GET (list, 5-min edge cache) and POST (add/vote, reCAPTCHA-protected). Follows existing patterns (allowedOrigin, truncate, JSON error responses).
+- **Client module:** `src/wishlist.js` — lazy-loaded after map.on("load"). Optimistic vote UI with server reconciliation.
+
+**UI decisions:**
+- **Button placement:** Star icon `btn-icon-card` pill, positioned in the tools group (bottom-right). Inside tools toggle on phone/tablet, always visible on desktop. 4th tool alongside Search, Style, Contact.
+- **Overlay:** Same pattern as Contact overlay — fixed overlay with centered card, `.hide` class toggle, backdrop tap to close.
+- **Two views:** List view (scrollable wish cards sorted by votes) and form view (title + description inputs). Toggle between them via header buttons.
+- **Card design:** Wish card with title, 2-line description preview (expandable "Read more"), and upvote button (arrow + count) on the right side.
+- **Add button:** Accent-colored + roundel in the header bar (top-right of list view, left of close button).
+- **Form view back button:** Arrow-back in the close button position, navigates back to list (not closes overlay).
+
+**Files created:** `functions/api/wishes.js`, `src/wishlist.js`
+**Files modified:** `index.html` (pill button + overlay markup), `src/app.js` (lazy-load + init + fast-tap), `src/tutorial.js` (wishlist steps for desktop + phone/tablet), `src/styles/design-tokens.css` (wish templates + scrollbar aliases), `src/styles/styles.css` (overlay layout, pill positioning across all breakpoints, nav-mode hide), `sw.js` (pre-cache wishlist.js), `scripts/apps-script/Code.gs` (wishes CRUD, ensureWishSheet, getWishesJSON)

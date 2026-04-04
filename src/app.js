@@ -107,7 +107,8 @@ document.addEventListener(
       '.tut-start-btn, .tut-nav-btn, .tut-close, .tab, .pl-card, ' +
       '.itin-card, .leg-expandable, .direct-step, .sort-opt, .style-opt, .cal-day, .tp-cell, ' +
       '.time-chip, .sp-chip, .prayer-hdr-btn, .prayer-snack-clickable, ' +
-      '#results-list li, .dir-suggest li, .pl-fav-btn, #eid-banner .snack-body, #snackbar-body, a'
+      '#results-list li, .dir-suggest li, .pl-fav-btn, #eid-banner .snack-body, #snackbar-body, ' +
+      '.wish-vote, .wish-expand, a'
     );
     if (!interactive) return;
     // Don't fast-tap inputs/textareas (they need default focus behavior)
@@ -188,6 +189,7 @@ map.on("load", async () => {
     _contact, // side-effect import — attaches event listeners
     { initEidPrayers },
     { initGpsSim },
+    { initWishlist },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
@@ -195,12 +197,14 @@ map.on("load", async () => {
     import("./contact.js"),
     import("./eid-prayers.js"),
     import("./gps-sim.js"),
+    import("./wishlist.js"),
   ]);
 
   loadTransitCache();
   initPrayerTimes();
   initStyleEditor();
   initEidPrayers();
+  initWishlist();
   // initGpsSim(); // disabled for production — re-enable for dev/testing
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled

@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260404" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260404-2" />
   </head>
   <body>
     <div id="app">
@@ -112,6 +112,15 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
             <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ─── Wishlist Pill (inside tools group on phone/tablet) ─── -->
+      <div id="wish-pill-wrap">
+        <button id="wish-pill" class="btn-icon-card" aria-label="Wishlist">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
           </svg>
         </button>
       </div>
@@ -1426,6 +1435,54 @@
             <p>Questions about this policy? Reach us at <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
             <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── Wishlist Overlay ─── -->
+      <div id="wish-overlay" class="hide">
+        <div id="wish-card">
+          <div class="suggest-head">
+            <h3>Wishlist</h3>
+            <button id="wish-add-btn" class="btn-roundel-accent" aria-label="Make a wish" style="margin-left:auto;margin-right:var(--sp-3)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            <button id="wish-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div id="wish-list" class="wish-list"></div>
+        </div>
+      </div>
+
+      <!-- ─── Make a Wish Overlay ─── -->
+      <div id="wish-form-overlay" class="hide">
+        <div id="wish-form-card">
+          <div class="suggest-head">
+            <h3>Make a Wish</h3>
+            <button id="wish-form-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <form id="wish-form" autocomplete="off" novalidate>
+            <label class="sg-label">
+              <span>Title <span class="sg-req">*</span></span>
+              <input id="wish-title" type="text" required placeholder="e.g. Add filtering by city" maxlength="120"/>
+            </label>
+            <label class="sg-label">
+              Description
+              <textarea id="wish-desc" rows="4" placeholder="Describe your idea in detail…" maxlength="1000"></textarea>
+            </label>
+            <button type="submit" id="wish-submit" class="btn-primary">
+              Submit Wish
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
         </div>
       </div>
 
