@@ -189,7 +189,7 @@ map.on("load", async () => {
     _contact, // side-effect import — attaches event listeners
     { initEidPrayers },
     { initGpsSim },
-    { initWishlist },
+    { initWishlist, preloadWishes },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
@@ -205,6 +205,7 @@ map.on("load", async () => {
   initStyleEditor();
   initEidPrayers();
   initWishlist();
+  preloadWishes();
   // initGpsSim(); // disabled for production — re-enable for dev/testing
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled

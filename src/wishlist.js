@@ -20,6 +20,8 @@ let _wishes = [];
 let _lastFetch = 0;
 let _lastSubmit = 0;
 let _expanded = new Set();
+let _preloadPromise = null;
+let _preloaded = false;
 
 // ─── DOM refs (set in init) ───────────────────────────────────────────────────
 let _overlay, _formOverlay, _card, _list, _addBtn, _formEl;
@@ -99,7 +101,14 @@ export function initWishlist() {
 // ─── Open / Close ─────────────────────────────────────────────────────────────
 function _open() {
   _overlay.classList.remove("hide");
-  _fetchWishes();
+  if (_preloaded) {
+    _render();
+  } else if (_preloadPromise) {
+    _list.innerHTML = `<div class="wish-loading">Loading wishes…</div>`;
+    _preloadPromise.then(() => _render());
+  } else {
+    _fetchWishes();
+  }
 }
 
 function _close() {
@@ -120,7 +129,7 @@ function _animateWishCard(changeFn) {
     changeFn();
     return;
   }
-  animateSheetHeight(_card, changeFn);
+  animateSheetHeight(_card, changeFn, { force: true });
 }
 
 function _syncExpandableDescriptions() {
@@ -144,6 +153,23 @@ function _syncExpandableDescriptions() {
     descEl.classList.toggle("wish-desc--open", isOpen);
     toggleEl.hidden = false;
     toggleEl.textContent = isOpen ? "Show less" : "Read more";
+  });
+}
+
+function _toggleExpand(wishId) {
+  const wishEl = _list.querySelector(`.wish-card[data-id="${CSS.escape(wishId)}"]`);
+  if (!wishEl) return;
+  const descEl = wishEl.querySelector(".wish-desc");
+  const toggleEl = wishEl.querySelector(".wish-expand");
+  if (!descEl || !toggleEl) return;
+
+  const wasOpen = _expanded.has(wishId);
+  if (wasOpen) _expanded.delete(wishId);
+  else _expanded.add(wishId);
+
+  _animateWishCard(() => {
+    descEl.classList.toggle("wish-desc--open", !wasOpen);
+    toggleEl.textContent = wasOpen ? "Read more" : "Show less";
   });
 }
 
@@ -233,12 +259,7 @@ function _render() {
       btn.addEventListener("click", () => _handleVote(btn.dataset.id));
     });
     _list.querySelectorAll(".wish-expand").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.id;
-        if (_expanded.has(id)) _expanded.delete(id);
-        else _expanded.add(id);
-        _render();
-      });
+      btn.addEventListener("click", () => _toggleExpand(btn.dataset.id));
     });
   });
 }
@@ -302,6 +323,8 @@ async function _handleSubmit(e) {
 
   const title = document.getElementById("wish-title").value.trim();
   const description = document.getElementById("wish-desc").value.trim();
+  const name = document.getElementById("wish-name").value.trim();
+  const email = document.getElementById("wish-email").value.trim();
 
   const submitBtn = document.getElementById("wish-submit");
   const origHtml = submitBtn.innerHTML;
@@ -319,17 +342,15 @@ async function _handleSubmit(e) {
     const res = await fetch("/api/wishes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "add", token, title, description }),
+      body: JSON.stringify({ action: "add", token, title, description, name, email }),
     });
 
     const data = await res.json();
     if (data.success) {
       _lastSubmit = Date.now();
       _formEl.reset();
-      _lastFetch = 0; // force refresh
       _closeForm();
-      _fetchWishes();
-      showToast("Wish submitted!", "check", "Thanks for your input");
+      showToast("Wish submitted!", "check", "It will appear after review");
     } else {
       showToast("Submission failed", "error", data.error || "Try again");
     }
@@ -339,4 +360,21 @@ async function _handleSubmit(e) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = origHtml;
   }
+}
+
+// ─── Preload ──────────────────────────────────────────────────────────────────
+/**
+ * Silently fetch wishes in background during app startup.
+ * Data is used when the user opens the wishlist overlay.
+ * @returns {Promise<void>}
+ */
+export function preloadWishes() {
+  _preloadPromise = _fetchWishesApi().then((wishes) => {
+    if (wishes) {
+      _wishes = wishes;
+      _wishes.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    }
+    _preloaded = true;
+  }).catch(() => { _preloaded = true; });
+  return _preloadPromise;
 }

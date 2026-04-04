@@ -395,11 +395,11 @@ export function initSegPill(container) {
  * Flow: pin at current height → run changeFn → measure new natural
  * height → FLIP-animate from old → new → restore fit-content.
  */
-export function animateSheetHeight(sheet, changeFn) {
+export function animateSheetHeight(sheet, changeFn, { force = false } = {}) {
   // Cancel any pending cleanup from a previous animation
   if (sheet._animCleanup) { clearTimeout(sheet._animCleanup); sheet._animCleanup = null; }
 
-  if (window.innerWidth <= 768 || sheet.classList.contains("shut")) {
+  if ((!force && window.innerWidth <= 768) || sheet.classList.contains("shut")) {
     changeFn();
     return;
   }

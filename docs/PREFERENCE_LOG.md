@@ -48,6 +48,11 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-04-04 — Wishlist approval system: pending review before public.** All new wishes are hidden from the public wishlist until an admin marks `approved = yes` in the Google Sheet. Matches the existing place-approval workflow. Existing wishes will need manual approval to re-appear.
+- **2026-04-04 — Wishlist pre-loads with places, no per-open fetch.** Wishes are fetched once in background during app startup (alongside places). When user opens the wishlist, pre-loaded data renders instantly — no loading spinner or wait. Session-scoped only (no localStorage cache for wishes) to avoid stale data.
+- **2026-04-04 — Wishlist expand/collapse: direct DOM toggle, not full re-render.** Read More/Show Less now toggles the description class directly and animates the card height via `animateSheetHeight` with `force: true` (bypasses mobile skip). Avoids wasteful full innerHTML rebuild for a single toggle.
+- **2026-04-04 — Optional name/email on wish submissions.** Users can optionally provide name and email when submitting a wish. Stored in Sheet columns G (name) and H (email). Email validated server-side if provided. Purpose: contact users when their wish is implemented.
+
 - **2026-03-27 — Full UI redesign direction: product shell over floating HUD.** User rejected two floating-control redesign concepts as too scattered / not beautiful enough. Preferred next-step direction is a complete layout rethink with stronger structure, such as a navigation rail, dedicated workspace pane, and map as canvas rather than stacking independent floating controls.
 
 - **2026-03-17 — Shared purple by theme: light `#8C4799`, dark `#E896E3` (shops + trains).** Use the original HSL purple in light mode and the brighter purple in dark mode, consistently for place shop color and rail visuals.
@@ -163,6 +168,32 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-04-04 — Wishlist: approval system, pre-loading, animation, name/email
+
+**a. Animated expand/collapse (Read More / Show Less):**
+- Replaced full `_render()` call on expand toggle with direct DOM class toggle + `_animateWishCard()`.
+- Added `force: true` option to `animateSheetHeight()` so wishlist modal animates on all screen sizes (the generic helper skips on mobile ≤768px which is correct for bottom sheets but not centered modals).
+- `_toggleExpand()` function: finds the specific wish card by `data-id`, toggles `.wish-desc--open` class, and wraps in `_animateWishCard()` for smooth FLIP height animation.
+
+**b. Optional name and email fields:**
+- Added two optional fields to the "Make a Wish" form in `index.html`: Name (`maxlength=100`) and Email (`maxlength=254`, `type=email`).
+- CF Function (`wishes.js`): validates email format if provided (`EMAIL_RE`), truncates both fields, passes to GAS.
+- GAS (`Code.gs`): stores in new columns G (name) and H (email). `WISH_HEADERS` expanded. `ensureWishSheet` auto-upgrades existing sheets with missing headers.
+
+**c. Approval system:**
+- New column I (approved) in Wishes sheet. New wishes get empty string (pending).
+- `getWishesJSON()` now filters: only returns wishes where `approved === 'yes'`.
+- Post-submit toast changed to "It will appear after review" (was: instant refresh + "Thanks for your input").
+- Removed `_lastFetch = 0; _fetchWishes()` after submit — approved wishes appear via next pre-load.
+
+**d. Pre-load wishes alongside places:**
+- New `preloadWishes()` export in `wishlist.js` — calls `_fetchWishesApi()` in background, stores in module-level `_wishes`.
+- Called from `app.js` right after `initWishlist()` in the lazy-load block.
+- `_open()` now uses pre-loaded data: instant render if available, shows "Loading..." if in progress, falls back to `_fetchWishes()` if no preload started.
+- Session-scoped only — `_wishes` resets on page reload, no localStorage caching.
+
+**Files modified:** `src/wishlist.js`, `src/utils.js`, `src/app.js`, `index.html`, `functions/api/wishes.js`, `scripts/apps-script/Code.gs`, `docs/PREFERENCE_LOG.md`.
 
 ### 2026-04-04 — Approach-then-fire step advancement + maneuver icons in turn chip
 

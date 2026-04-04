@@ -6344,6 +6344,15 @@ body.dark-mode .sp-chip {
   }
 }
 
+/* ─── Form section note (divider text between field groups) ─── */
+.form-section-note {
+  margin: 0;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  letter-spacing: var(--ls-normal);
+}
+
 /* ─── Form reCAPTCHA legal line ─── */
 .form-legal {
   margin: 0;

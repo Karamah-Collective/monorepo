@@ -16,6 +16,9 @@ const MAX_TITLE_LEN = 120;
 const MAX_DESC_LEN = 1000;
 const MAX_DEVICE_LEN = 64;
 const MAX_BODY_SIZE = 4096;
+const MAX_NAME_LEN = 100;
+const MAX_EMAIL_LEN = 254;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function allowedOrigin(request) {
   const origin = request.headers.get('Origin') || '';
@@ -109,9 +112,14 @@ export async function onRequestPost(context) {
   if (action === 'add') {
     const title = truncate((body.title || '').trim(), MAX_TITLE_LEN);
     const description = truncate((body.description || '').trim(), MAX_DESC_LEN);
+    const name = truncate((body.name || '').trim(), MAX_NAME_LEN);
+    const email = truncate((body.email || '').trim(), MAX_EMAIL_LEN);
     if (!title) return json({ error: 'Title is required' }, 400, headers);
+    if (email && !EMAIL_RE.test(email)) return json({ error: 'Invalid email' }, 400, headers);
     gasPayload.title = title;
     gasPayload.description = description;
+    gasPayload.name = name;
+    gasPayload.email = email;
   } else if (action === 'vote') {
     const wishId = truncate((body.wishId || '').trim(), 40);
     const deviceId = truncate((body.deviceId || '').trim(), MAX_DEVICE_LEN);

@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260404-3" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260404-4" />
   </head>
   <body>
     <div id="app">
@@ -1477,6 +1477,15 @@
             <label class="sg-label">
               Description
               <textarea id="wish-desc" rows="4" placeholder="Describe your idea in detail…" maxlength="1000"></textarea>
+            </label>
+            <p class="form-section-note">We will notify you if your wish is implemented</p>
+            <label class="sg-label">
+              Name
+              <input id="wish-name" type="text" placeholder="Your name" maxlength="100"/>
+            </label>
+            <label class="sg-label">
+              Email
+              <input id="wish-email" type="email" placeholder="your@email.com" maxlength="254"/>
             </label>
             <button type="submit" id="wish-submit" class="btn-primary">
               Submit Wish
