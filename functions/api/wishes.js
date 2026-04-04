@@ -2,7 +2,7 @@
  * Cloudflare Pages Function – /api/wishes
  *
  * GET  → List all wishes (sorted by votes desc), edge-cached 5 min
- * POST → Create a new wish or vote on an existing one
+ * POST → Create a new wish or toggle a vote on an existing one
  *
  * Required Cloudflare Pages Environment Variables:
  *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key
@@ -58,7 +58,7 @@ export async function onRequestGet(context) {
   }
 }
 
-// ── POST: create wish or vote ────────────────────────────────────────────────
+// ── POST: create wish or toggle vote ─────────────────────────────────────────
 export async function onRequestPost(context) {
   const { request, env } = context;
   const headers = {

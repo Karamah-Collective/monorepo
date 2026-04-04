@@ -227,6 +227,40 @@ what you like, what you've decided, and how you want things done.
 - Mobile overlay selectors in `styles.css` must exclude `#wish-overlay` / `#wish-card` and include only `#wish-form-overlay` / `#wish-form-card` for bottom-sheet behavior.
 
 **Files:** `src/styles/styles.css`.
+
+### 2026-04-04 — Wishlist votes should toggle and use a like icon
+
+**a. Vote interaction and icon semantics:**
+- User wants wishlist votes to be reversible: tapping the same vote button again must remove the vote.
+- Vote affordance should use a like/vote icon (thumbs-up), not a generic up arrow.
+- Wishlist vote state must stay consistent across local UI state and server-side device tracking.
+
+**Files:** `src/wishlist.js`, `functions/api/wishes.js`, `scripts/apps-script/Code.gs`.
+
+### 2026-04-04 — Localhost data features need GAS fallback when CF Functions are absent
+
+**a. Local static dev should mirror live data reads:**
+- On localhost, Cloudflare Pages Functions are not running, so data features that rely on `/api/*` need the same direct `SHEETS_URL` fallback pattern used by places/eid.
+- Wishlist loading should fall back from `/api/wishes` to `config.local.js -> SHEETS_URL?action=wishes` during local dev.
+
+**Files:** `src/wishlist.js`.
+
+### 2026-04-04 — Wishlist window size changes should animate like other panels
+
+**a. Reuse shared height animation pattern:**
+- User wants wishlist window size updates to animate smoothly instead of snapping.
+- Wishlist desktop card should use the same shared height transition helper pattern already used elsewhere in the app.
+
+**Files:** `src/wishlist.js`, `src/styles/styles.css`.
+
+### 2026-04-04 — Wishlist descriptions must default to a strict two-line clamp
+
+**a. No character-based truncation for wish descriptions:**
+- User wants wish descriptions capped to exactly two rendered lines by default on both desktop and phone.
+- Full description text should stay in the DOM; expansion must happen only when the user explicitly presses “Read more”.
+- The “Read more” control should appear only when the clamped description actually overflows the two-line limit.
+
+**Files:** `src/wishlist.js`, `src/styles/design-tokens.css`.
 - Removed `EDGE_MARGIN_PX` constant — no longer needed.
 - Works identically on desktop and mobile.
 

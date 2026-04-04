@@ -429,7 +429,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-med), height var(--t-spring);
 }
 #wish-overlay.hide #wish-card {
   transform: scale(0.96);

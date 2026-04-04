@@ -1773,6 +1773,18 @@ html.dark-mode .nav-recenter {
   color: var(--text-2);
   line-height: 1.45;
   margin: var(--sp-1) 0 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.wish-desc--open {
+  display: block;
+  overflow: visible;
+  line-clamp: unset;
+  -webkit-line-clamp: unset;
 }
 
 .wish-expand {

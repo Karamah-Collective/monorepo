@@ -1,18 +1,19 @@
 /**
  * Wishlist — community feature request board.
  *
- * Users browse, upvote, and submit wishes. Data stored in Google Sheets
- * via Apps Script, proxied through /api/wishes. One vote per device
- * per wish (localStorage + server-side dedup).
+ * Users browse, vote on, and submit wishes. Data stored in Google Sheets
+ * via Apps Script, proxied through /api/wishes. Votes can be toggled
+ * per device per wish (localStorage + server-side state).
  */
 import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { esc, showToast, loadRecaptcha } from "./utils.js";
+import { animateSheetHeight, esc, showToast, loadRecaptcha } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_VOTED = "hf_wish_votes";
 const STORAGE_KEY_DEVICE = "hf_device_id";
 const SUBMIT_COOLDOWN = 60_000;
 const FETCH_CACHE_MS = 120_000;
+const OVERFLOW_EPSILON_PX = 1;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let _wishes = [];
@@ -21,7 +22,7 @@ let _lastSubmit = 0;
 let _expanded = new Set();
 
 // ─── DOM refs (set in init) ───────────────────────────────────────────────────
-let _overlay, _formOverlay, _list, _addBtn, _formEl;
+let _overlay, _formOverlay, _card, _list, _addBtn, _formEl;
 
 // ─── Device ID (stable per browser profile) ──────────────────────────────────
 function _getDeviceId() {
@@ -42,6 +43,26 @@ function _saveVoted(set) {
   localStorage.setItem(STORAGE_KEY_VOTED, JSON.stringify([...set]));
 }
 
+function _setVoteState(wishId, isVoted, exactVotes) {
+  const voted = _getVoted();
+  const wish = _wishes.find((entry) => entry.id === wishId);
+  const wasVoted = voted.has(wishId);
+
+  if (isVoted) voted.add(wishId);
+  else voted.delete(wishId);
+  _saveVoted(voted);
+
+  if (!wish) return;
+
+  if (typeof exactVotes === "number") {
+    wish.votes = Math.max(0, exactVotes);
+    return;
+  }
+
+  if (wasVoted === isVoted) return;
+  wish.votes = Math.max(0, (wish.votes || 0) + (isVoted ? 1 : -1));
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 /**
  * Wire up the wishlist overlay. Called once after lazy-load.
@@ -49,6 +70,7 @@ function _saveVoted(set) {
 export function initWishlist() {
   _overlay     = document.getElementById("wish-overlay");
   _formOverlay = document.getElementById("wish-form-overlay");
+  _card        = document.getElementById("wish-card");
   _list        = document.getElementById("wish-list");
   _addBtn      = document.getElementById("wish-add-btn");
   _formEl      = document.getElementById("wish-form");
@@ -93,18 +115,76 @@ function _closeForm() {
   _formOverlay.classList.add("hide");
 }
 
+function _animateWishCard(changeFn) {
+  if (!_card) {
+    changeFn();
+    return;
+  }
+  animateSheetHeight(_card, changeFn);
+}
+
+function _syncExpandableDescriptions() {
+  _list.querySelectorAll(".wish-card").forEach((card) => {
+    const wishId = card.dataset.id;
+    const descEl = card.querySelector(".wish-desc");
+    const toggleEl = card.querySelector(".wish-expand");
+
+    if (!descEl || !toggleEl) return;
+
+    descEl.classList.remove("wish-desc--open");
+    const isOverflowing = (descEl.scrollHeight - descEl.clientHeight) > OVERFLOW_EPSILON_PX;
+
+    if (!isOverflowing) {
+      _expanded.delete(wishId);
+      toggleEl.hidden = true;
+      return;
+    }
+
+    const isOpen = _expanded.has(wishId);
+    descEl.classList.toggle("wish-desc--open", isOpen);
+    toggleEl.hidden = false;
+    toggleEl.textContent = isOpen ? "Show less" : "Read more";
+  });
+}
+
 // ─── Fetch wishes ─────────────────────────────────────────────────────────────
+async function _fetchWishesApi() {
+  const urls = ["/api/wishes"];
+
+  try {
+    const cfg = await import("./config.local.js");
+    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=wishes`);
+  } catch {
+    // config.local.js absent in production — expected
+  }
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const wishes = Array.isArray(data) ? data : (data.wishes || []);
+      if (Array.isArray(wishes)) return wishes;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 async function _fetchWishes() {
   if (Date.now() - _lastFetch < FETCH_CACHE_MS && _wishes.length) {
     _render();
     return;
   }
-  _list.innerHTML = `<div class="wish-loading">Loading wishes…</div>`;
+  _animateWishCard(() => {
+    _list.innerHTML = `<div class="wish-loading">Loading wishes…</div>`;
+  });
   try {
-    const res = await fetch("/api/wishes");
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    _wishes = Array.isArray(data) ? data : (data.wishes || []);
+    const wishes = await _fetchWishesApi();
+    if (!wishes) throw new Error();
+    _wishes = wishes;
     _wishes.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     _lastFetch = Date.now();
   } catch {
@@ -119,42 +199,46 @@ function _render() {
   const voted = _getVoted();
 
   if (!_wishes.length) {
-    _list.innerHTML = `<div class="wish-empty">No wishes yet — be the first!</div>`;
+    _animateWishCard(() => {
+      _list.innerHTML = `<div class="wish-empty">No wishes yet — be the first!</div>`;
+    });
     return;
   }
 
-  _list.innerHTML = _wishes.map((w) => {
-    const isVoted = voted.has(w.id);
-    const isOpen = _expanded.has(w.id);
-    const desc = w.description || "";
-    const shortDesc = desc.length > 100 ? desc.slice(0, 100) + "…" : desc;
-    const hasMore = desc.length > 100;
+  _animateWishCard(() => {
+    _list.innerHTML = _wishes.map((w) => {
+      const isVoted = voted.has(w.id);
+      const isOpen = _expanded.has(w.id);
+      const desc = w.description || "";
 
-    return `<div class="wish-card" data-id="${esc(w.id)}">
-      <div class="wish-card-body">
-        <h4 class="wish-title">${esc(w.title)}</h4>
-        <p class="wish-desc ${isOpen ? "wish-desc--open" : ""}">${esc(isOpen ? desc : shortDesc)}</p>
-        ${hasMore ? `<button class="wish-expand" data-id="${esc(w.id)}">${isOpen ? "Show less" : "Read more"}</button>` : ""}
-      </div>
-      <button class="wish-vote ${isVoted ? "wish-vote--voted" : ""}" data-id="${esc(w.id)}" ${isVoted ? "disabled" : ""} aria-label="Upvote">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="${isVoted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 19V5M5 12l7-7 7 7"/>
-        </svg>
-        <span class="wish-vote-count">${w.votes || 0}</span>
-      </button>
-    </div>`;
-  }).join("");
+      return `<div class="wish-card" data-id="${esc(w.id)}">
+        <div class="wish-card-body">
+          <h4 class="wish-title">${esc(w.title)}</h4>
+          ${desc ? `<p class="wish-desc ${isOpen ? "wish-desc--open" : ""}">${esc(desc)}</p>
+          <button class="wish-expand" data-id="${esc(w.id)}" hidden>${isOpen ? "Show less" : "Read more"}</button>` : ""}
+        </div>
+        <button class="wish-vote ${isVoted ? "wish-vote--voted" : ""}" data-id="${esc(w.id)}" aria-label="${isVoted ? "Remove vote" : "Vote"}" aria-pressed="${isVoted ? "true" : "false"}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isVoted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-1 4-4 4v11h11.28a2 2 0 0 0 1.98-1.74l1-7A2 2 0 0 0 18.28 10H14Z"/>
+            <path d="M6 10H3v11h3"/>
+          </svg>
+          <span class="wish-vote-count">${w.votes || 0}</span>
+        </button>
+      </div>`;
+    }).join("");
 
-  // Attach listeners
-  _list.querySelectorAll(".wish-vote:not([disabled])").forEach((btn) => {
-    btn.addEventListener("click", () => _handleVote(btn.dataset.id));
-  });
-  _list.querySelectorAll(".wish-expand").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.id;
-      if (_expanded.has(id)) _expanded.delete(id);
-      else _expanded.add(id);
-      _render();
+    _syncExpandableDescriptions();
+
+    _list.querySelectorAll(".wish-vote").forEach((btn) => {
+      btn.addEventListener("click", () => _handleVote(btn.dataset.id));
+    });
+    _list.querySelectorAll(".wish-expand").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        if (_expanded.has(id)) _expanded.delete(id);
+        else _expanded.add(id);
+        _render();
+      });
     });
   });
 }
@@ -162,13 +246,11 @@ function _render() {
 // ─── Vote ─────────────────────────────────────────────────────────────────────
 async function _handleVote(wishId) {
   const voted = _getVoted();
-  if (voted.has(wishId)) return;
+  const wasVoted = voted.has(wishId);
+  const nextVoted = !wasVoted;
 
   // Optimistic UI
-  const wish = _wishes.find((w) => w.id === wishId);
-  if (wish) wish.votes = (wish.votes || 0) + 1;
-  voted.add(wishId);
-  _saveVoted(voted);
+  _setVoteState(wishId, nextVoted);
   _render();
 
   try {
@@ -187,25 +269,18 @@ async function _handleVote(wishId) {
 
     const data = await res.json();
     if (!data.success) {
-      // Revert optimistic update
-      if (wish) wish.votes = Math.max(0, (wish.votes || 1) - 1);
-      voted.delete(wishId);
-      _saveVoted(voted);
+      _setVoteState(wishId, wasVoted);
       _render();
-      if (data.error === "Already voted") {
-        // Server knows we voted; keep it in local set
-        voted.add(wishId);
-        _saveVoted(voted);
-        _render();
-      }
+      showToast(nextVoted ? "Vote failed" : "Could not remove vote", "error", data.error || "Try again");
+      return;
     }
-  } catch {
-    // Network error — revert
-    if (wish) wish.votes = Math.max(0, (wish.votes || 1) - 1);
-    voted.delete(wishId);
-    _saveVoted(voted);
+
+    _setVoteState(wishId, Boolean(data.voted), data.votes);
     _render();
-    showToast("Vote failed", "error", "Check your connection");
+  } catch {
+    _setVoteState(wishId, wasVoted);
+    _render();
+    showToast(nextVoted ? "Vote failed" : "Could not remove vote", "error", "Check your connection");
   }
 }
 
