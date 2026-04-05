@@ -178,7 +178,40 @@ test.describe("Directions — Clear Route", () => {
 
 test.describe("Directions — Autocomplete", () => {
   test.beforeEach(async ({ page }) => {
-    await setupApp(page);
+    const localPlacesPayload = {
+      places: [
+        {
+          id: "test-local-place",
+          name: "Kamppi Halal",
+          address: "Urho Kekkosen katu 1, Helsinki",
+          lat: 60.1689,
+          lng: 24.9322,
+          type: "restaurant",
+          city: "Helsinki",
+          tags: {},
+        },
+      ],
+      tags: {},
+    };
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.route("**/api/places?action=all", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(localPlacesPayload),
+      }),
+    );
+    await page.route("**/data/places.json", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(localPlacesPayload.places),
+      }),
+    );
     // Mock geocoding for autocomplete
     await page.route("**/api.digitransit.fi/geocoding/**", (route) =>
       route.fulfill({
@@ -194,6 +227,7 @@ test.describe("Directions — Autocomplete", () => {
         }),
       }),
     );
+    await setupApp(page);
     await page.locator("#dir-btn").click();
     await page.waitForTimeout(600);
   });
@@ -212,9 +246,16 @@ test.describe("Directions — Autocomplete", () => {
     await page.locator("#dir-to").click();
     await page.waitForTimeout(200);
     await page.locator("#dir-to").fill("Kamppi");
-    await page.waitForTimeout(500);
     const suggest = page.locator("#dir-to-suggest");
-    const hasItems = await suggest.locator("li").count();
-    expect(hasItems).toBeGreaterThan(0);
+    await expect(suggest.locator("li").first()).toBeVisible();
+  });
+
+  test("approved map places appear before generic geocoder results", async ({ page }) => {
+    await page.locator("#dir-to").click();
+    await page.waitForTimeout(200);
+    await page.locator("#dir-to").fill("Kamppi");
+    await expect(page.locator("#dir-to-suggest li .ds-name").first()).toBeVisible();
+    const firstName = await page.locator("#dir-to-suggest li .ds-name").first().textContent();
+    expect(firstName).toBe("Kamppi Halal");
   });
 });

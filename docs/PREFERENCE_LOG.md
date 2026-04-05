@@ -48,6 +48,8 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-04-05 — Directions lookup must prioritize approved map places.** Route origin/destination/waypoint search should surface `placesData` matches before Digitransit/Nominatim results, and typed auto-resolve should use the same merged ranking so approved places are not replaced by generic venues.
+
 - **2026-04-04 — Wishlist approval system: pending review before public.** All new wishes are hidden from the public wishlist until an admin marks `approved = yes` in the Google Sheet. Matches the existing place-approval workflow. Existing wishes will need manual approval to re-appear.
 - **2026-04-04 — Wishlist pre-loads with places, no per-open fetch.** Wishes are fetched once in background during app startup (alongside places). When user opens the wishlist, pre-loaded data renders instantly — no loading spinner or wait. Session-scoped only (no localStorage cache for wishes) to avoid stale data.
 - **2026-04-04 — Wishlist expand/collapse: direct DOM toggle, not full re-render.** Read More/Show Less now toggles the description class directly and animates the card height via `animateSheetHeight` with `force: true` (bypasses mobile skip). Avoids wasteful full innerHTML rebuild for a single toggle.
@@ -131,6 +133,8 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- Route-field search and route auto-resolve should share the same candidate pipeline. If the main map has an approved place match, directions must rank it ahead of generic geocoder POIs and de-duplicate overlapping results by normalized name/coords.
+
 - Avoid redesign concepts that mainly rearrange floating pills, bottom docks, or glass overlays without changing the underlying layout architecture.
 
 - Don't use Cloudflare KV or any paid/tiered storage for link shortening. Keep sharing fully stateless.
@@ -175,6 +179,13 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-04-05 — Directions autocomplete now prefers approved map places
+
+- **Bug root cause:** `src/directions.js` used its own geocoder-only lookup path (`_dtGeoSearch` / Nominatim fallback), so approved places in `placesData` either did not appear in route suggestions or were outranked by generic external POIs.
+- **Fix:** Added a local directions place search that matches against `placesData`, merges those results ahead of geocoder results, de-duplicates overlapping entries, and reuses the same merged lookup for both autocomplete suggestions and typed `Find Routes` auto-resolution.
+- **Regression coverage:** Added a deterministic Playwright test that stubs local places plus Digitransit geocoding and verifies the local approved place appears first in the directions suggestions.
+- **Files:** `src/directions.js`, `tests/07-directions.spec.js`.
 
 ### 2026-04-04 — Wishlist: approval system, pre-loading, animation, name/email
 

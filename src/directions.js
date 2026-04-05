@@ -478,12 +478,96 @@ dirTo.addEventListener("focus", () => { startPick("to"); findingNearestMosque = 
 const dirFromSuggest = document.getElementById("dir-from-suggest");
 const dirToSuggest = document.getElementById("dir-to-suggest");
 let dirSugDebounce = null;
+const DIR_SUGGEST_MIN_QUERY_LENGTH = 2;
+const DIR_SUGGEST_DEBOUNCE_MS = 300;
+const DIR_SUGGEST_LIMIT = 5;
+const DIR_LOCAL_SUGGEST_LIMIT = 4;
+const _dirLocalTypeCls = {
+  mosque: { type: "place_of_worship", cls: "amenity" },
+  prayer_room: { type: "place_of_worship", cls: "amenity" },
+  restaurant: { type: "restaurant", cls: "amenity" },
+  shop: { type: "shop", cls: "shop" },
+};
 
 function getDirInputForField(field) {
   if (field === "from") return dirFrom;
   if (field === "to") return dirTo;
   if (field?.startsWith("wp-")) return document.getElementById(`dir-wp-${field.slice(3)}`);
   return null;
+}
+
+function _normalizeDirSearchText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function _searchLocalDirPlaces(query) {
+  if (!placesData.length) return [];
+
+  const normalizedQuery = _normalizeDirSearchText(query);
+  if (!normalizedQuery) return [];
+
+  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+  const results = placesData
+    .map((place) => {
+      const normalizedName = _normalizeDirSearchText(place.name);
+      const normalizedAddr = _normalizeDirSearchText(place.address);
+      const haystack = `${normalizedName} ${normalizedAddr} ${place.type}`;
+      if (!terms.every((term) => haystack.includes(term))) return null;
+
+      const prefixBoost = normalizedName.startsWith(normalizedQuery) ? 4 : 0;
+      const nameHitBoost = normalizedName.includes(normalizedQuery) ? 2 : 0;
+      const score = prefixBoost + nameHitBoost;
+      const icon = _dirLocalTypeCls[place.type] || { type: place.type, cls: "amenity" };
+
+      return {
+        lat: place.lat,
+        lng: place.lng,
+        name: place.name,
+        addr: place.address,
+        type: icon.type,
+        cls: icon.cls,
+        _score: score,
+        _local: true,
+      };
+    })
+    .filter(Boolean);
+
+  results.sort((a, b) => {
+    if (b._score !== a._score) return b._score - a._score;
+    return a.name.localeCompare(b.name);
+  });
+
+  return results.slice(0, DIR_LOCAL_SUGGEST_LIMIT);
+}
+
+function _mergeDirSearchResults(localItems, apiItems) {
+  const merged = [];
+  const seen = new Set();
+
+  const addItem = (item) => {
+    if (!item) return;
+    const key = `${_normalizeDirSearchText(item.name)}|${item.lat?.toFixed?.(5) || item.lat}|${item.lng?.toFixed?.(5) || item.lng}`;
+    const nameKey = _normalizeDirSearchText(item.name);
+    if (seen.has(key) || seen.has(nameKey)) return;
+    seen.add(key);
+    seen.add(nameKey);
+    merged.push(item);
+  };
+
+  localItems.forEach(addItem);
+  apiItems.forEach(addItem);
+  return merged.slice(0, DIR_SUGGEST_LIMIT);
+}
+
+async function _searchDirLocations(query) {
+  const localItems = _searchLocalDirPlaces(query);
+  let apiItems = await _dtGeoSearch(query);
+  if (!apiItems.length) apiItems = await _nominatimSearch(query);
+  return _mergeDirSearchResults(localItems, apiItems);
 }
 
 function moveDirFocusToField(field, previousInput = null) {
@@ -516,8 +600,8 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
     updateGoButton();
     clearTimeout(dirSugDebounce);
     const q = inputEl.value.trim();
-    if (q.length < 2) { suggestEl.classList.add("hide"); return; }
-    dirSugDebounce = setTimeout(() => dirGeoSearch(q, suggestEl, field), 300);
+    if (q.length < DIR_SUGGEST_MIN_QUERY_LENGTH) { suggestEl.classList.add("hide"); return; }
+    dirSugDebounce = setTimeout(() => dirGeoSearch(q, suggestEl, field), DIR_SUGGEST_DEBOUNCE_MS);
   });
   inputEl.addEventListener("focus", () => {
     if (field.startsWith("wp-")) startPick(field);
@@ -565,9 +649,7 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
 
 async function dirGeoSearch(q, suggestEl, field) {
   try {
-    // Digitransit geocoding supports partial/prefix matching (Pelias); fall back to Nominatim
-    let items = await _dtGeoSearch(q);
-    if (!items.length) items = await _nominatimSearch(q);
+    const items = await _searchDirLocations(q);
     if (!items.length) {
       suggestEl.innerHTML = '<li class="ds-none">No places found</li>';
       suggestEl.classList.remove("hide");
@@ -1153,20 +1235,8 @@ export function decodePolyline(encoded, precision) {
 async function autoResolveLocation(inputEl) {
   const q = inputEl.value.trim();
   if (!q) return null;
-  // Digitransit Pelias primary (partial match); Nominatim fallback
-  const items = await _dtGeoSearch(q);
+  const items = await _searchDirLocations(q);
   if (items.length) return { lat: items[0].lat, lng: items[0].lng, name: items[0].name };
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=1&countrycodes=fi&viewbox=${NOMINATIM_VB}&bounded=1`,
-      { headers: { "Accept-Language": "en" } },
-    );
-    const results = await res.json();
-    if (results.length) {
-      const r = results[0];
-      return { lat: +r.lat, lng: +r.lon, name: r.display_name.split(",")[0] };
-    }
-  } catch {}
   return null;
 }
 
