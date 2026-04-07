@@ -487,6 +487,7 @@ const _dirLocalTypeCls = {
   prayer_room: { type: "place_of_worship", cls: "amenity" },
   restaurant: { type: "restaurant", cls: "amenity" },
   shop: { type: "shop", cls: "shop" },
+  cemetery: { type: "cemetery", cls: "amenity" },
 };
 
 function getDirInputForField(field) {

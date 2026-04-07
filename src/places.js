@@ -382,7 +382,7 @@ function _highlightMatch(escaped, q) {
 
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--walk)" }[p.type] || cfg.color;
   const typeTags = getDisplayTags(p.type);
   const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
   const posCount = posTags.length;
@@ -466,6 +466,21 @@ async function fetchFresh() {
   return null;
 }
 
+/** Types managed only in static places.json, never in the Google Sheet. */
+const STATIC_ONLY_TYPES = new Set(["cemetery"]);
+
+/** Merge static-only places (e.g. cemeteries) from current placesData into API results. */
+function _mergeStaticPlaces(apiPlaces) {
+  const staticPlaces = placesData.filter((p) => STATIC_ONLY_TYPES.has(p.type));
+  if (!staticPlaces.length) return apiPlaces;
+  const apiIds = new Set(apiPlaces.map((p) => p.id));
+  const merged = [...apiPlaces];
+  for (const sp of staticPlaces) {
+    if (!apiIds.has(sp.id)) merged.push(sp);
+  }
+  return merged;
+}
+
 export async function loadPlacesData() {
   try {
     placesLoaded = false;
@@ -487,6 +502,7 @@ export async function loadPlacesData() {
       // 2. Background refresh — update only if data changed
       fetchFresh().then(data => {
         if (!data) return;
+        data.places = _mergeStaticPlaces(data.places);
         const oldCount = placesData.length;
         const newCount = data.places.length;
         const countChanged = newCount !== oldCount;
@@ -533,6 +549,7 @@ export async function loadPlacesData() {
     // 4. Background refresh from API — update cache + UI if data changed
     fetchFresh().then(data => {
       if (!data) return;
+      data.places = _mergeStaticPlaces(data.places);
       const oldCount = placesData.length;
       const newCount = data.places.length;
       const countChanged = newCount !== oldCount;
@@ -719,7 +736,9 @@ export function addPlaceMarkers() {
       ? placesData
       : activeTypeFilter === "saved"
         ? placesData.filter((p) => isFavourite(p.id))
-        : placesData.filter((p) => p.type === activeTypeFilter);
+        : activeTypeFilter === "mosque"
+          ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+          : placesData.filter((p) => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
     filtered = filtered.filter((p) =>
@@ -799,7 +818,7 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
 export function showPlacePopup(place, { skipMove = false } = {}) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
-  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[place.type] || cfg.color;
+  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[place.type] || cfg.color;
   const typeTags = getDisplayTags(place.type);
 
   const root = document.createElement("div");
@@ -1287,7 +1306,7 @@ let _plSearchDebounce = 0;
 
 const _SEARCH_PLACEHOLDERS = {
   all: "Search places\u2026",
-  mosque: "Search mosques\u2026",
+  mosque: "Search mosques & cemeteries\u2026",
   prayer_room: "Search prayer rooms\u2026",
   restaurant: "Search restaurants\u2026",
   shop: "Search shops\u2026",
@@ -1455,7 +1474,9 @@ document.addEventListener("click", (e) => {
 
 function renderTagFilterBar() {
   const typePlaces =
-    activeTypeFilter === "all" ? placesData : placesData.filter((p) => p.type === activeTypeFilter);
+    activeTypeFilter === "all" ? placesData
+      : activeTypeFilter === "mosque" ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+        : placesData.filter((p) => p.type === activeTypeFilter);
   const count = typePlaces.length;
   const items = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? getFilterBarTags(activeTypeFilter) : [];
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
@@ -1674,7 +1695,9 @@ function renderPlacesList() {
       ? placesData
       : activeTypeFilter === "saved"
         ? placesData.filter((p) => isFavourite(p.id))
-        : placesData.filter((p) => p.type === activeTypeFilter);
+        : activeTypeFilter === "mosque"
+          ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+          : placesData.filter((p) => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
     filtered = filtered.filter((p) =>
@@ -1760,9 +1783,22 @@ function renderPlacesList() {
     }).join("");
   };
 
+  const _isMosqueTab = activeTypeFilter === "mosque";
   const regularHTML = activeSortField === "default"
-    ? buildGroupedPlacesHTML(sorted)
+    ? buildGroupedPlacesHTML(_isMosqueTab ? sorted.filter((p) => p.type !== "cemetery") : sorted)
     : sorted.map((p, i) => _buildCard(p, i)).join("");
+
+  // Cemetery subsection — only shown as a separated group under the mosque tab
+  let cemeteryHTML = "";
+  if (_isMosqueTab) {
+    const cemeteries = sorted.filter((p) => p.type === "cemetery");
+    if (cemeteries.length) {
+      const cemSectionHdr = `<li class="pl-section-hdr pl-section-hdr--main">Cemeteries</li>`;
+      cemeteryHTML = activeSortField === "default"
+        ? cemSectionHdr + buildGroupedPlacesHTML(cemeteries)
+        : cemSectionHdr + cemeteries.map((p, i) => _buildCard(p, sorted.indexOf(p))).join("");
+    }
+  }
 
   const pinHTML = customPins
     .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${sorted.length + pi}">
@@ -1797,7 +1833,7 @@ function renderPlacesList() {
     }
   }
 
-  list.innerHTML = recentHtml + regularHTML + pinHTML;
+  list.innerHTML = recentHtml + regularHTML + cemeteryHTML + pinHTML;
 
   // Render sponsored carousel at the top of the places list
   _renderSponsorCarousel(filtered);
@@ -1821,7 +1857,7 @@ export function renderPromosPill() {
   _promosPill.classList.remove("hide");
   _promosList.innerHTML = promos.map(p => {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
     return `<button class="promo-item" data-promo-code="${escA(p.sponsor.cta)}" data-promo-text="${escA(p.sponsor.text || "")}">
       <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span>
       <span class="promo-name">${esc(p.name)}</span>
@@ -1879,7 +1915,7 @@ function _renderSponsorCarousel(filteredPlaces) {
 
   const cards = sponsored.map(p => {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" }[p.type] || cfg.color;
+    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
     return `<button class="sponsor-card" data-place-id="${p.id}"><span class="sponsor-card-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span><div class="sponsor-card-body"><span class="sponsor-card-name">${esc(p.name)}</span><span class="sponsor-card-addr">${esc(p.address)}</span></div></button>`;
   }).join("");
 

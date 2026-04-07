@@ -45,6 +45,11 @@ export const PLACE_CONFIG = {
     color: PURPLE_LIGHT,
     icon: '<path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/>',
   },
+  cemetery: {
+    label: "Cemetery",
+    color: "#475569",
+    icon: '<path fill-rule="evenodd" d="M5 21V8a7 7 0 0 1 14 0v13H5zM9 5.5a3 3 0 1 0 6 0 3 3 0 0 0-6 0zM9.5 7.2a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/>',
+  },
 };
 
 export const MODE_PATHS = {
@@ -128,7 +133,7 @@ export function modeIcon(m, size = 14) {
 }
 
 // Build the HTML for a place marker pin on the map
-const _PLACE_CSS_COLOR = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)" };
+const _PLACE_CSS_COLOR = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" };
 export function makePlaceMarkerHTML(type) {
   const cfg = PLACE_CONFIG[type] || PLACE_CONFIG.mosque;
   const cssColor = _PLACE_CSS_COLOR[type] || cfg.color;

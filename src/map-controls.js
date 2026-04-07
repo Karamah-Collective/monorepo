@@ -55,7 +55,7 @@ const LABEL_IDS = [
 const origLabelPaint = {};
 
 /* ── Heatmap scoring ── */
-const TYPE_BASE = { mosque: 10, prayer_room: 7, shop: 5, restaurant: 4 };
+const TYPE_BASE = { mosque: 10, prayer_room: 7, shop: 5, restaurant: 4, cemetery: 3 };
 const TAG_SCORE = {
   daily_prayers: 5, jummah: 3, taraweeh: 1, eid_prayer: 1,
   janaza: 0.5, quran_classes: 1, female_prayer: 2, female_wudu: 1,
