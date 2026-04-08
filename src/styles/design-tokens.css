@@ -256,6 +256,7 @@ body {
 html.dark-mode,
 html.dark-mode body {
   background: #000000;
+  --cemetery: #94a3b8;
 }
 
 .btn-icon {

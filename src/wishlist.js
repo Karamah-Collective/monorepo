@@ -11,7 +11,6 @@ import { animateSheetHeight, esc, showToast, loadRecaptcha } from "./utils.js";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_VOTED = "hf_wish_votes";
 const STORAGE_KEY_DEVICE = "hf_device_id";
-const SUBMIT_COOLDOWN = 60_000;
 const FETCH_CACHE_MS = 120_000;
 const OVERFLOW_EPSILON_PX = 1;
 
@@ -25,7 +24,6 @@ const STATUS_ORDER = { [STATUS_ACTIVE]: 0, [STATUS_INPROGRESS]: 1, [STATUS_IMPLE
 // ─── State ────────────────────────────────────────────────────────────────────
 let _wishes = [];
 let _lastFetch = 0;
-let _lastSubmit = 0;
 let _expanded = new Set();
 let _preloadPromise = null;
 let _preloaded = false;
@@ -348,11 +346,6 @@ async function _handleVote(wishId) {
 async function _handleSubmit(e) {
   e.preventDefault();
 
-  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
-    showToast("Please wait", "error", "Try again in a minute");
-    return;
-  }
-
   let hasEmpty = false;
   _formEl.querySelectorAll("[required]").forEach((el) => {
     if (!el.value.trim()) { el.classList.add("invalid"); hasEmpty = true; }
@@ -386,7 +379,6 @@ async function _handleSubmit(e) {
 
     const data = await res.json();
     if (data.success) {
-      _lastSubmit = Date.now();
       _formEl.reset();
       _closeForm();
       showToast("Wish submitted!", "check", "It will appear after review");

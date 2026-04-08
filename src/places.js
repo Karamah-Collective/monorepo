@@ -41,8 +41,7 @@ let placeSearchQuery = "";       // inline places-panel search text
 const collapsedCityGroups = new Set();
 let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
-let _lastSubmit = 0;
-const SUBMIT_COOLDOWN = 60000; // 60 s between submissions
+
 
 function clearActivePlacePopup() {
   if (_activePlacePopup) {
@@ -2521,11 +2520,6 @@ sgGmapsInput.addEventListener("input", () => sgGmapsInput.classList.remove("inva
 suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
-    showToast("Please wait", "error", "You can submit again in a minute.");
-    return;
-  }
-
   let hasEmpty = false;
   suggestForm.querySelectorAll("[required]").forEach((el) => {
     if (!el.value || !el.value.trim()) { el.classList.add("invalid"); hasEmpty = true; }
@@ -2591,7 +2585,6 @@ suggestForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
-      _lastSubmit = Date.now();
       document.getElementById("suggest-form").reset();
       sgTypeSelect.classList.add("placeholder");
       clearPinLocation();
@@ -2768,11 +2761,6 @@ document.getElementById("edit-overlay").addEventListener("click", (e) => {
 document.getElementById("edit-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  if (Date.now() - _lastSubmit < SUBMIT_COOLDOWN) {
-    showToast("Please wait", "error", "You can submit again in a minute.");
-    return;
-  }
-
   const submitBtn = document.getElementById("ed-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
@@ -2859,7 +2847,6 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
-      _lastSubmit = Date.now();
       document.getElementById("edit-overlay").classList.add("hide");
       setTimeout(() => showToast("Edit submitted", "check", "JazakAllah Khair!"), 200);
     } else {

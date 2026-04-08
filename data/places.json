@@ -2011,5 +2011,71 @@
       "cuisine_fast_food": true
     },
     "notes": ""
+  },
+  {
+    "id": "ee19wp",
+    "name": "Honkanummi cemetery",
+    "type": "cemetery",
+    "address": "Vanha Porvoontie 225, 01380 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2908477,
+    "lng": 25.0867716,
+    "tags": {},
+    "notes": "Muslim section available."
+  },
+  {
+    "id": "ljw5l9",
+    "name": "Kellonummi Cemetery",
+    "type": "cemetery",
+    "address": "Kellonummentie 15, 02740 Espoo",
+    "city": "Espoo",
+    "lat": 60.2382255,
+    "lng": 24.6391141,
+    "tags": {},
+    "notes": "Muslim section available."
+  },
+  {
+    "id": "oxh7uk",
+    "name": "Ruskeasannan hautausmaa",
+    "type": "cemetery",
+    "address": "Ruskeasannantie 5, 01390 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.316787,
+    "lng": 24.9933122,
+    "tags": {},
+    "notes": "Muslim section available."
+  },
+  {
+    "id": "mfj9pf",
+    "name": "Rajakummun Hautausmaa",
+    "type": "cemetery",
+    "address": "Rajapolku, 02400 Kirkkonummi",
+    "city": "Kirkkonummi",
+    "lat": 60.1258821,
+    "lng": 24.4327794,
+    "tags": {},
+    "notes": "Muslim section available."
+  },
+  {
+    "id": "gsyyri",
+    "name": "Kärsämäki cemetery (Turku)",
+    "type": "cemetery",
+    "address": "Tolpontie 2, 20360 Turku",
+    "city": "Turku",
+    "lat": 60.4925933,
+    "lng": 22.276864,
+    "tags": {},
+    "notes": "Muslim section available."
+  },
+  {
+    "id": "94w0gd",
+    "name": "Turku Cemetery",
+    "type": "cemetery",
+    "address": "Skarppakullantie 16, 20720 Turku",
+    "city": "Turku",
+    "lat": 60.4317779,
+    "lng": 22.3079672,
+    "tags": {},
+    "notes": "Muslim section available."
   }
 ]

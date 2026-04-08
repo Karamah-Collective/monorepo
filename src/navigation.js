@@ -62,6 +62,7 @@ const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than th
 // If the user manually pans away, stop following and show recenter button.
 let _following = true;         // true = auto-follow, false = user panned away
 let _programmaticMove = false; // guard to distinguish our easeTo from user drag
+let _headingDeg = 0;           // computed travel bearing in degrees (0 = north, CW)
 
 // ─── Covered-route state ─────────────────────────────────────────────
 // Tracks the portion of the route already traversed so the overlay layer
@@ -563,6 +564,8 @@ export function startNavigation() {
   _speedHistory = [];
   _liveDistToNextM = 0;
   _liveRemainDistM = 0;
+  _headingDeg = 0;
+  _prevHeadingPos = null;
   _following = true;
   _programmaticMove = false;
   if (recenterBtn) recenterBtn.classList.add("hide");
@@ -655,8 +658,13 @@ export function stopNavigation() {
   _liveRemainDistM = 0;
   _maxspeeds = [];
   _currentSpeedLimit = 0;
+  _headingDeg = 0;
+  _prevHeadingPos = null;
   _following = true;
   _programmaticMove = false;
+
+  // Restore north-up orientation
+  map.easeTo({ bearing: 0, duration: 400 });
 
   if (hud) {
     hud.classList.add("hide");
@@ -735,6 +743,9 @@ export function processPosition(lat, lng, accuracy = null) {
   // Update speed from consecutive GPS samples
   _updateSpeed(lat, lng, now);
 
+  // Compute heading from consecutive GPS positions (only when moving)
+  _updateHeading(lat, lng);
+
   // Smooth follow: keep GPS position centered without animation overlap
   _smartFollow(lng, lat);
 }
@@ -809,32 +820,35 @@ function _smartFollow(lng, lat) {
     return;
   }
 
-  // Smooth animated recenter on every GPS tick
+  // Smooth animated recenter + bearing on every GPS tick
   _programmaticMove = true;
-  map.easeTo({ center: [lng, lat], duration: 600 });
+  map.easeTo({ center: [lng, lat], bearing: _headingDeg, duration: 600 });
   map.once("moveend", () => { _programmaticMove = false; });
 }
 
-function _onUserDrag() {
-  if (!navActive) return;
-  // Stop any in-flight programmatic animation so the user's drag takes effect
-  // immediately. On mobile, _programmaticMove can be true for most of the time
-  // between GPS ticks (600ms easeTo), which silently swallowed touch drags.
+function _stopFollowing() {
+  if (!navActive || !_following) return;
   map.stop();
   _following = false;
   _programmaticMove = false;
   if (recenterBtn) recenterBtn.classList.remove("hide");
 }
 
+function _onUserInteraction(e) {
+  if (!navActive) return;
+  if (!e.originalEvent) return; // programmatic easeTo/flyTo — ignore
+  _stopFollowing();
+}
+
 function _recenter() {
   _following = true;
   if (recenterBtn) recenterBtn.classList.add("hide");
 
-  // Immediately center on latest known position
+  // Immediately center on latest known position with heading-up bearing
   const loc = getCurrentLocationState();
   if (loc.active && loc.lat !== null) {
     _programmaticMove = true;
-    map.easeTo({ center: [loc.lng, loc.lat], duration: 400 });
+    map.easeTo({ center: [loc.lng, loc.lat], bearing: _headingDeg, duration: 400 });
     map.once("moveend", () => { _programmaticMove = false; });
   }
 }
@@ -877,6 +891,35 @@ function _updateSpeed(lat, lng, now) {
     _prevSpeedPos = { lat, lng, time: now };
   }
   _renderSpeedChip();
+}
+
+// ─── Heading computation ────────────────────────────────────────────
+const HEADING_MIN_DIST_M = 5; // ignore micro-movements for heading
+let _prevHeadingPos = null;   // { lat, lng }
+
+/**
+ * Compute travel bearing from consecutive GPS positions.
+ * Only updates when user has moved enough to produce a reliable direction.
+ * @param {number} lat
+ * @param {number} lng
+ */
+function _updateHeading(lat, lng) {
+  if (!_prevHeadingPos) {
+    _prevHeadingPos = { lat, lng };
+    return;
+  }
+  const dist = _hDistM(_prevHeadingPos.lat, _prevHeadingPos.lng, lat, lng);
+  if (dist < HEADING_MIN_DIST_M) return;
+
+  // Forward azimuth: bearing from previous position to current
+  const dLng = (lng - _prevHeadingPos.lng) * Math.PI / 180;
+  const lat1 = _prevHeadingPos.lat * Math.PI / 180;
+  const lat2 = lat * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  _headingDeg = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+
+  _prevHeadingPos = { lat, lng };
 }
 
 function _renderSpeedChip() {
@@ -1192,10 +1235,23 @@ if (recenterBtn) {
   recenterBtn.addEventListener("click", _recenter);
 }
 
-// Detect user-initiated map panning during navigation.
-// MapLibre fires "dragstart" on user touch/mouse drag. Our programmatic
-// easeTo doesn't fire "dragstart", so this reliably distinguishes the two.
-map.on("dragstart", _onUserDrag);
+// Detect user-initiated map interactions during navigation.
+// Canvas-level hooks fire before MapLibre's camera animation can keep fighting
+// the user's gesture, so any real manual map interaction drops out of follow mode.
+const _mapGestureTarget = map.getCanvasContainer();
+_mapGestureTarget.addEventListener("pointerdown", () => {
+  if (navActive) _stopFollowing();
+}, { passive: true });
+_mapGestureTarget.addEventListener("wheel", () => {
+  if (navActive) _stopFollowing();
+}, { passive: true });
+
+// Keep MapLibre-level hooks too so pinch/rotate gestures and other interaction
+// paths also break follow mode when they provide a user-originated event.
+map.on("dragstart", _onUserInteraction);
+map.on("zoomstart", _onUserInteraction);
+map.on("rotatestart", _onUserInteraction);
+map.on("pitchstart", _onUserInteraction);
 
 // Register hooks with directions.js to avoid circular imports
 setNavHooks({

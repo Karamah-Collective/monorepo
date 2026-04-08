@@ -48,6 +48,11 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-04-08 — Cemeteries are a first-class place type, not static-only.** Cemetery entries must be addable through the same suggest/edit form flow as other places and loaded from Google Sheets / API like any other place. `places.json` must not be the only source of truth.
+- **2026-04-08 — Form spam protection: reCAPTCHA over client cooldowns.** Removed client-side 60-second submission cooldowns from suggest, edit, contact, and wishlist forms. Keep reCAPTCHA and in-flight button disabling; do not reintroduce minute-long local cooldown UX.
+- **2026-04-08 — Cemetery theme behavior: dark mode must recolor all cemetery affordances consistently.** Cemetery pins, popup badges, and place-list visuals must all follow the same tokenized dark-mode color override, not just the list row styling.
+- **2026-04-08 — Navigation camera behavior: manual map control must always break follow mode instantly.** During navigation, GPS follow is default only until the user manually pans/zooms/rotates. The map must then stay in the user-chosen view with no auto-centering until recenter is explicitly tapped. Recenter restores GPS follow and heading-up orientation.
+
 - **2026-04-05 — Directions lookup must prioritize approved map places.** Route origin/destination/waypoint search should surface `placesData` matches before Digitransit/Nominatim results, and typed auto-resolve should use the same merged ranking so approved places are not replaced by generic venues.
 
 - **2026-04-04 — Wishlist approval system: pending review before public.** All new wishes are hidden from the public wishlist until an admin marks `approved = yes` in the Google Sheet. Matches the existing place-approval workflow. Existing wishes will need manual approval to re-appear.
