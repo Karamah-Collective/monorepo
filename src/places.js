@@ -382,7 +382,7 @@ function _highlightMatch(escaped, q) {
 
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--walk)" }[p.type] || cfg.color;
+  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
   const typeTags = getDisplayTags(p.type);
   const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
   const posCount = posTags.length;
@@ -466,20 +466,6 @@ async function fetchFresh() {
   return null;
 }
 
-/** Types managed only in static places.json, never in the Google Sheet. */
-const STATIC_ONLY_TYPES = new Set(["cemetery"]);
-
-/** Merge static-only places (e.g. cemeteries) from current placesData into API results. */
-function _mergeStaticPlaces(apiPlaces) {
-  const staticPlaces = placesData.filter((p) => STATIC_ONLY_TYPES.has(p.type));
-  if (!staticPlaces.length) return apiPlaces;
-  const apiIds = new Set(apiPlaces.map((p) => p.id));
-  const merged = [...apiPlaces];
-  for (const sp of staticPlaces) {
-    if (!apiIds.has(sp.id)) merged.push(sp);
-  }
-  return merged;
-}
 
 export async function loadPlacesData() {
   try {
@@ -502,7 +488,6 @@ export async function loadPlacesData() {
       // 2. Background refresh — update only if data changed
       fetchFresh().then(data => {
         if (!data) return;
-        data.places = _mergeStaticPlaces(data.places);
         const oldCount = placesData.length;
         const newCount = data.places.length;
         const countChanged = newCount !== oldCount;
@@ -549,7 +534,6 @@ export async function loadPlacesData() {
     // 4. Background refresh from API — update cache + UI if data changed
     fetchFresh().then(data => {
       if (!data) return;
-      data.places = _mergeStaticPlaces(data.places);
       const oldCount = placesData.length;
       const newCount = data.places.length;
       const countChanged = newCount !== oldCount;

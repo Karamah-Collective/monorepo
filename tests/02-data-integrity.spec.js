@@ -42,7 +42,7 @@ test.describe("Places Data Integrity", () => {
 
   test("all place types are valid", async ({ page }) => {
     const data = await page.evaluate(() => fetch("data/places.json").then((r) => r.json()));
-    const validTypes = ["mosque", "prayer_room", "restaurant", "shop"];
+    const validTypes = ["mosque", "prayer_room", "restaurant", "shop", "cemetery"];
     for (const place of data) {
       expect(validTypes).toContain(place.type);
     }
