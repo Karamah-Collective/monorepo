@@ -389,7 +389,7 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
         // Sync drum picker indices to match
         const [y, m, d] = tdate.split("-").map(Number);
         selDate = drumDates.findIndex(dd => dd.year === y && dd.month === m - 1 && dd.day === d);
-        if (selDate < 0) selDate = 0;
+        if (selDate < 0) selDate = 1; // fallback to Today
         selHour = drumHours.findIndex(hh => hh.value === h);
         if (selHour < 0) selHour = 0;
         selMin = drumMinutes.findIndex(mm => mm.value >= min);
@@ -871,6 +871,7 @@ const DRUM_VISIBLE = 5;
 const DRUM_COL_H   = DRUM_CELL_H * DRUM_VISIBLE;
 const DRUM_CENTER  = 2;
 const DRUM_DAYS    = 60;
+const DRUM_PAST_H  = 3;
 const DRUM_MIN_STEP = 5;
 const DRUM_SNAP_DUR = 280;
 const DRUM_SPRING   = "cubic-bezier(0.32, 0.72, 0, 1)";
@@ -888,10 +889,13 @@ let selDate = 0, selHour = 0, selMin = 0;
 
 function buildDrumData() {
   drumDates = [];
-  for (let i = 0; i < DRUM_DAYS; i++) {
+  // Start from yesterday so past-hour selections (up to DRUM_PAST_H) work
+  for (let i = -1; i < DRUM_DAYS; i++) {
     const d = new Date(_todayMidnight().getTime() + i * 864e5);
     drumDates.push({
-      label: `${WDAYS[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`,
+      label: i === -1 ? "Yesterday"
+           : i === 0 ? "Today"
+           : `${WDAYS[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`,
       year: d.getFullYear(), month: d.getMonth(), day: d.getDate()
     });
   }
@@ -915,7 +919,7 @@ drumOverlay.innerHTML = [
     '<span class="drum-sep">:</span>',
     '<div class="drum-col" id="drum-min-col"><div class="drum-col-inner" id="drum-min-inner"></div></div>',
   '</div>',
-  '<div class="drum-toast" id="drum-toast">Cannot select a time in the past</div>'
+  '<div class="drum-toast" id="drum-toast">Cannot go back more than 3 hours</div>'
 ].join("");
 document.body.appendChild(drumOverlay);
 
@@ -961,42 +965,76 @@ function _applyTiers(inner, idx) {
   _markPast();
 }
 
+function _pastFloorMs() {
+  return Date.now() - DRUM_PAST_H * 36e5;
+}
+
 function _markPast() {
-  const nowH = new Date().getHours();
-  const nowM = new Date().getMinutes();
-  if (selDate === 0) {
+  const floor = new Date(_pastFloorMs());
+  const floorH = floor.getHours();
+  const floorM = floor.getMinutes();
+  const floorDayStart = new Date(floor.getFullYear(), floor.getMonth(), floor.getDate()).getTime();
+  // Mark date cells that are entirely before the floor day
+  drumDateInner.querySelectorAll(".drum-cell").forEach(c => {
+    const dd = drumDates[+c.dataset.idx];
+    if (dd) {
+      const dayEnd = new Date(dd.year, dd.month, dd.day, 23, 59).getTime();
+      if (dayEnd < _pastFloorMs()) c.classList.add("past");
+    }
+  });
+  const selD = drumDates[selDate];
+  const selDayStart = new Date(selD.year, selD.month, selD.day).getTime();
+  if (selDayStart < floorDayStart) {
+    // Entire day is before the floor day — mark all hours past
+    drumHourInner.querySelectorAll(".drum-cell").forEach(c => c.classList.add("past"));
+    drumMinInner.querySelectorAll(".drum-cell").forEach(c => c.classList.add("past"));
+  } else if (selDayStart === floorDayStart) {
     drumHourInner.querySelectorAll(".drum-cell").forEach(c => {
-      if (drumHours[+c.dataset.idx].value < nowH) c.classList.add("past");
+      if (drumHours[+c.dataset.idx].value < floorH) c.classList.add("past");
     });
-    if (drumHours[selHour].value === nowH) {
+    if (drumHours[selHour].value === floorH) {
       drumMinInner.querySelectorAll(".drum-cell").forEach(c => {
-        if (drumMinutes[+c.dataset.idx].value < nowM) c.classList.add("past");
+        if (drumMinutes[+c.dataset.idx].value < floorM) c.classList.add("past");
       });
     }
   }
+  // Future dates: nothing marked past
 }
 
 function _isSelPast() {
   const d = drumDates[selDate];
-  return new Date(d.year, d.month, d.day, drumHours[selHour].value, drumMinutes[selMin].value) < Date.now();
+  return new Date(d.year, d.month, d.day, drumHours[selHour].value, drumMinutes[selMin].value).getTime() < _pastFloorMs();
 }
 
 function _enforceNoPast() {
   if (!_isSelPast()) return;
-  if (selDate > 0) return;
-  const nowH = new Date().getHours(), nowM = new Date().getMinutes();
-  if (drumHours[selHour].value < nowH) {
-    selHour = _clamp(drumHours.findIndex(h => h.value >= nowH), 0, drumHours.length - 1);
-    _snapCol(drumHourInner, selHour);
+  const floor = new Date(_pastFloorMs());
+  const floorDayStart = new Date(floor.getFullYear(), floor.getMonth(), floor.getDate()).getTime();
+  // Find the earliest allowed date index
+  const floorDateIdx = drumDates.findIndex(dd => new Date(dd.year, dd.month, dd.day).getTime() >= floorDayStart);
+  if (floorDateIdx === -1) return;
+  if (selDate < floorDateIdx) {
+    selDate = floorDateIdx;
+    _snapCol(drumDateInner, selDate);
   }
-  if (drumHours[selHour].value === nowH) {
-    const ni = drumMinutes.findIndex(m => m.value >= nowM);
-    if (ni === -1) {
-      selHour = _clamp(selHour + 1, 0, drumHours.length - 1);
-      selMin = 0;
+  const selD = drumDates[selDate];
+  const selDayStart = new Date(selD.year, selD.month, selD.day).getTime();
+  if (selDayStart === floorDayStart) {
+    const floorH = floor.getHours();
+    const floorM = floor.getMinutes();
+    if (drumHours[selHour].value < floorH) {
+      selHour = _clamp(drumHours.findIndex(h => h.value >= floorH), 0, drumHours.length - 1);
       _snapCol(drumHourInner, selHour);
-    } else { selMin = ni; }
-    _snapCol(drumMinInner, selMin);
+    }
+    if (drumHours[selHour].value === floorH) {
+      const ni = drumMinutes.findIndex(m => m.value >= floorM);
+      if (ni === -1) {
+        selHour = _clamp(selHour + 1, 0, drumHours.length - 1);
+        selMin = 0;
+        _snapCol(drumHourInner, selHour);
+      } else { selMin = ni; }
+      _snapCol(drumMinInner, selMin);
+    }
   }
   _syncPickerToState();
 }
@@ -1123,7 +1161,7 @@ function _syncPickerToState() {
 function setDefaultDatetime() {
   buildDrumData();
   const now = new Date();
-  selDate = 0;
+  selDate = 1; // index 1 = Today (index 0 = Yesterday)
   selHour = drumHours.findIndex(h => h.value === now.getHours());
   selMin  = drumMinutes.findIndex(m => m.value >= Math.ceil(now.getMinutes() / DRUM_MIN_STEP) * DRUM_MIN_STEP);
   if (selMin === -1) { selMin = 0; selHour = _clamp(selHour + 1, 0, drumHours.length - 1); }
@@ -1329,7 +1367,7 @@ export async function findRoutes() {
   ) { edges { node { start end legs {
     mode start { scheduledTime } end { scheduledTime }
     from { name stop { code zoneId } } to { name stop { code zoneId } }
-    intermediateStops { name code zoneId }
+    intermediateStops { name code zoneId lat lon }
     trip { routeShortName tripHeadsign route { type color textColor } }
     legGeometry { points } duration distance
   } } } }
@@ -1383,7 +1421,7 @@ function normalizeMOTISItinerary(itin) {
       end: { scheduledTime: leg.scheduledEndTime },
       from: { name: leg.from?.name || "", stop: leg.from?.stopId ? { code: stopCode(leg.from.stopId), zoneId: null } : null },
       to: { name: leg.to?.name || "", stop: leg.to?.stopId ? { code: stopCode(leg.to.stopId), zoneId: null } : null },
-      intermediateStops: (leg.intermediateStops || []).map((s) => ({ name: s.name || "", code: stopCode(s.stopId), zoneId: null })),
+      intermediateStops: (leg.intermediateStops || []).map((s) => ({ name: s.name || "", code: stopCode(s.stopId), zoneId: null, lat: s.lat ?? null, lon: s.lon ?? null })),
       trip: leg.routeShortName || leg.headsign ? { routeShortName: leg.routeShortName || null, tripHeadsign: leg.headsign || null, route: { type: leg.routeType || 0 } } : null,
       legGeometry: leg.legGeometry?.points
         ? { points: leg.legGeometry.points, precision: leg.legGeometry.precision || 6 }
@@ -1459,7 +1497,7 @@ async function _transitSegment(from, to, departureTime) {
   ) { edges { node { start end legs {
     mode start { scheduledTime } end { scheduledTime }
     from { name stop { code zoneId } } to { name stop { code zoneId } }
-    intermediateStops { name code zoneId }
+    intermediateStops { name code zoneId lat lon }
     trip { routeShortName tripHeadsign route { type color textColor } }
     legGeometry { points } duration distance
   } } } } }`;

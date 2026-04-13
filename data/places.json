@@ -2077,5 +2077,33 @@
     "lng": 22.3079672,
     "tags": {},
     "notes": "Muslim section available."
+  },
+  {
+    "id": "epocsc",
+    "name": "Vapiano Mikonkatu",
+    "type": "restaurant",
+    "address": "Mikonkatu 15, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.17096279999999,
+    "lng": 24.9454601,
+    "tags": {
+      "partially_halal": true
+    },
+    "notes": "Only chicken  items are halal."
+  },
+  {
+    "id": "sxupkz",
+    "name": "Ravintola Palki",
+    "type": "restaurant",
+    "address": "Humikkalanrinne 1, 00940 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.235287,
+    "lng": 25.1003168,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_bangladeshi": true
+    },
+    "notes": ""
   }
 ]

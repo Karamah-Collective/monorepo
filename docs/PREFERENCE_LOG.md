@@ -130,6 +130,8 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-04 — Implemented wishes sink to bottom with locked votes.** Wishes marked `implemented = yes` in the Sheet always appear below active wishes. They show a green "Implemented" chip and their vote button is disabled (read-only). Sort within each group is by votes desc.
 - **2026-04-04 — Wishlist 4-tier status: Active → In Progress → Implemented → Out of Scope.** `implemented` column accepts blank/Inprogress/Yes/Out of Scope. Badges use place-type colors: In Progress = `--hsl-ferry` (prayer room cyan), Implemented = `--success` (mosque green), Out of Scope = `--hsl-trunk` (restaurant orange). In Progress + Implemented lock votes; Out of Scope keeps votes open.
 
+- **2026-04-13 — Transit nav: three-phase stop model (towards → at → past) + board hold.** Transit intermediate stops now show "Towards X" when far, "At X" when within 150m, instead of prematurely "Passing X". Board steps hold advancement until scheduled departure + 30s or 300m movement. Wait-time countdown shown at boarding stops.
+
 ---
 
 ## Patterns to Avoid
@@ -913,6 +915,34 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 - Top bar: maneuver icon (48px accent square with SVG), instruction text, distance to next maneuver, mode badge, expand/exit buttons.
 - Bottom bar: ETA, remaining time, progress bar, simulator button.
 - Transit mode: color-coded route chips (`nav-route-chip`), stop dots, mode-specific icons.
+
+### 2026-04-13 — Transit navigation: stop-aware three-phase model + wait times
+
+**Problem:** During transit navigation, arriving at a boarding stop (e.g., Puistola) caused the HUD to immediately cascade through intermediate stops ("Passing Tapanila") because the board step fired and the next step's instruction appeared — even though the user hadn't boarded the train yet and Tapanila was 2km away.
+
+**Solution — three changes:**
+
+**a. Board-step hold mechanism:**
+- When `_advanceStep` lands on a `transit-board` step, it sets `_transitHoldUntil = departTimeMs + 30s`.
+- While the hold is active, step advancement is blocked — the HUD stays on the board instruction.
+- Hold releases when: (1) departure time + 30s buffer has passed, OR (2) user has moved >300m from the boarding stop (clearly on the vehicle).
+- On release, force-advances past the board step so the next tick picks up the first intermediate stop.
+
+**b. Dynamic transit live HUD (`_updateTransitLiveHUD`):**
+- **Board step:** Shows countdown — "P arrives in 3 min", "P arriving soon", then "Board P → Helsinki".
+- **Intermediate stops:** Three-phase — "Towards Tapanila" (far), "At Tapanila" (within 150m). Stops remaining + next stop preview in sub-line.
+- **Alight step:** "Get off at X" (far), "Get off now — X" (within 150m).
+- **Walk step:** Live distance to walk destination + departure countdown for next vehicle.
+
+**c. Step data enrichment:**
+- Board steps now carry `departTimeMs` (epoch ms from scheduled departure).
+- Intermediate stops carry `estimatedArrivalMs` (linearly interpolated from leg start/end times).
+- Default instruction for intermediate stops changed from "Passing X" to "Towards X" (overridden dynamically by live HUD).
+
+**New constants:** `TRANSIT_AT_RADIUS_M` (150m), `TRANSIT_BOARD_HOLD_BUFFER_MS` (30s), `TRANSIT_DEPART_MOVE_M` (300m).
+**New state:** `_transitHoldUntil` — reset in startNavigation/stopNavigation.
+
+**Files:** `src/navigation.js`.
 - Uses `snackUp` animation for entry, `snackDown` for exit.
 
 **Integration points in directions.js:**

@@ -96,6 +96,16 @@ const APPROACH_FIRE_MAX_M = 30; // metres — cap to avoid absurd values
 let _approachIdx = -1;          // step index currently being approached (-1 = none)
 let _approachMinDist = Infinity; // closest distance seen while approaching
 
+// ─── Transit stop-aware navigation ──────────────────────────────────
+// Three-phase stop model: towards → at → past.
+// Board steps hold until departure time to prevent premature advancement
+// through intermediate stops while the user waits at the platform.
+const TRANSIT_AT_RADIUS_M = 150;            // "at" the stop when within this (display)
+const TRANSIT_BOARD_HOLD_BUFFER_MS = 30000; // hold 30s past scheduled departure
+const TRANSIT_DEPART_MOVE_M = 300;          // movement from board stop releases hold early
+let _transitHoldUntil = 0;                  // epoch ms — block advancement past board step
+let _transitReachedStep = -1;               // step index where user was last "at" — prevents re-showing "Towards" after departure
+
 /**
  * Speed-scaled fire distance. Uses an exponential time-factor that gives
  * ~3 seconds of lead time at walking speed (tight, precise) and decays
@@ -214,9 +224,13 @@ function _minMoveDist() {
 }
 
 // How close to a step's lat/lng the user must be to trigger that step.
+const TRANSIT_STOP_RADIUS_MIN = 40;   // metres — floor for dense bus stops
+const TRANSIT_STOP_RADIUS_MAX = 150;  // metres — cap for sparse train stops
+const TRANSIT_STOP_RADIUS_FRAC = 0.4; // use 40% of distance to nearest neighbor
+
 function _triggerRadius(step) {
   if (!step) return 50;
-  if (step.type === "transit-stop")  return 100;
+  if (step.type === "transit-stop")  return step._adaptiveRadius || 100;
   if (step.type === "transit-board" || step.type === "transit-alight") return 60;
   if (step.type === "transit-walk")  return 35;
   // Roundabout steps are spatially compact — use a much tighter radius.
@@ -242,6 +256,39 @@ function _precomputeStepRemaining() {
     navSteps[i].remainDur = durAcc;
     distAcc += navSteps[i].distance || 0;
     durAcc += navSteps[i].duration || 0;
+  }
+}
+
+/**
+ * Precompute adaptive trigger radii for transit-stop steps.
+ * Uses the distance to the nearest neighbor stop/board/alight to set a
+ * radius proportional to inter-stop spacing. Dense bus stops get tight
+ * radii; sparse train stops get wide ones.
+ */
+function _precomputeStopRadii() {
+  for (let i = 0; i < navSteps.length; i++) {
+    const s = navSteps[i];
+    if (s.type !== "transit-stop") continue;
+    // Find the nearest transit step neighbor (prev and next)
+    let minNeighborDist = Infinity;
+    for (const di of [-1, 1]) {
+      const ni = i + di;
+      if (ni < 0 || ni >= navSteps.length) continue;
+      const n = navSteps[ni];
+      if (!n) continue;
+      // Only consider steps in the same transit leg
+      if (n.type !== "transit-stop" && n.type !== "transit-board" && n.type !== "transit-alight") continue;
+      const d = _hDistM(s.lat, s.lng, n.lat, n.lng);
+      if (d > 0 && d < minNeighborDist) minNeighborDist = d;
+    }
+    if (minNeighborDist === Infinity) {
+      s._adaptiveRadius = TRANSIT_STOP_RADIUS_MAX;
+    } else {
+      s._adaptiveRadius = Math.max(
+        TRANSIT_STOP_RADIUS_MIN,
+        Math.min(TRANSIT_STOP_RADIUS_MAX, minNeighborDist * TRANSIT_STOP_RADIUS_FRAC),
+      );
+    }
   }
 }
 
@@ -331,6 +378,7 @@ function buildTransitSteps(itin) {
 
       // Board instruction
       const boardCoordIdx = _findNearestCoordIdx(startCoord[1], startCoord[0]);
+      const departTimeMs = new Date(leg.start.scheduledTime).getTime();
       steps.push({
         type: "transit-board",
         mode: leg.mode,
@@ -343,6 +391,7 @@ function buildTransitSteps(itin) {
         fromName: leg.from.name,
         stopCode: leg.from.stop?.code,
         departTime: leg.start.scheduledTime,
+        departTimeMs,
         routeName,
         headsign,
         color,
@@ -352,22 +401,38 @@ function buildTransitSteps(itin) {
       });
 
       // Intermediate stops
+      const legStartMs = new Date(leg.start.scheduledTime).getTime();
+      const legEndMs = new Date(leg.end.scheduledTime).getTime();
       if (leg.intermediateStops?.length) {
         leg.intermediateStops.forEach((stop, si) => {
-          const stopCoordIdx = Math.floor(((si + 1) / (leg.intermediateStops.length + 1)) * fromCoord.length);
-          const sc = fromCoord[Math.min(stopCoordIdx, fromCoord.length - 1)] || startCoord;
-          const coordIdx = _findNearestCoordIdx(sc[1], sc[0]);
+          // Use real coordinates from API when available; fall back to
+          // proportional polyline estimate (less accurate for bus routes).
+          let sLng, sLat;
+          if (stop.lon != null && stop.lat != null) {
+            sLng = stop.lon;
+            sLat = stop.lat;
+          } else {
+            const stopCoordIdx = Math.floor(((si + 1) / (leg.intermediateStops.length + 1)) * fromCoord.length);
+            const sc = fromCoord[Math.min(stopCoordIdx, fromCoord.length - 1)] || startCoord;
+            sLng = sc[0];
+            sLat = sc[1];
+          }
+          const coordIdx = _findNearestCoordIdx(sLat, sLng);
+          // Linearly estimate arrival time at each intermediate stop
+          const stopFraction = (si + 1) / (leg.intermediateStops.length + 1);
+          const estimatedArrivalMs = legStartMs + (legEndMs - legStartMs) * stopFraction;
           steps.push({
             type: "transit-stop",
             mode: leg.mode,
-            instruction: `Passing ${esc(stop.name || "stop")}`,
+            instruction: `Towards ${esc(stop.name || "stop")}`,
             distance: 0,
             iconHtml: `<span class="nav-stop-dot" style="background:${color}"></span>`,
-            lng: sc[0], lat: sc[1],
+            lng: sLng, lat: sLat,
             coordIdx,
             routeProgressM: _routeProgressAtCoordIdx(coordIdx),
             stopName: stop.name,
             stopCode: stop.code,
+            estimatedArrivalMs,
             routeName,
             color,
             legIdx,
@@ -545,6 +610,7 @@ export function startNavigation() {
 
   navStepIdx = 0;
   _precomputeStepRemaining();
+  if (navMode === "transit") _precomputeStopRadii();
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
@@ -559,6 +625,8 @@ export function startNavigation() {
   _stepFired = new Array(navSteps.length).fill(false);
   _approachIdx = -1;
   _approachMinDist = Infinity;
+  _transitHoldUntil = 0;
+  _transitReachedStep = -1;
   _prevSpeedPos = null;
   _speedKmh = 0;
   _speedHistory = [];
@@ -651,6 +719,8 @@ export function stopNavigation() {
   _stepFired = [];
   _approachIdx = -1;
   _approachMinDist = Infinity;
+  _transitHoldUntil = 0;
+  _transitReachedStep = -1;
   _prevSpeedPos = null;
   _speedKmh = 0;
   _speedHistory = [];
@@ -973,8 +1043,11 @@ function _updateLiveHUD() {
 
   if (!step || step.isArrive || !next) return;
 
-  // Only override instruction for direct (non-transit) steps
-  if (step.type !== "direct") return;
+  // Transit steps get their own live HUD updates
+  if (step.type !== "direct") {
+    if (navMode === "transit") _updateTransitLiveHUD(step, next);
+    return;
+  }
 
   // Approaching next maneuver — preview the upcoming turn
   if (_liveDistToNextM > 0 && _liveDistToNextM <= APPROACH_DIST_M) {
@@ -1014,6 +1087,132 @@ function _updateLiveHUD() {
   }
 }
 
+// ─── Transit live HUD updates ───────────────────────────────────────
+// Three-phase model for transit stops: towards → at → past.
+// Board steps show wait time. Alight steps intensify when close.
+
+/**
+ * Dynamically update the HUD instruction and next-info for transit steps
+ * based on the user's live GPS position relative to the current stop.
+ * @param {object} step - current navStep
+ * @param {object|undefined} next - next navStep (may be undefined)
+ */
+function _updateTransitLiveHUD(step, next) {
+  if (!hudInstruction) return;
+  const loc = getCurrentLocationState();
+  if (!loc.active || loc.lat === null) return;
+
+  const distToStep = _hDistM(loc.lat, loc.lng, step.lat, step.lng);
+
+  // ── Board step: show wait time until departure ────────────────────
+  if (step.type === "transit-board") {
+    if (step.departTimeMs) {
+      const waitMs = step.departTimeMs - Date.now();
+      if (waitMs > 60000) {
+        const waitMin = Math.ceil(waitMs / 60000);
+        hudInstruction.textContent = `${step.routeName} arrives in ${waitMin} min`;
+      } else if (waitMs > 0) {
+        hudInstruction.textContent = `${step.routeName} arriving soon`;
+      } else {
+        hudInstruction.textContent = step.instruction; // "Board X → Y"
+      }
+    }
+    if (hudNextInfo) {
+      hudNextInfo.textContent = `${step.routeName} → ${step.headsign}`;
+      hudNextInfo.classList.remove("hide");
+    }
+    return;
+  }
+
+  // ── Intermediate stop: towards / at / departing ────────────────────
+  if (step.type === "transit-stop") {
+    const name = esc(step.stopName || "stop");
+    const atRadius = step._adaptiveRadius || TRANSIT_AT_RADIUS_M;
+    // Once we've been within AT radius, remember it — we can never go
+    // "Towards" this stop again after departing it.
+    const alreadyReached = _transitReachedStep >= navStepIdx;
+    if (distToStep <= atRadius && !alreadyReached) {
+      _transitReachedStep = navStepIdx;
+      hudInstruction.textContent = `At ${name}`;
+    } else if (alreadyReached && next) {
+      // Already been at this stop — show next destination
+      const nextName = next.type === "transit-alight"
+        ? esc(next.toName || "your stop")
+        : esc(next.stopName || "next stop");
+      if (distToStep <= atRadius) {
+        hudInstruction.textContent = `At ${name}`;
+      } else {
+        hudInstruction.textContent = `Towards ${nextName}`;
+      }
+    } else {
+      hudInstruction.textContent = `Towards ${name}`;
+    }
+    // Next-info: stops remaining + next stop preview
+    if (hudNextInfo && step.totalStops !== undefined && step.stopIdx !== undefined) {
+      const remaining = step.totalStops - step.stopIdx;
+      if (next) {
+        const nextName = next.type === "transit-alight"
+          ? next.toName
+          : (next.stopName || "next stop");
+        hudNextInfo.textContent = remaining === 1
+          ? `Next: get off at ${esc(nextName)}`
+          : `${remaining} stops left · Next: ${esc(nextName)}`;
+      } else {
+        hudNextInfo.textContent = `${remaining} stop${remaining === 1 ? "" : "s"} remaining`;
+      }
+      hudNextInfo.classList.remove("hide");
+    }
+    return;
+  }
+
+  // ── Alight step: urgency when close ───────────────────────────────
+  if (step.type === "transit-alight") {
+    const name = esc(step.toName || "your stop");
+    if (distToStep <= TRANSIT_AT_RADIUS_M) {
+      hudInstruction.textContent = `Get off now — ${name}`;
+    } else {
+      hudInstruction.textContent = `Get off at ${name}`;
+    }
+    if (hudNextInfo) {
+      const nextStep = next;
+      if (nextStep && nextStep.instruction) {
+        hudNextInfo.textContent = `Then: ${nextStep.instruction}`;
+        hudNextInfo.classList.remove("hide");
+      }
+    }
+    return;
+  }
+
+  // ── Walk step in transit mode ─────────────────────────────────────
+  if (step.type === "transit-walk") {
+    // Show distance to the walk destination
+    if (step.endLat && step.endLng) {
+      const walkDist = _hDistM(loc.lat, loc.lng, step.endLat, step.endLng);
+      if (walkDist < 30) {
+        hudInstruction.textContent = `Arriving at ${esc(step.toName || "stop")}`;
+      } else {
+        hudInstruction.textContent = `${step.instruction} · ${fmtDist(walkDist)}`;
+      }
+    }
+    if (hudNextInfo && next) {
+      // If next step is board, show wait time preview
+      if (next.type === "transit-board" && next.departTimeMs) {
+        const waitMs = next.departTimeMs - Date.now();
+        if (waitMs > 0) {
+          const waitMin = Math.ceil(waitMs / 60000);
+          hudNextInfo.textContent = `${next.routeName} departs in ${waitMin} min`;
+        } else {
+          hudNextInfo.textContent = `Then: ${next.instruction}`;
+        }
+      } else {
+        hudNextInfo.textContent = `Then: ${next.instruction}`;
+      }
+      hudNextInfo.classList.remove("hide");
+    }
+    return;
+  }
+}
+
 // ─── Step advancement ────────────────────────────────────────────────
 // Scans forward from the current step to find the step the user has reached.
 //
@@ -1036,6 +1235,32 @@ function _updateLiveHUD() {
 
 function _advanceStep(lat, lng, snapProgressM) {
   if (navStepIdx >= navSteps.length - 1) return;
+
+  // ── Transit board hold — wait at platform until departure ────────
+  // Prevents cascading through intermediate stops while the user waits
+  // at the boarding station. Releases when departure time passes (+buffer)
+  // or when the user has clearly started moving (on the vehicle).
+  if (navMode === "transit" && _transitHoldUntil > 0) {
+    const current = navSteps[navStepIdx];
+    if (current?.type === "transit-board") {
+      const movedFromBoard = _hDistM(lat, lng, current.lat, current.lng);
+      if (Date.now() < _transitHoldUntil && movedFromBoard < TRANSIT_DEPART_MOVE_M) {
+        return; // still holding — don't advance
+      }
+      // Hold released — force-advance past the board step
+      _transitHoldUntil = 0;
+      if (navStepIdx < navSteps.length - 1) {
+        navStepIdx++;
+        _stepFired[navStepIdx] = true;
+        _lastTriggerPos = { lat, lng };
+        _approachIdx = -1;
+        _approachMinDist = Infinity;
+      }
+      return; // let the next tick handle further advancement
+    }
+    // If we're no longer on a board step, clear stale hold
+    _transitHoldUntil = 0;
+  }
 
   // ── Movement guard — must have physically moved ──────────────────
   if (_lastTriggerPos !== null) {
@@ -1107,6 +1332,8 @@ function _advanceStep(lat, lng, snapProgressM) {
       if (!step || !Number.isFinite(step.routeProgressM)) break;
       if (snapProgressM >= step.routeProgressM) {
         lastPassedIdx = i; // user is past this step along the route
+        // Don't skip past alight steps — they must be displayed
+        if (step.type === "transit-alight") break;
       } else {
         break; // steps are ordered by route progress — stop scanning
       }
@@ -1134,13 +1361,16 @@ function _advanceStep(lat, lng, snapProgressM) {
     const nextStep = navSteps[navStepIdx + 1];
     const afterStep = navSteps[navStepIdx + 2];
     if (nextStep && afterStep) {
-      const distToNext = _hDistM(lat, lng, nextStep.lat, nextStep.lng);
-      const distToAfter = _hDistM(lat, lng, afterStep.lat, afterStep.lng);
-      // User is closer to the step-after-next than to the next step,
-      // AND within a reasonable distance of it (not miles away)
-      if (distToAfter < distToNext && distToAfter < _triggerRadius(afterStep) * 3) {
-        // Skip the missed step, show the one we're approaching
-        bestIdx = navStepIdx + 2;
+      // Never skip alight steps — they must be displayed to the user
+      if (nextStep.type !== "transit-alight") {
+        const distToNext = _hDistM(lat, lng, nextStep.lat, nextStep.lng);
+        const distToAfter = _hDistM(lat, lng, afterStep.lat, afterStep.lng);
+        // User is closer to the step-after-next than to the next step,
+        // AND within a reasonable distance of it (not miles away)
+        if (distToAfter < distToNext && distToAfter < _triggerRadius(afterStep) * 3) {
+          // Skip the missed step, show the one we're approaching
+          bestIdx = navStepIdx + 2;
+        }
       }
     }
   }
@@ -1157,6 +1387,13 @@ function _advanceStep(lat, lng, snapProgressM) {
   // Reset approach tracking — the fired step (or any in-flight approach) is consumed
   _approachIdx = -1;
   _approachMinDist = Infinity;
+
+  // If we just landed on a transit-board step, activate the hold so we
+  // don't immediately cascade through intermediate stops while waiting.
+  const firedStep = navSteps[navStepIdx];
+  if (firedStep?.type === "transit-board" && firedStep.departTimeMs) {
+    _transitHoldUntil = firedStep.departTimeMs + TRANSIT_BOARD_HOLD_BUFFER_MS;
+  }
 }
 
 async function _triggerReroute(lat, lng) {
