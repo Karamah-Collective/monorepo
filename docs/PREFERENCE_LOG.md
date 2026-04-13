@@ -139,6 +139,7 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-14 — 3D buildings tied to follow state during nav.** Following (recenter hidden) → 3D off. Not following (recenter visible) → 3D restored. On nav stop, 3D restored if it was active before nav.
 - **2026-04-14 — pitchend auto-3D skipped during nav-mode.** `map.on('pitchend')` in map-controls now returns early when `body.nav-mode` is set, preventing buildings from re-enabling when nav tilts the map.
 - **2026-04-14 — Auto-zoom: geometry-driven, not nav-step-driven.** `_computeNavZoom()` now scans the route polyline ahead of the GPS snap point for bearing changes (≥35° cumulative = "turn"). Distance to the first turn determines zoom boost. Lookahead window scales with speed (100m walk → 400m highway). Completely independent of navigation text step timing. Nav steps have complex fire rules; the route line is always accurate.
+- **2026-04-14 — Commit message conventions: use `ci()` for release/deploy, not `chore:`.** Version bumps + data refreshes = `ci(release)`. Branch promotions to production = `ci(deploy)`. Actual bug fixes = `fix()`. New features = `feat()`. Only use `chore:` for tooling with zero user impact (deps, build scripts). See `docs/COMMIT_CONVENTIONS.md` for full standards.
 
 ---
 
