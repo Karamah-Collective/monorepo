@@ -971,6 +971,9 @@ map.on("zoomend", () => setActiveTab(null));
 
 map.on("pitchend", () => {
   if (isSatelliteActive) return;
+  // Don't auto-toggle 3D during navigation — extruded buildings obstruct
+  // the tilted forward-looking view. Navigation manages 3D state itself.
+  if (document.body.classList.contains("nav-mode")) return;
   const p = map.getPitch();
   if (p > 10 && !is3DActive) enable3D();
   else if (p <= 10 && is3DActive) disable3D();

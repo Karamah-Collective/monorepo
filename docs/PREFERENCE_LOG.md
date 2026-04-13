@@ -132,6 +132,14 @@ what you like, what you've decided, and how you want things done.
 
 - **2026-04-13 — Transit nav: three-phase stop model (towards → at → past) + board hold.** Transit intermediate stops now show "Towards X" when far, "At X" when within 150m, instead of prematurely "Passing X". Board steps hold advancement until scheduled departure + 30s or 300m movement. Wait-time countdown shown at boarding stops.
 
+- **2026-04-14 — Navigation: 3D tilted perspective view per travel mode.** Drive 55°, walk 45°, cycle 50°, transit 35°. GPS dot offset to lower third of screen for forward-looking view. Dynamic zoom scales with speed (wider at highway, tighter at walking pace) and boosts near turns. Map auto-rotates heading-up only when speed > 3 km/h. Untilts to flat 2D on nav stop.
+- **2026-04-14 — Auto-centering: only drag breaks follow, not zoom/rotate/pitch.** Zoom, rotate, pitch, and wheel gestures are allowed while following — the next GPS tick restores the nav camera. Only actual panning (drag) exits follow mode.
+- **2026-04-14 — Nav zoom tighter: drive 17–18.5, walk 18–19, cycle 17.5–18.5, transit 17–17.5.** Previous values still too far out. User wants tight street-level view.
+- **2026-04-14 — GPS dot positioned just above HUD via viewport-relative offset.** `_aheadOffset()` computes `0.2 × viewport height` dynamically — GPS dot lands at ~70% down the screen. Replaces fixed per-mode pixel values.
+- **2026-04-14 — 3D buildings tied to follow state during nav.** Following (recenter hidden) → 3D off. Not following (recenter visible) → 3D restored. On nav stop, 3D restored if it was active before nav.
+- **2026-04-14 — pitchend auto-3D skipped during nav-mode.** `map.on('pitchend')` in map-controls now returns early when `body.nav-mode` is set, preventing buildings from re-enabling when nav tilts the map.
+- **2026-04-14 — Auto-zoom: geometry-driven, not nav-step-driven.** `_computeNavZoom()` now scans the route polyline ahead of the GPS snap point for bearing changes (≥35° cumulative = "turn"). Distance to the first turn determines zoom boost. Lookahead window scales with speed (100m walk → 400m highway). Completely independent of navigation text step timing. Nav steps have complex fire rules; the route line is always accurate.
+
 ---
 
 ## Patterns to Avoid
@@ -154,6 +162,7 @@ what you like, what you've decided, and how you want things done.
 - Don't use `font-weight: 600` (semibold) as the default "emphasis" weight — reserve it for badges/labels. Use medium (500) for interactive elements and titles.
 - React / any framework rejected for this project — vanilla JS + design tokens delivers the same UX with zero build overhead.
 - Don't auto-recenter the map on every GPS tick during navigation unless the user is actively following. The user wants always-follow as the default, but if they pan away, stop recentering and show a recenter button. Never fight the user's intentional map panning.
+- Don't enable 3D buildings during navigation — extruded geometry obstructs the tilted forward-looking view. Auto-disable on nav start, restore on nav stop if they were active before.
 
 ---
 
@@ -933,6 +942,46 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 - **Intermediate stops:** Three-phase — "Towards Tapanila" (far), "At Tapanila" (within 150m). Stops remaining + next stop preview in sub-line.
 - **Alight step:** "Get off at X" (far), "Get off now — X" (within 150m).
 - **Walk step:** Live distance to walk destination + departure countdown for next vehicle.
+
+### 2026-04-14 — Navigation: 3D perspective view + auto-centering fix
+
+**a. 3D navigation view (Google Maps-style):**
+- Navigation now tilts the map into a forward-facing 3D perspective instead of flat 2D.
+- Per-mode camera settings via `NAV_VIEW` constant:
+  - **Drive:** 55° pitch, zoom 14.5–17.5, 80px ahead offset
+  - **Walk:** 45° pitch, zoom 17–17.5, 60px ahead offset
+  - **Cycle:** 50° pitch, zoom 15.5–17, 70px ahead offset
+  - **Transit:** 35° pitch, zoom 15–16, 30px ahead offset
+- GPS dot pushed to lower third of screen via `offset: [0, aheadPx]` — shows more road ahead.
+- Smooth 1200ms tilt transition on nav start; 800ms untilt on nav stop.
+- Recenter restores full nav view (pitch + zoom + bearing + offset).
+
+**b. Dynamic auto-zoom (`_computeNavZoom`):**
+- Zoom out as speed increases (0→120 km/h → max→min zoom).
+- Zoom in when approaching a turn (<300m) — up to +1 zoom level boost.
+- Walk/transit use nearly fixed zoom (no speed-based change).
+
+**c. Auto-rotation bearing threshold:**
+- Map heading only updates when speed > 3 km/h — prevents GPS jitter from rotating the map while stationary.
+- When stationary, bearing holds at last value via `map.getBearing()`.
+
+**d. Initial heading from route direction:**
+- On nav start, computes heading from the first few route coordinates so the map immediately faces the route direction instead of defaulting to north.
+
+**e. Auto-centering aggressiveness fix:**
+- Removed canvas-level `pointerdown` listener that broke follow mode on ANY touch (including accidental taps, marker clicks).
+- Follow now only breaks on deliberate gestures: drag (MapLibre `dragstart`), zoom (`zoomstart`), rotate (`rotatestart`), pitch (`pitchstart`), or desktop scroll (`wheel`).
+- All MapLibre event handlers check `e.originalEvent` to distinguish user vs programmatic — our `easeTo` calls never trigger false follow-breaks.
+- Quick taps on the map no longer exit follow mode. Matches Google Maps behavior.
+
+**f. Cleanup: removed dead `_programmaticMove` flag:**
+- Was set in many places but never read as a guard (all guards used `e.originalEvent` check instead). Removed entirely.
+
+**g. Camera animation: 800ms linear easing replaces old 600ms easeTo:**
+- At 1000ms GPS interval, the 800ms animation is ~80% complete when the next tick starts → seamless continuous tracking without overlap jitter.
+- Linear easing (`t => t`) makes consecutive calls blend smoothly.
+
+**Files:** `src/navigation.js`.
 
 **c. Step data enrichment:**
 - Board steps now carry `departTimeMs` (epoch ms from scheduled departure).
