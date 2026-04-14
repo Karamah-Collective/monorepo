@@ -141,7 +141,10 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-14 — Auto-zoom: geometry-driven, not nav-step-driven.** `_computeNavZoom()` now scans the route polyline ahead of the GPS snap point for bearing changes (≥35° cumulative = "turn"). Distance to the first turn determines zoom boost. Lookahead window scales with speed (100m walk → 400m highway). Completely independent of navigation text step timing. Nav steps have complex fire rules; the route line is always accurate.
 - **2026-04-14 — Commit message conventions: use `ci()` for release/deploy, not `chore:`.** Version bumps + data refreshes = `ci(release)`. Branch promotions to production = `ci(deploy)`. Actual bug fixes = `fix()`. New features = `feat()`. Only use `chore:` for tooling with zero user impact (deps, build scripts). See `docs/COMMIT_CONVENTIONS.md` for full standards.
 
----
+- **2026-04-14 — Navigation camera ownership: nav-mode blocks locate auto-pan.** `showCurrentLocation()` in `src/map-controls.js` was still calling `flyTo`/`easeTo` on GPS updates whenever a route existed. During turn-by-turn navigation this fought the nav camera, recentred the GPS dot to the screen middle, and ignored the HUD offset. Fix: when `body.nav-mode` is active, the regular locate watcher never moves the camera; navigation owns it completely.
+- **2026-04-14 — Recenter button state is authoritative for follow mode.** During navigation, visible recenter button = no auto-centering. `_smartFollow()` now exits not only when `_following` is false, but also whenever the recenter button is visible. This matches the user rule directly instead of trusting internal state alone.
+- **2026-04-14 — Mobile nav touch suppression kept for first-drag smoothness.** `touchstart` on the map canvas still calls `map.stop()` and `_smartFollow()` still pauses while `_touchCount > 0`, so the first drag is not fighting an in-flight nav animation.
+- **2026-04-14 — First mobile pan must break follow on touchmove, not dragstart.** After recenter, waiting for MapLibre `dragstart` was too late on phone: the first gesture got consumed canceling nav follow. Fix: record the initial touch point and call `_stopFollowing()` as soon as one-finger movement exceeds a small threshold (10 px). The first drag now becomes the pan itself.
 
 ## Patterns to Avoid
 
@@ -1212,3 +1215,28 @@ A full community wishlist / feature-request board integrated into the app.
 
 **Files created:** `functions/api/wishes.js`, `src/wishlist.js`
 **Files modified:** `index.html` (pill button + overlay markup), `src/app.js` (lazy-load + init + fast-tap), `src/tutorial.js` (wishlist steps for desktop + phone/tablet), `src/styles/design-tokens.css` (wish templates + scrollbar aliases), `src/styles/styles.css` (overlay layout, pill positioning across all breakpoints, nav-mode hide), `sw.js` (pre-cache wishlist.js), `scripts/apps-script/Code.gs` (wishes CRUD, ensureWishSheet, getWishesJSON)
+
+### 2026-04-14 — Mobile navigation: free roam must override all auto-center
+
+Second pass root-cause fix after the first attempt proved incomplete.
+
+**a. Actual root cause:**
+- `src/map-controls.js` still recentred the map on every GPS update whenever `dir.routeLayers.length > 0`.
+- That path ignored navigation follow state, recenter button visibility, and the HUD offset.
+- Result: tapping recenter briefly placed the GPS dot correctly above the HUD, then the regular locate watcher pulled it back to screen center on the next GPS tick.
+- Result: the recenter button could be visible while the map still auto-centered.
+- Result: the first drag felt stuck because the locate watcher and nav camera were both scheduling map movement.
+
+**b. Final fix:**
+- In `src/map-controls.js`, GPS-driven `flyTo`/`easeTo` is skipped entirely whenever `body.nav-mode` is active.
+- In `src/navigation.js`, `_smartFollow()` also exits whenever the recenter button is visible, making the UI state authoritative: button showing = no auto-follow.
+- Existing touch suppression stays in place: `touchstart` calls `map.stop()` and `_smartFollow()` pauses while `_touchCount > 0`.
+- Added early touch-drag detection in `src/navigation.js`: once a one-finger movement exceeds 10 px, `_stopFollowing()` runs immediately instead of waiting for MapLibre `dragstart`.
+
+**c. Behavior guarantee:**
+- Recenter button hidden: navigation may auto-follow and keep the GPS dot above the HUD.
+- Recenter button visible: no auto-centering from either navigation or the base locate watcher.
+- After tapping recenter, the first real drag immediately becomes free map movement on phone instead of being consumed by follow cancellation.
+- Desktop behavior stays unchanged because the locate-watcher guard is scoped to `body.nav-mode`, not to platform.
+
+**Files:** `src/map-controls.js`, `src/navigation.js`.

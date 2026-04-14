@@ -63,6 +63,14 @@ const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than th
 // If the user manually pans away, stop following and show recenter button.
 let _following = true;         // true = auto-follow, false = user panned away
 let _headingDeg = 0;           // computed travel bearing in degrees (0 = north, CW)
+let _touchCount = 0;           // active fingers on map canvas -- suppresses auto-center while touching
+let _touchPanStart = null;     // { x, y } for early mobile drag detection
+let _touchPanMoved = false;
+
+// On mobile/touch devices, use shorter animation so the easeTo always reaches
+// its target offset before the next GPS tick. Desktop keeps 800ms for smooth 3D.
+const FOLLOW_DURATION_MS = ('ontouchstart' in window) ? 300 : 800;
+const TOUCH_DRAG_BREAK_PX = 10;
 
 // â”€â”€â”€ Navigation view â€” 3D perspective parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Per-mode camera settings for the tilted, heading-up navigation view.
@@ -1035,9 +1043,15 @@ function _bearing(lat1, lng1, lat2, lng2) {
 let _snapSegIdx = 0;
 let _snapSegFraction = 0;
 
+function _isRecenterVisible() {
+  return !!recenterBtn && !recenterBtn.classList.contains("hide");
+}
+
 function _smartFollow(lng, lat) {
-  if (!_following) {
-    if (recenterBtn) recenterBtn.classList.remove("hide");
+  // While fingers are on the map, suppress auto-centering so touch gestures
+  // are not fought by in-flight easeTo animations (fixes mobile jank).
+  if (!_following || _touchCount > 0 || _isRecenterVisible()) {
+    if (!_following && recenterBtn) recenterBtn.classList.remove("hide");
     return;
   }
 
@@ -1045,16 +1059,13 @@ function _smartFollow(lng, lat) {
   // Only auto-rotate when actually moving â€” prevents heading jitter at rest
   const bearing = _speedKmh > 3 ? _headingDeg : map.getBearing();
 
-  // 800ms linear easing at 1000ms GPS interval: previous animation is ~80%
-  // complete when the next starts, creating seamless continuous tracking.
   map.easeTo({
     center: [lng, lat],
     bearing,
     pitch: view.pitch,
     zoom: _computeNavZoom(),
     offset: [0, _aheadOffset()],
-    duration: 800,
-    easing: (t) => t,
+    duration: FOLLOW_DURATION_MS,
   });
 }
 
@@ -1071,6 +1082,59 @@ function _onUserInteraction(e) {
   if (!navActive) return;
   if (!e.originalEvent) return; // programmatic easeTo/flyTo â€” ignore
   _stopFollowing();
+}
+
+function _onTouchStart(e) {
+  _touchCount = e.touches.length;
+  if (e.touches.length !== 1) {
+    _touchPanStart = null;
+    _touchPanMoved = false;
+    return;
+  }
+
+  const touch = e.touches[0];
+  _touchPanStart = { x: touch.clientX, y: touch.clientY };
+  _touchPanMoved = false;
+  // Don't call map.stop() here — it kills MapLibre's drag initialization
+  // when an easeTo is in-flight, causing the first drag to be swallowed.
+  // _touchCount > 0 prevents _smartFollow from scheduling new animations;
+  // any in-flight one finishes naturally within 300ms (imperceptible).
+}
+
+function _onTouchMove(e) {
+  _touchCount = e.touches.length;
+  if (!navActive || !_following || _touchPanMoved) return;
+  if (!_touchPanStart || e.touches.length !== 1) return;
+
+  const touch = e.touches[0];
+  if (
+    Math.abs(touch.clientX - _touchPanStart.x) < TOUCH_DRAG_BREAK_PX &&
+    Math.abs(touch.clientY - _touchPanStart.y) < TOUCH_DRAG_BREAK_PX
+  ) {
+    return;
+  }
+
+  _touchPanMoved = true;
+  // Don't call _stopFollowing() here — its map.stop() would kill the drag
+  // that MapLibre is already processing (causes the "stuck first drag").
+  // The nav animation was already killed by touchstart; just flip state.
+  _following = false;
+  if (recenterBtn) recenterBtn.classList.remove("hide");
+  if (_was3DBeforeNav && !is3DActive) enable3D();
+}
+
+function _onTouchEnd(e) {
+  _touchCount = e.touches.length;
+  if (e.touches.length === 0) {
+    _touchPanStart = null;
+    _touchPanMoved = false;
+  }
+}
+
+function _onTouchCancel() {
+  _touchCount = 0;
+  _touchPanStart = null;
+  _touchPanMoved = false;
 }
 
 function _recenter() {
@@ -1651,6 +1715,16 @@ if (recenterBtn) {
 // Only drag (pan) breaks follow mode. Zoom, rotate, pitch, and wheel are
 // allowed while following — the next GPS tick restores the nav camera.
 map.on("dragstart", _onUserInteraction);
+
+// On mobile, immediately stop in-flight animations when the user touches the
+// map. Prevents easeTo from fighting touch gestures (jank/stuttering).
+// While fingers are on the screen, _smartFollow skips its easeTo so the user
+// has full control. Desktop (mouse) is unaffected -- no touch events fire.
+const _mapCanvas = map.getCanvas();
+_mapCanvas.addEventListener("touchstart", _onTouchStart, { passive: true });
+_mapCanvas.addEventListener("touchmove", _onTouchMove, { passive: true });
+_mapCanvas.addEventListener("touchend", _onTouchEnd, { passive: true });
+_mapCanvas.addEventListener("touchcancel", _onTouchCancel, { passive: true });
 
 // Register hooks with directions.js to avoid circular imports
 setNavHooks({

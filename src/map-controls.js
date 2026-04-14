@@ -262,11 +262,16 @@ export function showCurrentLocation() {
       _lerpLocMarkerTo(lng, lat);
     }
     _updateGpsHeading(lat, lng);
+    const isNavMode = document.body.classList.contains("nav-mode");
     if (firstFix) {
-      map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+      // Navigation mode owns the camera and applies its own HUD offset.
+      if (!isNavMode) {
+        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+      }
       firstFix = false;
-    } else if (dir.routeLayers.length > 0) {
-      // Route is active — auto-pan to follow the user's position
+    } else if (dir.routeLayers.length > 0 && !isNavMode) {
+      // Regular route preview follows the user only when turn-by-turn nav
+      // is not active. Navigation mode handles its own camera behavior.
       map.easeTo({ center: [lng, lat], duration: 600 });
     }
   }
