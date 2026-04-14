@@ -28,6 +28,10 @@ const OSRM_COLORS = { cycle: "#1FA86A", drive: "#FF6319" };
 const OSRM_CSS_COLORS = { walk: "var(--walk)", cycle: "var(--hsl-tram)", drive: "var(--hsl-trunk)" };
 export const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
 const OSRM_ALT_COLORS = { walk: "#94A3B8", cycle: "#34D399", drive: "#FBBF24" };
+const ALT_ROUTE_OPACITY = 0.4;
+const ALT_ROUTE_WIDTH = 4;
+const ROAD_CORRIDOR_OPACITY = 0.18;
+const ROAD_CORRIDOR_WIDTH_ADD = 10;
 
 export const dir = {
   origin: null, dest: null, pickField: null,
@@ -423,15 +427,12 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
 }
 
 dirItins.addEventListener("click", (e) => {
+  // Direct-card clicks are handled by _bindDirectCardClicks — skip them here
+  if (e.target.closest(".direct-card")) return;
   if (e.target.closest(".itin-navigate")) {
     e.stopPropagation();
     closeDirPanel();
     if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
-    return;
-  }
-  if (e.target.closest(".direct-expand")) {
-    e.stopPropagation();
-    if (dir.directInfo) focusDirectRoute();
     return;
   }
   const stepEl = e.target.closest(".direct-step");
@@ -1734,13 +1735,23 @@ async function _osrmDirectRoute(mode) {
     ...dir.waypoints.filter(Boolean).map(wp => `${wp.lng},${wp.lat}`),
     `${dir.dest.lng},${dir.dest.lat}`,
   ].join(";");
-  const url = `${OSRM_URLS[mode]}/${points}?overview=full&geometries=geojson&steps=true`;
+  const hasWaypoints = dir.waypoints.filter(Boolean).length > 0;
+  const altParam = hasWaypoints ? "" : "&alternatives=3";
+  const url = `${OSRM_URLS[mode]}/${points}?overview=full&geometries=geojson&steps=true${altParam}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Routing error ${res.status}`);
   const json = await res.json();
   if (json.code !== "Ok" || !json.routes?.length) throw new Error("No route found");
-  const route = json.routes[0];
-  // Extract per-segment maxspeed annotations if available (not all OSRM servers support this)
+  return json.routes.map(route => _osrmProcessRoute(route, mode));
+}
+
+/**
+ * Process a single OSRM route object into the standard data shape.
+ * @param {Object} route - OSRM route object
+ * @param {string} mode - "drive" | "cycle" | "walk"
+ * @returns {Object}
+ */
+function _osrmProcessRoute(route, mode) {
   const maxspeeds = route.legs?.flatMap(leg => leg.annotation?.maxspeed || []) || [];
   const allSteps = route.legs.flatMap(leg => leg.steps || []);
   const altColor = OSRM_ALT_COLORS[mode];
@@ -1779,25 +1790,116 @@ async function _osrmDirectRoute(mode) {
 export async function findRoutesDirect(mode) {
   showDirLoading();
   dirPanel.classList.remove("search-editing");
-  // Digitransit OTP (WALK/BICYCLE/CAR) primary — OSRM demo server fallback
-  let data;
-  try {
-    data = await _dtDirectRoute(mode);
-  } catch (err) {
-    console.warn("[Direct] Digitransit failed (" + (err.message || err) + "), trying OSRM…");
-    try {
-      data = await _osrmDirectRoute(mode);
-    } catch (err2) {
-      showDirError(err2.message || "Could not find route");
-      return;
-    }
+  // Query Digitransit + OSRM in parallel to collect multiple route options
+  const [dtResult, osrmResult] = await Promise.allSettled([
+    _dtDirectRoute(mode).then(d => [d]),
+    _osrmDirectRoute(mode),
+  ]);
+  const dtRoutes = dtResult.status === "fulfilled" ? dtResult.value : [];
+  const osrmRoutes = osrmResult.status === "fulfilled" ? osrmResult.value : [];
+  if (!dtRoutes.length && !osrmRoutes.length) {
+    showDirError("Could not find route");
+    return;
   }
-  const { coords, duration, distance, stepsHTML, stepGeometries, srcData, stepFeatures } = data;
-  const color = osrmColor(mode), altColor = data.altColor || OSRM_ALT_COLORS[mode];
-  const cssColor = OSRM_CSS_COLORS[mode];
-  const durMin = Math.round(duration / 60);
-  const distKm = (distance / 1000).toFixed(1);
+  // Merge: DT first (typically more accurate locally), then OSRM alts
+  // Deduplicate by skipping OSRM routes whose distance is within 5% of an existing route
+  const allRoutes = [...dtRoutes];
+  for (const osrmRt of osrmRoutes) {
+    const dominated = allRoutes.some(r => Math.abs(r.distance - osrmRt.distance) / (r.distance || 1) < 0.05);
+    if (!dominated) allRoutes.push(osrmRt);
+  }
+  // If DT failed, OSRM routes are all we have
+  if (!allRoutes.length) allRoutes.push(...osrmRoutes);
   clearRoute();
+  dir._directAlts = allRoutes;
+  dir._directMode = mode;
+
+  const color = osrmColor(mode);
+  const cssColor = OSRM_CSS_COLORS[mode];
+
+  // --- Draw alt route lines on map (all except primary, which is drawn by _drawDirectPrimary) ---
+  allRoutes.forEach((alt, i) => {
+    if (i === 0) return; // primary drawn separately
+    const srcId = `dir-alt-src-${i - 1}`, lnId = `dir-alt-ln-${i - 1}`, casId = `dir-alt-cas-${i - 1}`;
+    const geoData = { type: "Feature", geometry: { type: "LineString", coordinates: alt.coords } };
+    map.addSource(srcId, { type: "geojson", data: geoData });
+    map.addLayer({ id: casId, type: "line", source: srcId, paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 6 : 7, "line-opacity": 0.5 }, layout: { "line-cap": "round", "line-join": "round" } });
+    map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": color, "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+    dir.routeSources.push(srcId);
+    dir.routeLayers.push(casId, lnId);
+  });
+
+  // --- Draw primary route ---
+  _drawDirectPrimary(allRoutes[0], mode, color);
+
+  // --- Fit bounds to primary route ---
+  const { coords } = allRoutes[0];
+  const bounds = new maplibregl.LngLatBounds();
+  coords.forEach((c) => bounds.extend(c));
+  const mob = window.innerWidth <= 768;
+  const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
+  map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
+
+  // --- Store navigation data for primary ---
+  const data = allRoutes[0];
+  const durMin = Math.round(data.duration / 60);
+  const distKm = (data.distance / 1000).toFixed(1);
+  dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
+  dir.directRouteCoords = data.coords;
+  dir.directSteps = data.rawSteps || null;
+  dir.directMaxspeeds = data.maxspeeds || null;
+  dir.activeIdx = 0;
+
+  // --- Render route cards ---
+  dirEmpty.classList.add("hide");
+  dirLoad.classList.add("hide");
+  dirErr.classList.add("hide");
+  dirItins.innerHTML = allRoutes.map((rt, i) => {
+    const rtDurMin = Math.round(rt.duration / 60);
+    const rtDistKm = (rt.distance / 1000).toFixed(1);
+    const durLabel = rtDurMin < 60 ? `${rtDurMin} min` : `${Math.floor(rtDurMin / 60)}h ${rtDurMin % 60}m`;
+    return `<div class="itin-card direct-card${i === 0 ? " active" : ""}" data-direct-idx="${i}" style="--dc:${cssColor}">
+        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + rt.duration * 1000))}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${rtDistKm} km</div></div>
+        <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
+        <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${rt.stepsHTML}</div></div></div>
+      </div>`;
+  }).join("");
+  document.getElementById("dir-btn").classList.add("route-active");
+  dirClearBtn.classList.remove("hide");
+  dirShareBtn.classList.remove("hide");
+  _bindDirectCardClicks();
+  enterResultsMode();
+  updateSnackbar();
+}
+
+/**
+ * Draw the primary direct route layers on the map (corridor + casing + line + highlight).
+ * @param {Object} data - Processed route data
+ * @param {string} mode - "drive" | "cycle" | "walk"
+ * @param {string} color - Route line color
+ */
+function _drawDirectPrimary(data, mode, color) {
+  const { coords, srcData, stepFeatures } = data;
+  const altColor = data.altColor || OSRM_ALT_COLORS[mode];
+
+  // Remove existing primary layers
+  ["dir-highlight-ln", "dir-direct-ln", "dir-direct-cas", "dir-corridor-ln"].forEach(id => {
+    if (map.getLayer(id)) map.removeLayer(id);
+  });
+  ["dir-direct-src", "dir-highlight-src", "dir-corridor-src"].forEach(id => {
+    if (map.getSource(id)) map.removeSource(id);
+  });
+  // Remove from tracking arrays (they'll be re-added below)
+  dir.routeLayers = dir.routeLayers.filter(id => !["dir-highlight-ln", "dir-direct-ln", "dir-direct-cas", "dir-corridor-ln"].includes(id));
+  dir.routeSources = dir.routeSources.filter(id => !["dir-direct-src", "dir-highlight-src", "dir-corridor-src"].includes(id));
+
+  // Road corridor
+  const corridorData = { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
+  const corridorWidth = (mode === "walk" ? 4 : 5) + ROAD_CORRIDOR_WIDTH_ADD;
+  map.addSource("dir-corridor-src", { type: "geojson", data: corridorData });
+  map.addLayer({ id: "dir-corridor-ln", type: "line", source: "dir-corridor-src", paint: { "line-color": color, "line-width": corridorWidth, "line-opacity": ROAD_CORRIDOR_OPACITY }, layout: { "line-cap": "round", "line-join": "round" } });
+
+  // Main route: casing + line
   map.addSource("dir-direct-src", { type: "geojson", data: srcData });
   map.addLayer({ id: "dir-direct-cas", type: "line", source: "dir-direct-src", paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 8 : 9, "line-opacity": 0.95 }, layout: { "line-cap": "round", "line-join": "round" } });
   map.addLayer({
@@ -1808,36 +1910,169 @@ export async function findRoutesDirect(mode) {
     },
     layout: { "line-cap": "round", "line-join": "round" },
   });
+
+  // Step highlight
   map.addSource("dir-highlight-src", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addLayer({ id: "dir-highlight-ln", type: "line", source: "dir-highlight-src", paint: { "line-color": color, "line-width": mode === "walk" ? 10 : 12, "line-opacity": 0.45 }, layout: { "line-cap": "round", "line-join": "round" } });
-  dir.routeSources.push("dir-direct-src", "dir-highlight-src");
-  dir.routeLayers.push("dir-direct-cas", "dir-direct-ln", "dir-highlight-ln");
+
+  dir.routeSources.push("dir-direct-src", "dir-highlight-src", "dir-corridor-src");
+  dir.routeLayers.push("dir-corridor-ln", "dir-direct-cas", "dir-direct-ln", "dir-highlight-ln");
+}
+
+/**
+ * Select a direct route card — redraws the primary route and updates navigation data.
+ * @param {number} idx - Index in dir._directAlts
+ */
+function _selectDirectRoute(idx) {
+  const alts = dir._directAlts;
+  if (!alts || !alts[idx]) return;
+  if (dir.activeIdx === idx) return;
+  dir.activeIdx = idx;
+  const data = alts[idx];
+  const mode = dir._directMode;
+  const color = osrmColor(mode);
+
+  // Update active card
+  document.querySelectorAll(".itin-card.direct-card").forEach((c) => {
+    c.classList.toggle("active", parseInt(c.dataset.directIdx) === idx);
+  });
+
+  // Redraw primary route on map
+  _drawDirectPrimary(data, mode, color);
+
+  // Update alt route visibility — make previously-active alt visible, hide newly-active
+  alts.forEach((alt, i) => {
+    if (i === 0) return; // alt layers use i-1 indexing
+    const lnId = `dir-alt-ln-${i - 1}`, casId = `dir-alt-cas-${i - 1}`;
+    if (i === idx) {
+      // This is now the primary — hide its alt line
+      if (map.getLayer(lnId)) map.setPaintProperty(lnId, "line-opacity", 0);
+      if (map.getLayer(casId)) map.setPaintProperty(casId, "line-opacity", 0);
+    } else {
+      // Not primary — show as alt
+      if (map.getLayer(lnId)) map.setPaintProperty(lnId, "line-opacity", ALT_ROUTE_OPACITY);
+      if (map.getLayer(casId)) map.setPaintProperty(casId, "line-opacity", 0.5);
+    }
+  });
+  // If the previously active was index 0, show it as alt (it had no alt layer, so draw one)
+  // Handle by drawing route 0 as an alt if it's deselected
+  _ensureAltLayerForRoute0(alts, mode, color, idx);
+
+  // Update navigation data
+  const durMin = Math.round(data.duration / 60);
+  const distKm = (data.distance / 1000).toFixed(1);
+  dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
+  dir.directRouteCoords = data.coords;
+  dir.directSteps = data.rawSteps || null;
+  dir.directMaxspeeds = data.maxspeeds || null;
+
+  // Fit bounds to new route
   const bounds = new maplibregl.LngLatBounds();
-  coords.forEach((c) => bounds.extend(c));
+  data.coords.forEach((c) => bounds.extend(c));
   const mob = window.innerWidth <= 768;
   const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
   map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
-  dir.directInfo = { mode, durMin, distKm, stepGeometries };
-  // Store for navigation module (must be after clearRoute which wipes these)
-  dir.directRouteCoords = coords;
-  dir.directSteps = data.rawSteps || null;
-  dir.directMaxspeeds = data.maxspeeds || null;
-  dir.activeIdx = 0;
-  const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
-  dirEmpty.classList.add("hide");
-  dirLoad.classList.add("hide");
-  dirErr.classList.add("hide");
-  dirItins.innerHTML = `
-      <div class="itin-card direct-card active" style="--dc:${cssColor}">
-        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + duration * 1000))}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${distKm} km</div></div>
-        <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
-        <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${stepsHTML}</div></div></div>
-      </div>`;
-  document.getElementById("dir-btn").classList.add("route-active");
-  dirClearBtn.classList.remove("hide");
-  dirShareBtn.classList.remove("hide");
-  enterResultsMode();
+
   updateSnackbar();
+  if (dirPanel.classList.contains("results-shown") && !dirPanel.classList.contains("route-focused")) {
+    syncResultsPanelHeight();
+  }
+}
+
+/**
+ * Ensure route 0 has an alt layer when it's deselected (since it starts as primary with no alt layer).
+ */
+function _ensureAltLayerForRoute0(alts, mode, color, activeIdx) {
+  const srcId = "dir-alt-src-r0", casId = "dir-alt-cas-r0", lnId = "dir-alt-ln-r0";
+  if (activeIdx === 0) {
+    // Route 0 is primary again — hide its alt layer
+    if (map.getLayer(lnId)) map.setPaintProperty(lnId, "line-opacity", 0);
+    if (map.getLayer(casId)) map.setPaintProperty(casId, "line-opacity", 0);
+    return;
+  }
+  if (!alts[0]) return;
+  if (map.getSource(srcId)) {
+    // Already exists — just make it visible
+    map.getSource(srcId).setData({ type: "Feature", geometry: { type: "LineString", coordinates: alts[0].coords } });
+    if (map.getLayer(lnId)) map.setPaintProperty(lnId, "line-opacity", ALT_ROUTE_OPACITY);
+    if (map.getLayer(casId)) map.setPaintProperty(casId, "line-opacity", 0.5);
+    return;
+  }
+  const geoData = { type: "Feature", geometry: { type: "LineString", coordinates: alts[0].coords } };
+  map.addSource(srcId, { type: "geojson", data: geoData });
+  const beforeLayer = map.getLayer("dir-corridor-ln") ? "dir-corridor-ln" : undefined;
+  map.addLayer({ id: casId, type: "line", source: srcId, paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 6 : 7, "line-opacity": 0.5 }, layout: { "line-cap": "round", "line-join": "round" } }, beforeLayer);
+  map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": color, "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+  dir.routeSources.push(srcId);
+  dir.routeLayers.push(casId, lnId);
+}
+
+/**
+ * Bind click handlers on direct route cards (called after cards are rendered or appended).
+ */
+function _bindDirectCardClicks() {
+  dirItins.querySelectorAll(".itin-card.direct-card").forEach((card) => {
+    card.onclick = (e) => {
+      const idx = parseInt(card.dataset.directIdx);
+      if (e.target.closest(".itin-navigate")) {
+        e.stopPropagation();
+        _selectDirectRoute(idx);
+        closeDirPanel();
+        if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
+        return;
+      }
+      if (e.target.closest(".itin-expand")) {
+        e.stopPropagation();
+        _selectDirectRoute(idx);
+        _focusDirectRoute(idx);
+        return;
+      }
+      // Step highlight within a card
+      const stepEl = e.target.closest(".direct-step");
+      if (stepEl && dir.directInfo?.stepGeometries) {
+        _selectDirectRoute(idx);
+        const stepIdx = parseInt(stepEl.dataset.stepIdx, 10);
+        if (!isNaN(stepIdx)) highlightDirectStep(stepIdx, stepEl);
+        return;
+      }
+      _selectDirectRoute(idx);
+    };
+  });
+}
+
+/**
+ * Focus (expand full-screen) a direct route card.
+ * @param {number} idx - Index in dir._directAlts
+ */
+function _focusDirectRoute(idx) {
+  const data = dir._directAlts?.[idx];
+  if (!data) return;
+  const mode = dir._directMode;
+  const durMin = Math.round(data.duration / 60);
+  const distKm = (data.distance / 1000).toFixed(1);
+  document.getElementById("focused-origin").textContent = dir.origin?.name || "Origin";
+  document.getElementById("focused-dest").textContent = dir.dest?.name || "Destination";
+  const chainEl = document.getElementById("focused-chain");
+  chainEl.innerHTML = `<span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span>`;
+  document.getElementById("focused-meta").innerHTML = `<span>${durMin < 60 ? durMin + " min" : Math.floor(durMin / 60) + "h " + (durMin % 60) + "m"}</span><span>·</span><span>${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + data.duration * 1000))}</span><span>·</span><span>${distKm} km</span>`;
+  const isMobile_fr = window.innerWidth <= 768;
+  const shouldSync_fr = isMobile_fr && !dirPanel.classList.contains("shut");
+  const beforeH_fr = shouldSync_fr ? dirPanel.offsetHeight : 0;
+  dirPanel.classList.add("route-focused");
+  document.querySelectorAll(".itin-card.direct-card").forEach((c) => {
+    const cardIdx = parseInt(c.dataset.directIdx);
+    if (cardIdx === idx) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
+    else { c.classList.add("card-hidden"); }
+  });
+  if (shouldSync_fr) {
+    dirPanel.style.transition = "none";
+    dirPanel.style.height = beforeH_fr + "px";
+    void dirPanel.offsetHeight;
+    dirPanel.style.transition = "";
+    dirPanel.style.height = window.innerHeight + "px";
+  } else {
+    dirSnap.remeasure();
+  }
 }
 
 function renderItineraries() {
@@ -1978,35 +2213,6 @@ function unfocusRoute() {
   dirSnap.remeasure();
 }
 
-function focusDirectRoute() {
-  if (!dir.directInfo) return;
-  const { mode, durMin, distKm } = dir.directInfo;
-  document.getElementById("focused-origin").textContent = dir.origin?.name || "Origin";
-  document.getElementById("focused-dest").textContent = dir.dest?.name || "Destination";
-  const chainEl = document.getElementById("focused-chain"); chainEl.innerHTML = "";
-  const badge = document.createElement("span"); badge.className = `leg-badge mode-${mode}`;
-  badge.innerHTML = dirModeIconSvg(mode, 12); chainEl.appendChild(badge);
-  const durLabel = durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`;
-  document.getElementById("focused-meta").innerHTML = `<span>${OSRM_LABELS[mode]}</span><span>·</span><span>${durLabel}</span><span>·</span><span>${distKm} km</span>`;
-  const isMobile_fd = window.innerWidth <= 768;
-  const shouldSync_fd = isMobile_fd && !dirPanel.classList.contains("shut");
-  const beforeH_fd = shouldSync_fd ? dirPanel.offsetHeight : 0;
-  dirPanel.classList.add("route-focused");
-  document.querySelectorAll(".itin-card").forEach((c) => {
-    if (c.classList.contains("direct-card")) { c.classList.add("focused", "active"); c.classList.remove("card-hidden"); }
-    else { c.classList.add("card-hidden"); }
-  });
-  if (shouldSync_fd) {
-    dirPanel.style.transition = "none";
-    dirPanel.style.height = beforeH_fd + "px";
-    void dirPanel.offsetHeight;
-    dirPanel.style.transition = "";
-    dirPanel.style.height = window.innerHeight + "px";
-  } else {
-    dirSnap.remeasure();
-  }
-}
-
 function highlightDirectStep(idx, stepEl) {
   document.querySelectorAll(".direct-step.selected").forEach((el) => el.classList.remove("selected"));
   stepEl.classList.add("selected");
@@ -2031,6 +2237,7 @@ export function clearRoute() {
   dir.routeSources.forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = []; dir.directInfo = null;
   dir.directRouteCoords = null; dir.directSteps = null; dir.directMaxspeeds = null;
+  dir._directAlts = null; dir._directMode = null;
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
   dirClearBtn.classList.add("hide");
