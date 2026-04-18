@@ -1,5 +1,5 @@
-// â”€â”€â”€ Turn-by-turn Navigation Module â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Provides Google Mapsâ€“style navigation HUD that replaces the route snackbar
+// ─── Turn-by-turn Navigation Module ─────────────────────────────────────
+// Provides Google Maps–style navigation HUD that replaces the route snackbar
 // when the directions panel is closed with an active route.
 // Supports all transport modes with specialized instructions.
 // Includes a simulator for testing without GPS.
@@ -21,7 +21,7 @@ function _hDistM(lat1, lon1, lat2, lon2) {
   return haversineDistance(lat1, lon1, lat2, lon2) * 1000;
 }
 
-// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── State ──────────────────────────────────────────────────────────
 let navActive = false;
 let navPaused = false;     // true when HUD is hidden but state is preserved
 let navSteps = [];         // unified step objects for all modes
@@ -41,24 +41,24 @@ let lastRerouteTime = 0;
 let offRouteCount = 0;
 
 // GPS processing throttle
-const GPS_PROCESS_INTERVAL = 1000; // ms â€” process GPS at most every 1s
+const GPS_PROCESS_INTERVAL = 1000; // ms — process GPS at most every 1s
 let lastGpsProcessTime = 0;
 
-// â”€â”€â”€ Speed tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Speed tracking ─────────────────────────────────────────────────
 let _prevSpeedPos = null;  // { lat, lng, time }
 let _speedKmh = 0;
 const SPEED_MIN_DIST_M = 5;       // ignore micro-movements (noise floor)
-const SPEED_MAX_REASONABLE = 200;  // km/h â€” discard insane spikes
+const SPEED_MAX_REASONABLE = 200;  // km/h — discard insane spikes
 const SPEED_HISTORY_SIZE = 4;      // median filter window
 let _speedHistory = [];            // last N raw speed samples for median
 
-// â”€â”€â”€ Continue / approach detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Continue / approach detection ──────────────────────────────────
 let _liveDistToNextM = 0;       // live GPS distance to the next step's maneuver point
 let _liveRemainDistM = 0;       // live remaining distance to destination along route
 const CONTINUE_DIST_M = 300;    // show "Continue on road" when further than this from next step
 const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than this
 
-// â”€â”€â”€ Follow-mode state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Follow-mode state ──────────────────────────────────────────────
 // Always auto-recenter on the GPS position during navigation.
 // If the user manually pans away, stop following and show recenter button.
 let _following = true;         // true = auto-follow, false = user panned away
@@ -72,15 +72,23 @@ let _touchPanMoved = false;
 const FOLLOW_DURATION_MS = ('ontouchstart' in window) ? 300 : 800;
 const TOUCH_DRAG_BREAK_PX = 10;
 
-// â”€â”€â”€ Navigation view â€” 3D perspective parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── GPS interpolation state ────────────────────────────────────────
+// Instead of discrete easeTo jumps every ~1s, we smoothly interpolate
+// between GPS fixes using requestAnimationFrame for 60fps movement.
+let _interpFrom = null;       // { lng, lat, bearing, zoom, time }
+let _interpTo = null;         // { lng, lat, bearing, zoom, time }
+let _interpRafId = null;      // requestAnimationFrame handle
+let _interpActive = false;    // true while the rAF loop is running
+
+// ─── Navigation view — 3D perspective parameters ────────────────────
 // Per-mode camera settings for the tilted, heading-up navigation view.
 // pitch: forward-facing tilt angle (degrees, 0 = flat)
 // zoomMin/Max: dynamic zoom range based on speed and turn proximity
 const NAV_VIEW = {
-  drive:   { pitch: 55, zoomMin: 18,   zoomMax: 19   },
-  walk:    { pitch: 45, zoomMin: 18.5, zoomMax: 19   },
-  cycle:   { pitch: 50, zoomMin: 18,   zoomMax: 19   },
-  transit: { pitch: 35, zoomMin: 17.5, zoomMax: 18.5 },
+  drive:   { pitch: 55, zoomMin: 16,   zoomMax: 17   },
+  walk:    { pitch: 45, zoomMin: 17,   zoomMax: 18   },
+  cycle:   { pitch: 50, zoomMin: 16.5, zoomMax: 17.5 },
+  transit: { pitch: 35, zoomMin: 16,   zoomMax: 17   },
 };
 
 /**
@@ -99,47 +107,47 @@ function _aheadOffset() {
 // Track whether we disabled 3D buildings on nav start so we can restore on stop
 let _was3DBeforeNav = false;
 
-// â”€â”€â”€ Covered-route state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Covered-route state ─────────────────────────────────────────────
 // Tracks the portion of the route already traversed so the overlay layer
 // can dim it to clearly distinguish where the user has been vs. ahead.
 const NAV_COVERED_SRC   = "nav-covered-src";
 const NAV_COVERED_LAYER = "nav-covered-ln";
 
-// â”€â”€â”€ Speed limit data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Speed limit data ───────────────────────────────────────────────
 let _maxspeeds = [];           // per-segment speed limit array from OSRM
 let _currentSpeedLimit = 0;    // km/h, 0 = unknown
 
-// â”€â”€â”€ Movement-guard state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Movement-guard state ────────────────────────────────────────────
 // The core anti-cascade mechanism. A step can ONLY advance after the user
 // has physically moved _minMoveDist() metres from where the last step fired
 // (or from the nav-start position). GPS noise is bounded by the accuracy
 // circle (~15-20 m), so a 25 m drive threshold makes it impossible to
 // cascade through multiple steps without actual movement.
-let _lastTriggerPos = null;  // {lat, lng} â€” position where last step fired (set to GPS pos at nav start)
-let _stepFired = [];         // boolean[] â€” once a step fires it never fires again
+let _lastTriggerPos = null;  // {lat, lng} — position where last step fired (set to GPS pos at nav start)
+let _stepFired = [];         // boolean[] — once a step fires it never fires again
 
-// â”€â”€â”€ Approach-tracking state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Approach-tracking state ─────────────────────────────────────────
 // Entering the trigger radius doesn't immediately fire the step.
 // Instead we track the closest distance reached. The step fires when:
 //   1. Distance is within _approachFireM() (speed-scaled "very close"), OR
 //   2. Distance starts increasing (user passed the closest point)
-// This prevents premature step advancement at ALL speeds â€” at highway
+// This prevents premature step advancement at ALL speeds — at highway
 // speed the fire radius grows to account for GPS tick spacing, while
 // at walking speed it stays tight for maximum precision.
-const APPROACH_FIRE_MIN_M = 2;  // metres â€” floor (very slow walk / stationary)
-const APPROACH_FIRE_MAX_M = 30; // metres â€” cap to avoid absurd values
+const APPROACH_FIRE_MIN_M = 2;  // metres — floor (very slow walk / stationary)
+const APPROACH_FIRE_MAX_M = 30; // metres — cap to avoid absurd values
 let _approachIdx = -1;          // step index currently being approached (-1 = none)
 let _approachMinDist = Infinity; // closest distance seen while approaching
 
-// â”€â”€â”€ Transit stop-aware navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Three-phase stop model: towards â†’ at â†’ past.
+// ─── Transit stop-aware navigation ──────────────────────────────────
+// Three-phase stop model: towards → at → past.
 // Board steps hold until departure time to prevent premature advancement
 // through intermediate stops while the user waits at the platform.
 const TRANSIT_AT_RADIUS_M = 150;            // "at" the stop when within this (display)
 const TRANSIT_BOARD_HOLD_BUFFER_MS = 30000; // hold 30s past scheduled departure
 const TRANSIT_DEPART_MOVE_M = 300;          // movement from board stop releases hold early
-let _transitHoldUntil = 0;                  // epoch ms â€” block advancement past board step
-let _transitReachedStep = -1;               // step index where user was last "at" â€” prevents re-showing "Towards" after departure
+let _transitHoldUntil = 0;                  // epoch ms — block advancement past board step
+let _transitReachedStep = -1;               // step index where user was last "at" — prevents re-showing "Towards" after departure
 
 /**
  * Speed-scaled fire distance. Uses an exponential time-factor that gives
@@ -147,7 +155,7 @@ let _transitReachedStep = -1;               // step index where user was last "a
  * to ~0.8 seconds at highway speed (accounts for GPS tick spacing).
  *
  * Vehicles naturally decelerate before turns, so the live speed drops
- * and the fire distance shrinks automatically â€” no special braking logic.
+ * and the fire distance shrinks automatically — no special braking logic.
  *
  * | Speed       | Time factor | Fire dist |
  * |-------------|-------------|----------|
@@ -168,7 +176,7 @@ function _approachFireM() {
   return Math.max(APPROACH_FIRE_MIN_M, Math.min(APPROACH_FIRE_MAX_M, speedMs * timeFactor));
 }
 
-// â”€â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── DOM refs ───────────────────────────────────────────────────────
 const hud = document.getElementById("nav-hud");
 const hudManeuver = document.getElementById("nav-maneuver-icon");
 const hudInstruction = document.getElementById("nav-instruction");
@@ -184,7 +192,7 @@ const hudBody = document.querySelector(".nav-hud-body");
 const recenterBtn = document.getElementById("nav-recenter");
 const snackbar = document.getElementById("route-snackbar");
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────────
 function _nearestPointOnSegment(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;
   const lenSq = dx * dx + dy * dy;
@@ -246,7 +254,7 @@ function _routeProgressAtCoordIdx(coordIdx) {
   return navRouteProgress[safeIdx] || 0;
 }
 
-// â”€â”€â”€ Movement-guard thresholds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Movement-guard thresholds ───────────────────────────────────────
 // Minimum metres the user must travel from _lastTriggerPos before the next
 // step can fire. Kept low because _stepFired[] already prevents re-triggers;
 // the movement guard only needs to stop a stationary GPS fix from advancing
@@ -259,8 +267,8 @@ function _minMoveDist() {
 }
 
 // How close to a step's lat/lng the user must be to trigger that step.
-const TRANSIT_STOP_RADIUS_MIN = 40;   // metres â€” floor for dense bus stops
-const TRANSIT_STOP_RADIUS_MAX = 150;  // metres â€” cap for sparse train stops
+const TRANSIT_STOP_RADIUS_MIN = 40;   // metres — floor for dense bus stops
+const TRANSIT_STOP_RADIUS_MAX = 150;  // metres — cap for sparse train stops
 const TRANSIT_STOP_RADIUS_FRAC = 0.4; // use 40% of distance to nearest neighbor
 
 function _triggerRadius(step) {
@@ -268,9 +276,9 @@ function _triggerRadius(step) {
   if (step.type === "transit-stop")  return step._adaptiveRadius || 100;
   if (step.type === "transit-board" || step.type === "transit-alight") return 60;
   if (step.type === "transit-walk")  return 35;
-  // Roundabout steps are spatially compact â€” use a much tighter radius.
+  // Roundabout steps are spatially compact — use a much tighter radius.
   // OSRM places the "roundabout" maneuver at the entry point and "exit
-  // roundabout" at the exit point; these can be 10â€“30 m apart on small
+  // roundabout" at the exit point; these can be 10–30 m apart on small
   // roundabouts. A wide radius triggers both at once.
   const mt = step.maneuverType || "";
   if (mt === "roundabout" || mt === "rotary" || mt === "exit roundabout" || mt === "exit rotary" || mt === "roundabout turn") {
@@ -327,7 +335,7 @@ function _precomputeStopRadii() {
   }
 }
 
-// â”€â”€â”€ Build unified steps from route data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Build unified steps from route data ────────────────────────────
 
 function _findNearestCoordIdx(lat, lng) {
   let best = 0, minD = Infinity;
@@ -381,7 +389,7 @@ function buildTransitSteps(itin) {
     const endCoord = fromCoord[fromCoord.length - 1] || startCoord;
 
     if (isWalk) {
-      // Walking segment â€” single instruction
+      // Walking segment — single instruction
       const distM = Math.round(leg.distance || 0);
       const coordIdx = _findNearestCoordIdx(startCoord[1], startCoord[0]);
       steps.push({
@@ -406,7 +414,7 @@ function buildTransitSteps(itin) {
         isArrive: false,
       });
     } else {
-      // Transit segment â€” board + intermediate stops + alight
+      // Transit segment — board + intermediate stops + alight
       const routeName = leg.trip?.routeShortName || leg.mode;
       const headsign = leg.trip?.tripHeadsign || leg.to.name;
       const color = legCssColor(leg.mode, leg);
@@ -417,7 +425,7 @@ function buildTransitSteps(itin) {
       steps.push({
         type: "transit-board",
         mode: leg.mode,
-        instruction: `Board ${routeName} â†’ ${esc(headsign)}`,
+        instruction: `Board ${routeName} → ${esc(headsign)}`,
         distance: 0,
         iconHtml: modeIcon(leg.mode, 24),
         lng: startCoord[0], lat: startCoord[1],
@@ -507,7 +515,7 @@ function buildTransitSteps(itin) {
   return steps;
 }
 
-// â”€â”€â”€ HUD rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── HUD rendering ─────────────────────────────────────────────────
 
 function renderHUD() {
   if (!navActive || !navSteps.length || !hud) return;
@@ -537,7 +545,7 @@ function renderHUD() {
     }
   }
 
-  // Row 2 chips â€” updated every render + every live tick
+  // Row 2 chips — updated every render + every live tick
   _updateChips();
 
   // Progress bar
@@ -557,7 +565,7 @@ function _updateChips() {
   if (hudTurnChip) {
     const nextStep = navSteps[navStepIdx + 1];
     if (_liveDistToNextM > 0 && !step.isArrive && nextStep) {
-      const icon = nextStep.iconHtml || "â†±";
+      const icon = nextStep.iconHtml || "↱";
       hudTurnChip.innerHTML = `<span class="nav-chip-icon">${icon}</span> ${esc(fmtDist(_liveDistToNextM))}`;
       hudTurnChip.classList.remove("hide");
     } else {
@@ -597,7 +605,7 @@ function _updateETAChip() {
   }
 }
 
-// â”€â”€â”€ Start / Stop Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Start / Stop Navigation ────────────────────────────────────────
 
 export function startNavigation() {
   if (!dir.origin || !dir.dest) return;
@@ -630,7 +638,7 @@ export function startNavigation() {
     navTotalDur = (endT - startT) / 1000;
     navTotalDist = navItinerary.legs.reduce((s, l) => s + (l.distance || 0), 0);
   } else {
-    // Direct route â€” use stored coords and steps
+    // Direct route — use stored coords and steps
     if (dir.directRouteCoords?.length) {
       dir.directRouteCoords.forEach(c => navRouteCoords.push(c));
     }
@@ -672,6 +680,7 @@ export function startNavigation() {
   _headingDeg = 0;
   _prevHeadingPos = null;
   _following = true;
+  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.add("hide");
 
   // Compute initial heading from the route's opening direction
@@ -695,7 +704,7 @@ export function startNavigation() {
   if (hudSpeedVal) hudSpeedVal.textContent = "0";
   document.body.classList.add("nav-mode");
 
-  // Disable 3D buildings during navigation â€” extruded geometry obstructs
+  // Disable 3D buildings during navigation — extruded geometry obstructs
   // the tilted forward-looking view. Restore on nav stop.
   _was3DBeforeNav = is3DActive;
   if (is3DActive) disable3D();
@@ -759,6 +768,7 @@ export function pauseNavigation() {
   if (!navActive) return;
   navActive = false;
   navPaused = true;
+  _stopInterpLoop();
   // Hide HUD but keep all state (steps, stepIdx, coords, etc.)
   if (hud) {
     hud.classList.add("hide");
@@ -796,6 +806,7 @@ export function stopNavigation() {
   _headingDeg = 0;
   _prevHeadingPos = null;
   _following = true;
+  _stopInterpLoop();
 
   // Restore flat north-up 2D view
   map.easeTo({ bearing: 0, pitch: 0, duration: 800, offset: [0, 0] });
@@ -824,7 +835,7 @@ export function stopNavigation() {
 export function isNavActive() { return navActive; }
 export function isNavPaused() { return navPaused; }
 
-// â”€â”€â”€ GPS update handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── GPS update handler ─────────────────────────────────────────────
 
 function _onLocationUpdate(e) {
   if (!navActive) return;
@@ -837,7 +848,7 @@ function _onLocationUpdate(e) {
 export function processPosition(lat, lng, accuracy = null) {
   if (!navActive || !navRouteCoords.length) return;
 
-  // Throttle GPS processing â€” no need to evaluate every raw hardware tick
+  // Throttle GPS processing — no need to evaluate every raw hardware tick
   const now = Date.now();
   if (now - lastGpsProcessTime < GPS_PROCESS_INTERVAL) return;
   lastGpsProcessTime = now;
@@ -882,7 +893,7 @@ export function processPosition(lat, lng, accuracy = null) {
   // Re-render HUD only when the step changes
   if (navStepIdx !== prevIdx) renderHUD();
 
-  // Lightweight live update â€” distance countdown + continue/approach instructions
+  // Lightweight live update — distance countdown + continue/approach instructions
   _updateLiveHUD();
 
   // Dim already-covered portion of the route
@@ -898,7 +909,7 @@ export function processPosition(lat, lng, accuracy = null) {
   _smartFollow(lng, lat);
 }
 
-// â”€â”€â”€ Covered-route overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Covered-route overlay ──────────────────────────────────────────
 
 /**
  * Update the "already covered" route overlay up to the user's current
@@ -960,7 +971,7 @@ function _removeCoveredRouteLayer() {
   if (map.getSource(NAV_COVERED_SRC))  map.removeSource(NAV_COVERED_SRC);
 }
 
-// â”€â”€â”€ Smooth follow mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Smooth follow mode ─────────────────────────────────────────────
 
 /**
  * Compute dynamic zoom from route geometry ahead of the GPS position.
@@ -1056,23 +1067,111 @@ function _smartFollow(lng, lat) {
   }
 
   const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  // Only auto-rotate when actually moving â€” prevents heading jitter at rest
   const bearing = _speedKmh > 3 ? _headingDeg : map.getBearing();
+  const zoom = _computeNavZoom();
+  const now = performance.now();
 
-  map.easeTo({
+  // Feed the interpolation system instead of calling easeTo directly.
+  // The rAF loop will smoothly animate between GPS fixes at 60fps.
+  _interpFrom = _interpTo
+    ? { ..._interpTo }
+    : { lng, lat, bearing, zoom, time: now };
+  _interpTo = { lng, lat, bearing, zoom, time: now };
+
+  if (!_interpActive) _startInterpLoop();
+}
+
+/** Start the requestAnimationFrame interpolation loop. */
+function _startInterpLoop() {
+  if (_interpActive) return;
+  _interpActive = true;
+  _interpRafId = requestAnimationFrame(_interpTick);
+}
+
+/** Stop the interpolation loop. */
+function _stopInterpLoop() {
+  _interpActive = false;
+  if (_interpRafId) {
+    cancelAnimationFrame(_interpRafId);
+    _interpRafId = null;
+  }
+  _interpFrom = null;
+  _interpTo = null;
+}
+
+/**
+ * Per-frame interpolation tick. Smoothly lerps between the previous
+ * GPS fix and the current one, then extrapolates slightly ahead using
+ * the current speed and bearing to fill the gap until the next fix.
+ */
+function _interpTick(frameTime) {
+  if (!_interpActive || !navActive || !_following) {
+    _interpActive = false;
+    return;
+  }
+
+  // Pause interpolation while fingers are on screen to avoid fighting touch
+  if (_touchCount > 0 || !_interpFrom || !_interpTo) {
+    _interpRafId = requestAnimationFrame(_interpTick);
+    return;
+  }
+
+  const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
+  const elapsed = frameTime - _interpTo.time;
+  // Expected interval between GPS fixes (ms)
+  const interval = Math.max(100, _interpTo.time - _interpFrom.time) || GPS_PROCESS_INTERVAL;
+
+  // t goes from 0 (at fix arrival) to 1 (at expected next fix time)
+  // and beyond 1.0 for extrapolation until the next fix arrives
+  let t = Math.min(elapsed / interval, 1.5);
+
+  // Interpolate position: lerp from → to, then extrapolate past to
+  let lng, lat;
+  if (t <= 1.0) {
+    // Lerp from previous fix to current fix
+    lng = _interpFrom.lng + (_interpTo.lng - _interpFrom.lng) * t;
+    lat = _interpFrom.lat + (_interpTo.lat - _interpFrom.lat) * t;
+  } else {
+    // Extrapolate beyond current fix using the same velocity vector
+    const dlng = _interpTo.lng - _interpFrom.lng;
+    const dlat = _interpTo.lat - _interpFrom.lat;
+    lng = _interpTo.lng + dlng * (t - 1.0);
+    lat = _interpTo.lat + dlat * (t - 1.0);
+  }
+
+  // Smoothly interpolate bearing to avoid snapping
+  let bearing;
+  if (_speedKmh > 3) {
+    let fromB = _interpFrom.bearing;
+    let toB = _interpTo.bearing;
+    // Shortest-arc interpolation
+    let delta = toB - fromB;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    bearing = fromB + delta * Math.min(t, 1.0);
+  } else {
+    bearing = map.getBearing();
+  }
+
+  // Interpolate zoom
+  const zoom = _interpFrom.zoom + (_interpTo.zoom - _interpFrom.zoom) * Math.min(t, 1.0);
+
+  map.jumpTo({
     center: [lng, lat],
     bearing,
     pitch: view.pitch,
-    zoom: _computeNavZoom(),
+    zoom,
     offset: [0, _aheadOffset()],
-    duration: FOLLOW_DURATION_MS,
   });
+
+  _interpRafId = requestAnimationFrame(_interpTick);
 }
 
 function _stopFollowing() {
   if (!navActive || !_following) return;
   map.stop();
   _following = false;
+  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.remove("hide");
   // Restore 3D buildings when user takes manual control (not following)
   if (_was3DBeforeNav && !is3DActive) enable3D();
@@ -1080,7 +1179,7 @@ function _stopFollowing() {
 
 function _onUserInteraction(e) {
   if (!navActive) return;
-  if (!e.originalEvent) return; // programmatic easeTo/flyTo â€” ignore
+  if (!e.originalEvent) return; // programmatic easeTo/flyTo — ignore
   _stopFollowing();
 }
 
@@ -1119,6 +1218,7 @@ function _onTouchMove(e) {
   // that MapLibre is already processing (causes the "stuck first drag").
   // The nav animation was already killed by touchstart; just flip state.
   _following = false;
+  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.remove("hide");
   if (_was3DBeforeNav && !is3DActive) enable3D();
 }
@@ -1158,7 +1258,7 @@ function _recenter() {
   }
 }
 
-// â”€â”€â”€ Speedometer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Speedometer ────────────────────────────────────────────────────
 
 function _medianOfArray(arr) {
   const sorted = [...arr].sort((a, b) => a - b);
@@ -1198,17 +1298,38 @@ function _updateSpeed(lat, lng, now) {
   _renderSpeedChip();
 }
 
-// â”€â”€â”€ Heading computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const HEADING_MIN_DIST_M = 5; // ignore micro-movements for heading
-let _prevHeadingPos = null;   // { lat, lng }
+// ─── Heading computation ────────────────────────────────────────────
+// Route-geometry-derived heading: uses the bearing of the route polyline
+// at the user's snapped position with a short lookahead, rather than raw
+// GPS-to-GPS bearing which jitters wildly from satellite noise.
+const HEADING_MIN_DIST_M = 5;       // ignore micro-movements for GPS fallback
+const HEADING_LOOKAHEAD_M = 60;     // metres to look ahead on route for bearing
+const HEADING_SMOOTH_FACTOR = 0.25; // lower = smoother (0..1), blends new into old
+let _prevHeadingPos = null;         // { lat, lng }
 
 /**
- * Compute travel bearing from consecutive GPS positions.
- * Only updates when user has moved enough to produce a reliable direction.
- * @param {number} lat
- * @param {number} lng
+ * Compute travel heading from the route geometry at the current snap point.
+ * Primary source: bearing of the route polyline looking ~60m ahead from the
+ * snapped position. This follows the actual road shape and is immune to GPS
+ * jitter. Falls back to GPS-to-GPS bearing only when far off-route.
+ * @param {number} lat - raw GPS latitude
+ * @param {number} lng - raw GPS longitude
  */
 function _updateHeading(lat, lng) {
+  // Try route-geometry heading first (jitter-immune)
+  const routeBearing = _routeBearingAtSnap();
+  if (routeBearing !== null) {
+    // Smooth the route bearing to avoid snapping on sharp corners
+    const prev = _headingDeg;
+    let delta = routeBearing - prev;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    _headingDeg = ((prev + delta * HEADING_SMOOTH_FACTOR) + 360) % 360;
+    _prevHeadingPos = { lat, lng };
+    return;
+  }
+
+  // Fallback: GPS-to-GPS bearing (only when off-route or no route coords)
   if (!_prevHeadingPos) {
     _prevHeadingPos = { lat, lng };
     return;
@@ -1216,15 +1337,52 @@ function _updateHeading(lat, lng) {
   const dist = _hDistM(_prevHeadingPos.lat, _prevHeadingPos.lng, lat, lng);
   if (dist < HEADING_MIN_DIST_M) return;
 
-  // Forward azimuth: bearing from previous position to current
   const dLng = (lng - _prevHeadingPos.lng) * Math.PI / 180;
   const lat1 = _prevHeadingPos.lat * Math.PI / 180;
   const lat2 = lat * Math.PI / 180;
   const y = Math.sin(dLng) * Math.cos(lat2);
   const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  _headingDeg = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+  const gpsBearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+
+  const prev = _headingDeg;
+  let delta = gpsBearing - prev;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  _headingDeg = ((prev + delta * HEADING_SMOOTH_FACTOR) + 360) % 360;
 
   _prevHeadingPos = { lat, lng };
+}
+
+/**
+ * Compute the forward bearing of the route polyline at the current snap
+ * position by looking HEADING_LOOKAHEAD_M metres ahead along the route.
+ * Returns the bearing in degrees [0,360) or null if unavailable.
+ * @returns {number|null}
+ */
+function _routeBearingAtSnap() {
+  if (!navRouteCoords.length || _snapSegIdx < 0) return null;
+
+  const startIdx = Math.max(0, _snapSegIdx);
+  const startCoord = navRouteCoords[startIdx];
+  if (!startCoord) return null;
+
+  // Walk forward along route segments until we've covered HEADING_LOOKAHEAD_M
+  let distAcc = 0;
+  let endLat = startCoord[1], endLng = startCoord[0];
+
+  for (let i = startIdx; i < navRouteCoords.length - 1 && distAcc < HEADING_LOOKAHEAD_M; i++) {
+    const [ax, ay] = navRouteCoords[i];
+    const [bx, by] = navRouteCoords[i + 1];
+    distAcc += _hDistM(ay, ax, by, bx);
+    endLat = by;
+    endLng = bx;
+  }
+
+  // Need at least a few metres of lookahead to get a meaningful bearing
+  const snapLat = startCoord[1], snapLng = startCoord[0];
+  if (_hDistM(snapLat, snapLng, endLat, endLng) < 2) return null;
+
+  return _bearing(snapLat, snapLng, endLat, endLng);
 }
 
 function _renderSpeedChip() {
@@ -1255,8 +1413,8 @@ function _lookupSpeedLimit(coordIdx) {
   return kmh;
 }
 
-// â”€â”€â”€ Live HUD updates (continue / approach) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Maneuver types that represent a completed action â€” after executing these,
+// ─── Live HUD updates (continue / approach) ─────────────────────────
+// Maneuver types that represent a completed action — after executing these,
 // the user is on a straight road segment and benefits from "Continue on X".
 const _COMPLETED_MANEUVERS = new Set([
   "turn", "fork", "merge", "on ramp", "off ramp", "end of road",
@@ -1264,7 +1422,7 @@ const _COMPLETED_MANEUVERS = new Set([
 ]);
 
 /**
- * Lightweight per-tick HUD update â€” live distance countdown, chips,
+ * Lightweight per-tick HUD update — live distance countdown, chips,
  * continue/approach instruction overrides, and speed limit lookup.
  * Called every GPS tick (after renderHUD on step change).
  */
@@ -1284,7 +1442,7 @@ function _updateLiveHUD() {
     return;
   }
 
-  // Approaching next maneuver â€” preview the upcoming turn
+  // Approaching next maneuver — preview the upcoming turn
   if (_liveDistToNextM > 0 && _liveDistToNextM <= APPROACH_DIST_M) {
     if (hudInstruction) hudInstruction.textContent = next.instruction;
     if (hudManeuver) hudManeuver.innerHTML = next.iconHtml || "";
@@ -1304,7 +1462,7 @@ function _updateLiveHUD() {
     return;
   }
 
-  // Long segment â€” show "Continue on [road]" for completed maneuvers
+  // Long segment — show "Continue on [road]" for completed maneuvers
   // or append distance to depart/continue/new name steps
   if (_liveDistToNextM > CONTINUE_DIST_M) {
     const road = step.name || "";
@@ -1322,8 +1480,8 @@ function _updateLiveHUD() {
   }
 }
 
-// â”€â”€â”€ Transit live HUD updates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Three-phase model for transit stops: towards â†’ at â†’ past.
+// ─── Transit live HUD updates ───────────────────────────────────────
+// Three-phase model for transit stops: towards → at → past.
 // Board steps show wait time. Alight steps intensify when close.
 
 /**
@@ -1339,7 +1497,7 @@ function _updateTransitLiveHUD(step, next) {
 
   const distToStep = _hDistM(loc.lat, loc.lng, step.lat, step.lng);
 
-  // â”€â”€ Board step: show wait time until departure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Board step: show wait time until departure ────────────────────
   if (step.type === "transit-board") {
     if (step.departTimeMs) {
       const waitMs = step.departTimeMs - Date.now();
@@ -1349,28 +1507,28 @@ function _updateTransitLiveHUD(step, next) {
       } else if (waitMs > 0) {
         hudInstruction.textContent = `${step.routeName} arriving soon`;
       } else {
-        hudInstruction.textContent = step.instruction; // "Board X â†’ Y"
+        hudInstruction.textContent = step.instruction; // "Board X → Y"
       }
     }
     if (hudNextInfo) {
-      hudNextInfo.textContent = `${step.routeName} â†’ ${step.headsign}`;
+      hudNextInfo.textContent = `${step.routeName} → ${step.headsign}`;
       hudNextInfo.classList.remove("hide");
     }
     return;
   }
 
-  // â”€â”€ Intermediate stop: towards / at / departing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Intermediate stop: towards / at / departing ────────────────────
   if (step.type === "transit-stop") {
     const name = esc(step.stopName || "stop");
     const atRadius = step._adaptiveRadius || TRANSIT_AT_RADIUS_M;
-    // Once we've been within AT radius, remember it â€” we can never go
+    // Once we've been within AT radius, remember it — we can never go
     // "Towards" this stop again after departing it.
     const alreadyReached = _transitReachedStep >= navStepIdx;
     if (distToStep <= atRadius && !alreadyReached) {
       _transitReachedStep = navStepIdx;
       hudInstruction.textContent = `At ${name}`;
     } else if (alreadyReached && next) {
-      // Already been at this stop â€” show next destination
+      // Already been at this stop — show next destination
       const nextName = next.type === "transit-alight"
         ? esc(next.toName || "your stop")
         : esc(next.stopName || "next stop");
@@ -1391,7 +1549,7 @@ function _updateTransitLiveHUD(step, next) {
           : (next.stopName || "next stop");
         hudNextInfo.textContent = remaining === 1
           ? `Next: get off at ${esc(nextName)}`
-          : `${remaining} stops left Â· Next: ${esc(nextName)}`;
+          : `${remaining} stops left · Next: ${esc(nextName)}`;
       } else {
         hudNextInfo.textContent = `${remaining} stop${remaining === 1 ? "" : "s"} remaining`;
       }
@@ -1400,11 +1558,11 @@ function _updateTransitLiveHUD(step, next) {
     return;
   }
 
-  // â”€â”€ Alight step: urgency when close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Alight step: urgency when close ───────────────────────────────
   if (step.type === "transit-alight") {
     const name = esc(step.toName || "your stop");
     if (distToStep <= TRANSIT_AT_RADIUS_M) {
-      hudInstruction.textContent = `Get off now â€” ${name}`;
+      hudInstruction.textContent = `Get off now — ${name}`;
     } else {
       hudInstruction.textContent = `Get off at ${name}`;
     }
@@ -1418,7 +1576,7 @@ function _updateTransitLiveHUD(step, next) {
     return;
   }
 
-  // â”€â”€ Walk step in transit mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Walk step in transit mode ─────────────────────────────────────
   if (step.type === "transit-walk") {
     // Show distance to the walk destination
     if (step.endLat && step.endLng) {
@@ -1426,7 +1584,7 @@ function _updateTransitLiveHUD(step, next) {
       if (walkDist < 30) {
         hudInstruction.textContent = `Arriving at ${esc(step.toName || "stop")}`;
       } else {
-        hudInstruction.textContent = `${step.instruction} Â· ${fmtDist(walkDist)}`;
+        hudInstruction.textContent = `${step.instruction} · ${fmtDist(walkDist)}`;
       }
     }
     if (hudNextInfo && next) {
@@ -1448,7 +1606,7 @@ function _updateTransitLiveHUD(step, next) {
   }
 }
 
-// â”€â”€â”€ Step advancement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Step advancement ────────────────────────────────────────────────
 // Scans forward from the current step to find the step the user has reached.
 //
 // For driving/cycling, entering the trigger radius does NOT immediately fire.
@@ -1456,7 +1614,7 @@ function _updateTransitLiveHUD(step, next) {
 //   a) The user is within APPROACH_FIRE_M (8m) of the maneuver point, OR
 //   b) The distance starts increasing (user passed the closest point).
 // This prevents premature step changes on highway exits where the next
-// maneuver is nearby â€” seeing the wrong instruction at speed is dangerous.
+// maneuver is nearby — seeing the wrong instruction at speed is dangerous.
 //
 // Walking mode fires immediately on trigger-radius entry (no approach needed).
 //
@@ -1465,13 +1623,13 @@ function _updateTransitLiveHUD(step, next) {
 // - DIVERGENCE detection for turns never entered.
 //
 // Guards:
-// - MOVEMENT â€” must have moved _minMoveDist() from last trigger position.
-// - ONCE-FIRED â€” _stepFired[] prevents any step from re-triggering.
+// - MOVEMENT — must have moved _minMoveDist() from last trigger position.
+// - ONCE-FIRED — _stepFired[] prevents any step from re-triggering.
 
 function _advanceStep(lat, lng, snapProgressM) {
   if (navStepIdx >= navSteps.length - 1) return;
 
-  // â”€â”€ Transit board hold â€” wait at platform until departure â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Transit board hold — wait at platform until departure ────────
   // Prevents cascading through intermediate stops while the user waits
   // at the boarding station. Releases when departure time passes (+buffer)
   // or when the user has clearly started moving (on the vehicle).
@@ -1480,9 +1638,9 @@ function _advanceStep(lat, lng, snapProgressM) {
     if (current?.type === "transit-board") {
       const movedFromBoard = _hDistM(lat, lng, current.lat, current.lng);
       if (Date.now() < _transitHoldUntil && movedFromBoard < TRANSIT_DEPART_MOVE_M) {
-        return; // still holding â€” don't advance
+        return; // still holding — don't advance
       }
-      // Hold released â€” force-advance past the board step
+      // Hold released — force-advance past the board step
       _transitHoldUntil = 0;
       if (navStepIdx < navSteps.length - 1) {
         navStepIdx++;
@@ -1497,7 +1655,7 @@ function _advanceStep(lat, lng, snapProgressM) {
     _transitHoldUntil = 0;
   }
 
-  // â”€â”€ Movement guard â€” must have physically moved â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Movement guard — must have physically moved ──────────────────
   if (_lastTriggerPos !== null) {
     const moved = _hDistM(lat, lng, _lastTriggerPos.lat, _lastTriggerPos.lng);
     if (moved < _minMoveDist()) return;
@@ -1510,25 +1668,25 @@ function _advanceStep(lat, lng, snapProgressM) {
   // to absorb larger GPS jitter when moving fast.
   const hysteresisM = Math.max(2, fireM * 0.4);
 
-  // â”€â”€ Approach-then-fire proximity scan (all modes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Approach-then-fire proximity scan (all modes) ────────────────
   // Check the step we're currently approaching (if any)
   if (_approachIdx > navStepIdx && _approachIdx < scanLimit) {
     const step = navSteps[_approachIdx];
     if (step) {
       const dist = _hDistM(lat, lng, step.lat, step.lng);
       if (dist <= fireM) {
-        // Within speed-scaled fire distance â€” fire immediately
+        // Within speed-scaled fire distance — fire immediately
         bestIdx = _approachIdx;
         _approachIdx = -1;
         _approachMinDist = Infinity;
       } else if (dist > _approachMinDist + hysteresisM) {
-        // Distance is increasing â€” user has passed the closest point.
+        // Distance is increasing — user has passed the closest point.
         // Hysteresis prevents GPS jitter from triggering false pass-through.
         bestIdx = _approachIdx;
         _approachIdx = -1;
         _approachMinDist = Infinity;
       } else {
-        // Still approaching â€” update min distance
+        // Still approaching — update min distance
         if (dist < _approachMinDist) _approachMinDist = dist;
       }
     }
@@ -1542,7 +1700,7 @@ function _advanceStep(lat, lng, snapProgressM) {
       const dist = _hDistM(lat, lng, step.lat, step.lng);
       if (dist <= _triggerRadius(step)) {
         if (dist <= fireM) {
-          bestIdx = i; // already within fire distance â€” fire
+          bestIdx = i; // already within fire distance — fire
         } else {
           // Start approach tracking for this step
           _approachIdx = i;
@@ -1553,11 +1711,11 @@ function _advanceStep(lat, lng, snapProgressM) {
     }
   }
 
-  // â”€â”€ Route-progress catch-up â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Route-progress catch-up ──────────────────────────────────────
   // If proximity didn't match (user blew past the trigger zone between
   // GPS samples), check if the user's route progress has moved beyond
   // the next step's route position. This means they've already crossed
-  // that maneuver point â€” mark it as passed and advance to the step
+  // that maneuver point — mark it as passed and advance to the step
   // AFTER it so the HUD shows the upcoming instruction, not the one
   // the user already completed.
   if (bestIdx === -1 && snapProgressM > 0) {
@@ -1567,10 +1725,10 @@ function _advanceStep(lat, lng, snapProgressM) {
       if (!step || !Number.isFinite(step.routeProgressM)) break;
       if (snapProgressM >= step.routeProgressM) {
         lastPassedIdx = i; // user is past this step along the route
-        // Don't skip past alight steps â€” they must be displayed
+        // Don't skip past alight steps — they must be displayed
         if (step.type === "transit-alight") break;
       } else {
-        break; // steps are ordered by route progress â€” stop scanning
+        break; // steps are ordered by route progress — stop scanning
       }
     }
     // Advance to the step AFTER the last one we've passed, so the HUD
@@ -1580,23 +1738,23 @@ function _advanceStep(lat, lng, snapProgressM) {
       if (lastPassedIdx < navSteps.length - 1) {
         bestIdx = lastPassedIdx + 1;
       } else {
-        bestIdx = lastPassedIdx; // final step â€” show arrival
+        bestIdx = lastPassedIdx; // final step — show arrival
       }
     }
   }
 
-  // â”€â”€ Divergence-based early advance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Divergence-based early advance ────────────────────────────────
   // If still no match: check if the user is moving AWAY from the
   // next step and TOWARD the step after it. This means they've already
   // passed the next step even though they never entered its trigger
   // radius. Safety: only fire when distance to next+1 is < distance to
-  // next AND the user is closer to next+1 than its trigger radius Ã— 3
+  // next AND the user is closer to next+1 than its trigger radius × 3
   // (generous but bounded).
   if (bestIdx === -1) {
     const nextStep = navSteps[navStepIdx + 1];
     const afterStep = navSteps[navStepIdx + 2];
     if (nextStep && afterStep) {
-      // Never skip alight steps â€” they must be displayed to the user
+      // Never skip alight steps — they must be displayed to the user
       if (nextStep.type !== "transit-alight") {
         const distToNext = _hDistM(lat, lng, nextStep.lat, nextStep.lng);
         const distToAfter = _hDistM(lat, lng, afterStep.lat, afterStep.lng);
@@ -1619,7 +1777,7 @@ function _advanceStep(lat, lng, snapProgressM) {
 
   navStepIdx = bestIdx;
   _lastTriggerPos = { lat, lng };
-  // Reset approach tracking â€” the fired step (or any in-flight approach) is consumed
+  // Reset approach tracking — the fired step (or any in-flight approach) is consumed
   _approachIdx = -1;
   _approachMinDist = Infinity;
 
@@ -1655,7 +1813,7 @@ async function _triggerReroute(lat, lng) {
   }
 }
 
-// â”€â”€â”€ Simulator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Simulator ──────────────────────────────────────────────────────
 // Advances to the next step without GPS. Always visible so the user can
 // verify step-by-step progression without needing to physically move.
 
@@ -1691,11 +1849,11 @@ export function simNextStep() {
   }
 }
 
-// â”€â”€â”€ Event listeners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Event listeners ────────────────────────────────────────────────
 if (hudExitBtn) {
   hudExitBtn.addEventListener("click", () => {
     stopNavigation();
-    // Don't clear the route â€” just hide HUD and let the snackbar reappear
+    // Don't clear the route — just hide HUD and let the snackbar reappear
   });
 }
 

@@ -146,11 +146,17 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-14 — Mobile nav touch suppression kept for first-drag smoothness.** `touchstart` on the map canvas still calls `map.stop()` and `_smartFollow()` still pauses while `_touchCount > 0`, so the first drag is not fighting an in-flight nav animation.
 - **2026-04-14 — First mobile pan must break follow on touchmove, not dragstart.** After recenter, waiting for MapLibre `dragstart` was too late on phone: the first gesture got consumed canceling nav follow. Fix: record the initial touch point and call `_stopFollowing()` as soon as one-finger movement exceeds a small threshold (10 px). The first drag now becomes the pan itself.
 
+- **2026-04-18 — Nav zoom zoomed out: drive 16–17, walk 17–18, cycle 16.5–17.5, transit 16–17.** Reduced another 0.5 from initial fix. User still wanted more road visible.
+- **2026-04-18 — GPS interpolation: rAF loop replaces discrete easeTo.** GPS updates at ~1 Hz caused stepped movement (300ms animation + 700ms static). Replaced with `requestAnimationFrame` loop that smoothly lerps + extrapolates between fixes at 60fps using `map.jumpTo()`. Bearing uses shortest-arc interpolation. Loop pauses during touch and stops on nav stop/pause/drag.
+- **2026-04-18 — Route-geometry heading replaces raw GPS bearing.** GPS-to-GPS bearing jittered wildly from satellite noise, causing the entire map to spin. New primary heading source: bearing of the route polyline looking ~60m ahead from the snapped position. This follows the actual road shape and is immune to GPS jitter. Falls back to GPS bearing only when off-route. Smoothed with 0.25 blend factor.
+
 ## Patterns to Avoid
 
 > Things that were tried and rejected, or that the user has explicitly said "don't do."
 
 <!-- Append new entries below this line -->
+
+- Don't use raw GPS-to-GPS bearing for navigation heading — GPS jitter causes the map to spin randomly. Always derive heading from the route polyline geometry at the snap point.
 
 - Route-field search and route auto-resolve should share the same candidate pipeline. If the main map has an approved place match, directions must rank it ahead of generic geocoder POIs and de-duplicate overlapping results by normalized name/coords.
 
@@ -199,6 +205,34 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-04-18 — Fix mojibake, zoom out nav view, smooth GPS interpolation
+
+**a. Mojibake fix in navigation.js:**
+- File had double-encoded UTF-8 (CP-1252 → UTF-8). Box-drawing `─`, em-dash `—`, arrows `→`/`↱` all corrupted.
+- Fixed with Python script: decode as CP-1252, re-encode as UTF-8. All 7 non-ASCII character types verified clean.
+
+**b. Navigation zoom reduced ~2 levels:**
+- Drive: 18–19 → 16–17, Walk: 18.5–19 → 17–18, Cycle: 18–19 → 16.5–17.5, Transit: 17.5–18.5 → 16–17.
+- Two rounds of reduction: user kept asking for more road visible.
+
+**c. Smooth GPS position interpolation (rAF loop):**
+- Root cause of stepped movement: `easeTo` 300ms animation + 700ms static gap between 1 Hz GPS fixes.
+- Solution: `requestAnimationFrame` loop that smoothly interpolates positions between GPS fixes.
+- On each GPS fix, previous target becomes the start, new fix becomes the target.
+- Between fixes, linear interpolation from start to target (t=0→1). After t=1, gentle extrapolation along the same velocity vector (capped at t=1.5).
+- Bearing uses shortest-arc interpolation to avoid 360° wrapping.
+- Zoom interpolated smoothly between fix values.
+- Uses `map.jumpTo()` per frame for zero-lag updates.
+- Loop pauses during touch gestures, stops on nav stop/pause/drag-break.
+
+**d. Route-geometry heading replaces raw GPS bearing:**
+- Root cause of map spinning: `_updateHeading` computed bearing from consecutive GPS positions. GPS jitter (5–20m noise) caused wild bearing changes even on straight roads.
+- Solution: Primary heading now derived from route polyline geometry at the snap point, looking ~60m ahead. This follows the actual road shape and is immune to satellite noise.
+- Falls back to GPS-to-GPS bearing only when off-route (no snap data available).
+- Smoothed with 0.25 blend factor (lower = smoother) to avoid snapping on sharp corners.
+
+**Files:** `src/navigation.js`, `docs/PREFERENCE_LOG.md`.
 
 ### 2026-04-05 — Directions autocomplete now prefers approved map places
 
