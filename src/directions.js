@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NOMINATIM_VB, NOMINATIM_REV, DIGITRANSIT_GEO_URL, DIGITRANSIT_REV_URL } from "./config.js";
-import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation, getCurrentLocationState } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple, getThemeWalkColor } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
@@ -820,19 +820,63 @@ export function placeDestMarker(lng, lat) {
   dir.destMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
 }
 
-document.querySelector(".dir-my-loc").addEventListener("click", () => {
-  showLoadingToast("Finding your location\u2026");
+// ─── Reverse-geocode cache ──────────────────────────────────────────
+// Avoids repeated network hits for the same GPS position (e.g. tapping
+// "My location" multiple times). Invalidates when the user moves > 50 m.
+let _geoCache = { lat: 0, lng: 0, name: "" };
+const _GEO_CACHE_RADIUS_M = 50;
 
+function _isGeoCacheFresh(lat, lng) {
+  if (!_geoCache.name) return false;
+  return haversineDistance(lat, lng, _geoCache.lat, _geoCache.lng) * 1000 < _GEO_CACHE_RADIUS_M;
+}
+
+async function _cachedReverseGeocode(lat, lng) {
+  if (_isGeoCacheFresh(lat, lng)) return _geoCache.name;
+  const name = await reverseGeocode(lat, lng);
+  _geoCache = { lat, lng, name };
+  return name;
+}
+
+document.querySelector(".dir-my-loc").addEventListener("click", async () => {
+  // If GPS is already active, use the cached fix — no browser prompt, instant.
+  const loc = getCurrentLocationState();
+  if (loc.active && loc.lat !== null) {
+    const { lat, lng } = loc;
+    // Show address immediately if cached, otherwise show coords while geocoding
+    const instant = _isGeoCacheFresh(lat, lng);
+    dirFrom.value = instant ? _geoCache.name : "Your location";
+    dir.origin = { lat, lng, name: instant ? _geoCache.name : `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
+    placeOriginMarker(lng, lat);
+    autoSetNearestMosque(lat, lng);
+    updateGoButton();
+    if (!dir.dest) startPick("to");
+    // Resolve full address in background if not cached
+    if (!instant) {
+      _cachedReverseGeocode(lat, lng).then(name => {
+        dir.origin = { lat, lng, name };
+        dirFrom.value = name;
+      });
+    }
+    return;
+  }
+
+  // No active fix — request fresh GPS
+  showLoadingToast("Finding your location\u2026");
   requestLocation().then((pos) => {
     hideLoadingToast();
     const { latitude: lat, longitude: lng } = pos.coords;
-    reverseGeocode(lat, lng).then(name => {
+    // Set origin immediately with temporary label
+    dirFrom.value = "Your location";
+    dir.origin = { lat, lng, name: `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
+    placeOriginMarker(lng, lat);
+    autoSetNearestMosque(lat, lng);
+    updateGoButton();
+    if (!dir.dest) startPick("to");
+    // Resolve address in background
+    _cachedReverseGeocode(lat, lng).then(name => {
       dir.origin = { lat, lng, name };
       dirFrom.value = name;
-      placeOriginMarker(lng, lat);
-      autoSetNearestMosque(lat, lng);
-      updateGoButton();
-      if (!dir.dest) startPick("to");
     });
   }).catch((e) => {
     hideLoadingToast();

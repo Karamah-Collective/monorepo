@@ -53,6 +53,12 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-08 — Cemetery theme behavior: dark mode must recolor all cemetery affordances consistently.** Cemetery pins, popup badges, and place-list visuals must all follow the same tokenized dark-mode color override, not just the list row styling.
 - **2026-04-08 — Navigation camera behavior: manual map control must always break follow mode instantly.** During navigation, GPS follow is default only until the user manually pans/zooms/rotates. The map must then stay in the user-chosen view with no auto-centering until recenter is explicitly tapped. Recenter restores GPS follow and heading-up orientation.
 
+- **2026-04-21 — Navigation autocentering reverted to the original GPS-centered follow.** Reverted the experimental fixed-puck / secondary interpolation model. `_smartFollow()` again uses the original `map.easeTo()` camera recentering on the live GPS position during follow mode. The user prefers the original behavior over the experimental stationary-puck camera model.
+- **2026-04-21 — Navigation follow cadence: keep the original GPS-centered follow, but run it on every location update.** The camera should not wait for the throttled route-processing loop. Route snapping, step logic, HUD math, and reroute checks can stay separately throttled at 250 ms, while `_smartFollow()` stays on the raw location stream with short easing (300 ms) and EMA jitter smoothing (α=0.35).
+- **2026-04-21 — Navigation follow jitter: EMA smoothing on camera target.** Raw GPS noise on every tick caused micro-jitter. Applied exponential moving average (α=0.35) on follow target position and bearing. Same GPS-centered model — no fixed puck, no secondary camera model.
+- **2026-04-20 — Heading from route geometry, not raw GPS bearing.** Primary heading source is the route polyline 60m ahead of the snap point (`_routeBearingAtSnap()`). GPS-to-GPS bearing is fallback only (off-route or near route end). Smoothed with 0.25 blend factor via shortest-arc interpolation.
+- **2026-04-20 — NAV_VIEW zoom: drive 16–17, walk 17–18, cycle 16.5–17.5, transit 16–17.** Third round of zoom-out. User consistently wants wider field of view during navigation.
+
 - **2026-04-05 — Directions lookup must prioritize approved map places.** Route origin/destination/waypoint search should surface `placesData` matches before Digitransit/Nominatim results, and typed auto-resolve should use the same merged ranking so approved places are not replaced by generic venues.
 
 - **2026-04-04 — Wishlist approval system: pending review before public.** All new wishes are hidden from the public wishlist until an admin marks `approved = yes` in the Google Sheet. Matches the existing place-approval workflow. Existing wishes will need manual approval to re-appear.
@@ -173,6 +179,8 @@ what you like, what you've decided, and how you want things done.
 - React / any framework rejected for this project — vanilla JS + design tokens delivers the same UX with zero build overhead.
 - Don't auto-recenter the map on every GPS tick during navigation unless the user is actively following. The user wants always-follow as the default, but if they pan away, stop recentering and show a recenter button. Never fight the user's intentional map panning.
 - Don't enable 3D buildings during navigation — extruded geometry obstructs the tilted forward-looking view. Auto-disable on nav start, restore on nav stop if they were active before.
+- Don't use raw GPS-to-GPS bearing for navigation heading — GPS jitter (5–20m accuracy) causes the map to spin randomly. Always prefer route polyline geometry for heading when on-route.
+- Don't add a second navigation-only camera-follow model when the original GPS-centered autocentering is what the user wants. Avoid fixed overlay pucks or extra follow interpolation unless explicitly requested again.
 
 ---
 
@@ -197,6 +205,9 @@ what you like, what you've decided, and how you want things done.
 - All letter-spacing must use tokens: `--ls-tight` for headings (≥18px), `--ls-wide` for small text (≤12px) and chips, `--ls-caps` for uppercase labels. Never hardcode em values.
 - Approach-then-fire for all modes: entering trigger radius starts tracking, fires only on closest-point pass-through or speed-scaled proximity. Route-progress and divergence detection remain as safety nets.
 - Approach fire distance and hysteresis both scale with speed — never use static metre values for speed-dependent navigation thresholds.
+- Route-geometry heading: `_routeBearingAtSnap()` looks N metres ahead on the polyline from the snap point. Immune to GPS noise. Smooth with shortest-arc blend factor. GPS bearing is fallback only.
+- Navigation follow should use the original GPS-centered `easeTo` autocentering path unless the user explicitly asks to revisit the camera model.
+- When navigation follow feels stepped, keep the original GPS-centered camera model and feed `_smartFollow()` from every location update. Throttle route math separately instead of making the camera wait for it.
 
 ---
 
@@ -1274,3 +1285,109 @@ Second pass root-cause fix after the first attempt proved incomplete.
 - Desktop behavior stays unchanged because the locate-watcher guard is scoped to `body.nav-mode`, not to platform.
 
 **Files:** `src/map-controls.js`, `src/navigation.js`.
+
+### 2026-04-20 — Navigation: zoom out, encoding fix, jumpTo follow, route-geometry heading
+
+**a. Zoom out navigation view (3rd round):**
+- NAV_VIEW reduced by ~2 levels per mode:
+  - drive: 18–19 → 16–17
+  - walk: 18.5–19 → 17–18
+  - cycle: 18–19 → 16.5–17.5
+  - transit: 17.5–18.5 → 16–17
+- User consistently wants to see more road ahead during navigation.
+
+**b. Mojibake encoding fix:**
+- File had double-encoded UTF-8 (UTF-8 bytes interpreted as CP-1252, then re-encoded as UTF-8).
+- Fixed 92 lines via line-by-line `encode('cp1252').decode('utf-8')` with fallback.
+- Restored all box-drawing chars (─), em dashes (—), arrows (→, ↱), middle dots (·), multiplication signs (×).
+
+**c. Stationary GPS dot — jumpTo replaces easeTo in _smartFollow:**
+- **Problem:** `easeTo` animated over 300–800ms. Between frames, the GPS marker (at real coordinates) drifted ahead of the still-animating map center → visible "GPS runs ahead, map chases" effect.
+- **Fix:** `map.jumpTo()` is instant — the map tiles move underneath while the GPS dot stays at its fixed screen position (lower third via offset). Zero lag between GPS update and map position.
+- Removed dead `FOLLOW_DURATION_MS` constant (no longer used).
+- `_recenter()` and `startNavigation()` keep `easeTo` for one-time smooth transitions.
+
+**d. Route-geometry heading (anti-jitter):**
+- **Problem:** GPS-to-GPS bearing changed wildly from GPS jitter (5–20m noise), causing the map heading to spin randomly even on straight roads.
+- **Fix:** New `_routeBearingAtSnap()` function looks 60m ahead on the route polyline from the current snap position. Uses road geometry (immune to GPS noise) as the primary heading source.
+- Smoothed with `HEADING_SMOOTH_FACTOR = 0.25` via shortest-arc interpolation (`_blendHeading()`).
+- GPS-to-GPS bearing remains as fallback only when off-route or near the route end.
+- Constants: `HEADING_LOOKAHEAD_M = 60`, `HEADING_SMOOTH_FACTOR = 0.25`.
+
+**Files:** `src/navigation.js`.
+
+### 2026-04-21 — Navigation: camera follow decoupled from route throttle and matched to puck lerp
+
+**Problem:** The first fix attempted to smooth `jumpTo`, but camera follow was still fed by the throttled navigation processor (`processPosition()` at 1Hz). That meant the camera still only got new targets once per second. The interpolation was also target-to-target instead of rendered-state-to-target, so the puck could still outrun the map.
+
+**Correct fix:**
+- `_onLocationUpdate()` now drives camera follow on every location update before the throttled route-processing path runs.
+- `processPosition()` remains throttled at 1Hz for step advancement, off-route detection, HUD math, and speed limits.
+- `_smartFollow()` now animates from the current rendered follow state to the newest GPS fix, not from previous raw target to current raw target.
+- Camera follow uses the same easing pattern as the location puck lerp in `map-controls.js` (`1 - (1 - t)^3`, 1000 ms), keeping the puck visually stationary while the map glides underneath.
+- Removed the previous target-timestamp/extrapolation model entirely.
+- `_recenter()`, nav start/resume, pause, stop, and manual follow-break all reset or stop the follow lerp cleanly.
+
+**User intent reinforced:** During navigation, the GPS location should feel anchored in one stable screen position with a consistent amount of map ahead. The map moves around the puck smoothly; the puck should not appear to run ahead and the camera should not step once per second.
+
+**Files:** `src/navigation.js`.
+
+### 2026-04-21 — Navigation: fixed follow puck and snapped camera target to stop map shake
+
+**Problem:** Even after decoupling camera follow from the 1Hz route throttle, the map could still shake because follow mode was visually anchored to live GPS jitter. When the camera follows raw GPS noise, the entire map wobbles under the user even if the puck stays near the intended screen position.
+
+**Fix:**
+- Added a stationary navigation puck overlay (`#nav-fixed-puck`) at the follow anchor point (~70% viewport height).
+- While `body.nav-mode.nav-following` is active, live `.loc-marker` map markers are hidden and the fixed overlay puck becomes the only visible location anchor.
+- Camera follow now prefers the snapped route position whenever GPS is within 40m of the route.
+- Micro-jitter is ignored entirely: new follow targets are skipped if movement is <1.5m and bearing/zoom deltas are negligible.
+- Nav start, resume, and recenter all initialize the camera from the same snapped follow target, so the overlay puck and map agree immediately.
+
+**User intent reinforced:** During navigation, the puck should feel locked in one stable position and the same amount of road should remain visible ahead. GPS noise should not shake the map.
+
+**Files:** `index.html`, `src/styles/styles.css`, `src/navigation.js`.
+
+### 2026-04-21 — Navigation: restored original GPS autocentering
+
+**Problem:** The experimental follow models (jumpTo, secondary interpolation, fixed overlay puck, snapped camera target) made navigation feel worse to the user than the original camera behavior.
+
+**Fix:**
+- Removed the fixed navigation puck overlay from `index.html` and `src/styles/styles.css`.
+- Removed the experimental navigation-only follow interpolation / UI state from `src/navigation.js`.
+- Restored the original `_smartFollow()` behavior: `map.easeTo()` recenters directly on the live GPS position during navigation follow mode.
+- Restored the original lifecycle flow: camera follow is triggered from `processPosition()` again, and nav start/resume/recenter use the live GPS/step centers instead of secondary follow targets.
+
+**User preference:** The original map autocentering the GPS is preferred over the stationary-puck / custom follow-camera experiments.
+
+**Files:** `src/navigation.js`, `index.html`, `src/styles/styles.css`.
+
+### 2026-04-21 — Navigation: shorter, smoother follow steps
+
+**Problem:** After restoring the original GPS-centered autocentering, the map still moved in visible smooth "steps" because camera updates were still tied to the throttled route-processing loop.
+
+**Fix:**
+- Kept the original GPS-centered `map.easeTo()` follow model.
+- Moved `_smartFollow()` back onto every `hf:current-location-updated` event.
+- Moved `_updateSpeed()` to the raw location stream as well so follow zoom/bearing reacts faster.
+- Left route snapping, step advancement, HUD math, covered-route updates, and reroute checks throttled separately at 250 ms.
+- Shortened follow easing to 180 ms on touch devices and 220 ms on desktop so repeated GPS fixes blend together instead of chunking.
+
+**User preference:** If the camera feels stepped, shorten the cadence of the existing follow behavior instead of reintroducing a different follow-camera model.
+
+**Files:** `src/navigation.js`.
+
+### 2026-04-21 — Navigation: EMA jitter smoothing on follow target
+
+**Problem:** After switching to per-tick camera updates, GPS noise caused visible micro-jitter — the map trembled slightly instead of gliding smoothly.
+
+**Fix:**
+- Added EMA (exponential moving average, α=0.35) on the follow target position (`_smoothLng`, `_smoothLat`) and bearing (`_smoothBearing`).
+- `_smartFollow()` now feeds the smoothed coordinates to `map.easeTo()` instead of raw GPS values.
+- Bearing uses shortest-arc EMA to avoid wrap-around artifacts near 0°/360°.
+- EMA state resets on nav start, nav stop, and recenter so the camera snaps to real GPS immediately after any mode change.
+- Unified follow duration to 300 ms (was 180/220 split) — long enough for MapLibre to interpolate between ticks, short enough to feel responsive.
+- Same GPS-centered `map.easeTo()` model — no new camera abstraction, no fixed puck.
+
+**User feedback:** "fantastic! now it's genuine real time movement! it just feels jittery and not smooth, but everything else is perfect!"
+
+**Files:** `src/navigation.js`.

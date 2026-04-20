@@ -40,9 +40,9 @@ const REROUTE_COOLDOWN = 15000; // don't reroute more than once per 15s
 let lastRerouteTime = 0;
 let offRouteCount = 0;
 
-// GPS processing throttle
-const GPS_PROCESS_INTERVAL = 1000; // ms — process GPS at most every 1s
-let lastGpsProcessTime = 0;
+// Route-processing throttle
+const ROUTE_PROCESS_INTERVAL_MS = 250; // ms — keep expensive route math at 4 Hz
+let _lastRouteProcessTime = 0;
 
 // ─── Speed tracking ─────────────────────────────────────────────────
 let _prevSpeedPos = null;  // { lat, lng, time }
@@ -67,18 +67,18 @@ let _touchCount = 0;           // active fingers on map canvas -- suppresses aut
 let _touchPanStart = null;     // { x, y } for early mobile drag detection
 let _touchPanMoved = false;
 
-// On mobile/touch devices, use shorter animation so the easeTo always reaches
-// its target offset before the next GPS tick. Desktop keeps 800ms for smooth 3D.
-const FOLLOW_DURATION_MS = ('ontouchstart' in window) ? 300 : 800;
+// Follow easing — long enough for MapLibre to interpolate smoothly between
+// consecutive GPS fixes, short enough to not visibly lag behind.
+const FOLLOW_DURATION_MS = 450;
 const TOUCH_DRAG_BREAK_PX = 10;
 
-// ─── GPS interpolation state ────────────────────────────────────────
-// Instead of discrete easeTo jumps every ~1s, we smoothly interpolate
-// between GPS fixes using requestAnimationFrame for 60fps movement.
-let _interpFrom = null;       // { lng, lat, bearing, zoom, time }
-let _interpTo = null;         // { lng, lat, bearing, zoom, time }
-let _interpRafId = null;      // requestAnimationFrame handle
-let _interpActive = false;    // true while the rAF loop is running
+// ─── EMA smoothing for follow target ────────────────────────────────
+// Absorbs GPS micro-jitter so the camera glides instead of trembling.
+// α closer to 1 = more responsive, closer to 0 = smoother.
+const FOLLOW_SMOOTH_ALPHA = 0.18;
+let _smoothLng = null;  // EMA-filtered follow target
+let _smoothLat = null;
+let _smoothBearing = null;
 
 // ─── Navigation view — 3D perspective parameters ────────────────────
 // Per-mode camera settings for the tilted, heading-up navigation view.
@@ -657,7 +657,7 @@ export function startNavigation() {
   navActive = true;
   offRouteCount = 0;
   lastRerouteTime = 0;
-  lastGpsProcessTime = 0;
+  _lastRouteProcessTime = 0;
 
   // Seed the movement guard from the current GPS position so the first step
   // can only fire once the user has actually moved _minMoveDist() metres.
@@ -679,8 +679,10 @@ export function startNavigation() {
   _snapSegFraction = 0;
   _headingDeg = 0;
   _prevHeadingPos = null;
+  _smoothLng = null;
+  _smoothLat = null;
+  _smoothBearing = null;
   _following = true;
-  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.add("hide");
 
   // Compute initial heading from the route's opening direction
@@ -768,7 +770,6 @@ export function pauseNavigation() {
   if (!navActive) return;
   navActive = false;
   navPaused = true;
-  _stopInterpLoop();
   // Hide HUD but keep all state (steps, stepIdx, coords, etc.)
   if (hud) {
     hud.classList.add("hide");
@@ -783,6 +784,7 @@ export function pauseNavigation() {
 export function stopNavigation() {
   navActive = false;
   navPaused = false;
+  _lastRouteProcessTime = 0;
   navSteps = [];
   navStepIdx = 0;
   navRouteCoords = [];
@@ -805,8 +807,10 @@ export function stopNavigation() {
   _currentSpeedLimit = 0;
   _headingDeg = 0;
   _prevHeadingPos = null;
+  _smoothLng = null;
+  _smoothLat = null;
+  _smoothBearing = null;
   _following = true;
-  _stopInterpLoop();
 
   // Restore flat north-up 2D view
   map.easeTo({ bearing: 0, pitch: 0, duration: 800, offset: [0, 0] });
@@ -842,16 +846,20 @@ function _onLocationUpdate(e) {
   const loc = e.detail?.location;
   if (!loc?.active || loc.lat === null) return;
 
-  processPosition(loc.lat, loc.lng, loc.accuracy);
+  const now = Date.now();
+  _updateSpeed(loc.lat, loc.lng, now);
+  processPosition(loc.lat, loc.lng, loc.accuracy, now);
+  _updateHeading(loc.lat, loc.lng);
+  _smartFollow(loc.lng, loc.lat);
 }
 
-export function processPosition(lat, lng, accuracy = null) {
+export function processPosition(lat, lng, accuracy = null, now = Date.now()) {
   if (!navActive || !navRouteCoords.length) return;
 
-  // Throttle GPS processing — no need to evaluate every raw hardware tick
-  const now = Date.now();
-  if (now - lastGpsProcessTime < GPS_PROCESS_INTERVAL) return;
-  lastGpsProcessTime = now;
+  // Throttle route processing — camera follow runs on every location update,
+  // but route snapping, step logic, HUD math, and reroute checks stay capped.
+  if (now - _lastRouteProcessTime < ROUTE_PROCESS_INTERVAL_MS) return;
+  _lastRouteProcessTime = now;
 
   // Snap to route for off-route detection and progress display
   const snap = snapToRoute(lat, lng);
@@ -899,14 +907,6 @@ export function processPosition(lat, lng, accuracy = null) {
   // Dim already-covered portion of the route
   _updateCoveredRoute(snap);
 
-  // Update speed from consecutive GPS samples
-  _updateSpeed(lat, lng, now);
-
-  // Compute heading from consecutive GPS positions (only when moving)
-  _updateHeading(lat, lng);
-
-  // Smooth follow: keep GPS position centered without animation overlap
-  _smartFollow(lng, lat);
 }
 
 // ─── Covered-route overlay ──────────────────────────────────────────
@@ -1067,111 +1067,40 @@ function _smartFollow(lng, lat) {
   }
 
   const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  const bearing = _speedKmh > 3 ? _headingDeg : map.getBearing();
-  const zoom = _computeNavZoom();
-  const now = performance.now();
+  // Only auto-rotate when actually moving — prevents heading jitter at rest
+  const rawBearing = _speedKmh > 3 ? _headingDeg : map.getBearing();
 
-  // Feed the interpolation system instead of calling easeTo directly.
-  // The rAF loop will smoothly animate between GPS fixes at 60fps.
-  _interpFrom = _interpTo
-    ? { ..._interpTo }
-    : { lng, lat, bearing, zoom, time: now };
-  _interpTo = { lng, lat, bearing, zoom, time: now };
-
-  if (!_interpActive) _startInterpLoop();
-}
-
-/** Start the requestAnimationFrame interpolation loop. */
-function _startInterpLoop() {
-  if (_interpActive) return;
-  _interpActive = true;
-  _interpRafId = requestAnimationFrame(_interpTick);
-}
-
-/** Stop the interpolation loop. */
-function _stopInterpLoop() {
-  _interpActive = false;
-  if (_interpRafId) {
-    cancelAnimationFrame(_interpRafId);
-    _interpRafId = null;
-  }
-  _interpFrom = null;
-  _interpTo = null;
-}
-
-/**
- * Per-frame interpolation tick. Smoothly lerps between the previous
- * GPS fix and the current one, then extrapolates slightly ahead using
- * the current speed and bearing to fill the gap until the next fix.
- */
-function _interpTick(frameTime) {
-  if (!_interpActive || !navActive || !_following) {
-    _interpActive = false;
-    return;
-  }
-
-  // Pause interpolation while fingers are on screen to avoid fighting touch
-  if (_touchCount > 0 || !_interpFrom || !_interpTo) {
-    _interpRafId = requestAnimationFrame(_interpTick);
-    return;
-  }
-
-  const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  const elapsed = frameTime - _interpTo.time;
-  // Expected interval between GPS fixes (ms)
-  const interval = Math.max(100, _interpTo.time - _interpFrom.time) || GPS_PROCESS_INTERVAL;
-
-  // t goes from 0 (at fix arrival) to 1 (at expected next fix time)
-  // and beyond 1.0 for extrapolation until the next fix arrives
-  let t = Math.min(elapsed / interval, 1.5);
-
-  // Interpolate position: lerp from → to, then extrapolate past to
-  let lng, lat;
-  if (t <= 1.0) {
-    // Lerp from previous fix to current fix
-    lng = _interpFrom.lng + (_interpTo.lng - _interpFrom.lng) * t;
-    lat = _interpFrom.lat + (_interpTo.lat - _interpFrom.lat) * t;
+  // ── EMA smoothing — absorb GPS micro-jitter ──────────────────────
+  if (_smoothLng === null) {
+    // First fix after nav start / recenter — seed, don't interpolate
+    _smoothLng = lng;
+    _smoothLat = lat;
+    _smoothBearing = rawBearing;
   } else {
-    // Extrapolate beyond current fix using the same velocity vector
-    const dlng = _interpTo.lng - _interpFrom.lng;
-    const dlat = _interpTo.lat - _interpFrom.lat;
-    lng = _interpTo.lng + dlng * (t - 1.0);
-    lat = _interpTo.lat + dlat * (t - 1.0);
+    const a = FOLLOW_SMOOTH_ALPHA;
+    _smoothLng += (lng - _smoothLng) * a;
+    _smoothLat += (lat - _smoothLat) * a;
+    // Bearing: shortest-arc EMA
+    let bDelta = rawBearing - _smoothBearing;
+    if (bDelta > 180) bDelta -= 360;
+    if (bDelta < -180) bDelta += 360;
+    _smoothBearing = ((_smoothBearing + bDelta * a) + 360) % 360;
   }
 
-  // Smoothly interpolate bearing to avoid snapping
-  let bearing;
-  if (_speedKmh > 3) {
-    let fromB = _interpFrom.bearing;
-    let toB = _interpTo.bearing;
-    // Shortest-arc interpolation
-    let delta = toB - fromB;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    bearing = fromB + delta * Math.min(t, 1.0);
-  } else {
-    bearing = map.getBearing();
-  }
-
-  // Interpolate zoom
-  const zoom = _interpFrom.zoom + (_interpTo.zoom - _interpFrom.zoom) * Math.min(t, 1.0);
-
-  map.jumpTo({
-    center: [lng, lat],
-    bearing,
+  map.easeTo({
+    center: [_smoothLng, _smoothLat],
+    bearing: _smoothBearing,
     pitch: view.pitch,
-    zoom,
+    zoom: _computeNavZoom(),
     offset: [0, _aheadOffset()],
+    duration: FOLLOW_DURATION_MS,
   });
-
-  _interpRafId = requestAnimationFrame(_interpTick);
 }
 
 function _stopFollowing() {
   if (!navActive || !_following) return;
   map.stop();
   _following = false;
-  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.remove("hide");
   // Restore 3D buildings when user takes manual control (not following)
   if (_was3DBeforeNav && !is3DActive) enable3D();
@@ -1218,7 +1147,6 @@ function _onTouchMove(e) {
   // that MapLibre is already processing (causes the "stuck first drag").
   // The nav animation was already killed by touchstart; just flip state.
   _following = false;
-  _stopInterpLoop();
   if (recenterBtn) recenterBtn.classList.remove("hide");
   if (_was3DBeforeNav && !is3DActive) enable3D();
 }
@@ -1243,9 +1171,13 @@ function _recenter() {
   // Disable 3D buildings when re-entering follow mode (obstructs tilted view)
   if (is3DActive) disable3D();
 
-  // Restore full navigation view: center + heading-up + tilt + dynamic zoom
+  // Reset EMA so follow starts fresh from the real GPS position
   const loc = getCurrentLocationState();
   if (loc.active && loc.lat !== null) {
+    _smoothLng = loc.lng;
+    _smoothLat = loc.lat;
+    _smoothBearing = _headingDeg;
+
     const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     map.easeTo({
       center: [loc.lng, loc.lat],
@@ -1299,37 +1231,86 @@ function _updateSpeed(lat, lng, now) {
 }
 
 // ─── Heading computation ────────────────────────────────────────────
-// Route-geometry-derived heading: uses the bearing of the route polyline
-// at the user's snapped position with a short lookahead, rather than raw
-// GPS-to-GPS bearing which jitters wildly from satellite noise.
-const HEADING_MIN_DIST_M = 5;       // ignore micro-movements for GPS fallback
-const HEADING_LOOKAHEAD_M = 60;     // metres to look ahead on route for bearing
-const HEADING_SMOOTH_FACTOR = 0.25; // lower = smoother (0..1), blends new into old
+const HEADING_MIN_DIST_M = 5;       // ignore micro-movements for GPS fallback heading
+const HEADING_LOOKAHEAD_M = 60;     // metres ahead on route polyline for heading
+const HEADING_SMOOTH_FACTOR = 0.25; // blend factor per tick (lower = smoother)
 let _prevHeadingPos = null;         // { lat, lng }
 
 /**
- * Compute travel heading from the route geometry at the current snap point.
- * Primary source: bearing of the route polyline looking ~60m ahead from the
- * snapped position. This follows the actual road shape and is immune to GPS
- * jitter. Falls back to GPS-to-GPS bearing only when far off-route.
- * @param {number} lat - raw GPS latitude
- * @param {number} lng - raw GPS longitude
+ * Compute forward bearing by looking ahead on the route polyline from the
+ * current snap position. Immune to GPS jitter because it follows road
+ * geometry rather than noisy GPS-to-GPS deltas.
+ * @param {number} segIdx - current snap segment index
+ * @param {number} segFracM - metres into the current segment
+ * @param {number} lookaheadM - how far ahead to look on the polyline
+ * @returns {number} bearing in degrees [0,360), or -1 if insufficient data
+ */
+function _routeBearingAtSnap(segIdx, segFracM, lookaheadM) {
+  if (!navRouteCoords.length || segIdx < 0) return -1;
+  const seg0 = navRouteCoords[segIdx];
+  const seg1 = navRouteCoords[segIdx + 1];
+  if (!seg0 || !seg1) return -1;
+
+  const segLen = _hDistM(seg0[1], seg0[0], seg1[1], seg1[0]);
+  const fracM = Math.min(segFracM, segLen);
+  const t = segLen > 0 ? fracM / segLen : 0;
+  const startLng = seg0[0] + (seg1[0] - seg0[0]) * t;
+  const startLat = seg0[1] + (seg1[1] - seg0[1]) * t;
+
+  // Walk forward along the polyline by lookaheadM metres
+  let remaining = lookaheadM - (segLen - fracM);
+  let endLng = seg1[0], endLat = seg1[1];
+
+  for (let i = segIdx + 1; i < navRouteCoords.length - 1; i++) {
+    if (remaining <= 0) break;
+    const [ax, ay] = navRouteCoords[i];
+    const [bx, by] = navRouteCoords[i + 1];
+    const d = _hDistM(ay, ax, by, bx);
+    if (d >= remaining) {
+      const frac = remaining / d;
+      endLng = ax + (bx - ax) * frac;
+      endLat = ay + (by - ay) * frac;
+      remaining = 0;
+    } else {
+      remaining -= d;
+      endLng = bx;
+      endLat = by;
+    }
+  }
+
+  const dist = _hDistM(startLat, startLng, endLat, endLng);
+  if (dist < 2) return -1;
+  return _bearing(startLat, startLng, endLat, endLng);
+}
+
+/**
+ * Shortest-arc blend from current heading toward a target bearing.
+ * @param {number} target - target bearing in degrees
+ */
+function _blendHeading(target) {
+  let delta = target - _headingDeg;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  _headingDeg = ((_headingDeg + delta * HEADING_SMOOTH_FACTOR) + 360) % 360;
+}
+
+/**
+ * Compute travel heading. Primary source is route-geometry bearing
+ * (immune to GPS jitter). Falls back to GPS-to-GPS bearing only when
+ * off-route or route data is insufficient.
+ * @param {number} lat
+ * @param {number} lng
  */
 function _updateHeading(lat, lng) {
-  // Try route-geometry heading first (jitter-immune)
-  const routeBearing = _routeBearingAtSnap();
-  if (routeBearing !== null) {
-    // Smooth the route bearing to avoid snapping on sharp corners
-    const prev = _headingDeg;
-    let delta = routeBearing - prev;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    _headingDeg = ((prev + delta * HEADING_SMOOTH_FACTOR) + 360) % 360;
+  // Primary: route-geometry bearing (follows the road, not GPS noise)
+  const routeBearing = _routeBearingAtSnap(_snapSegIdx, _snapSegFraction, HEADING_LOOKAHEAD_M);
+  if (routeBearing >= 0) {
+    _blendHeading(routeBearing);
     _prevHeadingPos = { lat, lng };
     return;
   }
 
-  // Fallback: GPS-to-GPS bearing (only when off-route or no route coords)
+  // Fallback: GPS-to-GPS bearing (only when off-route or near route end)
   if (!_prevHeadingPos) {
     _prevHeadingPos = { lat, lng };
     return;
@@ -1337,52 +1318,9 @@ function _updateHeading(lat, lng) {
   const dist = _hDistM(_prevHeadingPos.lat, _prevHeadingPos.lng, lat, lng);
   if (dist < HEADING_MIN_DIST_M) return;
 
-  const dLng = (lng - _prevHeadingPos.lng) * Math.PI / 180;
-  const lat1 = _prevHeadingPos.lat * Math.PI / 180;
-  const lat2 = lat * Math.PI / 180;
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  const gpsBearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-
-  const prev = _headingDeg;
-  let delta = gpsBearing - prev;
-  if (delta > 180) delta -= 360;
-  if (delta < -180) delta += 360;
-  _headingDeg = ((prev + delta * HEADING_SMOOTH_FACTOR) + 360) % 360;
-
+  const gpsBearing = _bearing(_prevHeadingPos.lat, _prevHeadingPos.lng, lat, lng);
+  _blendHeading(gpsBearing);
   _prevHeadingPos = { lat, lng };
-}
-
-/**
- * Compute the forward bearing of the route polyline at the current snap
- * position by looking HEADING_LOOKAHEAD_M metres ahead along the route.
- * Returns the bearing in degrees [0,360) or null if unavailable.
- * @returns {number|null}
- */
-function _routeBearingAtSnap() {
-  if (!navRouteCoords.length || _snapSegIdx < 0) return null;
-
-  const startIdx = Math.max(0, _snapSegIdx);
-  const startCoord = navRouteCoords[startIdx];
-  if (!startCoord) return null;
-
-  // Walk forward along route segments until we've covered HEADING_LOOKAHEAD_M
-  let distAcc = 0;
-  let endLat = startCoord[1], endLng = startCoord[0];
-
-  for (let i = startIdx; i < navRouteCoords.length - 1 && distAcc < HEADING_LOOKAHEAD_M; i++) {
-    const [ax, ay] = navRouteCoords[i];
-    const [bx, by] = navRouteCoords[i + 1];
-    distAcc += _hDistM(ay, ax, by, bx);
-    endLat = by;
-    endLng = bx;
-  }
-
-  // Need at least a few metres of lookahead to get a meaningful bearing
-  const snapLat = startCoord[1], snapLng = startCoord[0];
-  if (_hDistM(snapLat, snapLng, endLat, endLng) < 2) return null;
-
-  return _bearing(snapLat, snapLng, endLat, endLng);
 }
 
 function _renderSpeedChip() {

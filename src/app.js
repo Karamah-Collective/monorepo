@@ -206,7 +206,7 @@ map.on("load", async () => {
   initEidPrayers();
   initWishlist();
   preloadWishes();
-  // initGpsSim(); // disabled for production — re-enable for dev/testing
+  initGpsSim(); // enabled for testing
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
