@@ -4412,7 +4412,7 @@ body.dark-mode .fallback-notice {
 #nav-hud {
   position: absolute;
   z-index: var(--z-nav-hud);
-  bottom: calc(var(--tab-h) + var(--safe-b) + 14px);
+  top: calc(var(--safe-t) + 12px);
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(100vw - 24px), 400px);
@@ -4425,11 +4425,11 @@ body.dark-mode .fallback-notice {
 }
 #nav-hud.nav-active {
   display: block;
-  animation: snackUp 0.28s var(--ease-expo) forwards;
+  animation: hudSlideIn 0.28s var(--ease-expo) forwards;
 }
 #nav-hud.nav-active.hide {
   display: block !important;
-  animation: snackDown 0.2s ease-in forwards;
+  animation: hudSlideOut 0.2s ease-in forwards;
   pointer-events: none;
 }
 #nav-hud.hide:not(.nav-active) {
@@ -4491,14 +4491,11 @@ body.nav-mode #style-picker {
 
 /* Mobile: adjust nav element positions without tab bar */
 @media (max-width: 768px) {
-  body.nav-mode #nav-hud {
-    bottom: calc(var(--safe-b) + 12px);
-  }
   body.nav-mode .nav-speed {
-    bottom: calc(var(--safe-b) + 126px);
+    bottom: calc(var(--safe-b) + 16px);
   }
   body.nav-mode .nav-recenter {
-    bottom: calc(var(--safe-b) + 126px);
+    bottom: calc(var(--safe-b) + 16px);
   }
 }
 
@@ -4506,7 +4503,7 @@ body.nav-mode #style-picker {
 .nav-speed {
   position: absolute;
   z-index: var(--z-nav-hud);
-  bottom: calc(var(--tab-h) + var(--safe-b) + 130px);
+  bottom: calc(var(--safe-b) + 16px);
   left: var(--sp-4);
 }
 .nav-speed.hide { display: none; }
@@ -4515,20 +4512,20 @@ body.nav-mode #style-picker {
 .nav-recenter {
   position: absolute;
   z-index: var(--z-nav-hud);
-  bottom: calc(var(--tab-h) + var(--safe-b) + 130px);
+  bottom: calc(var(--safe-b) + 16px);
   right: var(--sp-4);
 }
 .nav-recenter.hide { display: none; }
 
-/* Desktop: position speed/recenter flanking the HUD */
+/* Desktop: position speed/recenter at bottom edges */
 @media (min-width: 769px) {
   .nav-speed {
-    bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
-    left: calc(50% - 260px);
+    bottom: calc(var(--safe-b) + 24px);
+    left: var(--sp-6);
   }
   .nav-recenter {
-    bottom: calc(var(--tab-h) + var(--safe-b) + 28px);
-    right: calc(50% - 260px);
+    bottom: calc(var(--safe-b) + 24px);
+    right: var(--sp-6);
   }
 }
 
@@ -4575,6 +4572,26 @@ body.nav-mode #style-picker {
   to {
     opacity: 0;
     transform: translateX(-50%) translateY(16px);
+  }
+}
+@keyframes hudSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+@keyframes hudSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-16px);
   }
 }
 
@@ -5257,7 +5274,7 @@ body.nav-mode #style-picker {
     bottom: 24px;
   }
   #nav-hud {
-    bottom: 24px;
+    top: calc(var(--safe-t) + 12px);
   }
   .share-toast,
   #geo-notice,
@@ -5915,7 +5932,7 @@ body.dark-mode .sp-chip {
     bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
   }
   #nav-hud {
-    bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+    top: calc(var(--safe-t) + 12px);
   }
 
   #suggest-overlay,

@@ -39,6 +39,7 @@ const LAYER_PROP = {
   building:               'fill-color',
   building_outline:       'line-color',
   road_path:              'line-color',
+  road_service_casing:    'line-color',
   road_service:           'line-color',
   road_secondary_casing:  'line-color',
   road_secondary:         'line-color',
@@ -107,6 +108,7 @@ const GROUPS = [
     items: [
       { id: 'road_path',             label: 'Path / Track' },
       { id: 'road_service',          label: 'Minor / Service' },
+      { id: 'road_service_casing',   label: 'Minor Casing' },
       { id: 'road_secondary',        label: 'Secondary' },
       { id: 'road_secondary_casing', label: 'Secondary Casing' },
       { id: 'road_primary',          label: 'Primary' },

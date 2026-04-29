@@ -167,7 +167,18 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-29 — Turn overlay badge: filled accent background with white icon.** The accepted turn overlay treatment is a filled teal/brand-accent badge with a white icon and matching pointer, not the earlier white-surface variant.
 - **2026-04-29 — Turn arrows IN the road, not floating above.** White turn icons rendered directly at the maneuver point coordinates on the route line (within the line width visually). No repeating chevrons along the line — only one icon at each actual turn point.
 - **2026-04-29 — On-road turn marker: exactly 4m of highlighted road + fixed-size arrow tip 2m into the outgoing road.** The turn segment must be the last 2m of the incoming road plus the first 2m of the next road. The arrow itself must be screen-sized like the side overlay badge, not zoom-scaled, and its visible tip must sit at the +2m point on the new road.
-- **2026-04-29 — Turn highlight stays bright in dark mode.** The on-road turn segment and arrow fill should remain bright white or equivalent high-contrast color even in dark theme.
+- **2026-04-29 — Turn highlight stays bright in dark mode.** The on-road turn segment and arrow fill should remain bright white or equivalent high-contrast color even in dark theme.\n- **2026-04-29 — Nav zoom: much smoother + much more aggressive, especially on phone.** Widened zoom ranges to ~3 levels, added EMA smoothing (α=0.08), quadratic turn boost (2.8 max), mobile +0.6 boost. All modes now dynamic. Longer easing (900ms).
+- **2026-04-29 — Nav zoom on turns must be even tighter; zoom speed must match vehicle speed.** Turn boost raised to 3.8 with +1 level above max on close turns. Zoom EMA α and easing duration are now speed-dynamic: walk α=0.06/900ms (buttery), highway α=0.22/350ms (snappy). Zoom transitions keep pace with the vehicle instead of using a fixed rate.
+- **2026-04-29 — Nav zoom wobble fix: dead zone + calmer alpha.** Frequent micro zoom in/out felt wobbly. Added 0.35-level dead zone so zoom ignores target changes smaller than that. Lowered alpha range from 0.06–0.22 to 0.04–0.14 for calmer, more deliberate zoom transitions.
+- **2026-04-29 — Nav zoom must be continuous, not stepped.** EMA advancing in discrete steps each GPS tick caused visible staircase zoom (animate-pause-animate-pause). Fix: removed EMA entirely; zoom target is dead-zone-gated (only commits when raw target departs by >0.35 levels) and MapLibre's `easeTo` easing handles all interpolation continuously. Duration raised to 1100ms base / 500ms min so each animation overlaps the next GPS tick, producing one unbroken motion.
+- **2026-04-29 — Nav zoom anti-trigger-happy: 3s hold, asymmetric dead zone, 55° turn threshold.** Zoom was cycling in/out on gentle curves. Three fixes: (1) turn detection raised from 35° to 55° cumulative deviation — only real turns trigger zoom; (2) asymmetric dead zone: 0.30 to zoom in (responsive), 0.70 to zoom out (reluctant) — prevents instant zoom-out after a curve passes; (3) 3-second hold timer after each zoom commit — locks the level so rapid oscillation is impossible.
+- **2026-04-29 — Nav zoom on ALL high-attention maneuvers, not just sharp turns.** Zoom-in now also triggers for lane changes, merges, forks, on/off ramps, and roundabouts — any situation where the driver needs to focus. Two independent trigger sources: geometry scan (≥55° bearing) + step-type scan (maneuver-based). Closest trigger wins. Principle: zoom in whenever the chance of a mistake is high.
+- **2026-04-29 — Nav zoom must be fully zoomed BEFORE the turn, not at it.** Zoom was peaking at dist=0 (at the turn point), but with easing delay the car had already passed. Fix: speed-scaled lead offset (20m walk → 80m at 100km/h) shifts the boost curve so zoom peaks before the maneuver. Also: roundabout clusters (entry + exit steps) now keep zoom locked through the entire sequence — no zoom-out between entry and exit.
+- **2026-04-29 — Roundabouts: max zoom BEFORE entry, not at entry.** Roundabouts need to be at max zoom before the car enters. Fix: `_roundaboutAheadDist()` scans upcoming steps; when a roundabout is within lead range (40m walk → 120m at 100km/h), force-commits max zoom immediately, bypassing dead zone and hold timer. Combined with existing cluster lock, zoom is max from approach through exit.
+
+- **2026-04-29 — Nav HUD at top, GPS dot at bottom.** Nav HUD moved from bottom of screen to top (safe-area-aware). GPS dot pushed to ~85% down the viewport using `map.setPadding({ top: 0.70×vh })` to maximize the forward-looking map view. Speedometer and recenter button repositioned to bottom corners independent of HUD. The map moves around the fixed GPS dot position — the dot stays at the same screen location always.
+
+- **2026-04-29 — GPS puck hard-anchored via setPadding, not offset.** Hard rule: GPS puck must NEVER go above the bottom 20% of the screen during navigation. Implemented via `map.setPadding({ top: 0.70×vh })` (not `easeTo offset`). setPadding shifts MapLibre's effective viewport center to the puck position, so ALL operations (zoom, rotate, pinch-zoom, bounds-fit) pivot around it. The puck is a true fixed anchor like an FPS crosshair. Padding is set on nav start/resume, removed on nav stop (with `easeTo padding` transition).
 
 ## Patterns to Avoid
 
@@ -1155,6 +1166,35 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 - DESIGN UNIFORMITY is paramount — all sponsor UI must use same icon shapes, font sizes, padding, and layout patterns as existing components.
 - `.pl-dot` shape (28×28 rounded square with `var(--r-xs)`) is the canonical icon style — never use circles for type icons.
 - Place card font sizes (`--txt-base` name, `--txt-sm` addr) are the canonical sizes — carousel cards and promo items must match.
+
+### 2026-04-29 — Road visibility: stronger casings + service road casing
+
+**Problem:** Roads blended into the map in both light and dark mode. Minor/service roads had no casing at all (white on white). Secondary/primary casings were `#ccc` — barely visible against the white background and white fill.
+
+**Fix:**
+- **New `road_service_casing` layer** added before `road_service` in `map-style.js`. Minor/service roads now have a visible grey outline (`#d0d0d0`).
+- **Darkened casing colors:** Secondary/tertiary `#ccc` → `#b8b8b8`, Primary `#ccc` → `#aaa`, Trunk/motorway `#f4d880` → `#e0c060`.
+- **Widened casing-fill gaps:** Casing widths increased at low zooms (where the gap was sub-pixel): secondary z8 0.5→1.2, primary z6 0.3→0.8, trunk z6 0.4→0.8, motorway z5 0.4→0.8.
+- **Bridge casings updated** to match: minor bridge `#ccc` → `#c0c0c0` (wider), major bridge `#ccc` → `#aaa` (wider).
+- **Config + editor:** `road_service_casing` added to `BASE_COLORS`, `LAYER_PROP`, and editor UI groups.
+- Dark mode benefits automatically — the canvas invert+contrast filter amplifies the now-stronger casing-fill contrast.
+
+**Files:** `src/map-style-config.js`, `src/map-style.js`, `src/map-style-editor.js`.
+
+### 2026-04-29 — Navigation zoom: smoother + more aggressive, mobile boost
+
+**Problem:** Zoom in/out during navigation was too subtle (only 1 zoom level range) and jerky (no smoothing between levels). Especially bad on phone where the small display needs more dramatic zoom changes to show turns vs long roads.
+
+**Fix (5 changes):**
+- **Widened zoom ranges ~3×:** Drive 16–17 → 14.5–17.5, Walk 17–18 → 16–18.5, Cycle 16.5–17.5 → 15–18, Transit 16–17 → 15–17.5. Now 2.5–3 zoom levels of dynamic range.
+- **Mobile boost:** +0.6 zoom levels on screens ≤768px (`MOBILE_ZOOM_BOOST`). Phones zoom in tighter on turns.
+- **Stronger turn boost:** 1.2 → 2.8 max, with quadratic ramp (`t²`) instead of linear — zoom accelerates as you approach the turn.
+- **EMA zoom smoothing:** `ZOOM_SMOOTH_ALPHA = 0.08` — very gradual zoom changes, no jarring jumps. Resets on nav start/stop/recenter.
+- **All modes now dynamic:** Walk and transit were previously fixed zoom — now they use speed-dynamic zoom with mode-appropriate speed caps (walk 8 km/h, cycle 35 km/h, drive/transit 120 km/h).
+- **Longer easing:** `FOLLOW_DURATION_MS` 450 → 900ms to give MapLibre more time to animate the now-larger zoom transitions.
+
+**Files:** `src/navigation.js`.
+
 - Promo overlay uses grid layout identical to `.pl-card` grid template.
 - Carousel header must exactly match section header typography (xs, bold, uppercase, 0.06em letter-spacing).
 

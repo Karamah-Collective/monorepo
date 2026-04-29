@@ -67,9 +67,12 @@ let _touchCount = 0;           // active fingers on map canvas -- suppresses aut
 let _touchPanStart = null;     // { x, y } for early mobile drag detection
 let _touchPanMoved = false;
 
-// Follow easing — long enough for MapLibre to interpolate smoothly between
-// consecutive GPS fixes, short enough to not visibly lag behind.
-const FOLLOW_DURATION_MS = 450;
+// Follow easing — base duration, dynamically shortened at higher speeds.
+// MapLibre interpolates position + zoom continuously over this duration,
+// and each new GPS tick seamlessly starts a fresh animation from the
+// current camera state, producing one unbroken motion.
+const FOLLOW_DURATION_BASE_MS = 1100;
+const FOLLOW_DURATION_MIN_MS  = 500;
 const TOUCH_DRAG_BREAK_PX = 10;
 
 // ─── EMA smoothing for follow target ────────────────────────────────
@@ -79,30 +82,48 @@ const FOLLOW_SMOOTH_ALPHA = 0.18;
 let _smoothLng = null;  // EMA-filtered follow target
 let _smoothLat = null;
 let _smoothBearing = null;
+let _smoothZoom = null; // committed zoom target — only updates when criteria are met
+const ZOOM_DZ_IN  = 0.30;   // dead zone for zooming IN (towards turns) — fairly responsive
+const ZOOM_DZ_OUT = 0.70;   // dead zone for zooming OUT (away from turns) — much harder to trigger
+const ZOOM_HOLD_MS = 3000;  // after committing a zoom change, hold it for at least this long
+let _zoomHoldUntil = 0;     // timestamp until which zoom is locked
 
 // ─── Navigation view — 3D perspective parameters ────────────────────
 // Per-mode camera settings for the tilted, heading-up navigation view.
 // pitch: forward-facing tilt angle (degrees, 0 = flat)
 // zoomMin/Max: dynamic zoom range based on speed and turn proximity
 const NAV_VIEW = {
-  drive:   { pitch: 55, zoomMin: 16,   zoomMax: 17   },
-  walk:    { pitch: 45, zoomMin: 17,   zoomMax: 18   },
-  cycle:   { pitch: 50, zoomMin: 16.5, zoomMax: 17.5 },
-  transit: { pitch: 35, zoomMin: 16,   zoomMax: 17   },
+  drive:   { pitch: 55, zoomMin: 14.5, zoomMax: 17.5 },
+  walk:    { pitch: 45, zoomMin: 16,   zoomMax: 18.5 },
+  cycle:   { pitch: 50, zoomMin: 15,   zoomMax: 18   },
+  transit: { pitch: 35, zoomMin: 15,   zoomMax: 17.5 },
 };
 
+/** Extra zoom boost on small screens (phones) — tighter on turns. */
+const MOBILE_ZOOM_BOOST = window.innerWidth <= 768 ? 0.6 : 0;
+
 /**
- * Compute the vertical pixel offset to push the GPS dot just above the HUD.
- * Uses the actual viewport height so the dot lands at ~70% down the screen,
- * keeping the road ahead dominant and the GPS dot near the HUD top edge.
- * @returns {number} pixels (positive = push dot downward from center)
+ * Returns the MapLibre padding object that hard-anchors the GPS puck in the
+ * bottom 15% of the screen (satisfies the ≥80%-from-top hard rule).
+ *
+ * Using padding — not offset — is critical: padding shifts MapLibre's
+ * *effective viewport center* to the GPS puck position so that ALL camera
+ * operations (zoom, rotate, bounds-fit, easeTo without explicit offset) treat
+ * the GPS puck as the pivot. The puck truly never drifts regardless of zoom
+ * gestures or overlapping animations.
+ *
+ * Math: effectiveCenter_y = vh/2 + padTop/2
+ *   Want effectiveCenter at 85% from top: padTop = 0.70 × vh
+ *
+ * @returns {{top: number, right: number, bottom: number, left: number}}
  */
-function _aheadOffset() {
+function _navPadding() {
   const vh = window.innerHeight || 800;
-  // Push to ~70% of the viewport: offset = 0.2 * vh
-  // (0 = center at 50%; +0.2vh moves center to 70%)
-  return Math.round(vh * 0.2);
+  return { top: Math.round(vh * 0.70), right: 0, bottom: 0, left: 0 };
 }
+
+/** Zero-padding constant — restores normal viewport when navigation stops. */
+const NAV_PADDING_ZERO = { top: 0, right: 0, bottom: 0, left: 0 };
 
 // Track whether we disabled 3D buildings on nav start so we can restore on stop
 let _was3DBeforeNav = false;
@@ -696,6 +717,8 @@ export function startNavigation() {
   _smoothLng = null;
   _smoothLat = null;
   _smoothBearing = null;
+  _smoothZoom = null;
+  _zoomHoldUntil = 0;
   _following = true;
   if (recenterBtn) recenterBtn.classList.add("hide");
 
@@ -731,6 +754,9 @@ export function startNavigation() {
 
   // Smoothly transition into 3D navigation view
   const firstStep = navSteps[0];
+  // Apply nav viewport padding so the GPS puck is anchored to the bottom 15%
+  // of the screen for the entire navigation session.
+  map.setPadding(_navPadding());
   if (firstStep) {
     const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     map.easeTo({
@@ -738,7 +764,6 @@ export function startNavigation() {
       bearing: _headingDeg,
       pitch: view.pitch,
       zoom: _computeNavZoom(),
-      offset: [0, _aheadOffset()],
       duration: 1200,
     });
   }
@@ -765,6 +790,7 @@ export function resumeNavigation() {
 
   // Restore 3D navigation view at current step
   const step = navSteps[navStepIdx];
+  map.setPadding(_navPadding());
   if (step) {
     const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     map.easeTo({
@@ -772,7 +798,6 @@ export function resumeNavigation() {
       bearing: _headingDeg,
       pitch: view.pitch,
       zoom: _computeNavZoom(),
-      offset: [0, _aheadOffset()],
       duration: 800,
     });
   }
@@ -827,10 +852,12 @@ export function stopNavigation() {
   _smoothLng = null;
   _smoothLat = null;
   _smoothBearing = null;
+  _smoothZoom = null;
+  _zoomHoldUntil = 0;
   _following = true;
 
-  // Restore flat north-up 2D view
-  map.easeTo({ bearing: 0, pitch: 0, duration: 800, offset: [0, 0] });
+  // Restore flat north-up 2D view and remove nav viewport padding
+  map.easeTo({ bearing: 0, pitch: 0, padding: NAV_PADDING_ZERO, duration: 800 });
 
   // Re-enable 3D buildings if they were active before navigation
   if (_was3DBeforeNav) {
@@ -1173,31 +1200,88 @@ function _removeTurnMarkerLayer() {
 // ─── Smooth follow mode ─────────────────────────────────────────────
 
 /**
- * Compute dynamic zoom from route geometry ahead of the GPS position.
- * Scans the polyline forward from the current snapped segment looking for
- * bearing changes (turns). Tighter turns nearby u2192 zoom in; long straight
- * stretches or high speed u2192 zoom out. Entirely geometry-driven u2014 does not
- * depend on navigation step timing or text triggers.
+ * Compute dynamic zoom from route geometry AND upcoming maneuver steps.
+ * Two independent trigger sources:
+ *   1. Geometry scan: cumulative bearing deviation ≥55° (sharp turns)
+ *   2. Step scan: high-attention maneuvers (lane changes, merges, forks,
+ *      ramps, roundabouts) within the lookahead window
+ * The closer of the two determines the zoom boost.
  * @returns {number}
  */
 function _computeNavZoom() {
   const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  if (navMode === "walk") return view.zoomMax;
-  if (navMode === "transit") return (view.zoomMin + view.zoomMax) / 2;
-
   const { zoomMin, zoomMax } = view;
-  // Speed factor: zoom out as speed increases (0-120 km/h)
-  const speedT = Math.min(1, _speedKmh / 120);
-  let zoom = zoomMax - (zoomMax - zoomMin) * speedT;
+  const mobileMax = zoomMax + MOBILE_ZOOM_BOOST;
 
-  // Scan route geometry ahead for the sharpest turn within a lookahead
-  // window. The window scales with speed: ~100m at walk, ~400m at highway.
-  const turnDist = _distToNextTurnOnRoute();
-  if (turnDist > 0 && turnDist < _turnLookaheadM()) {
-    const turnBoost = (1 - turnDist / _turnLookaheadM()) * 1.2;
-    zoom = Math.min(zoomMax, zoom + turnBoost);
+  // Speed factor: zoom out as speed increases
+  const speedCap = navMode === "walk" ? 8 : navMode === "cycle" ? 35 : 120;
+  const speedT = Math.min(1, _speedKmh / speedCap);
+  let zoom = mobileMax - (mobileMax - zoomMin) * speedT;
+
+  const lookahead = _turnLookaheadM();
+
+  // Source 1: geometry-based turn detection
+  const geoDist = _distToNextTurnOnRoute();
+
+  // Source 2: step-based high-attention maneuver detection
+  const stepDist = _distToNextAttentionStep();
+
+  // Use the closer trigger (both capped at lookahead)
+  const triggerDist = _closerTrigger(geoDist, stepDist, lookahead);
+
+  if (triggerDist > 0 && triggerDist < lookahead) {
+    // Lead offset: we want zoom to be FULLY zoomed in by the time the car
+    // reaches the turn, not start zooming at the turn. Shift the boost curve
+    // so it peaks `leadM` metres before the actual maneuver point.
+    // Lead scales with speed: ~20m at walking, ~80m at 100 km/h.
+    const leadM = Math.max(20, Math.min(80, _speedKmh * 0.8));
+    const effectiveDist = Math.max(0, triggerDist - leadM);
+    const t = 1 - effectiveDist / lookahead;
+    const turnBoost = t * t * 3.8;
+    zoom = Math.min(mobileMax + 1.0, zoom + turnBoost);
   }
-  return zoom;
+
+  // Check if a roundabout is imminent — if so, force max zoom immediately
+  // (bypass dead zone + hold timer) so we're fully zoomed BEFORE entering.
+  const rbAhead = _roundaboutAheadDist();
+  const rbLeadM = Math.max(40, Math.min(120, _speedKmh * 1.2));
+  const forceMaxZoom = rbAhead > 0 && rbAhead < rbLeadM;
+
+  if (forceMaxZoom) {
+    zoom = mobileMax + 1.0;
+    _smoothZoom = zoom;
+    return _smoothZoom;
+  }
+
+  // Asymmetric dead zone + hold timer — prevents trigger-happy zoom cycling.
+  // Zooming IN (positive delta = towards a turn) uses a tighter dead zone.
+  // Zooming OUT (negative delta = turn passed) uses a wider dead zone.
+  // After any commit, zoom is held for ZOOM_HOLD_MS before allowing another change.
+  const now = Date.now();
+  if (_smoothZoom === null) {
+    _smoothZoom = zoom;
+    _zoomHoldUntil = now + ZOOM_HOLD_MS;
+  } else if (now >= _zoomHoldUntil) {
+    const delta = zoom - _smoothZoom;
+    const dz = delta > 0 ? ZOOM_DZ_IN : ZOOM_DZ_OUT;
+    if (Math.abs(delta) > dz) {
+      _smoothZoom = zoom;
+      _zoomHoldUntil = now + ZOOM_HOLD_MS;
+    }
+  }
+  return _smoothZoom;
+}
+
+/**
+ * Speed-dynamic follow easing: longer at low speed (smooth glide), shorter
+ * at high speed (responsive). MapLibre interpolates zoom continuously over
+ * this duration — no discrete EMA steps.
+ * @returns {number} milliseconds
+ */
+function _followDurationMs() {
+  const speedCap = navMode === "walk" ? 8 : navMode === "cycle" ? 35 : 120;
+  const t = Math.min(1, _speedKmh / speedCap);
+  return Math.round(FOLLOW_DURATION_BASE_MS - (FOLLOW_DURATION_BASE_MS - FOLLOW_DURATION_MIN_MS) * t);
 }
 
 /** Lookahead distance for turn detection, scales with speed. */
@@ -1208,7 +1292,7 @@ function _turnLookaheadM() {
 /**
  * Walk through route coordinates ahead of the current snapped position
  * and return the distance (metres) to the first significant bearing change.
- * A "turn" is a cumulative bearing deviation >= 35 deg over consecutive segments.
+ * A "turn" is a cumulative bearing deviation >= 55 deg over consecutive segments.
  * Returns 0 if no turn found within the lookahead window.
  */
 function _distToNextTurnOnRoute() {
@@ -1230,7 +1314,7 @@ function _distToNextTurnOnRoute() {
       let delta = Math.abs(bearing - prevBearing);
       if (delta > 180) delta = 360 - delta;
       cumDeviation += delta;
-      if (cumDeviation >= 35) return distAcc;
+      if (cumDeviation >= 55) return distAcc;
     }
 
     distAcc += segLen;
@@ -1238,6 +1322,95 @@ function _distToNextTurnOnRoute() {
     prevBearing = bearing;
   }
   return 0;
+}
+
+// ─── High-attention maneuver types ──────────────────────────────────
+// These require the driver to focus (lane positioning, merging, exiting)
+// even when the geometry doesn't show a sharp bearing change.
+const _ATTENTION_MANEUVERS = new Set([
+  "use lane", "merge", "fork", "on ramp", "off ramp",
+  "roundabout", "rotary", "exit roundabout", "exit rotary", "roundabout turn",
+]);
+
+// Roundabout-family maneuver types — entry + exit are a cluster that should
+// keep zoom locked through the entire roundabout, not zoom out between them.
+const _ROUNDABOUT_TYPES = new Set([
+  "roundabout", "rotary", "exit roundabout", "exit rotary", "roundabout turn",
+]);
+
+/**
+ * Return the distance (metres) to the next roundabout-family step ahead,
+ * or 0 if none within a reasonable range. Used by _computeNavZoom to
+ * force max zoom before roundabout entry.
+ * @returns {number}
+ */
+function _roundaboutAheadDist() {
+  if (!navSteps.length || navStepIdx < 0) return 0;
+  let distAcc = 0;
+  for (let i = navStepIdx; i < navSteps.length && i <= navStepIdx + 5; i++) {
+    const step = navSteps[i];
+    const mt = step.maneuverType || "";
+    const dist = i === navStepIdx ? _liveDistToNextM : distAcc;
+    if (_ROUNDABOUT_TYPES.has(mt)) return dist || 1;
+    distAcc += step.distance || 0;
+    if (distAcc > 500) break; // don't look beyond 500m
+  }
+  return 0;
+}
+
+/**
+ * Scan upcoming nav steps for high-attention maneuvers within the lookahead.
+ * Returns the distance (metres) to the closest one, or 0 if none found.
+ * For roundabouts: if we're currently inside a roundabout cluster (current
+ * or recent step is roundabout-family), keep returning a very short distance
+ * to maintain zoom lock through the entire sequence.
+ * @returns {number}
+ */
+function _distToNextAttentionStep() {
+  if (!navSteps.length || navStepIdx < 0) return 0;
+  const lookahead = _turnLookaheadM();
+
+  // Check if we're currently inside a roundabout cluster:
+  // current step or previous step is a roundabout type, AND a future
+  // roundabout step is still ahead → keep zoom locked.
+  const curMt = navSteps[navStepIdx]?.maneuverType || "";
+  const prevMt = navStepIdx > 0 ? (navSteps[navStepIdx - 1]?.maneuverType || "") : "";
+  if (_ROUNDABOUT_TYPES.has(curMt) || _ROUNDABOUT_TYPES.has(prevMt)) {
+    // Check if any roundabout step is still ahead within a short range
+    for (let i = navStepIdx; i < navSteps.length && i <= navStepIdx + 3; i++) {
+      const mt = navSteps[i]?.maneuverType || "";
+      if (_ROUNDABOUT_TYPES.has(mt)) return 1; // stay zoomed in
+    }
+  }
+
+  let distAcc = 0;
+  for (let i = navStepIdx; i < navSteps.length; i++) {
+    const step = navSteps[i];
+    const mt = step.maneuverType || "";
+
+    // Distance to this step from current position
+    const dist = i === navStepIdx ? _liveDistToNextM : distAcc;
+    if (dist > lookahead) break;
+
+    if (_ATTENTION_MANEUVERS.has(mt)) return dist || 1;
+
+    distAcc += step.distance || 0;
+  }
+  return 0;
+}
+
+/**
+ * Return the closer of two trigger distances, ignoring zeroes (= no trigger).
+ * @param {number} a - First distance (0 = inactive)
+ * @param {number} b - Second distance (0 = inactive)
+ * @param {number} cap - Maximum lookahead
+ * @returns {number} Closest trigger distance, or 0 if neither active
+ */
+function _closerTrigger(a, b, cap) {
+  const va = (a > 0 && a < cap) ? a : Infinity;
+  const vb = (b > 0 && b < cap) ? b : Infinity;
+  const best = Math.min(va, vb);
+  return best === Infinity ? 0 : best;
 }
 
 /** Forward azimuth in degrees [0,360) between two lat/lng points. */
@@ -1291,8 +1464,7 @@ function _smartFollow(lng, lat) {
     bearing: _smoothBearing,
     pitch: view.pitch,
     zoom: _computeNavZoom(),
-    offset: [0, _aheadOffset()],
-    duration: FOLLOW_DURATION_MS,
+    duration: _followDurationMs(),
   });
 }
 
@@ -1376,14 +1548,17 @@ function _recenter() {
     _smoothLng = loc.lng;
     _smoothLat = loc.lat;
     _smoothBearing = _headingDeg;
+    _smoothZoom = null;
+    _zoomHoldUntil = 0;
 
     const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
+    // Re-assert nav padding in case it was cleared by a map interaction
+    map.setPadding(_navPadding());
     map.easeTo({
       center: [loc.lng, loc.lat],
       bearing: _headingDeg,
       pitch: view.pitch,
       zoom: _computeNavZoom(),
-      offset: [0, _aheadOffset()],
       duration: 600,
     });
   }
@@ -1972,7 +2147,6 @@ export function simNextStep() {
         center: [step.lng, step.lat],
         pitch: view.pitch,
         zoom: Math.max(map.getZoom(), 16),
-        offset: [0, _aheadOffset()],
         duration: 600,
       });
     }

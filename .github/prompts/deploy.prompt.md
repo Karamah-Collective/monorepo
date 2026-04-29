@@ -37,6 +37,30 @@ This ensures predictable, repeatable behavior. No guessing about promotion inten
 
 ---
 
+## Step 0 — Disable dev-only simulation features  *(always — before any other step)*
+
+**This step is mandatory for every deploy command (`main`, `preview`, `deploy`).**
+
+Dev-only features must never ship to remote branches in an enabled state. Before running
+the update script or touching git at all, disable the GPS simulator:
+
+In `src/app.js`, find the exact line:
+```
+  initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+```
+and replace it with:
+```
+  // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+```
+
+This change will be staged in Step 3 and included in the main commit in Step 5.
+The disabled version is what lands on `preview` and `deploy` branches.
+
+**Do not skip this step.** If it is already commented out (a previous deploy was interrupted),
+that is fine — leave it commented and continue.
+
+---
+
 ## Available update commands (reference)
 
 | Command | What it runs | When to use |
@@ -225,7 +249,7 @@ Always push to `main` first:
 git push origin main
 ```
 
-- If the command was **`"main"`** — stop here. Done.
+- If the command was **`"main"`** — stop here and go directly to Step 9.
 - If the command was **`"preview"`** — continue to Step 7.
 - If the command was **`"deploy"`** — skip Step 7, go directly to Step 8.
 
@@ -278,7 +302,7 @@ git checkout main
 if (Test-Path "$env:TEMP/halal-local-backups") { New-Item -ItemType Directory -Force 'scripts/local-backups' | Out-Null; Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups/*" 'scripts/local-backups/'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
-After completing, confirm:
+After completing, confirm and continue to Step 9:
 > "Preview branch updated and pushed. The preview site will build shortly."
 
 ---
@@ -322,5 +346,30 @@ git checkout main
 if (Test-Path "$env:TEMP/halal-local-backups") { New-Item -ItemType Directory -Force 'scripts/local-backups' | Out-Null; Copy-Item -Recurse -Force "$env:TEMP/halal-local-backups/*" 'scripts/local-backups/'; Remove-Item -Recurse -Force "$env:TEMP/halal-local-backups" }
 ```
 
-Confirm after:
+Confirm and continue to Step 9:
 > "Deploy branch updated. Cloudflare will now build and deploy to the main domain."
+
+---
+
+## Step 9 — Re-enable dev-only simulation features locally  *(always — final step)*
+
+**This step is mandatory after every deploy command, once all branch pushes are complete.**
+You must be back on `main` (the promotion scripts already return you there).
+
+Edit `src/app.js` **in the working tree only** — do NOT stage, commit, or push this change.
+
+Find the exact line:
+```
+  // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+```
+and restore it to:
+```
+  initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+```
+
+**Do not run `git add` or `git commit` after this.** The restored line stays as an
+unstaged local change so the next dev session has the simulator available immediately.
+The sim will never appear enabled on any remote branch (main, preview, or deploy).
+
+Confirm after:
+> "Simulation features restored locally. No commit made — sim stays off on all remote branches."
