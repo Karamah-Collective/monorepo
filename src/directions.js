@@ -1644,24 +1644,25 @@ export function stepInstruction(step) {
 }
 
 export function maneuverIconSvg(type, mod) {
+  // Lucide-based navigation icons (ISC license, lucide v1.12.0)
   const a = `width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
-  if (type === "depart") return `<svg ${a}><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>`;
-  if (type === "arrive") return `<svg ${a}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/></svg>`;
-  if (type === "roundabout" || type === "rotary" || type === "roundabout turn" || type === "exit roundabout" || type === "exit rotary") return `<svg ${a}><path d="M12 5a7 7 0 1 0 7 7"/><path d="M15 2l4 3-4 3"/></svg>`;
-  if (type === "merge") return `<svg ${a}><path d="M12 21V8M5 3l7 5 7-5"/></svg>`;
+  if (type === "depart") return `<svg ${a}><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+  if (type === "arrive") return `<svg ${a}><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>`;
+  if (type === "roundabout" || type === "rotary" || type === "roundabout turn" || type === "exit roundabout" || type === "exit rotary") return `<svg ${a}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+  if (type === "merge") return `<svg ${a}><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>`;
   if (type === "fork") {
-    if (mod && mod.includes("left")) return `<svg ${a}><path d="M12 21V8M5 3l7 5"/><path d="M5 3v6h5"/></svg>`;
-    return `<svg ${a}><path d="M12 21V8M19 3l-7 5"/><path d="M19 3v6h-5"/></svg>`;
+    if (mod && mod.includes("left")) return `<svg ${a}><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></svg>`;
+    return `<svg ${a}><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></svg>`;
   }
-  if (type === "on ramp" || type === "off ramp") return `<svg ${a}><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
-  if (mod === "uturn") return `<svg ${a}><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>`;
-  if (mod === "sharp left") return `<svg ${a}><path d="M18 18l-9-9m0 0v7m0-7h7"/></svg>`;
-  if (mod === "left") return `<svg ${a}><path d="M17 12H5M11 6l-6 6 6 6"/></svg>`;
-  if (mod === "slight left") return `<svg ${a}><path d="M7 7l9 9"/><path d="M7 15V7h8"/></svg>`;
-  if (mod === "slight right") return `<svg ${a}><path d="M17 7l-9 9"/><path d="M9 7h8v8"/></svg>`;
-  if (mod === "right") return `<svg ${a}><path d="M7 12h12M13 6l6 6-6 6"/></svg>`;
-  if (mod === "sharp right") return `<svg ${a}><path d="M6 18l9-9m0 0v7m0-7h-7"/></svg>`;
-  return `<svg ${a}><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+  if (type === "on ramp" || type === "off ramp") return `<svg ${a}><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>`;
+  if (mod === "uturn") return `<svg ${a}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
+  if (mod === "sharp left") return `<svg ${a}><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>`;
+  if (mod === "left") return `<svg ${a}><path d="M20 20v-7a4 4 0 0 0-4-4H4"/><path d="M9 14 4 9l5-5"/></svg>`;
+  if (mod === "slight left") return `<svg ${a}><path d="M7 17V7h10"/><path d="M17 17 7 7"/></svg>`;
+  if (mod === "slight right") return `<svg ${a}><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>`;
+  if (mod === "right") return `<svg ${a}><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>`;
+  if (mod === "sharp right") return `<svg ${a}><path d="M4 4v7a4 4 0 0 0 4 4h12"/><path d="m15 10 5 5-5 5"/></svg>`;
+  return `<svg ${a}><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>`;
 }
 
 function stepSegType(manType) {
@@ -1949,7 +1950,7 @@ function _drawDirectPrimary(data, mode, color) {
   map.addLayer({
     id: "dir-direct-ln", type: "line", source: "dir-direct-src",
     paint: {
-      "line-color": stepFeatures?.length ? ["case", ["==", ["get", "segType"], "roundabout"], getThemeRailShopPurple(), ["==", ["%", ["get", "idx"], 2], 0], color, altColor] : color,
+      "line-color": color,
       "line-width": mode === "walk" ? 4 : 5, "line-dasharray": mode === "walk" ? [1.5, 2] : [1], "line-opacity": 0.9,
     },
     layout: { "line-cap": "round", "line-join": "round" },

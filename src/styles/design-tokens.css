@@ -135,6 +135,11 @@
   --btn-roundel-size: 32px;
   --btn-roundel-sm-size: 30px;
   --tab-h: 56px;
+  --nav-turn-marker-size: 36px;
+  --nav-turn-icon-size: 20px;
+  --nav-turn-pointer-size: 8px;
+  --nav-turn-highlight: var(--on-accent);
+  --nav-turn-arrow-edge: color-mix(in srgb, var(--accent) 52%, var(--surface) 48%);
 
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -1746,6 +1751,48 @@ html.dark-mode .nav-recenter {
   background: #000000;
   border-color: #1c1c1e;
   color: var(--accent);
+}
+
+/* ─── Navigation Turn Overlay (side label with pointer) ─────────────────────── */
+/* Wrapper is the MapLibre Marker element — flex row so the pointer triangle
+   is part of the layout box.  anchor: "right" places the right edge (pointer
+   tip) exactly at the turn coordinate with zero manual offset. */
+.nav-turn-overlay-wrap {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.nav-turn-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nav-turn-marker-size);
+  height: var(--nav-turn-marker-size);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+}
+/* Triangular pointer — in flex flow so it contributes to the marker's
+   measured width.  The tip (rightmost pixel) IS the anchor point. */
+.nav-turn-ptr {
+  width: 0;
+  height: 0;
+  border-top: var(--sp-2) solid transparent;
+  border-bottom: var(--sp-2) solid transparent;
+  border-left: var(--nav-turn-pointer-size) solid var(--accent);
+  flex-shrink: 0;
+}
+.nav-turn-overlay svg {
+  width: var(--nav-turn-icon-size);
+  height: var(--nav-turn-icon-size);
+  stroke: var(--on-accent);
+}
+html.dark-mode .nav-turn-overlay {
+  background: var(--accent);
+}
+html.dark-mode .nav-turn-ptr {
+  border-left-color: var(--accent);
 }
 
 /* ─── Wishlist Templates ──────────────────────────────────────────────────── */

@@ -48,6 +48,10 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-04-29 — Turn overlay must point to the exact snapped maneuver coordinate.** The floating turn badge may sit beside the road, but its pointer tip must land on the actual on-route turn point itself, using the snapped route coordinate rather than a nearby raw step lat/lng or arbitrary side offset.
+
+- **2026-04-29 — GPS sim phone testing: URL param + route playback.** Added `?sim` URL parameter to auto-activate GPS sim on phone (no keyboard shortcut available). Added route playback engine that auto-walks along computed route at configurable speed (walk/cycle/drive/fast). Badge made tappable with close button.
+
 - **2026-04-08 — Cemeteries are a first-class place type, not static-only.** Cemetery entries must be addable through the same suggest/edit form flow as other places and loaded from Google Sheets / API like any other place. `places.json` must not be the only source of truth.
 - **2026-04-08 — Form spam protection: reCAPTCHA over client cooldowns.** Removed client-side 60-second submission cooldowns from suggest, edit, contact, and wishlist forms. Keep reCAPTCHA and in-flight button disabling; do not reintroduce minute-long local cooldown UX.
 - **2026-04-08 — Cemetery theme behavior: dark mode must recolor all cemetery affordances consistently.** Cemetery pins, popup badges, and place-list visuals must all follow the same tokenized dark-mode color override, not just the list row styling.
@@ -156,6 +160,15 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-18 — GPS interpolation: rAF loop replaces discrete easeTo.** GPS updates at ~1 Hz caused stepped movement (300ms animation + 700ms static). Replaced with `requestAnimationFrame` loop that smoothly lerps + extrapolates between fixes at 60fps using `map.jumpTo()`. Bearing uses shortest-arc interpolation. Loop pauses during touch and stops on nav stop/pause/drag.
 - **2026-04-18 — Route-geometry heading replaces raw GPS bearing.** GPS-to-GPS bearing jittered wildly from satellite noise, causing the entire map to spin. New primary heading source: bearing of the route polyline looking ~60m ahead from the snapped position. This follows the actual road shape and is immune to GPS jitter. Falls back to GPS bearing only when off-route. Smoothed with 0.25 blend factor.
 
+- **2026-04-28 — Navigation icons: Lucide library as icon source.** All `maneuverIconSvg()` paths replaced with official Lucide icons (ISC license). Custom hand-drawn SVG paths removed. This establishes Lucide as the icon library for navigation UI.
+- **2026-04-28 — Turn indicators: on-road symbols + floating overlay badge.** Standard navigation pattern: (1) white directional chevrons along the route line at 80px intervals showing direction of travel, (2) Lucide-based turn icons at each maneuver point via a MapLibre symbol layer, (3) a prominent floating teal badge (40×40) at the next upcoming turn that auto-advances.
+- **2026-04-29 — Route line: single solid color, no alternating step colors.** Removed the alternating color per-step logic. Route should be one uniform color; turns are communicated by icons on the road, not by color changes.
+- **2026-04-29 — Turn overlay: offset side-label, not centered on road.** The turn overlay must not block the road. It sits beside it (anchor="right", offset left) like a road-name text label in the reference image.
+- **2026-04-29 — Turn overlay badge: filled accent background with white icon.** The accepted turn overlay treatment is a filled teal/brand-accent badge with a white icon and matching pointer, not the earlier white-surface variant.
+- **2026-04-29 — Turn arrows IN the road, not floating above.** White turn icons rendered directly at the maneuver point coordinates on the route line (within the line width visually). No repeating chevrons along the line — only one icon at each actual turn point.
+- **2026-04-29 — On-road turn marker: exactly 4m of highlighted road + fixed-size arrow tip 2m into the outgoing road.** The turn segment must be the last 2m of the incoming road plus the first 2m of the next road. The arrow itself must be screen-sized like the side overlay badge, not zoom-scaled, and its visible tip must sit at the +2m point on the new road.
+- **2026-04-29 — Turn highlight stays bright in dark mode.** The on-road turn segment and arrow fill should remain bright white or equivalent high-contrast color even in dark theme.
+
 ## Patterns to Avoid
 
 > Things that were tried and rejected, or that the user has explicitly said "don't do."
@@ -181,6 +194,7 @@ what you like, what you've decided, and how you want things done.
 - Don't enable 3D buildings during navigation — extruded geometry obstructs the tilted forward-looking view. Auto-disable on nav start, restore on nav stop if they were active before.
 - Don't use raw GPS-to-GPS bearing for navigation heading — GPS jitter (5–20m accuracy) causes the map to spin randomly. Always prefer route polyline geometry for heading when on-route.
 - Don't add a second navigation-only camera-follow model when the original GPS-centered autocentering is what the user wants. Avoid fixed overlay pucks or extra follow interpolation unless explicitly requested again.
+- Don't use round dots or long arbitrary coordinate spans for turn markers. The road itself should carry the turn highlight, and the arrow tip belongs on the outgoing road at a fixed distance.
 
 ---
 
@@ -1107,6 +1121,30 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 **e. Carousel cards match place cards:**
 - Icon: 22×22 circle → 28×28 rounded square (`var(--r-xs)`, matching `.pl-dot`)
 - SVG: 10×10 → 14×14 (matching `.pl-dot svg`)
+
+### 2026-04-28 — Navigation turn markers, direction arrows, and Lucide icons
+
+**a. GPS sim confirmed enabled** — `initGpsSim()` already active in `app.js` for testing.
+
+**b. Route line made solid single color:**
+- Removed the alternating step-color logic (`["case", segType === roundabout → purple, idx % 2 → color/altColor]`) from `_drawDirectPrimary` in directions.js.
+- Route line now uses a uniform solid `color` for all modes. Turns are indicated by on-road icons instead of color changes.
+
+**c. Turn arrows embedded directly IN the road:**
+- Removed the repeating chevron layer (`nav-arrow-ln`) — replaced by per-maneuver icons.
+- White Lucide turn icons rendered to 32×32 canvas, placed as MapLibre symbol layer (`nav-turns-sym`) at each maneuver point.
+- Icons sit directly on the route line at turn locations, like the arrow shown inside the road in Google Maps navigation.
+
+**d. Turn overlay as side-label (not blocking road):**
+- Changed from centered-on-road badge to an offset label: anchor="right", offset=[-12, 0] — sits beside the road like a street name label.
+- Styled as 36×36 white card with teal accent border and teal icon (instead of teal-filled badge).
+- Non-blocking: doesn't obscure the route line or turn icon on the road.
+
+**e. Lucide icons replace custom SVGs:**
+- `maneuverIconSvg()` in `directions.js` rewritten to use Lucide icon paths (ISC license, v1.12.0).
+- All icons use consistent Lucide design language: 24×24 viewBox, stroke-based, 2.5 stroke-width, round caps/joins.
+
+**Files:** `src/navigation.js`, `src/directions.js`, `src/styles/design-tokens.css`, `docs/PREFERENCE_LOG.md`.
 - Name font: `--txt-sm` → `--txt-base` (matching `.pl-name`)
 - Addr font: `--txt-xs` → `--txt-sm` (matching `.pl-addr`)
 - Card width: 180px → 200px (accommodates larger icon/fonts)
@@ -1391,3 +1429,37 @@ Second pass root-cause fix after the first attempt proved incomplete.
 **User feedback:** "fantastic! now it's genuine real time movement! it just feels jittery and not smooth, but everything else is perfect!"
 
 **Files:** `src/navigation.js`.
+
+### 2026-04-29 — GPS sim: route playback + phone activation
+
+**Problem:** GPS sim module only worked on desktop (mouse events + Shift+G shortcut). No way to test navigation on phone.
+
+**Solution — three additions to `src/gps-sim.js`:**
+
+1. **URL param `?sim` auto-activation:** Adding `?sim` to the URL auto-activates GPS sim 1.5s after map load. Ideal for phone testing — no keyboard needed.
+
+2. **Route playback engine:** When GPS sim is active and a route exists (direct or transit), a Play button auto-walks the simulated GPS position along the route coordinates at configurable speed. Uses `requestAnimationFrame` for smooth continuous movement. Binary-search interpolation along cumulative-distance array for precise positioning.
+
+3. **Playback speed presets:** Walk (5 km/h), Cycle (15 km/h), Drive (40 km/h), Fast (100 km/h). Default is Drive. Active speed highlighted with accent color.
+
+4. **Tappable badge:** GPS SIM badge now has `pointer-events: auto` and an x close button. On phone, tap x to stop sim.
+
+**Controls panel:** Fixed horizontal bar below the badge with play/pause, speed presets, and stop button. Uses `--surface-2` bg, `--accent` for active states, `--danger` for stop.
+
+**Interaction during playback:**
+- Mouse/tap position feed disabled while playback is running (prevents accidental jumps)
+- Pause resumes from current position (resets dt to avoid time-jump)
+- Stop resets progress to 0
+
+**Files modified:** `src/gps-sim.js`, `src/styles/styles.css`.
+
+### 2026-04-29 — Turn overlay pinned to the actual turn point
+
+**Problem:** On phone, the floating turn badge could visually miss the maneuver because the marker was using the raw step lat/lng while the white turn highlight used the snapped route coordinate, and the marker offset placed the pointer tip short of the actual turn.
+
+**Fix:**
+- Added `_turnOverlayCoord(step)` in `src/navigation.js` so direct maneuvers use `navRouteCoords[step.coordIdx]`, matching the same road vertex used by the 4m white turn highlight.
+- Added `_cssPx()` and changed the overlay marker offset to `- --nav-turn-pointer-size`, so the pointer tip lands on the maneuver coordinate instead of sitting several pixels away from it.
+- Existing markers now also update their offset when the overlay advances.
+
+**Files modified:** `src/navigation.js`.

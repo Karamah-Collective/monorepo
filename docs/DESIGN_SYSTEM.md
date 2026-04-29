@@ -191,6 +191,19 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--btn-roundel-size` | `32px` | Header / close roundel buttons |
 | `--btn-roundel-sm-size` | `30px` | Compact roundels (calendar nav, focused-back) |
 | `--tab-h` | `56px` | Tab bar height — used in positioning calculations |
+| `--nav-turn-marker-size` | `36px` | Navigation turn overlay badge and fixed road-arrow size |
+| `--nav-turn-icon-size` | `20px` | Navigation overlay icon size |
+| `--nav-turn-pointer-size` | `8px` | Navigation turn overlay pointer width |
+| `--nav-turn-highlight` | `#fff` | Bright on-road turn segment and arrow fill |
+| `--nav-turn-arrow-edge` | `color-mix(...)` | Subtle edge for the on-road arrow so it stays visible on map tiles |
+
+### `.nav-turn-overlay` and `.nav-turn-road-arrow`
+
+Navigation turn markers use a shared fixed-size system so the side overlay badge and the on-road arrow stay visually aligned.
+
+**`.nav-turn-overlay`**: fixed accent badge with right-edge pointer; sits beside the road and must never block the route geometry.
+
+**`.nav-turn-road-arrow`**: fixed-size on-road arrow marker anchored by its visible tip, not its center. Use for the outgoing-road direction marker only; keep it screen-sized and do not scale it with map zoom.
 
 ### Puck shape
 

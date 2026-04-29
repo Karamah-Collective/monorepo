@@ -5364,7 +5364,7 @@ body.dark-mode .loc-ring {
   display: flex;
   align-items: center;
   gap: var(--sp-1h);
-  padding: var(--sp-1) var(--sp-3);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
   background: var(--danger);
   color: var(--on-accent);
   font-size: var(--txt-xs);
@@ -5373,14 +5373,98 @@ body.dark-mode .loc-ring {
   text-transform: uppercase;
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-md);
-  pointer-events: none;
+  pointer-events: auto;
   animation: gpsSimPulse 2s ease-in-out infinite;
 }
 .gps-sim-badge svg { flex-shrink: 0; }
 
+.gps-sim-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: var(--sp-1);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--r-full);
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @keyframes gpsSimPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+/* ─── GPS Simulation Playback Controls ─────────────────────────────────────── */
+.gps-sim-controls {
+  position: fixed;
+  top: calc(var(--sp-3) + 32px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-1h);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-lg);
+}
+
+.gps-sim-play-btn,
+.gps-sim-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--t-fast);
+}
+.gps-sim-play-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gps-sim-stop-btn {
+  background: var(--danger);
+}
+
+.gps-sim-speeds {
+  display: flex;
+  gap: var(--sp-0h);
+}
+
+.gps-sim-speed-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--sp-1h);
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.gps-sim-speed-btn.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 .maplibregl-popup-content {

@@ -275,16 +275,18 @@
     "id": "pa61kp",
     "name": "Espoo Muslim Center",
     "type": "mosque",
-    "address": "Maapallonkatu 8, 02210 Espoo",
+    "address": "Kuunkehrä 2A, 02210 Espoo",
     "city": "Espoo",
     "lat": 60.1709733,
     "lng": 24.7268367,
     "tags": {
+      "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
+      "eid_prayer": true,
+      "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true,
-      "daily_prayers": false
+      "female_wudu": true
     },
     "notes": ""
   },

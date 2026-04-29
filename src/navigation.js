@@ -107,6 +107,18 @@ function _aheadOffset() {
 // Track whether we disabled 3D buildings on nav start so we can restore on stop
 let _was3DBeforeNav = false;
 
+// ─── Turn markers on road ────────────────────────────────────────────
+// Shows a short highlighted road segment plus a fixed-size arrow marker
+// at each maneuver point, along with a floating overlay badge at the next turn.
+const NAV_TURNS_SRC   = "nav-turns-src";
+const NAV_TURNS_LAYER = "nav-turns-sym";
+const TURN_SEGMENT_HALF_M = 2;
+const TURN_ARROW_AHEAD_M = 2;
+let _turnOverlayMarker = null; // MapLibre Marker for the floating turn badge
+let _turnRoadMarkers = [];
+let _turnPoints = [];          // [{coord, progressM, step}] — built once, used by overlay
+let _snapProgressM = 0;        // latest GPS snap progress along route (metres)
+
 // ─── Covered-route state ─────────────────────────────────────────────
 // Tracks the portion of the route already traversed so the overlay layer
 // can dim it to clearly distinguish where the user has been vs. ahead.
@@ -677,6 +689,8 @@ export function startNavigation() {
   _liveRemainDistM = 0;
   _snapSegIdx = 0;
   _snapSegFraction = 0;
+  _snapProgressM = 0;
+  _turnPoints = [];
   _headingDeg = 0;
   _prevHeadingPos = null;
   _smoothLng = null;
@@ -712,6 +726,7 @@ export function startNavigation() {
   if (is3DActive) disable3D();
 
   _initCoveredRouteLayer();
+  _initTurnMarkerLayer();
   renderHUD();
 
   // Smoothly transition into 3D navigation view
@@ -803,6 +818,8 @@ export function stopNavigation() {
   _liveRemainDistM = 0;
   _snapSegIdx = 0;
   _snapSegFraction = 0;
+  _snapProgressM = 0;
+  _turnPoints = [];
   _maxspeeds = [];
   _currentSpeedLimit = 0;
   _headingDeg = 0;
@@ -830,6 +847,7 @@ export function stopNavigation() {
   document.body.classList.remove("nav-mode");
 
   _removeCoveredRouteLayer();
+  _removeTurnMarkerLayer();
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
 
   // Re-show the route snackbar so the user can re-enter nav or clear route
@@ -866,6 +884,7 @@ export function processPosition(lat, lng, accuracy = null, now = Date.now()) {
 
   // Feed geometry-based zoom with current snap position
   _snapSegIdx = snap.segIdx;
+  _snapProgressM = snap.progressM;
   // Distance from segment start to snap point (partial segment already covered)
   const segStart = navRouteCoords[snap.segIdx];
   _snapSegFraction = segStart
@@ -900,6 +919,10 @@ export function processPosition(lat, lng, accuracy = null, now = Date.now()) {
 
   // Re-render HUD only when the step changes
   if (navStepIdx !== prevIdx) renderHUD();
+
+  // Keep the turn overlay synced with the user's route progress so it
+  // always points at the next white highlight segment ahead.
+  _updateTurnOverlay();
 
   // Lightweight live update — distance countdown + continue/approach instructions
   _updateLiveHUD();
@@ -969,6 +992,182 @@ function _initCoveredRouteLayer() {
 function _removeCoveredRouteLayer() {
   if (map.getLayer(NAV_COVERED_LAYER)) map.removeLayer(NAV_COVERED_LAYER);
   if (map.getSource(NAV_COVERED_SRC))  map.removeSource(NAV_COVERED_SRC);
+}
+
+// ─── Turn markers on road ────────────────────────────────────────────
+
+/**
+ * Read a CSS custom property from the current theme.
+ * @param {string} name - CSS variable name
+ * @returns {string}
+ */
+function _cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/**
+ * Compute bearing from one route coordinate to another.
+ * @param {[number, number]} fromCoord - [lng, lat]
+ * @param {[number, number]} toCoord - [lng, lat]
+ * @returns {number} bearing in degrees
+ */
+function _bearingBetweenCoords(fromCoord, toCoord) {
+  if (!fromCoord || !toCoord) return 0;
+  const [ln0, la0] = fromCoord;
+  const [ln1, la1] = toCoord;
+  const dL = (ln1 - ln0) * Math.PI / 180;
+  const r0 = la0 * Math.PI / 180, r1 = la1 * Math.PI / 180;
+  const y = Math.sin(dL) * Math.cos(r1);
+  const x = Math.cos(r0) * Math.sin(r1) - Math.sin(r0) * Math.cos(r1) * Math.cos(dL);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+/**
+ * Interpolate a point at a fixed distance (meters) along the route from a given coord index.
+ * Negative distance = backward, positive = forward.
+ * @param {number} ci - starting coord index
+ * @param {number} distM - distance in meters (negative for backward)
+ * @returns {[number, number]} [lng, lat]
+ */
+function _interpolateAlongRoute(ci, distM) {
+  const dir = distM >= 0 ? 1 : -1;
+  let remaining = Math.abs(distM);
+  let idx = ci;
+
+  while (remaining > 0) {
+    const next = idx + dir;
+    if (next < 0 || next >= navRouteCoords.length) break;
+    const [ln0, la0] = navRouteCoords[idx];
+    const [ln1, la1] = navRouteCoords[next];
+    const segLen = _hDistM(la0, ln0, la1, ln1);
+    if (segLen >= remaining) {
+      // Interpolate within this segment
+      const t = remaining / segLen;
+      return [ln0 + (ln1 - ln0) * t, la0 + (la1 - la0) * t];
+    }
+    remaining -= segLen;
+    idx = next;
+  }
+  // Ran out of route, return the endpoint we reached
+  return navRouteCoords[Math.max(0, Math.min(navRouteCoords.length - 1, idx))];
+}
+
+/**
+ * Remove all fixed-size road arrow markers.
+ */
+function _clearTurnRoadMarkers() {
+  _turnRoadMarkers.forEach((marker) => marker.remove());
+  _turnRoadMarkers = [];
+}
+
+
+/**
+ * Initialize the turn-highlight line layer and floating overlay marker.
+ * Draws short route segments in a contrasting color at each turn/junction.
+ */
+async function _initTurnMarkerLayer() {
+  if (map.getSource(NAV_TURNS_SRC)) return;
+
+  // ── Highlighted road segments at each junction/turn point ────────
+  // Exactly 2m before and 2m after the turn point (4m total).
+  // Also build _turnPoints[] so the overlay can reuse the exact same coords.
+  const features = [];
+  _turnPoints = [];
+  for (const step of navSteps) {
+    if (step.isDepart || step.isArrive) continue;
+    if (step.type !== "direct") continue;
+    const mType = step.maneuverType || "";
+    const mMod = step.maneuverMod || "";
+    if (!mType && !mMod) continue;
+
+    const ci = step.coordIdx || 0;
+    const turnPt = navRouteCoords[ci];
+    if (!turnPt) continue;
+    const before = _interpolateAlongRoute(ci, -TURN_SEGMENT_HALF_M);
+    const after = _interpolateAlongRoute(ci, TURN_SEGMENT_HALF_M);
+
+    features.push({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [before, turnPt, after] },
+      properties: {},
+    });
+
+    // Store the exact highlight coordinate + route progress for overlay use
+    _turnPoints.push({
+      coord: turnPt,
+      progressM: navRouteProgress[ci] || 0,
+      step,
+    });
+  }
+
+  map.addSource(NAV_TURNS_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  map.addLayer({
+    id: NAV_TURNS_LAYER,
+    type: "line",
+    source: NAV_TURNS_SRC,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#ffffff",
+      "line-width": navMode === "walk" ? 5 : 6,
+      "line-opacity": 1,
+    },
+  });
+
+  // Floating overlay label at next upcoming turn (offset to the side)
+  _updateTurnOverlay();
+}
+
+/**
+ * Update the floating turn overlay to show the next upcoming maneuver.
+ * Uses the pre-built _turnPoints array (same coordinates as the white
+ * highlight segments) and the user's route progress to pick the next
+ * turn AHEAD of the current GPS position. This guarantees the overlay
+ * and the white segment are always at the exact same coordinate.
+ */
+function _updateTurnOverlay() {
+  // Find the first turn point whose route-progress is still ahead of the user.
+  let next = null;
+  for (const tp of _turnPoints) {
+    if (tp.progressM > _snapProgressM) { next = tp; break; }
+  }
+
+  if (!next) {
+    if (_turnOverlayMarker) { _turnOverlayMarker.remove(); _turnOverlayMarker = null; }
+    return;
+  }
+
+  const { step } = next;
+  const iconHtml = step.iconHtml || maneuverIconSvg(step.maneuverType, step.maneuverMod);
+  const [turnLng, turnLat] = next.coord;
+
+  if (!_turnOverlayMarker) {
+    // Wrapper includes badge + pointer triangle in the flex flow so
+    // anchor: "right" places the pointer tip exactly at the coordinate.
+    const wrap = document.createElement("div");
+    wrap.className = "nav-turn-overlay-wrap";
+    wrap.innerHTML = `<div class="nav-turn-overlay">${iconHtml}</div><div class="nav-turn-ptr"></div>`;
+    _turnOverlayMarker = new maplibregl.Marker({ element: wrap, anchor: "right" })
+      .setLngLat([turnLng, turnLat])
+      .addTo(map);
+  } else {
+    const badge = _turnOverlayMarker.getElement().querySelector(".nav-turn-overlay");
+    if (badge) badge.innerHTML = iconHtml;
+    _turnOverlayMarker.setLngLat([turnLng, turnLat]);
+  }
+}
+
+/**
+ * Remove turn marker layer and overlay from the map.
+ */
+function _removeTurnMarkerLayer() {
+  _clearTurnRoadMarkers();
+  if (map.getLayer(NAV_TURNS_LAYER)) map.removeLayer(NAV_TURNS_LAYER);
+  if (map.getSource(NAV_TURNS_SRC))  map.removeSource(NAV_TURNS_SRC);
+  if (_turnOverlayMarker) { _turnOverlayMarker.remove(); _turnOverlayMarker = null; }
+  _turnPoints = [];
 }
 
 // ─── Smooth follow mode ─────────────────────────────────────────────
@@ -1718,6 +1917,9 @@ function _advanceStep(lat, lng, snapProgressM) {
   // Reset approach tracking — the fired step (or any in-flight approach) is consumed
   _approachIdx = -1;
   _approachMinDist = Infinity;
+
+  // Update the floating turn overlay to point at the next upcoming maneuver
+  _updateTurnOverlay();
 
   // If we just landed on a transit-board step, activate the hold so we
   // don't immediately cascade through intermediate stops while waiting.
