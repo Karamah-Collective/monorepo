@@ -7,6 +7,7 @@ import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadShare
 
 export let placesData = [];
 export let tagsData = {};
+export let eventsData = [];
 export let placesLoaded = false;
 
 /** Returns place.sponsor if sponsorship is active today, otherwise null. */
@@ -397,10 +398,40 @@ function _buildCard(p, i) {
   const sponsorBadge = activeSponsor(p)
     ? `<span class="pl-sponsor-chip">Featured</span>`
     : "";
+  const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
+  const evCount = placeEvents.length;
+  const eventBadge = evCount
+    ? `<span class="pl-event-chip">${evCount} event${evCount > 1 ? "s" : ""}</span>`
+    : "";
   const isFeatured = !!activeSponsor(p);
-  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+
+  // Build expandable events drawer for places with events
+  let evDrawer = "";
+  if (evCount) {
+    const evCards = placeEvents.map((ev) => {
+      const dateStr = _formatEventDate(ev);
+      const timeStr = ev.time ? ev.time + (ev.endTime ? `–${ev.endTime}` : "") : "";
+      const linkBtn = ev.url
+        ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Event page"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
+        : "";
+      const recurIcon = ev.recurring
+        ? `<svg class="pp-ev-recur-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
+        : "";
+      return `<div class="pp-ev-card"><div class="pp-ev-info"><span class="pp-ev-title">${esc(ev.title)}</span><span class="pp-ev-meta">${recurIcon}${esc(dateStr)}${timeStr ? ` · ${esc(timeStr)}` : ""}</span></div>${linkBtn}</div>`;
+    }).join("");
+    evDrawer = `<div class="pl-ev-drawer" data-place-id="${p.id}">
+      <button class="pl-ev-toggle" type="button" aria-expanded="false">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>${evCount} event${evCount > 1 ? "s" : ""}</span>
+        <svg class="pl-ev-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="pl-ev-body">${evCards}</div>
+    </div>`;
+  }
+
+  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
+    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}${eventBadge}</span>
     <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
@@ -413,6 +444,7 @@ function _buildCard(p, i) {
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
       </button>
     </div>
+    ${evDrawer}
   </li>`;
 }
 
@@ -482,6 +514,7 @@ export async function loadPlacesData() {
       renderPlacesList();
       updatePlacesBadge();
       checkShareUrl();
+      renderEventsPill();
       console.log(`[Places] Instant load: ${placesData.length} places from cache`);
 
       // 2. Background refresh — update only if data changed
@@ -505,6 +538,7 @@ export async function loadPlacesData() {
           updatePlacesBadge();
           renderPromosPill();
         }
+        if (data.events) { eventsData = data.events; renderEventsPill(); }
         writeCache(normalizePlacesData(data.places), data.tags || {});
       });
       return;
@@ -528,6 +562,7 @@ export async function loadPlacesData() {
     updatePlacesBadge();
     checkShareUrl();
     renderPromosPill();
+    renderEventsPill();
 
 
     // 4. Background refresh from API — update cache + UI if data changed
@@ -551,6 +586,7 @@ export async function loadPlacesData() {
         updatePlacesBadge();
         renderPromosPill();
       }
+      if (data.events) { eventsData = data.events; renderEventsPill(); }
       writeCache(normalizePlacesData(data.places), data.tags || {});
     });
   } catch (err) {
@@ -798,6 +834,36 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
   if (activeTypeFilter === "saved") renderPlacesList();
 });
 
+/** Formats an event date for display. */
+function _formatEventDate(ev) {
+  if (ev.recurring && ev.recurrence) return ev.recurrence;
+  if (!ev.date) return "";
+  const d = new Date(ev.date + "T00:00:00");
+  const opts = { month: "short", day: "numeric" };
+  const today = new Date();
+  if (d.getFullYear() !== today.getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString("en-GB", opts);
+}
+
+/** Builds a compact event card HTML string for popup/list use. */
+function _buildEventCard(ev) {
+  const dateStr = _formatEventDate(ev);
+  const timeStr = ev.time ? ev.time + (ev.endTime ? `–${ev.endTime}` : "") : "";
+  const recurIcon = ev.recurring
+    ? `<svg class="pp-ev-recur-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
+    : "";
+  const linkBtn = ev.url
+    ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Open registration / event page"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
+    : "";
+  return `<div class="pp-ev-card">
+    <div class="pp-ev-info">
+      <span class="pp-ev-title">${esc(ev.title)}</span>
+      <span class="pp-ev-meta">${recurIcon}${dateStr ? `<span class="pp-ev-date">${esc(dateStr)}</span>` : ""}${timeStr ? `<span class="pp-ev-time">${esc(timeStr)}</span>` : ""}</span>
+    </div>
+    ${linkBtn}
+  </div>`;
+}
+
 export function showPlacePopup(place, { skipMove = false } = {}) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
@@ -877,6 +943,24 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     notes.className = "pp-notes";
     notes.textContent = place.notes;
     inner.appendChild(notes);
+  }
+
+  // Events section — only for mosques/prayer rooms with active events
+  const placeEvents = eventsData.filter((ev) => ev.placeId === place.id);
+  if (placeEvents.length || place.type === "mosque" || place.type === "prayer_room") {
+    const eventsSection = document.createElement("div");
+    eventsSection.className = "pp-events";
+    const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Submit an event" aria-label="Submit event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+    const listHTML = placeEvents.length
+      ? `<div class="pp-events-list">${placeEvents.map((ev) => _buildEventCard(ev)).join("")}</div>`
+      : `<p class="pp-ev-empty">No events yet</p>`;
+    eventsSection.innerHTML = hdrHTML + listHTML;
+    // Attach add-event handler
+    eventsSection.querySelector(".pp-ev-add-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openEventOverlay(place.id);
+    });
+    inner.appendChild(eventsSection);
   }
 
   const actions = document.createElement("div");
@@ -1268,7 +1352,6 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   document.getElementById("places-scroll").scrollTop = 0;
   animateSheetHeight(placesSheet, () => renderPlacesList());
   placesSnap.softRemeasure();
-  // Defer heavy marker rebuild so the list appears instantly
   requestAnimationFrame(() => addPlaceMarkers());
 });
 
@@ -1822,6 +1905,89 @@ function renderPlacesList() {
   _renderSponsorCarousel(filtered);
 }
 
+// ── Events Button + Overlay ──────────────────────────────────────────────────
+const _eventsPill = document.getElementById("events-pill");
+const _eventsOverlay = document.getElementById("events-overlay");
+const _eventsList = document.getElementById("events-list");
+
+export function renderEventsPill() {
+  if (!eventsData.length) {
+    _eventsPill.classList.add("hide");
+    return;
+  }
+  _eventsPill.classList.remove("hide");
+  _renderEventsList();
+}
+
+function _renderEventsList() {
+  if (!_eventsList) return;
+  // Sort: recurring first, then by date
+  const sorted = [...eventsData].sort((a, b) => {
+    if (a.recurring && !b.recurring) return -1;
+    if (!a.recurring && b.recurring) return 1;
+    if (a.date && b.date) return a.date.localeCompare(b.date);
+    return 0;
+  });
+  _eventsList.innerHTML = sorted.map((ev, i) => {
+    const place = placesData.find((p) => p.id === ev.placeId);
+    const placeName = place ? esc(place.name) : "";
+    const dateStr = _formatEventDate(ev);
+    const timeStr = ev.time ? ev.time + (ev.endTime ? `–${ev.endTime}` : "") : "";
+    const recurBadge = ev.recurring
+      ? `<span class="ev-recur-badge">${esc(ev.recurrence || "Recurring")}</span>`
+      : "";
+    const dateBadge = dateStr && !ev.recurring
+      ? `<span class="ev-date-badge">${esc(dateStr)}</span>`
+      : "";
+    return `<button class="ev-overlay-card" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}">
+      <div class="ev-overlay-top">
+        <div class="ev-overlay-info">
+          <span class="ev-overlay-title">${esc(ev.title)}</span>
+          ${placeName ? `<span class="ev-overlay-mosque">${placeName}</span>` : ""}
+        </div>
+        ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
+      </div>
+      <div class="ev-overlay-meta">
+        ${recurBadge}${dateBadge}${timeStr ? `<span class="ev-time-badge">${esc(timeStr)}</span>` : ""}
+      </div>
+      ${ev.description ? `<p class="ev-overlay-desc">${esc(ev.description)}</p>` : ""}
+    </button>`;
+  }).join("");
+}
+
+_eventsPill.addEventListener("click", () => {
+  _eventsOverlay.classList.remove("hide");
+});
+
+document.getElementById("events-close").addEventListener("click", () => {
+  _eventsOverlay.classList.add("hide");
+});
+
+document.getElementById("events-add-btn").addEventListener("click", () => {
+  _eventsOverlay.classList.add("hide");
+  openEventOverlay();
+});
+
+_eventsOverlay.addEventListener("click", (e) => {
+  if (e.target === _eventsOverlay) _eventsOverlay.classList.add("hide");
+});
+
+_eventsList.addEventListener("click", (e) => {
+  const card = e.target.closest(".ev-overlay-card");
+  if (!card) return;
+  const url = card.dataset.evUrl;
+  if (url) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  } else {
+    const pid = card.dataset.placeId;
+    const place = placesData.find((p) => p.id === pid);
+    if (place) {
+      _eventsOverlay.classList.add("hide");
+      openPlaceAfterSheetClose(place);
+    }
+  }
+});
+
 // ── Promos Button + Overlay ──────────────────────────────────────────────────
 const _promosPill = document.getElementById("promos-pill");
 const _promosOverlay = document.getElementById("promos-overlay");
@@ -2136,6 +2302,24 @@ function _snapToNearestCard(track, count) {
 }
 
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
+function openEventOverlay(preselectedPlaceId) {
+  const overlay = document.getElementById("event-overlay");
+  const form = document.getElementById("event-form");
+  const mosqueSelect = document.getElementById("ev-mosque");
+  form.reset();
+  // Reset schedule chips to one-time
+  _evScheduleMode = "oneTime";
+  overlay.querySelectorAll(".ev-sched-chip").forEach((c) => c.classList.remove("active"));
+  overlay.querySelector('.ev-sched-chip[data-value="oneTime"]').classList.add("active");
+  // Populate mosque dropdown with approved mosques/prayer rooms
+  const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
+  mosqueSelect.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
+    mosques.map((m) => `<option value="${escA(m.id)}"${m.id === preselectedPlaceId ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+  // Show one-time fields by default
+  document.getElementById("ev-onetime-fields").classList.remove("hide");
+  document.getElementById("ev-recurring-fields").classList.add("hide");
+  overlay.classList.remove("hide");
+}
 document.getElementById("suggest-place-btn").addEventListener("click", () => {
   document.getElementById("suggest-form").reset();
   sgTypeSelect.classList.add("placeholder");
@@ -2294,6 +2478,23 @@ document.getElementById("places-list").addEventListener("click", (e) => {
       // Re-assert after softRemeasure's height:auto reflow, which can reset scrollTop on iOS
       scrollEl.scrollTop = prevScroll;
     });
+    return;
+  }
+
+  // Toggle event drawer expand/collapse
+  const evToggle = e.target.closest(".pl-ev-toggle");
+  if (evToggle) {
+    e.stopPropagation();
+    const drawer = evToggle.closest(".pl-ev-drawer");
+    if (!drawer) return;
+    const expanded = drawer.classList.toggle("open");
+    evToggle.setAttribute("aria-expanded", expanded);
+    return;
+  }
+
+  // Prevent clicks inside event drawer body from opening the place popup
+  if (e.target.closest(".pl-ev-body")) {
+    e.stopPropagation();
     return;
   }
 
@@ -2859,4 +3060,102 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     submitBtn.disabled = false;
     submitBtn.innerHTML = btnOriginal;
   }
+});
+
+// ── Event Submission Form ────────────────────────────────────────────────────
+const _eventOverlay = document.getElementById("event-overlay");
+const _eventForm = document.getElementById("event-form");
+
+document.getElementById("event-close").addEventListener("click", () => {
+  _eventOverlay.classList.add("hide");
+});
+_eventOverlay.addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) _eventOverlay.classList.add("hide");
+});
+
+// Schedule toggle: one-time vs recurring (chip buttons)
+let _evScheduleMode = "oneTime";
+_eventOverlay.querySelectorAll(".ev-sched-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    _eventOverlay.querySelectorAll(".ev-sched-chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    _evScheduleMode = chip.dataset.value;
+    const isRecurring = _evScheduleMode === "recurring";
+    document.getElementById("ev-onetime-fields").classList.toggle("hide", isRecurring);
+    document.getElementById("ev-recurring-fields").classList.toggle("hide", !isRecurring);
+  });
+});
+
+_eventForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const mosqueSelect = document.getElementById("ev-mosque");
+  const titleInput = document.getElementById("ev-title");
+  const placeId = mosqueSelect.value;
+  const title = titleInput.value.trim();
+
+  // Validate required
+  let valid = true;
+  if (!placeId) { mosqueSelect.classList.add("invalid"); valid = false; }
+  if (!title) { titleInput.classList.add("invalid"); valid = false; }
+
+  const isRecurring = _evScheduleMode === "recurring";
+  const recurrenceInput = document.getElementById("ev-recurrence");
+  if (isRecurring && !recurrenceInput.value.trim()) {
+    recurrenceInput.classList.add("invalid");
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  const submitBtn = document.getElementById("ev-submit");
+  const btnOriginal = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<span class="btn-spinner"></span>`;
+
+  const payload = {
+    token: null,
+    formType: "event",
+    placeId,
+    title,
+    description: document.getElementById("ev-desc").value.trim(),
+    eventDate: isRecurring ? "" : document.getElementById("ev-date").value,
+    eventTime: document.getElementById("ev-time").value,
+    endTime: document.getElementById("ev-end-time").value,
+    recurring: isRecurring,
+    recurrencePattern: isRecurring ? recurrenceInput.value.trim() : "",
+    url: document.getElementById("ev-url").value.trim(),
+  };
+
+  try {
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
+    const token = await new Promise((resolve) =>
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "submit_event" }).then(resolve)),
+    );
+    payload.token = token;
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+      _eventForm.reset();
+      _eventOverlay.classList.add("hide");
+      setTimeout(() => showToast("Event submitted", "check", "It will appear after review."), 200);
+    } else {
+      showToast("Submission failed", "error", data.error || "Please try again.");
+    }
+  } catch (err) {
+    console.error("Event form error:", err);
+    showToast("Submission failed", "error", "Check your connection.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+  }
+});
+
+// Clear invalid state on input
+_eventForm.querySelectorAll("[required]").forEach((el) => {
+  el.addEventListener("input", () => el.classList.remove("invalid"));
+  if (el.tagName === "SELECT") el.addEventListener("change", () => el.classList.remove("invalid"));
 });

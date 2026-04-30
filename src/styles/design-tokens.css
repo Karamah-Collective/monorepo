@@ -1284,6 +1284,97 @@ html.dark-mode body {
   50%      { transform: translateY(-4px) rotate(-45deg) scale(1.06); }
 }
 
+/* ── Event chip (inline badge on place list card) ──────────────────────────── */
+.pl-event-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--sp-2);
+  vertical-align: middle;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* ── Event card (popup inline event entry) ─────────────────────────────────── */
+.pp-ev-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  transition: background var(--t-fast);
+}
+.pp-ev-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0h);
+  min-width: 0;
+}
+.pp-ev-title {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-ev-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+}
+.pp-ev-recur-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.pp-ev-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-xs);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  flex-shrink: 0;
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .pp-ev-link:hover {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+}
+
+/* ── Event list card (events tab full-width entry) ─────────────────────────── */
+/* ── Event badge tokens (reused in popup + events overlay) ─────────────────── */
+.ev-recur-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0h) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ev-date-badge,
+.ev-time-badge {
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+
 /* ── Eid location card (panel list item) ─── */
 .eid-loc-card {
   display: flex;

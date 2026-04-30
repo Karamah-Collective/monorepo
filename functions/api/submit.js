@@ -75,7 +75,7 @@ export async function onRequestPost(context) {
   if (!token || typeof token !== 'string') {
     return json({ error: 'Missing reCAPTCHA token' }, 400, responseHeaders);
   }
-  if (!formType || !['new', 'edit', 'contact'].includes(formType)) {
+  if (!formType || !['new', 'edit', 'contact', 'event'].includes(formType)) {
     return json({ error: 'Invalid form type' }, 400, responseHeaders);
   }
 
@@ -87,6 +87,16 @@ export async function onRequestPost(context) {
   if (formData.message) formData.message = truncate(formData.message, MAX_NOTES_LEN);
   if (formData.tags)    formData.tags    = truncate(formData.tags, MAX_FIELD_LEN);
   if (formData.changesSummary) formData.changesSummary = truncate(formData.changesSummary, MAX_NOTES_LEN);
+
+  // Event-specific fields
+  if (formData.title)       formData.title       = truncate(formData.title, MAX_FIELD_LEN);
+  if (formData.description) formData.description = truncate(formData.description, MAX_NOTES_LEN);
+  if (formData.placeId)     formData.placeId     = truncate(formData.placeId, 20);
+  if (formData.eventDate)   formData.eventDate   = truncate(formData.eventDate, 10);
+  if (formData.eventTime)   formData.eventTime   = truncate(formData.eventTime, 5);
+  if (formData.endTime)     formData.endTime     = truncate(formData.endTime, 5);
+  if (formData.recurrencePattern) formData.recurrencePattern = truncate(formData.recurrencePattern, MAX_FIELD_LEN);
+  if (formData.url)         formData.url         = truncate(formData.url, MAX_FIELD_LEN);
 
   // Validate email format for contact forms
   if (formType === 'contact' && formData.email && !EMAIL_RE.test(formData.email)) {

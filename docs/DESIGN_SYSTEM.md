@@ -454,6 +454,22 @@ Display badge chip. Set `--chip-c` to control tint (text colour + 14% background
 
 **Usage:** Popup tag chips, stop popup route chips. `partially_halal` uses `.pp-chip-warn`. Sponsored places use `.pl-sponsor-chip` in list cards and `.pp-sponsor-badge` in popups.
 
+### `.pl-event-chip`
+
+Inline badge on place list cards indicating the number of active events. Accent-tinted pill. Positioned after the place name alongside sponsor/boycott badges.
+
+### `.pp-ev-card`
+
+Compact event entry inside a place popup. Displays event title, date/time metadata, recurrence icon, and an optional external link button. Lives inside `.pp-events-list`.
+
+### `.ev-list-card`
+
+Full-width event card used in the Events tab of the places panel. Shows title, mosque name, schedule badges, optional description, and action buttons (link + view mosque).
+
+### `.ev-recur-badge` / `.ev-date-badge` / `.ev-time-badge`
+
+Schedule metadata badges inside `.ev-list-card-meta`. Recurring badge uses accent tint pill; date/time badges are plain text secondary color.
+
 ### `.sponsor-badge` / `.pp-sponsor-badge`
 
 Inline gold badge indicating a sponsored place. Used in popup headers and anywhere a compact "Sponsored" label is needed. Tinted from `--sponsor` token.

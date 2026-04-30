@@ -1268,6 +1268,80 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 - Card width: 180px → 200px (accommodates larger icon/fonts)
 - Track padding: `var(--sp-5)` → `16px` left/right (aligns first card with list content area)
 
+### 2026-05-01 — Masjid Events Feature
+
+**Full events system for mosques/prayer rooms:**
+
+1. **Data schema (Google Sheet "Events" tab):**
+   - Columns: id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, approved, created_at
+   - Events require admin approval before becoming visible
+   - Past one-time events auto-filtered out server-side
+
+2. **API integration:**
+   - Events served in `?action=all` response alongside places/tags
+   - Cache key bumped from `all_v1` → `all_v2` to accommodate events data
+   - CF submit function accepts `formType: "event"`
+
+3. **Popup events section:**
+   - Shows for all mosques/prayer rooms (even if no events yet)
+   - Displays event cards with title, date/recurrence badge, time, optional external link
+   - Small "+" button in section header to submit new events for that mosque
+   - Events list scrollable with max-height 180px
+
+4. **Places list card badge:**
+   - `.pl-event-chip` shows event count inline after place name
+   - Accent-tinted pill matching the sponsor/boycott chip pattern
+
+5. **Dedicated Events tab:**
+   - New "Events" chip in places panel type filter bar
+   - Shows all approved events across all mosques
+   - Grouped: Recurring first, then Upcoming (by date)
+   - Each card shows: title, mosque name, schedule badges, description, link + view mosque buttons
+   - Search works across event title, description, and mosque name
+   - Tag filter + sort controls hidden on events tab
+
+6. **Event submission form:**
+   - Full overlay form (same pattern as suggest-a-place)
+   - Fields: mosque (dropdown), title, description, one-time/recurring toggle, date, recurrence pattern, start/end time, URL
+   - reCAPTCHA protected
+   - Opens from: popup "+" button (mosque pre-selected), or places panel "+" when on events tab
+   - Mobile: slides up from bottom like other forms
+
+**Design decisions:**
+- Events section uses accent/teal color (matches mosque green in spirit but uses brand accent for interactive elements)
+- Event cards are compact flat surface-2 backgrounds (no borders, minimal)
+- External link buttons use small accent-tinted square icons
+- Recurring events show a repeat/refresh icon
+- The events tab icon is a calendar with a filled square (distinct from other tab icons)
+
+### 2026-05-01 — Events: Refactored from Tab to Inline + Pill
+
+**User feedback:** Events is NOT a place → should NOT have its own tab in the places panel.
+
+**Changes made:**
+1. **Removed Events tab** — deleted the "Events" type chip from index.html and all `activeTypeFilter === "events"` logic from places.js
+2. **Added expandable event drawer on place cards** — mosques/prayer rooms with events get a small pull-tab (calendar icon + count + chevron) below the card content. Clicking expands/collapses a list of event cards inline.
+3. **Added events pill** — a calendar button beside the eid/promos pills that opens a full events overlay (same pattern as eid overlay). Lists ALL events across all mosques.
+4. **Fixed event form** — submit button now uses `height: var(--h-submit)`, form padding matches suggest form (`16px 16px 20px`, gap `--sp-6`), radio buttons sized at 16px with `--fw-medium`.
+5. **Added dummy events** — 5 test events seeded in places.js for development (BICC + Rabita mosques).
+
+**Preferences expressed:**
+- Events should NOT be a standalone tab — they belong attached to the place
+- Events pill beside prayer time pill (similar to promo and eid pill) for ALL events
+- The expanding drawer approach over a separate view
+- Event form must strictly follow existing design language (input heights, button height, dropdown styling)
+
+**Files modified:** `src/places.js`, `src/styles/styles.css`, `src/styles/design-tokens.css`, `index.html`
+
+**Files modified:**
+- `scripts/apps-script/Code.gs` — Events sheet schema, getEventsJSON, doPost event handling
+- `functions/api/submit.js` — Accept event formType, validate event fields
+- `src/places.js` — eventsData state, popup rendering, list card badge, events tab, submission form JS
+- `src/styles/design-tokens.css` — Event chip, event card, event list card templates
+- `src/styles/styles.css` — Popup events section layout, event overlay layout, mobile responsive
+- `index.html` — Events type chip, event submission form overlay
+- `docs/DESIGN_SYSTEM.md` — New template documentation
+
 **Files modified:** `src/places.js`, `src/styles/styles.css`, `index.html`
 **Decisions:**
 - DESIGN UNIFORMITY is paramount — all sponsor UI must use same icon shapes, font sizes, padding, and layout patterns as existing components.
