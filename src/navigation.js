@@ -62,6 +62,7 @@ const APPROACH_DIST_M = 150;    // preview upcoming maneuver when closer than th
 // Always auto-recenter on the GPS position during navigation.
 // If the user manually pans away, stop following and show recenter button.
 let _following = true;         // true = auto-follow, false = user panned away
+let _isOverview = false;       // true = route overview mode (map shows full route)
 let _headingDeg = 0;           // computed travel bearing in degrees (0 = north, CW)
 let _touchCount = 0;           // active fingers on map canvas -- suppresses auto-center while touching
 let _touchPanStart = null;     // { x, y } for early mobile drag detection
@@ -78,29 +79,72 @@ const TOUCH_DRAG_BREAK_PX = 10;
 // ─── EMA smoothing for follow target ────────────────────────────────
 // Absorbs GPS micro-jitter so the camera glides instead of trembling.
 // α closer to 1 = more responsive, closer to 0 = smoother.
-const FOLLOW_SMOOTH_ALPHA = 0.18;
+const FOLLOW_SMOOTH_ALPHA = 0.35;
 let _smoothLng = null;  // EMA-filtered follow target
 let _smoothLat = null;
 let _smoothBearing = null;
 let _smoothZoom = null; // committed zoom target — only updates when criteria are met
-const ZOOM_DZ_IN  = 0.30;   // dead zone for zooming IN (towards turns) — fairly responsive
-const ZOOM_DZ_OUT = 0.70;   // dead zone for zooming OUT (away from turns) — much harder to trigger
-const ZOOM_HOLD_MS = 3000;  // after committing a zoom change, hold it for at least this long
+let _smoothPitch = null; // committed pitch target — flattens at turns
+let _renderZoom = null;  // per-frame smoothed zoom for butter-smooth transitions
+const ZOOM_DZ_IN  = 0.15;   // dead zone for zooming IN (towards turns) — very responsive
+const ZOOM_DZ_OUT = 0.20;   // dead zone for zooming OUT (away from turns) — allows fast zoom-out
+const ZOOM_HOLD_MS = 1000;  // after committing a zoom change, hold briefly before allowing another
 let _zoomHoldUntil = 0;     // timestamp until which zoom is locked
 
-// ─── Navigation view — 3D perspective parameters ────────────────────
-// Per-mode camera settings for the tilted, heading-up navigation view.
-// pitch: forward-facing tilt angle (degrees, 0 = flat)
-// zoomMin/Max: dynamic zoom range based on speed and turn proximity
+// ─── Navigation view — 3-tier camera system ─────────────────────────
+// Three distinct zoom/pitch tiers per mode:
+//   standard: default cruising — the normal state after turns
+//   turnZoom: close to a real maneuver step — zoomed in, flat (0°)
+//   farZoom:  no real maneuver for a long time (highway) — wider + max tilt
+// Transition thresholds (metres):
+//   turnStart: start transitioning from standard into turn mode
+//   turnFull:  fully commit turn zoom only very near the maneuver point
+//   farThreshold: if next real maneuver is farther than this, use farZoom tier
 const NAV_VIEW = {
-  drive:   { pitch: 55, zoomMin: 14.5, zoomMax: 17.5 },
-  walk:    { pitch: 45, zoomMin: 16,   zoomMax: 18.5 },
-  cycle:   { pitch: 50, zoomMin: 15,   zoomMax: 18   },
-  transit: { pitch: 35, zoomMin: 15,   zoomMax: 17.5 },
+  drive: {
+    standard: { zoom: 16.5, pitch: 55 },
+    turnZoom: { zoom: 17.8, pitch: 0 },
+    farZoom:  { zoom: 15.5, pitch: 65 },
+    turnStart: 90,
+    turnFull: 22,
+    farThreshold: 1200,  // only highways trigger far-zoom
+  },
+  walk: {
+    standard: { zoom: 17.5, pitch: 45 },
+    turnZoom: { zoom: 18.5, pitch: 0 },
+    farZoom:  { zoom: 16.5, pitch: 55 },
+    turnStart: 35,
+    turnFull: 10,
+    farThreshold: 500,
+  },
+  cycle: {
+    standard: { zoom: 17.0, pitch: 50 },
+    turnZoom: { zoom: 18.0, pitch: 0 },
+    farZoom:  { zoom: 15.8, pitch: 60 },
+    turnStart: 60,
+    turnFull: 15,
+    farThreshold: 800,
+  },
+  transit: {
+    standard: { zoom: 16.0, pitch: 40 },
+    turnZoom: { zoom: 17.5, pitch: 0 },
+    farZoom:  { zoom: 15.0, pitch: 50 },
+    turnStart: 70,
+    turnFull: 18,
+    farThreshold: 800,
+  },
 };
 
-/** Extra zoom boost on small screens (phones) — tighter on turns. */
-const MOBILE_ZOOM_BOOST = window.innerWidth <= 768 ? 0.6 : 0;
+/** Extra zoom boost on small screens (phones) — tighter view overall. */
+const MOBILE_ZOOM_BOOST = window.innerWidth <= 768 ? 0.5 : 0;
+
+// ─── rAF interpolation loop ─────────────────────────────────────────
+// Smoothly interpolates the GPS puck and camera between discrete GPS fixes
+// at 60fps. Eliminates the stepped movement caused by ~1Hz GPS updates.
+let _interpRAF = null;         // rAF handle
+let _interpPrevFix = null;     // { lng, lat, bearing, time }
+let _interpCurrFix = null;     // { lng, lat, bearing, time }
+let _interpActive = false;     // true while nav is active and following
 
 /**
  * Returns the MapLibre padding object that hard-anchors the GPS puck in the
@@ -135,10 +179,11 @@ const NAV_TURNS_SRC   = "nav-turns-src";
 const NAV_TURNS_LAYER = "nav-turns-sym";
 const TURN_SEGMENT_HALF_M = 2;
 const TURN_ARROW_AHEAD_M = 2;
-let _turnOverlayMarker = null; // MapLibre Marker for the floating turn badge
+let _turnOverlayMarkers = [];  // MapLibre Markers for ALL upcoming turn badges
 let _turnRoadMarkers = [];
 let _turnPoints = [];          // [{coord, progressM, step}] — built once, used by overlay
 let _snapProgressM = 0;        // latest GPS snap progress along route (metres)
+let _turnZoomHoldUntilProgress = -1; // keep turn zoom active until route progress clears the maneuver
 
 // ─── Covered-route state ─────────────────────────────────────────────
 // Tracks the portion of the route already traversed so the overlay layer
@@ -223,6 +268,7 @@ const hudSpeedVal = document.getElementById("nav-speed-val");
 const hudExitBtn = document.getElementById("nav-exit");
 const hudBody = document.querySelector(".nav-hud-body");
 const recenterBtn = document.getElementById("nav-recenter");
+const overviewBtn = document.getElementById("nav-overview");
 const snackbar = document.getElementById("route-snackbar");
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -320,6 +366,14 @@ function _triggerRadius(step) {
   if (navMode === "walk")  return 25;
   if (navMode === "cycle") return 35;
   return 50; // drive
+}
+
+function _turnExitBufferM(step) {
+  const mt = step?.maneuverType || "";
+  if (_ROUNDABOUT_TYPES.has(mt)) return navMode === "walk" ? 6 : 12;
+  if (navMode === "walk") return 4;
+  if (navMode === "cycle") return 6;
+  return 8; // drive/transit
 }
 
 // Precompute remaining distance and duration from each step to the end.
@@ -712,15 +766,22 @@ export function startNavigation() {
   _snapSegFraction = 0;
   _snapProgressM = 0;
   _turnPoints = [];
+  _turnZoomHoldUntilProgress = -1;
   _headingDeg = 0;
   _prevHeadingPos = null;
+  _lastHeadingMoveDist = 0;
   _smoothLng = null;
   _smoothLat = null;
   _smoothBearing = null;
   _smoothZoom = null;
+  _smoothPitch = null;
+  _renderZoom = null;
   _zoomHoldUntil = 0;
+  _stopInterpLoop();
   _following = true;
+  _isOverview = false;
   if (recenterBtn) recenterBtn.classList.add("hide");
+  if (overviewBtn) overviewBtn.classList.remove("hide");
 
   // Compute initial heading from the route's opening direction
   if (navRouteCoords.length >= 2) {
@@ -758,11 +819,10 @@ export function startNavigation() {
   // of the screen for the entire navigation session.
   map.setPadding(_navPadding());
   if (firstStep) {
-    const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     map.easeTo({
       center: [firstStep.lng, firstStep.lat],
       bearing: _headingDeg,
-      pitch: view.pitch,
+      pitch: _computeNavPitch(),
       zoom: _computeNavZoom(),
       duration: 1200,
     });
@@ -777,7 +837,9 @@ export function resumeNavigation() {
   navPaused = false;
   navActive = true;
   _following = true;
+  _isOverview = false;
   if (recenterBtn) recenterBtn.classList.add("hide");
+  if (overviewBtn) overviewBtn.classList.remove("hide");
 
   if (snackbar) snackbar.classList.add("hide");
   if (hud) {
@@ -792,11 +854,10 @@ export function resumeNavigation() {
   const step = navSteps[navStepIdx];
   map.setPadding(_navPadding());
   if (step) {
-    const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     map.easeTo({
       center: [step.lng, step.lat],
       bearing: _headingDeg,
-      pitch: view.pitch,
+      pitch: _computeNavPitch(),
       zoom: _computeNavZoom(),
       duration: 800,
     });
@@ -810,6 +871,7 @@ export function pauseNavigation() {
   if (!navActive) return;
   navActive = false;
   navPaused = true;
+  _stopInterpLoop();
   // Hide HUD but keep all state (steps, stepIdx, coords, etc.)
   if (hud) {
     hud.classList.add("hide");
@@ -817,6 +879,7 @@ export function pauseNavigation() {
   }
   if (hudSpeedEl) hudSpeedEl.classList.add("hide");
   if (recenterBtn) recenterBtn.classList.add("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
 }
@@ -845,15 +908,20 @@ export function stopNavigation() {
   _snapSegFraction = 0;
   _snapProgressM = 0;
   _turnPoints = [];
+  _turnZoomHoldUntilProgress = -1;
   _maxspeeds = [];
   _currentSpeedLimit = 0;
   _headingDeg = 0;
   _prevHeadingPos = null;
+  _lastHeadingMoveDist = 0;
   _smoothLng = null;
   _smoothLat = null;
   _smoothBearing = null;
   _smoothZoom = null;
+  _smoothPitch = null;
+  _renderZoom = null;
   _zoomHoldUntil = 0;
+  _stopInterpLoop();
   _following = true;
 
   // Restore flat north-up 2D view and remove nav viewport padding
@@ -871,6 +939,7 @@ export function stopNavigation() {
   }
   if (hudSpeedEl) hudSpeedEl.classList.add("hide");
   if (recenterBtn) recenterBtn.classList.add("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
 
   _removeCoveredRouteLayer();
@@ -1148,41 +1217,44 @@ async function _initTurnMarkerLayer() {
 }
 
 /**
- * Update the floating turn overlay to show the next upcoming maneuver.
+ * Update the floating turn overlays to show ALL upcoming maneuvers.
  * Uses the pre-built _turnPoints array (same coordinates as the white
- * highlight segments) and the user's route progress to pick the next
- * turn AHEAD of the current GPS position. This guarantees the overlay
- * and the white segment are always at the exact same coordinate.
+ * highlight segments) and the user's route progress to pick turns
+ * AHEAD of the current GPS position. Removes markers for passed turns.
  */
 function _updateTurnOverlay() {
-  // Find the first turn point whose route-progress is still ahead of the user.
-  let next = null;
-  for (const tp of _turnPoints) {
-    if (tp.progressM > _snapProgressM) { next = tp; break; }
+  // Collect all turn points still ahead of the user
+  const upcoming = _turnPoints.filter(tp => tp.progressM > _snapProgressM);
+
+  // Remove markers for turns we've passed (markers beyond `upcoming` count)
+  while (_turnOverlayMarkers.length > upcoming.length) {
+    const marker = _turnOverlayMarkers.pop();
+    marker.remove();
   }
 
-  if (!next) {
-    if (_turnOverlayMarker) { _turnOverlayMarker.remove(); _turnOverlayMarker = null; }
-    return;
-  }
+  // Create or update markers for each upcoming turn
+  for (let i = 0; i < upcoming.length; i++) {
+    const tp = upcoming[i];
+    const { step } = tp;
+    const iconHtml = step.iconHtml || maneuverIconSvg(step.maneuverType, step.maneuverMod);
+    const [turnLng, turnLat] = tp.coord;
 
-  const { step } = next;
-  const iconHtml = step.iconHtml || maneuverIconSvg(step.maneuverType, step.maneuverMod);
-  const [turnLng, turnLat] = next.coord;
-
-  if (!_turnOverlayMarker) {
-    // Wrapper includes badge + pointer triangle in the flex flow so
-    // anchor: "right" places the pointer tip exactly at the coordinate.
-    const wrap = document.createElement("div");
-    wrap.className = "nav-turn-overlay-wrap";
-    wrap.innerHTML = `<div class="nav-turn-overlay">${iconHtml}</div><div class="nav-turn-ptr"></div>`;
-    _turnOverlayMarker = new maplibregl.Marker({ element: wrap, anchor: "right" })
-      .setLngLat([turnLng, turnLat])
-      .addTo(map);
-  } else {
-    const badge = _turnOverlayMarker.getElement().querySelector(".nav-turn-overlay");
-    if (badge) badge.innerHTML = iconHtml;
-    _turnOverlayMarker.setLngLat([turnLng, turnLat]);
+    if (i < _turnOverlayMarkers.length) {
+      // Update existing marker
+      const marker = _turnOverlayMarkers[i];
+      const badge = marker.getElement().querySelector(".nav-turn-overlay");
+      if (badge) badge.innerHTML = iconHtml;
+      marker.setLngLat([turnLng, turnLat]);
+    } else {
+      // Create new marker
+      const wrap = document.createElement("div");
+      wrap.className = "nav-turn-overlay-wrap";
+      wrap.innerHTML = `<div class="nav-turn-overlay">${iconHtml}</div><div class="nav-turn-ptr"></div>`;
+      const marker = new maplibregl.Marker({ element: wrap, anchor: "right" })
+        .setLngLat([turnLng, turnLat])
+        .addTo(map);
+      _turnOverlayMarkers.push(marker);
+    }
   }
 }
 
@@ -1193,70 +1265,74 @@ function _removeTurnMarkerLayer() {
   _clearTurnRoadMarkers();
   if (map.getLayer(NAV_TURNS_LAYER)) map.removeLayer(NAV_TURNS_LAYER);
   if (map.getSource(NAV_TURNS_SRC))  map.removeSource(NAV_TURNS_SRC);
-  if (_turnOverlayMarker) { _turnOverlayMarker.remove(); _turnOverlayMarker = null; }
+  _turnOverlayMarkers.forEach(m => m.remove());
+  _turnOverlayMarkers = [];
   _turnPoints = [];
 }
 
 // ─── Smooth follow mode ─────────────────────────────────────────────
 
 /**
- * Compute dynamic zoom from route geometry AND upcoming maneuver steps.
- * Two independent trigger sources:
- *   1. Geometry scan: cumulative bearing deviation ≥55° (sharp turns)
- *   2. Step scan: high-attention maneuvers (lane changes, merges, forks,
- *      ramps, roundabouts) within the lookahead window
- * The closer of the two determines the zoom boost.
- * @returns {number}
+ * 3-tier zoom system: standard / turn / far.
+ * Determines which tier the camera should be in based on distance to the next
+ * turn, then smooths transitions via dead zones and hold timers.
+ * @returns {number} zoom level
  */
 function _computeNavZoom() {
   const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  const { zoomMin, zoomMax } = view;
-  const mobileMax = zoomMax + MOBILE_ZOOM_BOOST;
+  const { standard, turnZoom, farZoom, turnStart, turnFull, farThreshold } = view;
 
-  // Speed factor: zoom out as speed increases
-  const speedCap = navMode === "walk" ? 8 : navMode === "cycle" ? 35 : 120;
-  const speedT = Math.min(1, _speedKmh / speedCap);
-  let zoom = mobileMax - (mobileMax - zoomMin) * speedT;
-
-  const lookahead = _turnLookaheadM();
-
-  // Source 1: geometry-based turn detection
-  const geoDist = _distToNextTurnOnRoute();
-
-  // Source 2: step-based high-attention maneuver detection
-  const stepDist = _distToNextAttentionStep();
-
-  // Use the closer trigger (both capped at lookahead)
-  const triggerDist = _closerTrigger(geoDist, stepDist, lookahead);
-
-  if (triggerDist > 0 && triggerDist < lookahead) {
-    // Lead offset: we want zoom to be FULLY zoomed in by the time the car
-    // reaches the turn, not start zooming at the turn. Shift the boost curve
-    // so it peaks `leadM` metres before the actual maneuver point.
-    // Lead scales with speed: ~20m at walking, ~80m at 100 km/h.
-    const leadM = Math.max(20, Math.min(80, _speedKmh * 0.8));
-    const effectiveDist = Math.max(0, triggerDist - leadM);
-    const t = 1 - effectiveDist / lookahead;
-    const turnBoost = t * t * 3.8;
-    zoom = Math.min(mobileMax + 1.0, zoom + turnBoost);
+  if (_turnZoomHoldUntilProgress >= 0) {
+    if (_snapProgressM < _turnZoomHoldUntilProgress) {
+      return turnZoom.zoom + MOBILE_ZOOM_BOOST;
+    }
+    _turnZoomHoldUntilProgress = -1;
   }
 
-  // Check if a roundabout is imminent — if so, force max zoom immediately
-  // (bypass dead zone + hold timer) so we're fully zoomed BEFORE entering.
-  const rbAhead = _roundaboutAheadDist();
-  const rbLeadM = Math.max(40, Math.min(120, _speedKmh * 1.2));
-  const forceMaxZoom = rbAhead > 0 && rbAhead < rbLeadM;
+  // Only zoom in for actual navigation step maneuvers (the ones with overlays),
+  // NOT for every geometry-detected bearing change on the road.
+  const stepDist = _distToNextAttentionStep();
+  const triggerDist = stepDist; // only step-based triggers
 
-  if (forceMaxZoom) {
-    zoom = mobileMax + 1.0;
+  // Also compute uncapped distance to next step (for far-tier detection)
+  const uncappedStepDist = _distToNextAttentionStepUncapped();
+
+  // Roundabout override — treat like turn but slightly less zoomed
+  const rbAhead = _roundaboutAheadDist();
+  const rbLeadM = Math.max(40, Math.min(140, _speedKmh * 1.4));
+  const isRoundabout = rbAhead > 0 && rbAhead < rbLeadM;
+
+  let zoom;
+
+  if (isRoundabout) {
+    // Roundabout: zoom in but slightly less than a sharp turn (show full circle)
+    zoom = turnZoom.zoom - 0.5 + MOBILE_ZOOM_BOOST;
     _smoothZoom = zoom;
+    _zoomHoldUntil = Date.now() + ZOOM_HOLD_MS;
     return _smoothZoom;
   }
 
-  // Asymmetric dead zone + hold timer — prevents trigger-happy zoom cycling.
-  // Zooming IN (positive delta = towards a turn) uses a tighter dead zone.
-  // Zooming OUT (negative delta = turn passed) uses a wider dead zone.
-  // After any commit, zoom is held for ZOOM_HOLD_MS before allowing another change.
+  if (triggerDist > 0 && triggerDist <= turnStart) {
+    // ─── TURN TIER: only near a real maneuver step ───
+    if (triggerDist <= turnFull) {
+      // Very close to the maneuver — commit full turn zoom.
+      zoom = turnZoom.zoom + MOBILE_ZOOM_BOOST;
+      _smoothZoom = zoom;
+      _zoomHoldUntil = Date.now() + ZOOM_HOLD_MS;
+      return _smoothZoom;
+    }
+    // Between turnStart and turnFull, transition from standard into turn zoom.
+    const t = 1 - (triggerDist - turnFull) / Math.max(1, turnStart - turnFull);
+    zoom = standard.zoom + (turnZoom.zoom - standard.zoom) * t * t + MOBILE_ZOOM_BOOST;
+  } else if (uncappedStepDist > farThreshold) {
+    // ─── FAR TIER: next maneuver step confirmed far away (highway) ───
+    zoom = farZoom.zoom;
+  } else {
+    // ─── STANDARD TIER: default cruising view ───
+    zoom = standard.zoom + MOBILE_ZOOM_BOOST;
+  }
+
+  // Asymmetric dead zone + hold timer — prevents oscillation
   const now = Date.now();
   if (_smoothZoom === null) {
     _smoothZoom = zoom;
@@ -1270,6 +1346,82 @@ function _computeNavZoom() {
     }
   }
   return _smoothZoom;
+}
+
+/**
+ * 3-tier pitch system matching the zoom tiers.
+ * Turn tier: flat (0°) for maneuver clarity.
+ * Far tier: high tilt for maximum forward road visibility.
+ * Standard tier: moderate tilt.
+ * Smooth per-frame transitions prevent jarring camera jumps.
+ * @returns {number} pitch in degrees
+ */
+function _computeNavPitch() {
+  const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
+  const { standard, turnZoom, farZoom, turnStart, turnFull, farThreshold } = view;
+  let releasedTurnHold = false;
+
+  if (_turnZoomHoldUntilProgress >= 0) {
+    if (_snapProgressM < _turnZoomHoldUntilProgress) {
+      _smoothPitch = turnZoom.pitch;
+      return turnZoom.pitch;
+    }
+    _turnZoomHoldUntilProgress = -1;
+    releasedTurnHold = true;
+  }
+
+  // Only flatten for actual navigation step maneuvers (with overlays),
+  // not every geometry-detected bend in the road.
+  const stepDist = _distToNextAttentionStep();
+  const triggerDist = stepDist;
+  const uncappedStepDist = _distToNextAttentionStepUncapped();
+
+  // Roundabout override — force flat immediately
+  const rbAhead = _roundaboutAheadDist();
+  const rbLeadM = Math.max(40, Math.min(120, _speedKmh * 1.2));
+  if (rbAhead > 0 && rbAhead < rbLeadM) {
+    _smoothPitch = 0;
+    return 0;
+  }
+
+  let targetPitch;
+
+  if (triggerDist > 0 && triggerDist <= turnStart) {
+    // ─── TURN TIER: flatten only near a real maneuver step ───
+    if (triggerDist <= turnFull) {
+      targetPitch = turnZoom.pitch; // 0°
+    } else {
+      // Transition from standard pitch toward flat as the maneuver approaches.
+      const t = (triggerDist - turnFull) / Math.max(1, turnStart - turnFull);
+      targetPitch = turnZoom.pitch + (standard.pitch - turnZoom.pitch) * t;
+    }
+  } else if (uncappedStepDist > farThreshold) {
+    // ─── FAR TIER: next maneuver confirmed far away (highway) ───
+    targetPitch = farZoom.pitch;
+  } else {
+    // ─── STANDARD TIER: default cruising tilt ───
+    targetPitch = standard.pitch;
+  }
+
+  if (releasedTurnHold) {
+    // Reintroduce visible tilt immediately when leaving full turn zoom,
+    // then continue smoothing toward the current tier's target pitch.
+    const minTilt = Math.min(targetPitch, Math.max(12, targetPitch * 0.5));
+    _smoothPitch = Math.max(minTilt, _smoothPitch || 0);
+  }
+
+  // Smooth per-frame transition (60fps via rAF)
+  // Flattening (toward 0): fast (~0.6s). Restoring tilt: deliberate (~1.5s).
+  if (_smoothPitch === null) {
+    _smoothPitch = targetPitch;
+  } else {
+    const alpha = targetPitch < _smoothPitch ? 0.06 : (releasedTurnHold ? 0.12 : 0.025);
+    _smoothPitch += (targetPitch - _smoothPitch) * alpha;
+    if (_smoothPitch < 2) _smoothPitch = 0;
+    if (Math.abs(_smoothPitch - targetPitch) < 1.5) _smoothPitch = targetPitch;
+  }
+
+  return _smoothPitch;
 }
 
 /**
@@ -1328,9 +1480,17 @@ function _distToNextTurnOnRoute() {
 // These require the driver to focus (lane positioning, merging, exiting)
 // even when the geometry doesn't show a sharp bearing change.
 const _ATTENTION_MANEUVERS = new Set([
+  // Actual turns at intersections / end of road
+  "turn", "end of road",
+  // Forks, merges, ramps (require attention)
   "use lane", "merge", "fork", "on ramp", "off ramp",
+  // Roundabouts
   "roundabout", "rotary", "exit roundabout", "exit rotary", "roundabout turn",
 ]);
+
+// Maneuver types that are NOT real turns — road continuations/name changes.
+// These get overlays but should NOT trigger zoom-in.
+// "continue", "new name", "depart", "arrive", "notification"
 
 // Roundabout-family maneuver types — entry + exit are a cluster that should
 // keep zoom locked through the entire roundabout, not zoom out between them.
@@ -1346,12 +1506,11 @@ const _ROUNDABOUT_TYPES = new Set([
  */
 function _roundaboutAheadDist() {
   if (!navSteps.length || navStepIdx < 0) return 0;
-  let distAcc = 0;
+  let distAcc = _liveDistToNextM;
   for (let i = navStepIdx; i < navSteps.length && i <= navStepIdx + 5; i++) {
     const step = navSteps[i];
     const mt = step.maneuverType || "";
-    const dist = i === navStepIdx ? _liveDistToNextM : distAcc;
-    if (_ROUNDABOUT_TYPES.has(mt)) return dist || 1;
+    if (_ROUNDABOUT_TYPES.has(mt)) return distAcc || 1;
     distAcc += step.distance || 0;
     if (distAcc > 500) break; // don't look beyond 500m
   }
@@ -1383,17 +1542,34 @@ function _distToNextAttentionStep() {
     }
   }
 
-  let distAcc = 0;
+  let distAcc = _liveDistToNextM; // distance to the current upcoming maneuver
   for (let i = navStepIdx; i < navSteps.length; i++) {
     const step = navSteps[i];
     const mt = step.maneuverType || "";
 
-    // Distance to this step from current position
-    const dist = i === navStepIdx ? _liveDistToNextM : distAcc;
-    if (dist > lookahead) break;
+    if (distAcc > lookahead) break;
 
-    if (_ATTENTION_MANEUVERS.has(mt)) return dist || 1;
+    if (_ATTENTION_MANEUVERS.has(mt)) return distAcc || 1;
 
+    // Add this step's segment length to reach the maneuver after it.
+    distAcc += step.distance || 0;
+  }
+  return 0;
+}
+
+/**
+ * Like _distToNextAttentionStep but without lookahead cap.
+ * Returns the actual distance to the next attention maneuver step,
+ * or 0 if none remain in the route.
+ * @returns {number} distance in metres, or 0
+ */
+function _distToNextAttentionStepUncapped() {
+  if (!navSteps.length || navStepIdx < 0) return 0;
+  let distAcc = _liveDistToNextM;
+  for (let i = navStepIdx; i < navSteps.length; i++) {
+    const step = navSteps[i];
+    const mt = step.maneuverType || "";
+    if (_ATTENTION_MANEUVERS.has(mt)) return distAcc || 1;
     distAcc += step.distance || 0;
   }
   return 0;
@@ -1438,9 +1614,10 @@ function _smartFollow(lng, lat) {
     return;
   }
 
-  const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
-  // Only auto-rotate when actually moving — prevents heading jitter at rest
-  const rawBearing = _speedKmh > 3 ? _headingDeg : map.getBearing();
+  // Only rotate the map when actually moving — prevents rotation while
+  // standing still even if device orientation or GPS jitter changes bearing.
+  // The map heading stays fixed until the user physically moves.
+  const rawBearing = _speedKmh > 3 ? _headingDeg : (_smoothBearing ?? map.getBearing());
 
   // ── EMA smoothing — absorb GPS micro-jitter ──────────────────────
   if (_smoothLng === null) {
@@ -1459,20 +1636,122 @@ function _smartFollow(lng, lat) {
     _smoothBearing = ((_smoothBearing + bDelta * a) + 360) % 360;
   }
 
-  map.easeTo({
-    center: [_smoothLng, _smoothLat],
-    bearing: _smoothBearing,
-    pitch: view.pitch,
-    zoom: _computeNavZoom(),
-    duration: _followDurationMs(),
+  // Feed the rAF interpolation loop with the new target
+  const now = performance.now();
+  _interpPrevFix = _interpCurrFix || { lng: _smoothLng, lat: _smoothLat, bearing: _smoothBearing, time: now };
+  _interpCurrFix = { lng: _smoothLng, lat: _smoothLat, bearing: _smoothBearing, time: now };
+
+  // Start the interpolation loop if not already running
+  if (!_interpActive) {
+    _interpActive = true;
+    _interpRAF = requestAnimationFrame(_interpFrame);
+  }
+}
+
+/**
+ * requestAnimationFrame loop for smooth 60fps camera movement.
+ * Interpolates (and slightly extrapolates) between GPS fixes so the
+ * map glides continuously instead of stepping every ~1s.
+ * Uses jumpTo for instant, jitter-free updates each frame.
+ */
+function _interpFrame(timestamp) {
+  if (!_interpActive || !_following) {
+    _interpActive = false;
+    return;
+  }
+
+  // Pause interpolation while fingers are on map — don't fight touch gestures.
+  // Continue scheduling frames so we resume immediately on touch end.
+  if (_touchCount > 0) {
+    _interpRAF = requestAnimationFrame(_interpFrame);
+    return;
+  }
+
+  if (!_interpCurrFix) {
+    _interpRAF = requestAnimationFrame(_interpFrame);
+    return;
+  }
+
+  const prev = _interpPrevFix || _interpCurrFix;
+  const curr = _interpCurrFix;
+  const dt = curr.time - prev.time;
+
+  let lng, lat, bearing;
+
+  if (dt > 50 && dt < 5000) {
+    // Interpolate/extrapolate based on elapsed time since last fix
+    const elapsed = timestamp - curr.time;
+    // Clamp extrapolation to max 1.2× the fix interval (don't overshoot)
+    const t = Math.min(1.2, elapsed / dt);
+
+    lng = curr.lng + (curr.lng - prev.lng) * Math.max(0, t - 1) * 0.5;
+    lat = curr.lat + (curr.lat - prev.lat) * Math.max(0, t - 1) * 0.5;
+
+    // Bearing: shortest-arc extrapolation
+    let bDelta = curr.bearing - prev.bearing;
+    if (bDelta > 180) bDelta -= 360;
+    if (bDelta < -180) bDelta += 360;
+    bearing = ((curr.bearing + bDelta * Math.max(0, t - 1) * 0.5) + 360) % 360;
+  } else {
+    lng = curr.lng;
+    lat = curr.lat;
+    bearing = curr.bearing;
+  }
+
+  // Compute dynamic pitch (internally smoothed per-frame)
+  const pitch = _computeNavPitch();
+
+  // Per-frame zoom smoothing — aggressive zoom-out, fast zoom-in
+  const zoomTarget = _computeNavZoom();
+  if (_renderZoom === null) {
+    _renderZoom = zoomTarget;
+  } else {
+    const zDelta = zoomTarget - _renderZoom;
+    let zAlpha;
+    if (zDelta > 0) {
+      // Zooming IN toward turns: fast (α=0.12)
+      zAlpha = 0.12;
+    } else {
+      // Zooming OUT after turns: very aggressive.
+      // |delta| 1 level → α=0.07, |delta| 3+ levels → α=0.14 (cap)
+      zAlpha = Math.min(0.14, 0.04 + Math.abs(zDelta) * 0.035);
+    }
+    _renderZoom += zDelta * zAlpha;
+    // Snap when close enough to avoid infinite crawl
+    if (Math.abs(zoomTarget - _renderZoom) < 0.03) _renderZoom = zoomTarget;
+  }
+
+  map.jumpTo({
+    center: [lng, lat],
+    bearing,
+    pitch,
+    zoom: _renderZoom,
   });
+
+  _interpRAF = requestAnimationFrame(_interpFrame);
+}
+
+/**
+ * Stop the rAF interpolation loop (on nav stop, pause, or user drag).
+ */
+function _stopInterpLoop() {
+  _interpActive = false;
+  if (_interpRAF) {
+    cancelAnimationFrame(_interpRAF);
+    _interpRAF = null;
+  }
+  _interpPrevFix = null;
+  _interpCurrFix = null;
 }
 
 function _stopFollowing() {
   if (!navActive || !_following) return;
   map.stop();
+  _stopInterpLoop();
   _following = false;
+  _isOverview = false;
   if (recenterBtn) recenterBtn.classList.remove("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
   // Restore 3D buildings when user takes manual control (not following)
   if (_was3DBeforeNav && !is3DActive) enable3D();
 }
@@ -1538,7 +1817,9 @@ function _onTouchCancel() {
 
 function _recenter() {
   _following = true;
+  _isOverview = false;
   if (recenterBtn) recenterBtn.classList.add("hide");
+  if (overviewBtn) overviewBtn.classList.remove("hide");
   // Disable 3D buildings when re-entering follow mode (obstructs tilted view)
   if (is3DActive) disable3D();
 
@@ -1549,19 +1830,47 @@ function _recenter() {
     _smoothLat = loc.lat;
     _smoothBearing = _headingDeg;
     _smoothZoom = null;
+    _smoothPitch = null;
+    _renderZoom = null;
     _zoomHoldUntil = 0;
 
-    const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
     // Re-assert nav padding in case it was cleared by a map interaction
     map.setPadding(_navPadding());
     map.easeTo({
       center: [loc.lng, loc.lat],
       bearing: _headingDeg,
-      pitch: view.pitch,
+      pitch: _computeNavPitch(),
       zoom: _computeNavZoom(),
       duration: 600,
     });
+
+    // Seed the interpolation loop for smooth follow after recenter
+    const now = performance.now();
+    _interpPrevFix = { lng: loc.lng, lat: loc.lat, bearing: _headingDeg, time: now };
+    _interpCurrFix = _interpPrevFix;
+    if (!_interpActive) {
+      _interpActive = true;
+      _interpRAF = requestAnimationFrame(_interpFrame);
+    }
   }
+}
+
+/** Enter route overview: zoom out to show the full route, pause follow. */
+function _enterOverview() {
+  if (!navActive || !navRouteCoords.length) return;
+  _stopInterpLoop();
+  _following = false;
+  _isOverview = true;
+  if (recenterBtn) recenterBtn.classList.remove("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
+
+  // Compute bounding box of the route
+  const bounds = new maplibregl.LngLatBounds();
+  for (const coord of navRouteCoords) {
+    bounds.extend(coord);
+  }
+  map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  map.fitBounds(bounds, { padding: 60, pitch: 0, bearing: 0, duration: 800 });
 }
 
 // ─── Speedometer ────────────────────────────────────────────────────
@@ -1605,10 +1914,11 @@ function _updateSpeed(lat, lng, now) {
 }
 
 // ─── Heading computation ────────────────────────────────────────────
-const HEADING_MIN_DIST_M = 5;       // ignore micro-movements for GPS fallback heading
-const HEADING_LOOKAHEAD_M = 60;     // metres ahead on route polyline for heading
+const HEADING_MIN_DIST_M = 3;       // ignore micro-movements for GPS fallback heading
+const HEADING_LOOKAHEAD_M = 60;     // metres ahead on route polyline for heading (reduced near turns)
 const HEADING_SMOOTH_FACTOR = 0.25; // blend factor per tick (lower = smoother)
 let _prevHeadingPos = null;         // { lat, lng }
+let _lastHeadingMoveDist = 0;       // accumulated movement since last heading update
 
 /**
  * Compute forward bearing by looking ahead on the route polyline from the
@@ -1672,12 +1982,43 @@ function _blendHeading(target) {
  * Compute travel heading. Primary source is route-geometry bearing
  * (immune to GPS jitter). Falls back to GPS-to-GPS bearing only when
  * off-route or route data is insufficient.
+ *
+ * KEY RULES:
+ * - Only update heading when actually moving (prevents rotation while stationary)
+ * - Near turns, reduce lookahead so the map stays aligned with the CURRENT
+ *   road segment and doesn't pre-rotate toward the upcoming road (which would
+ *   push the turn point off-screen on L-shaped roads)
  * @param {number} lat
  * @param {number} lng
  */
 function _updateHeading(lat, lng) {
+  // Gate: only update heading when there's actual movement.
+  // This prevents the map from rotating when stationary (even if GPS jitters).
+  if (_prevHeadingPos) {
+    const moveDist = _hDistM(_prevHeadingPos.lat, _prevHeadingPos.lng, lat, lng);
+    _lastHeadingMoveDist += moveDist;
+    // Need at least 3m of real movement before updating heading
+    if (_lastHeadingMoveDist < HEADING_MIN_DIST_M) {
+      _prevHeadingPos = { lat, lng };
+      return;
+    }
+    _lastHeadingMoveDist = 0;
+  }
+
+  // Adaptive lookahead: reduce when close to a turn so we stay aligned
+  // with the CURRENT road rather than pre-rotating toward the next road.
+  // On an L-shaped road, 60m lookahead would see the 90° turn and rotate
+  // early, pushing the turn point off-screen.
+  let effectiveLookahead = HEADING_LOOKAHEAD_M;
+  const turnDist = _distToNextTurnOnRoute();
+  if (turnDist > 0 && turnDist < HEADING_LOOKAHEAD_M) {
+    // When close to a turn, only look as far as the turn itself (minus a buffer)
+    // so bearing stays on the current road segment
+    effectiveLookahead = Math.max(10, turnDist * 0.5);
+  }
+
   // Primary: route-geometry bearing (follows the road, not GPS noise)
-  const routeBearing = _routeBearingAtSnap(_snapSegIdx, _snapSegFraction, HEADING_LOOKAHEAD_M);
+  const routeBearing = _routeBearingAtSnap(_snapSegIdx, _snapSegFraction, effectiveLookahead);
   if (routeBearing >= 0) {
     _blendHeading(routeBearing);
     _prevHeadingPos = { lat, lng };
@@ -2088,17 +2429,40 @@ function _advanceStep(lat, lng, snapProgressM) {
   }
 
   navStepIdx = bestIdx;
+  const firedStep = navSteps[navStepIdx];
   _lastTriggerPos = { lat, lng };
   // Reset approach tracking — the fired step (or any in-flight approach) is consumed
   _approachIdx = -1;
   _approachMinDist = Infinity;
+
+  if (firedStep && _ATTENTION_MANEUVERS.has(firedStep.maneuverType || "") && Number.isFinite(firedStep.routeProgressM)) {
+    _turnZoomHoldUntilProgress = firedStep.routeProgressM + _turnExitBufferM(firedStep);
+  } else {
+    _turnZoomHoldUntilProgress = -1;
+  }
+
+  // Release the zoom hold so _computeNavZoom can immediately recalculate
+  // based on the distance to the NEXT turn. Without this, the hold timer
+  // keeps zoom locked at max long after the turn is passed.
+  _zoomHoldUntil = 0;
+  _smoothZoom = null;
+
+  // Force-commit standard zoom immediately after a turn UNLESS the next
+  // step maneuver is within 20m (back-to-back maneuvers). This ensures the
+  // map always zooms out to the cruising view right after passing a turn.
+  const nextTurnDist = _distToNextAttentionStepUncapped();
+  if (nextTurnDist === 0 || nextTurnDist > 20) {
+    const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
+    _smoothZoom = view.standard.zoom + MOBILE_ZOOM_BOOST;
+  }
+  // Keep _renderZoom at current value — per-frame smoothing animates
+  // the zoom-out aggressively from the current level.
 
   // Update the floating turn overlay to point at the next upcoming maneuver
   _updateTurnOverlay();
 
   // If we just landed on a transit-board step, activate the hold so we
   // don't immediately cascade through intermediate stops while waiting.
-  const firedStep = navSteps[navStepIdx];
   if (firedStep?.type === "transit-board" && firedStep.departTimeMs) {
     _transitHoldUntil = firedStep.departTimeMs + TRANSIT_BOARD_HOLD_BUFFER_MS;
   }
@@ -2145,7 +2509,7 @@ export function simNextStep() {
       const view = NAV_VIEW[navMode] || NAV_VIEW.drive;
       map.easeTo({
         center: [step.lng, step.lat],
-        pitch: view.pitch,
+        pitch: view.standard.pitch,
         zoom: Math.max(map.getZoom(), 16),
         duration: 600,
       });
@@ -2182,6 +2546,9 @@ if (hudBody) {
 
 if (recenterBtn) {
   recenterBtn.addEventListener("click", _recenter);
+}
+if (overviewBtn) {
+  overviewBtn.addEventListener("click", _enterOverview);
 }
 
 // Only drag (pan) breaks follow mode. Zoom, rotate, pitch, and wheel are

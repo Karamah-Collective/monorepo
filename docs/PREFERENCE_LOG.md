@@ -58,6 +58,12 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-08 — Navigation camera behavior: manual map control must always break follow mode instantly.** During navigation, GPS follow is default only until the user manually pans/zooms/rotates. The map must then stay in the user-chosen view with no auto-centering until recenter is explicitly tapped. Recenter restores GPS follow and heading-up orientation.
 
 - **2026-04-21 — Navigation autocentering reverted to the original GPS-centered follow.** Reverted the experimental fixed-puck / secondary interpolation model. `_smartFollow()` again uses the original `map.easeTo()` camera recentering on the live GPS position during follow mode. The user prefers the original behavior over the experimental stationary-puck camera model.
+
+- **2026-04-30 — Navigation camera: 3 distinct tiers, not a continuous curve.** User explicitly wants three zoom/pitch levels (standard cruising, full zoom-in at turns, full zoom-out on highways) rather than a speed-based continuous gradient. Transitions between tiers should be smooth but aggressive (don't linger at intermediate states).
+- **2026-04-30 — Navigation camera: standard is the true default state.** After a turn, the camera must return to standard zoom/tilt unless another real maneuver is very close. Turn zoom should only activate near actual overlay-backed maneuver steps, not broadly in advance and not for road curves or continuation/name-change steps.
+- **2026-04-30 — Navigation camera: do not zoom out until the puck has cleared the turn.** Releasing turn zoom on step advance is too early. Keep turn zoom/flat pitch active until route progress has moved a small distance beyond the fired maneuver point, then return to standard.
+- **2026-04-30 — Navigation camera: any non-full-turn state must regain tilt immediately.** Once turn hold ends, pitch should snap back to the current standard or far-tier tilt instead of easing up slowly from 0. Flat pitch is only acceptable in the full turn-zoom state.
+- **2026-04-30 — Navigation camera: smooth tilt changes, but never stay flat outside full turn zoom.** When leaving full turn zoom, reintroduce some tilt immediately, then ease smoothly to the active tier's final pitch. Hard pitch snaps are acceptable only into the fully flat turn state, not out of it.
 - **2026-04-21 — Navigation follow cadence: keep the original GPS-centered follow, but run it on every location update.** The camera should not wait for the throttled route-processing loop. Route snapping, step logic, HUD math, and reroute checks can stay separately throttled at 250 ms, while `_smartFollow()` stays on the raw location stream with short easing (300 ms) and EMA jitter smoothing (α=0.35).
 - **2026-04-21 — Navigation follow jitter: EMA smoothing on camera target.** Raw GPS noise on every tick caused micro-jitter. Applied exponential moving average (α=0.35) on follow target position and bearing. Same GPS-centered model — no fixed puck, no secondary camera model.
 - **2026-04-20 — Heading from route geometry, not raw GPS bearing.** Primary heading source is the route polyline 60m ahead of the snap point (`_routeBearingAtSnap()`). GPS-to-GPS bearing is fallback only (off-route or near route end). Smoothed with 0.25 blend factor via shortest-arc interpolation.
@@ -180,6 +186,14 @@ what you like, what you've decided, and how you want things done.
 
 - **2026-04-29 — GPS puck hard-anchored via setPadding, not offset.** Hard rule: GPS puck must NEVER go above the bottom 20% of the screen during navigation. Implemented via `map.setPadding({ top: 0.70×vh })` (not `easeTo offset`). setPadding shifts MapLibre's effective viewport center to the puck position, so ALL operations (zoom, rotate, pinch-zoom, bounds-fit) pivot around it. The puck is a true fixed anchor like an FPS crosshair. Padding is set on nav start/resume, removed on nav stop (with `easeTo padding` transition).
 
+- **2026-04-30 — Nav turns: pitch=0 (top-down) + max zoom, speed-aware lead.** At every turn and roundabout, the map must flatten to top-down (pitch=0) and zoom to absolute maximum BEFORE the car arrives. Lead distance scales aggressively with speed (30m walk → 140m at 100km/h). On straight roads, tilt and zoom restore for forward-looking view. Non-negotiable: no matter what, map must be fully zoomed and flat before ANY turn.
+- **2026-04-30 — Nav camera: rAF loop with jumpTo replaces easeTo.** `easeTo` with 1Hz GPS caused stepped movement. Replaced with `requestAnimationFrame` loop using `map.jumpTo()` at 60fps. Smooth interpolation + gentle extrapolation between GPS fixes. Pitch and zoom smoothed per-frame with small alphas. Loop pauses on touch, stops on nav stop/pause/drag.
+- **2026-04-30 — Nav zoom at turns must force-commit (bypass dead zone).** When within the speed-scaled lead distance of any turn, max zoom is force-committed immediately, bypassing the normal dead zone + hold timer. This guarantees the map is already at max zoom before the car reaches the turn.
+- **2026-04-30 — Turn overlay markers shown for ALL turns, not just next.** All upcoming turn badges visible simultaneously on the map so the user can see what's coming. Passed turns are removed automatically as the user progresses.
+- **2026-04-30 — Bearing lookahead reduced near turns.** On L-shaped roads, 60m lookahead caused the map to pre-rotate toward the upcoming road, pushing the turn off-screen. Fix: when close to a turn, lookahead is clamped to `turnDist * 0.5` (min 10m) so the bearing stays aligned with the current road segment.
+- **2026-04-30 — Map rotation only on physical movement, not standing.** Heading updates are gated behind 3m minimum accumulated movement. If standing still (even if GPS jitters or device rotates), the map stays fixed. Only actual walking/driving triggers rotation.
+- **2026-04-30 — Zoom-out easier on long straights.** Dead zone for zoom-out reduced from 0.70 to 0.40 levels. Hold timer reduced from 3s to 2s. This lets the map zoom out and tilt for a wider forward view on long straight roads between turns.
+
 ## Patterns to Avoid
 
 > Things that were tried and rejected, or that the user has explicitly said "don't do."
@@ -233,6 +247,8 @@ what you like, what you've decided, and how you want things done.
 - Route-geometry heading: `_routeBearingAtSnap()` looks N metres ahead on the polyline from the snap point. Immune to GPS noise. Smooth with shortest-arc blend factor. GPS bearing is fallback only.
 - Navigation follow should use the original GPS-centered `easeTo` autocentering path unless the user explicitly asks to revisit the camera model.
 - When navigation follow feels stepped, keep the original GPS-centered camera model and feed `_smartFollow()` from every location update. Throttle route math separately instead of making the camera wait for it.
+- On turns, the map MUST be fully top-down (pitch=0) and at maximum zoom. On straight roads, restore tilt and zoom out for forward-looking view. The transition must complete BEFORE the turn based on speed.
+- GPS smoothing: use a rAF interpolation loop with `jumpTo` at 60fps, extrapolating between discrete GPS fixes. Never use `easeTo` for follow — it creates stepped motion with discrete GPS updates.
 
 ---
 
@@ -241,6 +257,97 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-04-30 — 3-tier navigation camera system
+
+Replaced the continuous speed-based zoom/pitch curve with a clear 3-tier system:
+
+**Tier A — Standard (cruising between turns):**
+- Moderate zoom (drive: 16.5), tilted view (55°)
+- This is the default state after turns and between maneuvers
+
+**Tier B — Turn zoom-in (approaching maneuvers):**
+- Zoomed in (drive: 17.8), flat pitch (0°) for clarity
+- Only triggers for real maneuver steps with overlays (`turn`, `end of road`, ramps/forks/roundabouts)
+- Narrow trigger window: starts at 90m, fully commits at 22m (drive mode)
+- Roundabouts use a slightly less aggressive variant to keep the full circle visible
+
+**Tier C — Far zoom-out (highway/long stretches):**
+- Wider view (drive: 15.5), high tilt (65°) for maximum forward visibility
+- Triggers only when the next real maneuver is confirmed >1200m away (drive mode)
+- No intermediate blend: standard remains the default until a true highway-style stretch
+
+**Key parameters (drive mode):**
+- turnStart: 90m, turnFull: 22m
+- farThreshold: 1200m
+- Post-turn rule: if the next real maneuver is not within 20m, force standard immediately
+- Turn-exit rule: keep turn zoom until route progress clears the fired maneuver point by a small buffer (~8m drive, smaller on walk/cycle)
+- Pitch rule: when turn hold ends, restore the current tier's tilt immediately; only full turn zoom stays flat
+- Pitch transition rule: after turn hold ends, restore a minimum visible tilt immediately, then smooth to the target tilt with a faster recovery alpha
+- Fixed a step-distance accumulation bug that was undercounting later maneuver distances and keeping the camera in turn mode too often
+
+**User preference:** standard is the true default view; zoom in only near actual turns, zoom out harder only on genuine long no-turn stretches.
+
+**Files:** `src/navigation.js`
+
+### 2026-04-30 — Post-turn zoom-out + route overview button
+
+**a. Post-turn zoom-out proportional to next turn distance:**
+- After passing a turn (step fires), zoom hold is immediately released (`_zoomHoldUntil=0, _smoothZoom=null, _renderZoom=null` in `_advanceStep`).
+- Per-frame zoom-out alpha now scales with delta magnitude: larger zoom-outs (after turns with long straights ahead) animate faster (α up to 0.06), small deltas stay gentle (α=0.025). Formula: `α = min(0.06, 0.025 + |delta| * 0.02)`.
+- Result: map zooms out quickly after turns proportional to how far the next turn is (farther = lower target zoom = bigger delta = faster animation).
+
+**b. Route overview button:**
+- New "Overview" button (expand icon) in bottom-right, same position as recenter button.
+- Mutually exclusive visibility: overview shows when following (normal nav), recenter shows when user panned away or entered overview.
+- On tap: stops follow mode, fits map to full route bounds (`fitBounds` with 60px padding, pitch 0, bearing 0), shows recenter.
+- Recenter tap restores follow + shows overview again.
+- Managed in startNavigation, stopNavigation, pauseNavigation, resumeNavigation.
+- Visual style aliased to `.nav-recenter` template (44px circle, surface bg, accent color, shadow-md).
+
+**Files:** `src/navigation.js`, `index.html`, `src/styles/styles.css`, `src/styles/design-tokens.css`.
+
+### 2026-04-30 — Turn-aware pitch/zoom + rAF GPS smoothing
+
+**a. Turn-aware pitch (flat top-down at turns):**
+- Added `_computeNavPitch()` — dynamically flattens pitch to 0 (top-down bird's-eye) when approaching any turn or roundabout.
+- Lead distance scales with speed: 30m at walking → 120m at 100km/h. Map is fully flat BEFORE the turn.
+- Restoring tilt on straight roads uses slower alpha (deliberate, not jarring).
+- Roundabouts force-flat immediately when within lead range.
+
+**b. Aggressive turn zoom (force max before turn):**
+- When within speed-scaled lead distance of any turn, max zoom is force-committed immediately (bypasses dead zone + hold timer).
+- Lead raised from 80m to 140m max. Boost raised to 4.5. Absolute cap raised from mobileMax+1.0 to mobileMax+1.5.
+- Result: map is guaranteed at max zoom before the car reaches the turn point.
+
+**c. rAF interpolation loop (60fps smooth GPS):**
+- Root cause of stepped movement: discrete GPS at ~1Hz → `easeTo` animation-pause-animation cycle.
+- Solution: `requestAnimationFrame` loop with `map.jumpTo()` at 60fps.
+- Each GPS fix updates `_interpCurrFix`. Between fixes, the loop extrapolates position and bearing (capped at 1.2× interval).
+- Pitch smoothed per-frame (α=0.06 flatten, α=0.025 restore). Zoom smoothed per-frame (α=0.08 in, α=0.03 out).
+- Loop pauses while fingers on screen, stops on nav stop/pause/follow-break.
+- `_smartFollow` no longer calls `easeTo` — it just feeds targets to the loop.
+
+**d. Turn overlays for ALL turns (not just next):**
+- `_turnOverlayMarkers[]` array replaces single `_turnOverlayMarker`.
+- All upcoming turns shown simultaneously so user sees what's coming.
+- Passed markers removed as route progresses.
+
+**e. Bearing no longer pre-rotates toward upcoming road:**
+- On L-shaped roads, 60m lookahead caused map to rotate 90° early, pushing turn off-screen.
+- Fix: when turn is within lookahead distance, clamp `effectiveLookahead = turnDist * 0.5` (min 10m).
+- Map stays aligned with current road segment until physically reaching the turn.
+
+**f. Map only rotates on actual movement:**
+- Heading updates now gated by 3m accumulated movement (`_lastHeadingMoveDist`).
+- Standing still = map stays fixed, even if GPS jitters or device rotates.
+
+**g. Zoom-out on long straights:**
+- `ZOOM_DZ_OUT` reduced from 0.70 to 0.40, `ZOOM_HOLD_MS` from 3s to 2s.
+- Allows the map to zoom out and tilt for wider view between turns.
+- `FOLLOW_SMOOTH_ALPHA` raised from 0.18 to 0.35 for more responsive position tracking.
+
+**Files:** `src/navigation.js`, `docs/PREFERENCE_LOG.md`.
 
 ### 2026-04-18 — Fix mojibake, zoom out nav view, smooth GPS interpolation
 

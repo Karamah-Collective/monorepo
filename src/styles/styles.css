@@ -4494,7 +4494,8 @@ body.nav-mode #style-picker {
   body.nav-mode .nav-speed {
     bottom: calc(var(--safe-b) + 16px);
   }
-  body.nav-mode .nav-recenter {
+  body.nav-mode .nav-recenter,
+  body.nav-mode .nav-overview {
     bottom: calc(var(--safe-b) + 16px);
   }
 }
@@ -4517,13 +4518,26 @@ body.nav-mode #style-picker {
 }
 .nav-recenter.hide { display: none; }
 
-/* Desktop: position speed/recenter at bottom edges */
+/* ─── Navigation Overview Button layout ──────────────────────────────────── */
+.nav-overview {
+  position: absolute;
+  z-index: var(--z-nav-hud);
+  bottom: calc(var(--safe-b) + 16px);
+  right: var(--sp-4);
+}
+.nav-overview.hide { display: none; }
+
+/* Desktop: position speed/recenter/overview at bottom edges */
 @media (min-width: 769px) {
   .nav-speed {
     bottom: calc(var(--safe-b) + 24px);
     left: var(--sp-6);
   }
   .nav-recenter {
+    bottom: calc(var(--safe-b) + 24px);
+    right: var(--sp-6);
+  }
+  .nav-overview {
     bottom: calc(var(--safe-b) + 24px);
     right: var(--sp-6);
   }

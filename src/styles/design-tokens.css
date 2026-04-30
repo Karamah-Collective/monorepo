@@ -1724,8 +1724,9 @@ html.dark-mode .nav-speed {
   border-color: #1c1c1e;
 }
 
-/* ─── Navigation Recenter Button ────────────────────────────────────────────── */
-.nav-recenter {
+/* ─── Navigation Recenter / Overview Button ─────────────────────────────────── */
+.nav-recenter,
+.nav-overview {
   width: 44px;
   height: 44px;
   display: flex;
@@ -1740,14 +1741,17 @@ html.dark-mode .nav-speed {
   transition: transform var(--t-fast), opacity var(--t-fast);
 }
 @media (hover: hover) {
-  .nav-recenter:hover {
+  .nav-recenter:hover,
+  .nav-overview:hover {
     transform: scale(1.08);
   }
 }
-.nav-recenter:active {
+.nav-recenter:active,
+.nav-overview:active {
   transform: scale(0.95);
 }
-html.dark-mode .nav-recenter {
+html.dark-mode .nav-recenter,
+html.dark-mode .nav-overview {
   background: #000000;
   border-color: #1c1c1e;
   color: var(--accent);
