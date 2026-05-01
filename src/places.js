@@ -54,6 +54,11 @@ function clearActivePlacePopup() {
   document.querySelectorAll(".place-popup-wrap.maplibregl-popup").forEach((p) => p.remove());
 }
 
+/** Padding that places the marker at ~75% from the top so the popup opens above it. */
+function _mobilePadding() {
+  return { top: Math.round(window.innerHeight / 2), bottom: 0, left: 0, right: 0 };
+}
+
 let _sheetCloseRAF1 = 0;
 let _sheetCloseRAF2 = 0;
 let _mobilePlaceFocusLocked = false;
@@ -101,6 +106,7 @@ function focusPlaceOnPhone(place, token) {
     zoom: targetZoom,
     duration: 280,
     essential: true,
+    padding: _mobilePadding(),
   });
 }
 
@@ -882,12 +888,13 @@ function _buildEventCard(ev) {
   const linkBtn = ev.url
     ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Open registration / event page"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
     : "";
+  const editBtn = `<button type="button" class="pp-ev-edit-btn" data-ev-id="${escA(ev.id)}" title="Request an edit" aria-label="Request event edit"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
   return `<div class="pp-ev-card">
     <div class="pp-ev-info">
       <span class="pp-ev-title">${esc(ev.title)}</span>
       <span class="pp-ev-meta">${recurIcon}${dateStr ? `<span class="pp-ev-date">${esc(dateStr)}</span>` : ""}${timeStr ? `<span class="pp-ev-time">${esc(timeStr)}</span>` : ""}</span>
     </div>
-    ${linkBtn}
+    <div class="pp-ev-actions">${editBtn}${linkBtn}</div>
   </div>`;
 }
 
@@ -974,7 +981,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
 
   // Events section — only for mosques/prayer rooms with active events
   const placeEvents = eventsData.filter((ev) => ev.placeId === place.id);
-  if (placeEvents.length || place.type === "mosque" || place.type === "prayer_room") {
+  if (placeEvents.length || place.type === "mosque") {
     const eventsSection = document.createElement("div");
     eventsSection.className = "pp-events";
     const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Submit an event" aria-label="Submit event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
@@ -986,6 +993,14 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     eventsSection.querySelector(".pp-ev-add-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       openEventOverlay(place.id);
+    });
+    // Attach edit-event handlers via delegation
+    eventsSection.addEventListener("click", (e) => {
+      const editBtn = e.target.closest(".pp-ev-edit-btn");
+      if (!editBtn) return;
+      e.stopPropagation();
+      const ev = eventsData.find((x) => x.id === editBtn.dataset.evId);
+      if (ev) openEventOverlay(null, ev);
     });
     inner.appendChild(eventsSection);
   }
@@ -1103,6 +1118,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
       zoom: targetZoom,
       duration: 320,
       essential: true,
+      padding: _mobilePadding(),
     });
     return;
   }
@@ -2047,13 +2063,16 @@ function _renderEventsList() {
     const distBadge = dist != null
       ? `<span class="ev-dist-badge">${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>`
       : "";
-    return `<button class="ev-overlay-card" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}">
+    return `<button class="ev-overlay-card" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
       <div class="ev-overlay-top">
         <div class="ev-overlay-info">
           <span class="ev-overlay-title">${esc(ev.title)}</span>
           ${placeName ? `<span class="ev-overlay-mosque">${placeName}</span>` : ""}
         </div>
-        ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
+        <div class="ev-overlay-actions">
+          <span class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+          ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
+        </div>
       </div>
       <div class="ev-overlay-meta">
         ${recurBadge}${nextDateBadge}${timeStr ? `<span class="ev-time-badge">${esc(timeStr)}</span>` : ""}${distBadge}
@@ -2109,6 +2128,17 @@ _eventsOverlay.addEventListener("click", (e) => {
 });
 
 _eventsList.addEventListener("click", (e) => {
+  // Handle edit button click first
+  const editBtn = e.target.closest(".ev-overlay-edit-btn");
+  if (editBtn) {
+    e.stopPropagation();
+    const ev = eventsData.find((x) => x.id === editBtn.dataset.evId);
+    if (ev) {
+      _eventsOverlay.classList.add("hide");
+      openEventOverlay(null, ev);
+    }
+    return;
+  }
   const card = e.target.closest(".ev-overlay-card");
   if (!card) return;
   const url = card.dataset.evUrl;
@@ -2438,19 +2468,40 @@ function _snapToNearestCard(track, count) {
 }
 
 function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
-function openEventOverlay(preselectedPlaceId) {
+let _eventEditMode = false;
+let _eventEditOriginal = null;
+
+/**
+ * Open the event form overlay in add or edit mode.
+ * @param {string} [preselectedPlaceId] - Pre-select this mosque in add mode
+ * @param {object} [editEvent] - If provided, opens in edit mode pre-filled with this event
+ */
+function openEventOverlay(preselectedPlaceId, editEvent) {
   const overlay = document.getElementById("event-overlay");
   const form = document.getElementById("event-form");
   const mosqueSelect = document.getElementById("ev-mosque");
+  const heading = document.getElementById("ev-heading");
+  const submitBtn = document.getElementById("ev-submit");
   form.reset();
+
+  // Set mode
+  _eventEditMode = !!editEvent;
+  _eventEditOriginal = editEvent || null;
+  document.getElementById("ev-edit-id").value = editEvent ? editEvent.id : "";
+
+  // Update heading and submit button text
+  heading.textContent = _eventEditMode ? "Suggest Edit" : "Submit Event";
+  submitBtn.textContent = _eventEditMode ? "Submit Edit Suggestion" : "Submit Event";
+
   // Reset schedule chips to one-time
   _evScheduleMode = "oneTime";
   overlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
   overlay.querySelector('.ev-schedule-chips .ev-sched-chip[data-value="oneTime"]')?.classList.add("active");
   // Populate mosque dropdown with approved mosques/prayer rooms
   const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
+  const selectedPlaceId = editEvent ? editEvent.placeId : preselectedPlaceId;
   mosqueSelect.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
-    mosques.map((m) => `<option value="${escA(m.id)}"${m.id === preselectedPlaceId ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+    mosques.map((m) => `<option value="${escA(m.id)}"${m.id === selectedPlaceId ? " selected" : ""}>${esc(m.name)}</option>`).join("");
   // Show one-time fields by default
   document.getElementById("ev-onetime-fields").classList.remove("hide");
   document.getElementById("ev-recurring-fields").classList.add("hide");
@@ -2461,7 +2512,67 @@ function openEventOverlay(preselectedPlaceId) {
   document.getElementById("ev-day-picker")?.classList.add("hide");
   document.getElementById("ev-monthly-opts")?.classList.add("hide");
   document.getElementById("ev-biweekly-anchor")?.classList.add("hide");
+
+  // Pre-fill fields in edit mode
+  if (editEvent) {
+    document.getElementById("ev-title").value = editEvent.title || "";
+    document.getElementById("ev-desc").value = editEvent.description || "";
+    document.getElementById("ev-url").value = editEvent.url || "";
+    document.getElementById("ev-time").value = editEvent.time || "";
+    document.getElementById("ev-end-time").value = editEvent.endTime || "";
+
+    if (editEvent.recurring && editEvent.recurrence) {
+      // Switch to recurring mode
+      _evScheduleMode = "recurring";
+      overlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
+      overlay.querySelector('.ev-schedule-chips .ev-sched-chip[data-value="recurring"]')?.classList.add("active");
+      document.getElementById("ev-onetime-fields").classList.add("hide");
+      document.getElementById("ev-recurring-fields").classList.remove("hide");
+      _prefillRecurringFromPattern(editEvent.recurrence);
+    } else {
+      // One-time: pre-fill date
+      document.getElementById("ev-date").value = editEvent.date || "";
+    }
+  }
+
   overlay.classList.remove("hide");
+}
+
+/** Pre-fill recurring form chips from a stored pattern string. */
+function _prefillRecurringFromPattern(pattern) {
+  const parsed = parsePattern(pattern);
+  if (!parsed) return;
+
+  _evFrequency = parsed.type === "monthly-date" || parsed.type === "monthly-day" ? "monthly" : parsed.type;
+
+  // Activate frequency button
+  document.querySelectorAll("#ev-freq-chips .ev-seg-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.value === _evFrequency);
+  });
+
+  if (parsed.days) {
+    _evDaysOfWeek = new Set(parsed.days);
+    _buildDayChips(".ev-day-ring:not(.ev-monthly-day-dow)", _evDaysOfWeek);
+  }
+  if (parsed.type === "monthly-date" && parsed.monthDates) {
+    _evMonthlyType = "date";
+    _evMonthDates = new Set(parsed.monthDates);
+    _buildMonthDateChips();
+  }
+  if (parsed.type === "monthly-day") {
+    _evMonthlyType = "day";
+    if (parsed.ordinals) { _evOrdinals = new Set(parsed.ordinals); _buildOrdinalChips(); }
+    if (parsed.days) { _evMonthlyDows = new Set(parsed.days); _buildDayChips(".ev-monthly-day-dow", _evMonthlyDows); }
+    // Set monthly toggle to "day"
+    _eventOverlay.querySelectorAll(".ev-mtog").forEach((c) => c.classList.remove("active"));
+    _eventOverlay.querySelector('.ev-mtog[data-value="day"]')?.classList.add("active");
+  }
+  if (parsed.type === "biweekly" && parsed.anchor) {
+    const anchorInput = document.getElementById("ev-anchor-date");
+    if (anchorInput) anchorInput.value = parsed.anchor;
+  }
+
+  _syncRecurringFields();
 }
 document.getElementById("suggest-place-btn").addEventListener("click", () => {
   document.getElementById("suggest-form").reset();
@@ -3502,9 +3613,33 @@ _eventForm.addEventListener("submit", async (e) => {
 
   const recurrencePattern = isRecurring ? (_buildCurrentPattern() || "") : "";
 
+  // Build changes summary for edit mode
+  let changesSummary = "";
+  if (_eventEditMode && _eventEditOriginal) {
+    const orig = _eventEditOriginal;
+    const diffs = [];
+    if (title !== (orig.title || "")) diffs.push(`Title: "${orig.title || ""}" → "${title}"`);
+    if (placeId !== (orig.placeId || "")) diffs.push(`Mosque changed`);
+    const newDesc = document.getElementById("ev-desc").value.trim();
+    if (newDesc !== (orig.description || "")) diffs.push(newDesc ? `Description updated` : `Description removed`);
+    const newDate = isRecurring ? "" : dateInput.value;
+    if (newDate !== (orig.date || "")) diffs.push(`Date: "${orig.date || ""}" → "${newDate}"`);
+    const newTime = document.getElementById("ev-time").value;
+    if (newTime !== (orig.time || "")) diffs.push(`Time: "${orig.time || ""}" → "${newTime}"`);
+    const newEndTime = document.getElementById("ev-end-time").value;
+    if (newEndTime !== (orig.endTime || "")) diffs.push(`End time: "${orig.endTime || ""}" → "${newEndTime}"`);
+    const wasRecurring = !!orig.recurring;
+    if (isRecurring !== wasRecurring) diffs.push(`Schedule: ${wasRecurring ? "recurring" : "one-time"} → ${isRecurring ? "recurring" : "one-time"}`);
+    if (isRecurring && recurrencePattern !== (orig.recurrence || "")) diffs.push(`Recurrence pattern changed`);
+    const newUrl = document.getElementById("ev-url").value.trim();
+    if (newUrl !== (orig.url || "")) diffs.push(newUrl ? `URL updated` : `URL removed`);
+    changesSummary = diffs.length ? diffs.join("\n") : "(no changes detected)";
+  }
+
+  const isEditMode = _eventEditMode && _eventEditOriginal;
   const payload = {
     token: null,
-    formType: "event",
+    formType: isEditMode ? "event-edit" : "event",
     placeId,
     title,
     description: document.getElementById("ev-desc").value.trim(),
@@ -3515,11 +3650,15 @@ _eventForm.addEventListener("submit", async (e) => {
     recurrencePattern,
     url: document.getElementById("ev-url").value.trim(),
   };
+  if (isEditMode) {
+    payload.eventId = _eventEditOriginal.id;
+    payload.changesSummary = changesSummary;
+  }
 
   try {
     await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
-      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "submit_event" }).then(resolve)),
+      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: isEditMode ? "edit_event" : "submit_event" }).then(resolve)),
     );
     payload.token = token;
     const res = await fetch("/api/submit", {
@@ -3530,8 +3669,11 @@ _eventForm.addEventListener("submit", async (e) => {
     const data = await res.json();
     if (data.success) {
       _eventForm.reset();
+      _eventEditMode = false;
+      _eventEditOriginal = null;
       _eventOverlay.classList.add("hide");
-      setTimeout(() => showToast("Event submitted", "check", "It will appear after review."), 200);
+      const msg = isEditMode ? "Edit suggestion submitted" : "Event submitted";
+      setTimeout(() => showToast(msg, "check", "It will appear after review."), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }

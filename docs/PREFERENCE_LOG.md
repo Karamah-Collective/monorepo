@@ -1367,6 +1367,23 @@ When route-progress catch-up detected the user had passed step N, it set `navSte
 
 **Files:** `src/map-style-config.js`, `src/map-style.js`, `src/map-style-editor.js`.
 
+### 2026-05-01 — Event edit request feature
+
+Added "Request Edit" functionality for events, matching the existing place edit pattern.
+
+**What was added:**
+- **Apps Script:** New `event-edit` formType handler in `doPost()`. Creates an `EventEdit` sheet (auto-created) with columns: Timestamp, EventID, PlaceID, Title, Description, EventDate, EventTime, EndTime, Recurring, RecurrencePattern, URL, Score, ChangesSummary, Approved.
+- **CF Function:** `event-edit` added to allowed `formType` values in `submit.js`. `eventId` field validation added.
+- **Event form dual mode:** `openEventOverlay()` now accepts an optional `editEvent` parameter. When provided, the form pre-fills all fields (title, description, mosque, schedule, date/time, URL, recurring pattern) and switches heading to "Request Edit" / submit button to "Submit Edit Request".
+- **Recurring pre-fill:** `_prefillRecurringFromPattern()` parses stored pattern strings and restores frequency, day-of-week, month-date, ordinal, and biweekly anchor selections.
+- **Changes summary:** Edit submissions auto-generate a diff summary comparing original vs new values.
+- **Edit buttons on event cards:** Both popup event cards (`.pp-ev-edit-btn`) and events overlay list cards (`.ev-overlay-edit-btn`) now have a pencil icon button. Same visual pattern as the existing link button.
+- **Design uniformity:** Edit button in popup cards uses the same 26×26 accent-tinted style as `.pp-ev-link`. Overlay list edit button uses subtle opacity fade matching the link icon.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `functions/api/submit.js`, `src/places.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`
+
+**Spreadsheet setup required:** No manual spreadsheet setup needed — the `EventEdit` sheet is auto-created on first event edit submission. Headers: Timestamp | EventID | PlaceID | Title | Description | EventDate | EventTime | EndTime | Recurring | RecurrencePattern | URL | Score | ChangesSummary | Approved.
+
 ### 2026-04-29 — Navigation zoom: smoother + more aggressive, mobile boost
 
 **Problem:** Zoom in/out during navigation was too subtle (only 1 zoom level range) and jerky (no smoothing between levels). Especially bad on phone where the small display needs more dramatic zoom changes to show turns vs long roads.

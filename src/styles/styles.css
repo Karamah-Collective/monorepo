@@ -2726,21 +2726,14 @@ body.dark-mode .sp-tip {
   height: 20px;
   border-radius: 50%;
   border: none;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
   cursor: pointer;
-  transition: background var(--t-fast);
-}
-body.dark-mode .pp-ev-add-btn {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
-  color: var(--accent-muted);
+  transition: filter var(--t-fast);
 }
 @media (hover: hover) {
   .pp-ev-add-btn:hover {
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
-  }
-  body.dark-mode .pp-ev-add-btn:hover {
-    background: color-mix(in srgb, var(--accent) 40%, transparent);
+    filter: brightness(1.12);
   }
 }
 .pp-events-list {
@@ -2756,6 +2749,12 @@ body.dark-mode .pp-ev-add-btn {
   color: var(--text-3);
   margin: 0;
   font-style: italic;
+}
+.pp-ev-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  flex-shrink: 0;
 }
 
 /* Boycott callout in popup */
@@ -5092,6 +5091,29 @@ body.nav-mode #style-picker {
 .ev-overlay-link-icon {
   color: var(--accent);
   flex-shrink: 0;
+}
+.ev-overlay-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.ev-overlay-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text-2);
+  opacity: 0.6;
+  transition: opacity var(--t-fast), color var(--t-fast);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .ev-overlay-edit-btn:hover {
+    opacity: 1;
+    color: var(--text-1);
+  }
 }
 .ev-overlay-meta {
   display: flex;

@@ -141,18 +141,28 @@ const ALL_STEPS = [
     phoneOrder: 5,
   },
   {
+    target: "#events-pill",
+    title: "Events",
+    body: "Browse mosque events \u2014 classes, lectures, community gatherings and more",
+    icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    forceShow: true,
+    before() { _showEventsPillForTutorial(); },
+    phoneOrder: 11,
+  },
+  {
     target: "#prayer-pill",
     title: "Prayer Times",
     body: "Today\u2019s prayer schedule with a live countdown \u2014 Ramadan times appear automatically",
     icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    phoneOrder: 11,
+    before() { _restoreEventsPill(); },
+    phoneOrder: 12,
   },
   {
     target: "#eid-pill",
     title: "Eid Prayers",
     body: "Find Eid prayer locations, jamaat times and organizers \u2014 tap to see all locations on the map",
     icon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-    phoneOrder: 12,
+    phoneOrder: 13,
   },
   {
     target: null,
@@ -189,6 +199,23 @@ function closeToolsMenu() {
   return false;
 }
 
+/** Re-hide the events pill if it has no events (was only shown for the tutorial step). */
+let _eventsPillWasHidden = false;
+function _showEventsPillForTutorial() {
+  const el = document.getElementById("events-pill");
+  if (el && el.classList.contains("hide")) {
+    _eventsPillWasHidden = true;
+    el.classList.remove("hide");
+  }
+}
+function _restoreEventsPill() {
+  if (_eventsPillWasHidden) {
+    const el = document.getElementById("events-pill");
+    if (el) el.classList.add("hide");
+    _eventsPillWasHidden = false;
+  }
+}
+
 // ─── Build the filtered step list for the current layout ──────────────────────
 let STEPS = [];
 function buildSteps() {
@@ -196,7 +223,7 @@ function buildSteps() {
   STEPS = ALL_STEPS.filter(s => {
     if (s.layout && !s.layout.includes(layout)) return false;
     // Skip steps whose target is hidden (e.g. Eid pill when no data loaded)
-    if (s.target) {
+    if (s.target && !s.forceShow) {
       const el = document.querySelector(s.target);
       if (el && el.classList.contains("hide")) return false;
     }
@@ -477,6 +504,7 @@ function retreat() {
 function dismiss() {
   localStorage.setItem(TUTORIAL_KEY, "1");
   closeToolsMenu();
+  _restoreEventsPill();
   overlayEl.classList.remove("visible");
   cardEl.classList.remove("visible");
   spotlightEl.style.opacity = "0";

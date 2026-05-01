@@ -303,7 +303,7 @@ html.dark-mode body {
   }
 }
 .btn-icon-card:active {
-  color: var(--accent);
+  color: var(--text-2);
 }
 
 .btn-icon-card.active {
@@ -1336,7 +1336,8 @@ html.dark-mode body {
   color: var(--accent);
   flex-shrink: 0;
 }
-.pp-ev-link {
+.pp-ev-link,
+.pp-ev-edit-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1346,11 +1347,18 @@ html.dark-mode body {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   flex-shrink: 0;
-  transition: background var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast);
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 @media (hover: hover) {
   .pp-ev-link:hover {
     background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .pp-ev-edit-btn:hover {
+    color: var(--text-1);
+    background: color-mix(in srgb, var(--text-1) 12%, transparent);
   }
 }
 
