@@ -116,6 +116,9 @@ document.addEventListener(
     const ct = e.changedTouches[0];
     e.preventDefault(); // prevent the browser's delayed click
     _suppressClick = Date.now();
+    // Auto-clear in case e.preventDefault() fully blocks the native click
+    // (which would otherwise reset _suppressClick in the capture handler).
+    setTimeout(() => { _suppressClick = 0; }, 500);
     interactive.dispatchEvent(new MouseEvent('click', {
       bubbles: true, cancelable: true, view: window,
       clientX: ct.clientX, clientY: ct.clientY,

@@ -784,7 +784,11 @@ body.dark-mode .sg-label select {
 }
 body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
 body.dark-mode input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
+  filter: invert(1) brightness(1.5);
+}
+body.dark-mode #event-form input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark-mode #event-form input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.5);
 }
 
 /* Tutorial card */
@@ -2727,9 +2731,16 @@ body.dark-mode .sp-tip {
   cursor: pointer;
   transition: background var(--t-fast);
 }
+body.dark-mode .pp-ev-add-btn {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent-muted);
+}
 @media (hover: hover) {
   .pp-ev-add-btn:hover {
     background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  body.dark-mode .pp-ev-add-btn:hover {
+    background: color-mix(in srgb, var(--accent) 40%, transparent);
   }
 }
 .pp-events-list {
@@ -3019,7 +3030,7 @@ body.dark-mode .sp-tip {
 #event-form input[type="date"]::-webkit-calendar-picker-indicator,
 #event-form input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.8;
   filter: var(--picker-filter, none);
 }
 #event-form select {
@@ -5093,6 +5104,225 @@ body.nav-mode #style-picker {
   color: var(--text-2);
   line-height: 1.4;
   margin: 0;
+}
+
+/* ── Event filter bar ─── */
+.ev-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-7) var(--sp-3);
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.ev-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.ev-mosque-filter {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  padding: var(--sp-1h) var(--sp-5);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23506070' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 26px;
+}
+.ev-empty-state {
+  text-align: center;
+  padding: var(--sp-10) var(--sp-7);
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Recurring fields spacing ─── */
+#ev-recurring-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+
+
+/* ── Segmented bar (frequency) ─── */
+.ev-seg-bar {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin-top: var(--sp-1h);
+}
+.ev-seg-bar .ev-seg-btn {
+  flex: 1;
+  padding: var(--sp-2h) var(--sp-1);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+  border-right: 1.5px solid var(--border);
+}
+.ev-seg-bar .ev-seg-btn:last-child {
+  border-right: none;
+}
+.ev-seg-bar .ev-seg-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ── Day ring (circular day buttons) ─── */
+.ev-day-ring {
+  display: flex;
+  gap: var(--sp-1h);
+  justify-content: center;
+}
+.ev-day-ring .ev-day-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-day-ring .ev-day-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+@media (hover: hover) {
+  .ev-day-ring .ev-day-btn:not(.active):hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+/* ── Monthly toggle (Date / Day) ─── */
+.ev-monthly-toggle {
+  display: flex;
+  gap: var(--sp-2);
+}
+.ev-mtog {
+  flex: 1;
+  padding: var(--sp-2) 0;
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-mtog.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+@media (hover: hover) {
+  .ev-mtog:not(.active):hover {
+    border-color: var(--surface-3);
+    background: var(--surface-2);
+  }
+}
+
+/* ── Month date grid (7-column) ─── */
+.ev-mdate-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-1h);
+}
+.ev-mdate-grid .ev-mdate-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-mdate-grid .ev-mdate-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+@media (hover: hover) {
+  .ev-mdate-grid .ev-mdate-btn:not(.active):hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+/* ── Ordinal row (1st, 2nd …) ─── */
+.ev-ord-row {
+  display: flex;
+  gap: var(--sp-1h);
+  justify-content: center;
+}
+.ev-ord-row .ev-ord-btn {
+  padding: var(--sp-1h) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-ord-row .ev-ord-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+@media (hover: hover) {
+  .ev-ord-row .ev-ord-btn:not(.active):hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+/* ── Monthly sub-sections spacing ─── */
+#ev-monthly-opts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+#ev-monthly-day-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 
 /* ── Promos overlay panel (matches Eid pattern) ─── */

@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260501" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260501-2" />
   </head>
   <body>
     <div id="app">
@@ -1131,22 +1131,48 @@
                 </button>
               </div>
             </div>
+            <!-- One-time: date is mandatory -->
             <div id="ev-onetime-fields">
               <label class="sg-label">
-                <span>Date</span>
-                <input id="ev-date" type="date" />
+                <span>Date <span class="sg-req">*</span></span>
+                <input id="ev-date" type="date" required />
               </label>
             </div>
+            <!-- Recurring: structured frequency selector -->
             <div id="ev-recurring-fields" class="hide">
-              <label class="sg-label">
-                <span>Recurrence Pattern <span class="sg-req">*</span></span>
-                <input
-                  id="ev-recurrence"
-                  type="text"
-                  placeholder="e.g. Every Friday, 1st Saturday of month"
-                  maxlength="200"
-                />
+              <!-- Frequency segmented control -->
+              <div class="sg-label">
+                <span>Frequency <span class="sg-req">*</span></span>
+                <div id="ev-freq-chips" class="ev-seg-bar"></div>
+              </div>
+              <!-- Day picker (weekly / biweekly) -->
+              <div id="ev-day-picker" class="sg-label hide">
+                <span>Days</span>
+                <div class="ev-day-ring"></div>
+              </div>
+              <!-- Biweekly anchor -->
+              <label id="ev-biweekly-anchor" class="sg-label hide">
+                <span>Starting from</span>
+                <input id="ev-anchor-date" type="date" />
               </label>
+              <!-- Monthly sub-type -->
+              <div id="ev-monthly-opts" class="hide">
+                <div class="ev-monthly-toggle">
+                  <button type="button" class="ev-mtog active" data-value="date">Date</button>
+                  <button type="button" class="ev-mtog" data-value="day">Day</button>
+                </div>
+                <!-- Monthly date (1-31) -->
+                <div id="ev-monthly-date-picker">
+                  <div class="ev-mdate-grid"></div>
+                </div>
+                <!-- Monthly ordinal + day -->
+                <div id="ev-monthly-day-picker" class="hide">
+                  <div class="ev-ord-row"></div>
+                  <div class="ev-day-ring ev-monthly-day-dow"></div>
+                </div>
+              </div>
+              <!-- Preview -->
+              <div id="ev-recurrence-preview" class="ev-recurrence-preview hide"></div>
             </div>
             <div class="ev-time-row">
               <label class="sg-label ev-time-field">
@@ -1460,7 +1486,29 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <div id="events-list"></div>
+          <div id="events-list">
+            <!-- Filter bar -->
+            <div id="ev-filter-bar" class="ev-filter-bar">
+              <div class="ev-filter-row">
+                <button type="button" class="ev-filter-chip active" data-filter="upcoming">Upcoming</button>
+                <button type="button" class="ev-filter-chip" data-filter="today">Today</button>
+                <button type="button" class="ev-filter-chip" data-filter="this-week">This week</button>
+                <button type="button" class="ev-filter-chip" data-filter="this-month">This month</button>
+                <button type="button" class="ev-filter-chip" data-filter="all">All</button>
+              </div>
+              <div class="ev-filter-row">
+                <button type="button" class="ev-filter-chip ev-filter-proximity" data-filter="nearby" title="Sort by distance">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span>Nearby</span>
+                </button>
+                <select id="ev-mosque-filter" class="ev-mosque-filter">
+                  <option value="">All mosques</option>
+                </select>
+              </div>
+            </div>
+            <div id="ev-filtered-list"></div>
+            <p id="ev-empty-state" class="ev-empty-state hide">No events match your filters.</p>
+          </div>
         </div>
       </div>
 

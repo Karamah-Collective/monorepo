@@ -4,6 +4,7 @@ import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl,
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
+import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -834,15 +835,41 @@ window.addEventListener("hf:remove-saved-pin-marker", (e) => {
   if (activeTypeFilter === "saved") renderPlacesList();
 });
 
-/** Formats an event date for display. */
+/** Formats an event date for display. Uses structured recurrence when available. */
 function _formatEventDate(ev) {
-  if (ev.recurring && ev.recurrence) return ev.recurrence;
+  if (ev.recurring && ev.recurrence) {
+    const label = formatRecurrence(ev.recurrence);
+    if (label !== ev.recurrence) return label; // structured pattern resolved
+    return ev.recurrence; // legacy free-text fallback
+  }
   if (!ev.date) return "";
   const d = new Date(ev.date + "T00:00:00");
   const opts = { month: "short", day: "numeric" };
   const today = new Date();
   if (d.getFullYear() !== today.getFullYear()) opts.year = "numeric";
   return d.toLocaleDateString("en-GB", opts);
+}
+
+/**
+ * Compute the next upcoming date for any event (one-time or recurring).
+ * Returns a Date or null if no upcoming occurrence.
+ */
+function _nextEventDate(ev) {
+  if (ev.recurring && ev.recurrence) {
+    return nextOccurrence(ev.recurrence) || null;
+  }
+  if (ev.date) {
+    const d = new Date(ev.date + "T00:00:00");
+    return d >= _todayMidnight() ? d : null;
+  }
+  return null;
+}
+
+/** Midnight today (cached per call stack). */
+function _todayMidnight() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 /** Builds a compact event card HTML string for popup/list use. */
@@ -1909,6 +1936,12 @@ function renderPlacesList() {
 const _eventsPill = document.getElementById("events-pill");
 const _eventsOverlay = document.getElementById("events-overlay");
 const _eventsList = document.getElementById("events-list");
+const _evFilteredList = document.getElementById("ev-filtered-list");
+const _evEmptyState = document.getElementById("ev-empty-state");
+const _evMosqueFilter = document.getElementById("ev-mosque-filter");
+
+let _evActiveFilter = "upcoming";
+let _evNearbySort = false;
 
 export function renderEventsPill() {
   if (!eventsData.length) {
@@ -1916,28 +1949,103 @@ export function renderEventsPill() {
     return;
   }
   _eventsPill.classList.remove("hide");
+  _populateEvMosqueFilter();
   _renderEventsList();
 }
 
-function _renderEventsList() {
-  if (!_eventsList) return;
-  // Sort: recurring first, then by date
-  const sorted = [...eventsData].sort((a, b) => {
-    if (a.recurring && !b.recurring) return -1;
-    if (!a.recurring && b.recurring) return 1;
-    if (a.date && b.date) return a.date.localeCompare(b.date);
+/** Populate the mosque dropdown filter with mosques that have events. */
+function _populateEvMosqueFilter() {
+  if (!_evMosqueFilter) return;
+  const mosqueIds = new Set(eventsData.map((ev) => ev.placeId));
+  const mosques = placesData.filter((p) => mosqueIds.has(p.id));
+  _evMosqueFilter.innerHTML = `<option value="">All mosques</option>` +
+    mosques.map((m) => `<option value="${escA(m.id)}">${esc(m.name)}</option>`).join("");
+}
+
+/**
+ * Filter events based on the active date filter and mosque filter.
+ * @returns {Array<{ev: object, nextDate: Date|null, dist: number|null}>}
+ */
+function _filterEvents() {
+  const today = _todayMidnight();
+  const mosqueId = _evMosqueFilter ? _evMosqueFilter.value : "";
+
+  // Date range for this-week and this-month
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  // Get user location for proximity
+  const loc = getCurrentLocationState();
+  const hasLoc = loc.active && loc.lat != null && loc.lng != null;
+
+  return eventsData.map((ev) => {
+    const nd = _nextEventDate(ev);
+    const place = placesData.find((p) => p.id === ev.placeId);
+    const dist = hasLoc && place && place.lat && place.lng
+      ? haversineDistance(loc.lat, loc.lng, place.lat, place.lng)
+      : null;
+    return { ev, nextDate: nd, dist, place };
+  }).filter(({ ev, nextDate }) => {
+    // Mosque filter
+    if (mosqueId && ev.placeId !== mosqueId) return false;
+
+    // Date filter
+    switch (_evActiveFilter) {
+      case "today":
+        if (!nextDate) return false;
+        return nextDate.getTime() === today.getTime();
+      case "this-week":
+        if (!nextDate) return false;
+        return nextDate >= today && nextDate <= endOfWeek;
+      case "this-month":
+        if (!nextDate) return false;
+        return nextDate >= today && nextDate <= endOfMonth;
+      case "upcoming":
+        // Show all future events (recurring always pass)
+        if (ev.recurring) return true;
+        return nextDate != null;
+      case "all":
+        return true;
+      default:
+        return true;
+    }
+  }).sort((a, b) => {
+    // If nearby sort active, sort by distance
+    if (_evNearbySort && a.dist != null && b.dist != null) {
+      return a.dist - b.dist;
+    }
+    // Default: by next occurrence date
+    if (a.nextDate && b.nextDate) return a.nextDate - b.nextDate;
+    if (a.nextDate) return -1;
+    if (b.nextDate) return 1;
     return 0;
   });
-  _eventsList.innerHTML = sorted.map((ev, i) => {
-    const place = placesData.find((p) => p.id === ev.placeId);
+}
+
+function _renderEventsList() {
+  if (!_evFilteredList) return;
+  const filtered = _filterEvents();
+
+  if (!filtered.length) {
+    _evFilteredList.innerHTML = "";
+    _evEmptyState.classList.remove("hide");
+    return;
+  }
+  _evEmptyState.classList.add("hide");
+
+  _evFilteredList.innerHTML = filtered.map(({ ev, nextDate, dist, place }) => {
     const placeName = place ? esc(place.name) : "";
     const dateStr = _formatEventDate(ev);
     const timeStr = ev.time ? ev.time + (ev.endTime ? `–${ev.endTime}` : "") : "";
     const recurBadge = ev.recurring
-      ? `<span class="ev-recur-badge">${esc(ev.recurrence || "Recurring")}</span>`
+      ? `<span class="ev-recur-badge">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</span>`
       : "";
-    const dateBadge = dateStr && !ev.recurring
-      ? `<span class="ev-date-badge">${esc(dateStr)}</span>`
+    const nextDateBadge = nextDate
+      ? `<span class="ev-date-badge">${esc(nextDate.toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" }))}</span>`
+      : (dateStr && !ev.recurring ? `<span class="ev-date-badge">${esc(dateStr)}</span>` : "");
+    const distBadge = dist != null
+      ? `<span class="ev-dist-badge">${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>`
       : "";
     return `<button class="ev-overlay-card" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}">
       <div class="ev-overlay-top">
@@ -1948,12 +2056,40 @@ function _renderEventsList() {
         ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
       </div>
       <div class="ev-overlay-meta">
-        ${recurBadge}${dateBadge}${timeStr ? `<span class="ev-time-badge">${esc(timeStr)}</span>` : ""}
+        ${recurBadge}${nextDateBadge}${timeStr ? `<span class="ev-time-badge">${esc(timeStr)}</span>` : ""}${distBadge}
       </div>
       ${ev.description ? `<p class="ev-overlay-desc">${esc(ev.description)}</p>` : ""}
     </button>`;
   }).join("");
 }
+
+// ── Filter bar event handlers ────────────────────────────────────────────────
+document.getElementById("ev-filter-bar")?.addEventListener("click", (e) => {
+  const chip = e.target.closest(".ev-filter-chip");
+  if (!chip) return;
+  const filter = chip.dataset.filter;
+
+  if (filter === "nearby") {
+    // Toggle proximity sort
+    _evNearbySort = !_evNearbySort;
+    chip.classList.toggle("active", _evNearbySort);
+    if (_evNearbySort) {
+      const loc = getCurrentLocationState();
+      if (!loc.active || loc.lat == null) {
+        requestLocation();
+        showToast("Getting your location…", "info");
+      }
+    }
+  } else {
+    // Date filter chips — mutual exclusion
+    document.querySelectorAll("#ev-filter-bar .ev-filter-chip:not(.ev-filter-proximity)").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    _evActiveFilter = filter;
+  }
+  _renderEventsList();
+});
+
+_evMosqueFilter?.addEventListener("change", () => _renderEventsList());
 
 _eventsPill.addEventListener("click", () => {
   _eventsOverlay.classList.remove("hide");
@@ -2309,8 +2445,8 @@ function openEventOverlay(preselectedPlaceId) {
   form.reset();
   // Reset schedule chips to one-time
   _evScheduleMode = "oneTime";
-  overlay.querySelectorAll(".ev-sched-chip").forEach((c) => c.classList.remove("active"));
-  overlay.querySelector('.ev-sched-chip[data-value="oneTime"]').classList.add("active");
+  overlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
+  overlay.querySelector('.ev-schedule-chips .ev-sched-chip[data-value="oneTime"]')?.classList.add("active");
   // Populate mosque dropdown with approved mosques/prayer rooms
   const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
   mosqueSelect.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
@@ -2318,6 +2454,13 @@ function openEventOverlay(preselectedPlaceId) {
   // Show one-time fields by default
   document.getElementById("ev-onetime-fields").classList.remove("hide");
   document.getElementById("ev-recurring-fields").classList.add("hide");
+  // Init recurring form chips
+  _initRecurringFormChips();
+  document.getElementById("ev-recurrence-preview")?.classList.add("hide");
+  // Hide sub-fields
+  document.getElementById("ev-day-picker")?.classList.add("hide");
+  document.getElementById("ev-monthly-opts")?.classList.add("hide");
+  document.getElementById("ev-biweekly-anchor")?.classList.add("hide");
   overlay.classList.remove("hide");
 }
 document.getElementById("suggest-place-btn").addEventListener("click", () => {
@@ -3073,19 +3216,245 @@ _eventOverlay.addEventListener("click", (e) => {
   if (e.target === e.currentTarget) _eventOverlay.classList.add("hide");
 });
 
-// Schedule toggle: one-time vs recurring (chip buttons)
+// ── Schedule toggle: one-time vs recurring ───────────────────────────────────
 let _evScheduleMode = "oneTime";
-_eventOverlay.querySelectorAll(".ev-sched-chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    _eventOverlay.querySelectorAll(".ev-sched-chip").forEach((c) => c.classList.remove("active"));
-    chip.classList.add("active");
-    _evScheduleMode = chip.dataset.value;
-    const isRecurring = _evScheduleMode === "recurring";
-    document.getElementById("ev-onetime-fields").classList.toggle("hide", isRecurring);
-    document.getElementById("ev-recurring-fields").classList.toggle("hide", !isRecurring);
-  });
+
+// Recurring form state
+let _evFrequency = "";
+let _evDaysOfWeek = new Set();
+let _evMonthlyType = "date";
+let _evMonthDates = new Set();
+let _evOrdinals = new Set();
+let _evMonthlyDows = new Set();
+
+/** Build chip HTML for a list of options (single-select). */
+function _buildChipSet(options, containerSelector, activeValue) {
+  const el = _eventOverlay.querySelector(containerSelector);
+  if (!el) return;
+  el.innerHTML = options.map((o) =>
+    `<button type="button" class="ev-sched-chip${o.value === String(activeValue) ? " active" : ""}" data-value="${o.value}">${esc(o.label)}</button>`
+  ).join("");
+}
+
+/** Single-letter day initials for the compact circular picker. */
+const _DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** Populate the circular day-of-week buttons (multi-select via Set). */
+function _buildDayChips(container, activeSet) {
+  const el = typeof container === "string" ? _eventOverlay.querySelector(container) : container;
+  if (!el) return;
+  el.innerHTML = DAY_NAMES_SHORT.map((name, i) =>
+    `<button type="button" class="ev-day-btn${activeSet.has(i) ? " active" : ""}" data-value="${i}" title="${esc(name)}">${_DAY_INITIALS[i]}</button>`
+  ).join("");
+}
+
+/** Populate month-date buttons 1-31 in a 7-column grid (multi-select). */
+function _buildMonthDateChips() {
+  const el = _eventOverlay.querySelector(".ev-mdate-grid");
+  if (!el) return;
+  el.innerHTML = Array.from({ length: 31 }, (_, i) => i + 1).map((d) =>
+    `<button type="button" class="ev-mdate-btn${_evMonthDates.has(d) ? " active" : ""}" data-value="${d}">${d}</button>`
+  ).join("");
+}
+
+/** Populate ordinal pill buttons (multi-select via Set). */
+function _buildOrdinalChips() {
+  const el = _eventOverlay.querySelector(".ev-ord-row");
+  if (!el) return;
+  el.innerHTML = ORDINAL_OPTIONS.map((o) =>
+    `<button type="button" class="ev-ord-btn${_evOrdinals.has(+o.value) ? " active" : ""}" data-value="${o.value}">${esc(o.label)}</button>`
+  ).join("");
+}
+
+/** Update the recurrence preview text. */
+function _updateRecurrencePreview() {
+  const preview = document.getElementById("ev-recurrence-preview");
+  if (!preview) return;
+  if (!_evFrequency) { preview.classList.add("hide"); return; }
+  const pattern = _buildCurrentPattern();
+  if (!pattern) { preview.classList.add("hide"); return; }
+  const label = formatRecurrence(pattern);
+  const nd = nextOccurrence(pattern);
+  const nextStr = nd ? ` · Next: ${nd.toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" })}` : "";
+  preview.textContent = label + nextStr;
+  preview.classList.remove("hide");
+}
+
+/** Build the structured pattern from current form state. */
+function _buildCurrentPattern() {
+  switch (_evFrequency) {
+    case "daily":
+      return buildPattern("daily");
+    case "weekly":
+      return _evDaysOfWeek.size ? buildPattern("weekly", { days: [..._evDaysOfWeek] }) : null;
+    case "biweekly": {
+      const anchor = document.getElementById("ev-anchor-date")?.value || undefined;
+      return _evDaysOfWeek.size ? buildPattern("biweekly", { days: [..._evDaysOfWeek], anchor }) : null;
+    }
+    case "monthly":
+      if (_evMonthlyType === "date") {
+        return _evMonthDates.size ? buildPattern("monthly", { monthlyType: "date", monthDates: [..._evMonthDates] }) : null;
+      }
+      return (_evOrdinals.size && _evMonthlyDows.size)
+        ? buildPattern("monthly", { monthlyType: "day", ordinals: [..._evOrdinals], days: [..._evMonthlyDows] })
+        : null;
+    default:
+      return null;
+  }
+}
+
+/** Show/hide fields based on frequency. */
+function _syncRecurringFields() {
+  const dayPicker = document.getElementById("ev-day-picker");
+  const monthlyOpts = document.getElementById("ev-monthly-opts");
+  const biweeklyAnchor = document.getElementById("ev-biweekly-anchor");
+
+  dayPicker?.classList.toggle("hide", !["weekly", "biweekly"].includes(_evFrequency));
+  monthlyOpts?.classList.toggle("hide", _evFrequency !== "monthly");
+  biweeklyAnchor?.classList.toggle("hide", _evFrequency !== "biweekly");
+
+  // Monthly sub-fields
+  const monthDatePicker = document.getElementById("ev-monthly-date-picker");
+  const monthDayPicker = document.getElementById("ev-monthly-day-picker");
+  if (_evFrequency === "monthly") {
+    monthDatePicker?.classList.toggle("hide", _evMonthlyType !== "date");
+    monthDayPicker?.classList.toggle("hide", _evMonthlyType !== "day");
+  }
+
+  _updateRecurrencePreview();
+}
+
+/** Initialize all recurring event form chips. */
+function _initRecurringFormChips() {
+  // Frequency segmented bar
+  const freqContainer = document.getElementById("ev-freq-chips");
+  if (freqContainer) {
+    freqContainer.innerHTML = FREQUENCY_OPTIONS.map((o) =>
+      `<button type="button" class="ev-seg-btn" data-value="${o.value}">${esc(o.label)}</button>`
+    ).join("");
+  }
+
+  // Reset state
+  _evFrequency = "";
+  _evDaysOfWeek = new Set();
+  _evMonthlyType = "date";
+  _evMonthDates = new Set();
+  _evOrdinals = new Set();
+  _evMonthlyDows = new Set();
+
+  // Day circles (weekly/biweekly)
+  _buildDayChips(".ev-day-ring:not(.ev-monthly-day-dow)", _evDaysOfWeek);
+
+  // Month date grid
+  _buildMonthDateChips();
+
+  // Ordinal pills
+  _buildOrdinalChips();
+
+  // Monthly day-of-week circles
+  _buildDayChips(".ev-monthly-day-dow", _evMonthlyDows);
+
+  // Reset monthly toggle
+  _eventOverlay.querySelectorAll(".ev-mtog").forEach((c) => c.classList.remove("active"));
+  _eventOverlay.querySelector('.ev-mtog[data-value="date"]')?.classList.add("active");
+}
+
+// Main schedule toggle (one-time / recurring)
+_eventOverlay.querySelector(".ev-schedule-chips")?.addEventListener("click", (e) => {
+  const chip = e.target.closest(".ev-sched-chip");
+  if (!chip) return;
+  _eventOverlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
+  chip.classList.add("active");
+  _evScheduleMode = chip.dataset.value;
+  const isRecurring = _evScheduleMode === "recurring";
+  document.getElementById("ev-onetime-fields").classList.toggle("hide", isRecurring);
+  document.getElementById("ev-recurring-fields").classList.toggle("hide", !isRecurring);
 });
 
+// Frequency segmented bar clicks
+document.getElementById("ev-freq-chips")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-seg-btn");
+  if (!btn) return;
+  document.querySelectorAll("#ev-freq-chips .ev-seg-btn").forEach((c) => c.classList.remove("active"));
+  btn.classList.add("active");
+  _evFrequency = btn.dataset.value;
+  _syncRecurringFields();
+});
+
+// Day-of-week circular buttons (weekly/biweekly) — toggle multi-select
+document.getElementById("ev-day-picker")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-day-btn");
+  if (!btn) return;
+  const val = +btn.dataset.value;
+  if (_evDaysOfWeek.has(val)) {
+    _evDaysOfWeek.delete(val);
+    btn.classList.remove("active");
+  } else {
+    _evDaysOfWeek.add(val);
+    btn.classList.add("active");
+  }
+  _updateRecurrencePreview();
+});
+
+// Monthly toggle (Date / Day)
+_eventOverlay.querySelector(".ev-monthly-toggle")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-mtog");
+  if (!btn) return;
+  _eventOverlay.querySelectorAll(".ev-mtog").forEach((c) => c.classList.remove("active"));
+  btn.classList.add("active");
+  _evMonthlyType = btn.dataset.value;
+  _syncRecurringFields();
+});
+
+// Month date grid buttons (1-31) — toggle multi-select
+_eventOverlay.querySelector(".ev-mdate-grid")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-mdate-btn");
+  if (!btn) return;
+  const val = +btn.dataset.value;
+  if (_evMonthDates.has(val)) {
+    _evMonthDates.delete(val);
+    btn.classList.remove("active");
+  } else {
+    _evMonthDates.add(val);
+    btn.classList.add("active");
+  }
+  _updateRecurrencePreview();
+});
+
+// Ordinal pill buttons (1st, 2nd, …, Last) — toggle multi-select
+_eventOverlay.querySelector(".ev-ord-row")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-ord-btn");
+  if (!btn) return;
+  const val = +btn.dataset.value;
+  if (_evOrdinals.has(val)) {
+    _evOrdinals.delete(val);
+    btn.classList.remove("active");
+  } else {
+    _evOrdinals.add(val);
+    btn.classList.add("active");
+  }
+  _updateRecurrencePreview();
+});
+
+// Monthly day-of-week circular buttons — toggle multi-select
+_eventOverlay.querySelector(".ev-monthly-day-dow")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".ev-day-btn");
+  if (!btn) return;
+  const val = +btn.dataset.value;
+  if (_evMonthlyDows.has(val)) {
+    _evMonthlyDows.delete(val);
+    btn.classList.remove("active");
+  } else {
+    _evMonthlyDows.add(val);
+    btn.classList.add("active");
+  }
+  _updateRecurrencePreview();
+});
+
+// Biweekly anchor date change
+document.getElementById("ev-anchor-date")?.addEventListener("change", () => _updateRecurrencePreview());
+
+// ── Form submission ──────────────────────────────────────────────────────────
 _eventForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const mosqueSelect = document.getElementById("ev-mosque");
@@ -3099,10 +3468,29 @@ _eventForm.addEventListener("submit", async (e) => {
   if (!title) { titleInput.classList.add("invalid"); valid = false; }
 
   const isRecurring = _evScheduleMode === "recurring";
-  const recurrenceInput = document.getElementById("ev-recurrence");
-  if (isRecurring && !recurrenceInput.value.trim()) {
-    recurrenceInput.classList.add("invalid");
+
+  // One-time: date is mandatory
+  const dateInput = document.getElementById("ev-date");
+  if (!isRecurring && !dateInput.value) {
+    dateInput.classList.add("invalid");
     valid = false;
+  }
+
+  // Recurring: must have a valid frequency selected
+  if (isRecurring) {
+    if (!_evFrequency) {
+      showToast("Select a frequency", "error");
+      valid = false;
+    } else if (["weekly", "biweekly"].includes(_evFrequency) && !_evDaysOfWeek.size) {
+      showToast("Select at least one day", "error");
+      valid = false;
+    } else if (_evFrequency === "monthly" && _evMonthlyType === "date" && !_evMonthDates.size) {
+      showToast("Select at least one date", "error");
+      valid = false;
+    } else if (_evFrequency === "monthly" && _evMonthlyType === "day" && (!_evOrdinals.size || !_evMonthlyDows.size)) {
+      showToast("Select which week and day", "error");
+      valid = false;
+    }
   }
 
   if (!valid) return;
@@ -3112,17 +3500,19 @@ _eventForm.addEventListener("submit", async (e) => {
   submitBtn.disabled = true;
   submitBtn.innerHTML = `<span class="btn-spinner"></span>`;
 
+  const recurrencePattern = isRecurring ? (_buildCurrentPattern() || "") : "";
+
   const payload = {
     token: null,
     formType: "event",
     placeId,
     title,
     description: document.getElementById("ev-desc").value.trim(),
-    eventDate: isRecurring ? "" : document.getElementById("ev-date").value,
+    eventDate: isRecurring ? "" : dateInput.value,
     eventTime: document.getElementById("ev-time").value,
     endTime: document.getElementById("ev-end-time").value,
     recurring: isRecurring,
-    recurrencePattern: isRecurring ? recurrenceInput.value.trim() : "",
+    recurrencePattern,
     url: document.getElementById("ev-url").value.trim(),
   };
 
@@ -3155,7 +3545,7 @@ _eventForm.addEventListener("submit", async (e) => {
 });
 
 // Clear invalid state on input
-_eventForm.querySelectorAll("[required]").forEach((el) => {
+_eventForm.querySelectorAll("input, select, textarea").forEach((el) => {
   el.addEventListener("input", () => el.classList.remove("invalid"));
   if (el.tagName === "SELECT") el.addEventListener("change", () => el.classList.remove("invalid"));
 });

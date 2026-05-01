@@ -194,6 +194,11 @@ what you like, what you've decided, and how you want things done.
 - **2026-04-30 — Map rotation only on physical movement, not standing.** Heading updates are gated behind 3m minimum accumulated movement. If standing still (even if GPS jitters or device rotates), the map stays fixed. Only actual walking/driving triggers rotation.
 - **2026-04-30 — Zoom-out easier on long straights.** Dead zone for zoom-out reduced from 0.70 to 0.40 levels. Hold timer reduced from 3s to 2s. This lets the map zoom out and tilt for a wider forward view on long straight roads between turns.
 
+- **2026-05-01 — One-time event dates are mandatory.** The date input for one-time events now has `required` and validation rejects submission without a date. Previously optional.
+- **2026-05-01 — Recurring events: structured patterns, not free text.** Replaced the free-text recurrence input with a structured chip-based selector. Patterns stored as parseable strings (`weekly:5`, `monthly-day:1:0`) so the system can compute exact occurrence dates. Legacy free-text patterns degrade gracefully (displayed as-is but not date-resolvable).
+- **2026-05-01 — Event list filters: date + proximity + mosque.** Events overlay now has a sticky filter bar with date range chips (Upcoming/Today/This week/This month/All), a proximity "Nearby" toggle that sorts by distance from user GPS, and a mosque dropdown. All combine additively.
+- **2026-05-01 — Multi-select days/dates in recurring events.** Day chips, month-date chips, ordinal chips, and monthly day-of-week chips all support toggle (tap to select, tap again to deselect). Users can pick multiple days/dates per recurrence pattern (e.g., "Every Mon, Wed, Fri"). Pattern format uses comma-separated values: `weekly:1,3,5`.
+
 ## Patterns to Avoid
 
 > Things that were tried and rejected, or that the user has explicitly said "don't do."
@@ -1684,3 +1689,45 @@ Second pass root-cause fix after the first attempt proved incomplete.
 - Existing markers now also update their offset when the overlay advances.
 
 **Files modified:** `src/navigation.js`.
+
+### 2026-05-01 — Structured recurring events + event list filters
+
+**a. One-time events: date is now mandatory.**
+- `#ev-date` input has `required` attribute. Form validation marks it `.invalid` if empty when submitting a one-time event.
+
+**b. Recurring events: structured pattern selector replaces free-text input.**
+- New module `src/event-recurrence.js` — recurrence engine with pattern builder, parser, human-readable formatter, and date resolver.
+- Frequency chips: Daily, Every week, Every other week, Monthly.
+- Weekly/biweekly: day-of-week chip picker (Mon–Sun).
+- Monthly: sub-type toggle (On a date / On a day):
+  - On a date: 1–31 compact chip grid.
+  - On a day: ordinal (First–Fourth, Last) + day-of-week.
+- Biweekly: anchor date input to define the bi-weekly cycle start.
+- Live preview label showing resolved pattern + next occurrence date.
+- Pattern stored as structured string (e.g., `weekly:5`, `monthly-day:1:0`, `biweekly:3:2026-05-07`).
+- Legacy free-text patterns still display correctly (graceful fallback).
+
+**c. Event list filters:**
+- Date filters: Upcoming (default), Today, This week, This month, All.
+- Proximity sort: "Nearby" toggle that sorts by haversine distance from user location (requests GPS if needed).
+- Mosque filter: dropdown populated with mosques that have events.
+- All filters combine — date filter + mosque filter + proximity sort.
+- Empty state shown when no events match filters.
+
+**Pattern format (updated — multi-value):**
+- `daily` — every day
+- `weekly:1,3,5` — every week on Mon, Wed, Fri (comma-separated, 0=Sun..6=Sat)
+- `biweekly:1,3:2026-05-05` — every other week on Mon+Wed, anchored from date
+- `monthly-date:1,15` — monthly on the 1st and 15th
+- `monthly-day:1,-1:0,5` — first and last Sun and Fri of each month
+
+**Multi-select implementation:**
+- State variables changed from scalars to `Set` objects: `_evDaysOfWeek`, `_evMonthDates`, `_evOrdinals`, `_evMonthlyDows`.
+- Chip click handlers use `toggle` pattern (tap = add to Set + `.active`, re-tap = remove from Set + remove `.active`).
+- `_buildCurrentPattern()` spreads Sets into arrays for `buildPattern()`.
+- `buildPattern()` in `event-recurrence.js` accepts arrays for `days`, `monthDates`, `ordinals`.
+- `parsePattern()` returns arrays via `_parseNums()` (splits comma-separated values).
+- `formatRecurrence()` uses `_joinList()` for human-readable multi-value output (e.g., "Mon, Wed, and Fri").
+- Validation checks `.size` instead of `== null`.
+
+**Files modified:** `src/event-recurrence.js`, `src/places.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`.

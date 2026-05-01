@@ -1375,6 +1375,61 @@ html.dark-mode body {
   font-weight: var(--fw-medium);
 }
 
+/* ── Event distance badge ─────────────────────────────────────────────────── */
+.ev-dist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0h) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--hsl-bus);
+  background: color-mix(in srgb, var(--hsl-bus) 12%, transparent);
+}
+
+/* ── Event filter chip (events overlay filter bar) ─────────────────────────── */
+.ev-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-1h) var(--sp-4);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-filter-chip.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@media (hover: hover) {
+  .ev-filter-chip:not(.active):hover {
+    border-color: var(--surface-3);
+    background: var(--surface-2);
+  }
+}
+
+/* ── Recurrence preview label ──────────────────────────────────────────────── */
+.ev-recurrence-preview {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  line-height: 1.4;
+}
+
 /* ── Eid location card (panel list item) ─── */
 .eid-loc-card {
   display: flex;
