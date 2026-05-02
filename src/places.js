@@ -886,7 +886,7 @@ function _buildEventCard(ev) {
     ? `<svg class="pp-ev-recur-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
     : "";
   const linkBtn = ev.url
-    ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Open registration / event page"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
+    ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Open registration / event page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
     : "";
   return `<div class="pp-ev-card">
     <div class="pp-ev-info">
@@ -2054,14 +2054,14 @@ function _renderEventsList() {
     const distBadge = dist != null
       ? `<span class="ev-dist-badge">${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>`
       : "";
-    return `<button class="ev-overlay-card" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
+    return `<div class="ev-overlay-card" role="button" tabindex="0" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
       <div class="ev-overlay-top">
         <div class="ev-overlay-info">
           <span class="ev-overlay-title">${esc(ev.title)}</span>
           ${placeName ? `<span class="ev-overlay-mosque">${placeName}</span>` : ""}
         </div>
         <div class="ev-overlay-actions">
-          <span class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+          <button type="button" class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
         </div>
       </div>
@@ -2069,7 +2069,7 @@ function _renderEventsList() {
         ${recurBadge}${nextDateBadge}${timeStr ? `<span class="ev-time-badge">${esc(timeStr)}</span>` : ""}${distBadge}
       </div>
       ${ev.description ? `<p class="ev-overlay-desc">${esc(ev.description)}</p>` : ""}
-    </button>`;
+    </div>`;
   }).join("");
 }
 

@@ -505,7 +505,8 @@ html.dark-mode body {
   }
 }
 
-.btn-roundel-accent {
+.btn-roundel-accent,
+.pp-add-place-btn {
   width: var(--btn-roundel-size);
   height: var(--btn-roundel-size);
   display: flex;
@@ -515,9 +516,13 @@ html.dark-mode body {
   border-radius: 50%;
   color: var(--on-accent);
   transition: filter var(--t-fast);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 @media (hover: hover) {
-  .btn-roundel-accent:hover {
+  .btn-roundel-accent:hover,
+  .pp-add-place-btn:hover {
     filter: brightness(1.12);
   }
 }
@@ -1341,9 +1346,11 @@ html.dark-mode body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--r-xs);
+  width: 34px;
+  height: 34px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--r-sm);
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   flex-shrink: 0;

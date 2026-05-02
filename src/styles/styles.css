@@ -2624,24 +2624,8 @@ body.dark-mode .sp-tip {
   flex: 1;
 }
 .pp-add-place-btn {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-xs);
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  color: var(--text-2);
-  cursor: pointer;
-  transition: color var(--t-fast), border-color var(--t-fast);
-}
-@media (hover: hover) {
-  .pp-add-place-btn:hover {
-    color: var(--text);
-    border-color: var(--surface-3);
-  }
+  width: 20px;
+  height: 20px;
 }
 
 .pp-tags {
@@ -2729,6 +2713,7 @@ body.dark-mode .sp-tip {
   background: var(--accent);
   color: var(--on-accent);
   cursor: pointer;
+  flex-shrink: 0;
   transition: filter var(--t-fast);
 }
 @media (hover: hover) {
@@ -3004,7 +2989,7 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-pill);
   font-family: inherit;
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-2);
   cursor: pointer;
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
@@ -3093,7 +3078,7 @@ body.dark-mode .sp-tip {
   flex-direction: column;
   gap: 5px;
   font-size: var(--txt-base);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   color: var(--text-2);
 }
 .sg-req {
@@ -3133,9 +3118,8 @@ body.dark-mode .sp-tip {
 
 .sg-hint {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-regular);
   color: var(--text-3);
-  opacity: 0.6;
   letter-spacing: var(--ls-wide);
 }
 
@@ -3147,21 +3131,18 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-sm);
   background: var(--surface);
   font-family: inherit;
-  font-size: var(--txt-md);
-  font-weight: var(--fw-medium);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-regular);
   color: var(--text);
   transition: border-color var(--t-fast);
 }
 .sg-label input::placeholder,
 .sg-label textarea::placeholder {
   color: var(--text-3);
-  font-size: var(--txt-base);
   font-weight: var(--fw-regular);
 }
 .sg-label select.placeholder {
   color: var(--text-3);
-  font-size: var(--txt-base);
-  font-weight: var(--fw-regular);
 }
 .sg-label input:focus,
 .sg-label select:focus,
@@ -5068,7 +5049,7 @@ body.nav-mode #style-picker {
 }
 .ev-overlay-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-3);
 }
 .ev-overlay-info {
@@ -5102,17 +5083,17 @@ body.nav-mode #style-picker {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  color: var(--text-2);
-  opacity: 0.6;
-  transition: opacity var(--t-fast), color var(--t-fast);
+  padding: var(--sp-3);
+  margin-top: calc(-1 * var(--sp-3));
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  transition: color var(--t-fast);
   cursor: pointer;
 }
 @media (hover: hover) {
   .ev-overlay-edit-btn:hover {
-    opacity: 1;
-    color: var(--text-1);
+    color: var(--text);
   }
 }
 .ev-overlay-meta {
@@ -5196,7 +5177,7 @@ body.nav-mode #style-picker {
   padding: var(--sp-2h) var(--sp-1);
   font-family: inherit;
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
   text-align: center;
   cursor: pointer;
@@ -5254,7 +5235,7 @@ body.nav-mode #style-picker {
   padding: var(--sp-2) 0;
   font-family: inherit;
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
   border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
@@ -5316,7 +5297,7 @@ body.nav-mode #style-picker {
   padding: var(--sp-1h) var(--sp-3);
   font-family: inherit;
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-2);
   border: 1.5px solid var(--border);
   border-radius: var(--r-pill);
