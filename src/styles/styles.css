@@ -5007,6 +5007,11 @@ body.nav-mode #style-picker {
   flex-direction: column;
   transition: transform var(--t-med);
 }
+/* Overlay drag handle — hidden on desktop, shown only in mobile @media block */
+.overlay-drag {
+  display: none;
+}
+
 #events-overlay.hide #events-card {
   transform: scale(0.96);
 }
@@ -5136,7 +5141,7 @@ body.nav-mode #style-picker {
   border-radius: var(--r-pill);
   background: var(--surface);
   font-family: inherit;
-  font-size: var(--txt-xs);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-medium);
   color: var(--text);
   cursor: pointer;
@@ -6527,7 +6532,11 @@ body.dark-mode .sp-chip {
   #edit-overlay,
   #contact-overlay,
   #wish-form-overlay,
-  #event-overlay {
+  #event-overlay,
+  #events-overlay,
+  #eid-overlay,
+  #promos-overlay,
+  #wish-overlay {
     padding: 0;
     align-items: flex-end;
   }
@@ -6536,7 +6545,11 @@ body.dark-mode .sp-chip {
   #edit-overlay.hide,
   #contact-overlay.hide,
   #wish-form-overlay.hide,
-  #event-overlay.hide {
+  #event-overlay.hide,
+  #events-overlay.hide,
+  #eid-overlay.hide,
+  #promos-overlay.hide,
+  #wish-overlay.hide {
     display: flex !important;
     opacity: 0;
     pointer-events: none;
@@ -6545,14 +6558,22 @@ body.dark-mode .sp-chip {
   #edit-overlay,
   #contact-overlay,
   #wish-form-overlay,
-  #event-overlay {
+  #event-overlay,
+  #events-overlay,
+  #eid-overlay,
+  #promos-overlay,
+  #wish-overlay {
     transition: opacity var(--t-med);
   }
   #suggest-card,
   #edit-card,
   #contact-card,
   #wish-form-card,
-  #event-card {
+  #event-card,
+  #events-card,
+  #eid-card,
+  #promos-card,
+  #wish-card {
     max-width: 100%;
     height: auto;
     max-height: calc(100vh - 40px);
@@ -6564,8 +6585,24 @@ body.dark-mode .sp-chip {
   #edit-overlay.hide #edit-card,
   #contact-overlay.hide #contact-card,
   #wish-form-overlay.hide #wish-form-card,
-  #event-overlay.hide #event-card {
+  #event-overlay.hide #event-card,
+  #events-overlay.hide #events-card,
+  #eid-overlay.hide #eid-card,
+  #promos-overlay.hide #promos-card,
+  #wish-overlay.hide #wish-card {
     transform: translateY(100%);
+  }
+  /* Drag handle for overlay bottom-sheets */
+  .overlay-drag {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 0;
+  }
+  .overlay-drag span {
+    width: 32px;
+    height: 3px;
+    background: var(--surface-3);
+    border-radius: var(--r-pill);
   }
   #suggest-card {
     padding-bottom: 0;
@@ -6585,6 +6622,12 @@ body.dark-mode .sp-chip {
   #wish-form {
     padding-bottom: calc(20px + var(--safe-b));
     -webkit-overflow-scrolling: touch;
+  }
+  #events-list,
+  #eid-list,
+  #promos-list,
+  .wish-list {
+    padding-bottom: calc(12px + var(--safe-b));
   }
   .sg-label input,
   .sg-label select,

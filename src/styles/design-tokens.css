@@ -1409,13 +1409,13 @@ html.dark-mode body {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1h);
-  padding: var(--sp-1h) var(--sp-4);
+  padding: var(--sp-1h) var(--sp-4h);
   border: 1.5px solid var(--border);
   background: var(--surface);
   border-radius: var(--r-pill);
   font-family: inherit;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
   letter-spacing: var(--ls-wide);
   color: var(--text-2);
   cursor: pointer;
