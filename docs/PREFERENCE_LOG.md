@@ -1378,6 +1378,17 @@ Added "Request Edit" functionality for events, matching the existing place edit 
 - **Recurring pre-fill:** `_prefillRecurringFromPattern()` parses stored pattern strings and restores frequency, day-of-week, month-date, ordinal, and biweekly anchor selections.
 - **Changes summary:** Edit submissions auto-generate a diff summary comparing original vs new values.
 - **Edit buttons on event cards:** Both popup event cards (`.pp-ev-edit-btn`) and events overlay list cards (`.ev-overlay-edit-btn`) now have a pencil icon button. Same visual pattern as the existing link button.
+
+### 2026-05-09 — Tab reorganisation: Mosques-only + Religious tab
+
+**Decision:** Mosques tab now shows mosques only (previously included cemeteries as a subsection). A new "Religious" tab replaces the old "Prayer" tab and contains prayer rooms, cemeteries, and any future religious place types. This makes the taxonomy scalable — new religious categories (e.g. Islamic schools) can be added to `RELIGIOUS_TYPES` without changing tab UI.
+
+**Changes:**
+- `index.html` — Replaced `data-type="prayer_room"` chip with `data-type="religious"` chip. Label "Prayer" → "Religious". Icon changed from person to crescent+star.
+- `src/places.js` — Added `RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"])`. All three filter blocks (markers, tag bar, list rendering) updated to use `RELIGIOUS_TYPES.has()` for the `religious` tab. Removed the separate cemetery subsection that was hardcoded under the mosque tab. Tag filter bar merges tags from all religious types via `flatMap`. Search placeholder updated.
+- `icons.js`, `map-controls.js` — No changes needed; individual type colors and heatmap scoring remain per-type.
+
+**Files modified:** `index.html`, `src/places.js`, `docs/PREFERENCE_LOG.md`.
 - **Design uniformity:** Edit button in popup cards uses the same 26×26 accent-tinted style as `.pp-ev-link`. Overlay list edit button uses subtle opacity fade matching the link icon.
 
 **Files modified:** `scripts/apps-script/Code.gs`, `functions/api/submit.js`, `src/places.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`

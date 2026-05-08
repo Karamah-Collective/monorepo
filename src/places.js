@@ -35,6 +35,9 @@ let _activePlacePopupId = null;
 let _activePlacePopup = null;
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
+
+/** Place types grouped under the "Religious" tab (everything except mosques). */
+const RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"]);
 let activeSortField = "default"; // "default" | "name" | "distance" | "date"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
@@ -762,8 +765,8 @@ export function addPlaceMarkers() {
       ? placesData
       : activeTypeFilter === "saved"
         ? placesData.filter((p) => isFavourite(p.id))
-        : activeTypeFilter === "mosque"
-          ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+        : activeTypeFilter === "religious"
+          ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
           : placesData.filter((p) => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
@@ -1406,8 +1409,8 @@ let _plSearchDebounce = 0;
 
 const _SEARCH_PLACEHOLDERS = {
   all: "Search places\u2026",
-  mosque: "Search mosques & cemeteries\u2026",
-  prayer_room: "Search prayer rooms\u2026",
+  mosque: "Search mosques\u2026",
+  religious: "Search spaces\u2026",
   restaurant: "Search restaurants\u2026",
   shop: "Search shops\u2026",
   saved: "Search saved\u2026",
@@ -1575,10 +1578,14 @@ document.addEventListener("click", (e) => {
 function renderTagFilterBar() {
   const typePlaces =
     activeTypeFilter === "all" ? placesData
-      : activeTypeFilter === "mosque" ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+      : activeTypeFilter === "religious" ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
         : placesData.filter((p) => p.type === activeTypeFilter);
   const count = typePlaces.length;
-  const items = (activeTypeFilter !== "all" && activeTypeFilter !== "saved") ? getFilterBarTags(activeTypeFilter) : [];
+  const items = (activeTypeFilter !== "all" && activeTypeFilter !== "saved")
+    ? (activeTypeFilter === "religious"
+      ? [...RELIGIOUS_TYPES].flatMap((t) => getFilterBarTags(t))
+      : getFilterBarTags(activeTypeFilter))
+    : [];
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
   // Filter: show when tags exist and at least 1 place
@@ -1795,8 +1802,8 @@ function renderPlacesList() {
       ? placesData
       : activeTypeFilter === "saved"
         ? placesData.filter((p) => isFavourite(p.id))
-        : activeTypeFilter === "mosque"
-          ? placesData.filter((p) => p.type === "mosque" || p.type === "cemetery")
+        : activeTypeFilter === "religious"
+          ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
           : placesData.filter((p) => p.type === activeTypeFilter);
 
   if (activeTagFilters.size) {
@@ -1883,22 +1890,9 @@ function renderPlacesList() {
     }).join("");
   };
 
-  const _isMosqueTab = activeTypeFilter === "mosque";
   const regularHTML = activeSortField === "default"
-    ? buildGroupedPlacesHTML(_isMosqueTab ? sorted.filter((p) => p.type !== "cemetery") : sorted)
+    ? buildGroupedPlacesHTML(sorted)
     : sorted.map((p, i) => _buildCard(p, i)).join("");
-
-  // Cemetery subsection — only shown as a separated group under the mosque tab
-  let cemeteryHTML = "";
-  if (_isMosqueTab) {
-    const cemeteries = sorted.filter((p) => p.type === "cemetery");
-    if (cemeteries.length) {
-      const cemSectionHdr = `<li class="pl-section-hdr pl-section-hdr--main">Cemeteries</li>`;
-      cemeteryHTML = activeSortField === "default"
-        ? cemSectionHdr + buildGroupedPlacesHTML(cemeteries)
-        : cemSectionHdr + cemeteries.map((p, i) => _buildCard(p, sorted.indexOf(p))).join("");
-    }
-  }
 
   const pinHTML = customPins
     .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${sorted.length + pi}">
@@ -1933,7 +1927,7 @@ function renderPlacesList() {
     }
   }
 
-  list.innerHTML = recentHtml + regularHTML + cemeteryHTML + pinHTML;
+  list.innerHTML = recentHtml + regularHTML + pinHTML;
 
   // Render sponsored carousel at the top of the places list
   _renderSponsorCarousel(filtered);
