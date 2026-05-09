@@ -410,13 +410,10 @@ function _buildCard(p, i) {
     : "";
   const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
   const evCount = placeEvents.length;
-  const eventBadge = evCount
-    ? `<span class="pl-event-chip">${evCount} event${evCount > 1 ? "s" : ""}</span>`
-    : "";
   const isFeatured = !!activeSponsor(p);
 
   // Build expandable events drawer for places with events
-  let evDrawer = "";
+  let evDrawerBody = "";
   if (evCount) {
     const evCards = placeEvents.map((ev) => {
       const dateStr = _formatEventDate(ev);
@@ -427,21 +424,17 @@ function _buildCard(p, i) {
       const recurIcon = ev.recurring
         ? `<svg class="pp-ev-recur-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
         : "";
-      return `<div class="pp-ev-card"><div class="pp-ev-info"><span class="pp-ev-title">${esc(ev.title)}</span><span class="pp-ev-meta">${recurIcon}${esc(dateStr)}${timeStr ? ` · ${esc(timeStr)}` : ""}</span></div>${linkBtn}</div>`;
+      return `<div class="pp-ev-card" data-ev-id="${escA(ev.id)}" data-ev-url="${escA(ev.url || '')}" role="button" tabindex="0"><div class="pp-ev-info"><span class="pp-ev-title">${esc(ev.title)}</span><span class="pp-ev-meta">${recurIcon}${esc(dateStr)}${timeStr ? ` · ${esc(timeStr)}` : ""}</span></div>${linkBtn}</div>`;
     }).join("");
-    evDrawer = `<div class="pl-ev-drawer" data-place-id="${p.id}">
-      <button class="pl-ev-toggle" type="button" aria-expanded="false">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>${evCount} event${evCount > 1 ? "s" : ""}</span>
-        <svg class="pl-ev-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div class="pl-ev-body">${evCards}</div>
-    </div>`;
+    evDrawerBody = `<div class="pl-ev-drawer" data-place-id="${p.id}"><div class="pl-ev-body"><div class="pl-ev-body-inner">${evCards}</div></div></div>`;
   }
 
+  // Dot gets data-ev-count for event badge rendering via CSS ::after
+  const dotAttrs = evCount ? ` data-ev-count="${evCount}" role="button" tabindex="0" aria-label="${evCount} event${evCount > 1 ? "s" : ""}, tap to expand" aria-expanded="false"` : "";
+
   return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
-    <span class="pl-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}${eventBadge}</span>
+    <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
+    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
     <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
@@ -454,7 +447,7 @@ function _buildCard(p, i) {
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${faved ? "currentColor" : "none"}">${_starPath}</svg>
       </button>
     </div>
-    ${evDrawer}
+    ${evDrawerBody}
   </li>`;
 }
 
@@ -891,7 +884,7 @@ function _buildEventCard(ev) {
   const linkBtn = ev.url
     ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="pp-ev-link" title="Open registration / event page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
     : "";
-  return `<div class="pp-ev-card">
+  return `<div class="pp-ev-card" data-ev-id="${escA(ev.id)}" data-ev-url="${escA(ev.url || '')}" role="button" tabindex="0">
     <div class="pp-ev-info">
       <span class="pp-ev-title">${esc(ev.title)}</span>
       <span class="pp-ev-meta">${recurIcon}${dateStr ? `<span class="pp-ev-date">${esc(dateStr)}</span>` : ""}${timeStr ? `<span class="pp-ev-time">${esc(timeStr)}</span>` : ""}</span>
@@ -995,6 +988,19 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     eventsSection.querySelector(".pp-ev-add-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       openEventOverlay(place.id);
+    });
+    // Event card clicks — open URL or highlight in events overlay
+    eventsSection.querySelectorAll(".pp-ev-card").forEach((card) => {
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("a")) return; // let link clicks through
+        e.stopPropagation();
+        const url = card.dataset.evUrl;
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } else {
+          _openEventsOverlayToEvent(card.dataset.evId);
+        }
+      });
     });
     inner.appendChild(eventsSection);
   }
@@ -2064,7 +2070,7 @@ function _renderEventsList() {
         </div>
         <div class="ev-overlay-actions">
           <button type="button" class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          ${ev.url ? `<svg class="ev-overlay-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ""}
+          ${ev.url ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="ev-overlay-link-btn" title="Open event page" aria-label="Open event page"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ""}
         </div>
       </div>
       <div class="ev-overlay-meta">
@@ -2107,6 +2113,22 @@ _eventsPill.addEventListener("click", () => {
   _eventsOverlay.classList.remove("hide");
 });
 
+/**
+ * Opens the events overlay and scrolls to / highlights a specific event.
+ * @param {string} evId - The event ID to highlight.
+ */
+function _openEventsOverlayToEvent(evId) {
+  _eventsOverlay.classList.remove("hide");
+  _renderEventsList();
+  requestAnimationFrame(() => {
+    const card = _eventsList.querySelector(`.ev-overlay-card[data-ev-id="${CSS.escape(evId)}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("ev-overlay-card--highlight");
+    setTimeout(() => card.classList.remove("ev-overlay-card--highlight"), 1800);
+  });
+}
+
 document.getElementById("events-close").addEventListener("click", () => {
   _eventsOverlay.classList.add("hide");
 });
@@ -2132,6 +2154,8 @@ _eventsList.addEventListener("click", (e) => {
     }
     return;
   }
+  // Let link button clicks through to the <a> handler
+  if (e.target.closest(".ev-overlay-link-btn")) return;
   const card = e.target.closest(".ev-overlay-card");
   if (!card) return;
   const url = card.dataset.evUrl;
@@ -2728,18 +2752,31 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     return;
   }
 
-  // Toggle event drawer expand/collapse
-  const evToggle = e.target.closest(".pl-ev-toggle");
-  if (evToggle) {
+  // Toggle event drawer via the category dot (on event cards only)
+  const dot = e.target.closest(".pl-card--has-events .pl-dot");
+  if (dot) {
     e.stopPropagation();
-    const drawer = evToggle.closest(".pl-ev-drawer");
+    const card = dot.closest(".pl-card");
+    const drawer = card?.querySelector(".pl-ev-drawer");
     if (!drawer) return;
     const expanded = drawer.classList.toggle("open");
-    evToggle.setAttribute("aria-expanded", expanded);
+    dot.setAttribute("aria-expanded", expanded);
     return;
   }
 
   // Prevent clicks inside event drawer body from opening the place popup
+  // — but catch event card clicks to open the events overlay
+  const evCard = e.target.closest(".pl-ev-body .pp-ev-card");
+  if (evCard) {
+    e.stopPropagation();
+    const url = evCard.dataset.evUrl;
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      _openEventsOverlayToEvent(evCard.dataset.evId);
+    }
+    return;
+  }
   if (e.target.closest(".pl-ev-body")) {
     e.stopPropagation();
     return;

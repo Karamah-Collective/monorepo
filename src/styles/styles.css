@@ -11,12 +11,12 @@
 #results-list,
 #dir-itins,
 #places-scroll > ul {
-  --stagger-unit: 35ms;
+  --stagger-unit: 30ms;
 }
 #results-list > li,
 #dir-itins > .itin-card,
 #places-scroll > ul > .pl-card {
-  animation: staggerFadeUp 0.3s var(--ease-expo) both;
+  animation: staggerFadeUp 0.35s var(--ease-expo) both;
   animation-delay: calc(var(--i, 0) * var(--stagger-unit));
 }
 /* ─── Global thin scrollbar ─── */
@@ -236,10 +236,10 @@
   bottom: 100%;
   left: 0;
   right: 0;
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-2);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-2xl);
   box-shadow: var(--shadow-xl);
   max-height: 52vh;
   overflow-y: auto;
@@ -248,7 +248,7 @@
   transform: translateY(0);
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease;
+    transform 0.25s var(--ease-expo);
 }
 #search-drop.hide {
   display: block !important;
@@ -263,7 +263,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-5);
-  padding: 12px 18px;
+  padding: var(--sp-5) var(--sp-8);
   cursor: pointer;
   border-bottom: 1px solid var(--border-light);
   transition: background-color var(--t-fast);
@@ -283,7 +283,7 @@
 .r-icon {
   width: var(--icon-md);
   height: var(--icon-md);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,25 +391,25 @@
 
 #contact-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #contact-overlay.hide #contact-card {
   transform: scale(0.96);
 }
 
 #contact-form {
-  padding: 16px 16px 20px;
+  padding: var(--sp-7) var(--sp-8) var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-7);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -450,12 +450,12 @@
   max-width: 440px;
   max-height: min(640px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med), height var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #wish-overlay.hide #wish-card {
   transform: scale(0.96);
@@ -496,25 +496,25 @@
 
 #wish-form-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #wish-form-overlay.hide #wish-form-card {
   transform: scale(0.96);
 }
 
 #wish-form {
-  padding: 16px 16px 20px;
+  padding: var(--sp-7) var(--sp-8) var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-7);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -659,13 +659,13 @@ body.theme-transition .maplibregl-canvas {
 html.dark-mode,
 body.dark-mode {
   --surface:      #000000;
-  --surface-2:    #222222;
-  --surface-3:    #333333;
-  --text:         #efefef;
+  --surface-2:    #1a1a1a;
+  --surface-3:    #2e2e2e;
+  --text:         #f0f0f0;
   --text-2:       #b8b8b8;
-  --text-3:       #909090;
-  --border:       #2a2a2a;
-  --border-light: #262626;
+  --text-3:       #808080;
+  --border:       #333333;
+  --border-light: #282828;
   --accent:       #0e8a6f;
   --accent-soft:  rgba(14, 138, 111, 0.35);
   --accent-muted: #4a9a88;
@@ -678,12 +678,12 @@ body.dark-mode {
   --danger:       #e85c5c;
   --danger-dark:  #f08080;
   --danger-soft:  rgba(232, 92, 92, 0.18);
-  --shadow-xs:    0 1px 2px rgba(0, 0, 0, 0.24);
-  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.30);
-  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.36);
-  --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.42);
-  --shadow-xl:    0 8px 24px -4px rgba(0, 0, 0, 0.50), 0 2px 6px -1px rgba(0, 0, 0, 0.30);
-  --shadow-float: 0 12px 48px -8px rgba(0, 0, 0, 0.45), 0 4px 12px -4px rgba(0, 0, 0, 0.25);
+  --shadow-xs:    0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm:    0 1px 4px rgba(0, 0, 0, 0.32);
+  --shadow-md:    0 2px 10px rgba(0, 0, 0, 0.38), 0 1px 3px rgba(0, 0, 0, 0.20);
+  --shadow-lg:    0 4px 20px rgba(0, 0, 0, 0.44), 0 1px 6px rgba(0, 0, 0, 0.18);
+  --shadow-xl:    0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 4px 8px -2px rgba(0, 0, 0, 0.30);
+  --shadow-float: 0 16px 56px -12px rgba(0, 0, 0, 0.50), 0 6px 16px -4px rgba(0, 0, 0, 0.28);
   --shadow-accent-sm: 0 1px 4px rgba(14, 138, 111, 0.18);
   --shadow-accent-md: 0 4px 12px rgba(14, 138, 111, 0.14);
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px rgba(14, 138, 111, 0.45);
@@ -898,7 +898,7 @@ body.dark-mode .sp-tip {
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -924,7 +924,7 @@ body.dark-mode .sp-tip {
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-float);
-  padding: 0 8px;
+  padding: 0 var(--sp-5);
 }
 
 .tab {
@@ -1279,21 +1279,21 @@ body.dark-mode .sp-tip {
   bottom: 0;
   height: var(--sheet-h);
   background: var(--surface);
-  border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-  box-shadow: 0 -8px 32px -4px rgba(0, 0, 0, 0.06), 0 -2px 8px -2px rgba(0, 0, 0, 0.03);
+  border-radius: var(--r-3xl) var(--r-3xl) 0 0;
+  box-shadow: 0 -12px 40px -8px rgba(0, 0, 0, 0.08), 0 -2px 8px -2px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transform-origin: bottom center;
   will-change: transform, opacity;
   transition:
-    transform 0.32s var(--ease-expo),
+    transform 0.35s var(--ease-expo),
     opacity 0.2s var(--ease-expo),
-    visibility 0.32s,
+    visibility 0.35s,
     height 0.3s var(--ease-expo);
 }
 .sheet.shut {
-  transform: translateY(100%) scale(0.92);
+  transform: translateY(100%) scale(0.95);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1325,24 +1325,25 @@ body.dark-mode .sp-tip {
 .sheet-drag {
   display: flex;
   justify-content: center;
-  padding: 10px 0 4px;
+  padding: 12px 0 6px;
   cursor: grab;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
 .sheet-drag span {
-  width: 36px;
+  width: 40px;
   height: 4px;
   background: var(--surface-3);
   border-radius: var(--r-pill);
+  opacity: 0.6;
 }
 
 .sheet-head {
   display: flex;
   align-items: center;
   gap: var(--sp-5);
-  padding: 14px 16px;
+  padding: var(--sp-7) var(--sp-8);
   border-bottom: 1px solid var(--border-light);
   cursor: grab;
   touch-action: manipulation;
@@ -1351,7 +1352,7 @@ body.dark-mode .sp-tip {
 }
 .sheet-head h2 {
   flex: 1;
-  font-size: var(--txt-2xl);
+  font-size: var(--txt-3xl);
   font-weight: var(--fw-bold);
   color: var(--text);
   letter-spacing: var(--ls-tight);
@@ -1368,18 +1369,18 @@ body.dark-mode .sp-tip {
     transform-origin: right center;
     height: fit-content !important;
     max-height: calc(100vh - 48px) !important;
-    width: 400px;
+    width: 420px;
     border-radius: var(--r-2xl);
     box-shadow: var(--shadow-float);
     opacity: 1;
     transition:
-      transform 0.28s var(--ease-expo),
+      transform 0.32s var(--ease-expo),
       opacity 0.2s var(--ease-expo),
-      visibility 0.28s,
+      visibility 0.32s,
       height 0.28s var(--ease-expo);
   }
   .sheet.shut {
-    transform: translateX(20px) scale(0.97);
+    transform: translateX(24px) scale(0.97);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -1527,8 +1528,8 @@ body.dark-mode .sp-tip {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px 4px;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-7) var(--sp-1);
 }
 
 /* ── Places search bar (pill-expand in tf-row) ───────────────────── */
@@ -2499,13 +2500,13 @@ body.dark-mode .sp-tip {
 .place-popup-wrap .maplibregl-popup-content {
   padding: 0 !important;
   overflow: visible !important;
-  border-radius: var(--r-md) !important;
+  border-radius: var(--r-lg) !important;
   width: auto;
-  min-width: 200px;
-  max-width: min(280px, 88vw);
+  min-width: 220px;
+  max-width: min(320px, 88vw);
   box-shadow: var(--shadow-xl) !important;
   background: var(--surface) !important;
-  animation: fadeIn 0.2s ease;
+  animation: popupEnter 0.25s var(--ease-expo);
 }
 .place-popup-wrap .maplibregl-popup-content::after {
   content: "";
@@ -2552,17 +2553,17 @@ body.dark-mode .sp-tip {
 }
 
 .pp-inner {
-  padding: 12px 14px;
+  padding: var(--sp-7) var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .pp-hdr {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-right: 24px;
+  gap: var(--sp-3);
+  padding-right: var(--sp-9);
 }
 .pp-icon {
   display: inline-flex;
@@ -2575,14 +2576,15 @@ body.dark-mode .sp-tip {
   text-transform: uppercase;
   letter-spacing: var(--ls-caps);
   border-radius: var(--r-pill);
-  padding: 2px 8px;
+  padding: var(--sp-0h) var(--sp-3);
 }
 
 .pp-title {
-  font-size: var(--txt-md);
+  font-size: var(--txt-lg);
   font-weight: var(--fw-bold);
   color: var(--text);
-  line-height: 1.3;
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
 }
 
 .pp-fav-btn {
@@ -2664,53 +2666,85 @@ body.dark-mode .sp-tip {
   line-height: 1.5;
 }
 
-/* ── Place card events drawer (expandable sub-section) ─────────────────────── */
+/* ── Place card events (dot-as-toggle approach) ───────────────────────────── */
+
+/* Event cards: the category dot becomes the toggle — pulsing ring + badge */
+.pl-card--has-events .pl-dot {
+  position: relative;
+  cursor: pointer;
+  animation: ev-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  z-index: 1;
+}
+
+/* Notification badge on the dot — count rendered via data attribute */
+.pl-card--has-events .pl-dot::after {
+  content: attr(data-ev-count);
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* Subtle radar-ping keyframes */
+@keyframes ev-ping {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+  40%  { box-shadow: 0 0 0 5px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* When drawer is open, stop pulsing — solid accent ring instead */
+.pl-card--has-events:has(.pl-ev-drawer.open) .pl-dot {
+  animation: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+@media (hover: hover) {
+  .pl-card--has-events .pl-dot:hover {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+    transition: box-shadow 0.15s;
+  }
+}
+
+/* Drawer body — expands below the card grid */
 .pl-ev-drawer {
   grid-column: 1 / -1;
-  margin-top: var(--sp-2);
-  border-top: 1px solid var(--border-light);
-  padding-top: var(--sp-2);
-}
-.pl-ev-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  padding: var(--sp-1h) 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--accent);
-  letter-spacing: var(--ls-wide);
-}
-.pl-ev-arrow {
-  margin-left: auto;
-  transition: transform var(--t-fast);
-}
-.pl-ev-drawer.open .pl-ev-arrow {
-  transform: rotate(180deg);
 }
 .pl-ev-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-spring);
+}
+.pl-ev-body-inner {
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1h);
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height var(--t-med), padding var(--t-med);
+  gap: var(--sp-1);
 }
 .pl-ev-drawer.open .pl-ev-body {
-  max-height: 300px;
-  padding-top: var(--sp-2);
+  grid-template-rows: 1fr;
+}
+.pl-ev-drawer.open .pl-ev-body-inner {
+  padding-top: var(--sp-3);
+  padding-bottom: var(--sp-1);
 }
 
 /* Events section in popup */
 .pp-events {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding-top: var(--sp-3);
+  gap: var(--sp-1h);
+  padding-top: var(--sp-2);
   border-top: 1px solid var(--border-light);
 }
 .pp-events-hdr {
@@ -2746,10 +2780,10 @@ body.dark-mode .sp-tip {
 .pp-events-list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1h);
+  gap: var(--sp-1);
   max-height: 180px;
   overflow-y: auto;
-  padding-bottom: var(--sp-1h);
+  padding-bottom: var(--sp-1);
 }
 .pp-ev-empty {
   font-size: var(--txt-xs);
@@ -2969,11 +3003,11 @@ body.dark-mode .sp-tip {
 }
 #event-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: min(540px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2983,11 +3017,11 @@ body.dark-mode .sp-tip {
   transform: scale(0.96);
 }
 #event-form {
-  padding: 16px 16px 20px;
+  padding: var(--sp-7) var(--sp-8) var(--sp-8);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-7);
 }
 #ev-submit {
   display: flex;
@@ -3057,15 +3091,15 @@ body.dark-mode .sp-tip {
 
 #suggest-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #suggest-overlay.hide #suggest-card {
   transform: scale(0.96);
@@ -3074,23 +3108,23 @@ body.dark-mode .sp-tip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: var(--sp-7) var(--sp-8);
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
   background: var(--surface);
 }
 .suggest-head h3 {
-  font-size: var(--txt-2xl);
+  font-size: var(--txt-3xl);
   font-weight: var(--fw-bold);
   color: var(--text);
   letter-spacing: var(--ls-tight);
 }
 
 #suggest-form {
-  padding: 16px 16px 20px;
+  padding: var(--sp-7) var(--sp-8) var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-7);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -3098,7 +3132,7 @@ body.dark-mode .sp-tip {
 .sg-label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--sp-2);
   font-size: var(--txt-base);
   font-weight: var(--fw-medium);
   color: var(--text-2);
@@ -3148,15 +3182,15 @@ body.dark-mode .sp-tip {
 .sg-label input,
 .sg-label select,
 .sg-label textarea {
-  padding: 10px 12px;
+  padding: var(--sp-5) var(--sp-6);
   border: 1.5px solid var(--border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
   font-family: inherit;
   font-size: var(--txt-base);
   font-weight: var(--fw-regular);
   color: var(--text);
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-med);
 }
 .sg-label input::placeholder,
 .sg-label textarea::placeholder {
@@ -3171,7 +3205,7 @@ body.dark-mode .sp-tip {
 .sg-label textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: var(--shadow-accent-sm);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .sg-label input.invalid,
 .sg-label select.invalid,
@@ -3225,25 +3259,25 @@ body.dark-mode .sp-tip {
 
 #edit-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #edit-overlay.hide #edit-card {
   transform: scale(0.96);
 }
 
 #edit-form {
-  padding: 16px 16px 20px;
+  padding: var(--sp-7) var(--sp-8) var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--sp-7);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -3277,16 +3311,16 @@ body.dark-mode .sp-tip {
   align-items: center;
   gap: var(--sp-4);
   height: var(--h-field);
-  padding: 0 14px;
+  padding: 0 var(--sp-6);
   background: var(--surface-2);
   border: 2px solid transparent;
-  border-radius: var(--r-sm);
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  border-radius: var(--r-md);
+  transition: border-color var(--t-fast), box-shadow var(--t-med);
 }
 .dir-field:focus-within {
   border-color: var(--accent);
   background: var(--surface);
-  box-shadow: var(--shadow-accent-sm);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .dir-field input {
   flex: 1;
@@ -3425,7 +3459,7 @@ body.dark-mode .sp-tip {
   list-style: none;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  border-radius: 0 0 var(--r-md) var(--r-md);
   box-shadow: var(--shadow-lg);
   max-height: 200px;
   overflow-y: auto;
@@ -3434,7 +3468,7 @@ body.dark-mode .sp-tip {
   transform: translateY(0);
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease;
+    transform 0.25s var(--ease-expo);
 }
 .dir-suggest.hide {
   display: block !important;
@@ -3446,7 +3480,7 @@ body.dark-mode .sp-tip {
   display: flex;
   align-items: center;
   gap: var(--sp-5);
-  padding: 11px 14px;
+  padding: var(--sp-5) var(--sp-7);
   cursor: pointer;
   border-bottom: 1px solid var(--border-light);
   transition: background-color var(--t-fast);
@@ -3917,6 +3951,18 @@ body.dark-mode .sp-tip {
   to   { opacity: 1; }
 }
 
+/* ─── Premium popup entrance — scale + fade from below ─── */
+@keyframes popupEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Inline button loading spinner */
 .btn-spinner {
   display: inline-block;
@@ -3971,11 +4017,11 @@ body.dark-mode .fallback-notice {
   border-color: rgba(232, 196, 92, 0.25);
 }
 .itin-card {
-  margin: 6px 16px;
-  padding: 10px 14px;
+  margin: var(--sp-2) var(--sp-7);
+  padding: var(--sp-5) var(--sp-7);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   cursor: pointer;
   transition:
     border-color 0.15s,
@@ -3985,18 +4031,18 @@ body.dark-mode .fallback-notice {
     margin 0.2s,
     padding 0.2s,
     box-shadow var(--t-med);
-  animation: cardSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
+  animation: cardSlideIn 0.35s var(--ease-expo) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
 }
 @media (hover: hover) {
   .itin-card:hover {
-    box-shadow: var(--shadow-accent-sm);
-    border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 8%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
   }
 }
 .itin-card.active {
-  margin: 8px 16px;
-  padding: 14px 16px;
+  margin: var(--sp-3) var(--sp-7);
+  padding: var(--sp-7) var(--sp-8);
 }
 @keyframes cardSlideIn {
   from {
@@ -5029,15 +5075,15 @@ body.nav-mode #style-picker {
 }
 #events-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 /* Overlay drag handle — hidden on desktop, shown only in mobile @media block */
 .overlay-drag {
@@ -5106,30 +5152,29 @@ body.nav-mode #style-picker {
   font-size: var(--txt-sm);
   color: var(--text-2);
 }
-.ev-overlay-link-icon {
-  color: var(--accent);
-  flex-shrink: 0;
-}
 .ev-overlay-actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: 0;
   flex-shrink: 0;
+  margin-left: auto;
 }
-.ev-overlay-edit-btn {
+.ev-overlay-edit-btn,
+.ev-overlay-link-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-3);
-  margin-top: calc(-1 * var(--sp-3));
+  padding: var(--sp-2);
   background: transparent;
   border: none;
   color: var(--text-3);
   transition: color var(--t-fast);
   cursor: pointer;
+  text-decoration: none;
 }
 @media (hover: hover) {
-  .ev-overlay-edit-btn:hover {
+  .ev-overlay-edit-btn:hover,
+  .ev-overlay-link-btn:hover {
     color: var(--text);
   }
 }
@@ -5144,6 +5189,15 @@ body.nav-mode #style-picker {
   color: var(--text-2);
   line-height: 1.4;
   margin: 0;
+}
+
+/* Highlight flash when jumping to a specific event */
+.ev-overlay-card--highlight {
+  animation: ev-highlight-flash 1.8s ease-out;
+}
+@keyframes ev-highlight-flash {
+  0%   { box-shadow: inset 0 0 0 2px var(--accent); }
+  100% { box-shadow: inset 0 0 0 2px transparent; }
 }
 
 /* ── Event filter bar ─── */
@@ -5526,10 +5580,10 @@ body.nav-mode #style-picker {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   width: 200px;
-  padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--r-sm);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
   border: 1px solid color-mix(in srgb, var(--sponsor) 25%, var(--border));
   background: color-mix(in srgb, var(--sponsor) 4%, var(--surface));
   cursor: pointer;
@@ -5552,7 +5606,7 @@ body.nav-mode #style-picker {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   flex-shrink: 0;
 }
 .sponsor-card-body {
@@ -6817,9 +6871,9 @@ body.dark-mode .sp-chip {
   z-index: var(--z-top);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
-  padding: var(--sp-5) var(--sp-7) var(--sp-4);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-7) var(--sp-8) var(--sp-5);
   max-height: calc(100vh - var(--sp-7) * 2);
   overflow: hidden;
   box-sizing: border-box;
@@ -7221,12 +7275,12 @@ body.dark-mode .sp-chip {
   max-width: 520px;
   max-height: min(680px, 88vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #privacy-overlay.hide #privacy-card {
   transform: scale(0.96);
@@ -7235,7 +7289,7 @@ body.dark-mode .sp-chip {
 #privacy-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 20px 28px;
+  padding: var(--sp-8) var(--sp-8) var(--sp-10);
   -webkit-overflow-scrolling: touch;
 }
 #privacy-body h4 {
@@ -7933,15 +7987,15 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
 #eid-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: min(600px, 85vh);
   background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-spring);
 }
 #eid-overlay.hide #eid-card {
   transform: scale(0.96);

@@ -20,6 +20,9 @@ what you like, what you've decided, and how you want things done.
 - Expand/collapse UI should reveal by clipping container height/opacity, not by moving or squashing inner text/icons.
 - Date/time picker: drum roller style (iOS-like) with gradient depth tiers, not calendar grid or dropdown selects. Compact, unified, smooth drag interaction.
 - When exploring major UI redesigns, the user prefers a true architectural rethink over cosmetic restyling of the existing floating-control layout.
+- No button size/transform feedback on hover/press/tap. Color/filter/opacity feedback only.
+- Buttons should be fully rounded pill-shaped (`--r-pill`). Primary, secondary, and danger buttons all use `--r-pill` (999px). Icon-card buttons use `--r-lg` (20px). Form inputs use `--r-md` (14px).
+- Design vision: "Premium Utility" — clean, airy, generous spacing, dramatic typography hierarchy, consistent radii + animations across all components.
 - Avoid redesign directions that feel scattered, overly glassy, or HUD-like. The user wants compact, advanced, beautiful product-shell layouts with stronger structural order.
 - Redesign mockups should stay lightweight and visual. Use minimal copy and minimal feature detail so the user can judge look, feel, and layout without reading through dense UI content.
 
@@ -1885,3 +1888,145 @@ Second pass root-cause fix after the first attempt proved incomplete.
 - Validation checks `.size` instead of `== null`.
 
 **Files modified:** `src/event-recurrence.js`, `src/places.js`, `index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`.
+
+### 2026-05-15 — Comprehensive design audit & visual overhaul
+
+Full design audit requested: "beautiful, useful, modern, dynamic" with "uniform, consistent design, styles, color, typography, animation." Priority: phone > PC > tablet. Constraint: no button size feedback on hover/press/tap.
+
+**a. Token foundation upgrades (design-tokens.css):**
+- `--txt-4xl: 28px` added, `--txt-display: 30→32px` — dramatic heading scale
+- `--r-lg: 20→18px`, `--r-xl: 24→22px`, `--r-3xl: 32px` added — slightly tighter radii, new large tier
+- `--h-input: 44px` — minimum touch-friendly input height
+- `--h-submit: 44→48px` — taller CTA buttons
+- `--stagger-unit: 35→40ms` — slightly slower stagger for elegance
+- `.t-panel-heading` bumped to `--txt-3xl`
+- `.pl-card` radius `--r-sm→--r-md`, padding increased
+- `.btn-tab` padding increased, indicator 4→6px bottom + 20→24px width + stronger glow
+- `.btn-primary` added letter-spacing `--ls-tight`
+- `.pill-expand:not(.collapsed)` radius `--r-xl→--r-2xl`
+- `.snack` padding/gap increased, icon 30→34px
+- `.t-field-wrap` added `min-height: var(--h-input)`
+- `.skel-bone` gradient refined (3-stop, 100deg angle)
+
+**b. Dark mode contrast fixes:**
+- `--border: #2a2a2a→#333333`, `--border-light: #262626→#282828` — from ~1.2:1 to visible contrast
+- `--surface-2: #222222→#1a1a1a`, `--surface-3: #333333→#2e2e2e`
+- `--text: #efefef→#f0f0f0`, `--text-2: #b8b8b8→#b0b0b0`, `--text-3: #909090→#808080`
+
+**c. Sheets overhaul:**
+- `.sheet` radius `--r-2xl→--r-3xl`, shadow tokenized to `--shadow-float`
+- `.sheet-drag` padding tokenized, `.sheet-head` padding tokenized, h2 `--txt-2xl→--txt-3xl` + line-height 1.15
+- Desktop width `400→420px`
+
+**d. All popup upgrades (place, stop, eid):**
+- Width `280→320px`, min-width `200→220px`, radius `--r-md→--r-lg`
+- New `@keyframes popupFadeIn` (fade + scale(0.96→1)) replaces basic fadeIn
+- Inner padding tokenized, gaps tokenized, title `--txt-md→--txt-lg` + letter-spacing
+- Fav buttons: `min-width/min-height: 44px` for touch targets
+- Action buttons: height `34→38px`
+
+**e. Overlay cards (contact, wish, suggest, edit):**
+- Max-width increased 20px, radius `--r-xl→--r-2xl`, shadow `--shadow-lg→--shadow-xl`
+- Close scale `0.96→0.97`
+- Form padding/gap tokenized and increased
+
+**f. Search & results:**
+- Search dropdown radius `--r-xl→--r-2xl`
+- Results list item padding tokenized
+
+**g. Direction panel:**
+- Mode bar, time bar, Go button padding/margins tokenized
+- Go button height `--h-field→--h-submit`
+- Results area padding tokenized, loading area spacing tokenized
+
+**h. Prayer snack:**
+- Position tokenized, header padding tokenized, time item padding tokenized
+
+**i. Places list:**
+- `.pl-dot` 28→32px + radius `--r-xs→--r-sm` + svg 14→15px
+- Direction input padding tokenized
+
+**j. Documentation:**
+- `DESIGN_SYSTEM.md` updated: new tokens `--r-3xl`, `--txt-4xl`, `--h-input`, `--h-submit`, `--h-field`, updated `--r-lg/--r-xl` values, `--stagger-unit`, `--txt-display`
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-05-14 — Comprehensive design overhaul (continued)
+
+Continued the full design audit and overhaul for uniform, modern, premium look.
+
+**Token refinements (design-tokens.css):**
+- Surface: `--surface-2: #f5f5f5` (was #f0f0f0), `--surface-3: #e0e0e0` (was #d9d9d9)
+- Text: `--text: #111111` (was #191919), border: `--border: #e2e2e2` (was #dedede)
+- Type scale: `--txt-3xl: 26px` (was 24px), `--txt-4xl: 30px` (new), `--txt-display: 36px` (was 30px)
+- Added line-height tokens: `--lh-tight: 1.15`, `--lh-snug: 1.3`, `--lh-normal: 1.5`, `--lh-relaxed: 1.65`
+- Added `--card-pad` / `--card-pad-lg` for consistent card inner spacing
+- `--stagger-unit: 30ms` (was 35ms)
+- Shadow system: all tiers upgraded with multi-layer, wider spread values
+- Template refinements: `.t-panel-heading` bigger, `.pl-card` r-md + card-pad, all buttons r-pill, `.t-field-wrap` r-md, `.snack` r-2xl, step dots + tab indicators bigger
+
+**Styles.css uniform upgrades:**
+- All overlay cards (suggest, edit, contact, wish, eid, events, privacy): r-2xl, shadow-xl, max-width 420px, spring transitions
+- All form containers: padding sp-7/sp-8, gap sp-7
+- All form inputs: padding sp-5/sp-6, r-md, modern focus ring
+- Sheet: r-3xl, smoother 0.35s transitions, shut scale 0.95
+- Sheet drag handle: thinner, wider (40px), more breathing room
+- Popup: r-lg, wider (220-320px), popupEnter animation (scale+fade)
+- Search dropdown: r-2xl, expo ease transition, tokenized padding
+- Direction suggest: r-md, expo ease, tokenized padding
+- Tutorial card: r-2xl, shadow-xl, more padding
+- Sponsor card: r-md, sp-4/sp-5 padding
+- Itinerary card: r-md, spring animation
+- Direction field: r-md, modern focus ring
+- Zoom pill: r-xl
+- Tab filter row: tokenized spacing
+- Dark mode: refined surface/border/shadow values throughout
+
+**DESIGN_SYSTEM.md updated:** new line-height tokens, corrected surface/text/border values, corrected type scale values, stagger-unit value.
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-05-09 — Event drawer/card compact redesign
+
+User wanted the event section in place list cards to be more compact, beautiful, and take up less space.
+
+**Event card template (design-tokens.css):**
+- Removed background fill (`var(--surface-2)`) — cards were visually heavy
+- Added subtle left accent border (`2px solid accent@35%`) instead — clean hierarchy without bulk
+- Removed border-radius (was `--r-xs`) — no box framing needed without background
+- Tightened padding: `sp-1h sp-3 sp-1h sp-4` (was `sp-2h sp-3`)
+- Meta text color: `--text-3` (was `--text-2`) for better hierarchy
+- Meta gap: `sp-1h` (was `sp-2`), info gap: `1px` (was `sp-0h`)
+- Link/edit buttons: removed background fill, hover adds tint. Sized down to 28px (was 34px)
+
+**List drawer (styles.css):**
+- Removed `border-top` and `padding-top` — less visual overhead per card
+- Margin-top: `sp-1` (was `sp-2`)
+- Toggle padding: `sp-1` (was `sp-1h`)
+- Replaced `max-height` animation hack with `grid-template-rows: 0fr/1fr` + spring transition for smoother expand/collapse
+- Added `.pl-ev-body-inner` wrapper (JS markup updated) for proper grid animation
+
+**Popup events section (styles.css):**
+- Gap: `sp-1h` (was `sp-2`), padding-top: `sp-2` (was `sp-3`)
+- Events list gap: `sp-1` (was `sp-1h`)
+
+**Preference confirmed:** Events should be visually minimal — no card containers, use spacing and accent lines for hierarchy instead.
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `src/places.js`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-05-09 — Event drawer pull-tab design
+
+User wanted the collapsed event toggle to look like a compact "pull tab" instead of a full-width row.
+
+**Changes:**
+- Toggle restyled from full-width row to centered pill tab: `inline-flex`, `r-pill`, `accent@8%` background tint
+- Font size: 10px (was `--txt-xs` / 11px), smaller icons (10px calendar, 8px arrow)
+- Padding: `sp-0h sp-4` — very compact vertically
+- Removed redundant inline `pl-event-chip` from the name row — pull tab handles event count
+- Drawer container: `align-items: center` to center the pill
+- Hover: pill background deepens to `accent@14%`
+- Arrow: 60% opacity for subtlety, rotates on open
+
+**Preference confirmed:** Event indicators should be compact pill-style pull tabs, not full-width interactive rows. Avoid redundant badges when the pull tab already communicates event count.
+
+**Files modified:** `src/styles/styles.css`, `src/places.js`, `docs/PREFERENCE_LOG.md`.

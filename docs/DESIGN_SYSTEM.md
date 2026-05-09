@@ -80,12 +80,12 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | Token | Value | Usage |
 |---|---|---|
 | `--surface` | `#ffffff` | Primary card / sheet background |
-| `--surface-2` | `#f0f0f0` | Secondary fill, disabled backgrounds, segment bar bg |
-| `--surface-3` | `#d9d9d9` | Stronger fill, hover border colour |
-| `--text` | `#191919` | Primary body text |
+| `--surface-2` | `#f5f5f5` | Secondary fill, disabled backgrounds, segment bar bg |
+| `--surface-3` | `#e0e0e0` | Stronger fill, hover border colour |
+| `--text` | `#111111` | Primary body text |
 | `--text-2` | `#525252` | Secondary / subdued text |
 | `--text-3` | `#8c8c8c` | Placeholder / muted / icon default |
-| `--border` | `#dedede` | Default border |
+| `--border` | `#e2e2e2` | Default border |
 | `--border-light` | `#efefef` | Separator / divider lines |
 
 ### Border radii
@@ -95,9 +95,10 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--r-xs` | `6px` | Tiny chip, step icon |
 | `--r-sm` | `10px` | Input fields, cards, buttons |
 | `--r-md` | `14px` | Popup content, medium cards |
-| `--r-lg` | `20px` | Floating pills, picker overlay |
+| `--r-lg` | `20px` | Floating pills, popup content, picker overlay, icon-card buttons |
 | `--r-xl` | `24px` | Sheets (desktop), overlays, search card |
 | `--r-2xl` | `28px` | Sheet corners (mobile), desktop side panels |
+| `--r-3xl` | `32px` | Sheet corners (mobile), large overlays |
 | `--r-pill` | `999px` | Pill shapes, badges |
 
 ### Shadows (keep flat — very subtle)
@@ -137,8 +138,9 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--txt-lg` | `16px` |
 | `--txt-xl` | `18px` |
 | `--txt-2xl` | `20px` |
-| `--txt-3xl` | `24px` |
-| `--txt-display` | `30px` |
+| `--txt-3xl` | `26px` |
+| `--txt-4xl` | `30px` |
+| `--txt-display` | `36px` |
 
 #### Weights
 
@@ -159,6 +161,15 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--ls-normal` | `0` | Body, default |
 | `--ls-wide` | `0.015em` | Small text, chips (helps legibility below 13px) |
 | `--ls-caps` | `0.06em` | Uppercase micro-labels, badges |
+
+### Line-height
+
+| Token | Value | Use |
+|---|---|---|
+| `--lh-tight` | `1.15` | Display text, headings |
+| `--lh-snug` | `1.3` | Subheadings, card titles |
+| `--lh-normal` | `1.5` | Body text, default |
+| `--lh-relaxed` | `1.65` | Long-form content, descriptions |
 
 ### Spacing scale
 
@@ -194,7 +205,15 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-x-slow` | `.5s ease` | Heavy transitions — map canvas filter |
 | `--ease-expo` | `cubic-bezier(.16,1,.3,1)` | Sheets, panels — aggressive deceleration |
 | `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
-| `--stagger-unit` | `35ms` | Per-item delay for staggered list entry animations |
+| `--stagger-unit` | `30ms` | Per-item delay for staggered list entry animations |
+
+### Component Sizing
+
+| Token | Value | Use |
+|---|---|---|
+| `--h-input` | `44px` | Minimum touch-friendly height for form inputs |
+| `--h-submit` | `48px` | Submit/CTA button height |
+| `--h-field` | `42px` | Standard field height |
 
 ### Component size constants
 
