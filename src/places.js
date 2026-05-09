@@ -1812,6 +1812,14 @@ function renderPlacesList() {
     );
   }
 
+  // Hide entire toolbar row when the tab has no data to search/sort/filter
+  const _preSearchCount = filtered.length +
+    (activeTypeFilter === "saved" ? getSavedPins().length : 0);
+  _tfRow.classList.toggle("hide", _preSearchCount === 0);
+  if (_preSearchCount === 0 && _plSearchWrap.classList.contains("open")) {
+    _closePlaceSearch();
+  }
+
   // Inline search filter
   const q = placeSearchQuery.trim().toLowerCase();
   if (q) {

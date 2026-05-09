@@ -35,16 +35,21 @@ function setViewportFloor(width, height) {
   mapHost.style.setProperty("width", `${width}px`, "important");
   mapHost.style.setProperty("height", `${height}px`, "important");
 
+  // Don't set explicit dimensions on canvas container or canvas.
+  // They size themselves via CSS (inset: 0, width/height: 100%) relative
+  // to the host — which is protected by min-height: 100dvh.
+  // Overriding them with pixels from a transient measurement can pin the
+  // render surface to a smaller size even after the viewport stabilises.
+  // Clear any stale inline !important overrides from earlier code paths.
   const canvasContainer = map.getCanvasContainer?.();
-  if (canvasContainer) {
-    canvasContainer.style.setProperty("width", `${width}px`, "important");
-    canvasContainer.style.setProperty("height", `${height}px`, "important");
+  if (canvasContainer?.style.getPropertyValue("width")) {
+    canvasContainer.style.removeProperty("width");
+    canvasContainer.style.removeProperty("height");
   }
-
   const canvas = map.getCanvas();
-  if (canvas) {
-    canvas.style.setProperty("width", `${width}px`, "important");
-    canvas.style.setProperty("height", `${height}px`, "important");
+  if (canvas?.style.getPropertyPriority("width") === "important") {
+    canvas.style.removeProperty("width");
+    canvas.style.removeProperty("height");
   }
 }
 
@@ -82,8 +87,6 @@ function syncMapViewportNow() {
   if (canvas.width < minBufferWidth - 4 || canvas.height < minBufferHeight - 4) {
     canvas.width = minBufferWidth;
     canvas.height = minBufferHeight;
-    canvas.style.setProperty("width", `${targetWidth}px`, "important");
-    canvas.style.setProperty("height", `${targetHeight}px`, "important");
     map.triggerRepaint();
   }
 }

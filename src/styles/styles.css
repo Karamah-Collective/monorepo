@@ -6,6 +6,19 @@
   overflow: hidden;
   touch-action: manipulation;
 }
+
+/* ─── Stagger-in list containers ─── */
+#results-list,
+#dir-itins,
+#places-scroll > ul {
+  --stagger-unit: 35ms;
+}
+#results-list > li,
+#dir-itins > .itin-card,
+#places-scroll > ul > .pl-card {
+  animation: staggerFadeUp 0.3s var(--ease-expo) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger-unit));
+}
 /* ─── Global thin scrollbar ─── */
 #search-drop,
 #contact-form,
@@ -148,6 +161,7 @@
 
 #search-box:focus-within {
   border-radius: var(--r-xl);
+  box-shadow: var(--shadow-accent-sm);
 }
 
 #search-card:not(.collapsed) {
@@ -226,7 +240,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   max-height: 52vh;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -668,6 +682,11 @@ body.dark-mode {
   --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.30);
   --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.36);
   --shadow-lg:    0 4px 16px rgba(0, 0, 0, 0.42);
+  --shadow-xl:    0 8px 24px -4px rgba(0, 0, 0, 0.50), 0 2px 6px -1px rgba(0, 0, 0, 0.30);
+  --shadow-float: 0 12px 48px -8px rgba(0, 0, 0, 0.45), 0 4px 12px -4px rgba(0, 0, 0, 0.25);
+  --shadow-accent-sm: 0 1px 4px rgba(14, 138, 111, 0.18);
+  --shadow-accent-md: 0 4px 12px rgba(14, 138, 111, 0.14);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px rgba(14, 138, 111, 0.45);
   --overlay-bg:   rgba(10, 10, 12, 0.65);
   --overlay-dim:  rgba(10, 10, 12, 0.75);
   --scrim-bg:     rgba(10, 10, 12, 0.25);
@@ -751,7 +770,7 @@ body.dark-mode .eid-mk {
 body.dark-mode .place-popup-wrap .maplibregl-popup-content,
 body.dark-mode .stop-popup-wrap .maplibregl-popup-content {
   background: var(--surface) !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: var(--shadow-xl) !important;
 }
 
 /* Dark mode — curvy popup tip uses ::after background, no border-color needed */
@@ -904,7 +923,7 @@ body.dark-mode .sp-tip {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-float);
   padding: 0 8px;
 }
 
@@ -915,10 +934,13 @@ body.dark-mode .sp-tip {
   width: 20px;
   height: 20px;
 }
-.tab:focus,
-.tab:focus-visible {
+.tab:focus {
   outline: none;
   box-shadow: none;
+}
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tab.tracking {
@@ -935,12 +957,13 @@ body.dark-mode .sp-tip {
   content: "";
   position: absolute;
   bottom: 4px;
-  width: 16px;
+  width: 20px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--r-pill);
   background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent);
   transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.35s var(--ease-spring-pop);
 }
 .tab.active-tab::after {
   transform: scaleX(1);
@@ -1020,10 +1043,11 @@ body.dark-mode .sp-tip {
     left: 0;
     top: 50%;
     width: 3px;
-    height: 16px;
-    border-radius: 0 2px 2px 0;
+    height: 20px;
+    border-radius: 0 var(--r-pill) var(--r-pill) 0;
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent);
     transform: translateY(-50%) scaleY(0);
-    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 0.35s var(--ease-spring-pop);
   }
   .tab.active-tab::after {
     transform: translateY(-50%) scaleY(1);
@@ -1255,8 +1279,8 @@ body.dark-mode .sp-tip {
   bottom: 0;
   height: var(--sheet-h);
   background: var(--surface);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+  border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+  box-shadow: 0 -8px 32px -4px rgba(0, 0, 0, 0.06), 0 -2px 8px -2px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1345,8 +1369,8 @@ body.dark-mode .sp-tip {
     height: fit-content !important;
     max-height: calc(100vh - 48px) !important;
     width: 400px;
-    border-radius: var(--r-xl);
-    box-shadow: var(--shadow-lg);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-float);
     opacity: 1;
     transition:
       transform 0.28s var(--ease-expo),
@@ -2479,9 +2503,7 @@ body.dark-mode .sp-tip {
   width: auto;
   min-width: 200px;
   max-width: min(280px, 88vw);
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: var(--shadow-xl) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
 }
@@ -3134,7 +3156,7 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-base);
   font-weight: var(--fw-regular);
   color: var(--text);
-  transition: border-color var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .sg-label input::placeholder,
 .sg-label textarea::placeholder {
@@ -3149,6 +3171,7 @@ body.dark-mode .sp-tip {
 .sg-label textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: var(--shadow-accent-sm);
 }
 .sg-label input.invalid,
 .sg-label select.invalid,
@@ -3258,10 +3281,12 @@ body.dark-mode .sp-tip {
   background: var(--surface-2);
   border: 2px solid transparent;
   border-radius: var(--r-sm);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .dir-field:focus-within {
-  border-color: var(--surface-3);
+  border-color: var(--accent);
   background: var(--surface);
+  box-shadow: var(--shadow-accent-sm);
 }
 .dir-field input {
   flex: 1;
@@ -3958,9 +3983,16 @@ body.dark-mode .fallback-notice {
     opacity 0.25s ease,
     transform 0.25s ease,
     margin 0.2s,
-    padding 0.2s;
+    padding 0.2s,
+    box-shadow var(--t-med);
   animation: cardSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
   animation-delay: calc(var(--i, 0) * 60ms);
+}
+@media (hover: hover) {
+  .itin-card:hover {
+    box-shadow: var(--shadow-accent-sm);
+    border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+  }
 }
 .itin-card.active {
   margin: 8px 16px;
@@ -4760,7 +4792,7 @@ body.nav-mode #style-picker {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   padding: var(--sp-2) var(--sp-4);
   display: flex;
   align-items: center;
@@ -6151,9 +6183,7 @@ body.dark-mode .loc-ring {
   width: auto;
   min-width: 160px;
   max-width: min(250px, 88vw);
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: var(--shadow-xl) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
 }
@@ -7702,9 +7732,7 @@ body.dark-mode .mse-export {
   width: auto;
   min-width: 200px;
   max-width: min(280px, 88vw);
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: var(--shadow-xl) !important;
   background: var(--surface) !important;
   animation: fadeIn 0.2s ease;
 }

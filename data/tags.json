@@ -249,6 +249,10 @@
     {
       "id": "cuisine_tunisian",
       "label": "Tunisian"
+    },
+    {
+      "id": "cuisine_singaporean",
+      "label": "Singaporean"
     }
   ]
 }

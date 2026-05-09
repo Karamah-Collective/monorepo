@@ -1903,7 +1903,7 @@ export async function findRoutesDirect(mode) {
     const rtDurMin = Math.round(rt.duration / 60);
     const rtDistKm = (rt.distance / 1000).toFixed(1);
     const durLabel = rtDurMin < 60 ? `${rtDurMin} min` : `${Math.floor(rtDurMin / 60)}h ${rtDurMin % 60}m`;
-    return `<div class="itin-card direct-card${i === 0 ? " active" : ""}" data-direct-idx="${i}" style="--dc:${cssColor}">
+    return `<div class="itin-card direct-card${i === 0 ? " active" : ""}" data-direct-idx="${i}" style="--dc:${cssColor};--i:${i}">
         <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + rt.duration * 1000))}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${rtDistKm} km</div></div>
         <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
         <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${rt.stepsHTML}</div></div></div>

@@ -148,6 +148,12 @@ what you like, what you've decided, and how you want things done.
 
 - **2026-04-13 — Transit nav: three-phase stop model (towards → at → past) + board hold.** Transit intermediate stops now show "Towards X" when far, "At X" when within 150m, instead of prematurely "Passing X". Board steps hold advancement until scheduled departure + 30s or 300m movement. Wait-time countdown shown at boarding stops.
 
+- **2026-05-09 — Shadow hierarchy: 3-tier floating depth.** `--shadow-md` for static controls, `--shadow-xl` (multi-layer) for popups/modals/snackbars, `--shadow-float` (wide diffuse) for tab bar/sheets/premium floating UI. Never use hardcoded `rgba()` for shadows on major components.
+- **2026-05-09 — Card hover: accent-tinted, not gray.** Place list cards and itinerary cards use `color-mix(accent 25%, border)` for hover border and `--shadow-accent-sm` for hover shadow. Subtle brand warmth instead of generic gray shift.
+- **2026-05-09 — Sheet radius: 28px on mobile (r-2xl).** Mobile bottom sheets use `--r-2xl` (28px) top corners for modern iOS-like feel. Desktop side panels also use `--r-2xl`.
+- **2026-05-09 — Skeleton shimmer: directional gradient sweep.** All skeleton loading states use a 3-stop horizontal gradient that slides across, replacing basic opacity pulse. More premium, directional light feel.
+- **2026-05-09 — Tab indicator: wider with accent glow.** Active tab indicator is 20px (was 16px) with `--r-pill` radius and subtle accent-tinted box-shadow behind it. Transition uses `--ease-spring-pop` for bouncy feel.
+
 - **2026-04-14 — Navigation: 3D tilted perspective view per travel mode.** Drive 55°, walk 45°, cycle 50°, transit 35°. GPS dot offset to lower third of screen for forward-looking view. Dynamic zoom scales with speed (wider at highway, tighter at walking pace) and boosts near turns. Map auto-rotates heading-up only when speed > 3 km/h. Untilts to flat 2D on nav stop.
 - **2026-04-14 — Auto-centering: only drag breaks follow, not zoom/rotate/pitch.** Zoom, rotate, pitch, and wheel gestures are allowed while following — the next GPS tick restores the nav camera. Only actual panning (drag) exits follow mode.
 - **2026-04-14 — Nav zoom tighter: drive 17–18.5, walk 18–19, cycle 17.5–18.5, transit 17–17.5.** Previous values still too far out. User wants tight street-level view.
@@ -205,6 +211,8 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- Don't add transform-based movement to buttons (translateY on hover, scale on active). The user finds these movement effects annoying. Color/opacity/filter hover states are fine. Pre-existing transforms (nav-recenter, place pin markers) are exempt.
+
 - Don't use raw GPS-to-GPS bearing for navigation heading — GPS jitter causes the map to spin randomly. Always derive heading from the route polyline geometry at the snap point.
 
 - Route-field search and route auto-resolve should share the same candidate pipeline. If the main map has an approved place match, directions must rank it ahead of generic geocoder POIs and de-duplicate overlapping results by normalized name/coords.
@@ -249,6 +257,15 @@ what you like, what you've decided, and how you want things done.
 - All letter-spacing must use tokens: `--ls-tight` for headings (≥18px), `--ls-wide` for small text (≤12px) and chips, `--ls-caps` for uppercase labels. Never hardcode em values.
 - Approach-then-fire for all modes: entering trigger radius starts tracking, fires only on closest-point pass-through or speed-scaled proximity. Route-progress and divergence detection remain as safety nets.
 - Approach fire distance and hysteresis both scale with speed — never use static metre values for speed-dependent navigation thresholds.
+- No physical movement effects on buttons (translateY lift on hover, scale press on active). Hover should use color/opacity/filter changes only. Keep transform effects that were pre-existing (e.g. nav-recenter, place pin markers).
+- Focus-visible rings must use `--focus-ring` token, never custom outline/box-shadow values. `:focus` (mouse) stays suppressed; `:focus-visible` (keyboard) shows the ring.
+- List items should set `style="--i:${index}"` for stagger animation delay. No separate JS timers needed.
+- `prefers-reduced-motion: reduce` must be respected — all animations and transitions suppressed.
+- `::selection` uses accent tint, not browser default blue.
+- Input focus states should use `--shadow-accent-sm` glow in addition to accent border-color.
+- Floating UI (tab bar, sheets, snackbars) uses `--shadow-float`. Popups/modals use `--shadow-xl`. Static controls use `--shadow-md`. Never hardcode `rgba()` for shadows on major components.
+- Card hover states use accent-tinted border (`color-mix(accent, border)`) + `--shadow-accent-sm` for brand warmth. Not plain gray border shift.
+- Skeleton loading uses directional gradient sweep animation, not basic opacity pulse.
 - Route-geometry heading: `_routeBearingAtSnap()` looks N metres ahead on the polyline from the snap point. Immune to GPS noise. Smooth with shortest-arc blend factor. GPS bearing is fallback only.
 - Navigation follow should use the original GPS-centered `easeTo` autocentering path unless the user explicitly asks to revisit the camera model.
 - When navigation follow feels stepped, keep the original GPS-centered camera model and feed `_smartFollow()` from every location update. Throttle route math separately instead of making the camera wait for it.
@@ -262,6 +279,54 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-05-09 — Premium UI polish sweep
+
+**a. Shadow system upgrade — multi-layer depth hierarchy:**
+- Added `--shadow-xl` (popup-grade, 2-layer: tight + medium spread) and `--shadow-float` (premium wide diffuse for floating UI like tab bar, sheets, snackbars).
+- Tab bar, sheets, snackbars upgraded from flat `--shadow-lg` to `--shadow-float`.
+- Popups (place, stop, eid) upgraded from hardcoded `rgba()` to `--shadow-xl`.
+- Snack template, pill-panel, search dropdown all upgraded.
+- Dark mode overrides added for `--shadow-xl` and `--shadow-float`.
+- Hardcoded dark mode popup shadows replaced with token references.
+
+**b. Sheet radius bump:**
+- Added `--r-2xl: 28px` token.
+- Mobile sheets use `--r-2xl` for modern iOS-like rounded corners.
+- Desktop side panels use `--r-2xl` for consistent feel.
+
+**c. Skeleton shimmer upgrade:**
+- Replaced basic opacity pulse animation with directional gradient sweep.
+- Uses a 3-stop linear gradient that slides across the element, creating a premium "light reflection" effect.
+
+**d. Tab indicator refinement:**
+- Active dot widened from 16px to 20px.
+- Border-radius changed from `2px` to `--r-pill` for softer pill shape.
+- Added subtle accent-tinted glow (`box-shadow`) behind the indicator dot.
+- Desktop vertical indicator matches (20px height, pill radius, glow).
+- Transition upgraded to `--ease-spring-pop` for bouncy feel.
+
+**e. Card hover refinement:**
+- `.pl-card` hover now uses accent-tinted border (`color-mix(accent 25%, border)`) instead of plain gray `surface-3`.
+- Hover shadow upgraded from `--shadow-sm` to `--shadow-accent-sm` for brand warmth.
+- `.itin-card` hover similarly upgraded to accent-tinted border + shadow.
+
+**f. Form focus glow:**
+- All form inputs (`.sg-label input/select/textarea`) now get `box-shadow: var(--shadow-accent-sm)` on focus, not just border-color change.
+- Direction fields (`.dir-field`) get accent border-color + glow on focus-within.
+- Transition property includes `box-shadow` for smooth glow entry.
+
+**g. Scrollbar refinement:**
+- Width increased from 3px to 5px for better visibility.
+- Thumb uses `--surface-3` (was `--border`, barely visible).
+- Thumb gets pill border-radius for soft rounded ends.
+
+**h. Button transform revert (from previous sweep):**
+- Removed all `transform: translateY(-1px)` hover and `scale(0.9x)` active states from all 16 button templates.
+- Removed `--t-press` token.
+- User explicitly dislikes physical movement effects on buttons. Color/filter/opacity hover states kept.
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
 
 ### 2026-04-30 — 3-tier navigation camera system
 
@@ -292,6 +357,19 @@ Replaced the continuous speed-based zoom/pitch curve with a clear 3-tier system:
 - Fixed a step-distance accumulation bug that was undercounting later maneuver distances and keeping the camera in turn mode too often
 
 **User preference:** standard is the true default view; zoom in only near actual turns, zoom out harder only on genuine long no-turn stretches.
+
+### 2026-05-09 — Two micro-fixes
+
+**a. Hide search icon when places tab is empty:**
+- In `renderPlacesList()`, added a pre-search count check after type+tag filtering but before query filtering.
+- If the tab has zero items (e.g. "Saved" with nothing saved), `#pl-search-icn-btn` gets `.hide` and any open search is closed.
+- When items exist, the search icon is shown normally.
+
+**b. Fix style picker 2px shift on open:**
+- Root cause: `.pill-panel.hide` used `scale(0.96)` combined with `translateY(-50%)` — the 4% scale interpolation caused a ~2px apparent vertical shift of options during the open transition.
+- Fix: removed `scale(0.96)` from `.pill-panel.hide`. The panel now animates with opacity + translateX only, which is cleaner and eliminates the content shift.
+
+**Files modified:** `src/places.js`, `src/styles/design-tokens.css`, `docs/PREFERENCE_LOG.md`.
 
 **Files:** `src/navigation.js`
 
@@ -1385,6 +1463,54 @@ Added "Request Edit" functionality for events, matching the existing place edit 
 
 **Changes:**
 - `index.html` — Replaced `data-type="prayer_room"` chip with `data-type="religious"` chip. Label "Prayer" → "Religious". Icon changed from person to crescent+star.
+
+### 2026-05-09 — UI polish sweep: micro-interactions, accessibility, motion
+
+**Full redesign audit and targeted upgrades** applied across the design system.
+
+**New tokens added:**
+- `--shadow-accent-sm` / `--shadow-accent-md` — brand-tinted shadows for focused inputs and hovered primary CTAs
+- `--focus-ring` / `--focus-ring-inset` — accessible keyboard focus indicator (double-ring pattern)
+- `--t-press` — 100ms snappy timing for button press/release feedback
+- `--stagger-unit` — 35ms per-item delay for sequential list entry animation
+
+**Button micro-interactions (all templates):**
+- **Hover:** `translateY(-1px)` lift on filled buttons + tinted shadow on primary CTA
+- **Active/pressed:** `scale(0.90–0.98)` depending on button size — simulates physical click
+- **Focus-visible:** accessible ring on all interactive elements (keyboard only, not mouse)
+- Applied to: `btn-icon`, `btn-icon-card`, `btn-primary`, `btn-secondary`, `btn-danger-pill`, `btn-danger-filled`, `btn-success-pill`, `btn-secondary-pill`, `btn-roundel`, `btn-roundel-danger`, `btn-roundel-accent`, `btn-roundel-subtle`, `btn-roundel-sm`, `btn-chip`, `tf-chip`, `ev-filter-chip`
+
+**Staggered list entry animations:**
+- `staggerFadeUp` keyframe — 8px translateY + opacity fade with `--ease-expo`
+- Applied to search results (`#results-list li`), place cards (`.pl-card`), and direction route cards (`.itin-card`)
+- `--i` CSS variable added to search results and direct route cards for sequential delay
+
+**Card hover elevation:**
+- Place cards (`.pl-card`): border darkens + subtle shadow on hover, surface-2 on active
+- Route cards (`.itin-card`): shadow + border on hover
+- New `.t-card-hover` template for reuse on any card
+
+**Typography:**
+- `text-wrap: balance` on `.t-panel-heading` — prevents orphaned words on panel headings
+
+**Input focus:**
+- `.t-field-wrap` and `#search-box`: accent-tinted glow (`--shadow-accent-sm`) on focus
+- New `.t-input-glow` template for standalone inputs
+
+**Accessibility:**
+- Skip-to-content link (`<a class="skip-link">Skip to map</a>`) — hidden until focused
+- `prefers-reduced-motion`: all animations and transitions suppressed when OS setting is on
+- `::selection` styling: accent-tinted highlight instead of browser-default blue
+- `:focus-visible` ring on all buttons and tabs (separated from `:focus` which stays suppressed for mouse clicks)
+- Tab bar `.tab:focus-visible` now shows the focus ring (previously suppressed)
+
+**Scrolling:**
+- `scroll-behavior: smooth` added globally on `html, body`
+
+**Dark mode:**
+- `--shadow-accent-sm`, `--shadow-accent-md`, `--focus-ring` overridden for dark theme
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `index.html`, `src/search.js`, `src/directions.js`, `docs/DESIGN_SYSTEM.md`
 - `src/places.js` — Added `RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"])`. All three filter blocks (markers, tag bar, list rendering) updated to use `RELIGIOUS_TYPES.has()` for the `religious` tab. Removed the separate cemetery subsection that was hardcoded under the mosque tab. Tag filter bar merges tags from all religious types via `flatMap`. Search placeholder updated.
 - `icons.js`, `map-controls.js` — No changes needed; individual type colors and heatmap scoring remain per-type.
 

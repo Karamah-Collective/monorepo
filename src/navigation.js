@@ -1844,14 +1844,19 @@ function _recenter() {
       duration: 600,
     });
 
-    // Seed the interpolation loop for smooth follow after recenter
-    const now = performance.now();
-    _interpPrevFix = { lng: loc.lng, lat: loc.lat, bearing: _headingDeg, time: now };
-    _interpCurrFix = _interpPrevFix;
-    if (!_interpActive) {
-      _interpActive = true;
-      _interpRAF = requestAnimationFrame(_interpFrame);
-    }
+    // Seed the interpolation loop for smooth follow AFTER the easeTo finishes.
+    // Starting it immediately would call jumpTo on the next frame, killing the
+    // recenter animation.
+    map.once("moveend", () => {
+      if (!_following) return; // user panned away during the animation
+      const now = performance.now();
+      _interpPrevFix = { lng: loc.lng, lat: loc.lat, bearing: _headingDeg, time: now };
+      _interpCurrFix = _interpPrevFix;
+      if (!_interpActive) {
+        _interpActive = true;
+        _interpRAF = requestAnimationFrame(_interpFrame);
+      }
+    });
   }
 }
 

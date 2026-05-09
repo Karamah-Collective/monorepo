@@ -71,12 +71,25 @@
   --r-md: 14px;
   --r-lg: 20px;
   --r-xl: 24px;
+  --r-2xl: 28px;
   --r-pill: 999px;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+  /* multi-layer elevated shadow — popups, modals */
+  --shadow-xl: 0 8px 24px -4px rgba(0, 0, 0, 0.10), 0 2px 6px -1px rgba(0, 0, 0, 0.05);
+  /* wide diffused shadow — premium floating UI (tab bar, sheets) */
+  --shadow-float: 0 12px 48px -8px rgba(0, 0, 0, 0.08), 0 4px 12px -4px rgba(0, 0, 0, 0.04);
+
+  /* tinted shadows — subtle brand-tinted depth for interactive elements */
+  --shadow-accent-sm: 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  --shadow-accent-md: 0 4px 12px color-mix(in srgb, var(--accent) 10%, transparent);
+
+  /* focus ring */
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
+  --focus-ring-inset: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 
   --txt-xs: 11px;
   --txt-sm: 13px;
@@ -130,6 +143,8 @@
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
   /* Slight overshoot — playful spring-pop for small elements (pills, chips) */
   --ease-spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Stagger delay unit — used with CSS custom property --i for sequential reveal */
+  --stagger-unit: 35ms;
 
   --btn-icon-size: 42px;
   --btn-roundel-size: 32px;
@@ -257,11 +272,60 @@ body {
   line-height: 1.5;
   touch-action: manipulation;
   -ms-touch-action: manipulation;
+  scroll-behavior: smooth;
 }
 html.dark-mode,
 html.dark-mode body {
   background: #000000;
   --cemetery: #94a3b8;
+}
+
+/* ─── Selection styling ─── */
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--text);
+}
+
+/* ─── Focus-visible ring: accessible keyboard indicator ─── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: var(--focus-ring-inset);
+}
+
+/* ─── Skip to content link (hidden until focused) ─── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--sp-3);
+  padding: var(--sp-3) var(--sp-7);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-sm);
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  z-index: var(--z-top);
+  text-decoration: none;
+  transition: top var(--t-fast);
+}
+.skip-link:focus {
+  top: var(--sp-3);
+}
+
+/* ─── Reduced motion: respect user preference ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .btn-icon {
@@ -281,6 +345,9 @@ html.dark-mode body {
 .btn-icon:active {
   color: var(--accent);
 }
+.btn-icon:focus-visible {
+  box-shadow: var(--focus-ring);
+}
 
 .btn-icon-card {
   width: var(--btn-icon-size);
@@ -295,7 +362,8 @@ html.dark-mode body {
   color: var(--text-3);
   transition:
     color var(--t-fast),
-    background var(--t-fast);
+    background var(--t-fast),
+    box-shadow var(--t-fast);
 }
 @media (hover: hover) {
   .btn-icon-card:hover {
@@ -304,6 +372,9 @@ html.dark-mode body {
 }
 .btn-icon-card:active {
   color: var(--text-2);
+}
+.btn-icon-card:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 .btn-icon-card.active {
@@ -326,7 +397,7 @@ html.dark-mode body {
   border-radius: var(--r-sm);
   font-size: var(--txt-lg);
   font-weight: var(--fw-bold);
-  transition: filter var(--t-fast);
+  transition: filter var(--t-fast), box-shadow var(--t-fast);
 }
 @media (hover: hover) {
   .btn-primary:hover:not(:disabled),
@@ -334,6 +405,7 @@ html.dark-mode body {
   .sp-dir-btn:hover,
   .eid-dir-btn:hover {
     filter: brightness(1.12);
+    box-shadow: var(--shadow-accent-md);
   }
 }
 .btn-primary:disabled {
@@ -486,6 +558,9 @@ html.dark-mode body {
   .btn-roundel:hover {
     color: var(--text-2);
   }
+}
+.btn-roundel:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 .btn-roundel-danger {
@@ -756,11 +831,15 @@ html.dark-mode body {
   }
 }
 .btn-tab:active,
-.btn-tab:focus,
-.btn-tab:focus-visible {
+.btn-tab:focus {
   color: var(--text);
   outline: none;
   box-shadow: none;
+}
+.btn-tab:focus-visible {
+  color: var(--text);
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .btn-tab.active-tab {
@@ -770,12 +849,13 @@ html.dark-mode body {
   content: "";
   position: absolute;
   bottom: 4px;
-  width: 16px;
+  width: 20px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--r-pill);
   background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent);
   transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.35s var(--ease-spring-pop);
 }
 .btn-tab.active-tab::after {
   transform: scaleX(1);
@@ -804,6 +884,7 @@ html.dark-mode body {
   color: var(--text);
   letter-spacing: var(--ls-tight);
   line-height: 1.2;
+  text-wrap: balance;
 }
 
 .t-item-title,
@@ -866,10 +947,11 @@ html.dark-mode body {
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
-  transition: border-color var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .t-field-wrap:focus-within {
   border-color: var(--accent);
+  box-shadow: var(--shadow-accent-sm);
 }
 @media (hover: hover) {
   .t-field-wrap:hover:not(:focus-within) {
@@ -1128,7 +1210,7 @@ html.dark-mode body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   display: flex;
   transform-origin: right center;
   transform: translateY(-50%);
@@ -1140,7 +1222,7 @@ html.dark-mode body {
 .pill-panel.hide {
   display: flex !important;
   opacity: 0 !important;
-  transform: translateY(-50%) translateX(12px) scale(0.96);
+  transform: translateY(-50%) translateX(12px);
   pointer-events: none;
 }
 
@@ -1148,7 +1230,7 @@ html.dark-mode body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   padding: var(--sp-4);
   display: flex;
   align-items: center;
@@ -1510,7 +1592,7 @@ html.dark-mode body {
 #edit-form::-webkit-scrollbar,
 .wish-list::-webkit-scrollbar,
 .sp-routes::-webkit-scrollbar {
-  width: 3px;
+  width: 5px;
 }
 
 .t-scroll::-webkit-scrollbar-track,
@@ -1529,8 +1611,8 @@ html.dark-mode body {
 #edit-form::-webkit-scrollbar-thumb,
 .wish-list::-webkit-scrollbar-thumb,
 .sp-routes::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
 }
 
 /* ─── Step / Stepper Progress Dots ─────────────────────────────────────────── */
@@ -1559,14 +1641,20 @@ html.dark-mode body {
 /* Reusable shimmer placeholders for any loading state.                         */
 
 @keyframes shimmer {
-  from { opacity: 1; }
-  to   { opacity: 0.45; }
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
 }
 
 .skel-bone {
-  background: var(--surface-2);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-3) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
   border-radius: var(--r-xs);
-  animation: shimmer 1.2s ease-in-out infinite alternate;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 .skel-line {
@@ -1584,7 +1672,16 @@ html.dark-mode body {
   /* Font-size tokens used by both row types so they stay in sync */
   --pl-row1: var(--txt-base); /* name row  / empty title */
   --pl-row2: var(--txt-sm); /* addr row  / empty sub   */
+  transition: border-color var(--t-fast), box-shadow var(--t-med);
+  cursor: pointer;
 }
+@media (hover: hover) {
+  .pl-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+    box-shadow: var(--shadow-accent-sm);
+  }
+}
+
 
 /* ─── Drum picker ───────────────────────────────────────────────────────────── */
 /* Depth tiers — JS sets data-tier="0|1|2|3" on each cell */
@@ -2064,4 +2161,53 @@ html.dark-mode .nav-turn-ptr {
   text-align: center;
   font-size: var(--txt-base);
   color: var(--text-3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Staggered List Entry Animation ────────────────────────────────────── */
+/* Apply .stagger-in to a container; children get sequential reveal.        */
+/* JS sets --i on each child (0, 1, 2…) for delay calculation.             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes staggerFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-in > * {
+  animation: staggerFadeUp 0.3s var(--ease-expo) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger-unit));
+}
+
+/* ─── Card Hover Elevation ──────────────────────────────────────────────── */
+/* Apply .t-card-hover to any card that should lift on hover.               */
+.t-card-hover {
+  transition: box-shadow var(--t-med);
+}
+@media (hover: hover) {
+  .t-card-hover:hover {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* ─── Input Focus Glow (standalone inputs not in t-field-wrap) ──────────── */
+.t-input-glow {
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.t-input-glow:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent-sm);
+  outline: none;
+}
+
+/* ─── Tab Indicator Spring ──────────────────────────────────────────────── */
+/* Override the default scaleX transition with a spring-pop feel            */
+.btn-tab::after {
+  transition: transform 0.35s var(--ease-spring-pop);
 }

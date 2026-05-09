@@ -96,7 +96,8 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--r-sm` | `10px` | Input fields, cards, buttons |
 | `--r-md` | `14px` | Popup content, medium cards |
 | `--r-lg` | `20px` | Floating pills, picker overlay |
-| `--r-xl` | `24px` | Sheets, overlays, search card |
+| `--r-xl` | `24px` | Sheets (desktop), overlays, search card |
+| `--r-2xl` | `28px` | Sheet corners (mobile), desktop side panels |
 | `--r-pill` | `999px` | Pill shapes, badges |
 
 ### Shadows (keep flat — very subtle)
@@ -107,6 +108,17 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--shadow-sm` | `0 1px 3px rgba(0,0,0,.06)` | Segment active state |
 | `--shadow-md` | `0 2px 8px rgba(0,0,0,.07)` | Floating pills, zoom pill |
 | `--shadow-lg` | `0 4px 16px rgba(0,0,0,.08)` | Sheets, overlays, search dropdown |
+| `--shadow-xl` | `0 8px 24px -4px rgba(.10) + 0 2px 6px -1px (.05)` | Multi-layer — popups, modals, snackbars |
+| `--shadow-float` | `0 12px 48px -8px rgba(.08) + 0 4px 12px -4px (.04)` | Wide diffuse — tab bar, floating panels |
+| `--shadow-accent-sm` | `0 1px 4px accent@12%` | Brand-tinted glow — focused inputs |
+| `--shadow-accent-md` | `0 4px 12px accent@10%` | Brand-tinted depth — hovered primary CTAs |
+
+### Focus & accessibility
+
+| Token | Value | Usage |
+|---|---|---|
+| `--focus-ring` | `0 0 0 2px surface, 0 0 0 4px accent@50%` | Keyboard focus indicator on buttons, links |
+| `--focus-ring-inset` | `inset 0 0 0 2px accent@50%` | Focus indicator on inputs and textareas |
 
 ### Typography scale
 
@@ -182,6 +194,7 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-x-slow` | `.5s ease` | Heavy transitions — map canvas filter |
 | `--ease-expo` | `cubic-bezier(.16,1,.3,1)` | Sheets, panels — aggressive deceleration |
 | `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
+| `--stagger-unit` | `35ms` | Per-item delay for staggered list entry animations |
 
 ### Component size constants
 
@@ -232,6 +245,41 @@ Navigation turn markers use a shared fixed-size system so the side overlay badge
 |---|---|
 | `--safe-t` | `env(safe-area-inset-top, 0px)` |
 | `--safe-b` | `env(safe-area-inset-bottom, 0px)` |
+
+---
+
+## §2.5 — Interaction & Motion Templates
+
+### `.skip-link`
+
+Visually hidden link that appears on keyboard focus. Positioned fixed at the top of the page. Skips to `#map` for keyboard-only users.
+
+### `.stagger-in`
+
+Apply to a list container. Children with `style="--i:N"` receive sequential `staggerFadeUp` animation (translate + opacity) with `--stagger-unit` delay between each item.
+
+### `.t-card-hover`
+
+Apply to any card element. Adds elevated shadow on hover. Uses `--t-med` timing.
+
+### `.t-input-glow`
+
+Apply to standalone inputs not inside `.t-field-wrap`. Adds accent-tinted box-shadow on focus via `--shadow-accent-sm`.
+
+### Button interaction states
+
+All button templates (`.btn-primary`, `.btn-secondary`, `.btn-roundel`, etc.) include:
+- **Hover:** color, filter, or border changes (no positional transforms)
+- **Focus-visible:** `--focus-ring` box-shadow for keyboard accessibility
+- No `translateY` or `scale` on hover/active — the user prefers static buttons with color-only feedback
+
+### `prefers-reduced-motion`
+
+All animations and transitions are suppressed when the user has enabled "Reduce motion" in their OS settings.
+
+### `::selection`
+
+Text selection uses a 25% tint of `--accent` instead of the browser default blue.
 
 ---
 

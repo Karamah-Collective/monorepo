@@ -2107,5 +2107,37 @@
       "cuisine_bangladeshi": true
     },
     "notes": ""
+  },
+  {
+    "id": "g1l3nr",
+    "name": "Masjid Al-Rahman",
+    "type": "mosque",
+    "address": "Liesikuja 7a, 01600 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2626377,
+    "lng": 24.8502794,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true,
+      "female_prayer": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "pt2ybu",
+    "name": "Singapore",
+    "type": "restaurant",
+    "address": "Lapinlahdenkatu 29, 00180 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1673789,
+    "lng": 24.9245192,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_singaporean": true,
+      "no_alcohol": false
+    },
+    "notes": ""
   }
 ]

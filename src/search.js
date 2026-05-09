@@ -376,10 +376,10 @@ function showResults(items) {
     return;
   }
   const html = items
-    .map((r) => {
+    .map((r, i) => {
       const extra = r.local && r.id ? ' data-place-id="' + r.id + '"' : '';
       const badges = `${r.local ? '<span class="r-halal-badge" title="Community verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>' : ''}${r.sponsor ? '<span class="r-sponsor-label" title="Featured place"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>' : ''}`;
-      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''}><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}</div><div class="r-meta"><span class="r-addr">${esc(r.addr)}</span>${badges}</div></div></li>`;
+      return `<li data-lat="${r.lat}" data-lng="${r.lng}"${extra}${r.local ? ' class="r-local"' : ''} style="--i:${i}"><span class="r-icon">${typeIcon(r.type, r.cls)}</span><div class="r-body"><div class="r-name">${esc(r.name)}</div><div class="r-meta"><span class="r-addr">${esc(r.addr)}</span>${badges}</div></div></li>`;
     })
     .join("");
   rList.innerHTML = html;
