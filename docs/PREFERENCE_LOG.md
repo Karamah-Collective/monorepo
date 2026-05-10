@@ -1597,6 +1597,74 @@ All use GPU-composited `transform` only (preserving the `-45deg` puck rotation).
 **UX behavior changes:**
 - **No auto-start navigation.** Closing the directions panel no longer auto-starts nav. Instead, Navigate buttons (teal, turn-right arrow icon) are added to both direct and transit route cards. User must explicitly tap Navigate.
 - **Closing HUD doesn't clear route.** Exit button on HUD only stops navigation and re-shows the route snackbar. The route remains on the map.
+
+### 2026-05-10 — Unified transition polish sweep
+
+**Goal:** Add beautiful, consistent transitions across the app where content swaps or visibility toggles were previously instant.
+
+**a. Places tab content cross-fade:**
+- Switching between type filter chips (All/Mosques/Spaces/Restaurants/Shops/Saved) now fades out the list, swaps content, then fades in with per-card stagger animation.
+- Uses a new `.pl-fading` class on `#places-scroll` with `opacity var(--t-med)` transition.
+- Falls back to instant swap on mobile (≤768px) or when sheet is closed, to avoid jank on low-end devices.
+- Same cross-fade applied to tag filter changes and "clear all filters" action.
+- `CROSSFADE_MS = 150` — fast enough to feel responsive, slow enough to be perceived.
+
+**b. Heatmap toggle fade:**
+- Heatmap layer now fades in/out smoothly using MapLibre's `heatmap-opacity-transition` (350ms).
+- On enable: layer starts at opacity 0, then animates to zoom-interpolated opacity via `requestAnimationFrame`.
+- On disable: opacity animates to 0, then layer visibility set to "none" after fade completes.
+- Prevents the jarring instant-on / instant-off effect.
+
+**c. Map marker fade:**
+- Place markers now fade in/out when crossing zoom thresholds (cluster zoom, heatmap pin zoom).
+- Changed from instant `visibility: hidden` to CSS class toggle `.mk-hidden` with `opacity var(--t-med)` transition.
+- `pointer-events: none` on hidden markers prevents ghost taps during fade.
+
+**e. Marker entrance fade on tab switch:**
+- When switching tabs, markers are created with `mk-hidden` (opacity 0), then revealed via double-rAF to ensure the browser commits the initial hidden state before transitioning to visible.
+
+### 2026-05-10 — Qibla compass (mobile-only)
+
+**New feature — mobile-only Qibla compass overlay:**
+- Added a "Qibla" button at the bottom of the expanded prayer times list (after Isha row).
+- Button only appears on mobile (`window.innerWidth < 769`) and when `DeviceOrientationEvent` is available.
+- Tapping opens a full-screen overlay with a rotating compass showing direction to the Kaaba.
+
+**Implementation:**
+- **`src/qibla.js`** — new lazy-loaded module with:
+  - Qibla bearing calculation using great-circle formula (Kaaba: 21.4225°N, 39.8262°E).
+  - `DeviceOrientationEvent` listener for compass heading (iOS `webkitCompassHeading` + Android `alpha`).
+  - iOS 13+ permission flow via `DeviceOrientationEvent.requestPermission()`.
+  - Low-pass smoothing filter (α=0.15) with shortest-arc interpolation for jitter-free rotation.
+  - `requestAnimationFrame` render loop for 60fps smooth compass.
+  - GPS `watchPosition` for live bearing updates as user moves.
+  - Full cleanup on close: removes event listeners, clears watch, cancels rAF.
+  - "Locked on" detection — when phone is within ±5° of Qibla bearing.
+- **Prayer panel integration** — `_hasOrientationSupport()` check + `_openQiblaOverlay()` lazy-imports `qibla.js`.
+
+**Visual design (premium redesign):**
+- SVG compass face with tick marks every 10° (major at 30°, cardinal at 90°).
+- Radial gradient background on compass dial.
+- Double-ring: decorative outer ring + functional inner ring.
+- Fixed center pointer (accent-colored triangle + crosshair dot) — does not rotate.
+- Compass ring rotates so north always points to true north.
+- Kaaba indicator: accent-colored dot with pulsing ring on the ring edge at Qibla bearing.
+- "Locked on" state (within ±5°): ring border turns accent with glow, Kaaba dot turns success green, bearing number turns accent, status text turns success green.
+- Bearing displayed as hero number (`--txt-3xl`, `--fw-bold`, tabular-nums).
+- Full dark mode: surface-2 card background, inverted radial gradient, adjusted borders.
+- Card enter animation: scale(0.94) + translateY(8px) + opacity for depth.
+- Pulsing Kaaba indicator using `qibla-pulse` keyframe (scale 0.6→1.6 with fade).
+
+**Files created:** `src/qibla.js`
+**Files modified:** `index.html`, `src/prayer.js`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`
+- Applies to all `addPlaceMarkers()` calls: tab switch, filter change, clear filters, fav toggle, initial load.
+
+**d. Respects `prefers-reduced-motion`:**
+- All new transitions suppressed by the existing global `@media (prefers-reduced-motion: reduce)` rule.
+
+**Files modified:** `src/styles/styles.css`, `src/places.js`, `src/map-controls.js`
+**New CSS:** `.pl-fading`, `.mk-hidden`, `#places-scroll > ul` transition
+**New JS:** `_crossFadePlacesList()`, `CROSSFADE_MS`, heatmap fade-in/out logic, `HEATMAP_FADE_MS`
 - **Mobile full-screen nav.** `body.nav-mode` class hides search card, tool pills, zoom pill, prayer snack, eid pill, promos pill, tab bar, and route snackbar. HUD repositions to bottom of screen without tab bar offset.
 
 **HUD redesign (E1 — Clean Baseline chosen from 8 variants):**

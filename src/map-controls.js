@@ -847,8 +847,12 @@ export function toggleSatellite() {
 }
 
 // ── Heatmap toggle ────────────────────────────────────────────────
+const HEATMAP_FADE_MS = 350;
+let _heatmapFadeTimer = 0;
+
 export function toggleHeatmap() {
   isHeatmapActive = !isHeatmapActive;
+  clearTimeout(_heatmapFadeTimer);
 
   if (isHeatmapActive) {
     const geojson = buildHeatmapGeoJSON();
@@ -876,9 +880,16 @@ export function toggleHeatmap() {
             1, "rgba(255,40,40,0.85)",
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 8, 30, 12, 50, 15, 70],
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.85, 16, 0.45],
+          "heatmap-opacity": 0,
+          "heatmap-opacity-transition": { duration: HEATMAP_FADE_MS, delay: 0 },
         },
       }, "label_road");
+
+      // Fade in after layer is added
+      requestAnimationFrame(() => {
+        map.setPaintProperty("heatmap-layer", "heatmap-opacity",
+          ["interpolate", ["linear"], ["zoom"], 12, 0.85, 16, 0.45]);
+      });
 
       // Click heatmap hotspot → zoom in closer
       map.on("click", "heatmap-layer", (e) => {
@@ -893,18 +904,29 @@ export function toggleHeatmap() {
       map.on("mouseleave", "heatmap-layer", () => { map.getCanvas().style.cursor = ""; });
     } else {
       map.setLayoutProperty("heatmap-layer", "visibility", "visible");
+      map.setPaintProperty("heatmap-layer", "heatmap-opacity", 0);
+      requestAnimationFrame(() => {
+        map.setPaintProperty("heatmap-layer", "heatmap-opacity",
+          ["interpolate", ["linear"], ["zoom"], 12, 0.85, 16, 0.45]);
+      });
       // Ensure heatmap renders above satellite raster
       if (isSatelliteActive && map.getLayer("style-raster")) {
         map.moveLayer("heatmap-layer", "label_road");
       }
     }
   } else {
-    if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "none");
+    if (map.getLayer("heatmap-layer")) {
+      map.setPaintProperty("heatmap-layer", "heatmap-opacity", 0);
+      _heatmapFadeTimer = setTimeout(() => {
+        if (!isHeatmapActive && map.getLayer("heatmap-layer")) {
+          map.setLayoutProperty("heatmap-layer", "visibility", "none");
+        }
+      }, HEATMAP_FADE_MS);
+    }
   }
 
   updateMarkerVisibility();
   _syncStyleButtons();
-  console.log(`[Style] Heatmap ${isHeatmapActive ? "ON" : "OFF"}`);
 }
 
 function _snapshotLabels() {

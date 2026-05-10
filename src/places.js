@@ -626,10 +626,7 @@ export function updateMarkerVisibility() {
   const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
   placeMarkers.forEach((marker) => {
     const el = marker.getElement();
-    if (el) {
-      el.style.visibility = shouldHide ? "hidden" : "visible";
-      el.style.pointerEvents = shouldHide ? "none" : "auto";
-    }
+    if (el) el.classList.toggle("mk-hidden", shouldHide);
   });
   const clusterVis = (isHeatmap && zoom < HEATMAP_PIN_ZOOM) ? "none" : "visible";
   CLUSTER_LAYER_IDS.forEach((id) => {
@@ -778,7 +775,7 @@ export function addPlaceMarkers() {
 
   filtered.forEach((place) => {
     const el = document.createElement("div");
-    el.className = "place-mk-wrap";
+    el.className = "place-mk-wrap mk-hidden";
     el.innerHTML = makePlaceMarkerHTML(place.type);
     // Sponsor glow on the puck — basic gets gold border, featured gets glow, spotlight gets pulse
     // Higher z-index so sponsored pins render on top when overlapping
@@ -808,7 +805,7 @@ export function addPlaceMarkers() {
   getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
     if (placeCoords.has(`${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`)) return;
     const el = document.createElement("div");
-    el.className = "place-mk-wrap";
+    el.className = "place-mk-wrap mk-hidden";
     el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
     el.dataset.pinId = pin.id;
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
@@ -819,7 +816,10 @@ export function addPlaceMarkers() {
     savedPinMarkers.push(marker);
   });
 
-  updateMarkerVisibility();
+  // Fade markers in after DOM commits the initial hidden state
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => updateMarkerVisibility());
+  });
   refreshHeatmapSource();
   syncHomeMarker();
 }
@@ -1393,7 +1393,7 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   }
   renderTagFilterBar();
   document.getElementById("places-scroll").scrollTop = 0;
-  animateSheetHeight(placesSheet, () => renderPlacesList());
+  _crossFadePlacesList();
   placesSnap.softRemeasure();
   requestAnimationFrame(() => addPlaceMarkers());
 });
@@ -1491,7 +1491,7 @@ placesClearBtn.addEventListener("click", () => {
   renderTagFilterBar();
   addPlaceMarkers();
   document.getElementById("places-scroll").scrollTop = 0;
-  animateSheetHeight(placesSheet, () => renderPlacesList());
+  _crossFadePlacesList();
   placesSnap.softRemeasure();
   updateClearButton();
 });
@@ -1779,7 +1779,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   updateTagCount();
   addPlaceMarkers();
   document.getElementById("places-scroll").scrollTop = 0;
-  animateSheetHeight(placesSheet, () => renderPlacesList());
+  _crossFadePlacesList();
   placesSnap.softRemeasure();                    // update drag cap for filtered content
   updateClearButton();
 });
@@ -1788,6 +1788,27 @@ function _placeSkeletonHTML(count = 6) {
   return Array.from({ length: count }, (_, i) =>
     `<li class="pl-skeleton" style="--i:${i}"><div class="skel-bone skel-icon"></div><div class="skel-body"><div class="skel-bone skel-line skel-line-long"></div><div class="skel-bone skel-line skel-line-short"></div></div><div class="skel-bone skel-badge"></div></li>`
   ).join("");
+}
+
+const CROSSFADE_MS = 150;
+let _crossFadeTimer = 0;
+
+/**
+ * Cross-fade the places list: fade out → swap content → fade in with stagger.
+ * Falls back to instant swap on mobile or when the sheet is closed.
+ */
+function _crossFadePlacesList() {
+  const scroll = document.getElementById("places-scroll");
+  if (window.innerWidth <= 768 || placesSheet.classList.contains("shut")) {
+    animateSheetHeight(placesSheet, () => renderPlacesList());
+    return;
+  }
+  clearTimeout(_crossFadeTimer);
+  scroll.classList.add("pl-fading");
+  _crossFadeTimer = setTimeout(() => {
+    animateSheetHeight(placesSheet, () => renderPlacesList());
+    requestAnimationFrame(() => scroll.classList.remove("pl-fading"));
+  }, CROSSFADE_MS);
 }
 
 function renderPlacesList() {

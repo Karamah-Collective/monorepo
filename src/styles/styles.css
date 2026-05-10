@@ -159,9 +159,12 @@
   overflow: visible;
 }
 
+#search-card:not(.collapsed):focus-within {
+  border-color: var(--accent);
+}
+
 #search-box:focus-within {
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-accent-sm);
 }
 
 #search-card:not(.collapsed) {
@@ -1566,7 +1569,6 @@ body.dark-mode .sp-tip {
 }
 .pl-search-wrap.open:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 /* Icon button — anchored to #tf-row (not the expanding wrap) so it never shifts */
@@ -1868,6 +1870,16 @@ body.dark-mode .sp-tip {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── Cross-fade content on tab switch ── */
+#places-scroll > ul,
+#places-scroll > .pl-card {
+  transition: opacity var(--t-med);
+}
+#places-scroll.pl-fading > ul,
+#places-scroll.pl-fading > .pl-card {
+  opacity: 0;
 }
 
 #places-list {
@@ -2432,7 +2444,11 @@ body.dark-mode .sp-tip {
 
 .maplibregl-marker {
   opacity: 1 !important;
-  transition: none !important;
+  transition: opacity var(--t-med) !important;
+}
+.maplibregl-marker.mk-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 .place-mk {
   background: var(--place-c, var(--accent));
@@ -5929,6 +5945,233 @@ body.nav-mode #style-picker {
   font-weight: var(--fw-semibold);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+
+/* ─── Qibla Button (inside prayer dropdown) ─── */
+.qibla-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .qibla-btn:hover {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+}
+/* Hide on desktop — compass needs device sensors */
+@media (min-width: 769px) {
+  .qibla-btn { display: none; }
+}
+
+/* ─── Qibla Compass Overlay ─── */
+#qibla-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  transition: opacity var(--t-med);
+}
+#qibla-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med);
+}
+
+#qibla-card {
+  width: calc(100% - var(--sp-9) * 2);
+  max-width: 340px;
+  background: var(--surface);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--t-spring), opacity var(--t-spring);
+}
+#qibla-overlay.hide #qibla-card {
+  transform: scale(0.94) translateY(8px);
+  opacity: 0;
+}
+
+#qibla-body {
+  padding: var(--sp-8) var(--sp-8) var(--sp-9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+/* ── Compass Container ── */
+#qibla-compass {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Outer decorative ring */
+#qibla-outer-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  pointer-events: none;
+}
+
+/* Main rotating dial */
+#qibla-ring {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background:
+    radial-gradient(circle at 50% 50%, var(--surface) 60%, var(--surface-2) 100%);
+  will-change: transform;
+  transition: border-color var(--t-fast);
+}
+/* "locked on" glow when facing Qibla */
+#qibla-ring.qibla-locked {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent),
+              0 0 24px -4px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* SVG compass face fills the ring */
+.qibla-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Kaaba / Qibla indicator on ring edge ── */
+#qibla-kaaba {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.qibla-kaaba-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-accent-md);
+  transform: translate(-50%, -50%);
+}
+.qibla-kaaba-pulse {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  transform: translate(-50%, -50%);
+  animation: qibla-pulse 2s ease-out infinite;
+}
+@keyframes qibla-pulse {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+/* Kaaba dot accent when locked */
+#qibla-ring.qibla-locked .qibla-kaaba-dot {
+  background: var(--success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 40%, transparent);
+}
+#qibla-ring.qibla-locked .qibla-kaaba-pulse {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+}
+
+/* ── Fixed center pointer (does not rotate) ── */
+#qibla-pointer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -58%);
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+
+/* ── Info section ── */
+#qibla-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+#qibla-bearing-value {
+  font-size: var(--txt-3xl);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+  transition: color var(--t-fast);
+}
+/* Hero number turns accent when locked on */
+#qibla-overlay.qibla-on-target #qibla-bearing-value {
+  color: var(--accent);
+}
+
+#qibla-bearing-unit {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  letter-spacing: var(--ls-wide);
+}
+
+#qibla-status {
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  margin-top: var(--sp-2);
+  min-height: 1.4em;
+  transition: color var(--t-fast);
+}
+/* Status turns success when locked */
+#qibla-overlay.qibla-on-target #qibla-status {
+  color: var(--success);
+  font-weight: var(--fw-semibold);
+}
+
+/* ── Dark mode ── */
+body.dark-mode #qibla-card {
+  background: var(--surface-2);
+}
+body.dark-mode #qibla-ring {
+  background:
+    radial-gradient(circle at 50% 50%, var(--surface-2) 60%, var(--surface) 100%);
+}
+body.dark-mode #qibla-outer-ring {
+  border-color: var(--border);
+}
+body.dark-mode .qibla-kaaba-dot {
+  border-color: var(--surface-2);
 }
 
 @keyframes origin-pulse {
