@@ -92,16 +92,16 @@
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
   --focus-ring-inset: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 
-  --txt-xs: 11px;
+  --txt-xs: 12px;
   --txt-sm: 13px;
   --txt-base: 14px;
   --txt-md: 15px;
   --txt-lg: 16px;
-  --txt-xl: 18px;
-  --txt-2xl: 20px;
-  --txt-3xl: 26px;
-  --txt-4xl: 30px;
-  --txt-display: 36px;
+  --txt-xl: 17px;
+  --txt-2xl: 19px;
+  --txt-3xl: 22px;
+  --txt-4xl: 26px;
+  --txt-display: 30px;
 
   /* line heights */
   --lh-tight: 1.15;
@@ -665,7 +665,7 @@ select:focus-visible {
   padding: var(--sp-3h) var(--sp-1);
   border-radius: calc(var(--r-sm) - 2px);
   font-size: var(--txt-base);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--text-3);
   white-space: nowrap;
   position: relative;
@@ -748,9 +748,9 @@ select:focus-visible {
 }
 .tf-group-count {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+  letter-spacing: var(--ls-normal);
   background: var(--accent);
   color: var(--on-accent);
   border-radius: var(--r-pill);
@@ -1344,6 +1344,34 @@ select:focus-visible {
   --chip-c: var(--sponsor);
 }
 
+/* ── Open / Closed inline badges ───────────────────────────────────────────── */
+.pl-open-chip,
+.pp-hours-open {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.pl-closed-chip,
+.pp-hours-shut {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
 /* Shared "Sponsored" inline badge — reuse chip sizing but with gold tint */
 .sponsor-badge {
   display: inline-flex;
@@ -1392,8 +1420,8 @@ select:focus-visible {
   align-items: center;
   margin-left: var(--sp-2);
   vertical-align: middle;
-  font-size: 10px;
-  font-weight: var(--fw-semibold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
   padding: 1px 5px;
   border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1845,7 +1873,7 @@ select:focus-visible {
   color: var(--text-2);
   text-transform: uppercase;
   letter-spacing: var(--ls-caps);
-  font-size: 9px;
+  font-size: var(--txt-xs);
 }
 
 .nav-progress-bar {

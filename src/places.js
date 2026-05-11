@@ -390,6 +390,221 @@ function _highlightMatch(escaped, q) {
   return escaped.replace(new RegExp(`(${safe})`, "gi"), "<mark>$1</mark>");
 }
 
+// ── Opening hours helpers ────────────────────────────────────────────────────
+const _DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const _DAY_LABELS = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
+const _DAY_LABELS_FULL = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
+
+/**
+ * Check if a place is currently open based on its hours data.
+ * @param {{ [day: string]: string | null }} hours - Opening hours object
+ * @returns {boolean | null} true=open, false=closed, null=unknown
+ */
+function isPlaceOpenNow(hours) {
+  if (!hours || typeof hours !== "object") return null;
+  const now = new Date();
+  const dayKey = _DAY_KEYS[(now.getDay() + 6) % 7]; // JS getDay: 0=Sun → shift to mon=0
+  const todayHours = hours[dayKey];
+  if (!todayHours) return false;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  return todayHours.split(",").some((range) => {
+    const [open, close] = range.trim().split("-");
+    if (!open || !close) return false;
+    const [oh, om] = open.split(":").map(Number);
+    const [ch, cm] = close.split(":").map(Number);
+    return nowMin >= oh * 60 + om && nowMin < ch * 60 + cm;
+  });
+}
+
+/**
+ * Format opening hours for popup display — groups consecutive days with same hours.
+ * e.g. "Mon–Fri 10:00–22:00" instead of 7 separate rows.
+ * @param {{ [day: string]: string | null }} hours
+ * @returns {string} HTML for grouped hours display
+ */
+function _formatHoursForPopup(hours) {
+  if (!hours || typeof hours !== "object") return "";
+  const now = new Date();
+  const todayKey = _DAY_KEYS[(now.getDay() + 6) % 7];
+
+  // Build groups of consecutive days with same hours value
+  const groups = [];
+  let i = 0;
+  while (i < _DAY_KEYS.length) {
+    const startDay = _DAY_KEYS[i];
+    const val = hours[startDay] ?? null;
+    let endIdx = i;
+    while (endIdx + 1 < _DAY_KEYS.length && (hours[_DAY_KEYS[endIdx + 1]] ?? null) === val) {
+      endIdx++;
+    }
+    groups.push({ startIdx: i, endIdx, val });
+    i = endIdx + 1;
+  }
+
+  return groups.map((g) => {
+    const startDay = _DAY_KEYS[g.startIdx];
+    const endDay = _DAY_KEYS[g.endIdx];
+    const span = g.endIdx - g.startIdx;
+    const label = span === 0
+      ? _DAY_LABELS[startDay]
+      : span === 6
+        ? "Every day"
+        : `${_DAY_LABELS[startDay]}–${_DAY_LABELS[endDay]}`;
+    const containsToday = _DAY_KEYS.indexOf(todayKey) >= g.startIdx && _DAY_KEYS.indexOf(todayKey) <= g.endIdx;
+    const cls = containsToday ? " pp-hours-today" : "";
+    const timeStr = g.val ? g.val.replace(/,/g, ", ").replace(/-/g, "–") : "Closed";
+    const timeCls = g.val ? "" : " pp-hours-closed";
+    return `<div class="pp-hours-row${cls}"><span class="pp-hours-day">${label}</span><span class="pp-hours-time${timeCls}">${esc(timeStr)}</span></div>`;
+  }).join("");
+}
+
+/**
+ * Render the opening hours form into a container element.
+ * Uses the same circular day-ring buttons as the event form.
+ * @param {HTMLElement} container
+ * @param {string} prefix - "sg" or "ed"
+ * @param {{ [day: string]: string | null } | null} existingHours
+ */
+function _renderHoursForm(container, prefix, existingHours) {
+  const hasHours = existingHours && typeof existingHours === "object" && Object.keys(existingHours).length > 0;
+
+  // Parse existing hours into schedule entries: [{ days: [...], open, close }]
+  let entries = [];
+  if (hasHours) {
+    const groups = [];
+    let i = 0;
+    while (i < _DAY_KEYS.length) {
+      const val = existingHours[_DAY_KEYS[i]] ?? null;
+      const days = [_DAY_KEYS[i]];
+      let j = i + 1;
+      while (j < _DAY_KEYS.length && (existingHours[_DAY_KEYS[j]] ?? null) === val) {
+        days.push(_DAY_KEYS[j]);
+        j++;
+      }
+      groups.push({ days, val });
+      i = j;
+    }
+    entries = groups.map((g) => {
+      if (!g.val) return { days: g.days, open: "", close: "", closed: true };
+      const parts = g.val.split("-");
+      return { days: g.days, open: parts[0] || "", close: parts[1] || "", closed: false };
+    });
+  } else {
+    entries = [{ days: [..._DAY_KEYS], open: "", close: "", closed: false }];
+  }
+
+  let html = `<button type="button" class="sg-hours-disclosure" id="${prefix}-hours-toggle" aria-expanded="${hasHours}"><svg class="sg-hours-chevron${hasHours ? " expanded" : ""}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg><span>Set opening hours</span></button>`;
+  html += `<div id="${prefix}-hours-body" class="sg-hours-body${hasHours ? "" : " hide"}">`;
+  html += `<div id="${prefix}-hours-entries" class="sg-hours-entries">`;
+  html += entries.map((entry, idx) => _renderHoursEntry(prefix, idx, entry)).join("");
+  html += `</div>`;
+  html += `<button type="button" id="${prefix}-hours-add" class="sg-hours-add-btn">+ Add different hours</button>`;
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Wire up disclosure toggle
+  const toggleBtn = container.querySelector(`#${prefix}-hours-toggle`);
+  const body = container.querySelector(`#${prefix}-hours-body`);
+  toggleBtn.addEventListener("click", () => {
+    const isOpen = body.classList.toggle("hide");
+    toggleBtn.setAttribute("aria-expanded", !isOpen);
+    toggleBtn.querySelector(".sg-hours-chevron").classList.toggle("expanded", !isOpen);
+  });
+
+  // Wire up add button
+  container.querySelector(`#${prefix}-hours-add`).addEventListener("click", () => {
+    const entriesEl = container.querySelector(`#${prefix}-hours-entries`);
+    const idx = entriesEl.children.length;
+    const assigned = new Set();
+    entriesEl.querySelectorAll(".ev-day-btn.active").forEach((btn) => assigned.add(btn.dataset.day));
+    const available = _DAY_KEYS.filter((d) => !assigned.has(d));
+    if (!available.length) return;
+    const newEntry = document.createElement("div");
+    newEntry.innerHTML = _renderHoursEntry(prefix, idx, { days: available, open: "", close: "", closed: false });
+    const entryEl = newEntry.firstElementChild;
+    entriesEl.appendChild(entryEl);
+    _wireHoursEntry(entryEl);
+  });
+
+  // Wire existing entries
+  container.querySelectorAll(".sg-hours-entry").forEach((el) => _wireHoursEntry(el));
+}
+
+/** @private */
+function _renderHoursEntry(prefix, idx, entry) {
+  // Use single-letter initials and day-ring pattern matching the event form
+  const dayBtns = _DAY_KEYS.map((day) => {
+    const active = entry.days.includes(day) ? " active" : "";
+    return `<button type="button" class="ev-day-btn${active}" data-day="${day}">${_DAY_LABELS[day].charAt(0)}</button>`;
+  }).join("");
+
+  return `<div class="sg-hours-entry" data-idx="${idx}">
+    ${idx > 0 ? `<button type="button" class="sg-hours-remove-btn" aria-label="Remove">&times;</button>` : ""}
+    <div class="ev-day-ring">${dayBtns}</div>
+    <div class="sg-hours-time-row">
+      <input type="time" class="sg-hours-input sg-hours-entry-open" value="${entry.closed ? "" : entry.open}" ${entry.closed ? "disabled" : ""}>
+      <span class="sg-hours-sep">–</span>
+      <input type="time" class="sg-hours-input sg-hours-entry-close" value="${entry.closed ? "" : entry.close}" ${entry.closed ? "disabled" : ""}>
+      <label class="sg-hours-closed-toggle"><input type="checkbox" class="sg-hours-entry-closed" ${entry.closed ? "checked" : ""}><span>Closed</span></label>
+    </div>
+  </div>`;
+}
+
+/** @private */
+function _wireHoursEntry(entryEl) {
+  // Day ring buttons toggle
+  entryEl.querySelectorAll(".ev-day-btn").forEach((btn) => {
+    btn.addEventListener("click", () => btn.classList.toggle("active"));
+  });
+  // Closed toggle
+  const closedCb = entryEl.querySelector(".sg-hours-entry-closed");
+  closedCb?.addEventListener("change", () => {
+    entryEl.querySelectorAll("input[type=time]").forEach((inp) => {
+      inp.disabled = closedCb.checked;
+      if (closedCb.checked) inp.value = "";
+    });
+  });
+  // Remove button
+  const removeBtn = entryEl.querySelector(".sg-hours-remove-btn");
+  removeBtn?.addEventListener("click", () => entryEl.remove());
+}
+
+/**
+ * Collect opening hours from the entry-based form.
+ * @param {HTMLElement} container
+ * @param {string} prefix - "sg" or "ed"
+ * @returns {string} JSON string of hours, or empty string
+ */
+function _collectHoursFromForm(container, prefix) {
+  const body = container.querySelector(`#${prefix}-hours-body`);
+  if (!body || body.classList.contains("hide")) return "";
+
+  const hours = {};
+  // Initialise all days as null (unset)
+  for (const day of _DAY_KEYS) hours[day] = null;
+
+  const entries = container.querySelectorAll(".sg-hours-entry");
+  entries.forEach((entry) => {
+    const isClosed = entry.querySelector(".sg-hours-entry-closed")?.checked;
+    const open = entry.querySelector(".sg-hours-entry-open")?.value || "";
+    const close = entry.querySelector(".sg-hours-entry-close")?.value || "";
+    const activeDays = [...entry.querySelectorAll(".ev-day-btn.active")].map((p) => p.dataset.day);
+
+    for (const day of activeDays) {
+      if (isClosed) {
+        hours[day] = null;
+      } else if (open && close) {
+        hours[day] = `${open}-${close}`;
+      }
+    }
+  });
+
+  const hasAnyHours = Object.values(hours).some((v) => v !== null);
+  return hasAnyHours ? JSON.stringify(hours) : "";
+}
+
+let _openNowFilter = false;
+
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
@@ -408,6 +623,12 @@ function _buildCard(p, i) {
   const sponsorBadge = activeSponsor(p)
     ? `<span class="pl-sponsor-chip">Featured</span>`
     : "";
+  const openStatus = p.hours ? isPlaceOpenNow(p.hours) : null;
+  const openBadge = openStatus === true
+    ? `<span class="pl-open-chip">Open</span>`
+    : openStatus === false
+      ? `<span class="pl-closed-chip">Closed</span>`
+      : "";
   const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
   const evCount = placeEvents.length;
   const isFeatured = !!activeSponsor(p);
@@ -434,7 +655,7 @@ function _buildCard(p, i) {
 
   return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
+    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}${openBadge}</span>
     <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
@@ -765,6 +986,10 @@ export function addPlaceMarkers() {
     );
   }
 
+  if (_openNowFilter) {
+    filtered = filtered.filter((p) => isPlaceOpenNow(p.hours) === true);
+  }
+
   // Update or create the GeoJSON cluster source
   const clusterGeoJSON = _buildPlacesGeoJSON(filtered);
   if (map.getSource("places-cluster")) {
@@ -972,6 +1197,28 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     notes.className = "pp-notes";
     notes.textContent = place.notes;
     inner.appendChild(notes);
+  }
+
+  // Opening hours
+  if (place.hours) {
+    const openStatus = isPlaceOpenNow(place.hours);
+    const statusBadge = openStatus === true
+      ? `<span class="pp-hours-badge pp-hours-open">Open</span>`
+      : openStatus === false
+        ? `<span class="pp-hours-badge pp-hours-shut">Closed</span>`
+        : "";
+    const hoursEl = document.createElement("div");
+    hoursEl.className = "pp-hours";
+    hoursEl.innerHTML = `<div class="pp-hours-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Hours</span>${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></div><div class="pp-hours-body hide">${_formatHoursForPopup(place.hours)}</div>`;
+    const expandBtn = hoursEl.querySelector(".pp-hours-expand-btn");
+    const hoursBody = hoursEl.querySelector(".pp-hours-body");
+    expandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = hoursBody.classList.toggle("hide");
+      expandBtn.setAttribute("aria-expanded", !open);
+      expandBtn.closest(".pp-hours-hdr").classList.toggle("expanded", !open);
+    });
+    inner.appendChild(hoursEl);
   }
 
   // Events section — only for mosques/prayer rooms with active events
@@ -1486,7 +1733,7 @@ _plSearchInput.addEventListener("keydown", (e) => {
 });
 
 function updateClearButton() {
-  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery;
+  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery || _openNowFilter;
   placesClearBtn.classList.toggle("hide", !dirty);
 }
 
@@ -1498,6 +1745,7 @@ placesClearBtn.addEventListener("click", () => {
   activeSortDir = "asc";
   placeSearchQuery = "";
   _plSearchInput.value = "";
+  _openNowFilter = false;
   _closePlaceSearch();
   updateSortButton();
   renderTagFilterBar();
@@ -1606,8 +1854,9 @@ function renderTagFilterBar() {
     : [];
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
-  // Filter: show when tags exist and at least 1 place
-  const showFilter = totalTags > 0 && count > 0;
+  // Filter: show when tags exist OR places have hours data (Open Now chip)
+  const hasHoursData = typePlaces.some((p) => p.hours);
+  const showFilter = (totalTags > 0 || hasHoursData) && count > 0;
   tfToggle.classList.toggle("hide", !showFilter);
   if (!showFilter) {
     tfToggle.classList.remove("open");
@@ -1615,6 +1864,8 @@ function renderTagFilterBar() {
   } else {
     updateTagCount();
     let html = "<div class=\"tf-chips-inner\">";
+    // Open Now chip — always first in the filter panel
+    html += `<button class="tf-chip tf-open-now-chip${_openNowFilter ? " active" : ""}" data-action="open-now"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Open Now</button>`;
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
@@ -1638,8 +1889,9 @@ function renderTagFilterBar() {
 }
 
 function updateTagCount() {
-  if (activeTagFilters.size) {
-    const countText = String(activeTagFilters.size);
+  const totalActive = activeTagFilters.size + (_openNowFilter ? 1 : 0);
+  if (totalActive) {
+    const countText = String(totalActive);
     tfCount.textContent = countText;
     tfCount.classList.toggle("one-digit", countText.length === 1);
     tfCount.classList.remove("hide");
@@ -1715,6 +1967,16 @@ tfToggle.addEventListener("click", () => {
 });
 
 document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
+  // Open Now chip
+  const openNowChip = e.target.closest(".tf-open-now-chip");
+  if (openNowChip) {
+    _openNowFilter = !_openNowFilter;
+    openNowChip.classList.toggle("active", _openNowFilter);
+    addPlaceMarkers();
+    _crossFadePlacesList();
+    updateClearButton();
+    return;
+  }
   // Expand/collapse a subtag group
   const groupBtn = e.target.closest(".tf-group-toggle");
   if (groupBtn) {
@@ -1849,6 +2111,11 @@ function renderPlacesList() {
     filtered = filtered.filter((p) =>
       [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true),
     );
+  }
+
+  // Open Now filter — only keep places that are currently open
+  if (_openNowFilter) {
+    filtered = filtered.filter((p) => isPlaceOpenNow(p.hours) === true);
   }
 
   // Hide entire toolbar row when the tab has no data to search/sort/filter
@@ -2517,7 +2784,10 @@ function _snapToNearestCard(track, count) {
   _animateCarouselTo(track, aligned, 300);
 }
 
-function openSuggestOverlay() { document.getElementById("suggest-overlay").classList.remove("hide"); }
+function openSuggestOverlay() {
+  document.getElementById("suggest-overlay").classList.remove("hide");
+  _renderHoursForm(document.getElementById("sg-hours-container"), "sg", null);
+}
 let _eventEditMode = false;
 let _eventEditOriginal = null;
 
@@ -3083,7 +3353,10 @@ suggestForm.addEventListener("submit", async (e) => {
   });
 
   // Build payload — include pin lat/lng when available
+  const sgHoursContainer = document.getElementById("sg-hours-container");
+  const openingHours = _collectHoursFromForm(sgHoursContainer, "sg");
   const payload = { token: null, formType: "new", name, type, address, tags: tagsStr, gmaps, notes };
+  if (openingHours) payload.openingHours = openingHours;
   if (newCuisines.length) payload.newCuisines = newCuisines;
   if (pinLat && pinLng) {
     payload.pinLat = parseFloat(pinLat);
@@ -3174,6 +3447,7 @@ function openEditOverlay(place) {
   document.getElementById("ed-notes").value = place.notes || "";
   edTypeSelect.value = place.type || "mosque";
   renderEditTags(place.type, place.tags || {});
+  _renderHoursForm(document.getElementById("ed-hours-container"), "ed", place.hours || null);
   document.getElementById("edit-overlay").classList.remove("hide");
 }
 
@@ -3353,15 +3627,20 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   }
   const changesSummary = diffs.length ? diffs.join("\n") : "(no changes detected)";
 
+  const edHoursContainer = document.getElementById("ed-hours-container");
+  const editOpeningHours = _collectHoursFromForm(edHoursContainer, "ed");
+
   try {
     await loadRecaptcha(RECAPTCHA_SITE_KEY);
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
     );
+    const editPayload = { token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined };
+    if (editOpeningHours) editPayload.openingHours = editOpeningHours;
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined }),
+      body: JSON.stringify(editPayload),
     });
     const data = await res.json();
     if (data.success) {

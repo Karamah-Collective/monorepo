@@ -87,6 +87,7 @@ export async function onRequestPost(context) {
   if (formData.message) formData.message = truncate(formData.message, MAX_NOTES_LEN);
   if (formData.tags)    formData.tags    = truncate(formData.tags, MAX_FIELD_LEN);
   if (formData.changesSummary) formData.changesSummary = truncate(formData.changesSummary, MAX_NOTES_LEN);
+  if (formData.openingHours)   formData.openingHours   = truncate(formData.openingHours, MAX_NOTES_LEN);
 
   // Event-specific fields
   if (formData.title)       formData.title       = truncate(formData.title, MAX_FIELD_LEN);

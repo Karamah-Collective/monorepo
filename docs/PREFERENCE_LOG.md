@@ -51,6 +51,10 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-05-12 — Type scale tightened: 12→30 instead of 11→36.** Smaller spread across the scale. xs bumped 11→12, xl 18→17, 2xl 20→19, 3xl 26→22 (panel headings), 4xl 30→26, display 36→30. Middle (sm/base/md/lg) unchanged. Step ratios now ~1.06–1.15x, much more even.
+- **2026-05-12 — Weight hierarchy: 4-tier (regular/medium/semibold/bold).** Bold reserved for panel h2/h3 headings and primary CTAs only. Semibold for badges, counts, section labels, popup titles. Medium for interactive elements (chips, tabs, sort options, form labels). Regular for body/descriptions/placeholders.
+- **2026-05-12 — No hardcoded font-size values in app CSS.** All app component font sizes use `--txt-*` tokens. Only exceptions: MapLibre control overrides (9px !important), legal links (9px), and monospace code textarea (10px).
+
 - **2026-04-29 — Turn overlay must point to the exact snapped maneuver coordinate.** The floating turn badge may sit beside the road, but its pointer tip must land on the actual on-route turn point itself, using the snapped route coordinate rather than a nearby raw step lat/lng or arbitrary side offset.
 
 - **2026-04-29 — GPS sim phone testing: URL param + route playback.** Added `?sim` URL parameter to auto-activate GPS sim on phone (no keyboard shortcut available). Added route playback engine that auto-walks along computed route at configurable speed (walk/cycle/drive/fast). Badge made tappable with close button.
@@ -2113,3 +2117,83 @@ User wanted the collapsed event toggle to look like a compact "pull tab" instead
 3. Changed `#pl-search-input` font-size from `--txt-base` (14px) to `--txt-lg` (16px) — prevents iOS auto-zoom on focus.
 
 **Files modified:** `src/places.js`, `src/directions.js`, `src/styles/styles.css`.
+
+### 2026-05-11 — UI polish: remove focus artifacts and auto-focus on popups
+
+**Problem:** When popups opened (places, pins, transit stops, etc.), the direction button appeared "active" with a green focus ring. Similarly, search inputs showed a prominent green inset focus ring that didn't match the minimal design.
+
+**Changes:**
+1. **Disable popup auto-focus** — Added `focusAfterOpen: false` to all MapLibre Popup constructors (5 files: places.js, search.js, map-controls.js, eid-prayers.js, transit-stops.js). MapLibre's default behavior was focusing the first button, triggering `:focus-visible` styling.
+
+2. **Remove search input focus rings** — Added explicit `box-shadow: none` on `:focus` and `:focus-visible` for both `#search-input` (main search) and `#pl-search-input` (inline places search). Both are borderless transparent inputs that don't need visual focus treatment — parent `.search-box` and `.pl-search-wrap` already provide visual context.
+
+**Preference encoded:** Popups should open without stealing focus. Search inputs should be visually quiet on focus. No green highlights on transient interactions.
+
+**Files modified:** `src/places.js`, `src/search.js`, `src/map-controls.js`, `src/eid-prayers.js`, `src/transit-stops.js`, `src/styles/styles.css`.
+
+### 2026-05-11 — Opening hours feature
+
+**Data format:** `hours` field on place objects — `{ "mon": "10:00-22:00", "tue": null, ... }`. Supports per-day schedules, multiple ranges per day (comma-separated), and null for closed days.
+
+**a. Apps Script (Code.gs):**
+- `getPlaceDetails()` now requests `opening_hours` from Google Places API.
+- New `convertGoogleHours()` function converts Google's periods format to compact `{day: "HH:MM-HH:MM"}` JSON.
+- `enrichPendingRows()` extracts and stores opening hours during enrichment.
+- Opening hours stored in: Draft col I, New col Q, Edit col L, Places col O.
+- `getPlacesJSON()` reads Places col O → `place.hours` in the API response.
+- `copyNewRowToPlaces()` and `applyEditToPlaces()` copy hours to Places sheet.
+
+**b. Submit API (submit.js):**
+- Added `openingHours` field truncation (MAX_NOTES_LEN).
+
+**c. Forms (index.html + places.js):**
+- Both suggest and edit forms have optional "Opening Hours" section with checkbox toggle.
+- "Same hours every day" mode (simple: one open/close time pair).
+- "Different hours by day" mode (per-day open/close + per-day "Closed" checkbox).
+- Edit form pre-fills existing hours from place data.
+
+**d. Popup card (places.js):**
+- Shows expandable "Hours" section with clock icon, Open/Closed badge, and accordion day-by-day table.
+- Today's row highlighted with bold weight.
+- Closed days shown in red italic.
+
+**e. Places list card:**
+- Open/Closed chip badges inline with place name.
+
+**f. Open Now filter:**
+- "Open Now" toggle button in toolbar (clock icon, green active state).
+- Filters both the list and map markers to show only currently-open places.
+- Integrated into clear-filters flow.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `functions/api/submit.js`, `index.html`, `src/places.js`, `src/styles/design-tokens.css`, `src/styles/styles.css`.
+
+### 2026-05-12 — Typography standardization sweep
+
+**Problem:** Too much font-size variation (11px–36px), excessive bold usage, hardcoded pixel sizes and weights scattered across both CSS files and JS.
+
+**a. Type scale tightened — smaller spread, more harmonious:**
+- `--txt-xs`: 11→12px (badges/labels more readable)
+- `--txt-xl`: 18→17px, `--txt-2xl`: 20→19px (slight pull-in)
+- `--txt-3xl`: 26→22px (panel headings — was too large for a map app)
+- `--txt-4xl`: 30→26px, `--txt-display`: 36→30px
+- Middle stays: sm=13, base=14, md=15, lg=16 (unchanged)
+- New scale: 12→13→14→15→16→17→19→22→26→30 (even step ratios ~1.06–1.15x)
+
+**b. Weight tier standardized — 4 clear levels:**
+- `--fw-regular` (400): body text, descriptions, placeholders, helper text
+- `--fw-medium` (500): interactive labels, chips, tabs, form labels, sort options, distances, style picker labels, places count, pf-labels, sponsor chips, boycott chips
+- `--fw-semibold` (600): badges, counts, section headers, popup titles, tag summaries, tag type headers, active sort, active pf-labels, open/closed chips, event chips
+- `--fw-bold` (700): ONLY panel headings (h2/h3), primary CTA buttons, segment buttons(→semibold)
+
+**c. Hardcoded sizes replaced with tokens:**
+- All `font-size: 9px/10px` in app code → `var(--txt-xs)` (except MapLibre/legal chrome which stays 9px)
+- All `font-size: 13px` in JS inline styles → `var(--txt-sm)`
+- All `letter-spacing: 0` → `var(--ls-normal)`
+- `--fw-normal` (nonexistent) → `--fw-regular`
+
+**d. Weight demotions (bold overuse fix):**
+- **bold→semibold:** badge counts, tf-count, event dot count, section headers, sort labels, tag-type, tags-summary, popup titles, active pf-label, active sort, btn-segment
+- **semibold→medium:** distances, style-opt labels, places-ct count, pf-labels, sort options, open/closed chips, sponsor chips, event chips, tf-group-count
+- **bold→semibold in design-tokens.css:** snack-tc-badge
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `src/search.js`

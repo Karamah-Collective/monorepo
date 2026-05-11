@@ -323,7 +323,7 @@ async function search(q) {
 
     showResults([...localItems, ...apiFiltered]);
   } catch {
-    rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">Search failed.</li>';
+    rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:var(--txt-sm)">Search failed.</li>';
     showDrop();
   }
 }
@@ -371,7 +371,7 @@ function showResults(items) {
   // Only show results inside Finland
   items = items.filter(r => isInsideFinland(r.lat, r.lng));
   if (!items.length) {
-    rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:13px">No results found.</li>';
+    rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:var(--txt-sm)">No results found.</li>';
     showDrop();
     return;
   }

@@ -14,7 +14,16 @@
       "female_wudu": true,
       "quran_classes": true
     },
-    "notes": "Updated female_wudu to true based on external mosque listings."
+    "notes": "Updated female_wudu to true based on external mosque listings.",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "cxjnht",
@@ -32,7 +41,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Rabita central mosque."
+    "notes": "Rabita central mosque.",
+    "hours": {
+      "sun": "05:00-22:00",
+      "mon": "05:00-22:00",
+      "tue": "05:00-22:00",
+      "wed": "05:00-22:00",
+      "thu": "05:00-22:00",
+      "fri": "05:00-22:00",
+      "sat": "05:00-22:00"
+    }
   },
   {
     "id": "0v9lwu",
@@ -49,7 +67,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "09:00-20:00",
+      "tue": "09:00-20:00",
+      "wed": "09:00-20:00",
+      "thu": "09:00-20:00",
+      "fri": "09:00-20:00",
+      "sat": "10:00-19:00"
+    }
   },
   {
     "id": "9m5ck3",
@@ -64,7 +91,16 @@
       "no_alcohol": true
     },
     "notes": "KFC branch in Kamppi centre.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "09:00-00:00",
+      "tue": "09:00-00:00",
+      "wed": "09:00-00:00",
+      "thu": "09:00-00:00",
+      "fri": "09:00-00:00",
+      "sat": "09:00-00:00"
+    }
   },
   {
     "id": "m90m87",
@@ -79,7 +115,16 @@
       "no_alcohol": true
     },
     "notes": "Inside Itis shopping centre.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "09:00-22:00",
+      "tue": "09:00-22:00",
+      "wed": "09:00-22:00",
+      "thu": "09:00-22:00",
+      "fri": "09:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "hdgwe2",
@@ -94,7 +139,16 @@
       "no_alcohol": true
     },
     "notes": "Mall of Tripla branch.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "08:00-00:00",
+      "mon": "07:00-00:00",
+      "tue": "07:00-00:00",
+      "wed": "07:00-00:00",
+      "thu": "07:00-00:00",
+      "fri": "07:00-04:00",
+      "sat": "08:00-04:00"
+    }
   },
   {
     "id": "7gp6mz",
@@ -109,7 +163,16 @@
       "no_alcohol": true
     },
     "notes": "Sello mall branch in Espoo.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:30-19:00",
+      "mon": "08:00-21:00",
+      "tue": "08:00-21:00",
+      "wed": "08:00-21:00",
+      "thu": "08:00-21:00",
+      "fri": "08:00-21:00",
+      "sat": "09:00-20:00"
+    }
   },
   {
     "id": "eyvteo",
@@ -124,7 +187,16 @@
       "no_alcohol": true
     },
     "notes": "Located in Kamppi centre.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "09:00-23:00",
+      "tue": "09:00-23:00",
+      "wed": "09:00-23:00",
+      "thu": "09:00-23:00",
+      "fri": "09:00-00:00",
+      "sat": "09:00-00:00"
+    }
   },
   {
     "id": "t87tko",
@@ -139,7 +211,16 @@
       "no_alcohol": true
     },
     "notes": "City-centre Burger King near Forum.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "09:00-01:00",
+      "mon": "09:00-01:00",
+      "tue": "09:00-01:00",
+      "wed": "09:00-01:00",
+      "thu": "09:00-01:00",
+      "fri": "09:00-01:30",
+      "sat": "09:00-01:30"
+    }
   },
   {
     "id": "ets6od",
@@ -154,7 +235,16 @@
       "no_alcohol": true
     },
     "notes": "Inside Itis area.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:00-21:30",
+      "mon": "10:00-21:30",
+      "tue": "10:00-21:30",
+      "wed": "10:00-21:30",
+      "thu": "10:00-21:30",
+      "fri": "10:00-21:30",
+      "sat": "10:00-21:30"
+    }
   },
   {
     "id": "zneup4",
@@ -169,7 +259,16 @@
       "no_alcohol": true
     },
     "notes": "Mall of Tripla branch.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": null,
+      "mon": "07:00-01:00",
+      "tue": "07:00-01:00",
+      "wed": "07:00-01:00",
+      "thu": "07:00-01:00",
+      "fri": "07:00-00:00",
+      "sat": null
+    }
   },
   {
     "id": "xnc8up",
@@ -184,7 +283,16 @@
       "no_alcohol": true
     },
     "notes": "Redi shopping centre.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-00:00",
+      "sat": "10:00-00:00"
+    }
   },
   {
     "id": "z7k66e",
@@ -199,7 +307,16 @@
       "no_alcohol": true
     },
     "notes": "Burger King in Jumbo shopping centre.",
-    "boycott": true
+    "boycott": true,
+    "hours": {
+      "sun": "09:00-00:00",
+      "mon": "09:00-00:00",
+      "tue": "09:00-00:00",
+      "wed": "09:00-00:00",
+      "thu": "09:00-00:00",
+      "fri": "09:00-05:30",
+      "sat": "09:00-05:30"
+    }
   },
   {
     "id": "lf5l20",
@@ -216,7 +333,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address."
+    "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address.",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "09:00-21:00",
+      "tue": "09:00-21:00",
+      "wed": "09:00-21:00",
+      "thu": "09:00-21:00",
+      "fri": "09:00-21:00",
+      "sat": "09:00-21:00"
+    }
   },
   {
     "id": "8uaffs",
@@ -252,7 +378,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": "Beno's main Helsinki branch near Itis metro."
+    "notes": "Beno's main Helsinki branch near Itis metro.",
+    "hours": {
+      "sun": "10:00-20:00",
+      "mon": "09:30-20:30",
+      "tue": "09:30-20:30",
+      "wed": "09:30-20:30",
+      "thu": "09:30-20:30",
+      "fri": "09:30-13:00,14:00-20:30",
+      "sat": "09:30-20:30"
+    }
   },
   {
     "id": "9mr44x",
@@ -269,7 +404,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": "Yalla branch in Columbus mall, Vuosaari – fresh butcher counter and ethnic groceries. Phone: 041 3122479."
+    "notes": "Yalla branch in Columbus mall, Vuosaari – fresh butcher counter and ethnic groceries. Phone: 041 3122479.",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "pa61kp",
@@ -288,7 +432,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "1m0auf",
@@ -316,7 +469,16 @@
     "tags": {
       "fully_halal": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-00:00",
+      "sat": "10:00-00:00"
+    }
   },
   {
     "id": "pnznbn",
@@ -329,7 +491,16 @@
     "tags": {
       "partially_halal": true
     },
-    "notes": "All chicken halal since it is imported from Thailand. Inside the Forum foodcourt"
+    "notes": "All chicken halal since it is imported from Thailand. Inside the Forum foodcourt",
+    "hours": {
+      "sun": "12:00-18:00",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-20:00",
+      "sat": "11:00-19:00"
+    }
   },
   {
     "id": "yua29z",
@@ -344,7 +515,16 @@
       "no_alcohol": true,
       "cuisine_uyghur": true
     },
-    "notes": "Everything halal, beef and all"
+    "notes": "Everything halal, beef and all",
+    "hours": {
+      "sun": "11:30-21:30",
+      "mon": null,
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "11:30-21:30"
+    }
   },
   {
     "id": "ofmcd6",
@@ -358,7 +538,16 @@
       "partially_halal": true,
       "no_alcohol": false
     },
-    "notes": "Korean BBQ place. halal beef, chicken and also seafood. Outside of Redi"
+    "notes": "Korean BBQ place. halal beef, chicken and also seafood. Outside of Redi",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-22:00",
+      "sat": "12:00-22:00"
+    }
   },
   {
     "id": "tsatr6",
@@ -378,7 +567,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "09:00-22:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "10:30-22:00",
+      "sat": "09:00-22:00"
+    }
   },
   {
     "id": "4vxx5n",
@@ -394,7 +592,16 @@
       "taraweeh": true,
       "female_prayer": false
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "j74tjs",
@@ -426,7 +633,16 @@
       "jummah": true,
       "female_prayer": true
     },
-    "notes": "I don't knwo much of the details tbh , no sisters side for jummah"
+    "notes": "I don't knwo much of the details tbh , no sisters side for jummah",
+    "hours": {
+      "sun": "11:00-20:00",
+      "mon": "11:30-20:00",
+      "tue": "11:30-20:00",
+      "wed": "11:30-20:00",
+      "thu": "11:30-20:00",
+      "fri": "11:30-20:00",
+      "sat": "11:00-20:00"
+    }
   },
   {
     "id": "anzxjj",
@@ -440,7 +656,16 @@
       "fully_halal": true,
       "no_alcohol": false
     },
-    "notes": "Has alcohol to drink/order, everything else is fully halal food wise. Malaysian buffet."
+    "notes": "Has alcohol to drink/order, everything else is fully halal food wise. Malaysian buffet.",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "3yqkym",
@@ -454,7 +679,16 @@
       "partially_halal": true,
       "no_alcohol": false
     },
-    "notes": "It is on the bus terminal floor of Iso Omena, only selected fried chicken are halal, please ask the counter"
+    "notes": "It is on the bus terminal floor of Iso Omena, only selected fried chicken are halal, please ask the counter",
+    "hours": {
+      "sun": "11:00-20:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "l8wj1i",
@@ -468,7 +702,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-23:00",
+      "mon": "11:00-23:00",
+      "tue": "11:00-23:00",
+      "wed": "11:00-23:00",
+      "thu": "11:00-23:00",
+      "fri": "11:00-23:00",
+      "sat": "11:00-23:00"
+    }
   },
   {
     "id": "1dshyj",
@@ -482,7 +725,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-23:00",
+      "mon": "11:00-23:00",
+      "tue": "11:00-23:00",
+      "wed": "11:00-23:00",
+      "thu": "11:00-23:00",
+      "fri": "11:00-23:00",
+      "sat": "11:00-23:00"
+    }
   },
   {
     "id": "ntho35",
@@ -497,7 +749,16 @@
       "no_alcohol": true,
       "cuisine_fast_food": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-23:00",
+      "mon": "11:00-23:00",
+      "tue": "11:00-23:00",
+      "wed": "11:00-23:00",
+      "thu": "11:00-23:00",
+      "fri": "11:00-00:00",
+      "sat": "11:00-00:00"
+    }
   },
   {
     "id": "89bg9y",
@@ -511,7 +772,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-23:00",
+      "mon": "10:30-23:00",
+      "tue": "10:30-23:00",
+      "wed": "10:30-23:00",
+      "thu": "10:30-23:00",
+      "fri": "10:30-23:00",
+      "sat": "10:30-23:00"
+    }
   },
   {
     "id": "l5kwds",
@@ -525,7 +795,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "00:00-22:00",
+      "tue": "00:00-22:00",
+      "wed": "12:00-22:00",
+      "thu": "12:00-22:00",
+      "fri": "12:00-03:00",
+      "sat": "12:00-03:00"
+    }
   },
   {
     "id": "j13ysd",
@@ -543,7 +822,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "09:00-19:00",
+      "tue": "09:00-19:00",
+      "wed": "09:00-19:00",
+      "thu": "09:00-20:00",
+      "fri": "09:00-19:00",
+      "sat": "09:00-19:00"
+    }
   },
   {
     "id": "f54kwd",
@@ -559,7 +847,16 @@
       "asian_products": true,
       "african_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-19:00",
+      "mon": "10:00-20:00",
+      "tue": "10:00-20:00",
+      "wed": "10:00-20:00",
+      "thu": "10:00-20:00",
+      "fri": "10:00-20:00",
+      "sat": "11:00-19:00"
+    }
   },
   {
     "id": "11mlq9",
@@ -574,7 +871,16 @@
       "halal_groceries": true,
       "asian_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-20:00",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-20:00",
+      "sat": "11:00-20:00"
+    }
   },
   {
     "id": "7dn24u",
@@ -590,7 +896,16 @@
       "halal_groceries": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-20:00",
+      "mon": "09:00-21:00",
+      "tue": "09:00-21:00",
+      "wed": "09:00-21:00",
+      "thu": "09:00-21:00",
+      "fri": "09:00-21:00",
+      "sat": "09:00-21:00"
+    }
   },
   {
     "id": "c3ecup",
@@ -605,7 +920,16 @@
       "no_alcohol": true,
       "cuisine_pizza": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": null,
+      "mon": null,
+      "tue": "10:00-23:30",
+      "wed": null,
+      "thu": null,
+      "fri": null,
+      "sat": null
+    }
   },
   {
     "id": "8j7scl",
@@ -619,7 +943,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "11:00-22:00",
+      "tue": "11:00-22:00",
+      "wed": "11:00-22:00",
+      "thu": "11:00-22:00",
+      "fri": "11:00-00:00",
+      "sat": "12:00-00:00"
+    }
   },
   {
     "id": "l4pclo",
@@ -634,7 +967,16 @@
       "cuisine_indian": true,
       "cuisine_bangladeshi": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": null,
+      "mon": "10:30-15:00",
+      "tue": "10:30-15:00",
+      "wed": "10:30-15:00",
+      "thu": "10:30-15:00",
+      "fri": "10:30-15:00",
+      "sat": null
+    }
   },
   {
     "id": "lxtmd9",
@@ -647,7 +989,16 @@
     "tags": {
       "quran_available": true
     },
-    "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor"
+    "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor",
+    "hours": {
+      "sun": null,
+      "mon": "08:00-20:00",
+      "tue": "08:00-20:00",
+      "wed": "08:00-20:00",
+      "thu": "08:00-20:00",
+      "fri": "08:00-20:00",
+      "sat": "11:00-17:00"
+    }
   },
   {
     "id": "13tova",
@@ -661,7 +1012,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "11:00-22:00"
+    }
   },
   {
     "id": "trjf07",
@@ -679,7 +1039,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "09:00-20:00",
+      "tue": "09:00-20:00",
+      "wed": "09:00-20:00",
+      "thu": "09:00-20:00",
+      "fri": "09:00-13:30,14:30-20:00",
+      "sat": "10:00-19:00"
+    }
   },
   {
     "id": "f30ugd",
@@ -697,7 +1066,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "10:00-19:00",
+      "tue": "10:00-19:00",
+      "wed": "10:00-19:00",
+      "thu": "10:00-19:00",
+      "fri": "10:00-19:00",
+      "sat": "10:00-19:00"
+    }
   },
   {
     "id": "q65nwj",
@@ -711,7 +1089,16 @@
       "halal_meat": true,
       "halal_groceries": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-20:00",
+      "mon": "09:30-20:30",
+      "tue": "09:30-20:30",
+      "wed": "09:30-20:30",
+      "thu": "09:30-20:30",
+      "fri": "09:30-20:30",
+      "sat": "10:00-20:00"
+    }
   },
   {
     "id": "xfgge7",
@@ -725,7 +1112,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "9admdr",
@@ -739,7 +1135,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "tdqcws",
@@ -767,7 +1172,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "254ggv",
@@ -781,7 +1195,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "08:00-00:00",
+      "mon": "08:00-22:00",
+      "tue": "08:00-22:00",
+      "wed": "08:00-22:00",
+      "thu": "08:00-22:00",
+      "fri": "08:00-00:00",
+      "sat": "08:00-00:00"
+    }
   },
   {
     "id": "fd1ocx",
@@ -809,7 +1232,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "11:00-22:00",
+      "tue": "11:00-22:00",
+      "wed": "11:00-22:00",
+      "thu": "11:00-22:00",
+      "fri": "11:00-22:00",
+      "sat": "11:00-22:00"
+    }
   },
   {
     "id": "bk9bjh",
@@ -823,7 +1255,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "09:00-22:30",
+      "mon": "09:00-22:00",
+      "tue": "09:00-22:00",
+      "wed": "09:00-22:00",
+      "thu": "09:00-22:00",
+      "fri": "09:00-22:00",
+      "sat": "09:00-22:30"
+    }
   },
   {
     "id": "8oe1jh",
@@ -837,7 +1278,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "8ez1cj",
@@ -851,7 +1301,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "09:00-22:30",
+      "mon": "09:00-22:00",
+      "tue": "09:00-22:00",
+      "wed": "09:00-22:00",
+      "thu": "09:00-22:00",
+      "fri": "09:00-22:00",
+      "sat": "09:00-22:30"
+    }
   },
   {
     "id": "cx9zp7",
@@ -879,7 +1338,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "b3oiuf",
@@ -894,7 +1362,16 @@
       "halal_butchery": true,
       "halal_groceries": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "uks2ox",
@@ -922,7 +1399,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "1kx1m2",
@@ -933,7 +1419,16 @@
     "lat": 60.2132624,
     "lng": 25.0808042,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-20:00",
+      "mon": "10:00-20:00",
+      "tue": "10:00-20:00",
+      "wed": "10:00-20:00",
+      "thu": "10:00-20:00",
+      "fri": "10:00-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "vtdidd",
@@ -1015,7 +1510,16 @@
     "tags": {
       "fully_halal": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-23:00",
+      "sat": "11:00-23:00"
+    }
   },
   {
     "id": "f5gz4k",
@@ -1031,7 +1535,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": "Alternative name: Medina Halal Shop"
+    "notes": "Alternative name: Medina Halal Shop",
+    "hours": {
+      "sun": "12:00-18:00",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-13:00,13:30-20:00",
+      "sat": "11:00-20:00"
+    }
   },
   {
     "id": "nopo3k",
@@ -1045,7 +1558,16 @@
       "partially_halal": true,
       "no_alcohol": false
     },
-    "notes": "Inside Entresse Shopping mall. The lamb is halal, please check on the counter."
+    "notes": "Inside Entresse Shopping mall. The lamb is halal, please check on the counter.",
+    "hours": {
+      "sun": null,
+      "mon": "10:30-15:00",
+      "tue": "10:30-15:00",
+      "wed": "10:30-15:00",
+      "thu": "10:30-15:00",
+      "fri": "10:30-20:00",
+      "sat": "12:00-18:00"
+    }
   },
   {
     "id": "4l2lrd",
@@ -1059,7 +1581,16 @@
       "fully_halal": true,
       "cuisine_pakistani": true
     },
-    "notes": "Pakistani cuisine"
+    "notes": "Pakistani cuisine",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "cmn32z",
@@ -1072,7 +1603,16 @@
     "tags": {
       "halal_meat": true
     },
-    "notes": "Has fridges with halal frozen meat, sausages etc."
+    "notes": "Has fridges with halal frozen meat, sausages etc.",
+    "hours": {
+      "sun": "09:00-22:00",
+      "mon": "07:00-22:00",
+      "tue": "07:00-22:00",
+      "wed": "07:00-22:00",
+      "thu": "07:00-22:00",
+      "fri": "07:00-22:00",
+      "sat": "08:00-22:00"
+    }
   },
   {
     "id": "rnmk12",
@@ -1090,7 +1630,16 @@
       "african_products": true,
       "arab_products": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "09:00-20:00",
+      "tue": "09:00-20:00",
+      "wed": "09:00-20:00",
+      "thu": "09:00-18:00",
+      "fri": "09:00-12:30,13:00-20:00",
+      "sat": "10:00-19:00"
+    }
   },
   {
     "id": "ld8pqr",
@@ -1101,7 +1650,16 @@
     "lat": 60.1859838,
     "lng": 24.8271078,
     "tags": {},
-    "notes": "Room M135, silent room--needs access card"
+    "notes": "Room M135, silent room--needs access card",
+    "hours": {
+      "sun": null,
+      "mon": "07:45-21:00",
+      "tue": "07:45-21:00",
+      "wed": "07:45-21:00",
+      "thu": "07:45-21:00",
+      "fri": "07:45-20:00",
+      "sat": null
+    }
   },
   {
     "id": "83cdtk",
@@ -1112,7 +1670,16 @@
     "lat": 60.20568340000001,
     "lng": 24.9635073,
     "tags": {},
-    "notes": "Room B145"
+    "notes": "Room B145",
+    "hours": {
+      "sun": null,
+      "mon": "07:45-18:00",
+      "tue": "07:45-18:00",
+      "wed": "07:45-18:00",
+      "thu": "07:45-18:00",
+      "fri": "07:45-18:00",
+      "sat": null
+    }
   },
   {
     "id": "vp0tml",
@@ -1136,7 +1703,16 @@
     "lat": 60.188577,
     "lng": 24.905782,
     "tags": {},
-    "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor."
+    "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor.",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "yoqkv8",
@@ -1154,7 +1730,16 @@
       "quran_classes": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "6morhi",
@@ -1169,7 +1754,16 @@
       "cuisine_japanese": true,
       "no_alcohol": false
     },
-    "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram."
+    "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram.",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "11:00-22:00",
+      "tue": "11:00-22:00",
+      "wed": "11:00-22:00",
+      "thu": "11:00-22:00",
+      "fri": "11:00-22:00",
+      "sat": "12:00-22:00"
+    }
   },
   {
     "id": "8jp8hr",
@@ -1184,7 +1778,16 @@
       "cuisine_chinese": true,
       "no_alcohol": false
     },
-    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination."
+    "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination.",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "5x7lmi",
@@ -1198,7 +1801,16 @@
       "halal_meat": true,
       "halal_groceries": true
     },
-    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy."
+    "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy.",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "08:00-22:00",
+      "tue": "08:00-22:00",
+      "wed": "08:00-22:00",
+      "thu": "08:00-22:00",
+      "fri": "08:00-22:00",
+      "sat": "08:00-22:00"
+    }
   },
   {
     "id": "qo8fs0",
@@ -1213,7 +1825,16 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": "Daily iftari available during ramadan."
+    "notes": "Daily iftari available during ramadan.",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "trkq3z",
@@ -1228,7 +1849,16 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": "Above the restaurent palma"
+    "notes": "Above the restaurent palma",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "0t3ogz",
@@ -1264,7 +1894,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku"
+    "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku",
+    "hours": {
+      "sun": "10:30-20:00",
+      "mon": "09:00-20:00",
+      "tue": "09:00-20:00",
+      "wed": "09:00-20:00",
+      "thu": "09:00-20:00",
+      "fri": "09:00-20:00",
+      "sat": "10:30-20:00"
+    }
   },
   {
     "id": "8s3a3j",
@@ -1283,7 +1922,16 @@
       "arab_products": true,
       "halal_certified": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-20:00",
+      "mon": "09:00-20:30",
+      "tue": "09:00-20:30",
+      "wed": "09:00-20:30",
+      "thu": "09:00-20:30",
+      "fri": "09:00-20:30",
+      "sat": "09:00-20:00"
+    }
   },
   {
     "id": "0h13qo",
@@ -1302,7 +1950,16 @@
       "arab_products": true,
       "halal_certified": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-20:30",
+      "mon": "10:00-20:30",
+      "tue": "10:00-20:30",
+      "wed": "10:00-20:30",
+      "thu": "10:00-20:30",
+      "fri": "10:00-20:30",
+      "sat": "10:00-20:30"
+    }
   },
   {
     "id": "uj177l",
@@ -1320,7 +1977,16 @@
       "quran_classes": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "i0mxzn",
@@ -1407,7 +2073,16 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "t2ul0o",
@@ -1437,7 +2112,16 @@
       "cuisine_arab": true,
       "cuisine_fast_food": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
   },
   {
     "id": "eoq1d0",
@@ -1453,7 +2137,16 @@
       "cuisine_pizza": true,
       "cuisine_fast_food": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-21:30",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-23:00",
+      "sat": "11:00-23:00"
+    }
   },
   {
     "id": "d9hwaf",
@@ -1469,7 +2162,16 @@
       "cuisine_pizza": true,
       "cuisine_fast_food": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-03:00",
+      "mon": "10:00-03:00",
+      "tue": "10:00-03:00",
+      "wed": "10:00-03:00",
+      "thu": "10:00-03:00",
+      "fri": "10:00-04:00",
+      "sat": "10:00-04:00"
+    }
   },
   {
     "id": "x8z3u0",
@@ -1483,7 +2185,16 @@
       "fully_halal": true,
       "cuisine_arab": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:30",
+      "mon": "10:00-03:00",
+      "tue": "10:00-03:00",
+      "wed": "10:00-03:00",
+      "thu": "10:00-03:00",
+      "fri": "10:00-05:00",
+      "sat": "10:00-05:00"
+    }
   },
   {
     "id": "zbyu0l",
@@ -1497,7 +2208,16 @@
       "fully_halal": true,
       "cuisine_arab": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-20:00",
+      "sat": "11:00-20:00"
+    }
   },
   {
     "id": "izifkc",
@@ -1511,7 +2231,16 @@
       "fully_halal": true,
       "cuisine_turkish": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "09:00-20:00",
+      "tue": "09:00-20:00",
+      "wed": "09:00-20:00",
+      "thu": "09:00-20:00",
+      "fri": "09:00-20:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "wg4zxd",
@@ -1525,7 +2254,16 @@
       "fully_halal": true,
       "cuisine_pizza": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-02:00",
+      "mon": "10:00-02:00",
+      "tue": "10:00-02:00",
+      "wed": "10:00-02:00",
+      "thu": "10:00-02:00",
+      "fri": "10:00-04:00",
+      "sat": "10:00-04:00"
+    }
   },
   {
     "id": "qxmkuj",
@@ -1540,7 +2278,16 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "11:00-22:00",
+      "tue": "11:00-22:00",
+      "wed": "11:00-22:00",
+      "thu": "11:00-22:00",
+      "fri": "11:00-22:00",
+      "sat": "11:00-22:00"
+    }
   },
   {
     "id": "tc4qvi",
@@ -1556,7 +2303,16 @@
       "taraweeh": true,
       "quran_classes": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "09:00-20:00",
+      "mon": "12:00-20:00",
+      "tue": "12:00-20:00",
+      "wed": "12:00-20:00",
+      "thu": "12:00-20:00",
+      "fri": "11:30-20:00",
+      "sat": "09:00-20:00"
+    }
   },
   {
     "id": "l3517t",
@@ -1575,7 +2331,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "54bqty",
@@ -1591,7 +2356,16 @@
       "cuisine_cafe": true,
       "cuisine_pastries": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "09:00-19:00",
+      "mon": null,
+      "tue": "09:00-19:00",
+      "wed": "09:00-19:00",
+      "thu": "09:00-19:00",
+      "fri": "09:00-19:00",
+      "sat": "09:00-19:00"
+    }
   },
   {
     "id": "u9uzjc",
@@ -1606,7 +2380,16 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "08:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "08:00-21:00"
+    }
   },
   {
     "id": "zrr1ng",
@@ -1622,7 +2405,16 @@
       "cuisine_sushi": true,
       "no_alcohol": false
     },
-    "notes": "Sushi and chicken are halal. Serves alcohol."
+    "notes": "Sushi and chicken are halal. Serves alcohol.",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "w4u80v",
@@ -1638,7 +2430,16 @@
       "cuisine_uzbek": true,
       "cuisine_central_asia": true
     },
-    "notes": "Qazan Ravintola, Halal restaurant in Helsinki"
+    "notes": "Qazan Ravintola, Halal restaurant in Helsinki",
+    "hours": {
+      "sun": "12:00-19:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-20:00",
+      "sat": "11:00-20:00"
+    }
   },
   {
     "id": "s3bdjv",
@@ -1655,7 +2456,16 @@
       "eid_prayer": true,
       "quran_classes": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:30-20:00",
+      "mon": "11:30-20:00",
+      "tue": "11:30-20:00",
+      "wed": "11:30-20:00",
+      "thu": "11:30-20:00",
+      "fri": "11:30-20:00",
+      "sat": "11:30-20:00"
+    }
   },
   {
     "id": "hjs5gl",
@@ -1672,7 +2482,16 @@
       "cuisine_middle_eastern": true,
       "cuisine_palestinian": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-18:00",
+      "mon": "11:00-20:30",
+      "tue": "11:00-20:30",
+      "wed": "11:00-20:30",
+      "thu": "11:00-20:30",
+      "fri": "11:00-20:30",
+      "sat": "11:00-20:30"
+    }
   },
   {
     "id": "43jqf3",
@@ -1704,7 +2523,16 @@
     "tags": {
       "cuisine_steak": true
     },
-    "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\""
+    "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\"",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "11:00-23:00",
+      "tue": "11:00-00:00",
+      "wed": "11:00-00:00",
+      "thu": "11:00-00:00",
+      "fri": "11:00-00:00",
+      "sat": "12:00-00:00"
+    }
   },
   {
     "id": "1dzuhd",
@@ -1736,7 +2564,16 @@
       "cuisine_sushi": true,
       "no_alcohol": false
     },
-    "notes": "Fully halal sushi buffet. Serves alcohol."
+    "notes": "Fully halal sushi buffet. Serves alcohol.",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "sow6vc",
@@ -1752,7 +2589,16 @@
       "cuisine_sushi": true,
       "no_alcohol": false
     },
-    "notes": "Fully halal. Serves alcohol."
+    "notes": "Fully halal. Serves alcohol.",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "98gx71",
@@ -1768,7 +2614,16 @@
       "cuisine_sushi": true,
       "no_alcohol": false
     },
-    "notes": "Sushi and chicken are halal. Serves alcohol."
+    "notes": "Sushi and chicken are halal. Serves alcohol.",
+    "hours": {
+      "sun": "12:00-20:30",
+      "mon": "10:30-20:30",
+      "tue": "10:30-20:30",
+      "wed": "10:30-20:30",
+      "thu": "10:30-20:30",
+      "fri": "10:30-20:30",
+      "sat": "12:00-21:30"
+    }
   },
   {
     "id": "m8mf0p",
@@ -1783,7 +2638,16 @@
       "cuisine_thai": true,
       "no_alcohol": false
     },
-    "notes": "Chicken imported from Thailand (halal)"
+    "notes": "Chicken imported from Thailand (halal)",
+    "hours": {
+      "sun": "12:00-18:00",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-20:00"
+    }
   },
   {
     "id": "bjdubw",
@@ -1798,7 +2662,16 @@
       "cuisine_turkish": true,
       "cuisine_buffet": true
     },
-    "notes": "Inside Iso Omena, foodcourt"
+    "notes": "Inside Iso Omena, foodcourt",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "20revp",
@@ -1813,7 +2686,16 @@
       "cuisine_turkish": true,
       "cuisine_buffet": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "11:00-22:00"
+    }
   },
   {
     "id": "zo9423",
@@ -1828,7 +2710,16 @@
       "cuisine_vietnamese": true,
       "no_alcohol": false
     },
-    "notes": "The chicken supply is halal (at the moment), but please confirm on the counter before ordering."
+    "notes": "The chicken supply is halal (at the moment), but please confirm on the counter before ordering.",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "10:30-22:30",
+      "tue": "10:30-22:30",
+      "wed": "10:30-22:30",
+      "thu": "10:30-22:30",
+      "fri": "10:30-22:30",
+      "sat": "10:30-22:30"
+    }
   },
   {
     "id": "luazrl",
@@ -1843,7 +2734,16 @@
       "cuisine_malaysian": true,
       "no_alcohol": false
     },
-    "notes": "Chicken is halal."
+    "notes": "Chicken is halal.",
+    "hours": {
+      "sun": "11:30-20:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "scbd9a",
@@ -1858,7 +2758,16 @@
       "cuisine_japanese": true,
       "no_alcohol": false
     },
-    "notes": "The chicken and beef is halal, please check with the staff just in case."
+    "notes": "The chicken and beef is halal, please check with the staff just in case.",
+    "hours": {
+      "sun": "12:00-19:30",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-21:00",
+      "sat": "11:00-20:30"
+    }
   },
   {
     "id": "8fq5x6",
@@ -1873,7 +2782,16 @@
       "cuisine_middle_eastern": true,
       "cuisine_syrian": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-18:30",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-21:30",
+      "sat": "12:00-21:30"
+    }
   },
   {
     "id": "3i1yjb",
@@ -1888,7 +2806,16 @@
       "cuisine_indian": true,
       "cuisine_sri_lankan": true
     },
-    "notes": "Please check on the counter for full halal verification."
+    "notes": "Please check on the counter for full halal verification.",
+    "hours": {
+      "sun": "13:00-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "13:00-21:00"
+    }
   },
   {
     "id": "zt6ipb",
@@ -1903,7 +2830,16 @@
       "cuisine_indian": true,
       "cuisine_nepalese": true
     },
-    "notes": "Please check on the counter for full halal verification."
+    "notes": "Please check on the counter for full halal verification.",
+    "hours": {
+      "sun": "10:30-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "10:30-21:00"
+    }
   },
   {
     "id": "s2m2g6",
@@ -1918,7 +2854,16 @@
       "cuisine_cafe": true,
       "cuisine_pastries": true
     },
-    "notes": "Some items are labeled halal, please check on the counter"
+    "notes": "Some items are labeled halal, please check on the counter",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "08:30-19:00",
+      "tue": "08:30-20:00",
+      "wed": "08:30-20:00",
+      "thu": "08:30-20:00",
+      "fri": "08:30-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "qazhwu",
@@ -1934,7 +2879,16 @@
       "cuisine_middle_eastern": true,
       "cuisine_yemeni": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "6llkdn",
@@ -1948,7 +2902,16 @@
       "fully_halal": true,
       "cuisine_indian": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:30-21:30",
+      "mon": "10:00-21:30",
+      "tue": "10:00-21:30",
+      "wed": "10:00-21:30",
+      "thu": "10:00-21:30",
+      "fri": "10:00-22:00",
+      "sat": "11:30-22:00"
+    }
   },
   {
     "id": "rbw2fc",
@@ -1963,7 +2926,16 @@
       "cuisine_uyghur": true,
       "cuisine_central_asia": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-21:00",
+      "sat": "12:00-21:00"
+    }
   },
   {
     "id": "72pehq",
@@ -1980,7 +2952,16 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "10:00-21:00",
+      "mon": "10:00-21:00",
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "a46hp3",
@@ -1996,7 +2977,16 @@
       "cuisine_middle_eastern": true,
       "cuisine_tunisian": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": null,
+      "mon": "08:00-18:00",
+      "tue": "08:00-18:00",
+      "wed": "08:00-18:00",
+      "thu": "08:00-18:00",
+      "fri": "08:00-18:00",
+      "sat": null
+    }
   },
   {
     "id": "msue5i",
@@ -2012,7 +3002,16 @@
       "cuisine_chinese": true,
       "cuisine_fast_food": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
   },
   {
     "id": "ee19wp",
@@ -2023,7 +3022,16 @@
     "lat": 60.2908477,
     "lng": 25.0867716,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "hours": {
+      "sun": "06:00-22:00",
+      "mon": "06:00-22:00",
+      "tue": "06:00-22:00",
+      "wed": "06:00-22:00",
+      "thu": "06:00-22:00",
+      "fri": "06:00-22:00",
+      "sat": "06:00-22:00"
+    }
   },
   {
     "id": "ljw5l9",
@@ -2034,7 +3042,16 @@
     "lat": 60.2382255,
     "lng": 24.6391141,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
   },
   {
     "id": "oxh7uk",
@@ -2078,7 +3095,16 @@
     "lat": 60.4317779,
     "lng": 22.3079672,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "hours": {
+      "sun": "07:00-21:00",
+      "mon": "07:00-21:00",
+      "tue": "07:00-21:00",
+      "wed": "07:00-21:00",
+      "thu": "07:00-21:00",
+      "fri": "07:00-21:00",
+      "sat": "07:00-21:00"
+    }
   },
   {
     "id": "epocsc",
@@ -2091,7 +3117,16 @@
     "tags": {
       "partially_halal": true
     },
-    "notes": "Only chicken  items are halal."
+    "notes": "Only chicken  items are halal.",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "11:00-22:00",
+      "tue": "11:00-22:00",
+      "wed": "11:00-22:00",
+      "thu": "11:00-22:00",
+      "fri": "11:00-23:00",
+      "sat": "11:00-23:00"
+    }
   },
   {
     "id": "sxupkz",
@@ -2106,7 +3141,16 @@
       "fully_halal": true,
       "cuisine_bangladeshi": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "11:00-21:30",
+      "mon": "11:00-21:30",
+      "tue": "11:00-21:30",
+      "wed": "11:00-21:30",
+      "thu": "11:00-21:30",
+      "fri": "11:00-23:30",
+      "sat": "11:00-23:30"
+    }
   },
   {
     "id": "g1l3nr",
@@ -2138,6 +3182,15 @@
       "cuisine_singaporean": true,
       "no_alcohol": false
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": null,
+      "mon": "11:00-14:30",
+      "tue": "11:00-14:30",
+      "wed": "11:00-14:30",
+      "thu": "11:00-14:30",
+      "fri": "11:00-14:30",
+      "sat": null
+    }
   }
 ]

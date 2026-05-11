@@ -563,7 +563,7 @@
 }
 .style-opt span {
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-2);
 }
 .style-thumb {
@@ -992,12 +992,12 @@ body.dark-mode .sp-tip {
   min-width: 16px;
   height: 16px;
   line-height: 1;
-  letter-spacing: 0;
+  letter-spacing: var(--ls-normal);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
-  font-weight: var(--fw-bold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
   color: var(--on-accent);
   background: var(--accent);
   border-radius: var(--r-pill);
@@ -1442,7 +1442,7 @@ body.dark-mode .sp-tip {
 
 #places-ct {
   font-size: var(--txt-base);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
 }
 
@@ -1499,7 +1499,7 @@ body.dark-mode .sp-tip {
 }
 .pf-label {
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
   transition: color var(--t-fast);
 }
@@ -1519,7 +1519,7 @@ body.dark-mode .sp-tip {
 }
 .pf-chip.active .pf-label {
   color: var(--text);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
 }
 
 @supports not (background: color-mix(in srgb, red 10%, transparent)) {
@@ -1756,11 +1756,11 @@ body.dark-mode .sp-tip {
   color: var(--on-accent);
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   line-height: 1;
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+  letter-spacing: var(--ls-normal);
 }
 #tf-count.one-digit {
   width: 18px;
@@ -1770,6 +1770,21 @@ body.dark-mode .sp-tip {
 #tf-toggle.open #tf-count {
   background: var(--surface);
   color: var(--accent);
+}
+
+/* Open Now chip (inside filter panel) */
+.tf-open-now-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.tf-open-now-chip.active {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  border-color: var(--success);
+}
+.tf-open-now-chip svg {
+  flex-shrink: 0;
 }
 
 /* Sort dropdown */
@@ -1803,7 +1818,7 @@ body.dark-mode .sp-tip {
 .sort-section-label {
   padding: 6px 14px 3px;
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: var(--ls-caps);
@@ -1824,7 +1839,7 @@ body.dark-mode .sp-tip {
   border: none;
   font-family: inherit;
   font-size: var(--txt-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-2);
   text-align: left;
   cursor: pointer;
@@ -1840,7 +1855,7 @@ body.dark-mode .sp-tip {
 }
 .sort-opt.active {
   color: var(--text);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
 }
 .sort-opt.active::after {
   content: "";
@@ -1934,7 +1949,7 @@ body.dark-mode .sp-tip {
   grid-template: unset;
   padding: var(--sp-4) var(--sp-2) var(--sp-2);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: var(--ls-caps);
@@ -2099,7 +2114,7 @@ body.dark-mode .sp-tip {
   display: inline-block;
   margin-left: var(--sp-2);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -2114,7 +2129,7 @@ body.dark-mode .sp-tip {
   box-sizing: border-box;
   text-align: center;
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--type-c, var(--accent));
   white-space: nowrap;
   line-height: 1.3;
@@ -2162,7 +2177,7 @@ body.dark-mode .sp-tip {
   gap: 6px;
   padding: 7px 10px;
   font-size: var(--txt-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--type-c, var(--accent));
   background: color-mix(in srgb, var(--type-c, var(--accent)) 10%, transparent);
   border-bottom: 1px solid var(--border-light);
@@ -2605,7 +2620,7 @@ body.dark-mode .sp-tip {
 
 .pp-title {
   font-size: var(--txt-lg);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: var(--text);
   line-height: var(--lh-snug);
   letter-spacing: var(--ls-tight);
@@ -2690,6 +2705,62 @@ body.dark-mode .sp-tip {
   line-height: 1.5;
 }
 
+/* ── Popup opening hours ──────────────────────────────────────────────────── */
+.pp-hours {
+  margin-top: var(--sp-3);
+}
+.pp-hours-hdr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  cursor: pointer;
+}
+.pp-hours-hdr svg {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.pp-hours-badge {
+  margin-left: auto;
+}
+.pp-hours-expand-btn {
+  background: none;
+  border: none;
+  padding: var(--sp-1);
+  cursor: pointer;
+  color: var(--text-3);
+  transition: transform var(--t-fast);
+  display: flex;
+}
+.pp-hours-hdr.expanded .pp-hours-expand-btn {
+  transform: rotate(180deg);
+}
+.pp-hours-body {
+  padding-top: var(--sp-3);
+}
+.pp-hours-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-1) 0;
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+}
+.pp-hours-row.pp-hours-today {
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.pp-hours-day {
+  min-width: 70px;
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+}
+.pp-hours-time.pp-hours-closed {
+  color: var(--danger);
+  font-style: italic;
+}
+
 /* ── Place card events (dot-as-toggle approach) ───────────────────────────── */
 
 /* Event cards: the category dot becomes the toggle — pulsing ring + badge */
@@ -2712,8 +2783,8 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 9px;
-  font-weight: var(--fw-bold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
   line-height: 14px;
   text-align: center;
   pointer-events: none;
@@ -2832,7 +2903,7 @@ body.dark-mode .sp-tip {
   background: var(--gold-soft);
   color: var(--gold);
   font-size: var(--txt-xs);
-  font-weight: var(--fw-normal);
+  font-weight: var(--fw-regular);
   line-height: 1.4;
 }
 .pp-boycott-callout svg {
@@ -2845,8 +2916,8 @@ body.dark-mode .sp-tip {
   display: inline-block;
   margin-left: var(--sp-2);
   vertical-align: middle;
-  font-size: 10px;
-  font-weight: var(--fw-bold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: var(--ls-caps);
   padding: 1px 5px;
@@ -2855,6 +2926,12 @@ body.dark-mode .sp-tip {
   color: var(--gold);
   white-space: nowrap;
   line-height: 1.6;
+}
+
+/* Open/Closed chips inline in list card name — template in design-tokens.css */
+.pl-open-chip,
+.pl-closed-chip {
+  margin-left: var(--sp-2);
 }
 
 /* Featured (sponsored) card — subtle gold left accent */
@@ -2870,8 +2947,8 @@ body.dark-mode .sp-tip {
   display: inline-block;
   margin-left: var(--sp-2);
   vertical-align: middle;
-  font-size: 10px;
-  font-weight: var(--fw-semibold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
   padding: 1px 5px;
   border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--sponsor) 14%, transparent);
@@ -3201,6 +3278,143 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-regular);
   color: var(--text-3);
   letter-spacing: var(--ls-wide);
+}
+
+/* ── Opening hours form ───────────────────────────────────────────────────── */
+.sg-hours-disclosure {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: var(--sp-3) 0;
+  width: 100%;
+  text-align: left;
+  transition: color var(--t-fast);
+}
+.sg-hours-disclosure:hover {
+  color: var(--text);
+}
+.sg-hours-chevron {
+  flex-shrink: 0;
+  transition: transform var(--t-fast);
+}
+.sg-hours-chevron.expanded {
+  transform: rotate(90deg);
+}
+.sg-hours-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.sg-hours-body.hide {
+  display: none;
+}
+.sg-hours-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.sg-hours-entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border: 1px solid var(--border);
+}
+.sg-hours-entry .ev-day-ring {
+  justify-content: center;
+  gap: var(--sp-1);
+}
+.sg-hours-entry .ev-day-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+.sg-hours-time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.sg-hours-sep {
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  line-height: 1;
+}
+.sg-hours-input {
+  padding: var(--sp-2h) var(--sp-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  color: var(--text);
+  min-width: 0;
+  width: 108px;
+  transition: border-color var(--t-fast);
+}
+.sg-hours-input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: var(--shadow-accent-sm);
+}
+.sg-hours-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.sg-hours-closed-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.sg-hours-closed-toggle input {
+  accent-color: var(--danger);
+  cursor: pointer;
+}
+.sg-hours-add-btn {
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  text-align: center;
+}
+.sg-hours-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sg-hours-remove-btn {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  background: none;
+  border: none;
+  font-size: var(--txt-base);
+  color: var(--text-3);
+  cursor: pointer;
+  padding: var(--sp-1);
+  line-height: 1;
+  transition: color var(--t-fast);
+}
+.sg-hours-remove-btn:hover {
+  color: var(--danger);
 }
 
 .sg-label input,
@@ -5017,13 +5231,13 @@ body.nav-mode #style-picker {
   min-width: 16px;
   padding: 1px var(--sp-1);
   border-radius: var(--r-xs);
-  font-size: 10px;
-  font-weight: var(--fw-bold);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
   color: #fff;
   line-height: 1.2;
 }
 .snack-tc-arrow {
-  font-size: 10px;
+  font-size: var(--txt-xs);
   color: var(--text-3);
   margin: 0 1px;
 }
