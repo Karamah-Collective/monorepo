@@ -350,6 +350,7 @@ function showEidPopup(loc) {
   const popup = new maplibregl.Popup({
     offset: [0, -42],
     closeButton: false,
+    focusAfterOpen: false,
     maxWidth: "280px",
     className: "eid-popup-wrap",
   })

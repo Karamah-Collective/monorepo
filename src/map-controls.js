@@ -105,7 +105,7 @@ function openHomePopup() {
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
   _homePopup = null;
 
-  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "260px", className: "place-popup-wrap pin-popup-wrap" })
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, focusAfterOpen: false, maxWidth: "260px", className: "place-popup-wrap pin-popup-wrap" })
     .setLngLat([home.lng, home.lat])
     .setHTML(`
       <div class="pp pp--pin">

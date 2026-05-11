@@ -207,6 +207,10 @@
   padding: 0;
   margin: 0;
 }
+#search-input:focus,
+#search-input:focus-visible {
+  box-shadow: none;
+}
 #search-input::placeholder {
   color: var(--text-3);
   font-weight: var(--fw-regular);
@@ -1605,7 +1609,7 @@ body.dark-mode .sp-tip {
   border: none;
   outline: none;
   background: transparent;
-  font-size: var(--txt-base);
+  font-size: var(--txt-lg);
   font-weight: var(--fw-medium);
   color: var(--text);
   line-height: 30px;
@@ -1613,6 +1617,10 @@ body.dark-mode .sp-tip {
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-fast);
+}
+#pl-search-input:focus,
+#pl-search-input:focus-visible {
+  box-shadow: none;
 }
 .pl-search-wrap.open #pl-search-input {
   opacity: 1;

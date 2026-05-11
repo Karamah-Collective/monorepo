@@ -160,7 +160,7 @@ function _openStopFeaturePopup(f) {
           <button class="sp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save stop'}">${_starSVG(saved)}</button>
         </div>`;
 
-  const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", className: "stop-popup-wrap" })
+  const popup = new maplibregl.Popup({ offset: 14, maxWidth: "320px", focusAfterOpen: false, className: "stop-popup-wrap" })
     .setLngLat(lngLat)
     .setHTML(html)
     .addTo(map);

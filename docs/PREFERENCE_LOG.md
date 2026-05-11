@@ -2098,3 +2098,18 @@ User wanted the collapsed event toggle to look like a compact "pull tab" instead
 **Preference confirmed:** Event indicators should be compact pill-style pull tabs, not full-width interactive rows. Avoid redundant badges when the pull tab already communicates event count.
 
 **Files modified:** `src/styles/styles.css`, `src/places.js`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-05-11 — Places sheet closing during inline search (mobile)
+
+**Problem:** On phone, the places sheet would sometimes close unexpectedly while the user was searching in the `#pl-search-input` inline search. The scrim click handler in `directions.js` closed the entire sheet when a stray tap landed on the scrim area (map background) — easy to trigger accidentally on mobile with virtual keyboard viewport changes.
+
+**Root cause:** Two issues:
+1. The scrim click handler (`directions.js`) unconditionally called `closePlacesSheet()` whenever the directions panel was shut — it didn't check whether the places inline search was active.
+2. `#pl-search-input` had `font-size: 14px` (`--txt-base`), below the 16px iOS auto-zoom threshold. Focusing the input triggered Safari's auto-zoom, causing viewport shifts that increased the chance of misplaced touch events.
+
+**Fix:**
+1. Added `dismissPlacesSearch()` export to `places.js` — returns `true` if the search was open (and closes it + blurs input), `false` otherwise.
+2. Modified scrim click handler in `directions.js`: if `dismissPlacesSearch()` returns `true`, the scrim tap only closes the search, NOT the entire sheet.
+3. Changed `#pl-search-input` font-size from `--txt-base` (14px) to `--txt-lg` (16px) — prevents iOS auto-zoom on focus.
+
+**Files modified:** `src/places.js`, `src/directions.js`, `src/styles/styles.css`.

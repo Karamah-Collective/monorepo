@@ -1096,7 +1096,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   // Track the open popup id for toggle-close
   _activePlacePopupId = place.id;
 
-  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, maxWidth: "300px", className: "place-popup-wrap" })
+  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, focusAfterOpen: false, maxWidth: "300px", className: "place-popup-wrap" })
     .setLngLat([place.lng, place.lat])
     .setDOMContent(root)
     .addTo(map);
@@ -1438,6 +1438,18 @@ function _closePlaceSearch() {
     renderPlacesList();
   }
   _plSearchInput.value = "";
+}
+
+/**
+ * Dismiss the inline places search if active. Returns true if search was open.
+ * Used by the scrim handler to avoid closing the entire sheet on accidental taps.
+ * @returns {boolean}
+ */
+export function dismissPlacesSearch() {
+  if (!_plSearchWrap.classList.contains("open")) return false;
+  _closePlaceSearch();
+  _plSearchInput.blur();
+  return true;
 }
 
 // Icon toggles open/close
