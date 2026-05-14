@@ -52,12 +52,14 @@ export async function onRequestGet(context) {
     "Access-Control-Allow-Origin": allowedOrigin(request),
   };
 
-  if (!env.GAS_URL) {
+  // Use SHEETS_URL (same as places/events) with GAS_URL fallback
+  const gasUrl = env.SHEETS_URL || env.GAS_URL;
+  if (!gasUrl) {
     return json({ error: "Service temporarily unavailable" }, 500, headers);
   }
 
   try {
-    const upstream = await fetch(`${env.GAS_URL}?action=reviews`);
+    const upstream = await fetch(`${gasUrl}?action=reviews`);
     const body = await upstream.text();
 
     return new Response(body, {

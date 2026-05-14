@@ -120,18 +120,32 @@ export async function loadReviews() {
 }
 
 async function _fetchReviews() {
+  const urls = ["/api/reviews"];
+
   try {
-    const res = await fetch("/api/reviews");
-    if (!res.ok) return;
-    const json = await res.json();
-    if (json.reviews) {
-      _hydrateMap(json.reviews);
-      _lastFetch = Date.now();
-      try {
-        localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: json.reviews }));
-      } catch { /* quota */ }
+    const cfg = await import("./config.local.js");
+    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=reviews`);
+  } catch {
+    // config.local.js absent in production — expected
+  }
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const json = await res.json();
+      if (json.reviews) {
+        _hydrateMap(json.reviews);
+        _lastFetch = Date.now();
+        try {
+          localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: json.reviews }));
+        } catch { /* quota */ }
+        return;
+      }
+    } catch {
+      continue;
     }
-  } catch { /* offline / error — use cache */ }
+  }
 }
 
 function _hydrateMap(data) {
