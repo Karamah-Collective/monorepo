@@ -5,6 +5,7 @@ import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
+import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews } from "./reviews.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -649,6 +650,17 @@ function _collectHoursFromForm(container, prefix) {
 
 let _openNowFilter = false;
 
+/**
+ * Build a compact rating chip for place cards. Returns empty string if no reviews.
+ * @param {string} placeId
+ * @returns {string} HTML
+ */
+function _buildRatingChip(placeId) {
+  const data = getPlaceRating(placeId);
+  if (!data) return "";
+  return `<span class="pl-rating-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${data.avg.toFixed(1)} <span class="pl-rating-count">(${data.count})</span></span>`;
+}
+
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
@@ -703,6 +715,7 @@ function _buildCard(p, i) {
     <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
       <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
+      ${_buildRatingChip(p.id)}
     </div>
     <div class="pl-acts">
       <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
@@ -862,6 +875,9 @@ export async function loadPlacesData() {
     placesLoaded = true;
     hideLoadingToast();
   }
+
+  // Load reviews in background (non-blocking) — ratings will appear on next card/popup render
+  loadReviews();
 }
 
 // ── Marker clustering ──────────────────────────────────────────────────────────
@@ -1203,6 +1219,41 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   addr.className = "pp-addr";
   addr.textContent = place.address;
   inner.appendChild(addr);
+
+  // Community Rating
+  const ratingData = getPlaceRating(place.id);
+  const reviewsSection = document.createElement("div");
+  reviewsSection.className = "pp-reviews";
+  const reviewsHdr = document.createElement("div");
+  reviewsHdr.className = "pp-reviews-hdr";
+  reviewsHdr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Reviews`;
+  reviewsSection.appendChild(reviewsHdr);
+
+  if (ratingData) {
+    const ratingEl = document.createElement("div");
+    ratingEl.className = "pp-rating";
+    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>`;
+    ratingEl.setAttribute("role", "button");
+    ratingEl.setAttribute("tabindex", "0");
+    ratingEl.title = "View reviews";
+    ratingEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openReviewsOverlay(place.id, place.name);
+    });
+    reviewsSection.appendChild(ratingEl);
+  } else {
+    const ratingEl = document.createElement("div");
+    ratingEl.className = "pp-rating pp-rating--empty";
+    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
+    ratingEl.setAttribute("role", "button");
+    ratingEl.setAttribute("tabindex", "0");
+    ratingEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openReviewsOverlay(place.id, place.name);
+    });
+    reviewsSection.appendChild(ratingEl);
+  }
+  inner.appendChild(reviewsSection);
 
   // Tags (plain text labels, no icons)
   if (typeTags.length) {

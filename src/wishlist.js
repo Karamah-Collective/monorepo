@@ -6,11 +6,10 @@
  * per device per wish (localStorage + server-side state).
  */
 import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { animateSheetHeight, esc, showToast, loadRecaptcha } from "./utils.js";
+import { animateSheetHeight, esc, showToast, loadRecaptcha, getDeviceId } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_VOTED = "hf_wish_votes";
-const STORAGE_KEY_DEVICE = "hf_device_id";
 const FETCH_CACHE_MS = 120_000;
 const OVERFLOW_EPSILON_PX = 1;
 
@@ -31,15 +30,8 @@ let _preloaded = false;
 // ─── DOM refs (set in init) ───────────────────────────────────────────────────
 let _overlay, _formOverlay, _card, _list, _addBtn, _formEl;
 
-// ─── Device ID (stable per browser profile) ──────────────────────────────────
-function _getDeviceId() {
-  let id = localStorage.getItem(STORAGE_KEY_DEVICE);
-  if (!id) {
-    id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(STORAGE_KEY_DEVICE, id);
-  }
-  return id;
-}
+// ─── Device ID — uses shared getDeviceId() from utils.js ─────────────────────
+const _getDeviceId = getDeviceId;
 
 // ─── Voted set (fast client-side check) ──────────────────────────────────────
 function _getVoted() {

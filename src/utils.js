@@ -95,6 +95,23 @@ export function clearCurrentLocationState() {
 }
 // ─────────────────────────────────────────────────────────────
 
+// --- Device ID (stable per browser profile, shared across modules) ---
+
+const DEVICE_ID_KEY = "hf_device_id";
+
+/**
+ * Get or generate a stable device identifier (UUID stored in localStorage).
+ * @returns {string}
+ */
+export function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 // --- HTML escaping ---
 
 export function esc(s) {

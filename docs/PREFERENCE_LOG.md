@@ -55,6 +55,10 @@ what you like, what you've decided, and how you want things done.
 - **2026-05-12 — Weight hierarchy: 4-tier (regular/medium/semibold/bold).** Bold reserved for panel h2/h3 headings and primary CTAs only. Semibold for badges, counts, section labels, popup titles. Medium for interactive elements (chips, tabs, sort options, form labels). Regular for body/descriptions/placeholders.
 - **2026-05-12 — No hardcoded font-size values in app CSS.** All app component font sizes use `--txt-*` tokens. Only exceptions: MapLibre control overrides (9px !important), legal links (9px), and monospace code textarea (10px).
 
+- **2026-05-16 — In-app review system: triple-identity anti-abuse, no login.** Reviews use fingerprint + deviceId + IP hash for triple dedup. reCAPTCHA at 0.7 threshold. 5 reviews/day rate limit per fingerprint. Most aggressive anti-abuse without requiring authentication.
+- **2026-05-16 — Reviews: hybrid moderation (ratings instant, text moderated).** Star ratings (1–5) take effect immediately. Text reviews (optional, 20–500 chars) go to "pending" status for admin approval. Separates the rating signal from potentially harmful content.
+- **2026-05-16 — Reviews: update, not block, on repeat visits.** When a user with an existing review submits again, their star rating is UPDATED (replaced). Text reviews are append-only — cannot edit or delete previous text.
+
 - **2026-04-29 — Turn overlay must point to the exact snapped maneuver coordinate.** The floating turn badge may sit beside the road, but its pointer tip must land on the actual on-route turn point itself, using the snapped route coordinate rather than a nearby raw step lat/lng or arbitrary side offset.
 
 - **2026-04-29 — GPS sim phone testing: URL param + route playback.** Added `?sim` URL parameter to auto-activate GPS sim on phone (no keyboard shortcut available). Added route playback engine that auto-walks along computed route at configurable speed (walk/cycle/drive/fast). Badge made tappable with close button.
@@ -2197,3 +2201,116 @@ User wanted the collapsed event toggle to look like a compact "pull tab" instead
 - **bold→semibold in design-tokens.css:** snack-tc-badge
 
 **Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`, `src/search.js`
+
+### 2026-05-16 — In-app community reviews & ratings system
+
+**Full implementation of an independent review/rating system separate from Google ratings.**
+
+**Anti-abuse architecture (triple-identity + moderation):**
+- Browser fingerprint: canvas + WebGL + hardware signals → SHA-256 hash
+- localStorage device ID: `hf_device_id` (shared with wishlist)
+- Server-side IP hash: CF-Connecting-IP → SHA-256 via CF Function
+- reCAPTCHA v3 threshold: 0.7 (aggressive)
+- Triple dedup: fingerprint OR deviceId OR ipHash match = same user
+- Rate limit: 5 reviews per fingerprint per 24h
+- Text moderation queue: text reviews start as "pending", ratings are instant
+
+**User preferences expressed:**
+- Most aggressive anti-abuse possible — reviews directly affect businesses
+- Hybrid moderation: star ratings instant, text reviews require admin approval
+- Anonymous reviews (no login), 1–5 stars + optional text (min 20 chars)
+- Replace Google ratings entirely with community ratings
+- Users can UPDATE their star rating (replaces previous) but cannot edit/delete text
+- Newest-first sorting for review lists
+- Popup shows summary (avg + count), tapping opens full overlay
+
+**Data architecture:**
+- Google Sheet "Reviews" tab: placeId | rating | text | deviceId | fingerprint | ipHash | timestamp | status
+- Apps Script handles: dedup check, rate limiting, update-or-insert logic, grouped JSON with averages
+- CF Function `/api/reviews`: GET (5-min edge cache), POST (reCAPTCHA + IP hash + forward)
+- Client cache: localStorage `hf_reviews_v1`
+
+**UI integration:**
+- Place cards: small rating chip (star + avg + count) in `.pl-meta`
+- Place popups: community rating section (star display + avg + count), clickable to open overlay
+- Reviews overlay: fixed centered card with summary stats, star distribution, review list, write form
+- Star input: interactive 5-star clickable component
+- Write form: star rating + optional text area (20–500 chars) + char counter + submit
+
+**Module loading:**
+- `reviews.js` statically imported by `places.js` (since places renders rating chips)
+- `loadReviews()` called at end of `loadPlacesData()` (non-blocking background fetch)
+- Removed redundant lazy-import from app.js (ES modules are singletons — static import from places.js already loads it)
+
+**Files created:** `functions/api/reviews.js`, `src/reviews.js`, `docs/REVIEWS_IMPLEMENTATION.md`
+**Files modified:** `scripts/apps-script/Code.gs`, `src/places.js`, `src/utils.js`, `src/wishlist.js`, `src/app.js`, `index.html`, `src/styles/styles.css`
+**Decisions:**
+- Reviews are completely independent from Google ratings — own data store, own UI, own aggregation
+- `getDeviceId()` extracted to `src/utils.js` as shared utility (used by both wishlist and reviews)
+- No edit/delete for text reviews — prevents gaming; users can only update their star rating
+- 5 reviews/day per fingerprint is aggressive enough to prevent bulk abuse without login
+- SW already caches `/api/reviews` via own-origin stale-while-revalidate (no change needed)
+
+### 2026-05-16 — Review UI polish: design language uniformity
+
+**Popup rating section redesigned to match events/hours section pattern:**
+- New `.pp-reviews` wrapper with `border-top` separator (matches `.pp-events`, `.pp-hours`)
+- Section header with gold star icon + "REVIEWS" uppercase label (matches `.pp-events-hdr` pattern)
+- Rating row (avg + stars + count) has pill-shaped hover background (`--gold-soft`)
+- Empty state shows outlined star icon + "Be the first to review" (inviting CTA, not grey text)
+
+**Reviews overlay refinements:**
+- Split card into fixed header (`.rv-overlay-hdr`) + scrollable body (`.rv-overlay-body`)
+- Summary section gets `--gold-soft` background + `--r-lg` radius (visually distinct area)
+- Distribution bars get white background (contrasts against gold-soft) + slightly taller (7px)
+- Distribution labels use `--fw-medium` + `--text-2` (was `--text-3`)
+- Empty state redesigned: centered flex column with circular gold-soft icon holder + descriptive text
+- "Write a review" button gets a pencil icon (edit SVG)
+- Review cards: padding + hover background instead of bottom-border + no padding
+- Star gaps widened to 2px (was 1px) for better star separation
+- Star buttons use `filter: brightness(1.15)` hover (no transform per user preference)
+
+**Form improvements:**
+- Form gets `--surface-2` background + `--r-lg` radius (visually contained area)
+- Added "YOUR RATING" uppercase label above star input for clarity
+
+**Files modified:** `src/reviews.js`, `src/places.js`, `src/styles/styles.css`
+
+### 2026-05-16 — Reviews overlay: strict design language conformance (round 3)
+
+**User feedback:** "the design of the popup does not follow the design language of the app itself — e.g. the button height doesn't match etc."
+
+**Root cause:** The reviews overlay was using bespoke header, title, and close button classes instead of reusing the canonical overlay pattern (`.suggest-head`, `.btn-roundel`, `.sheet-x`). Button heights, padding, form styling, and empty state all deviated from established app patterns.
+
+**Changes (markup — reviews.js):**
+- Replaced bespoke `.rv-overlay-hdr` + `.rv-overlay-title` + custom close button with `.suggest-head` + `<h3>` + `.btn-roundel.sheet-x` — exact same pattern used by suggest, contact, wish, and events overlays
+- Summary section now conditionally shown (hidden when 0 reviews — was showing a meaningless "0.0" average)
+- Removed `.rv-divider` element entirely (header border-bottom handles separation)
+- Added mobile drag handle (`<div class="sheet-drag"><span></span></div>`)
+- Empty state simplified from circular icon holder + descriptive text to plain `<p>` "No reviews yet"
+- Removed `.rv-form-label` ("YOUR RATING" uppercase label) — form is self-explanatory with star input
+- Fixed form insertion target — was inserting relative to removed divider, now inserts before `.rv-list`
+
+**Changes (CSS — styles.css):**
+- Removed bespoke `.rv-overlay-hdr`, `.rv-overlay-title` rules (now reused `.suggest-head`)
+- Removed `.rv-divider` rule (divider element removed)
+- Removed `.rv-form-label` rule (element removed)
+- Removed `.rv-empty-icon` rule (icon holder removed)
+- `.rv-overlay-card`: max-width → 420px (was variable)
+- `.rv-overlay-body`: padding → `sp-6 sp-8 sp-8`, gap → `sp-6`
+- `.rv-summary`: removed `--gold-soft` background (too heavy), increased gap to `sp-6`
+- `.rv-avg-num`: font-size 36px, letter-spacing `--ls-tight`
+- `.rv-dist-bar`: height 6px (was 7px), background `--surface-2`
+- `.rv-write-btn`: added `height: var(--h-submit)`, `flex-shrink: 0`
+- `.rv-submit-btn`: added `height: var(--h-submit)`, `flex-shrink: 0`
+- `.rv-form`: removed `background`, `border-radius`, `padding` (was `--surface-2` box — no other form in the app uses this), increased gap to `sp-4`
+- `.rv-list`: added `border-top: 1px solid var(--border-light)` + `padding-top: sp-4` for visual separation
+- Removed orphaned `.rv-overlay-hdr` mobile override (class no longer exists)
+
+**Patterns enforced:**
+- All overlays must use `.suggest-head` for header, `.btn-roundel.sheet-x` for close
+- All submit/CTA buttons must use `height: var(--h-submit)`
+- Forms should not have their own background/radius — they live inside the overlay body
+- Empty states should be minimal text, not elaborate icon compositions
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`
