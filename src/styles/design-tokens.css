@@ -92,16 +92,16 @@
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
   --focus-ring-inset: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 
-  --txt-xs: 12px;
+  --txt-xs: 12.5px;
   --txt-sm: 13px;
   --txt-base: 14px;
   --txt-md: 15px;
   --txt-lg: 16px;
   --txt-xl: 17px;
-  --txt-2xl: 19px;
-  --txt-3xl: 22px;
-  --txt-4xl: 26px;
-  --txt-display: 30px;
+  --txt-2xl: 18px;
+  --txt-3xl: 20px;
+  --txt-4xl: 22px;
+  --txt-display: 24px;
 
   /* line heights */
   --lh-tight: 1.15;
@@ -258,6 +258,12 @@ button {
 
   font-family: inherit;
   cursor: pointer;
+}
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: var(--txt-xs);
 }
 
 /* Eliminate 300ms double-tap-zoom delay on all interactive elements */
@@ -1313,7 +1319,7 @@ select:focus-visible {
   gap: var(--sp-0h);
   padding: var(--sp-0h) var(--sp-3);
   border-radius: var(--r-pill);
-  font-size: var(--txt-xs);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--ls-wide);
   color: var(--chip-c, var(--accent));
@@ -2162,35 +2168,33 @@ html.dark-mode .nav-turn-ptr {
 .wish-expand:hover { text-decoration: underline; }
 
 .wish-vote {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--sp-0);
-  padding: var(--sp-3);
-  min-width: 40px;
+  justify-content: center;
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
   background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text-2);
+  border: none;
+  border-radius: 50%;
+  color: var(--text-3);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+  transition: color var(--t-fast), background var(--t-fast);
 }
 @media (hover: hover) {
   .wish-vote:hover:not(:disabled) {
-    border-color: var(--accent);
     color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
   }
 }
 .wish-vote--voted {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
-  cursor: default;
 }
 
 .wish-vote--locked {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
   pointer-events: none;
 }
@@ -2200,9 +2204,24 @@ html.dark-mode .nav-turn-ptr {
 }
 
 .wish-vote-count {
-  font-size: var(--txt-sm);
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
   font-weight: var(--fw-semibold);
-  letter-spacing: var(--ls-wide);
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
+}
+.wish-vote-count[data-count="0"] {
+  display: none;
 }
 
 .wish-loading,

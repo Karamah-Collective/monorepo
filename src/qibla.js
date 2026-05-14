@@ -17,7 +17,7 @@ let _overlayEl = null;
 let _ringEl = null;
 let _kaabaEl = null;
 let _bearingValue = null;
-let _bearingUnit = null;
+let _bearingDeg = null;
 let _statusEl = null;
 let _qiblaBearing = 0;
 let _currentHeading = 0;
@@ -135,7 +135,7 @@ export async function openQibla() {
   _ringEl = document.getElementById("qibla-ring");
   _kaabaEl = document.getElementById("qibla-kaaba");
   _bearingValue = document.getElementById("qibla-bearing-value");
-  _bearingUnit = document.getElementById("qibla-bearing-unit");
+  _bearingDeg = document.getElementById("qibla-bearing-deg");
   _statusEl = document.getElementById("qibla-status");
 
   _overlayEl.classList.remove("hide", "qibla-on-target");
@@ -143,7 +143,7 @@ export async function openQibla() {
   _isLocked = false;
   _statusEl.textContent = "Getting location\u2026";
   _bearingValue.textContent = "--";
-  _bearingUnit.textContent = "";
+  _bearingDeg.textContent = "";
 
   // 1. Get user location
   let lat, lng;
@@ -164,7 +164,7 @@ export async function openQibla() {
   }
 
   _qiblaBearing = _calcQiblaBearing(lat, lng);
-  _bearingUnit.textContent = "degrees from North";
+  _bearingDeg.textContent = "°";
 
   // 2. Request orientation permission (iOS)
   _statusEl.textContent = "Starting compass\u2026";

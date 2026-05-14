@@ -209,7 +209,7 @@ map.on("load", async () => {
   initEidPrayers();
   initWishlist();
   preloadWishes();
-  // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+  initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)

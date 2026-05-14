@@ -278,11 +278,11 @@ function _render() {
           <button class="wish-expand" data-id="${esc(w.id)}" hidden>${isOpen ? "Show less" : "Read more"}</button>` : ""}
         </div>
         <button class="wish-vote ${isVoted ? "wish-vote--voted" : ""}${voteLocked ? " wish-vote--locked" : ""}" data-id="${esc(w.id)}"${voteLocked ? " disabled" : ""} aria-label="${voteLocked ? "Voting closed" : isVoted ? "Remove vote" : "Vote"}" aria-pressed="${isVoted ? "true" : "false"}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isVoted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="${isVoted ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 9V5a3 3 0 0 0-3-3l-1 4-4 4v11h11.28a2 2 0 0 0 1.98-1.74l1-7A2 2 0 0 0 18.28 10H14Z"/>
             <path d="M6 10H3v11h3"/>
           </svg>
-          <span class="wish-vote-count">${w.votes || 0}</span>
+          <span class="wish-vote-count" data-count="${w.votes || 0}">${w.votes || 0}</span>
         </button>
       </div>`;
     }).join("");

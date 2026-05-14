@@ -512,7 +512,8 @@ function _renderHoursForm(container, prefix, existingHours) {
   });
 
   // Wire up add button
-  container.querySelector(`#${prefix}-hours-add`).addEventListener("click", () => {
+  const addBtn = container.querySelector(`#${prefix}-hours-add`);
+  addBtn.addEventListener("click", () => {
     const entriesEl = container.querySelector(`#${prefix}-hours-entries`);
     const idx = entriesEl.children.length;
     const assigned = new Set();
@@ -523,11 +524,13 @@ function _renderHoursForm(container, prefix, existingHours) {
     newEntry.innerHTML = _renderHoursEntry(prefix, idx, { days: available, open: "", close: "", closed: false });
     const entryEl = newEntry.firstElementChild;
     entriesEl.appendChild(entryEl);
-    _wireHoursEntry(entryEl);
+    _wireHoursEntry(entryEl, container);
+    _syncHoursDays(container);
   });
 
   // Wire existing entries
-  container.querySelectorAll(".sg-hours-entry").forEach((el) => _wireHoursEntry(el));
+  container.querySelectorAll(".sg-hours-entry").forEach((el) => _wireHoursEntry(el, container));
+  _syncHoursDays(container);
 }
 
 /** @private */
@@ -551,10 +554,14 @@ function _renderHoursEntry(prefix, idx, entry) {
 }
 
 /** @private */
-function _wireHoursEntry(entryEl) {
+function _wireHoursEntry(entryEl, container) {
   // Day ring buttons toggle
   entryEl.querySelectorAll(".ev-day-btn").forEach((btn) => {
-    btn.addEventListener("click", () => btn.classList.toggle("active"));
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      btn.classList.toggle("active");
+      _syncHoursDays(container);
+    });
   });
   // Closed toggle
   const closedCb = entryEl.querySelector(".sg-hours-entry-closed");
@@ -566,7 +573,44 @@ function _wireHoursEntry(entryEl) {
   });
   // Remove button
   const removeBtn = entryEl.querySelector(".sg-hours-remove-btn");
-  removeBtn?.addEventListener("click", () => entryEl.remove());
+  removeBtn?.addEventListener("click", () => {
+    entryEl.remove();
+    _syncHoursDays(container);
+  });
+}
+
+/**
+ * Sync day button states across all hours entries — disable days
+ * that are active in other entries, and update the add-button state.
+ * @param {HTMLElement} container
+ */
+function _syncHoursDays(container) {
+  const entries = container.querySelectorAll(".sg-hours-entry");
+  // Collect all active days per entry
+  const entryDays = [...entries].map((el) => {
+    const active = new Set();
+    el.querySelectorAll(".ev-day-btn.active").forEach((b) => active.add(b.dataset.day));
+    return active;
+  });
+
+  // For each entry, disable day buttons that are active in OTHER entries
+  entries.forEach((el, i) => {
+    const otherActive = new Set();
+    entryDays.forEach((set, j) => { if (j !== i) set.forEach((d) => otherActive.add(d)); });
+    el.querySelectorAll(".ev-day-btn").forEach((btn) => {
+      const taken = otherActive.has(btn.dataset.day);
+      btn.disabled = taken;
+      btn.classList.toggle("taken", taken);
+      // If taken and was active here, deactivate
+      if (taken && btn.classList.contains("active")) btn.classList.remove("active");
+    });
+  });
+
+  // Update add button — disabled if all 7 days are assigned
+  const allAssigned = new Set();
+  entryDays.forEach((set) => set.forEach((d) => allAssigned.add(d)));
+  const addBtn = container.querySelector(".sg-hours-add-btn");
+  if (addBtn) addBtn.disabled = allAssigned.size >= 7;
 }
 
 /**
@@ -1209,7 +1253,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
         : "";
     const hoursEl = document.createElement("div");
     hoursEl.className = "pp-hours";
-    hoursEl.innerHTML = `<div class="pp-hours-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Hours</span>${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></div><div class="pp-hours-body hide">${_formatHoursForPopup(place.hours)}</div>`;
+    hoursEl.innerHTML = `<div class="pp-hours-hdr"><span class="pp-hours-label">Hours</span><span class="pp-hours-right">${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></span></div><div class="pp-hours-body hide">${_formatHoursForPopup(place.hours)}</div>`;
     const expandBtn = hoursEl.querySelector(".pp-hours-expand-btn");
     const hoursBody = hoursEl.querySelector(".pp-hours-body");
     expandBtn.addEventListener("click", (e) => {

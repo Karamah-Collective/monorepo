@@ -2673,7 +2673,7 @@ body.dark-mode .sp-tip {
 }
 
 .pp-addr {
-  font-size: var(--txt-sm);
+  font-size: var(--txt-base);
   color: var(--text-3);
 }
 
@@ -2699,7 +2699,7 @@ body.dark-mode .sp-tip {
 /* .pp-chip, .pp-chip-yes, .pp-chip-no → see .chip template in design-tokens.css */
 
 .pp-notes {
-  font-size: var(--txt-sm);
+  font-size: var(--txt-base);
   color: var(--text-2);
   font-style: italic;
   line-height: 1.5;
@@ -2712,18 +2712,19 @@ body.dark-mode .sp-tip {
 .pp-hours-hdr {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--txt-sm);
+  justify-content: space-between;
+  font-size: var(--txt-base);
   font-weight: var(--fw-medium);
   color: var(--text);
   cursor: pointer;
 }
-.pp-hours-hdr svg {
-  color: var(--text-3);
-  flex-shrink: 0;
+.pp-hours-label {
+  color: var(--text-2);
 }
-.pp-hours-badge {
-  margin-left: auto;
+.pp-hours-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 .pp-hours-expand-btn {
   background: none;
@@ -2744,7 +2745,7 @@ body.dark-mode .sp-tip {
   display: flex;
   justify-content: space-between;
   padding: var(--sp-1) 0;
-  font-size: var(--txt-xs);
+  font-size: var(--txt-sm);
   color: var(--text-2);
 }
 .pp-hours-row.pp-hours-today {
@@ -3215,8 +3216,8 @@ body.dark-mode .sp-tip {
   background: var(--surface);
 }
 .suggest-head h3 {
-  font-size: var(--txt-3xl);
-  font-weight: var(--fw-bold);
+  font-size: var(--txt-2xl);
+  font-weight: var(--fw-semibold);
   color: var(--text);
   letter-spacing: var(--ls-tight);
 }
@@ -3234,7 +3235,7 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  font-size: var(--txt-base);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-medium);
   color: var(--text-2);
 }
@@ -3336,7 +3337,7 @@ body.dark-mode .sp-tip {
 .sg-hours-entry .ev-day-btn {
   width: 30px;
   height: 30px;
-  font-size: 11px;
+  font-size: var(--txt-xs);
 }
 .sg-hours-time-row {
   display: flex;
@@ -3350,15 +3351,13 @@ body.dark-mode .sp-tip {
   line-height: 1;
 }
 .sg-hours-input {
-  padding: var(--sp-2h) var(--sp-3);
+  padding: var(--sp-2) var(--sp-2h);
   border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
-  font-family: inherit;
-  font-size: var(--txt-sm);
   color: var(--text);
   min-width: 0;
-  width: 108px;
+  width: 100px;
   transition: border-color var(--t-fast);
 }
 .sg-hours-input:focus {
@@ -3391,14 +3390,19 @@ body.dark-mode .sp-tip {
   padding: var(--sp-3) var(--sp-4);
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
-  color: var(--text-3);
+  color: var(--text);
   cursor: pointer;
   transition: all var(--t-fast);
   text-align: center;
 }
-.sg-hours-add-btn:hover {
+.sg-hours-add-btn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+.sg-hours-add-btn:disabled {
+  color: var(--text-3);
+  cursor: default;
+  opacity: 0.6;
 }
 .sg-hours-remove-btn {
   position: absolute;
@@ -3424,8 +3428,7 @@ body.dark-mode .sp-tip {
   border: 1.5px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
-  font-family: inherit;
-  font-size: var(--txt-base);
+  font-size: var(--txt-sm);
   font-weight: var(--fw-regular);
   color: var(--text);
   transition: border-color var(--t-fast), box-shadow var(--t-med);
@@ -5548,10 +5551,15 @@ body.nav-mode #style-picker {
   color: #fff;
 }
 @media (hover: hover) {
-  .ev-day-ring .ev-day-btn:not(.active):hover {
+  .ev-day-ring .ev-day-btn:not(.active):not(.taken):hover {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
+}
+.ev-day-ring .ev-day-btn.taken {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ── Monthly toggle (Date / Day) ─── */
@@ -6216,9 +6224,10 @@ body.nav-mode #style-picker {
 }
 
 #qibla-card {
+  position: relative;
   width: calc(100% - var(--sp-9) * 2);
-  max-width: 340px;
-  background: var(--surface);
+  max-width: 360px;
+  background: #ffffff;
   border-radius: var(--r-2xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
@@ -6231,31 +6240,92 @@ body.nav-mode #style-picker {
   opacity: 0;
 }
 
+/* Close button — positioned top-right, uses standard btn-roundel */
+#qibla-card .sheet-x {
+  position: absolute;
+  top: var(--sp-5);
+  right: var(--sp-5);
+  z-index: 1;
+}
+
 #qibla-body {
-  padding: var(--sp-8) var(--sp-8) var(--sp-9);
+  padding: var(--sp-9) var(--sp-7) var(--sp-8);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-8);
+  gap: var(--sp-6);
+}
+
+/* ── Bearing info (above compass) ── */
+#qibla-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#qibla-bearing-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1;
+}
+
+#qibla-bearing-value {
+  font-size: var(--txt-display);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-tight);
+  line-height: 1;
+  transition: color var(--t-spring);
+}
+#qibla-bearing-deg {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  margin-top: 2px;
+  transition: color var(--t-spring);
+}
+
+/* Hero number turns accent when locked on */
+#qibla-overlay.qibla-on-target #qibla-bearing-value,
+#qibla-overlay.qibla-on-target #qibla-bearing-deg {
+  color: var(--accent);
+}
+
+#qibla-bearing-unit {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
 }
 
 /* ── Compass Container ── */
 #qibla-compass {
   position: relative;
-  width: 260px;
-  height: 260px;
+  width: 240px;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Outer decorative ring */
+/* Outer decorative ring — subtle double-ring depth */
 #qibla-outer-ring {
   position: absolute;
-  inset: -6px;
+  inset: -10px;
   border-radius: 50%;
   border: 1px solid var(--border-light);
   pointer-events: none;
+  transition: border-color var(--t-spring), box-shadow var(--t-spring);
+}
+/* Outer ring glow when locked */
+#qibla-overlay.qibla-on-target #qibla-outer-ring {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 /* Main rotating dial */
@@ -6264,17 +6334,17 @@ body.nav-mode #style-picker {
   width: 240px;
   height: 240px;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background:
-    radial-gradient(circle at 50% 50%, var(--surface) 60%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  background: transparent;
   will-change: transform;
-  transition: border-color var(--t-fast);
+  transition: border-color var(--t-spring), box-shadow var(--t-spring);
 }
 /* "locked on" glow when facing Qibla */
 #qibla-ring.qibla-locked {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent),
-              0 0 24px -4px color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 0 20px -2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 /* SVG compass face fills the ring */
@@ -6296,84 +6366,74 @@ body.nav-mode #style-picker {
 }
 .qibla-kaaba-dot {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: var(--shadow-accent-md);
+  border: 2.5px solid var(--on-accent);
   transform: translate(-50%, -50%);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: background var(--t-spring), box-shadow var(--t-spring), border-color var(--t-spring);
 }
 .qibla-kaaba-pulse {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   transform: translate(-50%, -50%);
-  animation: qibla-pulse 2s ease-out infinite;
+  animation: qibla-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 @keyframes qibla-pulse {
   0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
 }
 
 /* Kaaba dot accent when locked */
 #qibla-ring.qibla-locked .qibla-kaaba-dot {
   background: var(--success);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 40%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--success) 50%, transparent);
 }
 #qibla-ring.qibla-locked .qibla-kaaba-pulse {
-  background: color-mix(in srgb, var(--success) 18%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
-/* ── Fixed center pointer (does not rotate) ── */
+/* ── Fixed center puck (does not rotate) ── */
 #qibla-pointer {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -58%);
+  transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 1;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+.qibla-center-puck {
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  border: var(--puck-border-sm);
+  border-radius: var(--puck-r-sm);
+  transform: rotate(135deg);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+  transition: background var(--t-spring), box-shadow var(--t-spring);
+}
+/* Center puck glows success when locked */
+#qibla-overlay.qibla-on-target .qibla-center-puck {
+  background: var(--success);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--success) 40%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--success) 10%, transparent);
 }
 
-/* ── Info section ── */
-#qibla-info {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-1);
-}
-
-#qibla-bearing-value {
-  font-size: var(--txt-3xl);
-  font-weight: var(--fw-bold);
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--ls-tight);
-  line-height: var(--lh-tight);
-  transition: color var(--t-fast);
-}
-/* Hero number turns accent when locked on */
-#qibla-overlay.qibla-on-target #qibla-bearing-value {
-  color: var(--accent);
-}
-
-#qibla-bearing-unit {
-  font-size: var(--txt-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-3);
-  letter-spacing: var(--ls-wide);
-}
-
+/* ── Status text ── */
 #qibla-status {
   font-size: var(--txt-sm);
   color: var(--text-3);
-  margin-top: var(--sp-2);
+  text-align: center;
   min-height: 1.4em;
-  transition: color var(--t-fast);
+  transition: color var(--t-spring);
 }
 /* Status turns success when locked */
 #qibla-overlay.qibla-on-target #qibla-status {
@@ -6381,19 +6441,22 @@ body.nav-mode #style-picker {
   font-weight: var(--fw-semibold);
 }
 
-/* ── Dark mode ── */
+/* ── Dark mode — pitch black ── */
 body.dark-mode #qibla-card {
-  background: var(--surface-2);
+  background: #000000;
+  box-shadow: none;
+  border: 1px solid var(--border);
 }
 body.dark-mode #qibla-ring {
-  background:
-    radial-gradient(circle at 50% 50%, var(--surface-2) 60%, var(--surface) 100%);
+  border-color: var(--border);
 }
 body.dark-mode #qibla-outer-ring {
   border-color: var(--border);
 }
-body.dark-mode .qibla-kaaba-dot {
-  border-color: var(--surface-2);
+body.dark-mode .qibla-center-puck {
+  box-shadow:
+    0 2px 10px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 @keyframes origin-pulse {
