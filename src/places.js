@@ -876,10 +876,8 @@ export async function loadPlacesData() {
     hideLoadingToast();
   }
 
-  // Load reviews in background (non-blocking)
+  // Load reviews in background (non-blocking) — ratings will appear on next card/popup render
   loadReviews();
-  // Re-render list cards once reviews arrive so rating chips appear immediately
-  window.addEventListener("hf:reviews-loaded", () => renderPlacesList(), { once: true });
 }
 
 // ── Marker clustering ──────────────────────────────────────────────────────────

@@ -130,7 +130,6 @@ async function _fetchReviews() {
       try {
         localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: json.reviews }));
       } catch { /* quota */ }
-      window.dispatchEvent(new CustomEvent("hf:reviews-loaded"));
     }
   } catch { /* offline / error — use cache */ }
 }
