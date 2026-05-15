@@ -1,9 +1,9 @@
 /**
  * Reviews — in-app community rating & review system.
  *
- * Users rate places (1–5 stars) with optional text. Ratings are published
- * immediately; text reviews go through admin moderation. Anti-abuse uses
- * browser fingerprinting + device ID + server-side IP hashing for triple dedup.
+ * Users verify via email OTP, then rate places (1–5 stars) with optional text.
+ * Verified reviews go live immediately. Verification token persists 7 days.
+ * Fallback: unverified submissions go through admin moderation (quota exhausted).
  *
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
@@ -12,10 +12,11 @@ import { esc, escA, showToast, loadRecaptcha, getDeviceId } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
+const STORAGE_KEY_VERIFY_TOKEN = "hf_verify_token";
 const CACHE_TTL_MS = 300_000; // 5 min local cache
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
-const MAX_REVIEWS_PER_DAY = 5;
+const OTP_RESEND_COOLDOWN_MS = 30_000;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 /** @type {Map<string, {avg: number, count: number, items: Array}>} */
@@ -24,7 +25,100 @@ let _lastFetch = 0;
 let _fingerprint = null;
 let _activeOverlayPlaceId = null;
 
-// ─── Fingerprinting ──────────────────────────────────────────────────────────
+// ─── Email Verification Token ────────────────────────────────────────────────
+
+/**
+ * Get the stored verification token if still valid.
+ * @returns {{token: string, expiresAt: number} | null}
+ */
+function _getVerificationToken() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VERIFY_TOKEN);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data.token || !data.expiresAt) return null;
+    if (Date.now() > data.expiresAt) {
+      localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+      return null;
+    }
+    return data;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+    return null;
+  }
+}
+
+/**
+ * Store a verification token in localStorage.
+ * @param {string} token
+ * @param {number} expiresAt - Unix ms timestamp
+ */
+function _storeVerificationToken(token, expiresAt) {
+  try {
+    localStorage.setItem(STORAGE_KEY_VERIFY_TOKEN, JSON.stringify({ token, expiresAt }));
+  } catch { /* quota */ }
+}
+
+/**
+ * Check if the user is currently verified.
+ * @returns {boolean}
+ */
+export function isVerified() {
+  return _getVerificationToken() !== null;
+}
+
+/**
+ * Send OTP to an email address.
+ * @param {string} email
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function _sendOTP(email) {
+  await loadRecaptcha(RECAPTCHA_SITE_KEY);
+  const token = await new Promise((resolve) =>
+    grecaptcha.ready(() =>
+      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_verify" }).then(resolve)
+    )
+  );
+
+  try {
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "send-otp", email, token }),
+    });
+    const result = await res.json();
+    if (result.success) return { success: true };
+    return { success: false, error: result.error };
+  } catch {
+    return { success: false, error: "network_error" };
+  }
+}
+
+/**
+ * Verify an OTP and obtain a signed token.
+ * @param {string} email
+ * @param {string} otp
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function _verifyOTP(email, otp) {
+  try {
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "verify-otp", email, otp }),
+    });
+    const result = await res.json();
+    if (result.success && result.token) {
+      _storeVerificationToken(result.token, result.expiresAt);
+      return { success: true };
+    }
+    return { success: false, error: result.error };
+  } catch {
+    return { success: false, error: "network_error" };
+  }
+}
+
+// ─── Fingerprinting (legacy fallback) ────────────────────────────────────────
 
 /**
  * Generate a stable browser fingerprint hash using canvas, WebGL, and hardware signals.
@@ -181,40 +275,55 @@ export function getPlaceReviews(placeId) {
 // ─── Review Submission ───────────────────────────────────────────────────────
 
 /**
- * Submit a review for a place.
+ * Submit a review for a place. Uses verification token if available, falls back to legacy.
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
  * @returns {Promise<{success: boolean, status?: string, error?: string}>}
  */
 export async function submitReview(placeId, rating, text) {
-  const fingerprint = await _computeFingerprint();
-  const deviceId = getDeviceId();
-  await loadRecaptcha(RECAPTCHA_SITE_KEY);
-  const token = await new Promise((resolve) =>
-    grecaptcha.ready(() =>
-      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_submit" }).then(resolve)
-    )
-  );
+  const verification = _getVerificationToken();
+
+  let payload;
+  if (verification) {
+    // Verified flow — no reCAPTCHA needed
+    payload = {
+      action: "submit",
+      placeId,
+      rating,
+      text: text || "",
+      verifyToken: verification.token,
+    };
+  } else {
+    // Legacy fallback (moderated)
+    const fingerprint = await _computeFingerprint();
+    const deviceId = getDeviceId();
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
+    const token = await new Promise((resolve) =>
+      grecaptcha.ready(() =>
+        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_submit" }).then(resolve)
+      )
+    );
+    payload = {
+      action: "submit",
+      token,
+      placeId,
+      rating,
+      text: text || "",
+      deviceId,
+      fingerprint,
+    };
+  }
 
   try {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "submit",
-        token,
-        placeId,
-        rating,
-        text: text || "",
-        deviceId,
-        fingerprint,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const result = await res.json();
     if (result.success) {
-      // Optimistic local update
       _updateLocalReview(placeId, rating, text, result.status);
       return { success: true, status: result.status };
     }
@@ -230,26 +339,39 @@ export async function submitReview(placeId, rating, text) {
  * @returns {Promise<{reviewed: boolean, rating?: number}>}
  */
 export async function checkExistingReview(placeId) {
-  const fingerprint = await _computeFingerprint();
-  const deviceId = getDeviceId();
-  await loadRecaptcha(RECAPTCHA_SITE_KEY);
-  const token = await new Promise((resolve) =>
-    grecaptcha.ready(() =>
-      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_check" }).then(resolve)
-    )
-  );
+  const verification = _getVerificationToken();
+
+  let payload;
+  if (verification) {
+    payload = {
+      action: "check",
+      placeId,
+      verifyToken: verification.token,
+    };
+  } else {
+    // Legacy fallback
+    const fingerprint = await _computeFingerprint();
+    const deviceId = getDeviceId();
+    await loadRecaptcha(RECAPTCHA_SITE_KEY);
+    const token = await new Promise((resolve) =>
+      grecaptcha.ready(() =>
+        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_check" }).then(resolve)
+      )
+    );
+    payload = {
+      action: "check",
+      token,
+      placeId,
+      deviceId,
+      fingerprint,
+    };
+  }
 
   try {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "check",
-        token,
-        placeId,
-        deviceId,
-        fingerprint,
-      }),
+      body: JSON.stringify(payload),
     });
     return await res.json();
   } catch {
@@ -261,11 +383,8 @@ function _updateLocalReview(placeId, rating, text, status) {
   const existing = _reviewsMap.get(placeId) || { avg: 0, count: 0, items: [] };
 
   if (status === "updated") {
-    // Replace existing rating in items (last item from this user — we only know locally)
     existing.items = existing.items || [];
-    // Recalculate avg: replace one entry
     const total = existing.avg * existing.count;
-    // Approximation: we don't know the old rating, just add and trust server to fix on next fetch
     existing.avg = existing.count > 0 ? (total + rating) / (existing.count + 1) : rating;
   } else {
     // New review
@@ -274,15 +393,11 @@ function _updateLocalReview(placeId, rating, text, status) {
     existing.items = existing.items || [];
   }
 
-  if (!text || status === "live") {
-    existing.items.unshift({ rating, text: text || "", timestamp: new Date().toISOString() });
-  } else if (text && status === "pending") {
-    // Text pending — only show rating in items
-    existing.items.unshift({ rating, text: "", timestamp: new Date().toISOString() });
-  }
+  // Verified reviews always show text; legacy pending hides text
+  const showText = status === "live" || status === "updated";
+  existing.items.unshift({ rating, text: showText ? (text || "") : "", timestamp: new Date().toISOString() });
 
   _reviewsMap.set(placeId, existing);
-  // Persist
   try {
     const cacheObj = { ts: Date.now(), data: Object.fromEntries(_reviewsMap) };
     localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(cacheObj));
@@ -467,11 +582,243 @@ function _relativeTime(timestamp) {
 
 // ─── UI: Review Form ─────────────────────────────────────────────────────────
 
+/**
+ * Show the review form — with email verification gate if not verified.
+ * @param {string} placeId
+ * @param {HTMLElement} overlay
+ */
 function _showReviewForm(placeId, overlay) {
   const writeBtn = overlay.querySelector(".rv-write-btn");
   if (writeBtn) writeBtn.remove();
 
   const list = overlay.querySelector(".rv-list");
+
+  if (isVerified()) {
+    _showRatingForm(placeId, overlay, list);
+  } else {
+    _showVerificationForm(placeId, overlay, list);
+  }
+}
+
+/**
+ * Show email verification UI (email input → OTP input).
+ */
+function _showVerificationForm(placeId, overlay, insertBefore) {
+  const container = document.createElement("div");
+  container.className = "rv-verify-form";
+
+  // State
+  let _email = "";
+  let _lastSendTime = 0;
+
+  // Email input step
+  const emailStep = document.createElement("div");
+  emailStep.className = "rv-verify-step";
+  emailStep.innerHTML = `<p class="rv-verify-label">Verify your email to leave a review</p>`;
+
+  const emailRow = document.createElement("div");
+  emailRow.className = "rv-verify-row";
+
+  const emailInput = document.createElement("input");
+  emailInput.type = "email";
+  emailInput.className = "rv-email-input";
+  emailInput.placeholder = "your@email.com";
+  emailInput.maxLength = 254;
+  emailInput.autocomplete = "email";
+
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "button";
+  sendBtn.className = "rv-send-btn btn-primary";
+  sendBtn.textContent = "Send code";
+  sendBtn.disabled = true;
+
+  emailInput.addEventListener("input", () => {
+    sendBtn.disabled = !emailInput.value.includes("@");
+  });
+
+  emailRow.appendChild(emailInput);
+  emailRow.appendChild(sendBtn);
+  emailStep.appendChild(emailRow);
+  container.appendChild(emailStep);
+
+  // OTP step (hidden initially)
+  const otpStep = document.createElement("div");
+  otpStep.className = "rv-verify-step rv-otp-step hide";
+  otpStep.innerHTML = `<p class="rv-verify-label">Enter the 6-digit code sent to your email</p>`;
+
+  const otpRow = document.createElement("div");
+  otpRow.className = "rv-verify-row";
+
+  const otpInput = document.createElement("input");
+  otpInput.type = "text";
+  otpInput.inputMode = "numeric";
+  otpInput.pattern = "[0-9]*";
+  otpInput.className = "rv-otp-input";
+  otpInput.placeholder = "000000";
+  otpInput.maxLength = 6;
+  otpInput.autocomplete = "one-time-code";
+
+  const verifyBtn = document.createElement("button");
+  verifyBtn.type = "button";
+  verifyBtn.className = "rv-verify-btn btn-primary";
+  verifyBtn.textContent = "Verify";
+  verifyBtn.disabled = true;
+
+  otpInput.addEventListener("input", () => {
+    otpInput.value = otpInput.value.replace(/\D/g, "").slice(0, 6);
+    verifyBtn.disabled = otpInput.value.length !== 6;
+  });
+
+  otpRow.appendChild(otpInput);
+  otpRow.appendChild(verifyBtn);
+  otpStep.appendChild(otpRow);
+
+  const resendLink = document.createElement("button");
+  resendLink.type = "button";
+  resendLink.className = "rv-resend-link";
+  resendLink.textContent = "Resend code";
+  resendLink.disabled = true;
+  otpStep.appendChild(resendLink);
+
+  container.appendChild(otpStep);
+
+  // Error display
+  const errorMsg = document.createElement("p");
+  errorMsg.className = "rv-verify-error hide";
+  container.appendChild(errorMsg);
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.remove("hide");
+  }
+  function hideError() {
+    errorMsg.classList.add("hide");
+  }
+
+  // Send OTP handler
+  async function handleSend() {
+    hideError();
+    _email = emailInput.value.trim().toLowerCase();
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = `<span class="btn-spinner"></span>`;
+
+    const result = await _sendOTP(_email);
+
+    if (result.success) {
+      _lastSendTime = Date.now();
+      emailStep.classList.add("hide");
+      otpStep.classList.remove("hide");
+      otpInput.focus();
+      _startResendCooldown(resendLink);
+    } else {
+      const msgs = {
+        invalid_email: "Please enter a valid email address",
+        rate_limited_email: "Too many codes requested. Try again later.",
+        rate_limited_ip: "Too many requests. Try again later.",
+        quota_exhausted: "Verification unavailable right now. Submitting for moderation instead.",
+        network_error: "Network error. Check your connection.",
+      };
+      if (result.error === "quota_exhausted") {
+        // Fallback: show review form in legacy moderated mode
+        container.remove();
+        _showRatingForm(placeId, overlay, insertBefore, true);
+        return;
+      }
+      showError(msgs[result.error] || "Could not send code. Try again.");
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send code";
+    }
+  }
+
+  sendBtn.addEventListener("click", handleSend);
+  emailInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !sendBtn.disabled) handleSend();
+  });
+
+  // Verify OTP handler
+  async function handleVerify() {
+    hideError();
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = `<span class="btn-spinner"></span>`;
+
+    const result = await _verifyOTP(_email, otpInput.value);
+
+    if (result.success) {
+      container.remove();
+      _showRatingForm(placeId, overlay, insertBefore);
+      showToast("Email verified", "check");
+    } else {
+      const msgs = {
+        wrong_otp: "Incorrect code. Please try again.",
+        otp_expired: "Code expired. Request a new one.",
+        too_many_attempts: "Too many attempts. Request a new code.",
+        invalid_otp: "Enter a 6-digit code.",
+        network_error: "Network error. Check your connection.",
+      };
+      showError(msgs[result.error] || "Verification failed. Try again.");
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = "Verify";
+      if (result.error === "otp_expired" || result.error === "too_many_attempts") {
+        otpStep.classList.add("hide");
+        emailStep.classList.remove("hide");
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send code";
+      }
+    }
+  }
+
+  verifyBtn.addEventListener("click", handleVerify);
+  otpInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !verifyBtn.disabled) handleVerify();
+  });
+
+  // Resend handler
+  resendLink.addEventListener("click", async () => {
+    hideError();
+    resendLink.disabled = true;
+    const result = await _sendOTP(_email);
+    if (result.success) {
+      _lastSendTime = Date.now();
+      _startResendCooldown(resendLink);
+      showToast("Code resent", "check");
+    } else {
+      showError("Could not resend. Try again later.");
+      resendLink.disabled = false;
+    }
+  });
+
+  insertBefore.insertAdjacentElement("beforebegin", container);
+  emailInput.focus();
+}
+
+/**
+ * Start the resend cooldown timer on the resend link.
+ * @param {HTMLElement} resendLink
+ */
+function _startResendCooldown(resendLink) {
+  resendLink.disabled = true;
+  let remaining = Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000);
+  resendLink.textContent = `Resend code (${remaining}s)`;
+  const interval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(interval);
+      resendLink.disabled = false;
+      resendLink.textContent = "Resend code";
+    } else {
+      resendLink.textContent = `Resend code (${remaining}s)`;
+    }
+  }, 1000);
+}
+
+/**
+ * Show the actual rating + text form (after verification or in legacy mode).
+ * @param {string} placeId
+ * @param {HTMLElement} overlay
+ * @param {HTMLElement} insertBefore
+ * @param {boolean} [legacyMode=false] - if true, show moderation notice
+ */
+function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
   const form = document.createElement("div");
   form.className = "rv-form";
 
@@ -504,7 +851,9 @@ function _showReviewForm(placeId, overlay) {
 
   const note = document.createElement("p");
   note.className = "rv-form-note";
-  note.textContent = "Ratings appear instantly. Text reviews are moderated.";
+  note.textContent = legacyMode
+    ? "Review will appear after moderation."
+    : "Your review will appear immediately.";
 
   submitBtn.addEventListener("click", async () => {
     if (selectedRating === 0) return;
@@ -522,13 +871,12 @@ function _showReviewForm(placeId, overlay) {
 
     if (result.success) {
       if (result.status === "updated") {
-        showToast("Rating updated", "check");
+        showToast("Review updated", "check");
       } else if (result.status === "pending") {
-        showToast("Review submitted", "check", "Text will appear after moderation");
+        showToast("Review submitted", "check", "Will appear after moderation");
       } else {
-        showToast("Rating submitted", "check");
+        showToast("Review published", "check");
       }
-      // Refresh overlay
       closeReviewsOverlay();
     } else {
       const msgs = {
@@ -536,9 +884,13 @@ function _showReviewForm(placeId, overlay) {
         rate_limited: "Too many reviews today. Try again tomorrow.",
         invalid_place: "Place not found",
         invalid_rating: "Invalid rating",
+        invalid_token: "Session expired. Please verify again.",
         text_too_short: `Minimum ${MIN_TEXT_LEN} characters for text`,
         network_error: "Network error. Try again.",
       };
+      if (result.error === "invalid_token") {
+        localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+      }
       showToast(msgs[result.error] || "Submission failed", "error");
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit review";
@@ -551,7 +903,7 @@ function _showReviewForm(placeId, overlay) {
   form.appendChild(submitBtn);
   form.appendChild(note);
 
-  list.insertAdjacentElement("beforebegin", form);
+  insertBefore.insertAdjacentElement("beforebegin", form);
 }
 
 // ─── Initialization ──────────────────────────────────────────────────────────

@@ -709,6 +709,82 @@
   margin: 0;
 }
 
+/* ─── Verification form ─── */
+.rv-verify-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.rv-verify-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.rv-verify-label {
+  font-size: var(--txt-sm);
+  color: var(--text-2);
+  text-align: center;
+  margin: 0;
+}
+.rv-verify-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+.rv-email-input,
+.rv-otp-input {
+  flex: 1;
+  min-width: 0;
+  height: var(--h-field);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-3);
+  font-size: var(--txt-sm);
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color var(--t-fast);
+}
+.rv-email-input:focus,
+.rv-otp-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+.rv-otp-input {
+  max-width: 120px;
+  text-align: center;
+  font-size: var(--txt-base);
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+.rv-send-btn,
+.rv-verify-btn {
+  flex-shrink: 0;
+  height: var(--h-field);
+  padding: 0 var(--sp-4);
+  white-space: nowrap;
+}
+.rv-resend-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--txt-xs);
+  color: var(--accent);
+  text-align: center;
+  padding: 0;
+  transition: opacity var(--t-fast);
+}
+.rv-resend-link:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+.rv-verify-error {
+  font-size: var(--txt-xs);
+  color: var(--danger);
+  text-align: center;
+  margin: 0;
+}
+
 /* ─── Popup rating section ─── */
 .pp-reviews {
   display: flex;
