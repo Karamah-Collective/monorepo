@@ -716,6 +716,7 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
         rate_limited_email: "Too many codes requested. Try again later.",
         rate_limited_ip: "Too many requests. Try again later.",
         quota_exhausted: "Verification unavailable right now. Submitting for moderation instead.",
+        email_send_failed: "Could not send email. Try again later.",
         network_error: "Network error. Check your connection.",
       };
       if (result.error === "quota_exhausted") {
