@@ -7,7 +7,6 @@
  * Required Cloudflare Pages Environment Variables:
  *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key (used for send-otp only)
  *   GAS_URL          – Google Apps Script web app URL
- *   VERIFY_SECRET    – HMAC signing key for verification tokens
  */
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
@@ -43,58 +42,6 @@ async function sha256(input) {
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/**
- * Validate an HMAC-signed verification token using Web Crypto.
- * @param {string} token - base64(payload).base64(signature)
- * @param {string} secret - HMAC secret key
- * @returns {Promise<{valid: boolean, emailHash?: string}>}
- */
-async function validateToken(token, secret) {
-  if (!token || typeof token !== "string") return { valid: false };
-
-  const parts = token.split(".");
-  if (parts.length !== 2) return { valid: false };
-
-  const [payloadB64, sigB64] = parts;
-
-  let payload;
-  try {
-    payload = atob(payloadB64);
-  } catch {
-    return { valid: false };
-  }
-
-  // Import key and verify HMAC
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const expectedSig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(payload)
-  );
-
-  // Compare signatures (base64 encoded)
-  const expectedB64 = btoa(String.fromCharCode(...new Uint8Array(expectedSig)));
-  if (sigB64 !== expectedB64) return { valid: false };
-
-  // Parse payload: emailHash|expiryTimestamp
-  const pipeIdx = payload.lastIndexOf("|");
-  if (pipeIdx === -1) return { valid: false };
-
-  const emailHash = payload.substring(0, pipeIdx);
-  const expiry = parseInt(payload.substring(pipeIdx + 1), 10);
-
-  if (isNaN(expiry) || Date.now() > expiry) return { valid: false };
-
-  return { valid: true, emailHash };
 }
 
 // ── GET: list all live reviews ───────────────────────────────────────────────
@@ -235,21 +182,12 @@ export async function onRequestPost(context) {
       return json({ error: "Missing required fields" }, 400, headers);
     }
 
-    const verifySecret = env.VERIFY_SECRET || "";
-    if (!verifySecret) {
-      return json({ error: "Service temporarily unavailable" }, 500, headers);
-    }
-    const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
-    if (!tokenResult.valid) {
-      return json({ error: "invalid_token" }, 403, headers);
-    }
-
     const gasPayload = {
       formType: "review",
       action: "check",
       placeId,
       ipHash,
-      verifyToken: body.verifyToken.slice(0, MAX_TOKEN_LEN),
+      verifyToken: truncate(body.verifyToken, MAX_TOKEN_LEN),
     };
 
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
@@ -272,15 +210,6 @@ export async function onRequestPost(context) {
       return json({ error: "text_too_short" }, 400, headers);
     }
 
-    const verifySecret = env.VERIFY_SECRET || "";
-    if (!verifySecret) {
-      return json({ error: "Service temporarily unavailable" }, 500, headers);
-    }
-    const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
-    if (!tokenResult.valid) {
-      return json({ error: "invalid_token" }, 403, headers);
-    }
-
     const gasPayload = {
       formType: "review",
       action: "submit",
@@ -288,7 +217,7 @@ export async function onRequestPost(context) {
       rating,
       text,
       ipHash,
-      verifyToken: body.verifyToken.slice(0, MAX_TOKEN_LEN),
+      verifyToken: truncate(body.verifyToken, MAX_TOKEN_LEN),
     };
 
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
