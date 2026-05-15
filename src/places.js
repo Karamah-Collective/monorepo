@@ -383,7 +383,7 @@ function formatDist(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
-const _starPath = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
+const _starPath = `<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>`;
 
 function _highlightMatch(escaped, q) {
   if (!q) return escaped;
@@ -711,11 +711,10 @@ function _buildCard(p, i) {
 
   return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}${openBadge}</span>
+    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
     <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
     <div class="pl-meta">
-      <span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
-      ${_buildRatingChip(p.id)}
+      ${openBadge}${_buildRatingChip(p.id)}<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
     </div>
     <div class="pl-acts">
       <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
@@ -1178,6 +1177,32 @@ function _buildEventCard(ev) {
   </div>`;
 }
 
+/**
+ * Render the rating element inside a popup's reviews section.
+ * @param {HTMLElement} container - the .pp-reviews element
+ * @param {string} placeId
+ * @param {string} placeName
+ * @param {{avg: number, count: number} | null} ratingData
+ */
+function _renderPopupRating(container, placeId, placeName, ratingData) {
+  const ratingEl = document.createElement("div");
+  if (ratingData) {
+    ratingEl.className = "pp-rating";
+    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>`;
+    ratingEl.title = "View reviews";
+  } else {
+    ratingEl.className = "pp-rating pp-rating--empty";
+    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
+  }
+  ratingEl.setAttribute("role", "button");
+  ratingEl.setAttribute("tabindex", "0");
+  ratingEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openReviewsOverlay(placeId, placeName);
+  });
+  container.appendChild(ratingEl);
+}
+
 export function showPlacePopup(place, { skipMove = false } = {}) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
@@ -1224,35 +1249,23 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   const ratingData = getPlaceRating(place.id);
   const reviewsSection = document.createElement("div");
   reviewsSection.className = "pp-reviews";
+  reviewsSection.dataset.placeId = place.id;
   const reviewsHdr = document.createElement("div");
   reviewsHdr.className = "pp-reviews-hdr";
   reviewsHdr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Reviews`;
   reviewsSection.appendChild(reviewsHdr);
 
-  if (ratingData) {
-    const ratingEl = document.createElement("div");
-    ratingEl.className = "pp-rating";
-    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>`;
-    ratingEl.setAttribute("role", "button");
-    ratingEl.setAttribute("tabindex", "0");
-    ratingEl.title = "View reviews";
-    ratingEl.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openReviewsOverlay(place.id, place.name);
-    });
-    reviewsSection.appendChild(ratingEl);
-  } else {
-    const ratingEl = document.createElement("div");
-    ratingEl.className = "pp-rating pp-rating--empty";
-    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
-    ratingEl.setAttribute("role", "button");
-    ratingEl.setAttribute("tabindex", "0");
-    ratingEl.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openReviewsOverlay(place.id, place.name);
-    });
-    reviewsSection.appendChild(ratingEl);
-  }
+  _renderPopupRating(reviewsSection, place.id, place.name, ratingData);
+
+  // Re-render reviews section when data arrives after popup is already open
+  const _onReviewsLoaded = () => {
+    const freshData = getPlaceRating(place.id);
+    const existing = reviewsSection.querySelector(".pp-rating");
+    if (existing) existing.remove();
+    _renderPopupRating(reviewsSection, place.id, place.name, freshData);
+  };
+  window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
+
   inner.appendChild(reviewsSection);
 
   // Tags (plain text labels, no icons)
@@ -1395,7 +1408,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   // Fav button (absolute positioned, top-right)
   const _isFav = isFavourite(place.id);
   const _starSVG = (filled) =>
-    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
   const favBtn = document.createElement("button");
   favBtn.className = `pp-fav-btn${_isFav ? " active" : ""}`;
   favBtn.setAttribute("aria-label", _isFav ? "Remove from saved" : "Save place");
@@ -1410,7 +1423,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     const listBtn = document.querySelector(`.pl-fav-btn[data-fav-id="${place.id}"]`);
     if (listBtn) {
       listBtn.classList.toggle("active", saved);
-      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+      listBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
     }
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
   });
@@ -1448,6 +1461,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   popup.on("close", () => {
     if (_activePlacePopupId === place.id) _activePlacePopupId = null;
     if (_activePlacePopup === popup) _activePlacePopup = null;
+    window.removeEventListener("hf:reviews-loaded", _onReviewsLoaded);
   });
 
   if (skipMove) return;
@@ -2247,12 +2261,12 @@ function renderPlacesList() {
     if (activeTypeFilter === "saved") {
       empty.innerHTML = `
         <div class="empty-anim">
-          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <svg class="empty-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           <div class="empty-ping"></div>
         </div>
         <div class="empty-text">
           <span class="empty-title">Nothing saved yet</span>
-          <span class="empty-sub">Tap ★ on any place or pin to save it here</span>
+          <span class="empty-sub">Tap the bookmark on any place to save it here</span>
         </div>`;
     } else if (q) {
       empty.innerHTML = `
@@ -3220,7 +3234,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     toggleFavourite(id);
     const saved = isFavourite(id);
     favBtn.classList.toggle("active", saved);
-    favBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    favBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${saved ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
     return;
   }

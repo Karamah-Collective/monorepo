@@ -3,12 +3,11 @@
  *
  * Users verify via email OTP, then rate places (1–5 stars) with optional text.
  * Verified reviews go live immediately. Verification token persists 7 days.
- * Fallback: unverified submissions go through admin moderation (quota exhausted).
  *
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
 import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { esc, escA, showToast, loadRecaptcha, getDeviceId } from "./utils.js";
+import { esc, escA, showToast, loadRecaptcha } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -22,7 +21,6 @@ const OTP_RESEND_COOLDOWN_MS = 30_000;
 /** @type {Map<string, {avg: number, count: number, items: Array}>} */
 let _reviewsMap = new Map();
 let _lastFetch = 0;
-let _fingerprint = null;
 let _activeOverlayPlaceId = null;
 
 // ─── Email Verification Token ────────────────────────────────────────────────
@@ -118,78 +116,6 @@ async function _verifyOTP(email, otp) {
   }
 }
 
-// ─── Fingerprinting (legacy fallback) ────────────────────────────────────────
-
-/**
- * Generate a stable browser fingerprint hash using canvas, WebGL, and hardware signals.
- * Computed once per session, cached in memory (never localStorage to prevent tampering).
- * @returns {Promise<string>} SHA-256 hex hash
- */
-async function _computeFingerprint() {
-  if (_fingerprint) return _fingerprint;
-
-  const signals = [];
-
-  // Canvas fingerprint
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 200;
-    canvas.height = 50;
-    const ctx = canvas.getContext("2d");
-    ctx.textBaseline = "top";
-    ctx.font = "14px 'Arial'";
-    ctx.fillStyle = "#f60";
-    ctx.fillRect(125, 1, 62, 20);
-    ctx.fillStyle = "#069";
-    ctx.fillText("HalalFinder:fp", 2, 15);
-    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-    ctx.fillText("HalalFinder:fp", 4, 17);
-    signals.push(canvas.toDataURL());
-  } catch {
-    signals.push("canvas:unsupported");
-  }
-
-  // WebGL renderer + vendor
-  try {
-    const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-    if (gl) {
-      const dbg = gl.getExtension("WEBGL_debug_renderer_info");
-      if (dbg) {
-        signals.push(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "");
-        signals.push(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || "");
-      }
-    }
-  } catch {
-    signals.push("webgl:unsupported");
-  }
-
-  // Screen metrics
-  signals.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
-  signals.push(String(devicePixelRatio || 1));
-
-  // Hardware
-  signals.push(String(navigator.hardwareConcurrency || 0));
-  signals.push(String(navigator.deviceMemory || 0));
-
-  // Timezone + language + platform
-  try {
-    signals.push(Intl.DateTimeFormat().resolvedOptions().timeZone || "");
-  } catch {
-    signals.push("");
-  }
-  signals.push((navigator.languages || [navigator.language || ""]).join(","));
-  signals.push(navigator.platform || "");
-
-  // Hash all signals
-  const raw = signals.join("|");
-  const data = new TextEncoder().encode(raw);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  _fingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  return _fingerprint;
-}
-
 // ─── Data Loading ────────────────────────────────────────────────────────────
 
 /**
@@ -234,6 +160,7 @@ async function _fetchReviews() {
         try {
           localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: json.reviews }));
         } catch { /* quota */ }
+        window.dispatchEvent(new Event("hf:reviews-loaded"));
         return;
       }
     } catch {
@@ -275,7 +202,7 @@ export function getPlaceReviews(placeId) {
 // ─── Review Submission ───────────────────────────────────────────────────────
 
 /**
- * Submit a review for a place. Uses verification token if available, falls back to legacy.
+ * Submit a review for a place. Requires email-verified token.
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
@@ -283,37 +210,15 @@ export function getPlaceReviews(placeId) {
  */
 export async function submitReview(placeId, rating, text) {
   const verification = _getVerificationToken();
+  if (!verification) return { success: false, error: "invalid_token" };
 
-  let payload;
-  if (verification) {
-    // Verified flow — no reCAPTCHA needed
-    payload = {
-      action: "submit",
-      placeId,
-      rating,
-      text: text || "",
-      verifyToken: verification.token,
-    };
-  } else {
-    // Legacy fallback (moderated)
-    const fingerprint = await _computeFingerprint();
-    const deviceId = getDeviceId();
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() =>
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_submit" }).then(resolve)
-      )
-    );
-    payload = {
-      action: "submit",
-      token,
-      placeId,
-      rating,
-      text: text || "",
-      deviceId,
-      fingerprint,
-    };
-  }
+  const payload = {
+    action: "submit",
+    placeId,
+    rating,
+    text: text || "",
+    verifyToken: verification.token,
+  };
 
   try {
     const res = await fetch("/api/reviews", {
@@ -340,32 +245,13 @@ export async function submitReview(placeId, rating, text) {
  */
 export async function checkExistingReview(placeId) {
   const verification = _getVerificationToken();
+  if (!verification) return { reviewed: false };
 
-  let payload;
-  if (verification) {
-    payload = {
-      action: "check",
-      placeId,
-      verifyToken: verification.token,
-    };
-  } else {
-    // Legacy fallback
-    const fingerprint = await _computeFingerprint();
-    const deviceId = getDeviceId();
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() =>
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_check" }).then(resolve)
-      )
-    );
-    payload = {
-      action: "check",
-      token,
-      placeId,
-      deviceId,
-      fingerprint,
-    };
-  }
+  const payload = {
+    action: "check",
+    placeId,
+    verifyToken: verification.token,
+  };
 
   try {
     const res = await fetch("/api/reviews", {
@@ -393,8 +279,7 @@ function _updateLocalReview(placeId, rating, text, status) {
     existing.items = existing.items || [];
   }
 
-  // Verified reviews always show text; legacy pending hides text
-  const showText = status === "live" || status === "updated";
+  const showText = status === "yes" || status === "updated";
   existing.items.unshift({ rating, text: showText ? (text || "") : "", timestamp: new Date().toISOString() });
 
   _reviewsMap.set(placeId, existing);
@@ -406,8 +291,8 @@ function _updateLocalReview(placeId, rating, text, status) {
 
 // ─── UI: Star Rating Component ───────────────────────────────────────────────
 
-const STAR_SVG_FILLED = `<svg width="24" height="24" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
-const STAR_SVG_EMPTY = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--surface-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+const STAR_SVG_FILLED = `<svg width="28" height="28" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+const STAR_SVG_EMPTY = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--surface-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 
 /**
  * Build an interactive star rating input.
@@ -422,6 +307,7 @@ function _buildStarInput(onChange, initial = 0) {
   container.setAttribute("aria-label", "Rate this place");
 
   let selected = initial;
+  let hovered = 0;
 
   function render() {
     container.innerHTML = "";
@@ -432,12 +318,22 @@ function _buildStarInput(onChange, initial = 0) {
       btn.setAttribute("role", "radio");
       btn.setAttribute("aria-checked", i <= selected ? "true" : "false");
       btn.setAttribute("aria-label", `${i} star${i > 1 ? "s" : ""}`);
-      btn.innerHTML = i <= selected ? STAR_SVG_FILLED : STAR_SVG_EMPTY;
+      const filled = hovered ? i <= hovered : i <= selected;
+      btn.innerHTML = filled ? STAR_SVG_FILLED : STAR_SVG_EMPTY;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         selected = i;
+        hovered = 0;
         render();
         onChange(i);
+      });
+      btn.addEventListener("mouseenter", () => {
+        hovered = i;
+        _updateStarVisuals(container, hovered || selected);
+      });
+      btn.addEventListener("mouseleave", () => {
+        hovered = 0;
+        _updateStarVisuals(container, selected);
       });
       container.appendChild(btn);
     }
@@ -445,6 +341,18 @@ function _buildStarInput(onChange, initial = 0) {
 
   render();
   return container;
+}
+
+/**
+ * Update star button visuals without full re-render (for hover preview).
+ * @param {HTMLElement} container
+ * @param {number} fillCount
+ */
+function _updateStarVisuals(container, fillCount) {
+  const buttons = container.querySelectorAll(".rv-star-btn");
+  buttons.forEach((btn, idx) => {
+    btn.innerHTML = (idx + 1) <= fillCount ? STAR_SVG_FILLED : STAR_SVG_EMPTY;
+  });
 }
 
 /**
@@ -517,30 +425,29 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
   }).join("");
 
   const summaryHtml = count > 0 ? `<div class="rv-summary">
-        <div class="rv-avg-section">
+        <div class="rv-avg-block">
           <span class="rv-avg-num">${avg}</span>
-          <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "18")}</div>
-          <span class="rv-avg-count">${count} review${count !== 1 ? "s" : ""}</span>
+          <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "13")}</div>
+          <span class="rv-avg-count">${count}</span>
         </div>
         <div class="rv-dist">${distBars}</div>
       </div>` : "";
 
   const reviewCards = reviews.length
-    ? reviews.map((r) => _buildReviewCard(r)).join("")
-    : `<p class="rv-empty">No reviews yet</p>`;
+    ? `<div class="rv-list"><span class="rv-list-header">${count} Review${count !== 1 ? "s" : ""}</span>${reviews.map((r) => _buildReviewCard(r)).join("")}</div>`
+    : `<div class="rv-list"><div class="rv-empty"><span class="rv-empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><p class="rv-empty-text">No reviews yet — be the first!</p></div></div>`;
 
   return `<div class="rv-overlay-card">
-    <div class="overlay-drag"><span></span></div>
-    <div class="suggest-head">
-      <h3>${esc(placeName)}</h3>
-      <button class="rv-overlay-close sheet-x btn-roundel" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    <div class="rv-header">
+      <h3 class="rv-header-title">${esc(placeName)}</h3>
+      <button class="rv-close-btn rv-overlay-close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="rv-overlay-body">
       ${summaryHtml}
       <button class="rv-write-btn btn-primary" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Write a review</button>
-      <div class="rv-list">${reviewCards}</div>
+      ${reviewCards}
     </div>
   </div>`;
 }
@@ -548,9 +455,14 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
 function _buildReviewCard(review) {
   const timeAgo = _relativeTime(review.timestamp);
   return `<div class="rv-review-card">
-    <div class="rv-review-stars">${buildStarDisplay(review.rating, "12")}</div>
-    ${review.text ? `<p class="rv-review-text">${esc(review.text)}</p>` : ""}
-    <span class="rv-review-time">${esc(timeAgo)}</span>
+    <span class="rv-review-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+    <div class="rv-review-body">
+      <div class="rv-review-meta">
+        <span class="rv-review-stars">${buildStarDisplay(review.rating, "12")}</span>
+        <span class="rv-review-time">${esc(timeAgo)}</span>
+      </div>
+      ${review.text ? `<p class="rv-review-text">${esc(review.text)}</p>` : ""}
+    </div>
   </div>`;
 }
 
@@ -611,67 +523,123 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
   let _email = "";
   let _lastSendTime = 0;
 
-  // Email input step
+  // ─── Email Step ─────────────────────────────────────────────────────
   const emailStep = document.createElement("div");
   emailStep.className = "rv-verify-step";
-  emailStep.innerHTML = `<p class="rv-verify-label">Verify your email to leave a review</p>`;
+  emailStep.innerHTML = [
+    `<div class="rv-verify-header">`,
+    `<div class="rv-verify-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>`,
+    `<p class="rv-verify-title">Verify your email</p>`,
+    `<p class="rv-verify-desc">A 6-digit code will be sent to confirm your identity</p>`,
+    `</div>`,
+  ].join("");
 
-  const emailRow = document.createElement("div");
-  emailRow.className = "rv-verify-row";
+  const emailField = document.createElement("div");
+  emailField.className = "rv-field";
+
+  const emailLabel = document.createElement("label");
+  emailLabel.className = "rv-field-label";
+  emailLabel.textContent = "Email address";
 
   const emailInput = document.createElement("input");
   emailInput.type = "email";
-  emailInput.className = "rv-email-input";
-  emailInput.placeholder = "your@email.com";
+  emailInput.className = "rv-input";
+  emailInput.placeholder = "you@example.com";
   emailInput.maxLength = 254;
   emailInput.autocomplete = "email";
 
+  emailField.appendChild(emailLabel);
+  emailField.appendChild(emailInput);
+  emailStep.appendChild(emailField);
+
   const sendBtn = document.createElement("button");
   sendBtn.type = "button";
-  sendBtn.className = "rv-send-btn btn-primary";
-  sendBtn.textContent = "Send code";
+  sendBtn.className = "rv-action-btn btn-primary";
+  sendBtn.textContent = "Send verification code";
   sendBtn.disabled = true;
 
   emailInput.addEventListener("input", () => {
     sendBtn.disabled = !emailInput.value.includes("@");
   });
 
-  emailRow.appendChild(emailInput);
-  emailRow.appendChild(sendBtn);
-  emailStep.appendChild(emailRow);
+  emailStep.appendChild(sendBtn);
   container.appendChild(emailStep);
 
-  // OTP step (hidden initially)
+  // ─── OTP Step ───────────────────────────────────────────────────────
   const otpStep = document.createElement("div");
   otpStep.className = "rv-verify-step rv-otp-step hide";
-  otpStep.innerHTML = `<p class="rv-verify-label">Enter the 6-digit code sent to your email</p>`;
+  otpStep.innerHTML = [
+    `<div class="rv-verify-header">`,
+    `<div class="rv-verify-icon rv-verify-icon--success"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg></div>`,
+    `<p class="rv-verify-title">Check your inbox</p>`,
+    `<p class="rv-verify-desc rv-otp-email-hint">Code sent — enter it below</p>`,
+    `</div>`,
+  ].join("");
 
-  const otpRow = document.createElement("div");
-  otpRow.className = "rv-verify-row";
+  // Individual OTP digit boxes
+  const otpBoxes = document.createElement("div");
+  otpBoxes.className = "rv-otp-boxes";
+  const otpDigits = [];
+  for (let i = 0; i < 6; i++) {
+    const digit = document.createElement("input");
+    digit.type = "text";
+    digit.inputMode = "numeric";
+    digit.pattern = "[0-9]";
+    digit.maxLength = 1;
+    digit.className = "rv-otp-digit";
+    digit.autocomplete = i === 0 ? "one-time-code" : "off";
+    digit.setAttribute("aria-label", `Digit ${i + 1}`);
+    otpDigits.push(digit);
+    otpBoxes.appendChild(digit);
+  }
+  otpStep.appendChild(otpBoxes);
 
-  const otpInput = document.createElement("input");
-  otpInput.type = "text";
-  otpInput.inputMode = "numeric";
-  otpInput.pattern = "[0-9]*";
-  otpInput.className = "rv-otp-input";
-  otpInput.placeholder = "000000";
-  otpInput.maxLength = 6;
-  otpInput.autocomplete = "one-time-code";
+  // OTP digit navigation logic
+  otpDigits.forEach((input, idx) => {
+    input.addEventListener("input", (e) => {
+      const val = e.target.value.replace(/\D/g, "");
+      if (val.length > 0) {
+        input.value = val[0];
+        if (idx < 5) otpDigits[idx + 1].focus();
+      } else {
+        input.value = "";
+      }
+      _checkOtpComplete();
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !input.value && idx > 0) {
+        otpDigits[idx - 1].focus();
+        otpDigits[idx - 1].value = "";
+        _checkOtpComplete();
+      }
+    });
+    input.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+      for (let j = 0; j < pasted.length && j < 6; j++) {
+        otpDigits[j].value = pasted[j];
+      }
+      const focusIdx = Math.min(pasted.length, 5);
+      otpDigits[focusIdx].focus();
+      _checkOtpComplete();
+    });
+  });
 
   const verifyBtn = document.createElement("button");
   verifyBtn.type = "button";
-  verifyBtn.className = "rv-verify-btn btn-primary";
+  verifyBtn.className = "rv-action-btn btn-primary";
   verifyBtn.textContent = "Verify";
   verifyBtn.disabled = true;
+  otpStep.appendChild(verifyBtn);
 
-  otpInput.addEventListener("input", () => {
-    otpInput.value = otpInput.value.replace(/\D/g, "").slice(0, 6);
-    verifyBtn.disabled = otpInput.value.length !== 6;
-  });
+  function _checkOtpComplete() {
+    const full = otpDigits.every((d) => d.value.length === 1);
+    verifyBtn.disabled = !full;
+  }
 
-  otpRow.appendChild(otpInput);
-  otpRow.appendChild(verifyBtn);
-  otpStep.appendChild(otpRow);
+  function _getOtpValue() {
+    return otpDigits.map((d) => d.value).join("");
+  }
 
   const resendLink = document.createElement("button");
   resendLink.type = "button";
@@ -700,7 +668,7 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
     hideError();
     _email = emailInput.value.trim().toLowerCase();
     sendBtn.disabled = true;
-    sendBtn.innerHTML = `<span class="btn-spinner"></span>`;
+    sendBtn.innerHTML = `<span class="btn-spinner"></span> Sending...`;
 
     const result = await _sendOTP(_email);
 
@@ -708,26 +676,23 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
       _lastSendTime = Date.now();
       emailStep.classList.add("hide");
       otpStep.classList.remove("hide");
-      otpInput.focus();
+      // Update the hint with the actual email
+      const hint = otpStep.querySelector(".rv-otp-email-hint");
+      if (hint) hint.textContent = `Code sent to ${_email}`;
+      otpDigits[0].focus();
       _startResendCooldown(resendLink);
     } else {
       const msgs = {
         invalid_email: "Please enter a valid email address",
         rate_limited_email: "Too many codes requested. Try again later.",
         rate_limited_ip: "Too many requests. Try again later.",
-        quota_exhausted: "Verification unavailable right now. Submitting for moderation instead.",
+        quota_exhausted: "Verification unavailable right now. Please try again later.",
         email_send_failed: "Could not send email. Try again later.",
         network_error: "Network error. Check your connection.",
       };
-      if (result.error === "quota_exhausted") {
-        // Fallback: show review form in legacy moderated mode
-        container.remove();
-        _showRatingForm(placeId, overlay, insertBefore, true);
-        return;
-      }
       showError(msgs[result.error] || "Could not send code. Try again.");
       sendBtn.disabled = false;
-      sendBtn.textContent = "Send code";
+      sendBtn.textContent = "Send verification code";
     }
   }
 
@@ -740,9 +705,9 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
   async function handleVerify() {
     hideError();
     verifyBtn.disabled = true;
-    verifyBtn.innerHTML = `<span class="btn-spinner"></span>`;
+    verifyBtn.innerHTML = `<span class="btn-spinner"></span> Verifying...`;
 
-    const result = await _verifyOTP(_email, otpInput.value);
+    const result = await _verifyOTP(_email, _getOtpValue());
 
     if (result.success) {
       container.remove();
@@ -762,15 +727,17 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
       if (result.error === "otp_expired" || result.error === "too_many_attempts") {
         otpStep.classList.add("hide");
         emailStep.classList.remove("hide");
+        otpDigits.forEach((d) => { d.value = ""; });
         sendBtn.disabled = false;
-        sendBtn.textContent = "Send code";
+        sendBtn.textContent = "Send verification code";
       }
     }
   }
 
   verifyBtn.addEventListener("click", handleVerify);
-  otpInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !verifyBtn.disabled) handleVerify();
+  // Submit on last digit entry
+  otpDigits[5].addEventListener("input", () => {
+    setTimeout(() => { if (!verifyBtn.disabled) handleVerify(); }, 50);
   });
 
   // Resend handler
@@ -813,26 +780,51 @@ function _startResendCooldown(resendLink) {
 }
 
 /**
- * Show the actual rating + text form (after verification or in legacy mode).
+ * Show the actual rating + text form (after email verification).
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @param {HTMLElement} insertBefore
- * @param {boolean} [legacyMode=false] - if true, show moderation notice
  */
-function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
+function _showRatingForm(placeId, overlay, insertBefore) {
   const form = document.createElement("div");
   form.className = "rv-form";
 
+  // Header
+  const header = document.createElement("div");
+  header.className = "rv-form-header";
+  header.innerHTML = [
+    `<p class="rv-form-title">How was your experience?</p>`,
+    `<p class="rv-form-subtitle">Tap a star to rate</p>`,
+  ].join("");
+  form.appendChild(header);
+
   let selectedRating = 0;
+  const RATING_LABELS = ["", "Terrible", "Poor", "Okay", "Good", "Excellent"];
+
+  const ratingLabel = document.createElement("span");
+  ratingLabel.className = "rv-rating-label";
+  ratingLabel.textContent = "";
 
   const starInput = _buildStarInput((rating) => {
     selectedRating = rating;
+    ratingLabel.textContent = RATING_LABELS[rating] || "";
     submitBtn.disabled = rating === 0;
   });
 
+  form.appendChild(starInput);
+  form.appendChild(ratingLabel);
+
+  // Text area group
+  const textGroup = document.createElement("div");
+  textGroup.className = "rv-text-group";
+
+  const textLabel = document.createElement("label");
+  textLabel.className = "rv-text-label";
+  textLabel.textContent = "Your review (optional)";
+
   const textArea = document.createElement("textarea");
   textArea.className = "rv-text-input";
-  textArea.placeholder = "Share your experience (optional, min 20 chars)";
+  textArea.placeholder = "Share your experience…";
   textArea.maxLength = MAX_TEXT_LEN;
   textArea.rows = 3;
 
@@ -844,6 +836,11 @@ function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
     charCounter.textContent = `${textArea.value.length}/${MAX_TEXT_LEN}`;
   });
 
+  textGroup.appendChild(textLabel);
+  textGroup.appendChild(textArea);
+  textGroup.appendChild(charCounter);
+  form.appendChild(textGroup);
+
   const submitBtn = document.createElement("button");
   submitBtn.className = "rv-submit-btn btn-primary";
   submitBtn.type = "button";
@@ -852,9 +849,7 @@ function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
 
   const note = document.createElement("p");
   note.className = "rv-form-note";
-  note.textContent = legacyMode
-    ? "Review will appear after moderation."
-    : "Your review will appear immediately.";
+  note.textContent = "Your review will appear immediately.";
 
   submitBtn.addEventListener("click", async () => {
     if (selectedRating === 0) return;
@@ -873,7 +868,7 @@ function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
     if (result.success) {
       if (result.status === "updated") {
         showToast("Review updated", "check");
-      } else if (result.status === "pending") {
+      } else if (!result.status) {
         showToast("Review submitted", "check", "Will appear after moderation");
       } else {
         showToast("Review published", "check");
@@ -898,9 +893,6 @@ function _showRatingForm(placeId, overlay, insertBefore, legacyMode = false) {
     }
   });
 
-  form.appendChild(starInput);
-  form.appendChild(textArea);
-  form.appendChild(charCounter);
   form.appendChild(submitBtn);
   form.appendChild(note);
 

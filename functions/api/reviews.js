@@ -16,8 +16,6 @@ const ALLOWED_ORIGINS = ["https://maps.karamahcollective.com"];
 const MAX_BODY_SIZE = 4096;
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
-const MAX_DEVICE_LEN = 64;
-const MAX_FINGERPRINT_LEN = 64;
 const MAX_PLACE_ID_LEN = 6;
 const MAX_EMAIL_LEN = 254;
 const MAX_TOKEN_LEN = 512;
@@ -233,8 +231,17 @@ export async function onRequestPost(context) {
   // ── check: check if user already reviewed a place ──
   if (action === "check") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId) {
+    if (!placeId || !body.verifyToken) {
       return json({ error: "Missing required fields" }, 400, headers);
+    }
+
+    const verifySecret = env.VERIFY_SECRET || "";
+    if (!verifySecret) {
+      return json({ error: "Service temporarily unavailable" }, 500, headers);
+    }
+    const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
+    if (!tokenResult.valid) {
+      return json({ error: "invalid_token" }, 403, headers);
     }
 
     const gasPayload = {
@@ -242,27 +249,8 @@ export async function onRequestPost(context) {
       action: "check",
       placeId,
       ipHash,
+      verifyToken: body.verifyToken.slice(0, MAX_TOKEN_LEN),
     };
-
-    // Token-based check (new flow)
-    if (body.verifyToken) {
-      const verifySecret = env.VERIFY_SECRET || "";
-      if (!verifySecret) {
-        return json({ error: "Service temporarily unavailable" }, 500, headers);
-      }
-      const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
-      if (!tokenResult.valid) {
-        return json({ error: "invalid_token" }, 403, headers);
-      }
-      gasPayload.verifyToken = body.verifyToken.slice(0, MAX_TOKEN_LEN);
-    } else {
-      // Legacy identity fields
-      gasPayload.deviceId = truncate((body.deviceId || "").trim(), MAX_DEVICE_LEN);
-      gasPayload.fingerprint = truncate((body.fingerprint || "").trim(), MAX_FINGERPRINT_LEN);
-      if (!gasPayload.deviceId || !gasPayload.fingerprint) {
-        return json({ error: "Missing required fields" }, 400, headers);
-      }
-    }
 
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
   }
@@ -270,7 +258,7 @@ export async function onRequestPost(context) {
   // ── submit: submit or update a review ──
   if (action === "submit") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId) {
+    if (!placeId || !body.verifyToken) {
       return json({ error: "Missing required fields" }, 400, headers);
     }
 
@@ -284,6 +272,15 @@ export async function onRequestPost(context) {
       return json({ error: "text_too_short" }, 400, headers);
     }
 
+    const verifySecret = env.VERIFY_SECRET || "";
+    if (!verifySecret) {
+      return json({ error: "Service temporarily unavailable" }, 500, headers);
+    }
+    const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
+    if (!tokenResult.valid) {
+      return json({ error: "invalid_token" }, 403, headers);
+    }
+
     const gasPayload = {
       formType: "review",
       action: "submit",
@@ -291,48 +288,8 @@ export async function onRequestPost(context) {
       rating,
       text,
       ipHash,
+      verifyToken: body.verifyToken.slice(0, MAX_TOKEN_LEN),
     };
-
-    // Token-based submission (verified user — no reCAPTCHA needed)
-    if (body.verifyToken) {
-      const verifySecret = env.VERIFY_SECRET || "";
-      if (!verifySecret) {
-        return json({ error: "Service temporarily unavailable" }, 500, headers);
-      }
-      const tokenResult = await validateToken(body.verifyToken.slice(0, MAX_TOKEN_LEN), verifySecret);
-      if (!tokenResult.valid) {
-        return json({ error: "invalid_token" }, 403, headers);
-      }
-      gasPayload.verifyToken = body.verifyToken.slice(0, MAX_TOKEN_LEN);
-    } else {
-      // Legacy flow: requires reCAPTCHA + identity fields
-      if (!env.RECAPTCHA_SECRET) {
-        return json({ error: "Service temporarily unavailable" }, 500, headers);
-      }
-
-      const { token, deviceId, fingerprint } = body;
-      if (!token || !deviceId || !fingerprint) {
-        return json({ error: "Missing required fields" }, 400, headers);
-      }
-
-      let captcha;
-      try {
-        const res = await fetch(RECAPTCHA_VERIFY_URL, {
-          method: "POST",
-          body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
-        });
-        captcha = await res.json();
-      } catch {
-        return json({ error: "Verification unavailable" }, 502, headers);
-      }
-
-      if (!captcha.success || captcha.score < MIN_SCORE) {
-        return json({ error: "Verification failed" }, 403, headers);
-      }
-
-      gasPayload.deviceId = truncate(deviceId.trim(), MAX_DEVICE_LEN);
-      gasPayload.fingerprint = truncate(fingerprint.trim(), MAX_FINGERPRINT_LEN);
-    }
 
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
   }
