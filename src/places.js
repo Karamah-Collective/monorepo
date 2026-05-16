@@ -5,7 +5,7 @@ import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
-import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews } from "./reviews.js";
+import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -819,6 +819,7 @@ export async function loadPlacesData() {
           renderPromosPill();
         }
         if (data.events) { eventsData = data.events; renderEventsPill(); }
+        if (data.reviews) hydrateReviews(data.reviews);
         writeCache(normalizePlacesData(data.places), data.tags || {});
       });
       return;
@@ -867,6 +868,7 @@ export async function loadPlacesData() {
         renderPromosPill();
       }
       if (data.events) { eventsData = data.events; renderEventsPill(); }
+      if (data.reviews) hydrateReviews(data.reviews);
       writeCache(normalizePlacesData(data.places), data.tags || {});
     });
   } catch (err) {
@@ -875,8 +877,9 @@ export async function loadPlacesData() {
     hideLoadingToast();
   }
 
-  // Load reviews in background (non-blocking) — ratings will appear on next card/popup render
+  // Load reviews in background (non-blocking) — re-render cards when data arrives
   loadReviews();
+  window.addEventListener("hf:reviews-loaded", () => renderPlacesList(), { once: true });
 }
 
 // ── Marker clustering ──────────────────────────────────────────────────────────

@@ -176,6 +176,20 @@ function _hydrateMap(data) {
   }
 }
 
+/**
+ * Hydrate reviews from externally-fetched data (e.g. action=all response).
+ * @param {Object} reviewsData - { placeId: { avg, count, items } }
+ */
+export function hydrateReviews(reviewsData) {
+  if (!reviewsData || typeof reviewsData !== "object") return;
+  _hydrateMap(reviewsData);
+  _lastFetch = Date.now();
+  try {
+    localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: reviewsData }));
+  } catch { /* quota */ }
+  window.dispatchEvent(new Event("hf:reviews-loaded"));
+}
+
 // ─── Public Getters ──────────────────────────────────────────────────────────
 
 /**
