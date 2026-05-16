@@ -208,7 +208,7 @@ function togglePrayerExpanded() {
       if (_hasOrientationSupport()) {
         const qiblaBtn = document.createElement("button");
         qiblaBtn.className = "qibla-btn";
-        qiblaBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>Qibla';
+        qiblaBtn.textContent = "Qibla";
         qiblaBtn.addEventListener("click", _openQiblaOverlay);
         listEl.appendChild(qiblaBtn);
       }

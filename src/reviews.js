@@ -305,7 +305,7 @@ function _updateLocalReview(placeId, rating, text, status) {
 
 // ─── UI: Star Rating Component ───────────────────────────────────────────────
 
-const STAR_SVG_FILLED = `<svg width="28" height="28" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+const STAR_SVG_FILLED = `<svg width="28" height="28" viewBox="0 0 24 24" fill="var(--review)" stroke="var(--review)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 const STAR_SVG_EMPTY = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--surface-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 
 /**
@@ -380,7 +380,7 @@ export function buildStarDisplay(rating, size = "14") {
   let html = "";
   for (let i = 1; i <= 5; i++) {
     const filled = i <= full;
-    html += `<svg class="rv-star-static" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? "var(--gold)" : "none"}" stroke="${filled ? "var(--gold)" : "var(--surface-3)"}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    html += `<svg class="rv-star-static" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? "var(--review)" : "none"}" stroke="${filled ? "var(--review)" : "var(--surface-3)"}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
   }
   return html;
 }
@@ -460,7 +460,7 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
     </div>
     <div class="rv-overlay-body">
       ${summaryHtml}
-      <button class="rv-write-btn btn-primary" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Write a review</button>
+      <button class="rv-write-btn btn-primary" type="button">Write a review</button>
       ${reviewCards}
     </div>
   </div>`;

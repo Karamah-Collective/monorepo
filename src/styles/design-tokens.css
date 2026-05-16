@@ -29,6 +29,9 @@
   --gold: #b89030;
   --gold-soft: #fdf6e8;
 
+  --review: #d97706;
+  --review-soft: #fef3c7;
+
   /* sponsor aliases — always reference these, not --gold directly */
   --sponsor: var(--gold);
   --sponsor-soft: var(--gold-soft);
@@ -2054,17 +2057,17 @@ html.dark-mode .nav-speed {
   border-radius: 50%;
   box-shadow: var(--shadow-md);
   cursor: pointer;
-  transition: transform var(--t-fast), opacity var(--t-fast);
+  transition: filter var(--t-fast), opacity var(--t-fast);
 }
 @media (hover: hover) {
   .nav-recenter:hover,
   .nav-overview:hover {
-    transform: scale(1.08);
+    filter: brightness(1.1);
   }
 }
 .nav-recenter:active,
 .nav-overview:active {
-  transform: scale(0.95);
+  opacity: 0.75;
 }
 html.dark-mode .nav-recenter,
 html.dark-mode .nav-overview {

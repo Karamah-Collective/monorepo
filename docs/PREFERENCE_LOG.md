@@ -22,6 +22,7 @@ what you like, what you've decided, and how you want things done.
 - When exploring major UI redesigns, the user prefers a true architectural rethink over cosmetic restyling of the existing floating-control layout.
 - No button size/transform feedback on hover/press/tap. Color/filter/opacity feedback only.
 - Buttons should be fully rounded pill-shaped (`--r-pill`). Primary, secondary, and danger buttons all use `--r-pill` (999px). Icon-card buttons use `--r-lg` (20px). Form inputs use `--r-md` (14px).
+- Buttons must be EITHER icon-only OR text-only. Never combine an icon with text in the same button. Structural indicators (chevrons for expand/collapse, thumbs-up with vote counts) and mode segment icons are exempt.
 - Design vision: "Premium Utility" — clean, airy, generous spacing, dramatic typography hierarchy, consistent radii + animations across all components.
 - Avoid redesign directions that feel scattered, overly glassy, or HUD-like. The user wants compact, advanced, beautiful product-shell layouts with stronger structural order.
 - Redesign mockups should stay lightweight and visual. Use minimal copy and minimal feature detail so the user can judge look, feel, and layout without reading through dense UI content.
@@ -2314,3 +2315,34 @@ User wanted the collapsed event toggle to look like a compact "pull tab" instead
 - Empty states should be minimal text, not elaborate icon compositions
 
 **Files modified:** `src/reviews.js`, `src/styles/styles.css`
+
+### 2026-05-16 — Button uniformity audit
+
+Full audit of every button in the project to enforce two rules:
+
+**Rule 1: No scale/transform feedback on buttons.**
+Removed `:active { transform: scale(...) }` and `:hover { transform: scale(...) }` from:
+- `.rv-write-btn` (was 0.98 active)
+- `.rv-star-btn` (was 0.88 active, 1.15 hover)
+- `.rv-submit-btn` (was 0.98 active)
+- `.rv-action-btn` (was 0.98 active)
+- `.pp-rating` (was 0.98 active)
+- `.nav-recenter` / `.nav-overview` (was 0.95 active, 1.08 hover)
+
+Replaced with color/opacity/filter-only feedback (`filter: brightness(0.92)`, `opacity: 0.75`).
+
+**Rule 2: Buttons are EITHER icon-only OR text-only.**
+Removed decorative SVG icons from:
+- `.rv-write-btn` — pencil icon removed, now text-only "Write a review"
+- `#dir-go` — arrow icon removed, now text-only "Find Routes"
+- `.tf-open-now-chip` — clock icon removed, now text-only "Open Now"
+- `.qibla-btn` — compass icon removed, now text-only "Qibla"
+
+**Kept as-is (structural/functional exemptions):**
+- `.sg-hours-disclosure` chevron (expand/collapse indicator)
+- `.tf-group-toggle` chevron (expand/collapse indicator)
+- `.pl-city-toggle` chevron (expand/collapse indicator)
+- `.wish-vote` thumbs-up (functional icon with count)
+- `.mode-opt` transport icons (mode differentiation, not decoration)
+
+**Files modified:** `src/reviews.js`, `src/places.js`, `src/prayer.js`, `index.html`, `src/styles/styles.css`, `src/styles/design-tokens.css`, `docs/PREFERENCE_LOG.md`.

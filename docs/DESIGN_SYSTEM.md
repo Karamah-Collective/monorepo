@@ -289,8 +289,15 @@ Apply to standalone inputs not inside `.t-field-wrap`. Adds accent-tinted box-sh
 
 All button templates (`.btn-primary`, `.btn-secondary`, `.btn-roundel`, etc.) include:
 - **Hover:** color, filter, or border changes (no positional transforms)
+- **Active:** `filter: brightness(0.92)` or `opacity` change — never `scale` or `translateY`
 - **Focus-visible:** `--focus-ring` box-shadow for keyboard accessibility
 - No `translateY` or `scale` on hover/active — the user prefers static buttons with color-only feedback
+
+### Button content rule
+
+Buttons must contain EITHER an icon OR text — never both together.
+
+**Exempt:** structural indicators (chevrons for expand/collapse), functional icons with numeric counts (vote thumbs-up), and segmented control mode icons (transport mode differentiators).
 
 ### `prefers-reduced-motion`
 

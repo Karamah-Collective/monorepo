@@ -179,7 +179,7 @@ function getFilterBarTags(type) {
   return items;
 }
 
-const SORT_FIELD_LABELS = { default: "Most Relevant", name: "Name", distance: "Distance", date: "Date" };
+const SORT_FIELD_LABELS = { default: "Most Relevant", name: "Name", distance: "Distance", date: "Date", rating: "Rating" };
 
 function extractCityFromAddress(address) {
   const raw = String(address || "").trim();
@@ -318,6 +318,15 @@ function applySort(arr) {
       });
     case "date":
       return a.sort((x, y) => activeSortDir === "asc" ? String(x.id).localeCompare(String(y.id)) : String(y.id).localeCompare(String(x.id)));
+    case "rating": {
+      return a.sort((x, y) => {
+        const rx = getPlaceRating(x.id);
+        const ry = getPlaceRating(y.id);
+        const ax = rx ? rx.avg : 0;
+        const ay = ry ? ry.avg : 0;
+        return activeSortDir === "asc" ? ax - ay : ay - ax;
+      });
+    }
     default: return a;
   }
 }
@@ -649,6 +658,7 @@ function _collectHoursFromForm(container, prefix) {
 }
 
 let _openNowFilter = false;
+let _ratedFilter = false;
 
 /**
  * Build a compact rating chip for place cards. Returns empty string if no reviews.
@@ -658,7 +668,7 @@ let _openNowFilter = false;
 function _buildRatingChip(placeId) {
   const data = getPlaceRating(placeId);
   if (!data) return "";
-  return `<span class="pl-rating-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${data.avg.toFixed(1)} <span class="pl-rating-count">(${data.count})</span></span>`;
+  return `<span class="pl-rating-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="var(--review)" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${data.avg.toFixed(1)} <span class="pl-rating-count">(${data.count})</span></span>`;
 }
 
 function _buildCard(p, i) {
@@ -1195,7 +1205,7 @@ function _renderPopupRating(container, placeId, placeName, ratingData) {
     ratingEl.title = "View reviews";
   } else {
     ratingEl.className = "pp-rating pp-rating--empty";
-    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
+    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
   }
   ratingEl.setAttribute("role", "button");
   ratingEl.setAttribute("tabindex", "0");
@@ -1253,10 +1263,6 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   const reviewsSection = document.createElement("div");
   reviewsSection.className = "pp-reviews";
   reviewsSection.dataset.placeId = place.id;
-  const reviewsHdr = document.createElement("div");
-  reviewsHdr.className = "pp-reviews-hdr";
-  reviewsHdr.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Reviews`;
-  reviewsSection.appendChild(reviewsHdr);
 
   _renderPopupRating(reviewsSection, place.id, place.name, ratingData);
 
@@ -1845,7 +1851,7 @@ _plSearchInput.addEventListener("keydown", (e) => {
 });
 
 function updateClearButton() {
-  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery || _openNowFilter;
+  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery || _openNowFilter || _ratedFilter;
   placesClearBtn.classList.toggle("hide", !dirty);
 }
 
@@ -1858,6 +1864,7 @@ placesClearBtn.addEventListener("click", () => {
   placeSearchQuery = "";
   _plSearchInput.value = "";
   _openNowFilter = false;
+  _ratedFilter = false;
   _closePlaceSearch();
   updateSortButton();
   renderTagFilterBar();
@@ -1937,6 +1944,7 @@ sortDropdown.addEventListener("click", (e) => {
       }
     }
     activeSortField = field;
+    if (field === "rating" && activeSortDir === "asc") activeSortDir = "desc";
     updateSortButton();
     animateSheetHeight(placesSheet, () => renderPlacesList());
     if (field === "default") closeSortDropdown();
@@ -1966,9 +1974,10 @@ function renderTagFilterBar() {
     : [];
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
-  // Filter: show when tags exist OR places have hours data (Open Now chip)
+  // Filter: show when tags exist OR places have hours data (Open Now chip) OR ratings exist
   const hasHoursData = typePlaces.some((p) => p.hours);
-  const showFilter = (totalTags > 0 || hasHoursData) && count > 0;
+  const hasRatingData = typePlaces.some((p) => getPlaceRating(p.id) !== null);
+  const showFilter = (totalTags > 0 || hasHoursData || hasRatingData) && count > 0;
   tfToggle.classList.toggle("hide", !showFilter);
   if (!showFilter) {
     tfToggle.classList.remove("open");
@@ -1977,7 +1986,8 @@ function renderTagFilterBar() {
     updateTagCount();
     let html = "<div class=\"tf-chips-inner\">";
     // Open Now chip — always first in the filter panel
-    html += `<button class="tf-chip tf-open-now-chip${_openNowFilter ? " active" : ""}" data-action="open-now"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Open Now</button>`;
+    html += `<button class="tf-chip tf-open-now-chip${_openNowFilter ? " active" : ""}" data-action="open-now">Open Now</button>`;
+    html += `<button class="tf-chip tf-rated-chip${_ratedFilter ? " active" : ""}" data-action="rated">Rated</button>`;
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
@@ -2001,7 +2011,7 @@ function renderTagFilterBar() {
 }
 
 function updateTagCount() {
-  const totalActive = activeTagFilters.size + (_openNowFilter ? 1 : 0);
+  const totalActive = activeTagFilters.size + (_openNowFilter ? 1 : 0) + (_ratedFilter ? 1 : 0);
   if (totalActive) {
     const countText = String(totalActive);
     tfCount.textContent = countText;
@@ -2084,6 +2094,16 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   if (openNowChip) {
     _openNowFilter = !_openNowFilter;
     openNowChip.classList.toggle("active", _openNowFilter);
+    addPlaceMarkers();
+    _crossFadePlacesList();
+    updateClearButton();
+    return;
+  }
+  // Rated chip
+  const ratedChip = e.target.closest(".tf-rated-chip");
+  if (ratedChip) {
+    _ratedFilter = !_ratedFilter;
+    ratedChip.classList.toggle("active", _ratedFilter);
     addPlaceMarkers();
     _crossFadePlacesList();
     updateClearButton();
