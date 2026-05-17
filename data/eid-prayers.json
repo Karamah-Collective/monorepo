@@ -216,5 +216,19 @@
     ],
     "notes": "Bring prayer mat",
     "date": "2026-03-20"
+  },
+  {
+    "id": "9k7eve",
+    "name": "Tapulin Liikuntakeskus",
+    "address": "Henrik Forsiuksen tie 2, 00750 Helsinki",
+    "lat": 60.2744952,
+    "lng": 25.019645,
+    "organizer": "Bangladesh Kendrio Masjid",
+    "jamaats": [
+      "8:00",
+      "9:00"
+    ],
+    "notes": "",
+    "date": "2026-05-27"
   }
 ]

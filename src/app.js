@@ -213,11 +213,12 @@ map.on("load", async () => {
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
+  // NOTE: Disabled — keep code for future re-enable
   setTimeout(
     async () => {
       const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
-        showEarlyDevNotice();
+        // showEarlyDevNotice(); // disabled
         // Show loading toast only after tutorial/intro finishes, if places still loading
         if (!placesLoaded) {
           showLoadingToast("Loading places…", "Fetching latest data");
