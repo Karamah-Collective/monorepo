@@ -2396,6 +2396,22 @@ export function renderEventsPill() {
     return;
   }
   _eventsPill.classList.remove("hide");
+
+  // Count upcoming events for badge
+  const today = _todayMidnight();
+  const upcomingCount = eventsData.filter((ev) => {
+    if (ev.recurring) return true;
+    if (ev.date) return new Date(ev.date + "T00:00:00") >= today;
+    return false;
+  }).length;
+  let badge = _eventsPill.querySelector(".pill-count");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "pill-count";
+    _eventsPill.appendChild(badge);
+  }
+  badge.textContent = upcomingCount;
+
   _populateEvMosqueFilter();
   _renderEventsList();
 }

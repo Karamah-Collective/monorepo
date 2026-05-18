@@ -1547,6 +1547,27 @@ select:focus-visible {
   background: color-mix(in srgb, var(--hsl-bus) 12%, transparent);
 }
 
+/* ── Pill count badge (superscript number on icon-card buttons) ────────────── */
+.pill-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--sp-1h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+}
+
 /* ── Event filter chip (events overlay filter bar) ─────────────────────────── */
 .ev-filter-chip {
   display: inline-flex;

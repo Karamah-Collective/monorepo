@@ -125,6 +125,7 @@ export async function initEidPrayers() {
         eidLocations = filtered;
         addEidMarkers();
         _renderEidList();
+        _updateEidBadge();
         _checkEidShareUrl();
       }
       // Show banner now with the authoritative count
@@ -159,6 +160,19 @@ function _normaliseDate(raw) {
 
 // ── Eid Panel (overlay with location list) ──────────────────────────────────
 
+/** Update the count badge on the eid pill button. */
+function _updateEidBadge() {
+  const pill = document.getElementById("eid-pill");
+  if (!pill) return;
+  let badge = pill.querySelector(".pill-count");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "pill-count";
+    pill.appendChild(badge);
+  }
+  badge.textContent = eidLocations.length;
+}
+
 function _renderEidList() {
   const list = document.getElementById("eid-list");
   if (!list) return;
@@ -185,8 +199,9 @@ function setupEidPanel() {
   const list = document.getElementById("eid-list");
   if (!pill || !overlay || !list) return;
 
-  // Show the pill button
+  // Show the pill button with count badge
   pill.classList.remove("hide");
+  _updateEidBadge();
 
   // Populate list
   _renderEidList();

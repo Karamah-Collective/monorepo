@@ -9109,6 +9109,10 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     left 0.3s cubic-bezier(0.32, 0.72, 0, 1),
     background var(--t-fast);
 }
+#eid-pill .pill-count {
+  background: var(--gold);
+  color: #fff;
+}
 @media (hover: hover) {
   #eid-pill:hover {
     background: var(--surface-2);

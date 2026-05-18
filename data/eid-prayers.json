@@ -3,8 +3,8 @@
     "id": "cumgy8",
     "name": "Masjid Abu Bakr Al-Siddique",
     "address": "Sepetlahdentie 8, 02230 Espoo",
-    "lat": 60.1525869253678,
-    "lng": 24.743910967692,
+    "lat": 60.15258693,
+    "lng": 24.74391097,
     "organizer": "Masjid Abu Bakr Al-Siddique",
     "jamaats": [
       "7:15",
@@ -18,8 +18,8 @@
     "id": "12fsrg",
     "name": "Arena Center Myllypuro",
     "address": "Alakiventie 2, 00920 Helsinki",
-    "lat": 60.2216436839729,
-    "lng": 25.0791575560525,
+    "lat": 60.22164368,
+    "lng": 25.07915756,
     "organizer": "Darul Aman Islamic Center, Islamic Rahma Center",
     "jamaats": [
       "9:00",
@@ -32,8 +32,8 @@
     "id": "j8ndzs",
     "name": "EBK - Honka Areena",
     "address": "Kylävainiontie 20, 02760 Espoo",
-    "lat": 60.2097886824536,
-    "lng": 24.6776777848877,
+    "lat": 60.20978868,
+    "lng": 24.67767778,
     "organizer": "Masjid An Nuur",
     "jamaats": [
       "9:00"
@@ -45,8 +45,8 @@
     "id": "73cxqt",
     "name": "Al-Iman Mosque",
     "address": "Munkkiniemen puistotie 4, 00331 Helsinki",
-    "lat": 60.1967039875071,
-    "lng": 24.8829167118726,
+    "lat": 60.19670399,
+    "lng": 24.88291671,
     "organizer": "Al-Iman Mosque",
     "jamaats": [
       "9:00"
@@ -58,8 +58,8 @@
     "id": "57gmga",
     "name": "Kameleonten Urheilukeskus",
     "address": "Monikonkatu 8, 02650 Espoo",
-    "lat": 60.2251806439469,
-    "lng": 24.7983577407097,
+    "lat": 60.22518064,
+    "lng": 24.79835774,
     "organizer": "Espoo Muslim Center",
     "jamaats": [
       "9:00"
@@ -71,8 +71,8 @@
     "id": "saxvgj",
     "name": "Viikin Nuorisotalo",
     "address": "Agronominkatu 3, 00790 Helsinki",
-    "lat": 60.23393653473,
-    "lng": 25.0338393116427,
+    "lat": 60.23393653,
+    "lng": 25.03383931,
     "organizer": "Bangladesh Islamic Cultural Center (BICC)",
     "jamaats": [
       "9:00"
@@ -84,8 +84,8 @@
     "id": "qhtzka",
     "name": "Rajakylän tenniskeskus",
     "address": "Latukuja 2, 01280 Vantaa",
-    "lat": 60.2554727841804,
-    "lng": 25.1060145728186,
+    "lat": 60.25547278,
+    "lng": 25.10601457,
     "organizer": "Bangladesh Kendrio Masjid",
     "jamaats": [
       "8:00",
@@ -98,8 +98,8 @@
     "id": "ivbzae",
     "name": "Laippatie 13",
     "address": "Laippatie 13, 00880 Helsinki",
-    "lat": 60.210680148853,
-    "lng": 25.0501909153429,
+    "lat": 60.21068015,
+    "lng": 25.05019092,
     "organizer": "Bangladesh Kendrio Masjid",
     "jamaats": [
       "7:30",
@@ -113,8 +113,8 @@
     "id": "qp123p",
     "name": "Ummah Moskeija",
     "address": "Hernepellonkuja 6, 00560 Helsinki",
-    "lat": 60.2235442514646,
-    "lng": 24.993565613724,
+    "lat": 60.22354425,
+    "lng": 24.99356561,
     "organizer": "Ummah Moskeija",
     "jamaats": [
       "8:00",
@@ -127,8 +127,8 @@
     "id": "i5egwm",
     "name": "Talin Jalkapallo Halli",
     "address": "Purotie 8, 00380 Helsinki",
-    "lat": 60.2147830523261,
-    "lng": 24.8681582560521,
+    "lat": 60.21478305,
+    "lng": 24.86815826,
     "organizer": "Masjid Al-Huda",
     "jamaats": [
       "8:00"
@@ -140,8 +140,8 @@
     "id": "ktpkk5",
     "name": "Aktia Areena",
     "address": "Martinkyläntie 1, 01670 Vantaa",
-    "lat": 60.2910091322359,
-    "lng": 24.8648341857504,
+    "lat": 60.29100913,
+    "lng": 24.86483419,
     "organizer": "As-salam Center",
     "jamaats": [
       "9:00"
@@ -153,8 +153,8 @@
     "id": "lczx2d",
     "name": "Iqra Mosque",
     "address": "Kontulankaari 1, 00940 Helsinki",
-    "lat": 60.236947705821,
-    "lng": 25.0848255653037,
+    "lat": 60.23694771,
+    "lng": 25.08482557,
     "organizer": "Iqra Mosque",
     "jamaats": [
       "8:30",
@@ -167,8 +167,8 @@
     "id": "2in4lt",
     "name": "Campo Sportcenter Oy",
     "address": "Latukuja 4, 01280 Vantaa",
-    "lat": 60.252176344854,
-    "lng": 25.1078960791035,
+    "lat": 60.25217634,
+    "lng": 25.10789608,
     "organizer": "",
     "jamaats": [
       "9:30"
@@ -180,8 +180,8 @@
     "id": "2stpsk",
     "name": "Impivaaran jalkapallohalli",
     "address": "Eskonkatu 1, 20320 Turku",
-    "lat": 60.478478701411,
-    "lng": 22.2519759695574,
+    "lat": 60.4784787,
+    "lng": 22.25197597,
     "organizer": "Ashtin Moskeija",
     "jamaats": [
       "8:00",
@@ -195,8 +195,8 @@
     "id": "kk6fc4",
     "name": "Arena Center Hakaniemi",
     "address": "Miina Sillanpään katu 2, 00530 Helsinki",
-    "lat": 60.1796878214574,
-    "lng": 24.9525177010579,
+    "lat": 60.17968782,
+    "lng": 24.9525177,
     "organizer": "Suomen Islamilainen Yhdyskunta",
     "jamaats": [
       "9:00"
@@ -208,8 +208,8 @@
     "id": "1z7uga",
     "name": "Tapanilan Erä",
     "address": "Erätie 6, 00700 Helsinki",
-    "lat": 60.2660310666173,
-    "lng": 25.0165188418665,
+    "lat": 60.26603107,
+    "lng": 25.01651884,
     "organizer": "Masjid AsSunnah",
     "jamaats": [
       "9:30"
@@ -235,8 +235,8 @@
     "id": "mm7e6z",
     "name": "Ala-Malmin liikuntapuisto",
     "address": "Lallintie 12, 00700 Helsinki",
-    "lat": 60.2473622602257,
-    "lng": 25.0207803384993,
+    "lat": 60.24736226,
+    "lng": 25.02078034,
     "organizer": "Bangladesh Islamic Cultural Center (BICC)",
     "jamaats": [
       "9:00"
@@ -248,8 +248,8 @@
     "id": "fngbwh",
     "name": "Viikin Nuorisotalo",
     "address": "Agronominkatu 3, 00790 Helsinki",
-    "lat": 60.23393653473,
-    "lng": 25.0338393116427,
+    "lat": 60.23393653,
+    "lng": 25.03383931,
     "organizer": "Bangladesh Islamic Cultural Center (BICC)",
     "jamaats": [
       "9:00"
