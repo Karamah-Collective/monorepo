@@ -2346,3 +2346,44 @@ Removed decorative SVG icons from:
 - `.mode-opt` transport icons (mode differentiation, not decoration)
 
 **Files modified:** `src/reviews.js`, `src/places.js`, `src/prayer.js`, `index.html`, `src/styles/styles.css`, `src/styles/design-tokens.css`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-05-17 — Eid prayer submission flow + Code.gs dead code removal
+
+**a. Eid banner deferred to Phase 2 data:**
+- `_showBannerWhenReady()` now only fires after the API response (or fallback failure), not from cached/static Phase 1 data.
+- Prevents showing stale Eid counts before fresh data arrives.
+
+**b. Full Eid place submission pipeline:**
+- Added `<option value="eid_prayer">Eid Prayer Place</option>` to suggest form type dropdown.
+- Built `#sg-eid-fields` container: mosque organizer multi-select (dropdown + chips), custom organizer input, date picker, jamaats text field.
+- `_populateEidOrgDropdown()` sources mosque names from `placesData`.
+- Multi-org selection with chips and remove buttons.
+- Custom organizer add button with height/radius matching input field.
+- Time normalization regex handles "9", "9am", "9:00", "08.30" → "HH:MM" 24h format.
+- Payload uses `formType: "eid"` routed through existing `/api/submit` → Apps Script.
+- CF Function: added `'eid'` to allowed `formTypes`, eid field truncation.
+- Apps Script: `formType === 'eid'` → "EidNew" sheet, `ensureEidNewSheet()`, `enrichEidPendingRows()`, `getPendingEid()`, `adminApproveEid()`, `adminRejectEid()`, `copyEidNewToEidPrayers()`, `onSheetEdit` extended for EidNew.
+
+**c. UI polish:**
+- Tags section hidden for eid_prayer type (irrelevant).
+- Organizer dropdown excludes non-mosque places.
+- `.sg-eid-org-add-btn` class: matches input height (`--sp-5`/`--sp-6` padding), `--r-md` radius, `--txt-sm` font.
+- Gap in `.sg-eid-fields` matches form spacing (`--sp-7`).
+- "Custom Organizer" label changed to "Add" (concise).
+- Jamaat time format validation with user-friendly error messaging.
+
+**d. Dead code removal from Code.gs (~313 lines removed):**
+- Removed `testSendEmail()` — one-time auth test, already run.
+- Removed `setupTriggers()` + `setupEnrichmentTrigger()` + `setupApprovalTrigger()` — one-time trigger setup, already run.
+- Removed `migrateTagsToIds()` — one-time migration, already run.
+- Removed `migrateHalalStatusTags()` — one-time migration, already run.
+- Removed `normaliseExistingAddresses()` — one-time migration, already run.
+- Removed `backupNewToDraft()` — one-time backup, already run.
+- Removed `reEncryptPlaceIds()` — one-time ID migration, already run.
+- Removed `testUrlParsing()` — test helper, not production code.
+- Removed `seedCuisineTags()` — one-time seed, already run.
+- Updated file header comments to remove references to deleted functions.
+- Kept: `forceEnrichAll()`, `backfillOpeningHours()`, `deduplicateNewSheet()`, `deduplicatePlacesSheet()` (useful manual maintenance utilities).
+- Kept: `invalidateReviewsCache()` (no-op but called by 2 active functions).
+
+**Files modified:** `src/eid-prayers.js`, `index.html`, `src/places.js`, `functions/api/submit.js`, `scripts/apps-script/Code.gs`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`.

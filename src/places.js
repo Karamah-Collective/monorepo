@@ -3335,8 +3335,62 @@ function renderSuggestTags() {
 
 sgTypeSelect.addEventListener("change", renderSuggestTags);
 sgTypeSelect.addEventListener("change", () => sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value));
+sgTypeSelect.addEventListener("change", () => {
+  const isEid = sgTypeSelect.value === "eid_prayer";
+  document.getElementById("sg-eid-fields").classList.toggle("hide", !isEid);
+  document.getElementById("sg-hours-section").classList.toggle("hide", isEid);
+  document.getElementById("sg-tags-section").style.display = isEid ? "none" : "";
+  if (isEid) _populateEidOrgDropdown();
+});
 sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
 renderSuggestTags();
+
+// ── Eid organizer multi-select ──────────────────────────────────────────────
+let _eidSelectedOrgs = [];
+
+function _populateEidOrgDropdown() {
+  const select = document.getElementById("sg-eid-org-select");
+  const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
+  select.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
+    mosques.map((m) => `<option value="${escA(m.id)}">${esc(m.name)}</option>`).join("");
+}
+
+function _renderEidOrgChips() {
+  const container = document.getElementById("sg-eid-org-chips");
+  container.innerHTML = _eidSelectedOrgs.map((org, i) =>
+    `<span class="sg-eid-org-chip"><span>${esc(org)}</span><button type="button" data-idx="${i}" class="sg-eid-org-remove" aria-label="Remove">&times;</button></span>`
+  ).join("");
+}
+
+document.getElementById("sg-eid-org-select").addEventListener("change", (e) => {
+  const name = e.target.options[e.target.selectedIndex].textContent;
+  if (name && !_eidSelectedOrgs.includes(name)) {
+    _eidSelectedOrgs.push(name);
+    _renderEidOrgChips();
+  }
+  e.target.selectedIndex = 0;
+});
+
+document.getElementById("sg-eid-org-add").addEventListener("click", () => {
+  const input = document.getElementById("sg-eid-org-input");
+  const val = input.value.trim();
+  if (val && !_eidSelectedOrgs.includes(val)) {
+    _eidSelectedOrgs.push(val);
+    _renderEidOrgChips();
+  }
+  input.value = "";
+});
+
+document.getElementById("sg-eid-org-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("sg-eid-org-add").click(); }
+});
+
+document.getElementById("sg-eid-org-chips").addEventListener("click", (e) => {
+  const btn = e.target.closest(".sg-eid-org-remove");
+  if (!btn) return;
+  _eidSelectedOrgs.splice(parseInt(btn.dataset.idx, 10), 1);
+  _renderEidOrgChips();
+});
 
 sgTagsContainer.addEventListener("click", (e) => {
   // Expand/collapse group (accordion: only one open at a time)
@@ -3436,6 +3490,7 @@ suggestForm.querySelectorAll("[required]").forEach((el) => {
 // Also listen on fields that toggle required dynamically
 sgNameInput.addEventListener("input", () => sgNameInput.classList.remove("invalid"));
 sgGmapsInput.addEventListener("input", () => sgGmapsInput.classList.remove("invalid"));
+document.getElementById("sg-eid-date").addEventListener("input", (e) => e.target.classList.remove("invalid"));
 
 suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -3454,6 +3509,16 @@ suggestForm.addEventListener("submit", async (e) => {
   if (!gmaps && !pinLat) {
     showToast("Location needed", "error", "Drop a pin or paste a Google Maps link.");
     return;
+  }
+
+  // Eid-specific: date is required
+  if (sgTypeSelect.value === "eid_prayer") {
+    const eidDateEl = document.getElementById("sg-eid-date");
+    if (!eidDateEl.value.trim()) {
+      eidDateEl.classList.add("invalid");
+      showToast("Date required", "error", "Please set the Eid prayer date.");
+      return;
+    }
   }
 
   const submitBtn = document.getElementById("sg-submit");
@@ -3485,14 +3550,36 @@ suggestForm.addEventListener("submit", async (e) => {
   });
 
   // Build payload — include pin lat/lng when available
+  const isEidType = type === "eid_prayer";
   const sgHoursContainer = document.getElementById("sg-hours-container");
-  const openingHours = _collectHoursFromForm(sgHoursContainer, "sg");
-  const payload = { token: null, formType: "new", name, type, address, tags: tagsStr, gmaps, notes };
+  const openingHours = isEidType ? null : _collectHoursFromForm(sgHoursContainer, "sg");
+  const payload = { token: null, formType: isEidType ? "eid" : "new", name, type, address, tags: tagsStr, gmaps, notes };
   if (openingHours) payload.openingHours = openingHours;
   if (newCuisines.length) payload.newCuisines = newCuisines;
   if (pinLat && pinLng) {
     payload.pinLat = parseFloat(pinLat);
     payload.pinLng = parseFloat(pinLng);
+  }
+  if (isEidType) {
+    payload.eidOrganizer = _eidSelectedOrgs.join(", ");
+    payload.eidDate = document.getElementById("sg-eid-date").value.trim();
+    // Normalize jamaat times: split by comma/space, ensure HH:MM format
+    const rawJamaats = document.getElementById("sg-eid-jamaats").value.trim();
+    payload.eidJamaats = rawJamaats
+      .split(/[,;]+/)
+      .map(t => t.trim())
+      .filter(Boolean)
+      .map(t => {
+        const m = t.match(/^(\d{1,2})(?:[:.]?(\d{2}))?\s*(am|pm)?$/i);
+        if (!m) return t;
+        let h = parseInt(m[1], 10);
+        const min = m[2] || "00";
+        const ampm = (m[3] || "").toLowerCase();
+        if (ampm === "pm" && h < 12) h += 12;
+        if (ampm === "am" && h === 12) h = 0;
+        return String(h).padStart(2, "0") + ":" + min;
+      })
+      .join(",");
   }
 
   try {
@@ -3512,6 +3599,11 @@ suggestForm.addEventListener("submit", async (e) => {
       sgTypeSelect.classList.add("placeholder");
       clearPinLocation();
       renderSuggestTags();
+      document.getElementById("sg-eid-fields").classList.add("hide");
+      document.getElementById("sg-hours-section").classList.remove("hide");
+      document.getElementById("sg-tags-section").style.display = "";
+      _eidSelectedOrgs = [];
+      _renderEidOrgChips();
       document.getElementById("suggest-overlay").classList.add("hide");
       setTimeout(() => showToast("Suggestion submitted", "check", "JazakAllah Khair!"), 200);
     } else {

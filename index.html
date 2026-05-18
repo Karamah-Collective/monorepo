@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260518" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260518-2" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -1016,8 +1016,30 @@
                 <option value="restaurant">Restaurant</option>
                 <option value="shop">Shop</option>
                 <option value="cemetery">Cemetery</option>
+                <option value="eid_prayer">Eid Prayer Place</option>
               </select>
             </label>
+            <div id="sg-eid-fields" class="sg-eid-fields hide">
+              <label class="sg-label"
+                ><span>Organizer(s)</span>
+                <div id="sg-eid-org-chips" class="sg-eid-org-chips"></div>
+                <select id="sg-eid-org-select">
+                  <option value="" disabled selected>Select a mosque…</option>
+                </select>
+                <div class="sg-eid-org-custom-row">
+                  <input id="sg-eid-org-input" type="text" placeholder="Or type an organizer…" maxlength="200" />
+                  <button type="button" id="sg-eid-org-add" class="sg-eid-org-add-btn">Add</button>
+                </div>
+              </label>
+              <label class="sg-label"
+                ><span>Eid Date <span class="sg-req">*</span></span>
+                <input id="sg-eid-date" type="date" />
+              </label>
+              <label class="sg-label"
+                ><span>Jamaat Times (comma-separated)</span>
+                <input id="sg-eid-jamaats" type="text" placeholder="e.g. 07:00, 08:30, 10:00" maxlength="200" />
+              </label>
+            </div>
             <div id="sg-tags-section" class="sg-label">
               <span>Tags</span>
               <div id="sg-tags" class="sg-tags"></div>

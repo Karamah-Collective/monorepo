@@ -75,7 +75,7 @@ function _checkEidShareUrl() {
   }
 }
 
-function _initWithData(data) {
+function _initWithData(data, { showBanner = true } = {}) {
   const filtered = _filterEidData(data);
   if (!filtered.length) return false;
   eidLocations = filtered;
@@ -93,18 +93,19 @@ function _initWithData(data) {
     if (loc) showEidPopup(loc);
   });
 
-  _showBannerWhenReady();
+  if (showBanner) _showBannerWhenReady();
   return true;
 }
 
 export async function initEidPrayers() {
   try {
-    // Phase 1: render immediately from static JSON (fast, pre-cached by SW)
+    // Phase 1: render markers/panel from static JSON (fast, pre-cached by SW)
+    // but suppress the banner — we'll show it after the API responds with fresh count
     const staticData = await _fetchEidStatic();
-    const rendered = staticData ? _initWithData(staticData) : false;
+    const rendered = staticData ? _initWithData(staticData, { showBanner: false }) : false;
 
     if (!rendered) {
-      // Static JSON unavailable — wait for API directly
+      // Static JSON unavailable — wait for API directly (show banner with final data)
       const apiData = await _fetchEidApi();
       if (apiData) _initWithData(apiData);
       return;
@@ -112,22 +113,26 @@ export async function initEidPrayers() {
 
     // Phase 2: background refresh from Sheets via CF proxy
     _fetchEidApi().then(freshData => {
-      if (!freshData) return;
+      if (!freshData) {
+        // API unavailable — show banner with static data we already have
+        _showBannerWhenReady();
+        return;
+      }
       const filtered = _filterEidData(freshData);
       if (!filtered.length) { removeEidPrayers(); return; }
-      if (JSON.stringify(filtered) === JSON.stringify(eidLocations)) return; // no change
-      console.log("[Eid] Background update from API");
-      eidLocations = filtered;
-      addEidMarkers();
-      _renderEidList();
-      _checkEidShareUrl();
-      // Update banner count if it's still visible
-      const sub = document.querySelector("#eid-banner .snack-sub");
-      if (sub) {
-        const count = eidLocations.length;
-        sub.textContent = `${count} Eid prayer location${count > 1 ? "s" : ""} — tap to view`;
+      if (JSON.stringify(filtered) !== JSON.stringify(eidLocations)) {
+        console.log("[Eid] Background update from API");
+        eidLocations = filtered;
+        addEidMarkers();
+        _renderEidList();
+        _checkEidShareUrl();
       }
-    }).catch(() => { /* silent — static data already shown */ });
+      // Show banner now with the authoritative count
+      _showBannerWhenReady();
+    }).catch(() => {
+      // API failed — show banner with static data we already have
+      _showBannerWhenReady();
+    });
 
   } catch (err) {
     console.warn("[Eid] Could not load Eid prayer data:", err.message);

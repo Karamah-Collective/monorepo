@@ -3832,6 +3832,57 @@ body.dark-mode .sp-tip {
   margin-left: 1px;
 }
 
+.sg-eid-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+.sg-eid-org-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.sg-eid-org-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--surface-2);
+  border-radius: var(--r-full);
+  font-size: var(--txt-xs);
+  color: var(--text-1);
+}
+.sg-eid-org-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--txt-base);
+  line-height: 1;
+  color: var(--text-3);
+  padding: 0 2px;
+}
+.sg-eid-org-custom-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: stretch;
+}
+.sg-eid-org-custom-row input {
+  flex: 1;
+}
+.sg-eid-org-add-btn {
+  padding: var(--sp-5) var(--sp-6);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--t-fast);
+}
+
 .sg-pin-badge {
   display: flex;
   align-items: center;

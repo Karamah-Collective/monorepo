@@ -230,5 +230,31 @@
     ],
     "notes": "",
     "date": "2026-05-27"
+  },
+  {
+    "id": "mm7e6z",
+    "name": "Ala-Malmin liikuntapuisto",
+    "address": "Lallintie 12, 00700 Helsinki",
+    "lat": 60.2473622602257,
+    "lng": 25.0207803384993,
+    "organizer": "Bangladesh Islamic Cultural Center (BICC)",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "If the weather is bad, the venue would shift to: Viikin Nuoristalo",
+    "date": "2026-05-27"
+  },
+  {
+    "id": "fngbwh",
+    "name": "Viikin Nuorisotalo",
+    "address": "Agronominkatu 3, 00790 Helsinki",
+    "lat": 60.23393653473,
+    "lng": 25.0338393116427,
+    "organizer": "Bangladesh Islamic Cultural Center (BICC)",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "Alternative destination if the weather is bad. Original destination is: Ala-Malmin liikuntapuisto",
+    "date": "2026-05-27"
   }
 ]

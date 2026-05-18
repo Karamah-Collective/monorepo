@@ -75,7 +75,7 @@ export async function onRequestPost(context) {
   if (!token || typeof token !== 'string') {
     return json({ error: 'Missing reCAPTCHA token' }, 400, responseHeaders);
   }
-  if (!formType || !['new', 'edit', 'contact', 'event', 'event-edit'].includes(formType)) {
+  if (!formType || !['new', 'edit', 'contact', 'event', 'event-edit', 'eid'].includes(formType)) {
     return json({ error: 'Invalid form type' }, 400, responseHeaders);
   }
 
@@ -99,6 +99,11 @@ export async function onRequestPost(context) {
   if (formData.recurrencePattern) formData.recurrencePattern = truncate(formData.recurrencePattern, MAX_FIELD_LEN);
   if (formData.url)         formData.url         = truncate(formData.url, MAX_FIELD_LEN);
   if (formData.eventId)     formData.eventId     = truncate(formData.eventId, 50);
+
+  // Eid-specific fields
+  if (formData.eidOrganizer) formData.eidOrganizer = truncate(formData.eidOrganizer, MAX_FIELD_LEN);
+  if (formData.eidDate)      formData.eidDate      = truncate(formData.eidDate, 10);
+  if (formData.eidJamaats)   formData.eidJamaats   = truncate(formData.eidJamaats, MAX_FIELD_LEN);
 
   // Validate email format for contact forms
   if (formType === 'contact' && formData.email && !EMAIL_RE.test(formData.email)) {
