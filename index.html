@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260519" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260522-2" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -1639,7 +1639,7 @@
             </button>
           </div>
           <div id="privacy-body">
-            <p class="privacy-updated">Last updated: March 2026</p>
+            <p class="privacy-updated">Last updated: May 2026</p>
 
             <h4>1. Who We Are</h4>
             <p><strong>Halal Finder Helsinki</strong> is a service by <a href="https://karamahcollective.com" target="_blank" rel="noopener">Karamah Collective</a>, a community organisation supporting Finnish Muslims through practical guidance and compassionate connections. This policy explains how we handle your information when you use this app.</p>
@@ -1657,7 +1657,13 @@
               <li>Phone number (optional)</li>
               <li>Your message</li>
             </ul>
-            <p>Place suggestions are anonymous. Contact form submissions include the personal details you provide so we can respond to your enquiry.</p>
+            <p><strong>Ratings &amp; reviews:</strong></p>
+            <ul>
+              <li>Email address (required for OTP verification)</li>
+              <li>Your rating (1 to 5) and optional review text</li>
+              <li>A hashed version of your email to prevent duplicate or abusive submissions</li>
+            </ul>
+            <p>When requesting an OTP, we also temporarily store verification metadata (email hash, one-time code, hashed IP, timestamp, and attempt count) for abuse prevention and rate-limiting. Place suggestions are anonymous. Reviews are shown publicly without displaying your email address.</p>
 
             <h4>3. What We Don't Do</h4>
             <ul>
@@ -1666,6 +1672,7 @@
               <li>No location data stored — your position is used only in your browser for the map and is never sent to our servers</li>
               <li>We will never sell or share personal information</li>
               <li>Contact details (name, email, phone) are used solely to respond to your enquiry and are never shared with third parties</li>
+              <li>Review emails are used only for verification and abuse prevention, and are never displayed publicly</li>
             </ul>
 
             <h4>4. Cloudflare Web Analytics</h4>
@@ -1695,10 +1702,10 @@
             </ul>
 
             <h4>7. Data Storage &amp; Security</h4>
-            <p>Form submissions (place suggestions and contact messages) are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+            <p>Form submissions (place suggestions, contact messages, and reviews) are transmitted over HTTPS and stored in a private Google Sheet accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. Review emails and email hashes are retained to enforce review integrity (for example, one review per place per verified account). OTP verification rows are temporary and are deleted after successful verification, with older entries automatically removed during cleanup. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
             <h4>8. Your Rights (GDPR)</h4>
-            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form submissions, we can locate your data using the email address you provided.</p>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form submissions and review submissions, we can locate your data using the email address you provided.</p>
             <p>Contact: <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
 
             <h4>9. Children's Privacy</h4>

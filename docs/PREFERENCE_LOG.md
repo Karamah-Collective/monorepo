@@ -2387,3 +2387,24 @@ Removed decorative SVG icons from:
 - Kept: `invalidateReviewsCache()` (no-op but called by 2 active functions).
 
 **Files modified:** `src/eid-prayers.js`, `index.html`, `src/places.js`, `functions/api/submit.js`, `scripts/apps-script/Code.gs`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-19 — User Guide: Mobile-First Rewrite
+
+**Preferences expressed:**
+- User guide must be mobile-first — phone UI screenshots as the primary visuals because most users are on phone.
+- Screenshots must be properly cropped to the actual UI element — never show the full screen when you can crop.
+- Screenshots must NEVER include toasts, banners, or notification overlays — those are ephemeral and confuse the guide.
+- Optimize the HTML guide for phone viewing and professional presentation.
+- Desktop screenshots are acceptable as small secondary previews but phone is the hero.
+
+**Decisions:**
+- **2026-05-19 — Guide layout: 560px max-width, mobile-first CSS.** Default styles target 390px viewport. `@media (min-width: 480px)` for larger sizes. Not desktop-first.
+- **2026-05-19 — Phone-frame screenshot treatment.** Mobile overview uses `.phone-frame` class: centered, max-width 320px, `--r-2xl` radius, deep shadow for device feel.
+- **2026-05-19 — Desktop shown as thumbnail aside, not equal hero.** Desktop overview is a 120px thumbnail inside a muted `.desktop-note` box below the phone hero.
+- **2026-05-19 — Form screenshots crop to `#suggest-form` element, not `#suggest-overlay`.** The overlay includes backdrop/scrim which makes the screenshot too large and noisy.
+- **2026-05-19 — Toast/banner suppression in all captures.** `hideToasts()` hides `.snack`, `.eid-banner`, `.toast`, `[class*='banner']` before every screenshot.
+- **2026-05-19 — All tab clicks use `{ force: true }` in Playwright.** Mobile bottom sheets intercept clicks on the tab bar; force bypasses actionability checks.
+
+**Files modified:** `scripts/capture-guide-screenshots.js`, `docs/user-guide.html`, `docs/user-guide.css`.

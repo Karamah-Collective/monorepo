@@ -256,5 +256,18 @@
     ],
     "notes": "Alternative destination if the weather is bad. Original destination is: Ala-Malmin liikuntapuisto",
     "date": "2026-05-27"
+  },
+  {
+    "id": "fpe78l",
+    "name": "Kameleonten Sports Hall",
+    "address": "Monikonkatu 8, 02650 Espoo",
+    "lat": 60.2250528,
+    "lng": 24.7983792,
+    "organizer": "Espoo Muslim Center",
+    "jamaats": [
+      "9:00"
+    ],
+    "notes": "Free Parking, Bring your own prayer mat",
+    "date": "2026-05-27"
   }
 ]
