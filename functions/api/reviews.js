@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Function – /api/reviews
  *
- * GET  → List all live reviews grouped by placeId, edge-cached 5 min
+ * GET  → List all live reviews grouped by placeId, never edge-cached
  * POST → Submit a review, send/verify OTP, or check existing review
  *
  * Required Cloudflare Pages Environment Variables:
@@ -50,6 +50,9 @@ export async function onRequestGet(context) {
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowedOrigin(request),
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "CDN-Cache-Control": "no-store",
+    "Cloudflare-CDN-Cache-Control": "no-store",
   };
 
   // Use SHEETS_URL (same as places/events) with GAS_URL fallback
@@ -59,15 +62,14 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const upstream = await fetch(`${gasUrl}?action=reviews`);
+    const upstream = await fetch(`${gasUrl}?action=reviews&_=${Date.now()}`, {
+      cf: { cacheTtl: 0, cacheEverything: false },
+    });
     const body = await upstream.text();
 
     return new Response(body, {
       status: upstream.status,
-      headers: {
-        ...headers,
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60",
-      },
+      headers,
     });
   } catch {
     return json({ error: "Failed to fetch reviews" }, 502, headers);

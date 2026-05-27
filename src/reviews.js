@@ -22,6 +22,7 @@ const OTP_RESEND_COOLDOWN_MS = 30_000;
 let _reviewsMap = new Map();
 let _lastFetch = 0;
 let _activeOverlayPlaceId = null;
+let _activeOverlayPlaceName = "";
 
 // ─── Email Verification Token ────────────────────────────────────────────────
 
@@ -140,18 +141,18 @@ export async function loadReviews() {
 }
 
 async function _fetchReviews() {
-  const urls = ["/api/reviews"];
+  const urls = [_withCacheBust("/api/reviews")];
 
   try {
     const cfg = await import("./config.local.js");
-    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=reviews`);
+    if (cfg.SHEETS_URL) urls.push(_withCacheBust(`${cfg.SHEETS_URL}?action=reviews`));
   } catch {
     // config.local.js absent in production — expected
   }
 
   for (const url of urls) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) continue;
       const json = await res.json();
       if (json.reviews) {
@@ -161,12 +162,19 @@ async function _fetchReviews() {
           localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: json.reviews }));
         } catch { /* quota */ }
         window.dispatchEvent(new Event("hf:reviews-loaded"));
+        _refreshActiveOverlay();
         return;
       }
     } catch {
       continue;
     }
   }
+}
+
+function _withCacheBust(url) {
+  const freshUrl = new URL(url, window.location.origin);
+  freshUrl.searchParams.set("_", Date.now().toString());
+  return freshUrl.href;
 }
 
 function _hydrateMap(data) {
@@ -188,6 +196,7 @@ export function hydrateReviews(reviewsData) {
     localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify({ ts: _lastFetch, data: reviewsData }));
   } catch { /* quota */ }
   window.dispatchEvent(new Event("hf:reviews-loaded"));
+  _refreshActiveOverlay();
 }
 
 // ─── Public Getters ──────────────────────────────────────────────────────────
@@ -394,6 +403,7 @@ export function buildStarDisplay(rating, size = "14") {
  */
 export function openReviewsOverlay(placeId, placeName) {
   _activeOverlayPlaceId = placeId;
+  _activeOverlayPlaceName = placeName;
   const overlay = document.getElementById("reviews-overlay");
   if (!overlay) return;
 
@@ -422,6 +432,15 @@ export function closeReviewsOverlay() {
     overlay.innerHTML = "";
   }
   _activeOverlayPlaceId = null;
+  _activeOverlayPlaceName = "";
+}
+
+function _refreshActiveOverlay() {
+  if (!_activeOverlayPlaceId) return;
+  const overlay = document.getElementById("reviews-overlay");
+  if (!overlay || overlay.classList.contains("hide")) return;
+  if (overlay.querySelector(".rv-form, .rv-verify-form")) return;
+  openReviewsOverlay(_activeOverlayPlaceId, _activeOverlayPlaceName);
 }
 
 function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
@@ -900,6 +919,11 @@ function _showRatingForm(placeId, overlay, insertBefore) {
       };
       if (result.error === "invalid_token") {
         localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+        form.remove();
+        const list = overlay.querySelector(".rv-list");
+        if (list) _showVerificationForm(placeId, overlay, list);
+        showToast(msgs[result.error], "error");
+        return;
       }
       showToast(msgs[result.error] || "Submission failed", "error");
       submitBtn.disabled = false;

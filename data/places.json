@@ -1162,7 +1162,16 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": null,
+      "tue": "10:00-21:00",
+      "wed": "10:00-21:00",
+      "thu": "10:00-21:00",
+      "fri": "10:00-21:00",
+      "sat": "10:00-21:00"
+    }
   },
   {
     "id": "pimapy",
@@ -3088,7 +3097,16 @@
     "lat": 60.4925933,
     "lng": 22.276864,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "hours": {
+      "sun": "07:00-21:00",
+      "mon": "07:00-21:00",
+      "tue": "07:00-21:00",
+      "wed": "07:00-21:00",
+      "thu": "07:00-21:00",
+      "fri": "07:00-21:00",
+      "sat": "07:00-21:00"
+    }
   },
   {
     "id": "94w0gd",
@@ -3195,6 +3213,75 @@
       "thu": "11:00-14:30",
       "fri": "11:00-14:30",
       "sat": null
+    }
+  },
+  {
+    "id": "ojfy1o",
+    "name": "The Amigos, Kielotie 20, 01300 Vantaa",
+    "type": "restaurant",
+    "address": "Kielotie 20, 01300 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2925937,
+    "lng": 25.0369127,
+    "tags": {
+      "cuisine_mexican": true
+    },
+    "notes": "Confirmed via instagram.",
+    "hours": {
+      "sun": "11:00-21:30",
+      "mon": "10:00-21:30",
+      "tue": "10:00-21:30",
+      "wed": "10:00-21:30",
+      "thu": "10:00-21:30",
+      "fri": "10:00-22:30",
+      "sat": "11:00-22:30"
+    }
+  },
+  {
+    "id": "b8kta7",
+    "name": "MexMan - Espoonlahti, Merenkulkijanpolku 3 H, 02320 Espoo",
+    "type": "restaurant",
+    "address": "Merenkulkijanpolku 3 H, 02320 Espoo",
+    "city": "Espoo",
+    "lat": 60.1482247,
+    "lng": 24.6557644,
+    "tags": {
+      "cuisine_mexican": true
+    },
+    "notes": "Multiple branches. Same owner as the amigos in tikkurila. Confirmed via instagram.",
+    "hours": {
+      "sun": "12:00-22:00",
+      "mon": "11:00-23:00",
+      "tue": "11:00-23:00",
+      "wed": "11:00-00:00",
+      "thu": "11:00-00:00",
+      "fri": "11:00-01:00",
+      "sat": "12:00-01:00"
+    }
+  },
+  {
+    "id": "pey53u",
+    "name": "Helsingin Islam Seurakunta",
+    "type": "mosque",
+    "address": "Hämeentie 37, 00500 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1887962,
+    "lng": 24.9641521,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true,
+      "taraweeh": true,
+      "quran_classes": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "10:00-20:30",
+      "mon": "10:00-20:30",
+      "tue": "10:00-20:30",
+      "wed": "10:00-20:30",
+      "thu": "10:00-20:30",
+      "fri": "10:00-20:30",
+      "sat": "10:00-20:30"
     }
   }
 ]
