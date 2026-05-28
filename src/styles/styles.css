@@ -410,7 +410,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #contact-overlay.hide #contact-card {
   transform: scale(0.96);
@@ -513,7 +513,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring), opacity var(--t-med);
+  transition:
+    transform var(--t-spring),
+    opacity var(--t-med),
+    height var(--t-spring);
 }
 #reviews-overlay.hide .rv-overlay-card {
   transform: scale(0.96) translateY(6px);
@@ -1110,7 +1113,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #wish-form-overlay.hide #wish-form-card {
   transform: scale(0.96);
@@ -3701,7 +3704,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-med);
+  transition: transform var(--t-med), height var(--t-spring);
 }
 #event-overlay.hide #event-card {
   transform: scale(0.96);
@@ -3789,7 +3792,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #suggest-overlay.hide #suggest-card {
   transform: scale(0.96);
@@ -4147,7 +4150,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #edit-overlay.hide #edit-card {
   transform: scale(0.96);
@@ -7833,7 +7836,9 @@ body.dark-mode .sp-chip {
     max-height: calc(100vh - 40px);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     transform: translateY(0);
-    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    transition:
+      transform var(--t-spring),
+      height var(--t-spring);
   }
   #suggest-overlay.hide #suggest-card,
   #edit-overlay.hide #edit-card,
@@ -9173,7 +9178,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition: transform var(--t-spring), height var(--t-spring);
 }
 #eid-overlay.hide #eid-card {
   transform: scale(0.96);

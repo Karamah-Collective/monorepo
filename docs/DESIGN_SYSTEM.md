@@ -303,6 +303,10 @@ Buttons must contain EITHER an icon OR text — never both together.
 
 All animations and transitions are suppressed when the user has enabled "Reduce motion" in their OS settings.
 
+### Overlay height transitions
+
+Dynamic overlay cards use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps, event recurrence fields, suggest/edit opening-hours sections, and suggest Eid organizer fields.
+
 ### `::selection`
 
 Text selection uses a 25% tint of `--accent` instead of the browser default blue.

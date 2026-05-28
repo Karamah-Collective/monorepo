@@ -7,7 +7,7 @@
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
 import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { esc, escA, showToast, loadRecaptcha } from "./utils.js";
+import { esc, escA, showToast, loadRecaptcha, animateElementHeight } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -23,6 +23,11 @@ let _reviewsMap = new Map();
 let _lastFetch = 0;
 let _activeOverlayPlaceId = null;
 let _activeOverlayPlaceName = "";
+
+function _animateReviewCardHeight(overlay, changeFn) {
+  const card = overlay?.querySelector(".rv-overlay-card");
+  animateElementHeight(card, changeFn, { skip: overlay?.classList.contains("hide") });
+}
 
 // ─── Email Verification Token ────────────────────────────────────────────────
 
@@ -533,16 +538,18 @@ function _relativeTime(timestamp) {
  * @param {HTMLElement} overlay
  */
 function _showReviewForm(placeId, overlay) {
-  const writeBtn = overlay.querySelector(".rv-write-btn");
-  if (writeBtn) writeBtn.remove();
+  _animateReviewCardHeight(overlay, () => {
+    const writeBtn = overlay.querySelector(".rv-write-btn");
+    if (writeBtn) writeBtn.remove();
 
-  const list = overlay.querySelector(".rv-list");
+    const list = overlay.querySelector(".rv-list");
 
-  if (isVerified()) {
-    _showRatingForm(placeId, overlay, list);
-  } else {
-    _showVerificationForm(placeId, overlay, list);
-  }
+    if (isVerified()) {
+      _showRatingForm(placeId, overlay, list);
+    } else {
+      _showVerificationForm(placeId, overlay, list);
+    }
+  });
 }
 
 /**
@@ -707,12 +714,13 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
 
     if (result.success) {
       _lastSendTime = Date.now();
-      emailStep.classList.add("hide");
-      otpStep.classList.remove("hide");
-      // Update the hint with the actual email
-      const hint = otpStep.querySelector(".rv-otp-email-hint");
-      if (hint) hint.textContent = `Code sent to ${_email}`;
-      otpDigits[0].focus();
+      _animateReviewCardHeight(overlay, () => {
+        emailStep.classList.add("hide");
+        otpStep.classList.remove("hide");
+        const hint = otpStep.querySelector(".rv-otp-email-hint");
+        if (hint) hint.textContent = `Code sent to ${_email}`;
+      });
+      requestAnimationFrame(() => otpDigits[0].focus());
       _startResendCooldown(resendLink);
     } else {
       const msgs = {
@@ -743,8 +751,10 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
     const result = await _verifyOTP(_email, _getOtpValue());
 
     if (result.success) {
-      container.remove();
-      _showRatingForm(placeId, overlay, insertBefore);
+      _animateReviewCardHeight(overlay, () => {
+        container.remove();
+        _showRatingForm(placeId, overlay, insertBefore);
+      });
       showToast("Email verified", "check");
     } else {
       const msgs = {
@@ -758,11 +768,13 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
       verifyBtn.disabled = false;
       verifyBtn.textContent = "Verify";
       if (result.error === "otp_expired" || result.error === "too_many_attempts") {
-        otpStep.classList.add("hide");
-        emailStep.classList.remove("hide");
-        otpDigits.forEach((d) => { d.value = ""; });
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Send verification code";
+        _animateReviewCardHeight(overlay, () => {
+          otpStep.classList.add("hide");
+          emailStep.classList.remove("hide");
+          otpDigits.forEach((d) => { d.value = ""; });
+          sendBtn.disabled = false;
+          sendBtn.textContent = "Send verification code";
+        });
       }
     }
   }
@@ -919,9 +931,11 @@ function _showRatingForm(placeId, overlay, insertBefore) {
       };
       if (result.error === "invalid_token") {
         localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
-        form.remove();
-        const list = overlay.querySelector(".rv-list");
-        if (list) _showVerificationForm(placeId, overlay, list);
+        _animateReviewCardHeight(overlay, () => {
+          form.remove();
+          const list = overlay.querySelector(".rv-list");
+          if (list) _showVerificationForm(placeId, overlay, list);
+        });
         showToast(msgs[result.error], "error");
         return;
       }

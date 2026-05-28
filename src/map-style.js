@@ -359,7 +359,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#d0d0d0",
+        "line-color": "#d7d1c8",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -385,7 +385,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fff",
+        "line-color": "#f0ebe3",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -411,7 +411,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#b8b8b8",
+        "line-color": "#c9c1b6",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -438,7 +438,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fff",
+        "line-color": "#ece4d8",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -464,7 +464,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#aaa",
+        "line-color": "#bfb5aa",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -490,7 +490,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fff",
+        "line-color": "#e7dccd",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -516,7 +516,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#e0c060",
+        "line-color": "#d1b45d",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -542,7 +542,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fef2c6",
+        "line-color": "#f3dfa4",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -568,7 +568,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#e0c060",
+        "line-color": "#d1b45d",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -594,7 +594,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fef2c6",
+        "line-color": "#f3dfa4",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -630,7 +630,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "butt" },
       paint: {
-        "line-color": "#c0c0c0",
+        "line-color": "#d7d1c8",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -654,7 +654,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fff",
+        "line-color": "#f0ebe3",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -686,7 +686,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "butt" },
       paint: {
-        "line-color": "#aaa",
+        "line-color": "#bfb5aa",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -718,7 +718,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#fff",
+        "line-color": "#e7dccd",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],

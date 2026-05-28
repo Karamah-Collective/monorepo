@@ -2408,3 +2408,27 @@ Removed decorative SVG icons from:
 - **2026-05-19 — All tab clicks use `{ force: true }` in Playwright.** Mobile bottom sheets intercept clicks on the tab bar; force bypasses actionability checks.
 
 **Files modified:** `scripts/capture-guide-screenshots.js`, `docs/user-guide.html`, `docs/user-guide.css`.
+
+### 2026-05-28 — Reviews overlay height transitions
+
+**Problem:** Opening the review form changed the reviews overlay height instantly because `reviews.js` removed/inserted form DOM while `.rv-overlay-card` was at `height: auto`.
+
+**Fix:** Added a scoped FLIP-style height helper for `.rv-overlay-card`: pin current height, perform the DOM swap, measure the new natural height, then animate `height` with `--t-spring`. Wrapped the write-review form insertion, email-to-OTP verification step, OTP fallback, and invalid-token fallback.
+
+**Pattern:** Review overlay content swaps should animate the card height instead of relying on immediate auto-height reflow.
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-28 — Cross-form overlay height transitions and changelog restore
+
+**Problem:** The review overlay height animation needed to carry over to other dynamic form surfaces such as event recurrence fields, suggest/edit opening hours, and Eid prayer submission fields. Recent commits also had no central changelog coverage.
+
+**Fix:** Promoted the review-specific FLIP height logic to shared `animateElementHeight()` in `src/utils.js`, then reused it in reviews, event schedule/recurrence controls, suggest/edit hours disclosure/add/remove flows, suggest tag accordions, and suggest Eid organizer chip updates. Added `height var(--t-spring)` to overlay card transitions for suggest, edit, contact, wish form, event, Eid, and reviews-compatible card surfaces.
+
+**Documentation:** Created root `CHANGELOG.md` with an Unreleased section plus backfilled notes for commits `898f686`, `04a183e`, and `dc5d830`. Added the overlay-height pattern to `docs/DESIGN_SYSTEM.md`.
+
+**Pattern:** Any overlay card whose visible content changes after opening should wrap the mutation in `animateElementHeight()` unless the card is hidden or the user has enabled reduced motion.
+
+**Files modified:** `CHANGELOG.md`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`, `src/places.js`, `src/reviews.js`, `src/styles/styles.css`, `src/utils.js`.

@@ -6,10 +6,7 @@
 export const EDITOR_ENABLED = false;
 
 // ─── Layer colors ─────────────────────────────────────────────────────────────
-// Base palette (shared starting point for both themes).
-// Dark appearance comes entirely from the canvas filter below, not from different
-// layer colors — so both themes start from the same values.
-const BASE_COLORS = {
+const LIGHT_COLORS = {
   background:             '#ffffff',
   landcover_grass:        '#ddeacd',
   landcover_wood:         '#d0e3b8',
@@ -30,16 +27,16 @@ const BASE_COLORS = {
   building:               '#e2e4e9',
   building_outline:       '#d0d2da',
   road_path:              '#d4c6ba',
-  road_service_casing:    '#d0d0d0',
-  road_service:           '#ffffff',
-  road_secondary_casing:  '#b8b8b8',
-  road_secondary:         '#ffffff',
-  road_primary_casing:    '#aaaaaa',
-  road_primary:           '#ffffff',
-  road_trunk_casing:      '#e0c060',
-  road_trunk:             '#fef2c6',
-  road_motorway_casing:   '#e0c060',
-  road_motorway:          '#fef2c6',
+  road_service_casing:    '#d7d1c8',
+  road_service:           '#f0ebe3',
+  road_secondary_casing:  '#c9c1b6',
+  road_secondary:         '#ece4d8',
+  road_primary_casing:    '#bfb5aa',
+  road_primary:           '#e7dccd',
+  road_trunk_casing:      '#d1b45d',
+  road_trunk:             '#f3dfa4',
+  road_motorway_casing:   '#d1b45d',
+  road_motorway:          '#f3dfa4',
   rail:                   '#bbbbbb',
   admin_sub:              '#c8b4a0',
   admin_country:          '#aca08c',
@@ -53,9 +50,24 @@ const BASE_COLORS = {
   label_country:          '#666666',
 };
 
+const DARK_COLORS = {
+  ...LIGHT_COLORS,
+  road_path:              '#a89a90',
+  road_service_casing:    '#858c8e',
+  road_service:           '#b7bfbd',
+  road_secondary_casing:  '#747e80',
+  road_secondary:         '#aeb8b6',
+  road_primary_casing:    '#687476',
+  road_primary:           '#a3afae',
+  road_trunk_casing:      '#7f7048',
+  road_trunk:             '#b4a36c',
+  road_motorway_casing:   '#7f7048',
+  road_motorway:          '#b4a36c',
+};
+
 export const DEFAULT_COLORS = {
-  light: { ...BASE_COLORS },
-  dark:  { ...BASE_COLORS },
+  light: { ...LIGHT_COLORS },
+  dark:  { ...DARK_COLORS },
 };
 
 // ─── Canvas filter defaults ───────────────────────────────────────────────────

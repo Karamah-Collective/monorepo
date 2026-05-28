@@ -405,6 +405,60 @@ export function initSegPill(container) {
 // During drag the sheet follows the finger with zero resistance.
 // On release it gracefully animates to the nearest snap point.
 
+const HEIGHT_ANIMATION_EPSILON_PX = 2;
+const HEIGHT_ANIMATION_FALLBACK_MS = 500;
+
+/**
+ * Smoothly animate an element's height while its DOM content changes.
+ * @param {HTMLElement | null | undefined} element
+ * @param {() => void} changeFn
+ * @param {{ skip?: boolean }} [options]
+ * @returns {void}
+ */
+export function animateElementHeight(element, changeFn, { skip = false } = {}) {
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!element || skip || reduceMotion || !element.isConnected) {
+    changeFn();
+    return;
+  }
+
+  if (element._heightAnimCleanup) element._heightAnimCleanup();
+
+  const oldHeight = element.offsetHeight;
+  element.style.height = `${oldHeight}px`;
+  element.style.transition = "none";
+
+  changeFn();
+
+  element.style.height = "auto";
+  const newHeight = element.offsetHeight;
+
+  if (Math.abs(newHeight - oldHeight) < HEIGHT_ANIMATION_EPSILON_PX) {
+    element.style.removeProperty("height");
+    element.style.removeProperty("transition");
+    return;
+  }
+
+  element.style.height = `${oldHeight}px`;
+  void element.offsetHeight;
+  element.style.removeProperty("transition");
+  element.style.height = `${newHeight}px`;
+
+  const cleanup = () => {
+    clearTimeout(element._heightAnimTimer);
+    element.removeEventListener("transitionend", onEnd);
+    element._heightAnimCleanup = null;
+    if (element.isConnected) element.style.removeProperty("height");
+  };
+  const onEnd = (e) => {
+    if (e.propertyName === "height") cleanup();
+  };
+
+  element.addEventListener("transitionend", onEnd);
+  element._heightAnimCleanup = cleanup;
+  element._heightAnimTimer = setTimeout(cleanup, HEIGHT_ANIMATION_FALLBACK_MS);
+}
+
 /**
  * Smoothly animate a desktop sheet's height when its content changes.
  * On mobile (≤768 px) the changeFn runs immediately with no animation.

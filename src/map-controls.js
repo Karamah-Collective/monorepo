@@ -822,7 +822,12 @@ export function toggleSatellite() {
       map.setPaintProperty("water", "fill-color", origWaterColor);
     }
     // Restore bridge colors to vector defaults
-    const VEC_BRIDGE_COLORS = { bridge_minor_casing: "#ccc", bridge_major_casing: "#ccc", bridge_minor: "#fff", bridge_major: "#fff" };
+    const VEC_BRIDGE_COLORS = {
+      bridge_minor_casing: "#d7d1c8",
+      bridge_major_casing: "#bfb5aa",
+      bridge_minor: "#f0ebe3",
+      bridge_major: "#e7dccd",
+    };
     for (const id in VEC_BRIDGE_COLORS) {
       if (map.getLayer(id)) map.setPaintProperty(id, "line-color", VEC_BRIDGE_COLORS[id]);
     }

@@ -1,6 +1,6 @@
 import { map, scheduleMapViewportSync } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
@@ -43,6 +43,13 @@ let activeSortField = "default"; // "default" | "name" | "distance" | "date"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
+
+/** Animate the open overlay card that contains a dynamic form control. */
+function _animateFormCardHeight(sourceEl, changeFn) {
+  const card = sourceEl?.closest?.("#suggest-card, #edit-card, #event-card, #contact-card, #wish-form-card, #eid-card");
+  const overlay = card?.parentElement;
+  animateElementHeight(card, changeFn, { skip: overlay?.classList.contains("hide") });
+}
 let placeSearchQuery = "";       // inline places-panel search text
 const collapsedCityGroups = new Set();
 let _lastGroupedData = new Map();
@@ -516,26 +523,30 @@ function _renderHoursForm(container, prefix, existingHours) {
   const toggleBtn = container.querySelector(`#${prefix}-hours-toggle`);
   const body = container.querySelector(`#${prefix}-hours-body`);
   toggleBtn.addEventListener("click", () => {
-    const isOpen = body.classList.toggle("hide");
-    toggleBtn.setAttribute("aria-expanded", !isOpen);
-    toggleBtn.querySelector(".sg-hours-chevron").classList.toggle("expanded", !isOpen);
+    _animateFormCardHeight(container, () => {
+      const isOpen = body.classList.toggle("hide");
+      toggleBtn.setAttribute("aria-expanded", !isOpen);
+      toggleBtn.querySelector(".sg-hours-chevron").classList.toggle("expanded", !isOpen);
+    });
   });
 
   // Wire up add button
   const addBtn = container.querySelector(`#${prefix}-hours-add`);
   addBtn.addEventListener("click", () => {
-    const entriesEl = container.querySelector(`#${prefix}-hours-entries`);
-    const idx = entriesEl.children.length;
-    const assigned = new Set();
-    entriesEl.querySelectorAll(".ev-day-btn.active").forEach((btn) => assigned.add(btn.dataset.day));
-    const available = _DAY_KEYS.filter((d) => !assigned.has(d));
-    if (!available.length) return;
-    const newEntry = document.createElement("div");
-    newEntry.innerHTML = _renderHoursEntry(prefix, idx, { days: available, open: "", close: "", closed: false });
-    const entryEl = newEntry.firstElementChild;
-    entriesEl.appendChild(entryEl);
-    _wireHoursEntry(entryEl, container);
-    _syncHoursDays(container);
+    _animateFormCardHeight(container, () => {
+      const entriesEl = container.querySelector(`#${prefix}-hours-entries`);
+      const idx = entriesEl.children.length;
+      const assigned = new Set();
+      entriesEl.querySelectorAll(".ev-day-btn.active").forEach((btn) => assigned.add(btn.dataset.day));
+      const available = _DAY_KEYS.filter((d) => !assigned.has(d));
+      if (!available.length) return;
+      const newEntry = document.createElement("div");
+      newEntry.innerHTML = _renderHoursEntry(prefix, idx, { days: available, open: "", close: "", closed: false });
+      const entryEl = newEntry.firstElementChild;
+      entriesEl.appendChild(entryEl);
+      _wireHoursEntry(entryEl, container);
+      _syncHoursDays(container);
+    });
   });
 
   // Wire existing entries
@@ -584,8 +595,10 @@ function _wireHoursEntry(entryEl, container) {
   // Remove button
   const removeBtn = entryEl.querySelector(".sg-hours-remove-btn");
   removeBtn?.addEventListener("click", () => {
-    entryEl.remove();
-    _syncHoursDays(container);
+    _animateFormCardHeight(container, () => {
+      entryEl.remove();
+      _syncHoursDays(container);
+    });
   });
 }
 
@@ -3040,7 +3053,7 @@ function _prefillRecurringFromPattern(pattern) {
     if (anchorInput) anchorInput.value = parsed.anchor;
   }
 
-  _syncRecurringFields();
+  _syncRecurringFields({ animate: false });
 }
 document.getElementById("suggest-place-btn").addEventListener("click", () => {
   document.getElementById("suggest-form").reset();
@@ -3349,14 +3362,16 @@ function renderSuggestTags() {
     }).join("");
 }
 
-sgTypeSelect.addEventListener("change", renderSuggestTags);
-sgTypeSelect.addEventListener("change", () => sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value));
 sgTypeSelect.addEventListener("change", () => {
-  const isEid = sgTypeSelect.value === "eid_prayer";
-  document.getElementById("sg-eid-fields").classList.toggle("hide", !isEid);
-  document.getElementById("sg-hours-section").classList.toggle("hide", isEid);
-  document.getElementById("sg-tags-section").style.display = isEid ? "none" : "";
-  if (isEid) _populateEidOrgDropdown();
+  _animateFormCardHeight(sgTypeSelect, () => {
+    renderSuggestTags();
+    sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
+    const isEid = sgTypeSelect.value === "eid_prayer";
+    document.getElementById("sg-eid-fields").classList.toggle("hide", !isEid);
+    document.getElementById("sg-hours-section").classList.toggle("hide", isEid);
+    document.getElementById("sg-tags-section").style.display = isEid ? "none" : "";
+    if (isEid) _populateEidOrgDropdown();
+  });
 });
 sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
 renderSuggestTags();
@@ -3380,20 +3395,24 @@ function _renderEidOrgChips() {
 
 document.getElementById("sg-eid-org-select").addEventListener("change", (e) => {
   const name = e.target.options[e.target.selectedIndex].textContent;
-  if (name && !_eidSelectedOrgs.includes(name)) {
-    _eidSelectedOrgs.push(name);
-    _renderEidOrgChips();
-  }
+  _animateFormCardHeight(e.target, () => {
+    if (name && !_eidSelectedOrgs.includes(name)) {
+      _eidSelectedOrgs.push(name);
+      _renderEidOrgChips();
+    }
+  });
   e.target.selectedIndex = 0;
 });
 
 document.getElementById("sg-eid-org-add").addEventListener("click", () => {
   const input = document.getElementById("sg-eid-org-input");
   const val = input.value.trim();
-  if (val && !_eidSelectedOrgs.includes(val)) {
-    _eidSelectedOrgs.push(val);
-    _renderEidOrgChips();
-  }
+  _animateFormCardHeight(input, () => {
+    if (val && !_eidSelectedOrgs.includes(val)) {
+      _eidSelectedOrgs.push(val);
+      _renderEidOrgChips();
+    }
+  });
   input.value = "";
 });
 
@@ -3404,8 +3423,10 @@ document.getElementById("sg-eid-org-input").addEventListener("keydown", (e) => {
 document.getElementById("sg-eid-org-chips").addEventListener("click", (e) => {
   const btn = e.target.closest(".sg-eid-org-remove");
   if (!btn) return;
-  _eidSelectedOrgs.splice(parseInt(btn.dataset.idx, 10), 1);
-  _renderEidOrgChips();
+  _animateFormCardHeight(btn, () => {
+    _eidSelectedOrgs.splice(parseInt(btn.dataset.idx, 10), 1);
+    _renderEidOrgChips();
+  });
 });
 
 sgTagsContainer.addEventListener("click", (e) => {
@@ -3415,18 +3436,20 @@ sgTagsContainer.addEventListener("click", (e) => {
     const parentId = expandBtn.dataset.expand;
     const panel = sgTagsContainer.querySelector(`.sg-subtags[data-parent="${parentId}"]`);
     if (panel) {
-      const opening = panel.classList.contains("shut");
-      if (opening) {
-        sgTagsContainer.querySelectorAll(".sg-subtags:not(.shut)").forEach(other => {
-          if (other === panel) return;
-          other.classList.add("shut");
-          const oid = other.dataset.parent;
-          const otherBtn = sgTagsContainer.querySelector(`.sg-tag-expand[data-expand="${oid}"]`);
-          if (otherBtn) otherBtn.classList.remove("open");
-        });
-      }
-      panel.classList.toggle("shut");
-      expandBtn.classList.toggle("open");
+      _animateFormCardHeight(expandBtn, () => {
+        const opening = panel.classList.contains("shut");
+        if (opening) {
+          sgTagsContainer.querySelectorAll(".sg-subtags:not(.shut)").forEach(other => {
+            if (other === panel) return;
+            other.classList.add("shut");
+            const oid = other.dataset.parent;
+            const otherBtn = sgTagsContainer.querySelector(`.sg-tag-expand[data-expand="${oid}"]`);
+            if (otherBtn) otherBtn.classList.remove("open");
+          });
+        }
+        panel.classList.toggle("shut");
+        expandBtn.classList.toggle("open");
+      });
     }
     return;
   }
@@ -3466,15 +3489,17 @@ sgTagsContainer.addEventListener("click", (e) => {
       input.value = "";
       return;
     }
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "sg-subtag active";
-    chip.dataset.tag = id;
-    chip.dataset.custom = "true";
-    chip.dataset.label = label;
-    chip.textContent = label;
-    chips.appendChild(chip);
-    input.value = "";
+    _animateFormCardHeight(addBtn, () => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "sg-subtag active";
+      chip.dataset.tag = id;
+      chip.dataset.custom = "true";
+      chip.dataset.label = label;
+      chip.textContent = label;
+      chips.appendChild(chip);
+      input.value = "";
+    });
     return;
   }
   // Tri-state toggle for regular tags
@@ -3997,24 +4022,33 @@ function _buildCurrentPattern() {
 }
 
 /** Show/hide fields based on frequency. */
-function _syncRecurringFields() {
+function _syncRecurringFields({ animate = true } = {}) {
   const dayPicker = document.getElementById("ev-day-picker");
   const monthlyOpts = document.getElementById("ev-monthly-opts");
   const biweeklyAnchor = document.getElementById("ev-biweekly-anchor");
+  const card = document.getElementById("event-card");
 
-  dayPicker?.classList.toggle("hide", !["weekly", "biweekly"].includes(_evFrequency));
-  monthlyOpts?.classList.toggle("hide", _evFrequency !== "monthly");
-  biweeklyAnchor?.classList.toggle("hide", _evFrequency !== "biweekly");
+  const update = () => {
+    dayPicker?.classList.toggle("hide", !["weekly", "biweekly"].includes(_evFrequency));
+    monthlyOpts?.classList.toggle("hide", _evFrequency !== "monthly");
+    biweeklyAnchor?.classList.toggle("hide", _evFrequency !== "biweekly");
 
-  // Monthly sub-fields
-  const monthDatePicker = document.getElementById("ev-monthly-date-picker");
-  const monthDayPicker = document.getElementById("ev-monthly-day-picker");
-  if (_evFrequency === "monthly") {
-    monthDatePicker?.classList.toggle("hide", _evMonthlyType !== "date");
-    monthDayPicker?.classList.toggle("hide", _evMonthlyType !== "day");
+    // Monthly sub-fields
+    const monthDatePicker = document.getElementById("ev-monthly-date-picker");
+    const monthDayPicker = document.getElementById("ev-monthly-day-picker");
+    if (_evFrequency === "monthly") {
+      monthDatePicker?.classList.toggle("hide", _evMonthlyType !== "date");
+      monthDayPicker?.classList.toggle("hide", _evMonthlyType !== "day");
+    }
+
+    _updateRecurrencePreview();
+  };
+
+  if (!animate) {
+    update();
+    return;
   }
-
-  _updateRecurrencePreview();
+  _animateFormCardHeight(card, update);
 }
 
 /** Initialize all recurring event form chips. */
@@ -4056,12 +4090,14 @@ function _initRecurringFormChips() {
 _eventOverlay.querySelector(".ev-schedule-chips")?.addEventListener("click", (e) => {
   const chip = e.target.closest(".ev-sched-chip");
   if (!chip) return;
-  _eventOverlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
-  chip.classList.add("active");
-  _evScheduleMode = chip.dataset.value;
-  const isRecurring = _evScheduleMode === "recurring";
-  document.getElementById("ev-onetime-fields").classList.toggle("hide", isRecurring);
-  document.getElementById("ev-recurring-fields").classList.toggle("hide", !isRecurring);
+  _animateFormCardHeight(chip, () => {
+    _eventOverlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    _evScheduleMode = chip.dataset.value;
+    const isRecurring = _evScheduleMode === "recurring";
+    document.getElementById("ev-onetime-fields").classList.toggle("hide", isRecurring);
+    document.getElementById("ev-recurring-fields").classList.toggle("hide", !isRecurring);
+  });
 });
 
 // Frequency segmented bar clicks
@@ -4086,7 +4122,7 @@ document.getElementById("ev-day-picker")?.addEventListener("click", (e) => {
     _evDaysOfWeek.add(val);
     btn.classList.add("active");
   }
-  _updateRecurrencePreview();
+  _animateFormCardHeight(btn, _updateRecurrencePreview);
 });
 
 // Monthly toggle (Date / Day)
@@ -4111,7 +4147,7 @@ _eventOverlay.querySelector(".ev-mdate-grid")?.addEventListener("click", (e) => 
     _evMonthDates.add(val);
     btn.classList.add("active");
   }
-  _updateRecurrencePreview();
+  _animateFormCardHeight(btn, _updateRecurrencePreview);
 });
 
 // Ordinal pill buttons (1st, 2nd, …, Last) — toggle multi-select
@@ -4126,7 +4162,7 @@ _eventOverlay.querySelector(".ev-ord-row")?.addEventListener("click", (e) => {
     _evOrdinals.add(val);
     btn.classList.add("active");
   }
-  _updateRecurrencePreview();
+  _animateFormCardHeight(btn, _updateRecurrencePreview);
 });
 
 // Monthly day-of-week circular buttons — toggle multi-select
@@ -4141,11 +4177,13 @@ _eventOverlay.querySelector(".ev-monthly-day-dow")?.addEventListener("click", (e
     _evMonthlyDows.add(val);
     btn.classList.add("active");
   }
-  _updateRecurrencePreview();
+  _animateFormCardHeight(btn, _updateRecurrencePreview);
 });
 
 // Biweekly anchor date change
-document.getElementById("ev-anchor-date")?.addEventListener("change", () => _updateRecurrencePreview());
+document.getElementById("ev-anchor-date")?.addEventListener("change", (e) => {
+  _animateFormCardHeight(e.target, _updateRecurrencePreview);
+});
 
 // ── Form submission ──────────────────────────────────────────────────────────
 _eventForm.addEventListener("submit", async (e) => {
