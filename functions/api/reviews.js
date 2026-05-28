@@ -66,7 +66,6 @@ export async function onRequestGet(context) {
       cf: { cacheTtl: 0, cacheEverything: false },
     });
     const body = await upstream.text();
-
     return new Response(body, {
       status: upstream.status,
       headers,

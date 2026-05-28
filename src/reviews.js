@@ -214,7 +214,7 @@ export function hydrateReviews(reviewsData) {
 export function getPlaceRating(placeId) {
   const data = _reviewsMap.get(placeId);
   if (!data || !data.count) return null;
-  return { avg: data.avg, count: data.count };
+  return { avg: data.avg, count: data.count, sources: data.sources || null };
 }
 
 /**
@@ -414,7 +414,6 @@ export function openReviewsOverlay(placeId, placeName) {
 
   const reviews = getPlaceReviews(placeId);
   const ratingData = getPlaceRating(placeId);
-
   overlay.innerHTML = _buildOverlayContent(placeId, placeName, ratingData, reviews);
   overlay.classList.remove("hide");
 
@@ -451,10 +450,20 @@ function _refreshActiveOverlay() {
 function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
   const avg = ratingData ? ratingData.avg.toFixed(1) : "–";
   const count = ratingData ? ratingData.count : 0;
-  const distribution = _calcDistribution(reviews);
+  const communityReviews = reviews.filter((r) => r.source !== "google");
+  const communityCountFallback = communityReviews.length;
+  const communitySumFallback = communityReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0);
+  const communityAvgFallback = communityCountFallback ? (communitySumFallback / communityCountFallback) : 0;
+  const communityCount = Number(ratingData?.sources?.community?.count ?? communityCountFallback);
+  const communityAvg = Number(ratingData?.sources?.community?.avg ?? communityAvgFallback);
+  const googleCountFromSources = Number(ratingData?.sources?.google?.count || 0);
+  const googleCount = googleCountFromSources > 0 ? googleCountFromSources : Math.max(0, count - communityCount);
+  const googleAvg = Number(ratingData?.sources?.google?.avg || 0);
+  const textReviews = reviews.filter((r) => (r.text || "").trim().length > 0);
+  const distribution = _calcDistribution(communityReviews);
 
   const distBars = [5, 4, 3, 2, 1].map((stars) => {
-    const pct = count > 0 ? ((distribution[stars] || 0) / count) * 100 : 0;
+    const pct = communityCount > 0 ? ((distribution[stars] || 0) / communityCount) * 100 : 0;
     return `<div class="rv-dist-row">
       <span class="rv-dist-label">${stars}</span>
       <div class="rv-dist-bar"><div class="rv-dist-fill" style="width:${pct}%"></div></div>
@@ -462,17 +471,23 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
     </div>`;
   }).join("");
 
+  const sourceSummary = `<div class="rv-source-stats">
+            <span class="rv-source-pill rv-source-pill-community">Community ${communityCount}</span>
+            <span class="rv-source-pill rv-source-pill-google">Google ${googleCount}</span>
+          </div>`;
+
   const summaryHtml = count > 0 ? `<div class="rv-summary">
         <div class="rv-avg-block">
           <span class="rv-avg-num">${avg}</span>
           <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "13")}</div>
-          <span class="rv-avg-count">${count}</span>
+          <span class="rv-avg-count">${count} total</span>
+          ${sourceSummary}
         </div>
         <div class="rv-dist">${distBars}</div>
       </div>` : "";
 
-  const reviewCards = reviews.length
-    ? `<div class="rv-list"><span class="rv-list-header">${count} Review${count !== 1 ? "s" : ""}</span>${reviews.map((r) => _buildReviewCard(r)).join("")}</div>`
+  const reviewCards = textReviews.length
+    ? `<div class="rv-list"><span class="rv-list-header">${textReviews.length} Text Review${textReviews.length !== 1 ? "s" : ""}</span>${textReviews.map((r) => _buildReviewCard(r)).join("")}</div>`
     : `<div class="rv-list"><div class="rv-empty"><span class="rv-empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><p class="rv-empty-text">No reviews yet — be the first!</p></div></div>`;
 
   return `<div class="rv-overlay-card">
@@ -492,11 +507,18 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
 
 function _buildReviewCard(review) {
   const timeAgo = _relativeTime(review.timestamp);
+  const isGoogle = review.source === "google";
+  const sourceChip = isGoogle
+    ? `<span class="rv-source-chip rv-source-google">Google</span>`
+    : `<span class="rv-source-chip rv-source-community">Community</span>`;
+  const author = isGoogle && review.authorName ? `<span class="rv-review-author">${esc(review.authorName)}</span>` : "";
   return `<div class="rv-review-card">
     <span class="rv-review-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
     <div class="rv-review-body">
       <div class="rv-review-meta">
         <span class="rv-review-stars">${buildStarDisplay(review.rating, "12")}</span>
+        ${sourceChip}
+        ${author}
         <span class="rv-review-time">${esc(timeAgo)}</span>
       </div>
       ${review.text ? `<p class="rv-review-text">${esc(review.text)}</p>` : ""}

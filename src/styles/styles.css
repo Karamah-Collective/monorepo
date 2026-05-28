@@ -606,6 +606,28 @@
   font-size: 11px;
   color: var(--text-3);
 }
+.rv-source-stats {
+  display: flex;
+  gap: var(--sp-1h);
+  margin-top: var(--sp-2);
+}
+.rv-source-pill {
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  background: var(--surface-2);
+}
+.rv-source-pill-community {
+  color: var(--text-2);
+}
+.rv-source-pill-google {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
 .rv-dist {
   flex: 1;
   display: flex;
@@ -719,6 +741,31 @@
 .rv-review-time {
   font-size: var(--txt-xs);
   color: var(--text-3);
+}
+.rv-source-chip {
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  background: var(--surface-2);
+}
+.rv-source-google {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.rv-source-community {
+  color: var(--text-2);
+}
+.rv-review-author {
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .rv-review-text {
   font-size: var(--txt-sm);

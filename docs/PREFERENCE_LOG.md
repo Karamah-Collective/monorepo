@@ -2432,3 +2432,21 @@ Removed decorative SVG icons from:
 **Pattern:** Any overlay card whose visible content changes after opening should wrap the mutation in `animateElementHeight()` unless the card is hidden or the user has enabled reduced motion.
 
 **Files modified:** `CHANGELOG.md`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`, `src/places.js`, `src/reviews.js`, `src/styles/styles.css`, `src/utils.js`.
+
+---
+
+### 2026-05-29 — Google review source moved to Sheets, no live per-open API calls
+
+**Preference:** Google ratings/reviews must not be fetched on every overlay open due to API quota limits. Instead, store them in the Reviews sheet and refresh manually when needed.
+
+**Implementation:**
+- `Reviews` sheet schema extended with `H=googleReview` (JSON array) and `I=googleRating` (number).
+- Apps Script now exposes Google-backed review items via `getReviewsJSON()` by parsing `googleReview`, tagging those items as `source: "google"`, and combining them with community reviews.
+- Added manual Apps Script helper: `refreshAllGoogleReviewsAndRatings()` to bulk update all places into Reviews `H:I` using Google Places APIs.
+- Removed Cloudflare live Google review fetch path so `/api/reviews` is now sheet-driven only.
+
+**Opening hours rule (explicit):**
+- New-place enrichment writes Google opening hours only when `New!Q` is empty.
+- If user submitted opening hours, those are preserved and used over Google-derived values.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `functions/api/reviews.js`, `src/reviews.js`, `docs/PREFERENCE_LOG.md`.
