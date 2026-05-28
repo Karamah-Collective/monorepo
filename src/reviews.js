@@ -213,7 +213,31 @@ export function hydrateReviews(reviewsData) {
  */
 export function getPlaceRating(placeId) {
   const data = _reviewsMap.get(placeId);
-  if (!data || !data.count) return null;
+  if (!data) return null;
+  if (!data.count && Array.isArray(data.items) && data.items.length) {
+    const ratedItems = data.items.filter((item) => Number(item.rating) >= 1 && Number(item.rating) <= 5);
+    if (!ratedItems.length) return null;
+    const sum = ratedItems.reduce((total, item) => total + Number(item.rating), 0);
+    const communityItems = ratedItems.filter((item) => item.source !== "google");
+    const googleItems = ratedItems.filter((item) => item.source === "google");
+    const communitySum = communityItems.reduce((total, item) => total + Number(item.rating), 0);
+    const googleSum = googleItems.reduce((total, item) => total + Number(item.rating), 0);
+    return {
+      avg: sum / ratedItems.length,
+      count: ratedItems.length,
+      sources: {
+        community: {
+          avg: communityItems.length ? communitySum / communityItems.length : 0,
+          count: communityItems.length,
+        },
+        google: {
+          avg: googleItems.length ? googleSum / googleItems.length : 0,
+          count: googleItems.length,
+        },
+      },
+    };
+  }
+  if (!data.count) return null;
   return { avg: data.avg, count: data.count, sources: data.sources || null };
 }
 

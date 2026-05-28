@@ -410,7 +410,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring), height var(--t-spring);
+  transition: transform var(--t-spring);
 }
 #contact-overlay.hide #contact-card {
   transform: scale(0.96);
@@ -1160,7 +1160,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring), height var(--t-spring);
+  transition: transform var(--t-spring);
 }
 #wish-form-overlay.hide #wish-form-card {
   transform: scale(0.96);
@@ -3839,7 +3839,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring), height var(--t-spring);
+  transition: transform var(--t-spring);
 }
 #suggest-overlay.hide #suggest-card {
   transform: scale(0.96);
@@ -4197,7 +4197,7 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring), height var(--t-spring);
+  transition: transform var(--t-spring);
 }
 #edit-overlay.hide #edit-card {
   transform: scale(0.96);
@@ -6013,7 +6013,9 @@ body.nav-mode #style-picker {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform var(--t-spring);
+  transition:
+    transform var(--t-spring),
+    height var(--t-spring);
 }
 /* Overlay drag handle — hidden on desktop, shown only in mobile @media block */
 .overlay-drag {
@@ -7883,6 +7885,14 @@ body.dark-mode .sp-chip {
     max-height: calc(100vh - 40px);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     transform: translateY(0);
+    transition: transform var(--t-spring);
+  }
+  #event-card,
+  #events-card,
+  #eid-card,
+  #promos-card,
+  #wish-card,
+  .rv-overlay-card {
     transition:
       transform var(--t-spring),
       height var(--t-spring);

@@ -305,7 +305,7 @@ All animations and transitions are suppressed when the user has enabled "Reduce 
 
 ### Overlay height transitions
 
-Dynamic overlay cards use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps, event recurrence fields, suggest/edit opening-hours sections, and suggest Eid organizer fields.
+Dynamic window-style overlays use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps and event/Eid-style overlay windows whose card height is natural. Do not use it on static-height forms such as suggest, edit, contact, or wish form cards.
 
 ### `::selection`
 

@@ -3283,5 +3283,30 @@
       "fri": "10:00-20:30",
       "sat": "10:00-20:30"
     }
+  },
+  {
+    "id": "eu1rov",
+    "name": "HOUWEI Sushi Tikkurila",
+    "type": "restaurant",
+    "address": "Väritehtaankatu 8, 01300 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.29248079999999,
+    "lng": 25.0457713,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_sushi": true
+    },
+    "notes": "The chicken items are Halal",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": "10:30-21:00",
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
   }
 ]

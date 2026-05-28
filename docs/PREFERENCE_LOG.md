@@ -2450,3 +2450,35 @@ Removed decorative SVG icons from:
 - If user submitted opening hours, those are preserved and used over Google-derived values.
 
 **Files modified:** `scripts/apps-script/Code.gs`, `functions/api/reviews.js`, `src/reviews.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-29 — New approval copies Google reviews from New R/S
+
+**Bug:** Approving a place created a `Reviews` row with the generated place ID, but `googleReview` and `googleRating` stayed blank. The approval copy path still read only 17 columns from `New`, so values in `New!R:S` were outside the fetched row array.
+
+**Fix:** `copyNewRowToPlaces()` now reads 19 columns from `New`, making `r[17]` and `r[18]` available for `upsertGoogleReviewForPlaceId()`. Added approval-time logging that reports whether the Google review payload and rating were present.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-29 — Google-only places still show ratings
+
+**Bug:** Google-only places could show text reviews but no rating panel because the frontend ignored review records with `count=0`, and the Apps Script aggregate required `googleRatingCount` even when `googleRating` existed.
+
+**Fix:** Frontend `getPlaceRating()` now derives an aggregate from rated review items when the aggregate count is missing. Apps Script `getReviewsJSON()` now treats a bare Google rating as at least one rating when no Google rating count or review item count exists.
+
+**Files modified:** `src/reviews.js`, `scripts/apps-script/Code.gs`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-29 — Height animation removed from static forms
+
+**Preference:** Height animation should not run on static-height forms. It interferes with add-place, edit-place, contact, wish-form, and similar form cards.
+
+**Decision:** Keep `animateElementHeight()` for window-style overlays where the card naturally resizes, such as reviews and event/Eid-style windows. Static form cards should only use their normal open/close transform transitions.
+
+**Implementation:** Removed height animation wrappers from suggest/edit opening-hours controls, suggest Eid fields, organizer chips, tag accordions, and custom cuisine insertion. Removed `height var(--t-spring)` from static form card transitions while preserving it for event/Eid/reviews windows.
+
+**Files modified:** `src/places.js`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
