@@ -675,7 +675,7 @@ let _ratedFilter = false;
 function _buildRatingChip(placeId) {
   const data = getPlaceRating(placeId);
   if (!data) return "";
-  return `<span class="pl-rating-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="var(--review)" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${data.avg.toFixed(1)} <span class="pl-rating-count">(${data.count})</span></span>`;
+  return `<span class="pl-rating-chip"><svg width="11" height="11" viewBox="0 0 24 24" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${data.avg.toFixed(1)}</span>`;
 }
 
 function _buildCard(p, i) {

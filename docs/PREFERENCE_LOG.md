@@ -2482,3 +2482,110 @@ Removed decorative SVG icons from:
 **Implementation:** Removed height animation wrappers from suggest/edit opening-hours controls, suggest Eid fields, organizer chips, tag accordions, and custom cuisine insertion. Removed `height var(--t-spring)` from static form card transitions while preserving it for event/Eid/reviews windows.
 
 **Files modified:** `src/places.js`, `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 — Reviews count + mobile sheet polish
+
+**User feedback:** Google review totals were appearing capped at the small review sample returned by Google, e.g. Suomen Islamilainen Yhdyskunta showed only the five Google text reviews plus one community review instead of the full Google Maps rating count. The review summary also needed to follow the Google-style distribution/average layout while retaining Google vs Community source chips, and the phone review overlay needed the same bottom-sheet slide behavior as other windows.
+
+**Fix:**
+- Apps Script now carries `user_ratings_total` through New!T into Reviews!J as `googleRatingCount`, including approval-time copy into the generated place ID row.
+- Google review import still stores review rating/text/author/time only and ignores photo/profile-image fields.
+- Review summary changed to distribution bars on the left and a large average/stars/count block on the right, with source chips showing Google and Community counts.
+- Static stars now support partial fill for decimal ratings.
+- Phone review overlay now keeps its DOM long enough for the close animation, uses the shared `.suggest-head`/`.sheet-x` header and mobile drag handle, and matches mobile form typography more closely.
+- Cache version bumped to `20260530-1`.
+
+**Important API constraint:** Google Places officially returns only up to five review text objects; the app can display the full Google rating count via `user_ratings_total`, but not every Google review text unless Google exposes/permits that source for the place.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 — Reviews rating block compact action polish
+
+**User feedback:** The ratings summary needed tighter alignment, the large "Write a review" CTA should only appear when there are no reviews, places with existing reviews should use a small green plus button beside close like the Places window, and the "X Text Reviews" label should be removed.
+
+**Fix:**
+- Existing-review state now shows an icon-only `.btn-roundel-accent` plus button in the review header beside the close button.
+- Zero-review state keeps the large text-only "Write a review" CTA in the body.
+- Removed the text-review count header from the list.
+- Tightened the summary grid, spacing, distribution row heights, source chip spacing, and review-card padding for a more compact aligned rating block.
+- Cache version bumped to `20260530-2`.
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 - Reviews text, rating sample, and form hide polish
+
+**User feedback:** The full Google count was now visible, but visible text reviews and per-review ratings needed to reflect the stored Google sample instead of looking like every item was 5 stars. The rating summary also needed a true two-column row with centered right-side metrics, and the verification/write-review panel needed its own hide button.
+
+**Fix:**
+- Review cards now extract Google/community text defensively from string, localized object, original, translated, and comment-shaped fields.
+- Review cards now normalize and display each item's own numeric rating beside filled stars, including defensive support for named star-rating payloads.
+- Apps Script Google review import and parser now use the same defensive text/rating normalization, while still ignoring review photos/profile images.
+- Rating summary stays compact in one row: distribution bars on the left, average/stars/total/source chips centered vertically on the right.
+- Verification and write-review panels now include a section-only hide button that restores the review summary without closing the reviews overlay.
+- Cache version bumped to `20260530-3`.
+
+**Constraint:** Google Places exposes `user_ratings_total` for the full count, but the stored text/rating list is still limited to the small review sample returned by Google unless another permitted data source is added.
+
+**Files modified:** `scripts/apps-script/Code.gs`, `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 - Reviews visual fill and collapse polish
+
+**User feedback:** Decimal stars should look like the star itself is partially filled, not like a smaller orange star inside a grey outline. The rating bars column and right-side average/details column should occupy the same visual height. Hiding the verification/write section should animate instead of disappearing instantly.
+
+**Fix:**
+- Static star fill SVGs now keep their full intrinsic width and are clipped by the fill container, producing a real partial-star fill.
+- Rating summary grid items now stretch to one row height; bars distribute across the left column while average/details stay vertically centered on the right.
+- Verification/write sections now fade and slide before the review summary height animation restores the compact state.
+- Cache version bumped to `20260530-4`.
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 - Reviews panel collapse and list rows
+
+**User feedback:** Verification expand/collapse should feel like the app's existing smooth extend-collapse interactions, not a fade/slide. Individual reviews should read as a list like Events and Eid windows, not as separate cards.
+
+**Fix:**
+- Review verification/write UI now mounts inside a `grid-template-rows` collapse wrapper, matching the Places/event drawer pattern.
+- Removed the fade/slide close treatment from review forms; hiding the section now collapses the panel from `1fr` to `0fr` before restoring the summary.
+- Review items now use flat list rows with separators, compact metadata, and a slim leading rail instead of rounded card-like rows.
+- Cache version bumped to `20260530-5`.
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 - Reviews ordering and simple height animation
+
+**User feedback:** Review rows should not have a left vertical rail; use the same flat list feeling as Events/Eid. Community reviews must appear before Google reviews. The rating bars and rating details need an explicitly equal height. Verification expansion should be a smooth simple animation, not layered motion.
+
+**Fix:**
+- Removed the review-row leading rail/avatar entirely; reviews are now simple flat rows with separators.
+- Text reviews are sorted with community reviews first, then Google reviews, preserving newest-first order within each source.
+- Rating summary now defines a shared `--rv-summary-h` and applies it to both the bars column and the average/details column.
+- Simplified verify/write motion to one inner `grid-template-rows` animation using `--t-med`, with no outer height animation layered on top.
+- Cache version bumped to `20260530-6`.
+
+**Files modified:** `src/reviews.js`, `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-30 - Place rating chip toned down
+
+**User feedback:** The small rating chip on place cards did not match the app design language and the amber/orange treatment was too harsh.
+
+**Fix:**
+- Restyled `.pl-rating-chip` as a neutral metadata pill with `--surface`, `--border-light`, and subdued text colors.
+- Kept only the star as a restrained review accent using a muted `color-mix`, instead of filling the entire chip with amber.
+- Cache version bumped to `20260530-7`.
+
+**Files modified:** `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.

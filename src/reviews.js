@@ -16,6 +16,8 @@ const CACHE_TTL_MS = 300_000; // 5 min local cache
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
 const OTP_RESEND_COOLDOWN_MS = 30_000;
+const OVERLAY_CLEAR_DELAY_MS = 420;
+const REVIEW_PANEL_ANIMATION_MS = 280;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 /** @type {Map<string, {avg: number, count: number, items: Array}>} */
@@ -23,6 +25,7 @@ let _reviewsMap = new Map();
 let _lastFetch = 0;
 let _activeOverlayPlaceId = null;
 let _activeOverlayPlaceName = "";
+let _overlayClearTimer = null;
 
 function _animateReviewCardHeight(overlay, changeFn) {
   const card = overlay?.querySelector(".rv-overlay-card");
@@ -414,11 +417,14 @@ function _updateStarVisuals(container, fillCount) {
  * @returns {string} HTML string
  */
 export function buildStarDisplay(rating, size = "14") {
-  const full = Math.round(rating);
+  const value = Math.max(0, Math.min(5, Number(rating) || 0));
   let html = "";
   for (let i = 1; i <= 5; i++) {
-    const filled = i <= full;
-    html += `<svg class="rv-star-static" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? "var(--review)" : "none"}" stroke="${filled ? "var(--review)" : "var(--surface-3)"}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    const fillPct = Math.max(0, Math.min(100, (value - (i - 1)) * 100));
+    html += `<span class="rv-star-static" style="--star-fill:${fillPct}%">
+      <svg class="rv-star-bg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="var(--surface-3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span class="rv-star-fill"><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="var(--review)" stroke="var(--review)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
+    </span>`;
   }
   return html;
 }
@@ -435,29 +441,25 @@ export function openReviewsOverlay(placeId, placeName) {
   _activeOverlayPlaceName = placeName;
   const overlay = document.getElementById("reviews-overlay");
   if (!overlay) return;
-
-  const reviews = getPlaceReviews(placeId);
-  const ratingData = getPlaceRating(placeId);
-  overlay.innerHTML = _buildOverlayContent(placeId, placeName, ratingData, reviews);
-  overlay.classList.remove("hide");
-
-  // Attach event listeners
-  overlay.querySelector(".rv-overlay-close").addEventListener("click", closeReviewsOverlay);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeReviewsOverlay();
-  });
-
-  const writeBtn = overlay.querySelector(".rv-write-btn");
-  if (writeBtn) {
-    writeBtn.addEventListener("click", () => _showReviewForm(placeId, overlay));
+  if (_overlayClearTimer) {
+    clearTimeout(_overlayClearTimer);
+    _overlayClearTimer = null;
   }
+
+  _renderReviewsOverlayContent(overlay, placeId, placeName);
+  overlay.offsetHeight;
+  overlay.classList.remove("hide");
 }
 
 export function closeReviewsOverlay() {
   const overlay = document.getElementById("reviews-overlay");
   if (overlay) {
     overlay.classList.add("hide");
-    overlay.innerHTML = "";
+    if (_overlayClearTimer) clearTimeout(_overlayClearTimer);
+    _overlayClearTimer = setTimeout(() => {
+      if (overlay.classList.contains("hide")) overlay.innerHTML = "";
+      _overlayClearTimer = null;
+    }, OVERLAY_CLEAR_DELAY_MS);
   }
   _activeOverlayPlaceId = null;
   _activeOverlayPlaceName = "";
@@ -471,59 +473,100 @@ function _refreshActiveOverlay() {
   openReviewsOverlay(_activeOverlayPlaceId, _activeOverlayPlaceName);
 }
 
+function _renderReviewsOverlayContent(overlay, placeId, placeName) {
+  const reviews = getPlaceReviews(placeId);
+  const ratingData = getPlaceRating(placeId);
+  overlay.innerHTML = _buildOverlayContent(placeId, placeName, ratingData, reviews);
+
+  overlay.querySelector(".rv-overlay-close")?.addEventListener("click", closeReviewsOverlay);
+  overlay.onclick = (e) => {
+    if (e.target === overlay) closeReviewsOverlay();
+  };
+
+  overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => {
+    btn.addEventListener("click", () => _showReviewForm(placeId, overlay));
+  });
+}
+
+function _restoreReviewSummary(overlay) {
+  if (!_activeOverlayPlaceId) return;
+  const activePanel = overlay.querySelector(".rv-write-panel");
+  const renderSummary = () => {
+    _renderReviewsOverlayContent(overlay, _activeOverlayPlaceId, _activeOverlayPlaceName);
+  };
+
+  if (!activePanel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    renderSummary();
+    return;
+  }
+
+  activePanel.classList.add("shut");
+  window.setTimeout(renderSummary, REVIEW_PANEL_ANIMATION_MS);
+}
+
 function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
   const avg = ratingData ? ratingData.avg.toFixed(1) : "–";
   const count = ratingData ? ratingData.count : 0;
   const communityReviews = reviews.filter((r) => r.source !== "google");
   const communityCountFallback = communityReviews.length;
-  const communitySumFallback = communityReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0);
-  const communityAvgFallback = communityCountFallback ? (communitySumFallback / communityCountFallback) : 0;
   const communityCount = Number(ratingData?.sources?.community?.count ?? communityCountFallback);
-  const communityAvg = Number(ratingData?.sources?.community?.avg ?? communityAvgFallback);
   const googleCountFromSources = Number(ratingData?.sources?.google?.count || 0);
   const googleCount = googleCountFromSources > 0 ? googleCountFromSources : Math.max(0, count - communityCount);
-  const googleAvg = Number(ratingData?.sources?.google?.avg || 0);
-  const textReviews = reviews.filter((r) => (r.text || "").trim().length > 0);
-  const distribution = _calcDistribution(communityReviews);
+  const textReviews = reviews
+    .filter((r) => _getReviewText(r).length > 0)
+    .sort(_compareReviewPriority);
+  const ratedReviews = reviews.filter((r) => _getReviewRating(r) >= 1 && _getReviewRating(r) <= 5);
+  const distribution = _calcDistribution(ratedReviews);
+  const distributionTotal = Math.max(1, ratedReviews.length || communityCountFallback || 0);
 
   const distBars = [5, 4, 3, 2, 1].map((stars) => {
-    const pct = communityCount > 0 ? ((distribution[stars] || 0) / communityCount) * 100 : 0;
+    const pct = ((distribution[stars] || 0) / distributionTotal) * 100;
     return `<div class="rv-dist-row">
       <span class="rv-dist-label">${stars}</span>
       <div class="rv-dist-bar"><div class="rv-dist-fill" style="width:${pct}%"></div></div>
-      <span class="rv-dist-count">${distribution[stars] || 0}</span>
     </div>`;
   }).join("");
 
   const sourceSummary = `<div class="rv-source-stats">
-            <span class="rv-source-pill rv-source-pill-community">Community ${communityCount}</span>
             <span class="rv-source-pill rv-source-pill-google">Google ${googleCount}</span>
+            <span class="rv-source-pill rv-source-pill-community">Community ${communityCount}</span>
           </div>`;
 
+  const headerWriteBtn = count > 0
+    ? `<button class="sheet-action-btn btn-roundel-accent rv-write-trigger rv-header-add" type="button" aria-label="Write a review" title="Write a review">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>`
+    : "";
+  const bodyWriteBtn = count === 0
+    ? `<button class="rv-write-btn rv-write-trigger btn-primary" type="button">Write a review</button>`
+    : "";
+
   const summaryHtml = count > 0 ? `<div class="rv-summary">
+        <div class="rv-dist">${distBars}</div>
         <div class="rv-avg-block">
           <span class="rv-avg-num">${avg}</span>
-          <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "13")}</div>
-          <span class="rv-avg-count">${count} total</span>
+          <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "16")}</div>
+          <span class="rv-avg-count">${count} review${count !== 1 ? "s" : ""}</span>
           ${sourceSummary}
         </div>
-        <div class="rv-dist">${distBars}</div>
       </div>` : "";
 
   const reviewCards = textReviews.length
-    ? `<div class="rv-list"><span class="rv-list-header">${textReviews.length} Text Review${textReviews.length !== 1 ? "s" : ""}</span>${textReviews.map((r) => _buildReviewCard(r)).join("")}</div>`
-    : `<div class="rv-list"><div class="rv-empty"><span class="rv-empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><p class="rv-empty-text">No reviews yet — be the first!</p></div></div>`;
+    ? `<div class="rv-list">${textReviews.map((r) => _buildReviewCard(r)).join("")}</div>`
+    : `<div class="rv-list"><div class="rv-empty"><p class="rv-empty-text">No text reviews yet</p></div></div>`;
 
   return `<div class="rv-overlay-card">
-    <div class="rv-header">
+    <div class="rv-sheet-drag sheet-drag"><span></span></div>
+    <div class="suggest-head rv-header">
       <h3 class="rv-header-title">${esc(placeName)}</h3>
-      <button class="rv-close-btn rv-overlay-close" aria-label="Close">
+      ${headerWriteBtn}
+      <button class="btn-roundel sheet-x rv-overlay-close" aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="rv-overlay-body">
       ${summaryHtml}
-      <button class="rv-write-btn btn-primary" type="button">Write a review</button>
+      ${bodyWriteBtn}
       ${reviewCards}
     </div>
   </div>`;
@@ -532,28 +575,81 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
 function _buildReviewCard(review) {
   const timeAgo = _relativeTime(review.timestamp);
   const isGoogle = review.source === "google";
+  const rating = _getReviewRating(review);
+  const text = _getReviewText(review);
   const sourceChip = isGoogle
     ? `<span class="rv-source-chip rv-source-google">Google</span>`
     : `<span class="rv-source-chip rv-source-community">Community</span>`;
   const author = isGoogle && review.authorName ? `<span class="rv-review-author">${esc(review.authorName)}</span>` : "";
   return `<div class="rv-review-card">
-    <span class="rv-review-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
     <div class="rv-review-body">
       <div class="rv-review-meta">
-        <span class="rv-review-stars">${buildStarDisplay(review.rating, "12")}</span>
+        <span class="rv-review-stars">${buildStarDisplay(rating, "12")}</span>
+        <span class="rv-review-score">${rating.toFixed(1)}</span>
         ${sourceChip}
         ${author}
         <span class="rv-review-time">${esc(timeAgo)}</span>
       </div>
-      ${review.text ? `<p class="rv-review-text">${esc(review.text)}</p>` : ""}
+      ${text ? `<p class="rv-review-text">${esc(text)}</p>` : ""}
     </div>
   </div>`;
+}
+
+function _compareReviewPriority(a, b) {
+  const aSource = a?.source === "google" ? 1 : 0;
+  const bSource = b?.source === "google" ? 1 : 0;
+  if (aSource !== bSource) return aSource - bSource;
+  return new Date(b?.timestamp || 0).getTime() - new Date(a?.timestamp || 0).getTime();
+}
+
+function _getReviewText(review) {
+  const candidates = [
+    review?.text,
+    review?.reviewText,
+    review?.originalText,
+    review?.translatedText,
+    review?.original_text,
+    review?.translated_text,
+    review?.comment,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value && typeof value === "object") {
+      const nested = value.text ?? value.value ?? value.localizedText ?? "";
+      if (typeof nested === "string" && nested.trim()) return nested.trim();
+      if (nested && typeof nested === "object" && typeof nested.text === "string" && nested.text.trim()) {
+        return nested.text.trim();
+      }
+    }
+  }
+  return "";
+}
+
+function _getReviewRating(review) {
+  const value = review?.rating ?? review?.starRating ?? review?.score ?? 0;
+  if (typeof value === "number") return Math.max(0, Math.min(5, value));
+  const normalized = String(value || "").trim().toUpperCase();
+  const namedRatings = {
+    ONE: 1,
+    TWO: 2,
+    THREE: 3,
+    FOUR: 4,
+    FIVE: 5,
+    STAR_RATING_ONE: 1,
+    STAR_RATING_TWO: 2,
+    STAR_RATING_THREE: 3,
+    STAR_RATING_FOUR: 4,
+    STAR_RATING_FIVE: 5,
+  };
+  const numeric = Number(normalized);
+  return Math.max(0, Math.min(5, namedRatings[normalized] || numeric || 0));
 }
 
 function _calcDistribution(reviews) {
   const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const r of reviews) {
-    if (r.rating >= 1 && r.rating <= 5) dist[r.rating]++;
+    const rating = Math.round(_getReviewRating(r));
+    if (rating >= 1 && rating <= 5) dist[rating]++;
   }
   return dist;
 }
@@ -584,18 +680,15 @@ function _relativeTime(timestamp) {
  * @param {HTMLElement} overlay
  */
 function _showReviewForm(placeId, overlay) {
-  _animateReviewCardHeight(overlay, () => {
-    const writeBtn = overlay.querySelector(".rv-write-btn");
-    if (writeBtn) writeBtn.remove();
+  overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
 
-    const list = overlay.querySelector(".rv-list");
+  const list = overlay.querySelector(".rv-list");
 
-    if (isVerified()) {
-      _showRatingForm(placeId, overlay, list);
-    } else {
-      _showVerificationForm(placeId, overlay, list);
-    }
-  });
+  if (isVerified()) {
+    _showRatingForm(placeId, overlay, list);
+  } else {
+    _showVerificationForm(placeId, overlay, list);
+  }
 }
 
 /**
@@ -604,6 +697,7 @@ function _showReviewForm(placeId, overlay) {
 function _showVerificationForm(placeId, overlay, insertBefore) {
   const container = document.createElement("div");
   container.className = "rv-verify-form";
+  container.appendChild(_buildFormHideButton(overlay));
 
   // State
   let _email = "";
@@ -846,8 +940,8 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
     }
   });
 
-  insertBefore.insertAdjacentElement("beforebegin", container);
-  emailInput.focus();
+  _insertReviewPanel(insertBefore, container);
+  requestAnimationFrame(() => emailInput.focus());
 }
 
 /**
@@ -879,6 +973,7 @@ function _startResendCooldown(resendLink) {
 function _showRatingForm(placeId, overlay, insertBefore) {
   const form = document.createElement("div");
   form.className = "rv-form";
+  form.appendChild(_buildFormHideButton(overlay));
 
   // Header
   const header = document.createElement("div");
@@ -994,10 +1089,37 @@ function _showRatingForm(placeId, overlay, insertBefore) {
   form.appendChild(submitBtn);
   form.appendChild(note);
 
-  insertBefore.insertAdjacentElement("beforebegin", form);
+  _insertReviewPanel(insertBefore, form);
 }
 
 // ─── Initialization ──────────────────────────────────────────────────────────
+
+function _insertReviewPanel(insertBefore, contentEl) {
+  const panel = document.createElement("div");
+  panel.className = "rv-write-panel shut";
+  const inner = document.createElement("div");
+  inner.className = "rv-write-panel-inner";
+  inner.appendChild(contentEl);
+  panel.appendChild(inner);
+  insertBefore.insertAdjacentElement("beforebegin", panel);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => panel.classList.remove("shut"));
+  });
+}
+
+function _buildFormHideButton(overlay) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "rv-form-close btn-roundel";
+  btn.setAttribute("aria-label", "Hide review form");
+  btn.title = "Hide review form";
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _restoreReviewSummary(overlay);
+  });
+  return btn;
+}
 
 /**
  * Initialize the reviews module. Call after map load.
