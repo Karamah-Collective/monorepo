@@ -1333,14 +1333,14 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
         : "";
     const hoursEl = document.createElement("div");
     hoursEl.className = "pp-hours";
-    hoursEl.innerHTML = `<div class="pp-hours-hdr"><span class="pp-hours-label">Hours</span><span class="pp-hours-right">${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></span></div><div class="pp-hours-body hide">${_formatHoursForPopup(place.hours)}</div>`;
+    hoursEl.innerHTML = `<div class="pp-hours-hdr"><span class="pp-hours-label">Hours</span><span class="pp-hours-right">${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></span></div><div class="pp-hours-body pp-hours-collapsed"><div class="pp-hours-body-inner"><div class="pp-hours-body-content">${_formatHoursForPopup(place.hours)}</div></div></div>`;
     const expandBtn = hoursEl.querySelector(".pp-hours-expand-btn");
     const hoursBody = hoursEl.querySelector(".pp-hours-body");
     expandBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const open = hoursBody.classList.toggle("hide");
-      expandBtn.setAttribute("aria-expanded", !open);
-      expandBtn.closest(".pp-hours-hdr").classList.toggle("expanded", !open);
+      const isNowCollapsed = hoursBody.classList.toggle("pp-hours-collapsed");
+      expandBtn.setAttribute("aria-expanded", !isNowCollapsed);
+      expandBtn.closest(".pp-hours-hdr").classList.toggle("expanded", !isNowCollapsed);
     });
     inner.appendChild(hoursEl);
   }

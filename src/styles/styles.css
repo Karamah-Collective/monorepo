@@ -695,7 +695,7 @@
 .rv-write-panel {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows var(--t-med);
+  transition: grid-template-rows 0.3s var(--ease-expo);
 }
 .rv-write-panel.shut {
   grid-template-rows: 0fr;
@@ -703,6 +703,12 @@
 .rv-write-panel-inner {
   min-height: 0;
   overflow: hidden;
+}
+.rv-write-panel-content {
+  transition: opacity 0.2s ease;
+}
+.rv-write-panel.shut .rv-write-panel-content {
+  opacity: 0;
 }
 
 /* Review list */
@@ -3405,7 +3411,23 @@ body.dark-mode .sp-tip {
   transform: rotate(180deg);
 }
 .pp-hours-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s var(--ease-expo);
+}
+.pp-hours-body.pp-hours-collapsed {
+  grid-template-rows: 0fr;
+}
+.pp-hours-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.pp-hours-body-content {
   padding-top: var(--sp-3);
+  transition: opacity 0.2s ease;
+}
+.pp-hours-body.pp-hours-collapsed .pp-hours-body-content {
+  opacity: 0;
 }
 .pp-hours-row {
   display: flex;

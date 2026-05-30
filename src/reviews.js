@@ -491,11 +491,14 @@ function _renderReviewsOverlayContent(overlay, placeId, placeName) {
 function _restoreReviewSummary(overlay) {
   if (!_activeOverlayPlaceId) return;
   const activePanel = overlay.querySelector(".rv-write-panel");
+  const card = overlay.querySelector(".rv-overlay-card");
   const renderSummary = () => {
+    if (card) card.style.removeProperty("height");
     _renderReviewsOverlayContent(overlay, _activeOverlayPlaceId, _activeOverlayPlaceName);
   };
 
   if (!activePanel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (card) card.style.removeProperty("height");
     renderSummary();
     return;
   }
@@ -1095,11 +1098,19 @@ function _showRatingForm(placeId, overlay, insertBefore) {
 // ─── Initialization ──────────────────────────────────────────────────────────
 
 function _insertReviewPanel(insertBefore, contentEl) {
+  // Lock the card at its current height so the expanding panel doesn't push
+  // review cards downward — the form reveals within the scroll area instead.
+  const card = insertBefore.closest(".rv-overlay-card");
+  if (card) card.style.height = `${card.offsetHeight}px`;
+
   const panel = document.createElement("div");
   panel.className = "rv-write-panel shut";
   const inner = document.createElement("div");
   inner.className = "rv-write-panel-inner";
-  inner.appendChild(contentEl);
+  const content = document.createElement("div");
+  content.className = "rv-write-panel-content";
+  content.appendChild(contentEl);
+  inner.appendChild(content);
   panel.appendChild(inner);
   insertBefore.insertAdjacentElement("beforebegin", panel);
   requestAnimationFrame(() => {
