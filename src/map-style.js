@@ -227,7 +227,8 @@ export const HSL_STYLE = {
       minzoom: 13,
       paint: {
         "fill-color": "#c2c3cc",
-        "fill-translate": [2, 3],
+        "fill-opacity": 0,
+        "fill-translate": [0, 0],
         "fill-translate-anchor": "viewport",
       },
     },

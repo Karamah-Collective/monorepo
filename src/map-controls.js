@@ -556,6 +556,9 @@ const _3D_LAYER_IDS = ["building-3d-shadow", "building-3d", "building-3d-roof"];
 const _bldgFilter = ["!=", ["get", "hide_3d"], true];
 
 export function enable3D() {
+  // 3D building extrusion is intentionally disabled.
+  is3DActive = false;
+  return;
   is3DActive = true;
 
   // Low warm sun → deep face shadows, highlights on sunlit walls
@@ -1002,11 +1005,6 @@ map.on("moveend", updateUrlHash);
 map.on("zoomend", () => setActiveTab(null));
 
 map.on("pitchend", () => {
-  if (isSatelliteActive) return;
-  // Don't auto-toggle 3D during navigation — extruded buildings obstruct
-  // the tilted forward-looking view. Navigation manages 3D state itself.
-  if (document.body.classList.contains("nav-mode")) return;
-  const p = map.getPitch();
-  if (p > 10 && !is3DActive) enable3D();
-  else if (p <= 10 && is3DActive) disable3D();
+  if (is3DActive) disable3D();
+  // Keep the map flat in pitched views as well.
 });
