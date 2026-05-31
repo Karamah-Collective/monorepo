@@ -37,6 +37,15 @@ let _activePlacePopup = null;
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 
+const PHONE_VIEWPORT_MAX_WIDTH = 768;
+const PLACE_POPUP_OFFSET_Y = -42;
+const PLACE_POPUP_MIN_ZOOM = 15;
+const PLACE_POPUP_MOVE_MS = 380;
+const PLACE_POPUP_CENTER_TOLERANCE_PX = 1;
+const PLACE_POPUP_REVEAL_FALLBACK_MS = 140;
+const MERCATOR_TILE_SIZE = 512;
+const MAX_MERCATOR_LAT = 85.05112878;
+
 /** Place types grouped under the "Religious" tab (everything except mosques). */
 const RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"]);
 let activeSortField = "default"; // "default" | "name" | "distance" | "date"
@@ -57,6 +66,7 @@ let _editOriginalPlace = null;
 
 
 function clearActivePlacePopup() {
+  _cancelPlacePopupCameraTween();
   if (_activePlacePopup) {
     try { _activePlacePopup.remove(); } catch (_) {}
     _activePlacePopup = null;
@@ -65,19 +75,16 @@ function clearActivePlacePopup() {
   document.querySelectorAll(".place-popup-wrap.maplibregl-popup").forEach((p) => p.remove());
 }
 
-/** Padding that places the marker at ~75% from the top so the popup opens above it. */
-function _mobilePadding() {
-  return { top: Math.round(window.innerHeight / 2), bottom: 0, left: 0, right: 0 };
-}
-
 let _sheetCloseRAF1 = 0;
 let _sheetCloseRAF2 = 0;
 let _mobilePlaceFocusLocked = false;
 let _mobilePlaceFocusUnlockTimer = 0;
 let _mobilePlaceFocusToken = 0;
+let _placePopupRevealTimer = 0;
+let _placePopupMoveEndHandler = null;
 
 function isPhoneViewport() {
-  return window.innerWidth <= 768;
+  return window.innerWidth <= PHONE_VIEWPORT_MAX_WIDTH;
 }
 
 function unlockMobilePlaceFocus() {
@@ -98,26 +105,152 @@ function lockMobilePlaceFocus(fallbackMs = 650) {
 }
 
 function focusPlaceOnPhone(place, token) {
-  clearActivePlacePopup();
-  map.stop();
+  if (token !== _mobilePlaceFocusToken) return;
+  showPlacePopup(place);
+  unlockMobilePlaceFocus();
+}
 
-  const targetZoom = Math.max(map.getZoom(), 15);
+function _revealMeasuredPopup(popup) {
+  const popupEl = popup.getElement();
+  if (popupEl) popupEl.classList.remove("popup-positioning");
+}
+
+function _cancelPlacePopupCameraTween() {
+  clearTimeout(_placePopupRevealTimer);
+  _placePopupRevealTimer = 0;
+  if (_placePopupMoveEndHandler) {
+    map.off("moveend", _placePopupMoveEndHandler);
+    _placePopupMoveEndHandler = null;
+  }
+}
+
+function _measurePopupCenterDelta(popupEl) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const popupRect = popupEl.getBoundingClientRect();
+  const popupCenterX = popupRect.left + popupRect.width / 2;
+  const popupCenterY = popupRect.top + popupRect.height / 2;
+  const viewportCenterX = mapRect.left + mapRect.width / 2;
+  const viewportCenterY = mapRect.top + mapRect.height / 2;
+
+  return {
+    mapRect,
+    deltaX: popupCenterX - viewportCenterX,
+    deltaY: popupCenterY - viewportCenterY,
+  };
+}
+
+function _measurePopupAnchorOffset(popupEl, place) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const popupRect = popupEl.getBoundingClientRect();
+  const anchor = map.project([place.lng, place.lat]);
+  const popupCenterX = popupRect.left + popupRect.width / 2;
+  const popupCenterY = popupRect.top + popupRect.height / 2;
+  const anchorX = mapRect.left + anchor.x;
+  const anchorY = mapRect.top + anchor.y;
+
+  return {
+    x: popupCenterX - anchorX,
+    y: popupCenterY - anchorY,
+  };
+}
+
+function _easePlacePopupCamera(t) {
+  return t;
+}
+
+function _projectLngLatToWorld(lng, lat, zoom) {
+  const worldSize = MERCATOR_TILE_SIZE * Math.pow(2, zoom);
+  const clampedLat = Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat));
+  const sinLat = Math.sin(clampedLat * Math.PI / 180);
+
+  return {
+    x: ((lng + 180) / 360) * worldSize,
+    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize,
+  };
+}
+
+function _unprojectWorldToLngLat(worldX, worldY, zoom) {
+  const worldSize = MERCATOR_TILE_SIZE * Math.pow(2, zoom);
+  const lng = (worldX / worldSize) * 360 - 180;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * worldY / worldSize))) * 180 / Math.PI;
+  return { lng, lat };
+}
+
+function _centerForPlaceAtScreenPoint(place, screenPoint, zoom) {
+  const mapEl = map.getContainer();
+  const placeWorld = _projectLngLatToWorld(place.lng, place.lat, zoom);
+  const centerWorld = {
+    x: placeWorld.x - (screenPoint.x - mapEl.clientWidth / 2),
+    y: placeWorld.y - (screenPoint.y - mapEl.clientHeight / 2),
+  };
+
+  return _unprojectWorldToLngLat(centerWorld.x, centerWorld.y, zoom);
+}
+
+function _animatePopupCameraToCenter(popup, place, anchorOffset) {
+  _cancelPlacePopupCameraTween();
+
+  const mapEl = map.getContainer();
+  const targetZoom = PLACE_POPUP_MIN_ZOOM;
+  const targetPopupCenter = {
+    x: mapEl.clientWidth / 2,
+    y: mapEl.clientHeight / 2,
+  };
+  const anchorPoint = {
+    x: targetPopupCenter.x - anchorOffset.x,
+    y: targetPopupCenter.y - anchorOffset.y,
+  };
+  const center = _centerForPlaceAtScreenPoint(place, anchorPoint, targetZoom);
   let settled = false;
+
   const finish = () => {
-    if (settled || token !== _mobilePlaceFocusToken) return;
+    if (settled) return;
     settled = true;
-    unlockMobilePlaceFocus();
-    showPlacePopup(place, { skipMove: true });
+    _cancelPlacePopupCameraTween();
+    clearTimeout(_placePopupRevealTimer);
+    _placePopupRevealTimer = 0;
+    popup.setLngLat([place.lng, place.lat]);
+    _revealMeasuredPopup(popup);
     scheduleMapViewportSync();
   };
 
-  map.once("moveend", finish);
+  _placePopupMoveEndHandler = finish;
+  map.once("moveend", _placePopupMoveEndHandler);
   map.easeTo({
-    center: [place.lng, place.lat],
+    center,
     zoom: targetZoom,
-    duration: 280,
+    duration: PLACE_POPUP_MOVE_MS,
+    easing: _easePlacePopupCamera,
     essential: true,
-    padding: _mobilePadding(),
+  });
+  _placePopupRevealTimer = setTimeout(finish, PLACE_POPUP_MOVE_MS + PLACE_POPUP_REVEAL_FALLBACK_MS);
+}
+
+function _centerPopupCardInViewport(popup, place) {
+  const popupEl = popup.getElement();
+  if (!popupEl) return;
+
+  popupEl.classList.add("popup-positioning");
+
+  requestAnimationFrame(() => {
+    const latestPopupEl = popup.getElement();
+    if (!latestPopupEl || !document.body.contains(latestPopupEl)) return;
+
+    const { deltaX, deltaY } = _measurePopupCenterDelta(latestPopupEl);
+    const anchorOffset = _measurePopupAnchorOffset(latestPopupEl, place);
+    const targetZoom = Math.max(map.getZoom(), PLACE_POPUP_MIN_ZOOM);
+    const shouldMove =
+      Math.abs(deltaX) > PLACE_POPUP_CENTER_TOLERANCE_PX ||
+      Math.abs(deltaY) > PLACE_POPUP_CENTER_TOLERANCE_PX ||
+      map.getZoom() < PLACE_POPUP_MIN_ZOOM;
+
+    if (!shouldMove) {
+      _revealMeasuredPopup(popup);
+      scheduleMapViewportSync();
+      return;
+    }
+
+    _animatePopupCameraToCenter(popup, place, anchorOffset);
   });
 }
 
@@ -1223,6 +1356,12 @@ function _renderPopupRating(container, placeId, placeName, ratingData) {
   container.appendChild(ratingEl);
 }
 
+/**
+ * Open the place popup and move the camera to its best viewing position.
+ * @param {object} place - Place data object with id, coordinates, type, and display fields.
+ * @param {{ skipMove?: boolean }} [options={}] - Popup options.
+ * @returns {void}
+ */
 export function showPlacePopup(place, { skipMove = false } = {}) {
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
@@ -1467,7 +1606,18 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   // Track the open popup id for toggle-close
   _activePlacePopupId = place.id;
 
-  const popup = new maplibregl.Popup({ offset: [0, -42], closeButton: false, focusAfterOpen: false, maxWidth: "300px", className: "place-popup-wrap" })
+  const popupOptions = {
+    offset: [0, PLACE_POPUP_OFFSET_Y],
+    closeButton: false,
+    focusAfterOpen: false,
+    maxWidth: "300px",
+    className: "place-popup-wrap",
+    anchor: "bottom",
+  };
+
+  if (!skipMove) map.stop();
+
+  const popup = new maplibregl.Popup(popupOptions)
     .setLngLat([place.lng, place.lat])
     .setDOMContent(root)
     .addTo(map);
@@ -1482,19 +1632,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
 
   if (skipMove) return;
 
-  map.stop();
-  const targetZoom = Math.max(map.getZoom(), 15);
-  if (isPhoneViewport()) {
-    map.easeTo({
-      center: [place.lng, place.lat],
-      zoom: targetZoom,
-      duration: 320,
-      essential: true,
-      padding: _mobilePadding(),
-    });
-    return;
-  }
-  map.flyTo({ center: [place.lng, place.lat], zoom: targetZoom, duration: 600 });
+  _centerPopupCardInViewport(popup, place);
 }
 
 function openPlaceAfterSheetClose(place) {

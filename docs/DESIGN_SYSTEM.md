@@ -865,6 +865,10 @@ Not a class template (pseudo-elements can't take class names). Instead, a docume
 
 Visual chrome comes entirely from `.btn-primary` and `.btn-secondary` templates. In `styles.css` only `flex: 1`, `height: 34px`, and `padding: 0` (padding override — popup buttons are narrower than standard) are set.
 
+### Mobile place popup positioning
+
+For place popups, `showPlacePopup()` opens the popup invisibly with `.popup-positioning`, measures the rendered popup card, computes the popup-card offset from the marker anchor, then uses one native MapLibre `easeTo()` to move to the final measured centered view on phone and desktop. Keep this motion native rather than driving repeated JS `jumpTo()` frames; the native renderer is visibly smoother. Keep it one continuous motion rather than a separate pan and zoom phase, and keep popup-open zoom target consistent (`PLACE_POPUP_MIN_ZOOM`) instead of adaptive per-open zoom steps. This replaces the older marker-centered camera behavior so rich popup cards get the maximum available vertical and horizontal space. The mobile card uses a viewport-capped height and scrollable `.pp-inner`; the MapLibre popup content keeps `overflow: visible` so the curvy tip is not clipped.
+
 ### `#tf-toggle` vs `.btn-chip`
 
 The tag filter toggle uses `.btn-chip` but JS adds `.open` class instead of `.active`. An override in `styles.css` maps `.open` to the same filled-accent appearance and rotates the chevron arrow.

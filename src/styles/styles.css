@@ -3219,6 +3219,13 @@ body.dark-mode .sp-tip {
   background: var(--surface) !important;
   animation: popupEnter 0.25s var(--ease-expo);
 }
+.place-popup-wrap.popup-positioning {
+  opacity: 0;
+  pointer-events: none;
+}
+.place-popup-wrap.popup-positioning .maplibregl-popup-content {
+  animation: none !important;
+}
 .place-popup-wrap .maplibregl-popup-content::after {
   content: "";
   position: absolute;
@@ -3261,6 +3268,7 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-direction: column;
   position: relative;
+  max-height: inherit;
 }
 
 .pp-inner {
@@ -3268,6 +3276,7 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  min-height: 0;
 }
 
 .pp-hdr {
@@ -8037,7 +8046,18 @@ body.dark-mode .sp-chip {
   }
 
   .place-popup-wrap .maplibregl-popup-content {
-    max-width: min(300px, 90vw);
+    max-width: min(300px, calc(100vw - (var(--sp-8) * 2)));
+    max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - (var(--sp-8) * 2));
+  }
+  .place-popup-wrap .pp {
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  .place-popup-wrap .pp-inner {
+    max-height: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   @media (hover: hover) {

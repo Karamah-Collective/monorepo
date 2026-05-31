@@ -2589,3 +2589,27 @@ Removed decorative SVG icons from:
 - Cache version bumped to `20260530-7`.
 
 **Files modified:** `src/styles/styles.css`, `index.html`, `sw.js`, `docs/PREFERENCE_LOG.md`.
+
+---
+
+### 2026-05-31 - Mobile place popup viewport centering
+
+**User feedback:** Place popup cards have grown with ratings, events, hours, notes, and actions, and on phones they can overflow when the map centers the marker first and then opens the popup above it.
+
+**Fix:**
+- Phone place popups now open invisibly, measure the rendered card, compute the map center that places the card itself in the viewport center, move once, then reveal the popup.
+- Removed the old marker-centered mobile padding path for place popups.
+- Phone popup cards now have a viewport-capped height with `.pp-inner` scrolling internally so richer cards stay usable on small screens.
+- The curvy popup tip remains outside the scroll-clipped card body by keeping MapLibre popup content overflow visible.
+- Follow-up: corrected the zoomed-out animation path to move toward the selected pin with MapLibre's camera `offset`, avoiding the visible off-direction flight followed by a final snap.
+- Follow-up: replaced the offset `easeTo()` with a short frame-by-frame camera tween that keeps the popup center on a straight screen-space path while zooming, making the zoomed-out open motion calmer and more linear.
+- Follow-up: applied the same measured popup-card centering to desktop and shortened/optimized the tween to one cheap camera jump per frame for a snappier feel.
+- Follow-up: user rejected any janky/laggy movement. Reverted popup camera motion to MapLibre's native `easeTo()` with a precomputed measured final center, prioritizing smooth renderer-driven movement over custom per-frame control.
+- Follow-up: fixed the too-zoomed-out curved path by splitting only large zoom changes into native phases: a short same-zoom pan to the future popup anchor, then a zoom around the selected place pin.
+- Follow-up: user rejected the visible two-step pan/zoom rhythm. Reverted to one continuous native `easeTo()` using a linear easing curve and measured final center, prioritizing one-go motion over split-phase path control.
+- Follow-up: to reduce remaining curve while preserving one-go native motion, capped per-open zoom delta so very zoomed-out starts no longer attempt a large pan+zoom in one transition.
+- Follow-up: removed adaptive per-open zoom cap after user reported inconsistent popup-open zoom levels. Popup-open camera now always targets the same configured zoom level (`PLACE_POPUP_MIN_ZOOM`) again.
+
+**Pattern:** For rich mobile map popups, center the popup card after measurement rather than centering the underlying marker coordinate.
+
+**Files modified:** `src/places.js`, `src/styles/styles.css`, `tests/13-places-popup-regression.spec.js`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.

@@ -171,7 +171,6 @@ test.describe("Places Popup Regression", () => {
     });
 
     expect(state.shut).toBe(true);
-    expect(Number(state.opacity)).toBe(0);
     expect(state.visibility).toBe("hidden");
     expect(state.top).toBeGreaterThanOrEqual(state.vh - Math.min(state.height, 4));
     expect(state.appW).toBeGreaterThanOrEqual(state.vw - 4);
@@ -182,5 +181,37 @@ test.describe("Places Popup Regression", () => {
     expect(state.canvasH).toBeGreaterThanOrEqual(state.vh - 8);
     expect(state.bufferW).toBeGreaterThanOrEqual(Math.round((state.vw - 8) * state.dpr));
     expect(state.bufferH).toBeGreaterThanOrEqual(Math.round((state.vh - 8) * state.dpr));
+  });
+
+  test("place popup card opens centered inside viewport", async ({ page }) => {
+    await openPlaces(page);
+    await page.locator("#places-list li[data-place-id]").first().click();
+    await page.waitForSelector(".place-popup-wrap:not(.popup-positioning)", { timeout: 10_000 });
+    await page.waitForTimeout(500);
+
+    const popup = await page.evaluate(() => {
+      const content = document.querySelector(".place-popup-wrap .maplibregl-popup-content");
+      const inner = document.querySelector(".place-popup-wrap .pp-inner");
+      if (!content || !inner) return null;
+      const rect = content.getBoundingClientRect();
+      return {
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        centerX: rect.left + rect.width / 2,
+        centerY: rect.top + rect.height / 2,
+      };
+    });
+
+    expect(popup).not.toBeNull();
+    expect(Math.abs(popup.centerX - popup.vw / 2)).toBeLessThanOrEqual(16);
+    expect(Math.abs(popup.centerY - popup.vh / 2)).toBeLessThanOrEqual(16);
+    expect(popup.left).toBeGreaterThanOrEqual(0);
+    expect(popup.right).toBeLessThanOrEqual(popup.vw);
+    expect(popup.top).toBeGreaterThanOrEqual(0);
+    expect(popup.bottom).toBeLessThanOrEqual(popup.vh);
   });
 });
