@@ -9,6 +9,10 @@ export const HSL_STYLE = {
       attribution:
         '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>',
     },
+    traffic_nodes: {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    },
     "terrain-dem": {
       type: "raster-dem",
       tiles: [
@@ -73,24 +77,36 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landcover",
+      minzoom: 11,
       filter: ["==", "class", "grass"],
-      paint: { "fill-color": "#ddeacd", "fill-opacity": 0.9 },
+      paint: {
+        "fill-color": "#ddeacd",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0, 13, 0.9],
+      },
     },
     {
       id: "landcover_wood",
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landcover",
+      minzoom: 11,
       filter: ["==", "class", "wood"],
-      paint: { "fill-color": "#d0e3b8", "fill-opacity": 0.9 },
+      paint: {
+        "fill-color": "#d0e3b8",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0, 13, 0.9],
+      },
     },
     {
       id: "landcover_farmland",
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landcover",
+      minzoom: 11,
       filter: ["==", "class", "farmland"],
-      paint: { "fill-color": "#e3ecc5", "fill-opacity": 0.7 },
+      paint: {
+        "fill-color": "#e3ecc5",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0, 13, 0.7],
+      },
     },
     {
       id: "landcover_sand",
@@ -113,14 +129,24 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landuse",
+      minzoom: 12,
       filter: ["in", "class", "residential", "suburbs"],
-      paint: { "fill-color": "#eceae5", "fill-opacity": 0.5 },
+      paint: {
+        "fill-color": "#eceae5",
+        "fill-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          12, 0,
+          14, 0.35,
+          16, 0.5,
+        ],
+      },
     },
     {
       id: "landuse_industrial",
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landuse",
+      minzoom: 11,
       filter: ["==", "class", "industrial"],
       paint: { "fill-color": "#ede6e3" },
     },
@@ -129,6 +155,7 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landuse",
+      minzoom: 12,
       filter: ["==", "class", "hospital"],
       paint: { "fill-color": "#fbe6e0" },
     },
@@ -137,6 +164,7 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "landuse",
+      minzoom: 12,
       filter: ["in", "class", "school", "university", "kindergarten"],
       paint: { "fill-color": "#f9f4d2" },
     },
@@ -162,9 +190,15 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "park",
+      minzoom: 10,
       paint: {
         "fill-color": "#dceacc",
-        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0.6, 12, 0.8],
+        "fill-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          10, 0,
+          12, 0.7,
+          15, 0.85,
+        ],
       },
     },
     {
@@ -224,7 +258,7 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "building",
-      minzoom: 13,
+      minzoom: 16,
       paint: {
         "fill-color": "#c2c3cc",
         "fill-opacity": 0,
@@ -237,10 +271,14 @@ export const HSL_STYLE = {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "building",
-      minzoom: 13,
+      minzoom: 15,
       paint: {
         "fill-color": "#e2e4e9",
-        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 1],
+        "fill-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          15, 0,
+          16, 0.85,
+        ],
       },
     },
     {
@@ -248,19 +286,25 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "building",
-      minzoom: 14,
-      paint: { "line-color": "#d0d2da", "line-width": 0.5 },
+      minzoom: 16,
+      paint: {
+        "line-color": "#d0d2da",
+        "line-width": 0.5,
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0, 17, 0.55],
+      },
     },
     {
       id: "tunnel_path",
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 14,
       filter: ["all", ["==", "brunnel", "tunnel"], ["==", "class", "path"]],
       paint: {
         "line-color": "#e0e0e0",
         "line-width": 1,
         "line-dasharray": [3, 3],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0, 15, 0.8],
       },
     },
     {
@@ -268,6 +312,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 12,
       filter: [
         "all",
         ["==", "brunnel", "tunnel"],
@@ -284,6 +329,7 @@ export const HSL_STYLE = {
           18,
           10,
         ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0, 13.5, 0.8],
       },
     },
     {
@@ -324,6 +370,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 14,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -344,6 +391,7 @@ export const HSL_STYLE = {
           4,
         ],
         "line-dasharray": [3, 2],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0, 15, 1],
       },
     },
     {
@@ -351,6 +399,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 12,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -360,7 +409,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#d7d1c8",
+        "line-color": "#c4bcb2",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -370,6 +419,7 @@ export const HSL_STYLE = {
           18,
           13,
         ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0, 13.5, 1],
       },
     },
     {
@@ -377,6 +427,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 12,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -396,6 +447,7 @@ export const HSL_STYLE = {
           18,
           10,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -403,6 +455,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 9,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -412,7 +465,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#c9c1b6",
+        "line-color": "#bdb0a2",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -423,6 +476,7 @@ export const HSL_STYLE = {
           20,
         ],
         "line-gap-width": 0,
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 9, 0, 11, 1],
       },
     },
     {
@@ -430,6 +484,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 9,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -449,6 +504,7 @@ export const HSL_STYLE = {
           18,
           16,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -456,6 +512,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 7,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -465,7 +522,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#bfb5aa",
+        "line-color": "#cec298",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -475,6 +532,7 @@ export const HSL_STYLE = {
           18,
           26,
         ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 9, 1],
       },
     },
     {
@@ -482,6 +540,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 7,
       filter: [
         "all",
         ["==", "$type", "LineString"],
@@ -501,6 +560,7 @@ export const HSL_STYLE = {
           18,
           22,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -517,7 +577,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#d1b45d",
+        "line-color": "#d4a83a",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -553,6 +613,7 @@ export const HSL_STYLE = {
           18,
           24,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -569,7 +630,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": "#d1b45d",
+        "line-color": "#d4a83a",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -605,6 +666,7 @@ export const HSL_STYLE = {
           18,
           30,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -612,11 +674,68 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 9,
       filter: ["==", "class", "rail"],
       paint: {
         "line-color": "#bbb",
         "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 16, 3],
         "line-dasharray": [6, 4],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 9, 0, 11, 1],
+      },
+    },
+    {
+      id: "road_crossing_base",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "transportation",
+      minzoom: 14,
+      filter: [
+        "all",
+        ["==", "$type", "LineString"],
+        ["!=", "brunnel", "tunnel"],
+        ["!=", "brunnel", "bridge"],
+        ["any",
+          ["==", "subclass", "crossing"],
+          ["==", "class", "crossing"],
+        ],
+      ],
+      layout: { "line-cap": "butt", "line-join": "miter" },
+      paint: {
+        "line-color": "#f2ece2",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          14, 4,
+          18, 20,
+        ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0, 15, 1],
+      },
+    },
+    {
+      id: "road_crossing_stripes",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "transportation",
+      minzoom: 14,
+      filter: [
+        "all",
+        ["==", "$type", "LineString"],
+        ["!=", "brunnel", "tunnel"],
+        ["!=", "brunnel", "bridge"],
+        ["any",
+          ["==", "subclass", "crossing"],
+          ["==", "class", "crossing"],
+        ],
+      ],
+      layout: { "line-cap": "butt", "line-join": "miter" },
+      paint: {
+        "line-color": "#2e2a25",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          14, 4,
+          18, 20,
+        ],
+        "line-dasharray": [0.5, 0.5],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0, 15, 0.75],
       },
     },
     {
@@ -624,6 +743,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 12,
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
@@ -631,7 +751,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "butt" },
       paint: {
-        "line-color": "#d7d1c8",
+        "line-color": "#c4bcb2",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -641,6 +761,7 @@ export const HSL_STYLE = {
           18,
           15,
         ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0, 13.5, 0.8],
       },
     },
     {
@@ -648,6 +769,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 12,
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
@@ -665,6 +787,7 @@ export const HSL_STYLE = {
           18,
           10,
         ],
+        "line-opacity": 0,
       },
     },
     {
@@ -672,6 +795,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 8,
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
@@ -687,7 +811,7 @@ export const HSL_STYLE = {
       ],
       layout: { "line-cap": "butt" },
       paint: {
-        "line-color": "#bfb5aa",
+        "line-color": "#cec298",
         "line-width": [
           "interpolate",
           ["exponential", 1.5],
@@ -697,6 +821,7 @@ export const HSL_STYLE = {
           18,
           38,
         ],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 10, 1],
       },
     },
     {
@@ -704,6 +829,7 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "transportation",
+      minzoom: 8,
       filter: [
         "all",
         ["==", "brunnel", "bridge"],
@@ -729,6 +855,36 @@ export const HSL_STYLE = {
           18,
           30,
         ],
+        "line-opacity": 0,
+      },
+    },
+    {
+      id: "oneway_arrows",
+      type: "symbol",
+      source: "openmaptiles",
+      "source-layer": "transportation",
+      minzoom: 15,
+      filter: [
+        "all",
+        ["==", "oneway", 1],
+        ["in", "class", "motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"],
+        ["!=", "brunnel", "tunnel"],
+      ],
+      layout: {
+        "symbol-placement": "line",
+        "symbol-spacing": 150,
+        "text-field": "›",
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 14],
+        "text-rotation-alignment": "map",
+        "text-pitch-alignment": "viewport",
+        "text-keep-upright": false,
+        "text-font": ["Noto Sans Regular"],
+      },
+      paint: {
+        "text-color": "#7a7268",
+        "text-halo-color": "rgba(255,255,255,0.55)",
+        "text-halo-width": 1,
+        "text-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0, 16, 0.85],
       },
     },
     {
@@ -736,11 +892,14 @@ export const HSL_STYLE = {
       type: "line",
       source: "openmaptiles",
       "source-layer": "boundary",
+      minzoom: 7,
+      maxzoom: 11,
       filter: ["all", ["<=", "admin_level", 4], [">=", "admin_level", 3]],
       paint: {
         "line-color": "#c8b4a0",
         "line-width": 0.8,
         "line-dasharray": [4, 3],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 8, 0.6, 10, 0.6, 11, 0],
       },
     },
     {

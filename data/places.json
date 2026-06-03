@@ -968,18 +968,18 @@
     "lng": 25.0068875,
     "tags": {
       "fully_halal": true,
-      "cuisine_indian": true,
-      "cuisine_bangladeshi": true
+      "cuisine_bangladeshi": true,
+      "cuisine_indian": true
     },
-    "notes": "",
+    "notes": "Nondon is closed. Now in the same location there is a new Yemeni restaurant Yamanoon. Most likely it's halal but it is always better to confirm.",
     "hours": {
-      "sun": null,
       "mon": "10:30-15:00",
       "tue": "10:30-15:00",
       "wed": "10:30-15:00",
       "thu": "10:30-15:00",
       "fri": "10:30-15:00",
-      "sat": null
+      "sat": null,
+      "sun": null
     }
   },
   {

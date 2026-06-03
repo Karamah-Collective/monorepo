@@ -193,6 +193,7 @@ map.on("load", async () => {
     { initEidPrayers },
     { initGpsSim },
     { initWishlist, preloadWishes },
+    { initTrafficOverlay },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
@@ -201,6 +202,7 @@ map.on("load", async () => {
     import("./eid-prayers.js"),
     import("./gps-sim.js"),
     import("./wishlist.js"),
+    import("./traffic-overlay.js"),
   ]);
 
   loadTransitCache();
@@ -210,6 +212,7 @@ map.on("load", async () => {
   initWishlist();
   preloadWishes();
   // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
+  initTrafficOverlay();
   checkGeoNotice();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)

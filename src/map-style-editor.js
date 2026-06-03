@@ -49,6 +49,8 @@ const LAYER_PROP = {
   road_trunk:             'line-color',
   road_motorway_casing:   'line-color',
   road_motorway:          'line-color',
+  bridge_minor_casing:    'line-color',
+  bridge_major_casing:    'line-color',
   rail:                   'line-color',
   admin_sub:              'line-color',
   admin_country:          'line-color',

@@ -27,16 +27,18 @@ const LIGHT_COLORS = {
   building:               '#e2e4e9',
   building_outline:       '#d0d2da',
   road_path:              '#d4c6ba',
-  road_service_casing:    '#d7d1c8',
+  road_service_casing:    '#c4bcb2',
   road_service:           '#f0ebe3',
-  road_secondary_casing:  '#c9c1b6',
+  road_secondary_casing:  '#bdb0a2',
   road_secondary:         '#ece4d8',
-  road_primary_casing:    '#bfb5aa',
+  road_primary_casing:    '#cec298',
   road_primary:           '#e7dccd',
-  road_trunk_casing:      '#d1b45d',
+  road_trunk_casing:      '#d4a83a',
   road_trunk:             '#f3dfa4',
-  road_motorway_casing:   '#d1b45d',
+  road_motorway_casing:   '#d4a83a',
   road_motorway:          '#f3dfa4',
+  bridge_minor_casing:    '#c4bcb2',
+  bridge_major_casing:    '#cec298',
   rail:                   '#bbbbbb',
   admin_sub:              '#c8b4a0',
   admin_country:          '#aca08c',
@@ -53,16 +55,23 @@ const LIGHT_COLORS = {
 const DARK_COLORS = {
   ...LIGHT_COLORS,
   road_path:              '#a89a90',
-  road_service_casing:    '#858c8e',
+  // Casing IS the road surface. The filter chain is invert(0.86)→hueRotate(180°)→
+  // brightness(1.55)→contrast(1.2). Lighter input = less inversion lift = moderate
+  // final brightness. This gives a clear hierarchy on the near-black (~L16%) background:
+  //   service ≈L50%  secondary ≈L59%  primary ≈L70%  trunk/motorway ≈L88-94% warm
+  road_service_casing:    '#b8bec0',
   road_service:           '#b7bfbd',
-  road_secondary_casing:  '#747e80',
+  road_secondary_casing:  '#a8b0b2',
   road_secondary:         '#aeb8b6',
-  road_primary_casing:    '#687476',
+  road_primary_casing:    '#929ea0',
   road_primary:           '#a3afae',
-  road_trunk_casing:      '#7f7048',
+  // Warm dark inputs: after hue-rotate the inverted warm becomes amber/gold in dark mode
+  road_trunk_casing:      '#6e5c32',
   road_trunk:             '#b4a36c',
-  road_motorway_casing:   '#7f7048',
+  road_motorway_casing:   '#5e5028',
   road_motorway:          '#b4a36c',
+  bridge_minor_casing:    '#b8bec0',
+  bridge_major_casing:    '#929ea0',
 };
 
 export const DEFAULT_COLORS = {
