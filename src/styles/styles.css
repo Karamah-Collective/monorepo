@@ -3734,6 +3734,63 @@ body.dark-mode .sp-tip {
   pointer-events: auto;
 }
 
+/* ── Toast stack: multiple toasts rendered as a vertical list ───────────── */
+#toast-stack {
+  position: fixed;
+  bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* gap handled per-item via margin-bottom so it can be animated */
+  align-items: center;
+  z-index: var(--z-picker);
+  pointer-events: none;
+  max-width: min(calc(100vw - 24px), 380px);
+  width: max-content;
+}
+
+/* Individual toasts in stack: position overrides + opacity/transform only */
+#toast-stack .share-toast {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  min-height: 0; /* lets grid row collapse to 0fr */
+  overflow: hidden;
+  transform: translateY(6px);
+  width: max-content;
+  max-width: min(calc(100vw - 24px), 380px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+#toast-stack .share-toast.share-toast-show {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ── Toast slot: grid wrapper that smoothly opens/closes the height slot ─ */
+/* grid-template-rows 0fr→1fr interpolates to the real content height,     */
+/* eliminating the max-height jump that caused existing toasts to wobble.   */
+.toast-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  transition:
+    grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toast-slot.toast-slot-show {
+  grid-template-rows: 1fr;
+  margin-bottom: 6px;
+}
+.toast-slot.toast-slot-collapsing {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
 #geo-notice,
 #dev-notice {
   position: fixed;
@@ -3754,6 +3811,29 @@ body.dark-mode .sp-tip {
 #dev-notice.dev-notice-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* ── geo/dev notices inside the toast stack ─────────────────────────────── */
+#toast-stack #geo-notice,
+#toast-stack #dev-notice {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: translateY(6px);
+  z-index: auto;
+  min-width: unset;
+  width: max-content;
+  max-width: min(calc(100vw - 24px), 460px);
+  min-height: 0; /* lets grid row collapse to 0fr */
+  overflow: hidden;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+#toast-stack #geo-notice.geo-notice-show,
+#toast-stack #dev-notice.dev-notice-show {
+  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -7229,8 +7309,7 @@ body.dark-mode .qibla-center-puck {
     top: calc(var(--safe-t) + 12px);
   }
   .share-toast,
-  #geo-notice,
-  #dev-notice,
+  #toast-stack,
   .eid-banner {
     bottom: calc(var(--safe-b) + 24px);
   }

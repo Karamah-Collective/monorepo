@@ -22,6 +22,16 @@ let locMarker = null;
 let locWatchId = null;
 let homeMarker = null;
 
+// Cache geolocation permission state so we can skip the "Finding location" toast
+// when GPS is already known-denied. Resolves in one microtask (from browser cache).
+let _geoPermState = null;
+navigator.permissions?.query({ name: "geolocation" })
+  .then((p) => {
+    _geoPermState = p.state;
+    p.addEventListener("change", () => { _geoPermState = p.state; });
+  })
+  .catch(() => {});
+
 const HOME_VIEW_ZOOM = 14.2;
 const HOME_MARKER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
 
@@ -240,6 +250,15 @@ export function showCurrentLocation() {
   // iOS 13+ requires DeviceOrientation permission from a user gesture.
   // This click handler IS a user gesture, so request it here before async work.
   _requestOrientationPermission();
+
+  // If the browser has already confirmed geolocation is denied, skip the
+  // loading toast and bail immediately \u2014 no need to wait for the async error.
+  if (_geoPermState === "denied") {
+    locBtn.classList.remove("tracking");
+    setLocateIcon(false);
+    showToast("Location is off", "loc", "Enable it in browser settings");
+    return;
+  }
 
   locBtn.classList.add("tracking");
   setLocateIcon(true);

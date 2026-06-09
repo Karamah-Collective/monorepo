@@ -3,7 +3,7 @@ import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NO
 import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation, getCurrentLocationState } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple, getThemeWalkColor } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
-import { placesData, activeTagFilters, closePlacesSheet, dismissPlacesSearch } from "./places.js";
+import { placesData, activeTagFilters, closePlacesSheet, dismissPlacesSearch, openPlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
 
 // Navigation module hooks — set by navigation.js to avoid circular import
@@ -142,6 +142,7 @@ export function openDirPanel() {
 }
 
 export function closeDirPanel() {
+  _resetDirCloseButton();
   if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
   if (dirPanel._hideTimeout) { clearTimeout(dirPanel._hideTimeout); dirPanel._hideTimeout = null; }
   dirSnap.close();                               // cleanup → reflow → adds .shut with real transition
@@ -172,10 +173,58 @@ export function fullCloseDirPanel() {
   dirAddStopBtn.classList.remove("hide");
 }
 
+// ─── Back-to-places context ───────────────────────────────────────────────────
+// Set when the dir panel is opened from a places-list card. Holds the scroll
+// position of #places-scroll so the user lands back exactly where they were.
+let _fromPlacesContext = null; // { scrollTop: number } | null
+
+const _CLOSE_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+const _BACK_ICON_SVG  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
+
+const _dirCloseBtn = document.getElementById("dir-close");
+
+function _resetDirCloseButton() {
+  _fromPlacesContext = null;
+  _dirCloseBtn.setAttribute("aria-label", "Close");
+  _dirCloseBtn.innerHTML = _CLOSE_ICON_SVG;
+  _dirCloseBtn.classList.remove("dir-close--back");
+}
+
+function _setDirCloseAsBack() {
+  _dirCloseBtn.setAttribute("aria-label", "Back to places");
+  _dirCloseBtn.innerHTML = _BACK_ICON_SVG;
+  _dirCloseBtn.classList.add("dir-close--back");
+}
+
+/**
+ * Called by places.js when the user opens directions from a places-list card.
+ * Saves scroll position so the panel can restore it on back-navigation.
+ * @param {number} scrollTop - Current scrollTop of #places-scroll
+ * @returns {void}
+ */
+export function setFromPlacesContext(scrollTop) {
+  _fromPlacesContext = { scrollTop };
+  _setDirCloseAsBack();
+}
+
+function _goBackToPlaces() {
+  const ctx = _fromPlacesContext;
+  closeDirPanel(); // also resets _fromPlacesContext and the button
+  openPlacesSheet();
+  if (ctx) {
+    requestAnimationFrame(() => {
+      const scrollEl = document.getElementById("places-scroll");
+      if (scrollEl) scrollEl.scrollTop = ctx.scrollTop;
+    });
+  }
+}
+
 document.getElementById("dir-btn").addEventListener("click", () =>
   dirPanel.classList.contains("shut") ? openDirPanel() : closeDirPanel(),
 );
-document.getElementById("dir-close").addEventListener("click", closeDirPanel);
+_dirCloseBtn.addEventListener("click", () => {
+  if (_fromPlacesContext) { _goBackToPlaces(); } else { closeDirPanel(); }
+});
 
 const dirSnap = initSheetDrag(dirPanel, closeDirPanel);
 

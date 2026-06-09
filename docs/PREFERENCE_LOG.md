@@ -2613,3 +2613,73 @@ Removed decorative SVG icons from:
 **Pattern:** For rich mobile map popups, center the popup card after measurement rather than centering the underlying marker coordinate.
 
 **Files modified:** `src/places.js`, `src/styles/styles.css`, `tests/13-places-popup-regression.spec.js`, `docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-06-09 — Pin-click pan-only, toast stacking, directions back button
+
+**a. Pin click: remove zoom, pan-only with smoother motion:**
+- Removed the forced zoom-to-`PLACE_POPUP_MIN_ZOOM` (15) behaviour on pin/card click. Camera now pans only — never changes the user's current zoom level.
+- `PLACE_POPUP_MIN_ZOOM` constant removed entirely (no longer referenced).
+- `PLACE_POPUP_MOVE_MS` increased 380 → 460 ms for a calmer feel.
+- `_easePlacePopupCamera` changed from linear (`t`) to ease-out cubic (`1 - (1-t)³`) — quick start, smooth settle.
+- Added `PLACE_POPUP_CENTER_Y_OFFSET = -55` so the popup centre target sits 55px above the geometric viewport centre, giving the pan a slightly farther, more purposeful motion and keeping the place comfortably above any bottom UI chrome.
+- `_centerPopupCardInViewport`: removed `map.getZoom() < PLACE_POPUP_MIN_ZOOM` from the `shouldMove` condition — panning now triggers on off-centre delta only.
+- `_animatePopupCameraToCenter`: uses `map.getZoom()` (current zoom) for Mercator projection math; `zoom:` key removed from `map.easeTo()`.
+
+**b. Toast notification stacking (list view):**
+- `showToast()` in `utils.js` no longer removes an existing `#share-toast` — multiple concurrent notifications are now supported.
+- Added `_getToastStack()` helper that lazily creates a `#toast-stack` container (appended to `<body>` once).
+- Each toast is appended to the stack rather than `body`, so they lay out vertically via flexbox.
+- Exit animation: toast first fades out (`share-toast-show` removed), then gets `share-toast-collapsing` which collapses `max-height`, padding, and margin — the entries above slide down smoothly as the gap closes.
+- `showLoadingToast` and `showOfflineBanner` are unaffected — they remain standalone fixed elements outside the stack.
+- CSS in `styles.css`: `#toast-stack` is `position: fixed; bottom: calc(--tab-h + --safe-b + 20px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px`. Individual `#toast-stack .share-toast` override `position: relative`, use `translateY(10px)` as enter state.
+
+**c. Directions panel back button (from places list):**
+- When the user taps the directions button on a places-list card (`.pl-dir-btn` inside `#places-list`), the directions panel `#dir-close` button converts to a back arrow (← icon, accent colour) instead of ×.
+- On back-tap: `closeDirPanel()` runs (resets the button), then `openPlacesSheet()` is called immediately, and `requestAnimationFrame` restores the exact `#places-scroll` scrollTop the user was at.
+- State: `_fromPlacesContext = { scrollTop }` in `directions.js`, set by `setFromPlacesContext(scrollTop)` (new export). Cleared in `closeDirPanel()` via `_resetDirCloseButton()` — so any other close path (scrim, swipe, nav start) silently resets without opening places.
+- The popup's direction button (`.pp-dir-btn` inside the map popup) does NOT set this context — back button only applies to the places-list flow.
+- New CSS: `#dir-close.dir-close--back { color: var(--accent) }` for visual distinction.
+
+**Decisions logged:**
+- 2026-06-09 — Pin-click camera: zoom removed, pan-only. Ease-out cubic + -55px Y offset replaces linear motion to min-zoom.
+- 2026-06-09 — Toast stacking: `#toast-stack` flex container, collapse transition for exit. `showLoadingToast`/`showOfflineBanner` remain standalone.
+- 2026-06-09 — Directions back button: only from places-list (`.pl-dir-btn`), not from map popup. Scroll position restored via `requestAnimationFrame`.
+
+**Files modified:** `src/places.js`, `src/directions.js`, `src/utils.js`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`.
+
+### 2026-06-10 — Toast stacking: smooth slot animation via CSS Grid
+
+**Root cause of wobble:** The previous toast stacking used `max-height: 0 → 100px` to open space for a new toast. Because the actual toast content is only ~50px tall, the layout shift happened in the first half of the transition (when `max-height` reached real content height), then appeared to stall. Existing toasts above jumped up suddenly rather than gliding.
+
+**Fix — CSS Grid `grid-template-rows: 0fr → 1fr` technique:**
+- Each toast is now wrapped in a `.toast-slot` div (a grid container with `display: grid; grid-template-rows: 0fr`).
+- The `.share-toast` element sits inside as the grid child with `min-height: 0; overflow: hidden`.
+- `grid-template-rows: 0fr → 1fr` interpolates proportionally to the real content height — no wasted animation time, no jump.
+- The slot handles `grid-template-rows` + `margin-bottom` (layout animation). The inner `.share-toast` handles only `opacity` + `transform: translateY` (visual animation).
+- Timing: both animate simultaneously on enter. On exit, opacity fades first (0.22s), then the slot closes (0.28s).
+
+**All 7 toast/banner functions updated** in `src/utils.js`:
+- `showLoadingToast` / `hideLoadingToast` — slot wraps the toast; `hideLoadingToast` finds slot via `t.parentElement`.
+- `showToast` — slot created per toast, removed after 2.4s + 0.3s collapse.
+- `showEarlyDevNotice` / `showGeoNotice` — slot in closure for dismiss handler.
+- `showOfflineBanner` / `hideOfflineBanner` — added `_offlineBannerSlot` module-level var alongside existing `_offlineBannerEl`.
+
+**CSS changes in `src/styles/styles.css`:**
+- Removed `max-height` and `margin-bottom` animations from `#toast-stack .share-toast`.
+- Removed the `share-toast-collapsing` rule for the stack context (no longer needed — slot handles collapse).
+- Added `.toast-slot`, `.toast-slot.toast-slot-show`, `.toast-slot.toast-slot-collapsing` rules.
+- Updated `#toast-stack #geo-notice, #toast-stack #dev-notice` overrides to remove `max-height` / `margin-bottom` and add `min-height: 0`.
+
+**Decision logged:** 2026-06-10 — Toast wobble fix: grid-template-rows slot wrapper replaces max-height collapse. Existing toasts glide up smoothly because the animation is proportional to actual content height.
+
+**Follow-up fixes (same session):**
+
+**a. Toast animation lag — replaced double-rAF with `void slot.offsetHeight`:**
+- Root cause: double `requestAnimationFrame()` added ~33ms of delay before the transition started (2 frames at 60fps). The slot appeared in the DOM but the animation didn't begin, creating a perceptible lag.
+- Fix: `void slot.offsetHeight` forces a synchronous layout reflow that commits `grid-template-rows: 0fr` to the browser in the current frame. The show class is added immediately after — animation begins on the very next paint (~16ms). Applied to all 5 toast/banner functions.
+
+**b. "Finding location" toast skipped when GPS already denied:**
+- Root cause: `showLoadingToast("Finding your location…")` was called unconditionally before `requestLocation()`, even when the geolocation permission was already "denied" in the browser.
+- Fix: Added `_geoPermState` module-level var in `map-controls.js`. Initialized via `navigator.permissions.query({ name: "geolocation" })` on module load (resolves from browser cache in one microtask). A `"change"` listener keeps it updated if the user toggles permissions mid-session. The `showCurrentLocation()` function checks `_geoPermState === "denied"` before calling `showLoadingToast`, returning early with only the "Location is off" toast.
+
+**Files modified:** `src/utils.js`, `src/map-controls.js`, `src/styles/styles.css`, `docs/PREFERENCE_LOG.md`.

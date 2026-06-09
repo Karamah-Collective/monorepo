@@ -348,7 +348,7 @@
     "id": "8uaffs",
     "name": "Bangladesh Kendrio Masjid",
     "type": "mosque",
-    "address": "Laippatie 13, 00880 Helsinki",
+    "address": "Pulttitie 9, 00880 Helsinki",
     "city": "Helsinki",
     "lat": 60.2104776,
     "lng": 25.050148,
@@ -361,7 +361,7 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "3rd Floor"
   },
   {
     "id": "kv7blx",
@@ -2696,18 +2696,19 @@
     "lng": 24.939169,
     "tags": {
       "fully_halal": true,
+      "cuisine_buffet": true,
       "cuisine_turkish": true,
-      "cuisine_buffet": true
+      "no_alcohol": false
     },
     "notes": "",
     "hours": {
-      "sun": "12:00-22:00",
       "mon": "10:00-22:00",
       "tue": "10:00-22:00",
       "wed": "10:00-22:00",
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
-      "sat": "11:00-22:00"
+      "sat": "11:00-22:00",
+      "sun": "12:00-22:00"
     }
   },
   {
@@ -3307,6 +3308,330 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
+    }
+  },
+  {
+    "id": "rcbxc6",
+    "name": "Nova markit, Isomyyri kauppakeskus, 01600 Vantaa",
+    "type": "shop",
+    "address": "Isomyyri kauppakeskus, 01600 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2627081,
+    "lng": 24.854062,
+    "tags": {},
+    "notes": "Isomyyri shopping center, ground floor",
+    "hours": {
+      "sun": "10:00-18:00",
+      "mon": "10:00-20:00",
+      "tue": "10:00-20:00",
+      "wed": "10:00-20:00",
+      "thu": "10:00-20:00",
+      "fri": "10:00-20:00",
+      "sat": "10:00-18:00"
+    }
+  },
+  {
+    "id": "8qjhd5",
+    "name": "Dituria Albanian Islamic Center",
+    "type": "mosque",
+    "address": "Pulttitie 14, 00880 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2110461,
+    "lng": 25.0501729,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "s51qiw",
+    "name": "Hidaya Mosque",
+    "type": "mosque",
+    "address": "Latokartanontie 3, 00700 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.24890179999999,
+    "lng": 25.0089011,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "12:00-02:10",
+      "mon": "12:00-02:10",
+      "tue": "12:00-02:10",
+      "wed": "12:00-02:10",
+      "thu": "12:00-02:10",
+      "fri": "11:00-02:10",
+      "sat": "12:00-02:10"
+    }
+  },
+  {
+    "id": "eht0iz",
+    "name": "Diyanet Islamic Community of Finland",
+    "type": "mosque",
+    "address": "Kilpakuja 1, 01280 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.242456,
+    "lng": 25.1118974,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "10:00-22:00",
+      "mon": "10:00-22:00",
+      "tue": "10:00-22:00",
+      "wed": "10:00-22:00",
+      "thu": "10:00-22:00",
+      "fri": "10:00-22:00",
+      "sat": "10:00-22:00"
+    }
+  },
+  {
+    "id": "op2vb3",
+    "name": "Bosnian Islamic Community of Finland",
+    "type": "mosque",
+    "address": "Rintinpolku 7e, 00940 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.23044819999999,
+    "lng": 25.0922228,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "qykn23",
+    "name": "Moskeija Mosque",
+    "type": "mosque",
+    "address": "Kurjenkellonkuja 1, 00940 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2295471,
+    "lng": 25.073515,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
+  },
+  {
+    "id": "dsnc5z",
+    "name": "Kurkimäki mosque",
+    "type": "mosque",
+    "address": "Kurjenkellonkuja 1, 00940 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2296926,
+    "lng": 25.0730427,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
+  },
+  {
+    "id": "6bgjr1",
+    "name": "Masjid ahlusunna waljamaa'at مسجد أهل السنّة والجماعة",
+    "type": "mosque",
+    "address": "Vuorenpeikontie 5, 00820 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.20105149999999,
+    "lng": 25.0559675,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "05:00-22:00",
+      "mon": "05:00-22:00",
+      "tue": "05:00-22:00",
+      "wed": "05:00-22:00",
+      "thu": "05:00-22:00",
+      "fri": "05:00-22:00",
+      "sat": "05:00-22:00"
+    }
+  },
+  {
+    "id": "21vodd",
+    "name": "Madina Moskeija / Masjid",
+    "type": "mosque",
+    "address": "Turunlinnantie 14 B, 00930 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2106764,
+    "lng": 25.0786672,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "drop5g",
+    "name": "Islamic Rahma Center in Finland",
+    "type": "mosque",
+    "address": "Kastelholmantie 2, 00900 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2130849,
+    "lng": 25.0800553,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
+  },
+  {
+    "id": "gasko9",
+    "name": "Andalus Islamic Center",
+    "type": "mosque",
+    "address": "Kastelholmantie, 00900 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2141653,
+    "lng": 25.0809507,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "4fhwnv",
+    "name": "Kivenlahden moskeija",
+    "type": "mosque",
+    "address": "Merivalkama 2, 02320 Espoo",
+    "city": "Espoo",
+    "lat": 60.1544832,
+    "lng": 24.63547,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "00chb3",
+    "name": "Järvenpää mosque",
+    "type": "mosque",
+    "address": "Pöytäalhonkuja 4b, 04410 Järvenpää",
+    "city": "Järvenpää",
+    "lat": 60.4752816,
+    "lng": 25.1000611,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "5eiayd",
+    "name": "Resalat Islamic Community",
+    "type": "mosque",
+    "address": "Kaunispääntie 5, 00970 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2335914,
+    "lng": 25.126522,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "10:00-17:00",
+      "mon": "09:00-16:00",
+      "tue": "09:00-16:00",
+      "wed": "09:00-16:00",
+      "thu": "09:00-21:00",
+      "fri": "09:00-16:00",
+      "sat": null
+    }
+  },
+  {
+    "id": "np6sfu",
+    "name": "Träskända moské",
+    "type": "mosque",
+    "address": "Keskitalontie 3, 04430 Järvenpää",
+    "city": "Järvenpää",
+    "lat": 60.4726683,
+    "lng": 25.1010635,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "ade1es",
+    "name": "Masjid Omar",
+    "type": "mosque",
+    "address": "Meri-Rastilan tie 2 B, 00980 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.20392870000001,
+    "lng": 25.1188082,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "91oxis",
+    "name": "Korso kulttuurikeskus Ry مسجد كورسو",
+    "type": "mosque",
+    "address": "Merikotkantie 1, 01450 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.3508937,
+    "lng": 25.0760731,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "ynoxha",
+    "name": "Tikkurilan moskeija",
+    "type": "mosque",
+    "address": "Talvikkitie 18، 01300 Vantaa",
+    "city": "Talvikkitie 18، 01300 Vantaa",
+    "lat": 60.2890606,
+    "lng": 25.0297216,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "fgcar2",
+    "name": "Myyrmäen Moskeija مسجد مورمكي",
+    "type": "mosque",
+    "address": "Ojahaanrinne 4k, 01600 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.26400959999999,
+    "lng": 24.8557993,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "11:30-20:00",
+      "mon": "11:30-20:00",
+      "tue": "11:30-20:00",
+      "wed": "11:30-20:00",
+      "thu": "11:30-20:00",
+      "fri": "11:30-20:00",
+      "sat": "11:30-20:00"
+    }
+  },
+  {
+    "id": "9szw5c",
+    "name": "Dar-ul-Tauheed",
+    "type": "mosque",
+    "address": "Sinikalliontie 10, 02630 Espoo",
+    "city": "Espoo",
+    "lat": 60.2037413,
+    "lng": 24.7642179,
+    "tags": {},
+    "notes": ""
+  },
+  {
+    "id": "9vx4pf",
+    "name": "Seoul Good Kaari",
+    "type": "restaurant",
+    "address": "Kantelettarentie 1, 00420 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.23726094015399,
+    "lng": 24.890841332013878,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_korean": true
+    },
+    "notes": "The halal options are marked.",
+    "hours": {
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-20:00",
+      "sat": "11:00-20:00",
+      "sun": "11:00-20:00"
     }
   }
 ]

@@ -3,7 +3,7 @@ import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./ico
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
-import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute } from "./directions.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
 
@@ -39,8 +39,9 @@ export let activeTagFilters = new Set();
 
 const PHONE_VIEWPORT_MAX_WIDTH = 768;
 const PLACE_POPUP_OFFSET_Y = -42;
-const PLACE_POPUP_MIN_ZOOM = 15;
-const PLACE_POPUP_MOVE_MS = 380;
+
+const PLACE_POPUP_MOVE_MS = 460;
+const PLACE_POPUP_CENTER_Y_OFFSET = -55; // shift popup above viewport centre for better framing
 const PLACE_POPUP_CENTER_TOLERANCE_PX = 1;
 const PLACE_POPUP_REVEAL_FALLBACK_MS = 140;
 const MERCATOR_TILE_SIZE = 512;
@@ -155,7 +156,7 @@ function _measurePopupAnchorOffset(popupEl, place) {
 }
 
 function _easePlacePopupCamera(t) {
-  return t;
+  return 1 - Math.pow(1 - t, 3); // ease-out cubic — quick start, smooth settle
 }
 
 function _projectLngLatToWorld(lng, lat, zoom) {
@@ -191,16 +192,16 @@ function _animatePopupCameraToCenter(popup, place, anchorOffset) {
   _cancelPlacePopupCameraTween();
 
   const mapEl = map.getContainer();
-  const targetZoom = PLACE_POPUP_MIN_ZOOM;
+  const currentZoom = map.getZoom();
   const targetPopupCenter = {
     x: mapEl.clientWidth / 2,
-    y: mapEl.clientHeight / 2,
+    y: mapEl.clientHeight / 2 + PLACE_POPUP_CENTER_Y_OFFSET,
   };
   const anchorPoint = {
     x: targetPopupCenter.x - anchorOffset.x,
     y: targetPopupCenter.y - anchorOffset.y,
   };
-  const center = _centerForPlaceAtScreenPoint(place, anchorPoint, targetZoom);
+  const center = _centerForPlaceAtScreenPoint(place, anchorPoint, currentZoom);
   let settled = false;
 
   const finish = () => {
@@ -218,7 +219,6 @@ function _animatePopupCameraToCenter(popup, place, anchorOffset) {
   map.once("moveend", _placePopupMoveEndHandler);
   map.easeTo({
     center,
-    zoom: targetZoom,
     duration: PLACE_POPUP_MOVE_MS,
     easing: _easePlacePopupCamera,
     essential: true,
@@ -238,11 +238,9 @@ function _centerPopupCardInViewport(popup, place) {
 
     const { deltaX, deltaY } = _measurePopupCenterDelta(latestPopupEl);
     const anchorOffset = _measurePopupAnchorOffset(latestPopupEl, place);
-    const targetZoom = Math.max(map.getZoom(), PLACE_POPUP_MIN_ZOOM);
     const shouldMove =
       Math.abs(deltaX) > PLACE_POPUP_CENTER_TOLERANCE_PX ||
-      Math.abs(deltaY) > PLACE_POPUP_CENTER_TOLERANCE_PX ||
-      map.getZoom() < PLACE_POPUP_MIN_ZOOM;
+      Math.abs(deltaY) > PLACE_POPUP_CENTER_TOLERANCE_PX;
 
     if (!shouldMove) {
       _revealMeasuredPopup(popup);
@@ -3400,7 +3398,9 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     document.getElementById("dir-to").value = name;
     placeDestMarker(+lng, +lat);
     updateGoButton();
+    const savedScrollTop = document.getElementById("places-scroll").scrollTop;
     closePlacesSheet();
+    setFromPlacesContext(savedScrollTop);
     openDirPanel();
     return;
   }

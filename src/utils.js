@@ -190,46 +190,67 @@ const _TOAST_ICON_CLASS = {
 /* ── Persistent loading toast (stays until hideLoadingToast is called) ──── */
 export function showLoadingToast(label, sub = null) {
   if (document.getElementById("loading-toast")) return;
+  const slot = document.createElement("div");
+  slot.className = "toast-slot";
   const t = document.createElement("div");
   t.id = "loading-toast";
   t.className = "share-toast snack loading-toast";
   t.innerHTML = `<span class="snack-icon snack-icon--clock"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><span class="snack-body"><span class="snack-label">${esc(label)}</span>${sub ? `<span class="snack-sub">${esc(sub)}</span>` : ""}</span>`;
-  document.body.appendChild(t);
-  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("share-toast-show")));
+  slot.appendChild(t);
+  _getToastStack().appendChild(slot);
+  void slot.offsetHeight; // commit grid-template-rows:0fr before transition
+  slot.classList.add("toast-slot-show");
+  t.classList.add("share-toast-show");
 }
 export function hideLoadingToast() {
   const t = document.getElementById("loading-toast");
   if (!t) return;
+  const slot = t.parentElement;
   t.classList.remove("share-toast-show");
-  setTimeout(() => t.remove(), 250);
+  slot.classList.remove("toast-slot-show");
+  slot.classList.add("toast-slot-collapsing");
+  setTimeout(() => slot.remove(), 300);
+}
+
+function _getToastStack() {
+  let stack = document.getElementById("toast-stack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "toast-stack";
+    document.body.appendChild(stack);
+  }
+  return stack;
 }
 
 export function showToast(label, icon = "check", sub = null) {
-  const existing = document.getElementById("share-toast");
-  if (existing) existing.remove();
+  const stack = _getToastStack();
+  const slot = document.createElement("div");
+  slot.className = "toast-slot";
   const t = document.createElement("div");
-  t.id = "share-toast";
   t.className = "share-toast snack";
   const svg = _TOAST_SVG[icon] || "";
   const iconClass = _TOAST_ICON_CLASS[icon] || "snack-icon--success";
   const subHtml = sub ? `<span class="snack-sub">${esc(sub)}</span>` : "";
   t.innerHTML = `${svg ? `<span class="snack-icon ${iconClass}">${svg}</span>` : ""}<span class="snack-body"><span class="snack-label">${esc(label)}</span>${subHtml}</span>`;
-  document.body.appendChild(t);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => {
-      t.classList.add("share-toast-show");
-      setTimeout(() => {
-        t.classList.remove("share-toast-show");
-        setTimeout(() => t.remove(), 250);
-      }, 2400);
-    }),
-  );
+  slot.appendChild(t);
+  stack.appendChild(slot);
+  void slot.offsetHeight; // commit grid-template-rows:0fr before transition
+  slot.classList.add("toast-slot-show");
+  t.classList.add("share-toast-show");
+  setTimeout(() => {
+    t.classList.remove("share-toast-show");
+    slot.classList.remove("toast-slot-show");
+    slot.classList.add("toast-slot-collapsing");
+    setTimeout(() => slot.remove(), 300);
+  }, 2400);
 }
 
 // --- Early-development notice (shown to everyone, every visit) ---
 
 export function showEarlyDevNotice() {
   if (document.getElementById("dev-notice")) return;
+  const slot = document.createElement("div");
+  slot.className = "toast-slot";
   const el = document.createElement("div");
   el.id = "dev-notice";
   el.className = "snack";
@@ -249,18 +270,23 @@ export function showEarlyDevNotice() {
   `;
   el.querySelector(".sheet-x").addEventListener("click", () => {
     el.classList.remove("dev-notice-show");
-    setTimeout(() => el.remove(), 350);
+    slot.classList.remove("toast-slot-show");
+    slot.classList.add("toast-slot-collapsing");
+    setTimeout(() => slot.remove(), 300);
   });
-  document.body.appendChild(el);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => el.classList.add("dev-notice-show")),
-  );
+  slot.appendChild(el);
+  _getToastStack().appendChild(slot);
+  void slot.offsetHeight; // commit grid-template-rows:0fr before transition
+  slot.classList.add("toast-slot-show");
+  el.classList.add("dev-notice-show");
 }
 
 // --- Geo notice (shown to non-Finland visitors) ---
 
 export function showGeoNotice() {
   if (document.getElementById("geo-notice")) return;
+  const slot = document.createElement("div");
+  slot.className = "toast-slot";
   const el = document.createElement("div");
   el.id = "geo-notice";
   el.className = "snack";
@@ -280,12 +306,15 @@ export function showGeoNotice() {
   `;
   el.querySelector(".sheet-x").addEventListener("click", () => {
     el.classList.remove("geo-notice-show");
-    setTimeout(() => el.remove(), 350);
+    slot.classList.remove("toast-slot-show");
+    slot.classList.add("toast-slot-collapsing");
+    setTimeout(() => slot.remove(), 300);
   });
-  document.body.appendChild(el);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => el.classList.add("geo-notice-show")),
-  );
+  slot.appendChild(el);
+  _getToastStack().appendChild(slot);
+  void slot.offsetHeight; // commit grid-template-rows:0fr before transition
+  slot.classList.add("toast-slot-show");
+  el.classList.add("geo-notice-show");
 }
 
 export async function checkGeoNotice() {
@@ -338,19 +367,31 @@ export function loadRecaptcha(siteKey) {
 const _WIFI_OFF_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`;
 
 let _offlineBannerEl = null;
+let _offlineBannerSlot = null;
 export function showOfflineBanner() {
   if (_offlineBannerEl) return;
+  _offlineBannerSlot = document.createElement("div");
+  _offlineBannerSlot.className = "toast-slot";
   _offlineBannerEl = document.createElement("div");
   _offlineBannerEl.id = "offline-banner";
   _offlineBannerEl.className = "share-toast snack loading-toast";
   _offlineBannerEl.innerHTML = `<span class="snack-icon snack-icon--warn">${_WIFI_OFF_SVG}</span><span class="snack-body"><span class="snack-label">You're offline</span><span class="snack-sub">Showing cached data</span></span>`;
-  document.body.appendChild(_offlineBannerEl);
-  requestAnimationFrame(() => requestAnimationFrame(() => _offlineBannerEl?.classList.add("share-toast-show")));
+  _offlineBannerSlot.appendChild(_offlineBannerEl);
+  _getToastStack().appendChild(_offlineBannerSlot);
+  void _offlineBannerSlot.offsetHeight; // commit grid-template-rows:0fr before transition
+  _offlineBannerSlot.classList.add("toast-slot-show");
+  _offlineBannerEl.classList.add("share-toast-show");
 }
 export function hideOfflineBanner() {
   if (!_offlineBannerEl) return;
   _offlineBannerEl.classList.remove("share-toast-show");
-  setTimeout(() => { _offlineBannerEl?.remove(); _offlineBannerEl = null; }, 250);
+  _offlineBannerSlot.classList.remove("toast-slot-show");
+  _offlineBannerSlot.classList.add("toast-slot-collapsing");
+  setTimeout(() => {
+    _offlineBannerSlot?.remove();
+    _offlineBannerEl = null;
+    _offlineBannerSlot = null;
+  }, 300);
 }
 
 // --- Segmented-control sliding pill ---
