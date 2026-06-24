@@ -1,740 +1,949 @@
-﻿# Halal Finder Helsinki
+# Halal Finder Helsinki
 
-> An interactive map for discovering halal-friendly locations across Helsinki — mosques, restaurants, shops, and more — with real-time transit directions, prayer times, and a fully automated test suite.
-
-**Live App** → deployed via Cloudflare Pages · **Stack** → MapLibre GL + Vanilla JS ES Modules · **Tests** → 1005 Playwright tests across Desktop Chrome · Pixel 7 · Galaxy S24 · iPhone 15 Pro
+A community-driven Progressive Web App for discovering halal food, shops, and prayer spaces across Helsinki and Finland. Built with vanilla JavaScript ES Modules and MapLibre GL, deployed globally on Cloudflare Pages.
 
 ---
 
 ## Table of Contents
 
-1. [Features](#1-features)
-2. [Project Structure](#2-project-structure)
-3. [Quick Start](#3-quick-start)
-4. [Configuration & API Keys](#4-configuration--api-keys)
-5. [Automated Tests](#5-automated-tests)
-6. [Architecture Deep-Dive](#6-architecture-deep-dive)
-7. [Data Guide](#7-data-guide)
-8. [Design System](#8-design-system)
-9. [Deployment (Cloudflare Pages)](#9-deployment-cloudflare-pages)
-10. [Contributing](#10-contributing)
-11. [Troubleshooting](#11-troubleshooting)
-12. [API Reference](#12-api-reference)
+- [Overview](#overview)
+- [Features](#features)
+  - [Map & Navigation](#map--navigation)
+  - [Place Discovery & Filtering](#place-discovery--filtering)
+  - [Search & Geocoding](#search--geocoding)
+  - [Directions & Routing](#directions--routing)
+  - [Turn-by-Turn Navigation](#turn-by-turn-navigation)
+  - [Prayer Times & Qibla](#prayer-times--qibla)
+  - [Eid Prayer Locations](#eid-prayer-locations)
+  - [Community Features](#community-features)
+  - [Progressive Web App](#progressive-web-app)
+  - [Tutorial & Onboarding](#tutorial--onboarding)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Local Development Setup](#local-development-setup)
+- [Configuration & Environment Variables](#configuration--environment-variables)
+- [Backend (Cloudflare Functions & Google Sheets)](#backend-cloudflare-functions--google-sheets)
+- [Data Management](#data-management)
+- [Service Worker & Caching](#service-worker--caching)
+- [CSS & Design System](#css--design-system)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
 
 ---
 
-## 1. Features
+## Overview
+
+Halal Finder Helsinki is a mobile-first web application that helps the Muslim community in Helsinki and across Finland locate halal restaurants, grocery shops, mosques, prayer rooms, and cemeteries. The app provides:
+
+- An interactive map with 76+ community-verified halal locations
+- Real-time transit, walking, cycling, and driving directions
+- Daily prayer times with Ramadan and Eid support
+- A Qibla compass using the device magnetometer
+- Community reviews with email OTP verification
+- Offline capability through a service worker
+
+The entire frontend is written in plain JavaScript with no framework. Zero runtime npm dependencies — the only libraries are MapLibre GL (loaded from a CDN) and Playwright (dev-only for testing).
+
+---
+
+## Features
 
 ### Map & Navigation
-- **Vector map** powered by MapLibre GL 3 with OpenFreeMap tiles and a custom HSL colour style
-- **Real-time location** tracking via the browser Geolocation API
-- **URL-based state** — the map view persists in the URL hash (`#zoom/lat/lng`) so links always open at the right position
-- **3D terrain toggle** and satellite / default style switcher
-- **First-run tutorial** — a 10-step interactive spotlight tour that guides new users through every feature
 
-### Place Discovery
-- **76+ verified halal-friendly locations** across Helsinki — continuously growing
-- Filter by **place type** (All · Mosque · Restaurant · Shop)
-- Granular **tag filtering** per type (e.g. halal-certified, cash-only, delivery, etc.)
-- **Favourites** — saved locally via `localStorage`
-- **Suggest a place** or **suggest an edit** with a built-in form (powered by Google Apps Script + Sheets)
-- **Contact form** — reach the team directly with name, email, and message (reCAPTCHA-protected, stored in Google Sheets)
-- **One-tap directions** from any place card or popup
+**MapLibre GL 3 vector map** using OpenFreeMap tiles with a fully custom style definition (`src/map-style.js`, 1 096 lines). The style includes:
 
-### Search
-- Full-text geocoding via **Nominatim** (bounded to Helsinki metro area)
-- **Digitransit** autocomplete for transit-aware search
-- Dropped pins via **double-click** on the map with save / share / directions options
-- Share any location via the Web Share API or clipboard copy
+- Background, water, landcover, landuse, buildings, roads, bridges, railways, and labels
+- Zoom-dependent opacity and width interpolation for roads and labels
+- One-way arrow symbols on appropriate road segments
+- Administrative boundary rendering
+
+**Map Styles** — four visual modes switchable via the style picker pill:
+
+| Mode | Description |
+|------|-------------|
+| Light | Default clean light map |
+| Dark | Full dark theme (also respects `prefers-color-scheme`) |
+| Satellite | ArcGIS World Imagery raster tiles |
+| Heatmap | Dynamic heatmap of halal-place density |
+
+**3D Terrain** — toggleable via `map-controls.js`. Uses AWS terrain-dem raster tiles to extrude building heights and elevation.
+
+**URL Hash Persistence** — the map state (`zoom/lat/lng`) is stored in the URL hash so direct links to specific locations work.
+
+**Finland Mask** — a GeoJSON fill layer covers areas outside Finland to focus the experience.
+
+**Map Controls:**
+
+- Zoom in / zoom out buttons with disabled state at min/max zoom
+- Locate button — requests browser geolocation, shows an accuracy circle, auto-centers the map
+- Home marker — saves and restores a custom home location in `localStorage`
+- Style picker — light, dark, satellite, heatmap radio buttons
+- Heatmap toggle — dynamic place scoring visualization
+
+---
+
+### Place Discovery & Filtering
+
+All halal locations are stored in `data/places.json` (76+ entries). Each place has a type, tags, coordinates, address, opening hours, and optional sponsor or boycott metadata.
+
+**Place Types:**
+
+| Type | Icon Color | Description |
+|------|-----------|-------------|
+| Mosque | Green | Full mosques with prayer hall |
+| Prayer Room | Teal | Dedicated prayer spaces (offices, malls, etc.) |
+| Restaurant | Orange | Halal food establishments |
+| Shop | Purple | Halal groceries and butcheries |
+| Cemetery | Grey | Muslim burial sites |
+
+**Tag Filtering** — each type has its own set of granular capability tags:
+
+*Mosques & Prayer Rooms:*
+`5 Daily Prayers` `Jummah (Friday)` `Taraweeh` `Eid Prayer` `Janaza` `Quran Classes` `Sisters Section` `Sisters Wudu`
+
+*Restaurants:*
+`Halal Certified` `Fully Halal` `Partially Halal` `No Alcohol` `Halal Meat` `Delivery Available` `Cash Only`
+
+*Shops:*
+`Halal Meat` `Butchery` `Groceries` `Asian Products` `African Products` `Arab Products` `Halal Certified`
+
+**Place Popups** — clicking any marker opens a card showing:
+- Name, address, current open/closed status
+- Opening hours for all days of the week
+- Tags as visual chips
+- Community rating (star average + review count)
+- Sponsor badge if applicable
+- Quick-action buttons: Directions, Share, Save to Favorites, Report
+
+**Favorites** — users can star any place; saved to `localStorage` and accessible in the Places sheet under a Favorites filter.
+
+**Sponsorship System** — places can have active sponsor badges tied to date ranges. A `boycott` flag on a place overrides any sponsor display.
+
+**Opening Hours** — stored as a JSON object per place (`"mon": "09:00-22:00"`) and displayed with real-time open/closed status based on the current local time.
+
+---
+
+### Search & Geocoding
+
+The collapsible search pill at the top of the screen provides:
+
+**Geocoding Sources (in priority order):**
+
+1. **Local places search** — instant filter against `placesData` by name, address, or type
+2. **Nominatim (OpenStreetMap)** — forward geocoding bounded to the Helsinki metro area (`NOMINATIM_VB` bounding box)
+3. **Digitransit** — transit-aware address autocomplete for Finnish addresses
+
+**Dropped Pins** — any map tap during search pick-mode creates a dropped pin with:
+- Reverse geocoding via Nominatim to get a human-readable address
+- Save pin to `localStorage` with optional name
+- Share pin via Web Share API or clipboard (URL-encoded format)
+- "Get Directions" shortcut from the pin popup
+
+**Clear** — the × button clears the search input, hides results, and removes any temporary markers.
+
+---
 
 ### Directions & Routing
-- **4 travel modes**: Transit (bus/tram/metro/train/ferry), Walking, Cycling, Driving
-- **Transit routing** via Digitransit GraphQL — **HSL** (Helsinki / Espoo / Vantaa) and **Waltti / Föli** (Turku region) — each with per-route GTFS brand colours; cross-regional trips fall back to **Transitous** (MOTIS v2)
-- **Walk / Cycle / Drive** routing via OSRM (OpenStreetMap Routing Machine)
-- Depart now · Depart at · Arrive by time pickers
-- Expandable leg-by-leg step details with route numbers and zone badges
-- **Interactive pick mode**: tap the map to set origin or destination
 
-### Prayer Times
-- Current and next prayer times via the **Aladhan API** (auto-detects location)
-- Live countdown to next prayer
-- **Ramadan mode** — detected automatically, shows Ramadan card with Suhoor/Iftar times
-- "Find nearest mosque" shortcut in the prayer snack
+The Directions panel is a bottom sheet that supports four travel modes and provides full routing with itinerary visualization.
 
-### Developer Quality of Life
-- **611 automated Playwright tests** covering DOM structure, data integrity, every UI interaction, animations, mobile touch gestures, and more — run them after any edit across Desktop Chrome, Mobile Chrome, and iPhone 12 (Safari/WebKit)
-- Full **design system** with CSS custom properties (design tokens) documented in `docs/DESIGN_SYSTEM.md`
-- No build step required — pure ES modules served directly
+**Travel Modes:**
+
+| Mode | Backend | API |
+|------|---------|-----|
+| Transit | Digitransit HSL (Helsinki/Espoo/Vantaa) | GraphQL |
+| Transit (fallback) | Digitransit Waltti (Turku/Föli region) | GraphQL |
+| Transit (cross-regional) | Transitous (MOTIS v2) | REST |
+| Walk | OSRM | REST |
+| Cycle | OSRM | REST |
+| Drive | OSRM | REST |
+
+**Transit Routing (Digitransit):**
+- Queries the HSL GraphQL API with origin, destination, departure/arrival time
+- Renders per-route GTFS brand colors (tram red, metro orange, bus blue, train green, ferry teal)
+- Shows zone badges and estimated fare information
+- Automatically falls back to Waltti for Turku-area trips and to Transitous for inter-city routes
+
+**Walk / Cycle / Drive Routing (OSRM):**
+- Fetches alternative routes (up to 3) and renders them with opacity toggling
+- Road corridor is highlighted along the selected route
+- Speed and max-speed annotations from OSRM are used for ETA calculation
+
+**Time Picker:**
+- Depart Now (default) / Depart At / Arrive By via radio toggle
+- Custom date/time via native `<input type="datetime-local">`
+
+**Waypoints:**
+- Up to 3 intermediate stops between origin and destination
+- Tap "+" to enter pick mode; tap on the map to set the waypoint
+- Remove individual waypoints with the × button
+
+**Itinerary Rendering:**
+- Expandable leg cards showing mode icon, start/end stops, times, and duration
+- Transit legs show route number, all intermediate stops, arrival times, and zone info
+- Walking legs show step-by-step turn instructions
+
+**Route Visualization on Map:**
+- Origin marker (green dot), destination marker (red pin)
+- Route polyline in mode-specific color
+- Alternative routes in lighter opacity
+- Active step highlighting during navigation
+
+**Origin/Destination Picking:**
+- Click any marker or the map to set origin or destination in pick mode
+- Reverse geocoding label appears immediately on tap
+- "Use my location" button in the pick mode overlay
+- "Nearest mosque" shortcut — scores mosques using prayer-context awareness (see Prayer Times)
+
+**Route Sharing:**
+- URL-encoded compact representation stored in `?r=` parameter
+- Web Share API for native sharing on mobile; clipboard fallback on desktop
+
+**Route Snackbar:**
+- Compact summary card (duration, distance, departure time) visible when the full Directions sheet is collapsed
 
 ---
 
-## 2. Project Structure
+### Turn-by-Turn Navigation
+
+A full voice + visual turn-by-turn navigator built on top of OSRM step data and the Web Speech API.
+
+**Features:**
+- Parses OSRM / OTP step maneuvers (turn left, continue, arrive, etc.)
+- Announces upcoming maneuvers via `SpeechSynthesisUtterance`:
+  - "In 200 metres, turn right onto Fleminginkatu"
+  - "You have arrived at your destination"
+- Highlights the current step's road segment on the map in real time
+- Tracks user position via `watchPosition`; detects when the user is off-route
+- Pause/resume without clearing the route
+- Auto-dismiss when the destination geofence is entered
+- **Mosque alert** — when arriving near a mosque during a prayer window, highlights the nearest mosque with a contextual notification
+
+---
+
+### Prayer Times & Qibla
+
+**Prayer Times (`src/prayer.js`):**
+
+- Fetches from the **Aladhan API** using the user's current latitude/longitude
+- Displays all five daily prayers: Fajr, Dhuhr, Asr, Maghrib, Isha
+- **Prayer Snack** — always-visible compact pill at the bottom showing:
+  - The current/next prayer name
+  - Live countdown (updates every minute)
+  - Quick button to find the nearest contextually-appropriate mosque
+- **Ramadan Mode** — automatically detected from Aladhan's Hijri month data:
+  - Shows Suhoor (pre-dawn meal) time and Iftar (breaking fast) time
+  - Ramadan card appears in the Places sheet
+- **Friday handling** — Dhuhr is labelled "Jummu'ah" every Friday
+- **Prayer-contextual mosque scoring** — when finding the "nearest mosque" the algorithm weights:
+  - Friday + Dhuhr window → strongly prefers mosques with Jummah tag
+  - Ramadan + Isha window → strongly prefers mosques with Taraweeh tag
+  - Eid window → strongly prefers mosques with Eid Prayer tag
+  - All other times → base distance scoring across all 5-daily-prayer mosques
+
+**Qibla Compass (`src/qibla.js`):**
+
+- Full-screen mobile overlay
+- Uses `DeviceOrientationEvent` to read the device's magnetic compass heading
+- Calculates the great-circle bearing to the Kaaba (21.4225°N, 39.8262°E) from the user's geolocation
+- Applies a low-pass filter and renders at 60 fps via `requestAnimationFrame`
+- Shows a "Locked" badge when the compass bearing is within 5° of Qibla
+- Gracefully falls back to displaying the raw compass heading if device orientation permission is denied
+
+---
+
+### Eid Prayer Locations
+
+A seasonal feature (`src/eid-prayers.js`) for listing outdoor Eid prayer venues across Helsinki.
+
+- **Two-phase loading:**
+  1. Immediately loads from a pre-cached static file (`data/eid-prayers.json`)
+  2. Background fetch from `/api/eid-prayers` (Cloudflare Function → Google Sheets) to get any updates
+- Filters entries so only future events are shown
+- Renders distinct map markers separate from regular places
+- **Banner** — a temporary dismissible notice when Eid locations are available
+- **Share** — each Eid location can be shared via `?eid=<id>` URL parameter
+- Data is managed in a Google Sheet via an Apps Script deployment
+
+---
+
+### Community Features
+
+**Reviews (`src/reviews.js`):**
+
+The review system requires email verification before submission to prevent spam.
+
+Flow:
+1. User taps "Write a Review" on a place popup
+2. User enters their email; reCAPTCHA v3 token is generated
+3. `/api/reviews` sends a 6-digit OTP to the email (via Apps Script)
+4. User enters the OTP; a verification token is stored in `localStorage` (valid 7 days)
+5. User submits a 1–5 star rating with optional text (20–500 characters)
+6. Review appears in the list with a Verified badge
+
+Review display:
+- Scrollable list per place
+- Shows user email (anonymized), star rating, date, text
+- Average rating and total count displayed on the place card and popup
+- Verified / Unverified badge per review
+- 5-minute client-side cache to avoid redundant API calls
+
+**Wishlist / Feature Requests (`src/wishlist.js`):**
+
+A community board for requesting new features or reporting data gaps.
+
+- Vote on existing wishes (per-device, `localStorage`-persisted)
+- Submit a new wish (name, description, category)
+- Status labels: `Active` / `In Progress` / `Implemented` / `Out of Scope`
+- Sorted by status priority then vote count descending
+- Backed by a Google Sheet via Apps Script
+
+**Contact Form (`src/contact.js`):**
+
+- Name, email, and message fields
+- reCAPTCHA v3 spam protection
+- Submissions are written to a Google Sheet row via Apps Script
+- Toast notification on success or error
+
+**Suggest a Place / Suggest an Edit:**
+
+- "Suggest Place" overlay — fill in name, type, address, coordinates, tags
+- "Suggest Edit" overlay — pre-populated form for an existing place
+- Tag chips are toggleable (click cycles true/false)
+- Submitted via `/api/submit` (Cloudflare Function → Apps Script)
+- Admin workflow reviews and approves suggestions in the Google Sheet
+
+---
+
+### Progressive Web App
+
+The app is fully installable as a PWA on iOS (Add to Home Screen) and Android (Install App prompt).
+
+**manifest.json:**
+
+```json
+{
+  "name": "Halal Finder Helsinki",
+  "short_name": "Halal Finder",
+  "display": "standalone",
+  "theme_color": "#08705B",
+  "background_color": "#f2f2f2",
+  "start_url": "/"
+}
+```
+
+**Service Worker (`sw.js`):**
+
+Implements a multi-tier caching strategy:
+
+| Cache | Strategy | Size Limit | Contents |
+|-------|----------|-----------|---------|
+| `hf-shell-YYYYMMDD` | Stale-while-revalidate | Unlimited | JS, CSS, fonts, data files |
+| `hf-tiles-YYYYMMDD` | Stale-while-revalidate | 500 entries | Vector map tiles |
+| `hf-glyphs-YYYYMMDD` | Cache-first (immutable) | 64 entries | MapLibre font glyphs |
+| `hf-sat-YYYYMMDD` | Stale-while-revalidate | 300 entries | Satellite imagery tiles |
+
+Dynamic API calls (Digitransit, Aladhan, reCAPTCHA) bypass the cache entirely (network-only).
+
+Cache invalidation: the `VERSION` constant in `sw.js` must match the `?v=YYYYMMDD` query string on CSS and JS imports in `index.html`. Bumping the version causes the service worker to install a fresh cache and delete the old one on activation.
+
+On install, the service worker pre-caches 44 shell assets so the app loads instantly on subsequent visits even without a network connection.
+
+---
+
+### Tutorial & Onboarding
+
+A 10-step spotlight tour runs on first visit only (`src/tutorial.js`). It highlights specific UI elements sequentially and explains each one.
+
+Steps:
+1. Map markers and icon meanings
+2. Search bar and geocoding
+3. Places sheet and type/tag filtering
+4. Saving to Favorites
+5. Prayer snack pill
+6. Directions panel
+7. Travel mode selector
+8. Route legs and transit details
+9. Style picker (Light/Dark/Satellite)
+10. Celebrate / settings prompt
+
+A `localStorage` flag prevents the tutorial from showing again on return visits. Users can re-launch it from the Settings overlay.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| Map Engine | MapLibre GL 3.6.2 | CDN, pinned version; ~350 KB gzip |
+| Language | Vanilla JavaScript ES Modules | Zero framework |
+| Styling | CSS 3 with Custom Properties | 283 KB total (tokens + layout) |
+| Fonts | Plus Jakarta Sans (WOFF2) | Latin subset, self-hosted |
+| Transit Routing | Digitransit HSL + Waltti (GraphQL) | Primary Finnish transit |
+| Transit Fallback | Transitous / MOTIS v2 (REST) | Cross-regional trips |
+| Walk/Cycle/Drive | OSRM (REST) | No API key required |
+| Geocoding | Nominatim (OSM) | Bounded to Helsinki |
+| Alt Geocoding | Digitransit Geocoding API | Transit-aware |
+| Prayer Times | Aladhan REST API | 5 daily prayers + Ramadan |
+| Transit Stops | Overpass API + local cache | 10 498 stops pre-cached |
+| Voice | Web Speech API | Turn-by-turn announcements |
+| Compass | DeviceOrientationEvent | Qibla bearing |
+| Serverless | Cloudflare Pages Functions | 7 API functions |
+| Data Persistence | Google Sheets + Apps Script | Places, reviews, contact |
+| Spam Protection | Google reCAPTCHA v3 | Reviews, contact, suggest |
+| Offline | Service Worker | Stale-while-revalidate |
+| Testing | Playwright | 1 005 tests, 4 browsers |
+| Hosting | Cloudflare Pages | Global CDN, auto-deploy |
+| Package Manager | npm (dev only) | No runtime dependencies |
+
+---
+
+## Project Structure
 
 ```
-halal-finder/
+Maps/
+├── index.html                  # Single-page app shell (87.5 KB, 1 170 lines)
+├── manifest.json               # PWA manifest
+├── sw.js                       # Service worker (10.3 KB)
+├── package.json                # Dev dependencies only (Playwright, serve)
+├── _headers                    # Cloudflare Pages HTTP headers
+├── _routes.json                # Cloudflare Pages routing rules
+├── .gitignore
 │
-├── index.html                     # Single-page app shell (~1 170 lines)
-├── package.json                   # npm scripts — tests only; app has zero runtime deps
-│
-├── data/                          # Static data (checked into git)
-│   ├── places.json                # 27 halal locations with tags and coordinates
-│   ├── tags.json                  # Tag definitions per place type
-│   ├── icons/                     # PWA & favicon icons
-│   │   ├── favicon.png            # Site favicon (512×512)
-│   │   ├── icon-192.png           # PWA icon 192×192
-│   │   └── icon-512.png           # PWA icon 512×512
-│   └── thumbs/                    # Optional place thumbnail images
-│
-├── src/                           # Application source — all ES modules
-│   ├── app.js                     # Entry point (bootstrap + map load handler)
-│   ├── config.js                  # Resolves API keys from local or injected config
-│   ├── config.local.js            # YOUR API keys — git-ignored, NEVER commit
-│   ├── config.template.js         # Template — copy this to config.local.js
-│   ├── map-init.js                # Singleton MapLibre map instance
-│   ├── map-controls.js            # Locate, style switcher, 3D, URL hash, tab management
-│   ├── map-style.js               # Full MapLibre GL vector tile style definition
-│   ├── icons.js                   # SVG helpers, PLACE_CONFIG, transit colours, marker HTML
-│   ├── utils.js                   # Toast, sheet drag, clipboard, haversine, crypto helpers
-│   ├── places.js                  # Places: markers, popups, sheet UI, favourites, tag filters
-│   ├── search.js                  # Search bar, geocoding, dropped pins, search markers
-│   ├── contact.js                 # Contact form overlay, reCAPTCHA submit
-│   ├── directions.js              # All routing: transit + OSRM + panel UI + step rendering
-│   ├── prayer.js                  # Prayer times, Ramadan detection, snack UI
-│   ├── transit-stops.js           # Transit stop layer (cache -> Overpass API fallback)
-│   ├── tutorial.js                # First-run 10-step spotlight tutorial
+├── src/
+│   ├── app.js                  # Entry point — SW registration, module loading, fast-tap
+│   ├── config.js               # Two-tier config loader (local vs. Cloudflare)
+│   ├── config.local.js         # !! git-ignored — local API keys (copy from config.template.js)
+│   ├── config.template.js      # Template showing all required config variables
+│   │
+│   ├── map-init.js             # MapLibre singleton (map instance + initial style)
+│   ├── map-style.js            # Full HSL vector tile style definition (1 096 lines)
+│   ├── map-style-config.js     # Theme customization controls
+│   ├── map-style-editor.js     # Live style editor with preset toggles
+│   ├── map-controls.js         # Zoom, locate, home, style picker, heatmap, 3D terrain
+│   │
+│   ├── places.js               # Place markers, popups, filtering, favorites (4 436 lines)
+│   ├── directions.js           # Routing — transit, OSRM, UI, waypoints (2 516 lines)
+│   ├── navigation.js           # Turn-by-turn voice/visual navigator (2 581 lines)
+│   ├── search.js               # Search bar, geocoding, dropped pins (483 lines)
+│   ├── prayer.js               # Prayer times, Ramadan, Qibla launcher (332 lines)
+│   ├── qibla.js                # Qibla compass (DeviceOrientationEvent) (239 lines)
+│   ├── eid-prayers.js          # Seasonal Eid prayer locations (481 lines)
+│   ├── reviews.js              # Community ratings + OTP verification (1 140 lines)
+│   ├── wishlist.js             # Feature request board (403 lines)
+│   ├── contact.js              # Contact form overlay (278 lines)
+│   ├── transit-stops.js        # Transit stop rendering + Overpass API (787 lines)
+│   ├── gps-sim.js              # Dev-only location simulator (443 lines)
+│   ├── tutorial.js             # 10-step first-run spotlight tour (520 lines)
+│   ├── icons.js                # SVG helpers, PLACE_CONFIG, color definitions (331 lines)
+│   ├── utils.js                # Toast, sheets, clipboard, crypto, haversine (1 302 lines)
+│   ├── event-recurrence.js     # Calendar event parsing helpers (331 lines)
+│   │
 │   └── styles/
-│       ├── design-tokens.css      # All CSS custom properties — single source of truth
-│       └── styles.css             # Component layout + unique overrides (imports tokens)
+│       ├── styles.css          # Component layout and CSS (223.9 KB)
+│       ├── design-tokens.css   # Design system CSS custom properties (59.7 KB)
+│       └── fonts/              # Plus Jakarta Sans WOFF2 subsets
 │
-├── tests/                         # Playwright automated test suite
-│   ├── playwright.config.js       # Playwright E2E test configuration
-│   ├── helpers.js                 # Shared fixtures: API mocking, app loading, helpers
-│   ├── 01-dom-elements.spec.js    # DOM structure — every element, ID, and attribute
-│   ├── 02-data-integrity.spec.js  # places.json + tags.json validation
-│   ├── 03-search.spec.js          # Search expand/collapse, geocoding, results, clear
-│   ├── 04-map-controls.spec.js    # Zoom, style picker, home button, URL hash
-│   ├── 05-animations.spec.js      # CSS transitions, sheet slides, tab states, toast
-│   ├── 06-places.spec.js          # Places sheet, filtering, favourites, popups
-│   ├── 07-directions.spec.js      # Directions panel, modes, pick mode, autocomplete
-│   ├── 08-prayer-times.spec.js    # Prayer snack, times, Ramadan card
-│   ├── 09-tutorial.spec.js        # Tutorial flow, steps, localStorage persistence
-│   ├── 10-suggest-edit.spec.js    # Suggest/edit overlays, forms, tag chips
-│   ├── 11-pin-markers.spec.js     # Search markers, dropped pins, save, remove
-│   └── 12-mobile.spec.js          # Touch gestures, sheet drag/snap, mobile CSS — phones only
+├── data/
+│   ├── places.json             # 76+ halal locations (coordinates, hours, tags)
+│   ├── tags.json               # Tag definitions per place type
+│   ├── eid-prayers.json        # Pre-cached Eid prayer locations
+│   ├── finland-outside-mask.geojson  # GeoJSON for map masking outside Finland
+│   ├── icons/                  # PWA icons (192px, 512px)
+│   └── thumbs/                 # Place thumbnail images
 │
-├── docs/                          # Extended documentation
-│   ├── DESIGN_SYSTEM.md           # CSS token reference, templates, component rules
-│   ├── FORMS_SHEETS_SETUP.md      # Google Forms/Sheets integration for suggestions
-│   └── SECRETS_SETUP.md           # How to obtain and configure all API keys
+├── functions/api/              # Cloudflare Pages serverless functions
+│   ├── config.js               # Returns runtime config to the client
+│   ├── places.js               # Places proxy with 1-hour CF cache
+│   ├── reviews.js              # Reviews CRUD + OTP send/verify
+│   ├── eid-prayers.js          # Eid locations proxy
+│   ├── submit.js               # Place suggestion / contact form handler
+│   ├── wishes.js               # Wishlist GET + vote + submit
+│   └── geo.js                  # IP-based geolocation fallback
 │
-├── .github/
-│   └── prompts/
-│       └── deploy.prompt.md       # Deploy agent — update → stage → commit → push workflow
+├── scripts/
+│   ├── update-all.js           # Master update runner
+│   ├── build-secrets.js        # Injects env vars into src/config.js at build time
+│   ├── build-cache.js          # Regenerates transit stop cache
+│   ├── fetch-and-cache-places.js
+│   ├── check_places_osm.py     # Validates place coords against OSM
+│   ├── strip-comments.py       # Minification helper
+│   └── apps-script/            # Google Apps Script backend source
 │
-├── scripts/                       # Build and utility scripts
-│   ├── update-all.js              # Master update runner (--version · --places · --transit · --all)
-│   ├── build-secrets.js           # Injects env vars into config.js for Cloudflare Pages
-│   ├── build-cache.js             # Regenerates transit-cache.json (Overpass + Digitransit HSL + Waltti)
-│   ├── fetch-and-cache-places.js  # Fetches live places + tags from Google Apps Script
-│   ├── check_places_osm.py        # Validates places against OpenStreetMap data
-│   ├── strip-comments.py          # Strips JS comments for production
-│   ├── transit-cache.json         # Generated cache (4.4 MB, 10 498 stops) — git-ignored
-│   └── apps-script/               # Google Apps Script backend (place submissions + contact)
-│       ├── Code.gs                # Handles form submissions -> Google Sheets (new, edit, contact)
-│       └── appsscript.json        # Apps Script manifest
+├── tests/
+│   ├── helpers.js
+│   ├── 01-dom-elements.spec.js # 12 test files covering all features
+│   ├── 02-map-controls.spec.js
+│   ├── ...
+│   └── 12-mobile.spec.js
+│
+└── docs/                       # Extended documentation
 ```
-
-> Files `config.local.js` and `transit-cache.json` are git-ignored. Never commit them.
 
 ---
 
-## 3. Quick Start
+## Architecture
+
+### Module Loading
+
+`src/app.js` is the single entry point. It:
+
+1. Registers the service worker (skipped on `localhost` in dev)
+2. Imports and initializes core modules synchronously: `map-init`, `directions`, `navigation`, `places`, `search`
+3. After the map fires its `load` event, lazy-loads non-critical modules:
+   - `transit-stops`, `prayer`, `map-style-editor`, `contact`, `eid-prayers`, `gps-sim`, `wishlist`
+4. Applies the **fast-tap handler** — synthesizes immediate `click` events on touch interactions to eliminate the 300 ms mobile delay
+5. Prevents pinch-zoom outside the map container (iOS Safari workaround)
+6. Wires up the privacy overlay and tools toggle
+
+### Config System
+
+Two environments share the same export shape:
+
+**Local dev** (`src/config.local.js`, git-ignored):
+- Copy `src/config.template.js` to `src/config.local.js` and fill in real values
+- Loaded via a dynamic `import()` with a try/catch fallback
+
+**Production** (`functions/api/config.js`):
+- `scripts/build-secrets.js` runs at Cloudflare build time
+- Reads `process.env` and generates `src/config.js` with the same export shape
+- `src/config.js` (regenerated) is committed — it contains no secrets when built by Cloudflare
+
+### Data Flow
+
+```
+Browser
+  └─ src/app.js
+       ├─ places.js ──────────── data/places.json (bundled, no API call)
+       │                         └─ /api/places (Cloudflare → GAS → Sheets, 1h cache)
+       ├─ prayer.js ──────────── aladhan.com/v1/timings (real-time)
+       ├─ directions.js ──────── Digitransit GraphQL / OSRM REST / Transitous REST
+       ├─ search.js ──────────── Nominatim / Digitransit Geocoding
+       ├─ reviews.js ─────────── /api/reviews (Cloudflare → GAS → Sheets)
+       ├─ transit-stops.js ───── Overpass API + scripts/transit-cache.json (local)
+       └─ eid-prayers.js ─────── data/eid-prayers.json + /api/eid-prayers
+```
+
+### Backend Architecture
+
+All mutable data lives in a Google Sheet with multiple named sheets (places, reviews, wishes, contacts, eid-prayers). A Google Apps Script web app acts as the single backend:
+
+```
+Client → Cloudflare Pages Function (CORS, cache headers)
+              └─ Google Apps Script Web App (doGet / doPost)
+                     └─ Google Sheets (data store)
+```
+
+Cloudflare Functions add:
+- CORS protection (single allowed origin)
+- Cloudflare CDN cache headers (`s-maxage`, `stale-while-revalidate`)
+- Secrets kept server-side (RECAPTCHA_SECRET, GAS_URL)
+
+---
+
+## Local Development Setup
 
 ### Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Node.js | 16+ | Running tests and build scripts |
-| A modern browser | Chrome 90+, Firefox 88+, Safari 14+ | Running the app |
-| Git | Any | Version control |
+- Node.js 18+ (for Playwright tests and build scripts)
+- A modern browser (Chrome / Firefox / Safari)
+- Git
 
-### Step 1 — Clone and install
+### Steps
+
+**1. Clone the repository**
 
 ```bash
-git clone https://github.com/Karamah-Collective/halal-finder.git
-cd halal-finder
+git clone <repo-url>
+cd Maps
+```
+
+**2. Install dev dependencies**
+
+```bash
 npm install
 ```
 
-`npm install` only installs dev dependencies (Playwright + `serve`). The app itself has **zero runtime npm dependencies** — it runs as plain HTML/JS/CSS.
+This installs Playwright and `serve` (a local static server). There are no runtime dependencies.
 
-### Step 2 — Set up your API keys
+**3. Create your local config**
 
 ```bash
 cp src/config.template.js src/config.local.js
 ```
 
-Open `src/config.local.js` and fill in your keys. At minimum you need a **Digitransit API key** for transit routing. See [Configuration & API Keys](#4-configuration--api-keys) for details.
+Open `src/config.local.js` and fill in the values. See [Configuration](#configuration--environment-variables) for what each variable does. At minimum you need:
+- `DT_API_KEY` — get a free key from [digitransit.fi/developers](https://digitransit.fi/developers/)
+- `RECAPTCHA_SITE_KEY` — register at google.com/recaptcha (v3)
+- `SHEETS_URL` — your Google Apps Script deployment URL (for reviews/contacts to work locally)
 
-### Step 3 — Serve locally
-
-The app must be served over HTTP (not opened as a `file://` URL) because it uses ES modules.
-
-```bash
-# Recommended — same port the test suite uses
-npx serve . -l 4173
-
-# Or Python 3
-python -m http.server 8080
-
-# Or VS Code Live Server (click "Go Live" in the status bar)
-```
-
-Open **http://localhost:4173**. The map should load with place markers visible within a few seconds.
-
-### Step 4 — Verify everything works
+**4. Start the dev server**
 
 ```bash
-npm test   # Should show 608 passed, 3 skipped, 0 failed
+npx serve .
 ```
+
+The app is served from `http://localhost:3000`. MapLibre tiles, OSRM, and Nominatim work without a key. Digitransit and reCAPTCHA require the keys from step 3.
+
+**5. (Optional) GPS Simulator**
+
+A dev-only GPS simulator is included (`src/gps-sim.js`). It is lazy-loaded only when `location.hostname === 'localhost'`. Use it to simulate walking/driving routes without leaving your desk — open the GPS Sim panel from the settings overlay.
+
+### Running Tests
+
+```bash
+npx playwright test
+```
+
+Tests are in the `tests/` directory. 12 spec files × multiple scenarios = 1 005 tests covering DOM structure, map controls, places filtering, directions, prayer times, and mobile layout. Tests run against `localhost:3000` so the dev server must be running.
 
 ---
 
-## 4. Configuration & API Keys
+## Configuration & Environment Variables
 
-### How the config system works
+All configuration is typed in `src/config.template.js`. Copy this to `src/config.local.js` for local development.
 
-```
-Local development:        src/config.local.js  (you create this, git-ignored)
-                                 ↓
-                          src/config.js  (imports from config.local.js)
-                                 ↓
-                          All source modules import from src/config.js
+| Variable | Description | Where to Get |
+|----------|-------------|-------------|
+| `DIGITRANSIT_URL` | HSL GraphQL endpoint (Helsinki/Espoo/Vantaa transit) | Digitransit developer portal |
+| `DIGITRANSIT_WALTTI_URL` | Waltti GraphQL endpoint (Turku/Föli transit) | Digitransit developer portal |
+| `DIGITRANSIT_GEO_URL` | Digitransit forward geocoding endpoint | Digitransit developer portal |
+| `DIGITRANSIT_REV_URL` | Digitransit reverse geocoding endpoint | Digitransit developer portal |
+| `TRANSITOUS_URL` | Transitous (MOTIS v2) REST endpoint | Public endpoint, no key |
+| `DT_API_KEY` | Digitransit API key (required for all DT calls) | digitransit.fi/developers |
+| `NOMINATIM_REV` | Nominatim reverse geocoding URL | Public, no key |
+| `NOMINATIM_VB` | Nominatim bounding box (`W,N,E,S`) | Set to Helsinki metro area |
+| `HF_TOKEN_KEY` | AES encryption key for route/pin sharing URLs | Any strong random string |
+| `SHEETS_URL` | Google Apps Script web app deployment URL | Apps Script console |
+| `RECAPTCHA_SITE_KEY` | reCAPTCHA v3 public site key | Google reCAPTCHA Admin |
 
-Production (Cloudflare):  Cloudflare env vars
-                                 ↓
-                          build-secrets.js  generates  src/config.js
-                                 ↓
-                          Same modules, same imports
-```
+**Production-only (Cloudflare environment variables, never committed):**
 
-### Required configuration keys
+| Variable | Description |
+|----------|-------------|
+| `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for OTP verification) |
+| `GAS_URL` | Same as `SHEETS_URL` but kept server-side for security |
 
-| Key | Where to get it | Required? |
-|-----|----------------|-----------|
-| `DT_API_KEY` | [digitransit.fi/developers](https://digitransit.fi/en/developers/) → Register → API key | Yes — transit routing (works for both HSL and Waltti) |
-| `DIGITRANSIT_URL` | Fixed value — see template | Yes — Helsinki / HSL routing |
-| `DIGITRANSIT_WALTTI_URL` | Fixed value — see template | Yes — Turku / Föli routing |
-| `TRANSITOUS_URL` | Fixed value — see template | Yes |
-| `NOMINATIM_REV` | Fixed value — see template | Yes |
-| `NOMINATIM_VB` | Fixed value — see template | Yes |
-| `RECAPTCHA_SITE_KEY` | [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin) | No — spam protection only |
-
-### Example `src/config.local.js`
-
-```javascript
-// NEVER commit this file — it is git-ignored
-export const DIGITRANSIT_URL       = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1";
-export const DIGITRANSIT_WALTTI_URL = "https://api.digitransit.fi/routing/v2/waltti/gtfs/v1";
-export const TRANSITOUS_URL        = "https://api.transitous.org/api/v5/plan";
-export const DT_API_KEY            = "your-digitransit-api-key-here";
-export const NOMINATIM_REV         = "https://nominatim.openstreetmap.org/reverse";
-export const NOMINATIM_VB          = "24.0,60.8,25.8,59.8";
-export const RECAPTCHA_SITE_KEY    = "";   // leave blank if not using
-```
-
-For step-by-step instructions on getting each API key, see **[docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md)**.
+Set these in the Cloudflare Pages dashboard under Settings → Environment Variables.
 
 ---
 
-## 5. Automated Tests
+## Backend (Cloudflare Functions & Google Sheets)
 
-The project ships with a full **Playwright** end-to-end test suite across **three real browser projects**. Run it after any edit to catch regressions instantly.
+### Cloudflare Pages Functions (`functions/api/`)
 
-### Running tests
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `GET /api/config` | GET | Returns non-secret config variables as JSON to the client |
+| `GET /api/places` | GET | Proxies place data from GAS; adds 1-hour Cloudflare cache |
+| `GET /api/reviews?placeId=` | GET | Fetches reviews for a place |
+| `POST /api/reviews` | POST | Submit review / request OTP / verify OTP |
+| `GET /api/eid-prayers` | GET | Fetches Eid prayer locations from GAS |
+| `POST /api/submit` | POST | Place suggestion, place edit, contact form |
+| `GET /api/wishes` | GET | Lists feature wishes |
+| `POST /api/wishes` | POST | Vote on or submit a wish |
+| `GET /api/geo` | GET | IP-based geolocation fallback |
 
-```bash
-# All 611 tests across Desktop Chrome + Mobile Chrome + iPhone 12
-npm test
+All functions share common patterns:
+- Check `Origin` header against an allowed origin whitelist
+- Forward to the Google Apps Script URL (stored in `GAS_URL` env var)
+- Return appropriate `Cache-Control` headers for Cloudflare CDN
 
-# Watch what the browser is doing
-npm run test:headed
+### Google Apps Script
 
-# Interactive Playwright UI — filter, rerun, inspect traces
-npm run test:ui
+The Apps Script (`scripts/apps-script/`) is deployed as a web app and handles:
+- `doGet(e)` — read operations (list places, reviews, wishes, eid prayers)
+- `doPost(e)` — write operations (submit review, OTP email, contact, place suggestion)
+- OTP generation and email delivery (using `MailApp.sendEmail`)
+- Row insertion and update in the relevant Google Sheet
 
-# Single browser project
-npm run test:desktop   # Desktop Chrome only
-npm run test:mobile    # Pixel 7 (Android flagship, 412×839, Chromium)
-npm run test:android   # Galaxy S24 (Android mid-range, 360×780, Chromium)
-npm run test:iphone    # iPhone 15 Pro (393×659, WebKit/Safari)
-npm run test:phones    # All 3 phone projects together
-```
-
-### What is tested
-
-| File | Coverage | Count |
-|------|----------|-------|
-| `01-dom-elements` | Every HTML element, ID, aria-label, and initial hidden/visible state | 33 |
-| `02-data-integrity` | places.json + tags.json schema, unique IDs, coordinate bounds | 14 |
-| `03-search` | Expand/collapse, geocoding, result rendering, clear button, no-results | 10 |
-| `04-map-controls` | Zoom in/out, style picker, home button, double-click pin, URL hash | 11 |
-| `05-animations` | CSS transitions, sheet slide, tab active states, scrim, toast | 12 |
-| `06-places` | Sheet open/close, type/tag filtering, favourites, localStorage, popups | 22 |
-| `07-directions` | Panel open/close, all 4 travel modes, pick mode, autocomplete, swap | 14 |
-| `08-prayer-times` | Prayer pill, countdown, 5 prayer names/times, Ramadan card | 13 |
-| `09-tutorial` | All 10 steps, back/next/close, spotlight, localStorage persistence | 12 |
-| `10-suggest-edit` | Suggest overlay, edit overlay, forms, tag chip cycling | 14 |
-| `11-pin-markers` | Search markers, dropped pins, popups, save, remove | 12 |
-| `12-mobile` ⬅ **phones only** | Touch gestures, sheet drag/dismiss/snap, drag handles, mobile CSS sizes, prayer pill, search, tab tap targets ≥44px, style picker, filter chips, scrim, zoom controls, suggest overlay | 99 |
-| **Total** | Desktop Chrome · Pixel 7 · Galaxy S24 · iPhone 15 Pro | **1005** |
-
-**Project structure:**
-- **Desktop Chrome** — runs specs 01–11
-- **Pixel 7** (Android flagship, 412×839, Chromium) — runs specs 01–12
-- **Galaxy S24** (Android mid-range, 360×780, Chromium) — runs specs 01–12
-- **iPhone 15 Pro** (WebKit/Safari, 393×659) — runs specs 01–12 (WebKit-incompatible specs excluded)
-
-### How the tests work
-
-Tests spin up a **live local HTTP server** (port 4173) automatically. All external API calls are **intercepted and mocked** so tests are fast, deterministic, and work fully offline.
-
-Mocked services (configured in `tests/helpers.js`):
-
-| Service | What the mock returns |
-|---------|-----------------------|
-| Aladhan (prayer API) | Fixed 5 prayer times, month 1 (not Ramadan) |
-| Digitransit geocoding | A single fake "Test Place, Helsinki" result |
-| Nominatim reverse geocoding | "Test Street, Helsinki" |
-| ipwho.is / ipapi.co | `{ country_code: "FI" }` |
-| Google reCAPTCHA | Blocked (aborted) |
-
-### Reading test results
-
-```bash
-# After a test run, open the HTML report with screenshots and videos
-npx playwright show-report
-```
-
-Each failure shows:
-- A **screenshot** at the moment of failure
-- A **video** of the full test interaction
-- The exact **error message** and failing line number
-
-### Adding new tests
-
-1. Create `tests/13-my-feature.spec.js`
-2. Import helpers at the top:
-   ```javascript
-   const { test, expect, setupApp } = require("./helpers");
-   ```
-3. Use `setupApp(page)` in `beforeEach` — this skips the tutorial and loads the app
-4. Mock any new external APIs in `beforeEach` using `page.route()`
-5. Follow the existing spec files as patterns
+To deploy a new version: open the Apps Script editor, click Deploy → New Deployment → Web App, set execute as "Me" and access to "Anyone", copy the deployment URL to `SHEETS_URL`.
 
 ---
 
-## 6. Architecture Deep-Dive
+## Data Management
 
-### Stack
+### Adding or Editing a Place
 
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Map engine | MapLibre GL 3 (CDN via unpkg) | Pinned version, cached by service worker |
-| Language | Vanilla JS, ES Modules | Zero framework overhead |
-| Styling | CSS custom properties | Runtime theming, no preprocessor |
-| Transit routing (Helsinki) | Digitransit HSL GraphQL | Primary — Helsinki / Espoo / Vantaa |
-| Transit routing (Turku) | Digitransit Waltti GraphQL | Primary — Turku / Föli region |
-| Walk/cycle/drive | OSRM REST API | Open-source, no key needed |
-| Hosting | Cloudflare Pages | Free, global CDN, env vars at build |
-| Testing | Playwright (Desktop Chrome · Pixel 7 · Galaxy S24 · iPhone 15 Pro WebKit) | True E2E across 4 real browsers |
-
-### Module dependency map
-
-```
-index.html
-  └── src/app.js  (type="module")
-        ├── map-init.js        creates the MapLibre map instance
-        │     └── config.js
-        ├── map-controls.js    locate, style, 3D, tab management
-        │     ├── map-init.js
-        │     └── utils.js
-        ├── places.js          markers, sheet, favourites, filtering
-        │     ├── map-init.js, icons.js, utils.js
-        │     └── directions.js  (cross-import — see note below)
-        ├── search.js          search bar, geocoding, pins
-        │     ├── map-init.js, config.js, utils.js
-        ├── contact.js         contact form overlay + submit
-        │     └── config.js, utils.js
-        ├── directions.js      all routing + panel UI
-        │     ├── map-init.js, config.js, utils.js, icons.js
-        │     └── places.js  (cross-import — see note below)
-        ├── prayer.js          prayer times, Ramadan, snack UI
-        │     └── config.js, utils.js
-        ├── transit-stops.js   transit stop layer
-        │     └── map-init.js, config.js
-        └── tutorial.js        first-run tour
-              └── utils.js
-```
-
-> **Cross-import note:** `places.js` and `directions.js` import each other. This is intentional and safe — all cross-module calls happen inside event handlers (not at module evaluation time), so ES module live bindings resolve correctly.
-
-### State management
-
-No central store — each module owns its own state:
-
-| Module | Owns |
-|--------|------|
-| `places.js` | `placesData`, `activeTypeFilter`, `activeTagFilters`, favourites in `localStorage` |
-| `directions.js` | `dir` object — origin, destination, travel mode, active route |
-| `search.js` | Active search marker reference |
-| `prayer.js` | Prayer times cache, countdown interval |
-| `map-controls.js` | Current map style, active tab |
-| `tutorial.js` | Current step, `localStorage` done-flag |
-
-### Page load sequence
-
-```
-1. index.html parses → src/app.js runs
-2. MapLibre map initialises (map-init.js)
-3. map "load" event fires
-4. places.js  →  fetches data/places.json + tags.json  →  renders markers
-5. transit-stops.js  →  reads transit-cache.json  →  renders stop layer
-6. prayer.js  →  calls Aladhan API  →  renders prayer snack
-7. search.js  →  activates search bar
-8. tutorial.js  →  checks localStorage  →  shows tour if first visit
-9. map-controls.js  →  reads URL hash  →  flies to stored position
-```
-
----
-
-## 7. Data Guide
-
-### Adding or editing a place
-
-Edit `data/places.json`. Each entry follows this schema:
+Places are stored in `data/places.json`. Each entry follows this schema:
 
 ```json
 {
-  "id": 28,
-  "name": "My Restaurant",
-  "type": "restaurant",
-  "address": "Mannerheimintie 10, 00100 Helsinki",
-  "lat": 60.1695,
-  "lng": 24.9354,
+  "id": "unique-kebab-id",
+  "name": "Place Name",
+  "type": "mosque",
+  "address": "Street 1, 00100 Helsinki",
+  "city": "Helsinki",
+  "lat": 60.1699,
+  "lng": 24.9384,
+  "hours": {
+    "mon": "09:00-22:00",
+    "tue": "09:00-22:00",
+    "wed": "09:00-22:00",
+    "thu": "09:00-22:00",
+    "fri": "09:00-23:00",
+    "sat": "10:00-22:00",
+    "sun": "closed"
+  },
   "tags": {
-    "halal_cert": true,
-    "vegetarian": false,
-    "delivery": true
+    "daily_prayers": true,
+    "jummah": true,
+    "taraweeh": false,
+    "eid_prayer": true,
+    "sisters_section": true,
+    "sisters_wudu": false
+  },
+  "notes": "Optional free-text notes.",
+  "sponsor": {
+    "name": "Sponsor Name",
+    "startDate": "2026-01-01",
+    "endDate": "2026-12-31"
   }
 }
 ```
 
-| Field | Type | Required | Notes |
-|-------|------|---------|-------|
-| `id` | integer | Yes | Must be unique across all places |
-| `name` | string | Yes | Display name on map and in list |
-| `type` | string | Yes | One of: `mosque`, `restaurant`, `shop` |
-| `address` | string | Yes | Full street address |
-| `lat` / `lng` | float | Yes | WGS-84 degrees (Helsinki ~60°N, 25°E) |
-| `tags` | object | No | Keys must match tag IDs in `tags.json` for this type |
-| `notes` | string | No | Extra info shown in popup |
+Tag keys available per type are defined in `data/tags.json`.
 
-### Place types and their colours
+After editing `places.json`, bump the cache version in `sw.js` (the `VERSION` constant) and the matching `?v=` query strings in `index.html` to force the service worker to pick up the new data.
 
-| Type | Marker colour | Tag category in `tags.json` |
-|------|--------------|----------------------------|
-| `mosque` | Green (`--success`) | mosque tags |
-| `restaurant` | Blue (`--accent`) | restaurant tags |
-| `shop` | Orange (`--hsl-trunk`) | shop tags |
+### Updating the Transit Stop Cache
 
-### Tag definitions (`data/tags.json`)
+The transit stop cache (`scripts/transit-cache.json`, ~4.4 MB, 10 498 stops) is pre-generated to avoid expensive Overpass API calls on every page load.
 
-```json
-{
-  "restaurant": [
-    { "id": "halal_cert", "label": "Halal certified" },
-    { "id": "vegetarian", "label": "Vegetarian options" }
-  ],
-  "shop": [
-    { "id": "halal_meat", "label": "Halal meat" }
-  ]
-}
-```
-
-Rules:
-- Tag IDs must be unique within each type
-- Tag values in `places.json` must be `true` or `false`
-- After editing either file, run `npm test` to verify data integrity
-
-### Regenerating the transit stop cache
+To regenerate:
 
 ```bash
 node scripts/build-cache.js
 ```
 
-Takes ~30 seconds, writes ~3 MB to `scripts/transit-cache.json`. The file is git-ignored.
+This queries Overpass for all public transit stops in Finland and writes the result to the cache file. Run this periodically (monthly is sufficient) to pick up new stops.
 
-### Validating places against OpenStreetMap
+---
+
+## Service Worker & Caching
+
+### VERSION Bump (required after any file change)
+
+The service worker uses a date-based version string (e.g., `20260610`) to manage cache lifecycle. After any change to shipped files (JS, CSS, data):
+
+1. Update `VERSION` in `sw.js`
+2. Update all `?v=YYYYMMDD` query strings in `index.html` (CSS links, JS imports, data fetches)
+
+The version string must match exactly. A mismatch causes the service worker to skip update and serve stale files.
+
+### Stale-While-Revalidate
+
+The shell cache (JS, CSS, fonts, JSON data) uses stale-while-revalidate:
+1. Return the cached response immediately (zero latency)
+2. Fetch the network response in the background
+3. Update the cache entry with the fresh response for the next visit
+
+This means users always see an instant load, and get updated content on their next visit after you deploy.
+
+### Network-Only APIs
+
+The following requests always bypass the cache to ensure real-time data:
+- Digitransit GraphQL (transit routes)
+- Aladhan prayer times
+- Nominatim geocoding
+- reCAPTCHA verification
+- All `/api/*` endpoints
+
+---
+
+## CSS & Design System
+
+The design system lives in two files:
+
+### `src/styles/design-tokens.css`
+
+CSS custom properties organized into:
+
+**Colors:**
+```css
+--accent: #1A73B8          /* Primary blue — CTAs, links */
+--success: #08705B         /* Brand green — mosques, PWA theme */
+--gold: #D4A226            /* Prayer time highlights, Ramadan */
+--danger: #D32F2F          /* Errors, remove actions */
+```
+
+**Surfaces & Text:**
+```css
+--surface: #FFFFFF         /* Default background */
+--surface-2: #F5F5F5       /* Secondary */
+--surface-3: #ECECEC       /* Tertiary */
+--text: #000000
+--text-secondary: #666666
+--border: #E0E0E0
+```
+
+**Spacing (4px base scale):** `--sp-0` through `--sp-8`
+
+**Border Radius:** `--r-xs` (6px) through `--r-pill` (999px)
+
+**Shadows:** `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+
+**Z-index stack:**
+```css
+--z-map: 1      /* MapLibre canvas */
+--z-bar: 10     /* Search pill, map controls */
+--z-sheet: 20   /* Bottom sheets */
+--z-modal: 30   /* Overlays */
+--z-scrim: 40   /* Dark backdrop */
+--z-tooltip: 50 /* Popovers */
+```
+
+**Transitions:**
+```css
+--transition-fast: 150ms ease    /* Immediate feedback */
+--transition-base: 250ms ease    /* Default */
+--transition-slow: 350ms ease    /* Major state changes */
+```
+
+**Dark mode** — full token overrides under `@media (prefers-color-scheme: dark)`.
+
+### `src/styles/styles.css`
+
+Component layout, responsive breakpoints, and animations. Organized by component:
+- Scrollbars, map container
+- Search pill expand/collapse
+- Bottom sheets (drag handle, snap animations)
+- Tab bar
+- Directions panel and itinerary
+- Prayer snack
+- Overlays and modals
+- Buttons, chips, cards
+- Mobile-specific overrides (breakpoint: 768px)
+- Touch tap targets (44px minimum)
+
+---
+
+## Testing
+
+Tests are written with Playwright and live in `tests/`. There are 12 spec files:
+
+| File | Coverage |
+|------|---------|
+| `01-dom-elements.spec.js` | Core HTML structure and element presence |
+| `02-map-controls.spec.js` | Zoom, locate, style picker controls |
+| `03-places.spec.js` | Place markers, popups, filtering |
+| `04-favorites.spec.js` | Favorite saving and persistence |
+| `05-directions.spec.js` | Routing panel, mode switching |
+| `06-search.spec.js` | Search bar, geocoding, dropped pins |
+| `07-prayer.spec.js` | Prayer snack, Ramadan mode |
+| `08-reviews.spec.js` | OTP flow, rating submission |
+| `09-wishlist.spec.js` | Voting, submission |
+| `10-tutorial.spec.js` | Spotlight tour steps |
+| `11-pwa.spec.js` | Manifest, service worker registration |
+| `12-mobile.spec.js` | Touch interactions, responsive layout |
+
+**Run all tests:**
+```bash
+npx playwright test
+```
+
+**Run a specific file:**
+```bash
+npx playwright test tests/03-places.spec.js
+```
+
+**Run with headed browser (for debugging):**
+```bash
+npx playwright test --headed
+```
+
+Tests run against Chrome, Firefox, Safari (WebKit), and Mobile Chrome by default.
+
+---
+
+## Deployment
+
+The app is deployed to Cloudflare Pages via Git integration. Every push to `main` triggers a production build.
+
+### Build Command
 
 ```bash
-python scripts/check_places_osm.py   # requires Python 3 + requests
+node scripts/build-secrets.js
 ```
 
----
+This reads environment variables from the Cloudflare Pages dashboard and writes `src/config.js` with the correct API keys.
 
-## 8. Design System
+### Environment Variables (Cloudflare Pages)
 
-All visual design is driven by CSS custom properties. Two files, strict responsibilities:
+Set these in the Cloudflare Pages dashboard → Settings → Environment Variables:
 
-| File | Owns | Never touches |
-|------|------|--------------|
-| `src/styles/design-tokens.css` | All `--tokens`, template button/chip/pill classes | Layout, positioning, z-index |
-| `src/styles/styles.css` | Component layout, `position`, `z-index`, unique overrides | Hard-coded colours or px values |
-
-**Golden rule:** before writing any visual style in `styles.css`, check if a template class in `design-tokens.css` already covers it.
-
-### Quick token reference
-
-| Group | Key tokens |
-|-------|-----------|
-| Brand | `--accent` (blue) · `--gold` (prayer) · `--success` (green/mosque) · `--danger` (red) |
-| Surfaces | `--surface` · `--surface-2` · `--surface-3` · `--text` · `--text-2` · `--border` |
-| Radii | `--r-xs` (6px) → `--r-xl` (24px) · `--r-pill` (999px) |
-| Shadows | `--shadow-sm` · `--shadow-md` · `--shadow-lg` |
-| Spacing | `--space-1` (4px) → `--space-8` (32px) |
-| Transitions | `--transition-fast` (150ms ease) · `--transition-base` (250ms ease) |
-
-Dark mode is CSS-only: `@media (prefers-color-scheme: dark)` overrides surface and text tokens. No JavaScript required.
-
-For the complete token catalogue and component template reference, see **[docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)**.
-
----
-
-## 9. Deployment (Cloudflare Pages)
-
-### First-time setup
-
-1. **Push to GitHub** — make sure `config.local.js` is in `.gitignore` (it is by default)
-
-2. **Create a Cloudflare Pages project:**
-   - Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
-   - Select `halal-finder`
-   - Build command: `node scripts/build-secrets.js`
-   - Build output directory: *(leave blank — whole repo is served)*
-
-3. **Add environment variables** (Settings → Environment variables → Production):
-
-   | Variable | Value |
-   |----------|-------|
-   | `DIGITRANSIT_URL` | `https://api.digitransit.fi/routing/v2/hsl/gtfs/v1` |
-   | `DIGITRANSIT_WALTTI_URL` | `https://api.digitransit.fi/routing/v2/waltti/gtfs/v1` |
-   | `TRANSITOUS_URL` | `https://api.transitous.org/api/v5/plan` |
-   | `DT_API_KEY` | *your Digitransit key* |
-   | `NOMINATIM_REV` | `https://nominatim.openstreetmap.org/reverse` |
-   | `NOMINATIM_VB` | `24.0,60.8,25.8,59.8` |
-   | `RECAPTCHA_SITE_KEY` | *your reCAPTCHA key (optional)* |
-
-4. **Deploy** — Cloudflare auto-deploys on every push to `main`. The `build-secrets.js` script reads env vars and writes `src/config.js` during the build.
-
-### Subsequent deploys
-
-```bash
-git add .
-git commit -m "feat: add new restaurant"
-git push   # Cloudflare picks this up automatically
+```
+DIGITRANSIT_URL
+DIGITRANSIT_WALTTI_URL
+DIGITRANSIT_GEO_URL
+DIGITRANSIT_REV_URL
+TRANSITOUS_URL
+DT_API_KEY
+NOMINATIM_REV
+NOMINATIM_VB
+HF_TOKEN_KEY
+RECAPTCHA_SITE_KEY
+RECAPTCHA_SECRET
+GAS_URL
+SHEETS_URL
 ```
 
-### How `build-secrets.js` works
+### Deployment Checklist
 
-At build time, Cloudflare runs `node scripts/build-secrets.js`. This reads `process.env` and generates `src/config.js` with the same shape as `config.local.js`. The rest of the app imports from `config.js` in both environments — no code difference.
+Before merging to `main`:
 
-For comprehensive deployment security guidance, see **[docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md)**.
+- [ ] Bump `VERSION` in `sw.js` to today's date (`YYYYMMDD`)
+- [ ] Update matching `?v=YYYYMMDD` in `index.html`
+- [ ] Verify `data/places.json` is valid JSON (`node -e "require('./data/places.json')"`)
+- [ ] Run `npx playwright test` and confirm all tests pass
+- [ ] Check dark mode, satellite mode, and mobile layout in a real browser
+
+### Cloudflare Pages Headers
+
+`_headers` configures security and caching headers:
+- `Content-Security-Policy` for script-src, connect-src
+- `Cache-Control` for static assets
+- `X-Frame-Options: DENY`
+
+`_routes.json` ensures `/api/*` routes are handled by Cloudflare Functions and not served as static files.
 
 ---
 
-## 10. Contributing
+## Contributing
 
-### Before you start
+### Adding a New Place
 
-- Check [open issues](https://github.com/Karamah-Collective/halal-finder/issues) to avoid duplicate work
-- For significant changes, open an issue to discuss the approach first
+1. Add the place entry to `data/places.json` following the schema above
+2. Verify coordinates are accurate (use openstreetmap.org to find lat/lng)
+3. Use `scripts/check_places_osm.py` to cross-check coordinates against OSM data
+4. Bump the cache version and test locally
 
-### Workflow
+### Adding a New Feature
 
-```bash
-git checkout -b feat/your-feature-name
-# Make changes...
-npm test                          # Must pass before submitting
-git add .
-git commit -m "feat: description of change"
-git push origin feat/your-feature-name
-# Open a Pull Request on GitHub
+1. Create a new module in `src/` if the feature is self-contained (see existing modules for patterns)
+2. Import it lazily in `src/app.js` after the map `load` event if it is non-critical
+3. Add a test spec in `tests/` covering the new functionality
+4. Export and expose any public API from the module (follow the existing export conventions)
+5. Add design tokens to `src/styles/design-tokens.css` if new colors or spacing are needed
+
+### Code Style
+
+- Vanilla ES Modules, no TypeScript, no framework
+- Arrow functions for callbacks; `function` declarations for named module functions
+- No comments unless the **why** is non-obvious from the code
+- CSS custom properties for all colors, spacing, and z-index — never hardcode values
+- `localStorage` keys follow the pattern `hf-<feature>-<key>`
+
+### Commit Message Format
+
+```
+type: short description; bump to YYYYMMDD
 ```
 
-### Code conventions
-
-- **Indentation:** 2 spaces
-- **Variables:** `camelCase` · **Constants:** `UPPER_CASE`
-- **Functions:** descriptive verb-noun (`showPlacePopup`, `buildRouteHTML`)
-- **CSS:** always use design tokens — never hard-code a colour or pixel value
-- **No new runtime dependencies** — keep the zero-dependency philosophy
-
-### Adding a new UI feature checklist
-
-- [ ] HTML in `index.html` using existing naming conventions (`#feature-name`, `.feature-btn`)
-- [ ] JS in a new `src/feature.js` module or extension of an existing one
-- [ ] Imported in `src/app.js`
-- [ ] Styled in `styles.css` using tokens from `design-tokens.css`
-- [ ] Tests in `tests/12-feature.spec.js`
-- [ ] Token additions (if any) documented in `docs/DESIGN_SYSTEM.md`
-
-### Adding a new place
-
-Edit `data/places.json` (see [Data Guide](#7-data-guide)), run `npm test` to validate, then open a PR.
-
-### Bug reports
-
-Please include:
-- Browser + version (e.g., Chrome 122, Mobile Safari 17)
-- Device (desktop Windows 11, iPhone 15, etc.)
-- Steps to reproduce
-- Expected vs actual behaviour
-- Console errors (screenshot or paste)
+Types: `feat`, `fix`, `chore`, `style`, `refactor`, `test`, `docs`
 
 ---
 
-## 11. Troubleshooting
-
-### Map shows a blank grey screen
-
-1. Open browser DevTools → Console — look for red errors
-2. Make sure you are serving over HTTP, not opening `index.html` directly as `file://`
-3. Verify `src/config.local.js` exists and has all required keys
-4. Quick tile check (paste into browser DevTools console):
-   ```javascript
-   fetch("https://tiles.openfreemap.org/planet/20240830_043106_pt/0/0/0.mvt")
-     .then(r => console.log("Tiles:", r.status))
-     .catch(e => console.error("Tiles failed:", e));
-   ```
-
-### Routing returns no results
-
-1. Confirm `DT_API_KEY` is valid — test it directly:
-   ```bash
-   curl -X POST "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1" \
-     -H "Content-Type: application/json" \
-     -H "digitransit-subscription-key: YOUR_KEY" \
-     -d "{\"query\":\"{ plan(from:{lat:60.17,lon:24.94},to:{lat:60.20,lon:24.95},date:\\\"20260301\\\",time:\\\"120000\\\",numItineraries:1){itineraries{duration}}} }\"}"
-   ```
-2. Ensure start and end points are within the Helsinki metro area or the Turku / Föli region
-3. Try walk/cycle/drive mode — these use OSRM and need no API key
-
-### Search returns no results
-
-Nominatim rate-limits to ~1 req/sec per IP. The bounding box constrains results to Helsinki by design. Test it directly:
-```
-https://nominatim.openstreetmap.org/search?q=mosque+helsinki&format=json
-```
-
-### Prayer times not loading
-
-The Aladhan call uses IP-geolocation for coordinates. If you are behind a VPN your IP may resolve outside Finland. The app falls back to Helsinki coordinates if the lookup fails, which should recover automatically.
-
-### Tests failing unexpectedly
-
-```bash
-# Run just the failing file
-npx playwright test tests/06-places.spec.js --reporter=line
-
-# Run by test name (partial match)
-npx playwright test -g "clicking search pill"
-
-# View the HTML report with screenshots and video
-npx playwright show-report
-```
-
-Common causes:
-- **Port 4173 in use** — stop the other process, or change the port in `tests/playwright.config.js`
-- **Stale browser binary** — run `npx playwright install chromium`
-- **Flaky timing** — tests have `retries: 1`; a single flake auto-retries. If it fails consistently, investigate the actual behaviour
-
----
-
-## 12. API Reference
-
-### External services
-
-| API | Purpose | Key needed | Docs |
-|-----|---------|-----------|------|
-| Digitransit HSL | Transit routing for Helsinki / Espoo / Vantaa (GraphQL) | Yes (free) | [digitransit.fi/developers](https://digitransit.fi/en/developers/) |
-| Digitransit Waltti | Transit routing for Turku / Föli region with per-route colours (GraphQL) | Same key as HSL | [digitransit.fi/developers](https://digitransit.fi/en/developers/) |
-| Transitous (MOTIS v2) | Transit fallback | No | [transitous.org](https://transitous.org) |
-| OSRM | Walk / cycle / drive routing | No | [project-osrm.org](http://project-osrm.org) |
-| Nominatim | Geocoding + reverse geocoding | No (1 req/s) | [nominatim.org](https://nominatim.org) |
-| Aladhan | Islamic prayer times | No | [aladhan.com/prayer-times-api](https://aladhan.com/prayer-times-api) |
-| OpenFreeMap | Vector map tiles | No | [openfreemap.org](https://openfreemap.org) |
-| ipwho.is / ipapi.co | Country detection (prayer times) | No | — |
-| Google reCAPTCHA v3 | Form spam protection | Yes (free) | [developers.google.com/recaptcha](https://developers.google.com/recaptcha) |
-
-### Cloudflare Functions (`functions/api/`)
-
-Small serverless handlers that run on Cloudflare Pages — no separate deployment needed.
-
-| Route | File | Purpose |
-|-------|------|---------|
-| `GET /api/config` | `functions/api/config.js` | Exposes non-secret config to client |
-| `GET /api/geo` | `functions/api/geo.js` | IP geolocation proxy |
-| `POST /api/submit` | `functions/api/submit.js` | Place suggestion form handler |
-
-### Google Apps Script (`scripts/apps-script/Code.gs`)
-
-The "Suggest a place" and "Suggest an edit" forms submit to a deployed Google Apps Script URL. The script validates the submission and appends a row to a Google Sheet for manual review. See **[docs/FORMS_SHEETS_SETUP.md](docs/FORMS_SHEETS_SETUP.md)** for setup instructions and the Google Sheet template.
-
----
-
-## Quick command cheatsheet
-
-```bash
-# ── Development ────────────────────────────────────────────────────────────
-npx serve . -l 4173                     # Serve the app locally
-
-# ── Testing ────────────────────────────────────────────────────────────────
-npm test                                # All 366 tests, headless
-npm run test:headed                     # Tests with visible browser
-npm run test:ui                         # Playwright interactive UI
-npm run test:desktop                    # Desktop Chrome only
-npm run test:mobile                     # Mobile Chrome (Pixel 5) only
-npx playwright show-report              # Open last test HTML report
-npx playwright test -g "search pill"    # Run tests matching a name
-
-# ── Data ───────────────────────────────────────────────────────────────────
-node scripts/build-cache.js             # Regenerate transit-cache.json (~30s, HSL + Waltti/Föli)
-python scripts/check_places_osm.py     # Validate places against OSM
-
-# ── Deploy ─────────────────────────────────────────────────────────────────
-npm run update                          # Bump version + refresh places (default pre-push step)
-npm run update:full                     # Version + places + transit cache rebuild (~45s)
-npm run update:version                  # Bump SW/CSS cache-bust version string only
-npm run update:places                   # Refresh places.json + tags.json only
-npm run update:transit                  # Rebuild transit-cache.json only
-git push                                # Triggers Cloudflare Pages deploy
-node scripts/build-secrets.js          # (Runs automatically at deploy time)
-```
-
----
-
-## Version history
-
-| Date | Change |
-|------|--------|
-| March 2026 | **Turku / Föli transit support** — 2 812 Turku stops + Waltti GraphQL routing; per-route GTFS brand colours on stop chips, map markers, and itinerary legs; cross-regional routing via Transitous fallback; zone badge filter (HSL A–D only) |
-| March 2026 | **Automation tooling** — `scripts/update-all.js` master update runner with `--version`, `--places`, `--transit`, `--all` flags; `npm run update / update:full / update:version / update:places / update:transit`; deploy agent at `.github/prompts/deploy.prompt.md` with Conventional Commits standard |
-| March 2026 | **Visual fixes** — route snackbar locked to `#1a73b8` in dark mode; chip `<small>` destination text darkened on light backgrounds; `.sp-chip` supports `--rt` CSS variable for GTFS `textColor` |
-| March 2026 | Added full Playwright test suite (1 005 tests, 12 spec files across 4 browser projects); tutorial module; suggest/edit overlays with Google Forms backend; deep-link / URL hash location sharing; transit-stop layer; first-run spotlight tutorial; contact form |
-| 2025 | Initial release — map, places, search, directions, prayer times |
-
----
-
-*Built with care for the Muslim community in Helsinki.*  
-*Questions or issues? Open a [GitHub issue](https://github.com/Karamah-Collective/halal-finder/issues).*
+*Halal Finder Helsinki — built for the community, by the community.*

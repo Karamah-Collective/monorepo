@@ -944,18 +944,18 @@
     "lat": 60.2484813,
     "lng": 25.0094426,
     "tags": {
-      "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "fully_halal": true
     },
-    "notes": "",
+    "notes": "As many other Chitr Chickens also this one has changed to Dust & Fry. In the future it's better to re-check if the meat is halal of not.",
     "hours": {
-      "sun": "12:00-22:00",
       "mon": "11:00-22:00",
       "tue": "11:00-22:00",
       "wed": "11:00-22:00",
       "thu": "11:00-22:00",
       "fri": "11:00-00:00",
-      "sat": "12:00-00:00"
+      "sat": "12:00-00:00",
+      "sun": "12:00-22:00"
     }
   },
   {
@@ -3632,6 +3632,59 @@
       "fri": "10:30-20:00",
       "sat": "11:00-20:00",
       "sun": "11:00-20:00"
+    }
+  },
+  {
+    "id": "dyjru5",
+    "name": "Big Bite Konala",
+    "type": "restaurant",
+    "address": "Vanha Hämeenkyläntie 9, 00390 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.23420609999999,
+    "lng": 24.8433078,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_african": true,
+      "cuisine_fast_food": true,
+      "cuisine_fried_chicken": true,
+      "cuisine_italian": true,
+      "cuisine_mexican": true,
+      "cuisine_pizza": true
+    },
+    "notes": "There are enough free parking",
+    "hours": {
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "15:00-22:00",
+      "sat": "11:00-22:00",
+      "sun": "11:00-22:00"
+    }
+  },
+  {
+    "id": "lsd79a",
+    "name": "Kuningas Pizza & Kebab Sörnäinen",
+    "type": "restaurant",
+    "address": "Helsinginkatu 2, 00500 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1874091,
+    "lng": 24.960517,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_middle_eastern": true,
+      "cuisine_pizza": true
+    },
+    "notes": "Chicken and Kebab are confirmed Halal",
+    "hours": {
+      "mon": "11:00-00:00",
+      "tue": "11:00-00:00",
+      "wed": "11:00-00:00",
+      "thu": "11:00-00:00",
+      "fri": "11:00-06:00",
+      "sat": "11:00-06:00",
+      "sun": "11:00-05:00"
     }
   }
 ]

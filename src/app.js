@@ -191,7 +191,7 @@ map.on("load", async () => {
     { initStyleEditor },
     _contact, // side-effect import — attaches event listeners
     { initEidPrayers },
-    { initGpsSim },
+    // { initGpsSim },
     { initWishlist, preloadWishes },
     { initTrafficOverlay },
   ] = await Promise.all([
@@ -200,7 +200,7 @@ map.on("load", async () => {
     import("./map-style-editor.js"),
     import("./contact.js"),
     import("./eid-prayers.js"),
-    import("./gps-sim.js"),
+    // import("./gps-sim.js"),
     import("./wishlist.js"),
     import("./traffic-overlay.js"),
   ]);
