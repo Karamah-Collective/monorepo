@@ -39,7 +39,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260624" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260718" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -1096,14 +1096,39 @@
             </button>
           </div>
           <form id="event-form" autocomplete="off" novalidate>
-            <input type="hidden" id="ev-place-id" />
             <input type="hidden" id="ev-edit-id" />
-            <label class="sg-label">
-              <span>Mosque <span class="sg-req">*</span></span>
-              <select id="ev-mosque" required>
-                <option value="" disabled selected>Select a mosque…</option>
-              </select>
-            </label>
+            <div class="sg-label">
+              <span>Location <span class="sg-req">*</span></span>
+              <div class="dir-field-wrap">
+                <input
+                  id="ev-loc-search"
+                  type="text"
+                  placeholder="Search or add a location…"
+                  autocomplete="off"
+                />
+                <ul id="ev-loc-suggest" class="dir-suggest hide"></ul>
+              </div>
+            </div>
+            <div id="ev-loc-custom-fields" class="hide">
+              <label class="sg-label">
+                <span>Google Maps Link <span class="sg-req">*</span></span>
+                <input
+                  id="ev-location-gmaps"
+                  type="url"
+                  placeholder="https://maps.google.com/…"
+                  maxlength="500"
+                />
+              </label>
+              <label class="sg-label">
+                <span>Location Name</span>
+                <input
+                  id="ev-location-name"
+                  type="text"
+                  placeholder="Optional — e.g. Rented Hall"
+                  maxlength="200"
+                />
+              </label>
+            </div>
             <label class="sg-label">
               <span>Event Title <span class="sg-req">*</span></span>
               <input
@@ -1122,6 +1147,18 @@
                 maxlength="1000"
                 rows="3"
               ></textarea>
+            </label>
+            <label class="sg-label">
+              <span>Organizer</span>
+              <div class="dir-field-wrap">
+                <input
+                  id="ev-org-search"
+                  type="text"
+                  placeholder="Search or add an organizer…"
+                  autocomplete="off"
+                />
+                <ul id="ev-org-suggest" class="dir-suggest hide"></ul>
+              </div>
             </label>
             <div class="sg-label">
               <span>Schedule</span>
@@ -1499,7 +1536,7 @@
                   <span>Nearby</span>
                 </button>
                 <select id="ev-mosque-filter" class="ev-mosque-filter">
-                  <option value="">All mosques</option>
+                  <option value="">All locations</option>
                 </select>
               </div>
             </div>

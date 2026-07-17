@@ -4371,6 +4371,12 @@ body.dark-mode .sp-tip {
 .dir-field-wrap {
   position: relative;
 }
+/* Event form combos use a bare input directly in the wrapper (no .dir-field
+   icon row), so it needs its own full-width rule. */
+.dir-field-wrap > input {
+  width: 100%;
+  box-sizing: border-box;
+}
 .dir-field {
   display: flex;
   align-items: center;
@@ -6219,6 +6225,10 @@ body.nav-mode #style-picker {
   font-size: var(--txt-sm);
   color: var(--text-2);
 }
+.ev-overlay-organizer {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+}
 .ev-overlay-actions {
   display: flex;
   align-items: center;
@@ -6311,6 +6321,13 @@ body.nav-mode #style-picker {
   color: var(--text-3);
   font-style: italic;
   margin: 0;
+}
+
+/* ── Location custom-fields spacing ─── */
+#ev-loc-custom-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
 }
 
 /* ── Recurring fields spacing ─── */

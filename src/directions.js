@@ -585,6 +585,8 @@ function _searchLocalDirPlaces(query) {
         cls: icon.cls,
         _score: score,
         _local: true,
+        id: place.id,
+        placeType: place.type,
       };
     })
     .filter(Boolean);
@@ -616,7 +618,14 @@ function _mergeDirSearchResults(localItems, apiItems) {
   return merged.slice(0, DIR_SUGGEST_LIMIT);
 }
 
-async function _searchDirLocations(query) {
+/**
+ * Searches halal directory places first, then falls back to Digitransit/Nominatim
+ * (OpenStreetMap) geocoding for anywhere else. Shared by the directions
+ * from/to autocomplete and the event form's location search.
+ * @param {string} query
+ * @returns {Promise<Array<{lat: number, lng: number, name: string, addr: string, type: string, cls: string, _local?: boolean}>>}
+ */
+export async function searchDirLocations(query) {
   const localItems = _searchLocalDirPlaces(query);
   let apiItems = await _dtGeoSearch(query);
   if (!apiItems.length) apiItems = await _nominatimSearch(query);
@@ -702,7 +711,7 @@ function setupDirAutocomplete(inputEl, suggestEl, field) {
 
 async function dirGeoSearch(q, suggestEl, field) {
   try {
-    const items = await _searchDirLocations(q);
+    const items = await searchDirLocations(q);
     if (!items.length) {
       suggestEl.innerHTML = '<li class="ds-none">No places found</li>';
       suggestEl.classList.remove("hide");
@@ -1370,7 +1379,7 @@ export function decodePolyline(encoded, precision) {
 async function autoResolveLocation(inputEl) {
   const q = inputEl.value.trim();
   if (!q) return null;
-  const items = await _searchDirLocations(q);
+  const items = await searchDirLocations(q);
   if (items.length) return { lat: items[0].lat, lng: items[0].lng, name: items[0].name };
   return null;
 }

@@ -2558,8 +2558,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_korean": true,
-      "cuisine_fried_chicken": true
+      "cuisine_fried_chicken": true,
+      "cuisine_korean": true
     },
     "notes": ""
   },
@@ -3685,6 +3685,282 @@
       "fri": "11:00-06:00",
       "sat": "11:00-06:00",
       "sun": "11:00-05:00"
+    }
+  },
+  {
+    "id": "7i5in8",
+    "name": "Omu Raisu",
+    "type": "restaurant",
+    "address": "Kulmavuorenkatu 4, 00500 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1883772,
+    "lng": 24.9646827,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_japanese": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": null,
+      "tue": "10:30-21:00",
+      "wed": "10:30-21:00",
+      "thu": "10:30-21:00",
+      "fri": "10:30-22:30",
+      "sat": "12:00-22:30"
+    }
+  },
+  {
+    "id": "bu20bb",
+    "name": "Hervanta Islamic Center",
+    "type": "mosque",
+    "address": "Opiskelijankatu 5, 33720 Tampere",
+    "city": "Tampere",
+    "lat": 61.4525892,
+    "lng": 23.8451519,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
+  },
+  {
+    "id": "9xdwol",
+    "name": "Keskustan moskeija (Tampereen islamin yhdyskunta)",
+    "type": "mosque",
+    "address": "Yliopistonkatu 58, 33100 Tampere",
+    "city": "Tampere",
+    "lat": 61.4952011,
+    "lng": 23.7794514,
+    "tags": {
+      "daily_prayers": true,
+      "jummah": true
+    },
+    "notes": ""
+  },
+  {
+    "id": "ahxxu8",
+    "name": "ZamZam Masjid",
+    "type": "mosque",
+    "address": "Koulukatu 12 a1, 33200 Tampere",
+    "city": "Tampere",
+    "lat": 61.4944843,
+    "lng": 23.7473805,
+    "tags": {},
+    "notes": "",
+    "hours": {
+      "sun": "00:00-23:59",
+      "mon": "00:00-23:59",
+      "tue": "00:00-23:59",
+      "wed": "00:00-23:59",
+      "thu": "00:00-23:59",
+      "fri": "00:00-23:59",
+      "sat": "00:00-23:59"
+    }
+  },
+  {
+    "id": "o7mgdm",
+    "name": "Triple Bite",
+    "type": "restaurant",
+    "address": "Vilhonvuorenkatu 3, 00500 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1876354,
+    "lng": 24.9638867,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_fast_food": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "11:00-00:00",
+      "mon": "11:00-00:00",
+      "tue": "11:00-00:00",
+      "wed": "11:00-00:00",
+      "thu": "11:00-00:00",
+      "fri": "11:00-03:00",
+      "sat": "11:00-03:00"
+    }
+  },
+  {
+    "id": "606d8e",
+    "name": "Itsuyaki Forum",
+    "type": "restaurant",
+    "address": "Mannerheimintie 14–20, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.16861779999999,
+    "lng": 24.938689,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_teppanyaki": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-19:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
+  },
+  {
+    "id": "aql0uu",
+    "name": "Itsuyaki Redi",
+    "type": "restaurant",
+    "address": "Kalasatama/Itäväylä, 00540 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.18706659999999,
+    "lng": 24.9806008,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_teppanyaki": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-20:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-20:00",
+      "sat": "11:00-20:00"
+    }
+  },
+  {
+    "id": "3mc8fd",
+    "name": "Itsuyaki Itis",
+    "type": "restaurant",
+    "address": "ITIS 2krs, Itäkatu 1 7, 00930 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2120273,
+    "lng": 25.0829472,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_teppanyaki": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-19:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-21:00"
+    }
+  },
+  {
+    "id": "q29ooe",
+    "name": "Itsuyaki Ainoa",
+    "type": "restaurant",
+    "address": "Länsituuli 7, 02100 Espoo",
+    "city": "Espoo",
+    "lat": 60.1755694,
+    "lng": 24.8046281,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_teppanyaki": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-19:30",
+      "mon": "11:00-20:00",
+      "tue": "11:00-20:00",
+      "wed": "11:00-20:00",
+      "thu": "11:00-20:00",
+      "fri": "11:00-21:00",
+      "sat": "11:00-20:30"
+    }
+  },
+  {
+    "id": "ej3r5e",
+    "name": "Itsuyaki Ratina Tampere",
+    "type": "restaurant",
+    "address": "Vuolteenkatu 1, 33100 Tampere",
+    "city": "Tampere",
+    "lat": 61.493174,
+    "lng": 23.7669431,
+    "tags": {
+      "partially_halal": true,
+      "cuisine_buffet": true,
+      "cuisine_japanese": true,
+      "cuisine_teppanyaki": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-19:00",
+      "mon": "10:30-20:00",
+      "tue": "10:30-20:00",
+      "wed": "10:30-20:00",
+      "thu": "10:30-20:00",
+      "fri": "10:30-21:00",
+      "sat": "11:00-20:00"
+    }
+  },
+  {
+    "id": "mu7yqm",
+    "name": "Burger Company Koskikeskus",
+    "type": "restaurant",
+    "address": "Hatanpään valtatie 1, 33100 Tampere",
+    "city": "Tampere",
+    "lat": 61.49555399999999,
+    "lng": 23.7684039,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_burger": true
+    },
+    "notes": "Owner is Muslim, please check meat source on the counter",
+    "hours": {
+      "sun": "11:00-22:00",
+      "mon": "10:30-22:00",
+      "tue": "10:30-22:00",
+      "wed": "10:30-22:00",
+      "thu": "10:30-22:00",
+      "fri": "10:30-22:00",
+      "sat": "10:30-22:00"
+    }
+  },
+  {
+    "id": "898dg5",
+    "name": "RAVINTOLA 7KORA (সাতকরা)",
+    "type": "restaurant",
+    "address": "Pekanraitti 22, 00700 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.24961109999999,
+    "lng": 25.0118774,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_bangladeshi": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "11:00-21:00",
+      "mon": "10:30-20:30",
+      "tue": "10:30-20:30",
+      "wed": "10:30-20:30",
+      "thu": "10:30-20:30",
+      "fri": "11:00-21:00",
+      "sat": "11:00-21:00"
     }
   }
 ]

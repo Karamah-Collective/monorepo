@@ -1,9 +1,9 @@
 import { map, scheduleMapViewportSync } from "./map-init.js";
-import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple } from "./icons.js";
+import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
-import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext } from "./directions.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
 
@@ -849,7 +849,7 @@ function _buildCard(p, i) {
       const recurIcon = ev.recurring
         ? `<svg class="pp-ev-recur-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
         : "";
-      return `<div class="pp-ev-card" data-ev-id="${escA(ev.id)}" data-ev-url="${escA(ev.url || '')}" role="button" tabindex="0"><div class="pp-ev-info"><span class="pp-ev-title">${esc(ev.title)}</span><span class="pp-ev-meta">${recurIcon}${esc(dateStr)}${timeStr ? ` · ${esc(timeStr)}` : ""}</span></div>${linkBtn}</div>`;
+      return `<div class="pp-ev-card" data-ev-id="${escA(ev.id)}" data-ev-url="${escA(ev.url || '')}" role="button" tabindex="0"><div class="pp-ev-info"><span class="pp-ev-title">${esc(ev.title)}</span><span class="pp-ev-meta">${recurIcon}${esc(dateStr)}${timeStr ? ` · ${esc(timeStr)}` : ""}${ev.organizerName ? ` · ${esc(ev.organizerName)}` : ""}</span></div>${linkBtn}</div>`;
     }).join("");
     evDrawerBody = `<div class="pl-ev-drawer" data-place-id="${p.id}"><div class="pl-ev-body"><div class="pl-ev-body-inner">${evCards}</div></div></div>`;
   }
@@ -1323,6 +1323,7 @@ function _buildEventCard(ev) {
     <div class="pp-ev-info">
       <span class="pp-ev-title">${esc(ev.title)}</span>
       <span class="pp-ev-meta">${recurIcon}${dateStr ? `<span class="pp-ev-date">${esc(dateStr)}</span>` : ""}${timeStr ? `<span class="pp-ev-time">${esc(timeStr)}</span>` : ""}</span>
+      ${ev.organizerName ? `<span class="pp-ev-organizer">Organized by ${esc(ev.organizerName)}</span>` : ""}
     </div>
     ${linkBtn ? `<div class="pp-ev-actions">${linkBtn}</div>` : ""}
   </div>`;
@@ -2535,10 +2536,8 @@ let _evActiveFilter = "upcoming";
 let _evNearbySort = false;
 
 export function renderEventsPill() {
-  if (!eventsData.length) {
-    _eventsPill.classList.add("hide");
-    return;
-  }
+  // Always visible (even with zero events) so users can discover and submit
+  // the first event rather than the button only appearing once one exists.
   _eventsPill.classList.remove("hide");
 
   // Count upcoming events for badge
@@ -2554,19 +2553,20 @@ export function renderEventsPill() {
     badge.className = "pill-count";
     _eventsPill.appendChild(badge);
   }
+  badge.classList.toggle("hide", upcomingCount === 0);
   badge.textContent = upcomingCount;
 
   _populateEvMosqueFilter();
   _renderEventsList();
 }
 
-/** Populate the mosque dropdown filter with mosques that have events. */
+/** Populate the location dropdown filter with directory places that have events. */
 function _populateEvMosqueFilter() {
   if (!_evMosqueFilter) return;
-  const mosqueIds = new Set(eventsData.map((ev) => ev.placeId));
-  const mosques = placesData.filter((p) => mosqueIds.has(p.id));
-  _evMosqueFilter.innerHTML = `<option value="">All mosques</option>` +
-    mosques.map((m) => `<option value="${escA(m.id)}">${esc(m.name)}</option>`).join("");
+  const placeIds = new Set(eventsData.map((ev) => ev.placeId).filter(Boolean));
+  const places = placesData.filter((p) => placeIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+  _evMosqueFilter.innerHTML = `<option value="">All locations</option>` +
+    places.map((p) => `<option value="${escA(p.id)}">${esc(p.name)}</option>`).join("");
 }
 
 /**
@@ -2589,12 +2589,14 @@ function _filterEvents() {
   return eventsData.map((ev) => {
     const nd = _nextEventDate(ev);
     const place = placesData.find((p) => p.id === ev.placeId);
-    const dist = hasLoc && place && place.lat && place.lng
-      ? haversineDistance(loc.lat, loc.lng, place.lat, place.lng)
+    const lat = place ? place.lat : ev.lat;
+    const lng = place ? place.lng : ev.lng;
+    const dist = hasLoc && lat != null && lng != null
+      ? haversineDistance(loc.lat, loc.lng, lat, lng)
       : null;
     return { ev, nextDate: nd, dist, place };
   }).filter(({ ev, nextDate }) => {
-    // Mosque filter
+    // Location filter (only applies to events anchored to an existing place)
     if (mosqueId && ev.placeId !== mosqueId) return false;
 
     // Date filter
@@ -2643,7 +2645,8 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
   _evEmptyState.classList.add("hide");
 
   _evFilteredList.innerHTML = filtered.map(({ ev, nextDate, dist, place }) => {
-    const placeName = place ? esc(place.name) : "";
+    const placeName = place ? esc(place.name) : (ev.locationName ? esc(ev.locationName) : "");
+    const organizerLine = ev.organizerName ? `<span class="ev-overlay-organizer">Organized by ${esc(ev.organizerName)}</span>` : "";
     const dateStr = _formatEventDate(ev);
     const timeStr = ev.time ? ev.time + (ev.endTime ? `–${ev.endTime}` : "") : "";
     const recurBadge = ev.recurring
@@ -2655,11 +2658,12 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
     const distBadge = dist != null
       ? `<span class="ev-dist-badge">${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>`
       : "";
-    return `<div class="ev-overlay-card" role="button" tabindex="0" data-place-id="${ev.placeId}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
+    return `<div class="ev-overlay-card" role="button" tabindex="0" data-place-id="${escA(ev.placeId || "")}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
       <div class="ev-overlay-top">
         <div class="ev-overlay-info">
           <span class="ev-overlay-title">${esc(ev.title)}</span>
           ${placeName ? `<span class="ev-overlay-mosque">${placeName}</span>` : ""}
+          ${organizerLine}
         </div>
         <div class="ev-overlay-actions">
           <button type="button" class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -3085,15 +3089,201 @@ function openSuggestOverlay() {
 let _eventEditMode = false;
 let _eventEditOriginal = null;
 
+const MAX_EV_COMBO_RESULTS = 8;
+const EV_COMBO_SEARCH_DEBOUNCE_MS = 300;
+const EV_COMBO_SEARCH_MIN_QUERY_LENGTH = 2;
+
+/**
+ * Wires a type-ahead search combobox, with a trailing "use custom / free text"
+ * option for when the place isn't found (or the user wants to bypass a match).
+ * Without `searchPlaces`, matches are a synchronous filter over `placesData`
+ * (used by Organizer). With `searchPlaces`, results come from that async
+ * source instead (used by Location, to also search OSM/Digitransit — same
+ * halal-places-first behavior as the main places search bar).
+ * @param {object} opts
+ * @param {HTMLInputElement} opts.input
+ * @param {HTMLElement} opts.list - the `<ul>` results dropdown
+ * @param {HTMLElement} opts.wrapper - ancestor used to detect outside clicks
+ * @param {boolean} opts.customAlwaysVisible - show the custom option even with an empty query
+ * @param {(query: string) => string} opts.customLabel
+ * @param {(query: string) => Promise<Array<object>>} [opts.searchPlaces] - async result source (debounced)
+ * @param {(place: object) => void} opts.onSelectPlace - an existing directory place was picked
+ * @param {(geo: {name: string, address: string, lat: number, lng: number}) => void} [opts.onSelectGeocoded] - a non-directory search result (e.g. OSM) was picked
+ * @param {(query: string) => void} opts.onSelectCustom
+ * @param {() => void} opts.onTyping - called on every keystroke, before re-rendering
+ */
+function _setupEventPlaceCombo({ input, list, wrapper, customAlwaysVisible, customLabel, searchPlaces, onSelectPlace, onSelectGeocoded, onSelectCustom, onTyping }) {
+  let debounceTimer = 0;
+  let searchToken = 0;
+
+  function renderList(items, q) {
+    const showCustom = customAlwaysVisible || q.length > 0;
+    const itemsHTML = items.map((item) => {
+      const iconSvg = item.placeId
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${(PLACE_CONFIG[item.placeType] || PLACE_CONFIG.mosque).icon}</svg>`
+        : typeIcon(item.type, item.cls);
+      const dataAttrs = item.placeId
+        ? `data-place-id="${escA(item.placeId)}"`
+        : `data-geo-lat="${item.lat}" data-geo-lng="${item.lng}" data-geo-name="${escA(item.name)}" data-geo-addr="${escA(item.address || "")}"`;
+      return `<li ${dataAttrs}><span class="ds-icon">${iconSvg}</span><div class="ds-text"><div class="ds-name">${_highlightMatch(esc(item.name), q)}</div><div class="ds-addr">${esc(item.address || "")}</div></div></li>`;
+    }).join("");
+    const customHTML = showCustom
+      ? `<li data-custom="1"><span class="ds-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><div class="ds-text"><div class="ds-name ev-combo-add-label">${esc(customLabel(q))}</div></div></li>`
+      : "";
+    if (!items.length && !showCustom) { list.classList.add("hide"); return; }
+    list.innerHTML = itemsHTML + customHTML;
+    list.classList.remove("hide");
+  }
+
+  async function render() {
+    const q = input.value.trim();
+    if (!searchPlaces) {
+      const ql = q.toLowerCase();
+      const matches = ql
+        ? placesData.filter((p) => p.name.toLowerCase().includes(ql)).slice(0, MAX_EV_COMBO_RESULTS)
+        : [];
+      renderList(matches.map((p) => ({ placeId: p.id, placeType: p.type, name: p.name, address: p.address })), q);
+      return;
+    }
+    if (q.length < EV_COMBO_SEARCH_MIN_QUERY_LENGTH) { renderList([], q); return; }
+    const token = ++searchToken;
+    const results = await searchPlaces(q);
+    if (token !== searchToken) return; // a newer search superseded this one
+    renderList(results, q);
+  }
+
+  input.addEventListener("focus", render);
+  input.addEventListener("input", () => {
+    onTyping();
+    clearTimeout(debounceTimer);
+    if (searchPlaces) debounceTimer = setTimeout(render, EV_COMBO_SEARCH_DEBOUNCE_MS);
+    else render();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") list.classList.add("hide");
+    if (e.key === "Enter") {
+      e.preventDefault();
+      list.querySelector("li")?.click();
+    }
+  });
+  list.addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    if (li.dataset.custom) {
+      onSelectCustom(input.value.trim());
+    } else if (li.dataset.placeId) {
+      const place = placesData.find((p) => p.id === li.dataset.placeId);
+      if (place) onSelectPlace(place);
+    } else if (li.dataset.geoLat) {
+      onSelectGeocoded({
+        name: li.dataset.geoName,
+        address: li.dataset.geoAddr,
+        lat: parseFloat(li.dataset.geoLat),
+        lng: parseFloat(li.dataset.geoLng),
+      });
+    }
+    list.classList.add("hide");
+  });
+  document.addEventListener("click", (e) => {
+    if (!wrapper.contains(e.target)) list.classList.add("hide");
+  });
+}
+
+/** Reset the location combo to its empty "existing place" state. */
+function _resetLocationCombo() {
+  _evLocationMode = "existing";
+  _evSelectedPlaceId = "";
+  _evGeocodedLocation = null;
+  document.getElementById("ev-loc-search").value = "";
+  document.getElementById("ev-loc-custom-fields").classList.add("hide");
+  document.getElementById("ev-location-gmaps").value = "";
+  document.getElementById("ev-location-name").value = "";
+}
+
+/** Reset the organizer combo to its empty state. */
+function _resetOrganizerCombo() {
+  _evSelectedOrganizerPlaceId = "";
+  document.getElementById("ev-org-search").value = "";
+}
+
+_setupEventPlaceCombo({
+  input: document.getElementById("ev-loc-search"),
+  list: document.getElementById("ev-loc-suggest"),
+  wrapper: document.getElementById("ev-loc-search").closest(".dir-field-wrap"),
+  customAlwaysVisible: true,
+  customLabel: () => "Use a custom location",
+  // Halal directory places first, then OSM/Digitransit for anywhere else —
+  // same source the main places search bar and directions fields use.
+  searchPlaces: async (q) => {
+    const items = await searchDirLocations(q);
+    return items.map((item) => ({
+      placeId: item._local ? item.id : undefined,
+      placeType: item._local ? item.placeType : undefined,
+      name: item.name,
+      address: item.addr,
+      lat: item.lat,
+      lng: item.lng,
+      type: item.type,
+      cls: item.cls,
+    }));
+  },
+  onSelectPlace: (place) => {
+    _evLocationMode = "existing";
+    _evSelectedPlaceId = place.id;
+    _evGeocodedLocation = null;
+    document.getElementById("ev-loc-search").value = place.name;
+    document.getElementById("ev-loc-custom-fields").classList.add("hide");
+  },
+  onSelectGeocoded: (geo) => {
+    // Already has a name + coordinates from the search result (OSM/Digitransit)
+    // — no Google Maps link or custom-fields reveal needed.
+    _evLocationMode = "geocoded";
+    _evSelectedPlaceId = "";
+    _evGeocodedLocation = geo;
+    document.getElementById("ev-loc-search").value = geo.name;
+    document.getElementById("ev-loc-custom-fields").classList.add("hide");
+  },
+  onSelectCustom: () => {
+    _evLocationMode = "custom";
+    _evSelectedPlaceId = "";
+    _evGeocodedLocation = null;
+    document.getElementById("ev-loc-custom-fields").classList.remove("hide");
+    document.getElementById("ev-location-gmaps").focus();
+  },
+  onTyping: () => {
+    _evSelectedPlaceId = "";
+    _evGeocodedLocation = null;
+    _evLocationMode = "existing";
+    document.getElementById("ev-loc-custom-fields").classList.add("hide");
+  },
+});
+
+_setupEventPlaceCombo({
+  input: document.getElementById("ev-org-search"),
+  list: document.getElementById("ev-org-suggest"),
+  wrapper: document.getElementById("ev-org-search").closest(".dir-field-wrap"),
+  customAlwaysVisible: false,
+  customLabel: (q) => `Use "${q}" as organizer`,
+  onSelectPlace: (place) => {
+    _evSelectedOrganizerPlaceId = place.id;
+    document.getElementById("ev-org-search").value = place.name;
+  },
+  onSelectCustom: () => {
+    _evSelectedOrganizerPlaceId = "";
+  },
+  onTyping: () => {
+    _evSelectedOrganizerPlaceId = "";
+  },
+});
+
 /**
  * Open the event form overlay in add or edit mode.
- * @param {string} [preselectedPlaceId] - Pre-select this mosque in add mode
+ * @param {string} [preselectedPlaceId] - Pre-select this place as the venue in add mode
  * @param {object} [editEvent] - If provided, opens in edit mode pre-filled with this event
  */
 function openEventOverlay(preselectedPlaceId, editEvent) {
   const overlay = document.getElementById("event-overlay");
   const form = document.getElementById("event-form");
-  const mosqueSelect = document.getElementById("ev-mosque");
   const heading = document.getElementById("ev-heading");
   const submitBtn = document.getElementById("ev-submit");
   form.reset();
@@ -3111,11 +3301,43 @@ function openEventOverlay(preselectedPlaceId, editEvent) {
   _evScheduleMode = "oneTime";
   overlay.querySelectorAll(".ev-schedule-chips .ev-sched-chip").forEach((c) => c.classList.remove("active"));
   overlay.querySelector('.ev-schedule-chips .ev-sched-chip[data-value="oneTime"]')?.classList.add("active");
-  // Populate mosque dropdown with approved mosques/prayer rooms
-  const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
-  const selectedPlaceId = editEvent ? editEvent.placeId : preselectedPlaceId;
-  mosqueSelect.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
-    mosques.map((m) => `<option value="${escA(m.id)}"${m.id === selectedPlaceId ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+
+  // Location combo: an event's venue can be any place in the directory (not
+  // just mosques) — a restaurant or shop can host an event too.
+  _resetLocationCombo();
+  const linkedPlaceId = editEvent ? (editEvent.placeId || "") : (preselectedPlaceId || "");
+  const linkedPlace = linkedPlaceId ? placesData.find((p) => p.id === linkedPlaceId) : null;
+  if (linkedPlace) {
+    _evSelectedPlaceId = linkedPlace.id;
+    document.getElementById("ev-loc-search").value = linkedPlace.name;
+  } else if (editEvent && editEvent.locationGmapsLink) {
+    // Custom location originally resolved from a pasted Google Maps link.
+    _evLocationMode = "custom";
+    document.getElementById("ev-loc-custom-fields").classList.remove("hide");
+    document.getElementById("ev-location-name").value = editEvent.locationName || "";
+    document.getElementById("ev-location-gmaps").value = editEvent.locationGmapsLink;
+  } else if (editEvent && (editEvent.locationName || editEvent.lat != null)) {
+    // Custom location picked directly from the OSM/Digitransit search results.
+    _evLocationMode = "geocoded";
+    _evGeocodedLocation = {
+      name: editEvent.locationName || "",
+      address: editEvent.locationAddress || "",
+      lat: editEvent.lat,
+      lng: editEvent.lng,
+    };
+    document.getElementById("ev-loc-search").value = editEvent.locationName || "";
+  }
+
+  // Organizer combo — independent of location; may or may not be a listed place.
+  _resetOrganizerCombo();
+  const organizerPlace = editEvent?.organizerPlaceId ? placesData.find((p) => p.id === editEvent.organizerPlaceId) : null;
+  if (organizerPlace) {
+    _evSelectedOrganizerPlaceId = organizerPlace.id;
+    document.getElementById("ev-org-search").value = organizerPlace.name;
+  } else if (editEvent?.organizerName) {
+    document.getElementById("ev-org-search").value = editEvent.organizerName;
+  }
+
   // Show one-time fields by default
   document.getElementById("ev-onetime-fields").classList.remove("hide");
   document.getElementById("ev-recurring-fields").classList.add("hide");
@@ -4057,6 +4279,12 @@ _eventOverlay.addEventListener("click", (e) => {
   if (e.target === e.currentTarget) _eventOverlay.classList.add("hide");
 });
 
+// ── Location toggle: existing directory place vs geocoded vs custom location ─
+let _evLocationMode = "existing"; // "existing" | "geocoded" | "custom"
+let _evSelectedPlaceId = "";
+let _evGeocodedLocation = null; // { name, address, lat, lng } from an OSM/Digitransit pick
+let _evSelectedOrganizerPlaceId = "";
+
 // ── Schedule toggle: one-time vs recurring ───────────────────────────────────
 let _evScheduleMode = "oneTime";
 
@@ -4311,14 +4539,32 @@ document.getElementById("ev-anchor-date")?.addEventListener("change", (e) => {
 // ── Form submission ──────────────────────────────────────────────────────────
 _eventForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const mosqueSelect = document.getElementById("ev-mosque");
+  const locSearchInput = document.getElementById("ev-loc-search");
+  const locationNameInput = document.getElementById("ev-location-name");
+  const locationGmapsInput = document.getElementById("ev-location-gmaps");
+  const orgSearchInput = document.getElementById("ev-org-search");
   const titleInput = document.getElementById("ev-title");
-  const placeId = mosqueSelect.value;
+  const isExistingLocation = _evLocationMode === "existing";
+  const isGeocodedLocation = _evLocationMode === "geocoded";
+  const isCustomLocation = _evLocationMode === "custom";
+  const placeId = isExistingLocation ? _evSelectedPlaceId : "";
+  const locationName = isGeocodedLocation
+    ? (_evGeocodedLocation?.name || "")
+    : isCustomLocation
+      ? locationNameInput.value.trim()
+      : "";
+  const locationGmapsLink = isCustomLocation ? locationGmapsInput.value.trim() : "";
+  const locationLat = isGeocodedLocation ? _evGeocodedLocation?.lat : "";
+  const locationLng = isGeocodedLocation ? _evGeocodedLocation?.lng : "";
+  const locationAddress = isGeocodedLocation ? (_evGeocodedLocation?.address || "") : "";
+  const organizerPlaceId = _evSelectedOrganizerPlaceId;
+  const organizerName = orgSearchInput.value.trim();
   const title = titleInput.value.trim();
 
   // Validate required
   let valid = true;
-  if (!placeId) { mosqueSelect.classList.add("invalid"); valid = false; }
+  if (isExistingLocation && !placeId) { locSearchInput.classList.add("invalid"); valid = false; }
+  if (isCustomLocation && !locationGmapsLink) { locationGmapsInput.classList.add("invalid"); valid = false; }
   if (!title) { titleInput.classList.add("invalid"); valid = false; }
 
   const isRecurring = _evScheduleMode === "recurring";
@@ -4362,7 +4608,12 @@ _eventForm.addEventListener("submit", async (e) => {
     const orig = _eventEditOriginal;
     const diffs = [];
     if (title !== (orig.title || "")) diffs.push(`Title: "${orig.title || ""}" → "${title}"`);
-    if (placeId !== (orig.placeId || "")) diffs.push(`Mosque changed`);
+    if (placeId !== (orig.placeId || "") || locationName !== (orig.locationName || "") || locationGmapsLink !== (orig.locationGmapsLink || "") || locationLat !== (orig.lat ?? "") || locationLng !== (orig.lng ?? "")) {
+      diffs.push(`Location changed`);
+    }
+    if (organizerPlaceId !== (orig.organizerPlaceId || "") || organizerName !== (orig.organizerName || "")) {
+      diffs.push(organizerName ? `Organizer changed` : `Organizer removed`);
+    }
     const newDesc = document.getElementById("ev-desc").value.trim();
     if (newDesc !== (orig.description || "")) diffs.push(newDesc ? `Description updated` : `Description removed`);
     const newDate = isRecurring ? "" : dateInput.value;
@@ -4384,6 +4635,13 @@ _eventForm.addEventListener("submit", async (e) => {
     token: null,
     formType: isEditMode ? "event-edit" : "event",
     placeId,
+    locationName,
+    locationGmapsLink,
+    locationLat,
+    locationLng,
+    locationAddress,
+    organizerName,
+    organizerPlaceId,
     title,
     description: document.getElementById("ev-desc").value.trim(),
     eventDate: isRecurring ? "" : dateInput.value,

@@ -253,6 +253,10 @@
     {
       "id": "cuisine_singaporean",
       "label": "Singaporean"
+    },
+    {
+      "id": "cuisine_teppanyaki",
+      "label": "Teppanyaki"
     }
   ]
 }

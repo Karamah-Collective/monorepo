@@ -937,6 +937,11 @@ select:focus-visible {
   text-overflow: ellipsis;
 }
 
+/* Trailing "add custom / use as typed" option in search-combo dropdowns */
+.ev-combo-add-label {
+  color: var(--accent);
+}
+
 .t-micro-label,
 .itin-zones-label {
   font-size: var(--txt-xs);
@@ -1483,6 +1488,13 @@ select:focus-visible {
 .pp-ev-recur-icon {
   color: var(--accent);
   flex-shrink: 0;
+}
+.pp-ev-organizer {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pp-ev-link,
 .pp-ev-edit-btn {

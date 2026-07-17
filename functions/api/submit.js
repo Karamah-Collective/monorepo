@@ -99,6 +99,22 @@ export async function onRequestPost(context) {
   if (formData.recurrencePattern) formData.recurrencePattern = truncate(formData.recurrencePattern, MAX_FIELD_LEN);
   if (formData.url)         formData.url         = truncate(formData.url, MAX_FIELD_LEN);
   if (formData.eventId)     formData.eventId     = truncate(formData.eventId, 50);
+  if (formData.locationName)       formData.locationName       = truncate(formData.locationName, MAX_FIELD_LEN);
+  if (formData.locationGmapsLink)  formData.locationGmapsLink  = truncate(formData.locationGmapsLink, MAX_FIELD_LEN);
+  if (formData.locationAddress)    formData.locationAddress    = truncate(formData.locationAddress, MAX_FIELD_LEN);
+  if (formData.locationLat != null || formData.locationLng != null) {
+    const lat = Number(formData.locationLat);
+    const lng = Number(formData.locationLng);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      formData.locationLat = lat;
+      formData.locationLng = lng;
+    } else {
+      delete formData.locationLat;
+      delete formData.locationLng;
+    }
+  }
+  if (formData.organizerName)   formData.organizerName   = truncate(formData.organizerName, MAX_FIELD_LEN);
+  if (formData.organizerPlaceId) formData.organizerPlaceId = truncate(formData.organizerPlaceId, 20);
 
   // Eid-specific fields
   if (formData.eidOrganizer) formData.eidOrganizer = truncate(formData.eidOrganizer, MAX_FIELD_LEN);
