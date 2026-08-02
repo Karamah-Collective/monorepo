@@ -80,18 +80,42 @@ test.describe("Core DOM Structure", () => {
     await expect(page.locator("#zoomout-btn")).toHaveAttribute("aria-label", "Zoom out");
   });
 
-  // ─── Style Picker ──────────────────────────────────────────────────────────
-  test("style picker exists with options", async ({ page }) => {
-    await expect(page.locator("#style-picker")).toBeVisible();
-    await expect(page.locator("#style-picker-btn")).toBeVisible();
+  // ─── Menu / Map Style ──────────────────────────────────────────────────────
+  // Map View is grouped into two labeled sub-sections in the same row: Theme
+  // (Light/Dark/Auto, 3 options) and Overlay (Satellite/Heatmap, 2 options).
+  test("menu pill exists with a map style panel inside, grouped into Theme + Overlay", async ({ page }) => {
+    await expect(page.locator("#menu-pill")).toBeVisible();
     await expect(page.locator("#style-panel")).toBeAttached();
     const opts = page.locator(".style-opt");
-    await expect(opts).toHaveCount(4);
+    await expect(opts).toHaveCount(5);
+    const groups = page.locator(".style-group");
+    await expect(groups).toHaveCount(2);
+    await expect(page.locator(".style-group-label")).toHaveText(["Theme", "Overlay"]);
   });
 
   test("default style option is active", async ({ page }) => {
     await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="auto"]')).not.toHaveClass(/active/);
+  });
+
+  // ─── Menu / Preferences ────────────────────────────────────────────────────
+  test("Preferences section has prayer method/madhab selects and a reduce-motion switch", async ({ page }) => {
+    await expect(page.locator("#pref-prayer-method")).toBeAttached();
+    await expect(page.locator("#pref-prayer-school")).toBeAttached();
+    await expect(page.locator("#pref-reduce-motion-toggle")).toBeAttached();
+    await expect(page.locator("#pref-reduce-motion-toggle")).toHaveAttribute("role", "switch");
+    // The two Asr madhab options are static HTML (Standard / Hanafi)
+    await expect(page.locator("#pref-prayer-school option")).toHaveCount(2);
+  });
+
+  test("prayer method select is populated with Aladhan methods after map load", async ({ page }) => {
+    await page.waitForFunction(() => document.querySelectorAll("#pref-prayer-method option").length > 1);
+    const count = await page.locator("#pref-prayer-method option").count();
+    expect(count).toBeGreaterThan(15);
+    // Default selection matches the previous hardcoded behavior (method 3 = Muslim World League)
+    await expect(page.locator("#pref-prayer-method")).toHaveValue("3");
+    await expect(page.locator("#pref-prayer-school")).toHaveValue("0");
   });
 
   // ─── Directions Panel ──────────────────────────────────────────────────────
@@ -191,6 +215,8 @@ test.describe("Suggest Form Structure", () => {
     await expect(page.locator("#sg-type")).toBeAttached();
     await expect(page.locator("#sg-tags")).toBeAttached();
     await expect(page.locator("#sg-address")).toBeAttached();
+    await expect(page.locator("#sg-website")).toBeAttached();
+    await expect(page.locator("#sg-phone")).toBeAttached();
     await expect(page.locator("#sg-notes")).toBeAttached();
     await expect(page.locator("#sg-submit")).toBeAttached();
     await expect(page.locator("#sg-lat")).toBeAttached();
@@ -219,6 +245,8 @@ test.describe("Suggest Form Structure", () => {
     await expect(page.locator("#ed-tags")).toBeAttached();
     await expect(page.locator("#ed-address")).toBeAttached();
     await expect(page.locator("#ed-gmaps")).toBeAttached();
+    await expect(page.locator("#ed-website")).toBeAttached();
+    await expect(page.locator("#ed-phone")).toBeAttached();
     await expect(page.locator("#ed-notes")).toBeAttached();
     await expect(page.locator("#ed-submit")).toBeAttached();
   });

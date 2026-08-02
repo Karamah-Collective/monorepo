@@ -64,17 +64,20 @@ test.describe("Style Picker", () => {
     await setupApp(page);
   });
 
-  test("clicking style button toggles the panel", async ({ page }) => {
-    const panel = page.locator("#style-panel");
-    await expect(panel).toHaveClass(/hide/);
-    await page.locator("#style-picker-btn").click();
-    await expect(panel).not.toHaveClass(/hide/);
-    await page.locator("#style-picker-btn").click();
-    await expect(panel).toHaveClass(/hide/);
+  test("menu pill opens the menu sheet, close button closes it", async ({ page }) => {
+    // Once open, the shared scrim (higher z-index) covers #menu-pill itself —
+    // same as #places-btn/#dir-btn while their own sheets are open — so
+    // closing goes through #menu-close, not a second click on the pill.
+    const sheet = page.locator("#menu-sheet");
+    await expect(sheet).toHaveClass(/shut/);
+    await page.locator("#menu-pill").click();
+    await expect(sheet).not.toHaveClass(/shut/);
+    await page.locator("#menu-close").click();
+    await expect(sheet).toHaveClass(/shut/);
   });
 
   test("selecting satellite style marks it active", async ({ page }) => {
-    await page.locator("#style-picker-btn").click();
+    await page.locator("#menu-pill").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('.style-opt[data-style="satellite"]')).toHaveClass(/active/);
@@ -83,24 +86,194 @@ test.describe("Style Picker", () => {
   });
 
   test("toggling satellite off restores light theme", async ({ page }) => {
+    await page.locator("#menu-pill").click();
     // Toggle satellite on
-    await page.locator("#style-picker-btn").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
     // Toggle satellite off
-    await page.locator("#style-picker-btn").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
   });
 
-  test("clicking outside style picker closes it", async ({ page }) => {
-    await page.locator("#style-picker-btn").click();
-    await expect(page.locator("#style-panel")).not.toHaveClass(/hide/);
-    await page.locator("#map").click({ position: { x: 300, y: 300 } });
+  test("clicking the scrim closes the menu sheet", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
+    await page.locator("#scrim").click({ force: true });
     await page.waitForTimeout(200);
-    await expect(page.locator("#style-panel")).toHaveClass(/hide/);
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
+  });
+
+  // Regression: .menu-row (Support section) used to render its hover pill
+  // edge-to-edge with the sheet, with zero breathing room from the sheet's
+  // own borders. It's now inset via margin on both sides.
+  test("Support rows are inset from the Menu sheet's edges, not flush", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    // The Account section renders asynchronously (initMenuAccount() dynamically
+    // imports auth.js/reviews.js/account-sync.js) and its content height feeds
+    // into the sheet's own fit-content sizing — wait for it to settle first so
+    // this geometry check isn't racing that reflow (same wait tests/14 uses).
+    await expect(page.locator("#menu-google-signin, #menu-signout")).toBeVisible({ timeout: 15_000 });
+    const rowBox = await page.locator("#contact-pill").boundingBox();
+    const sheetBox = await page.locator("#menu-sheet").boundingBox();
+    // Margin is var(--sp-3) = 8px each side — assert a meaningfully large gap
+    // (not a strict pixel match) so this stays robust to sub-pixel rounding.
+    expect(rowBox.x - sheetBox.x).toBeGreaterThan(4);
+    expect(sheetBox.x + sheetBox.width - (rowBox.x + rowBox.width)).toBeGreaterThan(4);
+  });
+
+  // Regression: #style-panel's 4 style thumbnails used to bunch to the left
+  // (default flex-start), leaving a large dead gap before the sheet's right
+  // edge. It's now reorganized into two labeled groups (Theme / Overlay)
+  // that sit side by side in the same row, not wrapped onto separate lines —
+  // any leftover space after the groups is now expected (two meaningfully
+  // grouped/labeled controls sized to their own content), not the old bug.
+  test("Map View's Theme and Overlay groups sit side by side in one row", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    await expect(page.locator("#menu-google-signin, #menu-signout")).toBeVisible({ timeout: 15_000 });
+    const themeGroup = page.locator(".style-group", { hasText: "Theme" });
+    const overlayGroup = page.locator(".style-group", { hasText: "Overlay" });
+    const themeBox = await themeGroup.boundingBox();
+    const overlayBox = await overlayGroup.boundingBox();
+    // Same row: vertically aligned (top edges within a couple px of each other)
+    expect(Math.abs(themeBox.y - overlayBox.y)).toBeLessThan(5);
+    // Side by side, not stacked: Overlay starts to the right of where Theme ends
+    expect(overlayBox.x).toBeGreaterThanOrEqual(themeBox.x + themeBox.width);
+    // The whole panel never overflows the sheet width (no horizontal scroll/wrap)
+    const panelEl = page.locator("#style-panel");
+    const overflowsWidth = await panelEl.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(overflowsWidth).toBe(false);
+  });
+
+  // New Preferences-adjacent option (Theme group): "Auto" follows the OS-level
+  // prefers-color-scheme setting live instead of a fixed light/dark choice.
+  test("selecting Auto theme stores 'auto' and marks the Auto option active", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    await page.locator('.style-opt[data-style="auto"]').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.style-opt[data-style="auto"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="light"]')).not.toHaveClass(/active/);
+    const stored = await page.evaluate(() => localStorage.getItem("theme"));
+    expect(stored).toBe("auto");
+  });
+
+  // Regression: .btn-google inherited the shared .rv-action-btn CTA's 16px
+  // bold label, reading as oversized next to the small "Use an email link
+  // instead" text link beside it. Height is unchanged (--h-submit, 44px,
+  // already this app's own touch-target-safe CTA height) — only the label
+  // shrinks to Google's own documented 14px spec.
+  test("Google sign-in button uses a 14px label, not the 16px CTA default", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    const btn = page.locator("#menu-google-signin");
+    await expect(btn).toBeVisible({ timeout: 15_000 });
+    const fontSize = await btn.evaluate((el) => getComputedStyle(el).fontSize);
+    expect(fontSize).toBe("14px");
+    const box = await btn.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(43);
+    expect(box.height).toBeLessThan(48);
+  });
+
+  // Account section: Google sign-in + the email option now share one row as
+  // two equal-weight peers — an earlier icon-only-email-button treatment was
+  // tried and explicitly rejected ("these buttons should be similar size and
+  // looking, one option is not better than the other" — see
+  // docs/PREFERENCE_LOG.md), so this asserts near-equal width/height, not
+  // just "same row".
+  test("Google sign-in and the email option are equal-weight peers in one row", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    const googleBtn = page.locator("#menu-google-signin");
+    const emailBtn = page.locator("#menu-email-signin-toggle");
+    await expect(googleBtn).toBeVisible({ timeout: 15_000 });
+    await expect(emailBtn).toBeVisible();
+    await expect(emailBtn).toHaveText("Continue with email");
+    const googleBox = await googleBtn.boundingBox();
+    const emailBox = await emailBtn.boundingBox();
+    // Same row, side by side (not stacked)
+    expect(Math.abs(googleBox.y - emailBox.y)).toBeLessThan(5);
+    expect(emailBox.x).toBeGreaterThanOrEqual(googleBox.x + googleBox.width);
+    // Equal weight: same height (both .rv-action-btn, sub-pixel tolerance),
+    // width within a small tolerance of each other (flex: 1 on both — a
+    // 50/50 split).
+    expect(Math.abs(googleBox.height - emailBox.height)).toBeLessThan(1);
+    expect(Math.abs(googleBox.width - emailBox.width)).toBeLessThan(30);
+    // Email option is still a real actionable control, not decorative text
+    await emailBtn.click();
+    await expect(page.locator("#menu-email-signin-panel")).not.toHaveClass(/hide/);
+  });
+});
+
+test.describe("Preferences", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+    await page.locator("#menu-pill").click();
+    await page.waitForFunction(() => document.querySelectorAll("#pref-prayer-method option").length > 1);
+  });
+
+  test("changing the prayer calculation method re-fetches Aladhan times", async ({ page }) => {
+    const requests = [];
+    page.on("request", (req) => {
+      if (req.url().includes("api.aladhan.com/v1/timings")) requests.push(req.url());
+    });
+    await page.selectOption("#pref-prayer-method", "2"); // ISNA
+    await page.waitForTimeout(1000);
+    expect(requests.some((u) => u.includes("method=2"))).toBe(true);
+    const stored = await page.evaluate(() => localStorage.getItem("hf_prayer_method"));
+    expect(stored).toBe("2");
+  });
+
+  test("changing the Asr madhab re-fetches Aladhan times with the new school", async ({ page }) => {
+    const requests = [];
+    page.on("request", (req) => {
+      if (req.url().includes("api.aladhan.com/v1/timings")) requests.push(req.url());
+    });
+    await page.selectOption("#pref-prayer-school", "1"); // Hanafi
+    await page.waitForTimeout(1000);
+    expect(requests.some((u) => u.includes("school=1"))).toBe(true);
+    const stored = await page.evaluate(() => localStorage.getItem("hf_prayer_school"));
+    expect(stored).toBe("1");
+  });
+
+  test("reduce-motion switch toggles html.reduce-motion and persists the override", async ({ page }) => {
+    const toggle = page.locator("#pref-reduce-motion-toggle");
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await toggle.click();
+    await expect(page.locator("html")).toHaveClass(/reduce-motion/);
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    let stored = await page.evaluate(() => localStorage.getItem("hf_reduce_motion"));
+    expect(stored).toBe("true");
+
+    await toggle.click();
+    await expect(page.locator("html")).not.toHaveClass(/reduce-motion/);
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    stored = await page.evaluate(() => localStorage.getItem("hf_reduce_motion"));
+    expect(stored).toBe("false");
+  });
+
+  // New Preferences addition: 12-hour/24-hour prayer time display. No network
+  // re-fetch needed (only the display format changes) — this exercises
+  // prayer.js's refreshPrayerTimeDisplay() re-render path.
+  test("12-hour prayer times toggle reformats the expanded prayer list live", async ({ page }) => {
+    // Wait for prayer times to actually load before expanding the list
+    await page.waitForFunction(() => document.getElementById("prayer-snack-title")?.textContent?.trim().length > 0, { timeout: 15_000 });
+    await page.locator("#menu-close").click();
+    await page.locator("#prayer-chevron").click();
+    await expect(page.locator(".prayer-time-item").first()).toBeVisible();
+    const before = await page.locator(".prayer-time-value").first().textContent();
+    expect(before).not.toMatch(/AM|PM/i);
+
+    await page.locator("#prayer-chevron").click(); // collapse before reopening menu
+    await page.locator("#menu-pill").click();
+    const toggle = page.locator("#pref-time-format-toggle");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    const stored = await page.evaluate(() => localStorage.getItem("hf_prayer_time_format"));
+    expect(stored).toBe("12");
+
+    await page.locator("#menu-close").click();
+    await page.locator("#prayer-chevron").click();
+    const after = await page.locator(".prayer-time-value").first().textContent();
+    expect(after).toMatch(/AM|PM/i);
   });
 });
 
@@ -117,10 +290,12 @@ test.describe("Home Button", () => {
 
   test("home button resets to light theme if satellite is active", async ({ page }) => {
     // Switch to satellite
-    await page.locator("#style-picker-btn").click();
+    await page.locator("#menu-pill").click();
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
-    // Click home
+    // Close the menu (its scrim would otherwise block the tab bar), then click home
+    await page.locator("#menu-close").click();
+    await page.waitForTimeout(500);
     await page.locator("#home-btn").click();
     await page.waitForTimeout(800);
     await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
@@ -133,11 +308,15 @@ test.describe("Double-Click Pin Drop", () => {
     await setupApp(page);
   });
 
+  // Offset from dead-center: the default Helsinki view has a real place marker
+  // sitting almost exactly at the map's screen center, and double-clicking
+  // directly on an existing marker opens/closes its detail sheet on each of
+  // the two clicks instead of reaching the map's own dblclick-to-drop-a-pin
+  // handler underneath (see tests/11-pin-markers.spec.js for the full note).
   test("double-clicking map creates a dropped pin marker", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    const x = mapBox.x + mapBox.width / 2;
-    const y = mapBox.y + mapBox.height / 2;
-    // Double-click on the map center
+    const x = mapBox.x + mapBox.width / 2 + 160;
+    const y = mapBox.y + mapBox.height / 2 - 160;
     await page.mouse.dblclick(x, y);
     await page.waitForTimeout(800);
     // Should create a custom marker
@@ -147,8 +326,8 @@ test.describe("Double-Click Pin Drop", () => {
 
   test("clicking dropped pin opens a popup", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    const x = mapBox.x + mapBox.width / 2;
-    const y = mapBox.y + mapBox.height / 2;
+    const x = mapBox.x + mapBox.width / 2 + 160;
+    const y = mapBox.y + mapBox.height / 2 - 160;
     await page.mouse.dblclick(x, y);
     await page.waitForTimeout(800);
     // Close any existing place popups that may cover the pin

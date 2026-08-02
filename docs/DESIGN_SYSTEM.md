@@ -211,9 +211,11 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 
 | Token | Value | Use |
 |---|---|---|
-| `--h-input` | `44px` | Minimum touch-friendly height for form inputs |
-| `--h-submit` | `48px` | Submit/CTA button height |
-| `--h-field` | `42px` | Standard field height |
+| `--h-submit` | `44px` | Submit/CTA button height |
+| `--h-field` | `46px` | Direction / date input row height |
+| `--h-search` | `48px` | Search box height |
+
+**Correction (2026-08-02):** this table previously listed a `--h-input: 44px` token ("Minimum touch-friendly height for form inputs") and `--h-submit: 48px`/`--h-field: 42px` — none of which matched `design-tokens.css`. `--h-input` was never actually defined anywhere in the stylesheet (any `var(--h-input)` reference silently resolved to the browser's initial `height` value, `auto`), and `--h-submit`/`--h-field`'s real values are `44px`/`46px`, not `48px`/`42px`. Found the hard way: a `.btn-google` height override referencing the phantom `--h-input` silently collapsed that button to ~20px, caught by an automated Playwright bounding-box assertion, not by visual review (see `docs/PREFERENCE_LOG.md`'s 2026-08-02 entry for the full incident). Corrected the table to match the actual CSS and added the previously-undocumented `--h-search`. If you need a 44px "safe minimum touch target" height for a new form control that isn't literally a submit button, `--h-submit` is the closest existing 44px token — introduce a new dedicated token rather than reintroducing a bare `--h-input` name with an assumed value.
 
 ### Component size constants
 
@@ -297,7 +299,7 @@ All button templates (`.btn-primary`, `.btn-secondary`, `.btn-roundel`, etc.) in
 
 Buttons must contain EITHER an icon OR text — never both together.
 
-**Exempt:** structural indicators (chevrons for expand/collapse), functional icons with numeric counts (vote thumbs-up), and segmented control mode icons (transport mode differentiators).
+**Exempt:** structural indicators (chevrons for expand/collapse), functional icons with numeric counts (vote thumbs-up), segmented control mode icons (transport mode differentiators), inline loading spinner + status text (e.g. `.btn-spinner` + "Signing in…"), and brand-mandated third-party sign-in buttons where the vendor's own guidelines require logo + label together (`.btn-google`'s "G" logomark + "Continue with Google").
 
 ### `prefers-reduced-motion`
 
@@ -306,6 +308,8 @@ All animations and transitions are suppressed when the user has enabled "Reduce 
 ### Overlay height transitions
 
 Dynamic window-style overlays use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps and event/Eid-style overlay windows whose card height is natural. Do not use it on static-height forms such as suggest, edit, contact, or wish form cards.
+
+`src/menu.js`'s Account section (`_animateMenuPanelHeight()`) is a second consumer of the same shared helper, scoped to `.menu-account-panel` — the toggle open/close of `#menu-email-signin-panel` (and its swap to the "check your email" message) animates the same way as reviews.js's `_animateReviewCardHeight()`/`.rv-overlay-card`. `.menu-account-panel` needs its own `transition: height var(--t-spring)` in `styles.css` for this to work — `animateElementHeight()` relies on the target element's own CSS transition, it doesn't set one inline. `#menu-email-signin-panel` also carries a `border-top`/`padding-top` divider (the same convention as `.pp-reviews`) so the expanded panel reads as attached to the sign-in row above it rather than a disconnected stack.
 
 ### `::selection`
 
@@ -357,8 +361,34 @@ Filled accent CTA. Use for the **single strongest action** on any given screen o
 Ghost / outline button. Use for **secondary actions** alongside a primary button.
 
 **States:** hover — darker text + darker border  
-**Component aliases in selector:** `.pp-share-btn`, `.pp-edit-btn`  
-**Used by:** popup share button, popup edit button
+**Component aliases in selector:** `.pp-contact-btn`, `.pp-share-btn`, `.pp-edit-btn`  
+**Used by:** popup share button, popup edit button, place-detail Contact (Call) button
+
+---
+
+### `.btn-google`
+
+Third-party brand button for "Sign in with Google" — the **one intentional exception** to template-first token reuse. Google's own branding guidelines (developers.google.com/identity/branding-guidelines) mandate a specific white/neutral (or dark-theme) button chrome with an unaltered, uncolored multi-color "G" logomark; recoloring it to `--accent` would look like an unofficial knockoff and undermine the exact trust signal the button exists to provide. Combine with `.rv-action-btn` for shared sizing (width/height/radius) with the email sign-in button beside it — `.btn-google` overrides background/border/text-color/font-weight, plus `font-size` (`var(--txt-base)`, 14px, matching Google's own documented label spec instead of `.rv-action-btn`'s 16px default; height is deliberately left at `.rv-action-btn`'s real `var(--h-submit)`, 44px — see the Component Sizing correction note above for why an earlier pass's height override was wrong).
+
+**New dedicated tokens (not derived from `--accent`/`--surface`, fixed brand values):**
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--google-btn-bg` | `#ffffff` | `#131314` | Button fill |
+| `--google-btn-border` | `#747775` | `#8e918f` | 1px button border |
+| `--google-btn-text` | `#1f1f1f` | `#e3e3e3` | Button label + `.btn-spinner` override colour |
+| `--google-g-blue` | `#4285f4` | *(same)* | "G" logo blue segment |
+| `--google-g-green` | `#34a853` | *(same)* | "G" logo green segment |
+| `--google-g-yellow` | `#fbbc05` | *(same)* | "G" logo yellow segment |
+| `--google-g-red` | `#ea4335` | *(same)* | "G" logo red segment |
+
+The four `--google-g-*` logo colors never change between light/dark — only the button chrome (`bg`/`border`/`text`) has a dark-mode override, matching Google's own rule that the logo itself must never be recolored.
+
+**Icon:** `.btn-google-icon` (18×18) — inline SVG, matching how every other icon in this app is embedded (no external asset, no logo CDN fetch). `.btn-spinner` gets a scoped `.btn-google .btn-spinner` override since the default white-on-`--accent` spinner colors are invisible against this button's light/neutral chrome.
+
+**Button content rule exception:** this is a documented exception to "icon OR text, never both" — Google's own button design requires the logo + label together for recognizability, the same category of exception as a loading-spinner + status text.
+
+**Used by:** `#menu-google-signin` (Menu sheet Account section) and the "Continue with Google" button in `src/reviews.js`'s `_showSignInPrompt()` (the "sign in to write a review" gate) — both render the identical markup from a single shared source: `GOOGLE_G_LOGO_SVG`/`GOOGLE_SIGNIN_LABEL`/`GOOGLE_SIGNIN_BTN_HTML` live in `src/icons.js` (this app's existing home for shared inline-SVG icon markup, alongside `PLACE_CONFIG`/`MODE_PATHS`/etc.) and are imported by both `menu.js` and `reviews.js` rather than duplicated — see `docs/PREFERENCE_LOG.md` for the follow-up that brought the two buttons into sync.
 
 ---
 
@@ -843,9 +873,11 @@ Not a class template (pseudo-elements can't take class names). Instead, a docume
 
 | Popup type | Anchors supported |
 |---|---|
-| `.place-popup-wrap` | bottom, top, left, right |
+| `.place-popup-wrap` | bottom, top, left, right — dropped-pin / current-location popups only (`search.js`, `map-controls.js`); combined with `.pin-popup-wrap` in the className |
 | `.stop-popup-wrap` | bottom, top, left, right |
 | `.eid-popup-wrap` | bottom, top |
+
+Note: directory place details no longer use a MapLibre popup — see "Place detail sheet" below.
 
 ---
 
@@ -861,13 +893,15 @@ Not a class template (pseudo-elements can't take class names). Instead, a docume
 
 ## Component-specific notes
 
-### Popup action buttons (`pp-dir-btn`, `pp-share-btn`, `pp-edit-btn`)
+### Popup action buttons (`pp-dir-btn`, `pp-contact-btn`, `pp-share-btn`, `pp-edit-btn`)
 
 Visual chrome comes entirely from `.btn-primary` and `.btn-secondary` templates. In `styles.css` only `flex: 1`, `height: 34px`, and `padding: 0` (padding override — popup buttons are narrower than standard) are set.
 
-### Mobile place popup positioning
+**`.pp-contact-btn`** sits between Directions and Share in `.pp-actions` (order: Directions → Contact → Share → Edit). Icon-only (phone icon, no text — consistent with the Button content rule). Renders only when `place.phone` is present; absent phone means the button doesn't render at all, same "absence means unknown" convention as the rest of the Google-enriched fields. Tapping sets `window.location.href = 'tel:' + place.phone` directly. `place.website` is intentionally **not** wired into this button — it already has its own link in the `.pp-contact` row above the tags (phone/website/Google Maps), and the place data model has no place-level email field, so there's no second channel to build a call/email chooser around yet. If an email field is added later, this is the button to extend into a chooser.
 
-For place popups, `showPlacePopup()` opens the popup invisibly with `.popup-positioning`, measures the rendered popup card, computes the popup-card offset from the marker anchor, then uses one native MapLibre `easeTo()` to move to the final measured centered view on phone and desktop. Keep this motion native rather than driving repeated JS `jumpTo()` frames; the native renderer is visibly smoother. Keep it one continuous motion rather than a separate pan and zoom phase, and keep popup-open zoom target consistent (`PLACE_POPUP_MIN_ZOOM`) instead of adaptive per-open zoom steps. This replaces the older marker-centered camera behavior so rich popup cards get the maximum available vertical and horizontal space. The mobile card uses a viewport-capped height and scrollable `.pp-inner`; the MapLibre popup content keeps `overflow: visible` so the curvy tip is not clipped.
+### Place detail sheet
+
+`openPlaceSheet()` (`src/places.js`) builds the same `.pp`/`.pp-inner` content that used to live in a floating MapLibre popup, but injects it into `#place-sheet-body` inside `#place-sheet` — a `.sheet` (the same bottom-sheet-on-mobile/right-panel-on-desktop structure as `#places-sheet`/`#dir-panel`), opened via the shared `initSheetDrag()` engine. There is no camera movement tied to opening it — the map stays exactly where it is, matching how the Places list and Directions panel already behave. `#place-sheet-close` doubles as a back button (swapped icon + `fromListScrollTop` restore) when opened from a places-list card, mirroring `#dir-close`'s back-arrow convention.
 
 ### `#tf-toggle` vs `.btn-chip`
 
@@ -885,6 +919,44 @@ Uses `.sheet-x` class (rendered on a blue `--accent` background). In `styles.css
 
 On `max-width: 768px`, the overlays transition from centred modal to bottom-sheet. `display: none` cannot animate, so `.hide` on `#suggest-overlay` and `#edit-overlay` is overridden to `display: flex` with `opacity: 0; pointer-events: none`, and the card slides in via `translateY`.
 
+### Menu sheet — Account section (sign-in, profile, "Your reviews")
+
+Reuses existing templates wholesale rather than inventing new form/list chrome: the sign-in prompt (`#menu-google-signin`/`#menu-email-signin-panel`) is built from `.rv-action-btn`/`.rv-resend-link`/`.rv-field`/`.rv-input`/`.rv-verify-error` (the same classes `src/reviews.js`'s own sign-in prompt uses — both places originally shared the exact same visual component). The signed-in "Your reviews" list reuses `.rv-list`/`.rv-review-card` via the Component Alias Pattern (`.acc-review-row` added as an extra selector alongside `.rv-review-card`, with a `styles.css`-only `flex-direction: row` override so the edit/delete icon buttons sit beside the review text instead of below it) plus `.btn-roundel`/`.btn-roundel-danger` for the edit/delete icon buttons themselves — no new button chrome anywhere in this section.
+
+**`#menu-google-signin` now uses `.btn-google` instead of `.btn-primary`** (see `.btn-google` in §3 above) — it was originally a plain accent-green pill with just the text "Continue with Google", which didn't read as an actual Google sign-in affordance. It's now Google's own standard white/light (dark-theme in dark mode) button with the real multi-color "G" logomark inlined as SVG, per Google's official branding guidelines. This is the one place in the Account section that intentionally does **not** match the app's own palette — see the `.btn-google` writeup for the reasoning. `src/reviews.js`'s own Google sign-in button (`_showSignInPrompt()`) still uses the old `.rv-action-btn.btn-primary` look and was deliberately left untouched in this pass (scoped change, `#menu-google-signin` only) — flagged in `docs/PREFERENCE_LOG.md` as a follow-up to bring into visual consistency with the Menu button.
+
+Only two genuinely new things were added: `.menu-account-panel`/`.menu-account-profile`/`.menu-account-avatar`/`.menu-account-info`/`.menu-account-name`/`.menu-account-email` (a plain flex layout for the signed-in identity chip — initials-in-a-circle avatar using `--accent-soft`/`--accent`, no profile photo rendered even though Google supplies one, to avoid a new `img-src` CSP allowance for a single small avatar), and the **press-twice-to-confirm delete** interaction on `.acc-review-delete` (first click swaps the icon to a checkmark for 3s — `DELETE_CONFIRM_WINDOW_MS` in `src/menu.js` — and a second click within that window actually deletes; clicking any other row's delete button resets this one). This replaces a native `window.confirm()`, which would have broken the app's own overlay/toast-driven UI feel — no other confirm-before-destructive-action pattern existed anywhere in this codebase prior to this, so this is the first one and the reference to reuse if another destructive action ever needs a lightweight inline confirm instead of a full modal.
+
+**2026-08-02 addendum — signed-out row layout.** `#menu-google-signin` and the email sign-in toggle now sit in one `.menu-account-signin-row` (`display:flex`) as two **equal-weight peer buttons** instead of a full-width Google button stacked over a small centered `.rv-resend-link` text link. Both are `.rv-action-btn` with `flex: 1` (an even ~50/50 split at the same 44px height); the email toggle changed from a text link to a real text-labeled `.btn-secondary` button ("Continue with email" — mirrors Google's own phrasing), not an icon-only afterthought — an icon-only-email-button treatment was tried first and explicitly rejected ("these buttons should be similar size and looking, one option is not better than the other"). `.btn-secondary`'s *default* border/text (subtle by design everywhere else it's used) also had to be overridden to this app's higher-contrast neutral tokens (`--text-2` border / `--text` label) in this specific row — reusing the default made the email button read as visibly fainter than `.btn-google`'s solid border + near-black text even at matching size. See "Menu sheet visual fixes" below for the full reasoning.
+
+### Menu sheet visual fixes (Support row layout, Google sign-in row, Map View grouping)
+
+Found via real-browser Playwright inspection (not guessed from a screenshot description — see `docs/PREFERENCE_LOG.md` for the root-cause writeup), then extended mid-task by a follow-up round of feedback that changed the target layouts for all three:
+
+- **`.menu-row` (Support section rows) is inset from the sheet's own edges, and Contact us / Wishlist now sit side by side instead of stacked.** The hover pill previously shared `.sort-opt`'s full-bleed fill (`background: var(--surface-2)` edge-to-edge, no horizontal margin) — fine inside the narrow `#sort-wrap` dropdown where the rounded corners *are* the container's own corners, but inside the much wider Menu sheet it read as a stray floating box flush against the sheet's own edges. `.menu-row` itself gets `border-radius`/inset sizing; a new `.menu-row-pair` wrapper (`display:flex`) holds both rows side by side, supplying the same `var(--sp-3)` outer inset the standalone row used to get from its own margin (`.menu-row-pair .menu-row` switches to `flex:1; width:auto; margin:0` inside the pair) — so the breathing-room fix carries over intact to the new two-up layout instead of being lost when the layout changed.
+- **`#menu-google-signin` and the email sign-in option now share one row as two equal-weight peer buttons**, instead of stacking a full-width Google button over a small centered text link. An intermediate treatment (Google button taking most of the row, small icon-only email button beside it) was tried and explicitly rejected — neither button should read as more "primary" than the other. Both are `.rv-action-btn` with `flex: 1` (an even ~50/50 split, same 44px height); Google keeps its full logo + exact required "Continue with Google" label (their guidelines mandate both together, and the specific text can't be abbreviated), and the email option is a real text-labeled `.btn-secondary` button ("Continue with email" — deliberately mirrors Google's own phrasing) at matching size/weight — a small `.menu-account-signin-row .btn-secondary` override re-tightens its font-size/weight to 14px/medium (undoing `.rv-action-btn`'s 16px/bold default) so it visually matches `.btn-google`'s own override instead of looking heavier or lighter. `.btn-google`'s own height is unchanged from `.rv-action-btn`'s `var(--h-submit)` (44px — see the correction note below); only its `font-size` is overridden to `var(--txt-base)` (14px), matching Google's documented label spec, since the shared 16px bold CTA label was the actual source of the "oversized" complaint, not the height.
+- **Second-pass fix: equal size wasn't enough — border/text contrast had to match too.** Even after the equal-width fix above, `.btn-secondary`'s *default* border/text (`--border` `#e2e2e2` / `--text-2` `#525252`) is deliberately subtle everywhere else it's used in this app (a genuinely de-emphasized secondary action) — reused as-is next to `.btn-google`'s solid `~#747775` border + near-black `#1f1f1f` text, the email button still read as visibly fainter/less "real" even at identical size. Fixed with a scoped override, `.menu-account-signin-row .btn-secondary { border-color: var(--text-2); color: var(--text) }` (plus a `:hover` darkening to `--text`) — this app's own higher-contrast neutral tokens, not a literal copy of Google's specific brand gray. Both tokens already have correct dark-mode overrides, so no separate dark-mode rule was needed.
+- **Accepted trade-off:** at the narrowest tested width (380px), "Continue with Google"'s exact required text wraps to two lines within its half of the row (and "Continue with email" may too, at some widths, now that both use matching phrasing length) — verified via screenshots that this doesn't clip or look broken (the pill stays 44px tall, text stays vertically centered) — a reasonable trade-off given Google's fixed label text can't be shortened and the row is a genuine 50/50 split.
+- **Correction, found by an automated test, not visual review: `--h-input` doesn't exist.** The first pass of this fix set `.btn-google { height: var(--h-input) }`, following what `docs/DESIGN_SYSTEM.md`'s own Component Sizing table (incorrectly) documents. `--h-input` was never actually defined anywhere in `design-tokens.css` — a `var()` reference to an undefined custom property with no fallback resolves `height` to its initial value (`auto`), which silently collapsed the button to ~20px (just the 14px label's line-height) instead of 44px. This slipped past *visual* screenshot review (a uniformly-shrunk centered-content button doesn't obviously look "broken" at a glance) but was caught immediately by a numeric Playwright bounding-box assertion (`tests/04-map-controls.spec.js`). Also discovered while investigating: `--h-submit` in this codebase is actually `44px`, not the `48px` this same Component Sizing table documents — meaning the *original* (pre-fix) Google button was already 44px all along, not 48px as assumed from the docs. **Fix:** removed the bogus height override entirely (the button already inherits the correct, real 44px from `.rv-action-btn`) and kept only the font-size change. `docs/PREFERENCE_LOG.md` has the full incident writeup; the Component Sizing table's stale `--h-input`/`--h-submit`/`--h-field` values are flagged there as a separate, not-yet-fixed documentation-drift finding (out of scope for this pass to reconcile everywhere).
+- **`#style-panel` (Map View section) is now grouped into two labeled sub-sections side by side in the same row — "Theme" (Light/Dark/Auto) and "Overlay" (Satellite/Heatmap) — replacing the flat, unlabeled row of 4 thumbnails with a stray divider between the 2nd and 3rd item.** The divider was presumably an earlier, unfinished attempt at this same grouping instinct; it's now a real `border-left` on the second `.style-group`, reusing `--border` like every other divider in this app. Label choice: **"Theme"** for the light/dark/auto trio (this app's own existing vocabulary — `setTheme()`/`currentTheme` already use "theme" internally) and **"Overlay"** for satellite/heatmap (both are literally rendered as an overlay on top of the base map, not a base theme swap) — considered "Layer"/"Style" as alternatives but "Overlay" reads least ambiguous next to "Theme" specifically. Any leftover space after the two groups (they're sized to their own content: 3 vs 2 options, left-aligned) is now expected/normal, not a bug — the original whitespace complaint was about 4 *unlabeled* thumbnails not filling the row for no apparent reason; a labeled, intentionally-grouped pair of controls not needing the full row width is a completely different, non-buggy situation. Thumbnail size dropped from 52px to 44px (and `.style-opt` padding tightened) so both groups reliably fit in one row without wrapping even at this app's narrowest documented breakpoint (380px) — confirmed via `element.scrollWidth` checks at 380px and 412px, not just visual judgment. The old `<399px` shrink-thumbnails media-query override is now dead code (identical to the new default) and was removed.
+
+### Menu sheet — Preferences section (prayer method/madhab, 12-hour time, reduce motion, Auto theme)
+
+Real preference controls, replacing the former "More settings coming soon" placeholder — grew from 2 to 4 total across this task (2 requested up front, 2 more added per an explicit "add more preferences if possible, 1-2 tasteful additions" follow-up request):
+
+- **Prayer calculation method + Asr madhab** — two `<select>` elements (`#pref-prayer-method`, `#pref-prayer-school`) styled with `.rv-field`/`.rv-field-label` (reused from the Account section's email field — no new field-wrapper chrome) plus a new `.rv-select` class. `.rv-select` adds the custom dropdown chevron as a **Component Alias** on `.sg-label select`'s existing rule (Suggest-form select styling — appearance-reset + inline chevron SVG + dark-mode chevron-color override), rather than duplicating that chevron treatment a second time. `#pref-prayer-method`'s 23 options are populated by JS from `prayer.js`'s exported `PRAYER_METHODS` list (fetched directly from `https://api.aladhan.com/v1/methods`, not guessed); `#pref-prayer-school`'s 2 options (Standard / Hanafi) are static HTML, same as any other short hardcoded `<select>` in this app (`#sg-type`, `#ed-type`).
+- **Reduce motion** — a new `.pref-switch`/`.pref-switch-thumb` toggle-switch template (§3-adjacent; no on/off switch existed anywhere in this app before this control). A `<button role="switch" aria-checked>` rather than a native checkbox, matching this app's existing button-driven state-toggle convention (`.btn-chip.active`, `.sort-opt.active`) instead of introducing a native form control that would need its own separate styling system. New dedicated size tokens: `--switch-w` (44px), `--switch-h` (24px), `--switch-thumb-size` (18px). Off state: `--surface-3` track. On state (`.on` class): `--accent` track, thumb translated via `transform: translateX(...)` (GPU-composited, not a layout-triggering property). This is genuinely the first on/off switch component in the codebase — reuse it for any future binary preference (the 12-hour-time toggle below reuses it immediately) rather than inventing a second pattern.
+- **12-hour prayer times (added later, per the "add more preferences" follow-up)** — a second `.pref-switch` instance. Off (default) keeps this app's existing 24-hour `en-GB` time formatting exactly as it always was; on switches to `en-US`-locale `hour12` formatting (e.g. "5:12 PM") for the Ramadan suhoor/iftar labels and the expanded prayer-times list. Purely a display-format change — no re-fetch needed, since the underlying prayer time data doesn't change — so `prayer.js` exports a lightweight `refreshPrayerTimeDisplay()` (no network call) alongside the network-hitting `refreshPrayerTimes()` used by the method/madhab selects, both funnelling through one shared `_applyPrayerTimesToUI()` renderer so there's exactly one place that pushes `prayerTimesToday` out to the DOM.
+- **"Auto" theme (added later, per the "add more preferences" follow-up — check Map View's Light/Dark for a 'follow system theme' option)** — confirmed via grep that this app had **zero** existing `prefers-color-scheme` handling anywhere before adding this, so it's purely additive, not a competing mechanism with anything pre-existing. Lives as a third `.style-opt` in the Map View section's Theme group (not the Preferences section — it's a Theme option, not a standalone preference row), reusing the exact same button/thumbnail template as Light/Dark. `map-controls.js` gained a `themeMode` ("light"/"dark"/"auto") distinct from the pre-existing `currentTheme` ("light"/"dark", the actually-*resolved* visual theme) — "auto" isn't a third visual theme, it resolves to light or dark based on `matchMedia("(prefers-color-scheme: dark)")` and keeps following that media query live via a `change` listener for as long as "auto" stays selected, mirroring the exact "explicit override on top of an OS-level media feature" shape `utils.js`'s reduce-motion toggle already established (same session, same pattern, applied to a second OS-level preference). The "Auto" thumbnail (`.thumb-auto`) has no real map style to preview, so it's a fixed light/dark diagonal split (`linear-gradient(135deg, #eef1ee 50%, #1a1a1e 50%)`) — a deliberately fixed, theme-independent pair of tones, same reasoning as the Google "G" logo colors never being recolored by dark mode (the whole point of the swatch is to show both halves at once, regardless of which theme is currently active).
+- **Layout:** `.menu-pref-panel` (styles.css) mirrors `.menu-account-panel`'s exact padding (`var(--sp-2) 14px var(--sp-4)`) so every Menu sheet section's content lines up under the same 14px left inset as its section label — no new spacing scheme invented for this section.
+- **Single reduce-motion mechanism, not two competing ones.** `utils.js`'s `isReduceMotionActive()`/`setReduceMotionOverride()`/`getReduceMotionOverride()` are the one source of truth for "should this app dampen animations right now?" — an explicit override (this Preferences toggle) takes precedence over the OS-level `prefers-reduced-motion` media feature; absent an override, the OS setting is followed live (a `matchMedia(...).addEventListener("change", ...)` listener keeps the class in sync if the user changes their OS setting while the app is open). Applied via `html.reduce-motion`/`body.reduce-motion`, mirroring the exact `html.dark-mode`/`body.dark-mode` class-toggling pattern `map-controls.js`'s `setTheme()`/`restoreSavedTheme()` already use (an IIFE applies the class as early as possible, before first paint, the same way dark mode does). The CSS that used to be a bare `@media (prefers-reduced-motion: reduce)` block in `design-tokens.css` is now scoped to `html.reduce-motion *` instead — both `animateElementHeight()` (utils.js) and `reviews.js`'s review-panel-close animation were updated to check `isReduceMotionActive()` instead of querying the raw media feature directly, so every motion-related check in the codebase (CSS and JS) now reads from this one mechanism.
+- **Refresh behavior:** changing either prayer dropdown calls `prayer.js`'s `refreshPrayerTimes()` export, which re-fetches today's times using the last-known coordinates (no new geolocation prompt) and updates every dependent bit of UI (Ramadan suhoor/iftar labels, the collapsed snack's countdown, the prayer watcher, and — if already open — the expanded prayer-times list) via the shared `_applyPrayerTimesToUI()` renderer.
+- **Lazy-load discipline preserved:** `menu.js` (imported eagerly, wires the Menu sheet on every page load) never statically imports `prayer.js` (a deliberately lazy, non-critical module per `src/app.js`'s post-map-load `Promise.all`). `initMenuPreferences()` dynamically `import()`s `prayer.js` instead — called from `app.js` right after `initMenuAccount()`, by which point `prayer.js` is already loaded and initialized by the same `Promise.all` block, so the dynamic import just resolves to the cached module namespace rather than forcing a second, earlier load.
+
+### Firebase Auth CDN loading (`index.html` / `src/auth.js`)
+
+Firebase's SDK loads exactly like MapLibre GL: two SRI-pinned `<script type="module" src="https://www.gstatic.com/firebasejs/10.13.0/...">` tags in `index.html` (script-src/connect-src/frame-src additions in `_headers`; `identitytoolkit.googleapis.com`/`securetoken.googleapis.com`/the `halal-map-karamah.firebaseapp.com` authDomain/`apis.google.com` are the extra CSP entries Firebase Auth specifically needs beyond the SDK's own script origin). `src/auth.js` then has its own top-level `import` statements from those exact same URLs — the browser's module map de-duplicates by URL, so this doesn't trigger a second network fetch; it's just how `auth.js` gets the SDK's bindings into its own module scope. `auth.js`/`reviews.js`'s use of the SDK is still lazy at the *app-code* level (dynamically `import()`-ed only after map load, alongside this app's other non-critical modules), even though the raw CDN bytes are fetched eagerly by the two script tags — the same trade-off MapLibre itself already makes (a large, unconditionally-eager CDN dependency, functionally required for anyone to use the map at all vs., here, optional for anyone who never signs in).
+
 ---
 
 ## §8 — Sponsorship Templates
@@ -897,7 +969,7 @@ Gold badge pill displayed in popup header row next to the type badge. Contains a
 
 **Shape:** pill (`--r-pill`)
 **Colours:** `--sponsor-soft` background, `--sponsor` text
-**Used by:** `showPlacePopup()` in `places.js`
+**Used by:** `openPlaceSheet()` in `places.js`
 
 ### `.pl-sponsor-chip`
 

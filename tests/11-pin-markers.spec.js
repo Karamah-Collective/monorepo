@@ -111,9 +111,15 @@ test.describe("Dropped Pin (Double-Click)", () => {
     );
   });
 
+  // All double-click coordinates below are offset from dead-center: the default
+  // Helsinki view has a real place marker sitting almost exactly at the map's
+  // screen center, and double-clicking directly on an existing marker opens/closes
+  // its detail sheet on each of the two clicks instead of reaching the map's own
+  // dblclick-to-drop-a-pin handler — which is arguably correct (you don't want a
+  // duplicate custom pin stacked on an existing place), not a bug to work around.
   test("double-clicking map creates a custom pin marker", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     const customCount = await page.locator(".custom-mk").count();
     expect(customCount).toBeGreaterThanOrEqual(1);
@@ -121,7 +127,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
 
   test("custom pin popup has Dropped Pin title", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     // Close any place popups that may cover the pin marker
     await page.evaluate(() => document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove()));
@@ -132,7 +138,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
 
   test("pin popup has directions, add place, share, and remove buttons", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     await page.evaluate(() => document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove()));
     await page.locator(".custom-mk").first().click();
@@ -145,7 +151,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
 
   test("pin popup has save button", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     await page.evaluate(() => document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove()));
     await page.locator(".custom-mk").first().click();
@@ -155,7 +161,7 @@ test.describe("Dropped Pin (Double-Click)", () => {
 
   test("remove button removes the pin and popup", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     await page.evaluate(() => document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove()));
     await page.locator(".custom-mk").first().click();
@@ -190,7 +196,7 @@ test.describe("Pin Save / Unsave", () => {
 
   test("saving a pin stores it in localStorage", async ({ page }) => {
     const mapBox = await page.locator("#map").boundingBox();
-    await page.mouse.dblclick(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.mouse.dblclick(mapBox.x + mapBox.width / 2 + 160, mapBox.y + mapBox.height / 2 - 160);
     await page.waitForTimeout(800);
     await page.evaluate(() => document.querySelectorAll('.maplibregl-popup').forEach(p => p.remove()));
     await page.locator(".custom-mk").first().click();

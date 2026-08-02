@@ -229,48 +229,48 @@ test.describe("Places — Favourites", () => {
   });
 });
 
-test.describe("Places — Place Popup", () => {
+test.describe("Places — Place Detail Sheet", () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
   });
 
-  test("clicking a place marker opens a popup", async ({ page }) => {
+  test("clicking a place marker opens the place sheet", async ({ page }) => {
     // Use dispatchEvent to bypass viewport check (MapLibre markers may be off-screen)
     await page.locator(".place-mk-wrap").first().dispatchEvent('click');
     await page.waitForTimeout(800);
-    await expect(page.locator(".maplibregl-popup")).toBeVisible();
+    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
   });
 
-  test("place popup has title, address, and action buttons", async ({ page }) => {
+  test("place sheet has title, address, and action buttons", async ({ page }) => {
     await page.locator(".place-mk-wrap").first().dispatchEvent('click');
     await page.waitForTimeout(800);
-    const popup = page.locator(".maplibregl-popup");
-    await expect(popup.locator(".pp-title")).toBeVisible();
-    await expect(popup.locator(".pp-addr")).toBeVisible();
-    await expect(popup.locator(".pp-dir-btn")).toBeVisible();
-    await expect(popup.locator(".pp-share-btn")).toBeVisible();
-    await expect(popup.locator(".pp-fav-btn")).toBeVisible();
+    const body = page.locator("#place-sheet-body");
+    await expect(page.locator("#place-sheet-title")).not.toBeEmpty();
+    await expect(body.locator(".pp-addr")).toBeVisible();
+    await expect(body.locator(".pp-dir-btn")).toBeVisible();
+    await expect(body.locator(".pp-share-btn")).toBeVisible();
+    await expect(body.locator(".pp-fav-btn")).toBeVisible();
   });
 
-  test("place popup has edit button", async ({ page }) => {
+  test("place sheet has edit button", async ({ page }) => {
     await page.locator(".place-mk-wrap").first().dispatchEvent('click');
     await page.waitForTimeout(800);
-    await expect(page.locator(".maplibregl-popup .pp-edit-btn")).toBeVisible();
+    await expect(page.locator("#place-sheet-body .pp-edit-btn")).toBeVisible();
   });
 
-  test("clicking a place card in list opens its popup", async ({ page }) => {
+  test("clicking a place card in list opens its sheet", async ({ page }) => {
     await page.locator("#places-btn").click();
     await page.waitForTimeout(600);
     await page.locator("#places-list .pl-card").first().click();
     await page.waitForTimeout(800);
-    await expect(page.locator(".maplibregl-popup")).toBeVisible();
+    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
   });
 
-  test("popup favourite button toggles state", async ({ page }) => {
+  test("place sheet favourite button toggles state", async ({ page }) => {
     await page.evaluate(() => localStorage.removeItem("hf_favs"));
     await page.locator(".place-mk-wrap").first().dispatchEvent('click');
     await page.waitForTimeout(800);
-    const favBtn = page.locator(".maplibregl-popup .pp-fav-btn");
+    const favBtn = page.locator("#place-sheet-body .pp-fav-btn");
     await expect(favBtn).not.toHaveClass(/active/);
     await favBtn.click();
     await page.waitForTimeout(200);

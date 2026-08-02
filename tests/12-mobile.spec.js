@@ -818,39 +818,39 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
 // 12 · Style Picker on Mobile
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe("Style Picker — Mobile", () => {
+test.describe("Menu — Mobile", () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
   });
 
-  test("style picker button is visible and within viewport", async ({
+  test("menu pill is visible and within viewport", async ({
     page,
   }) => {
-    const btn = page.locator("#style-picker-btn");
+    const btn = page.locator("#menu-pill");
     await expect(btn).toBeVisible();
     const box = await btn.boundingBox();
     const vw = await page.evaluate(() => window.innerWidth);
     expect(box.x + box.width).toBeLessThanOrEqual(vw + 4);
   });
 
-  test("style picker button has minimum tap target size (≥36px)", async ({
+  test("menu pill has minimum tap target size (≥36px)", async ({
     page,
   }) => {
-    const box = await page.locator("#style-picker-btn").boundingBox();
+    const box = await page.locator("#menu-pill").boundingBox();
     expect(box.width).toBeGreaterThanOrEqual(36);
     expect(box.height).toBeGreaterThanOrEqual(36);
   });
 
-  test("tapping style picker button opens the style panel", async ({
+  test("tapping menu pill opens the menu sheet", async ({
     page,
   }) => {
-    await page.locator("#style-picker-btn").tap();
+    await page.locator("#menu-pill").tap();
     await page.waitForTimeout(300);
-    await expect(page.locator("#style-panel")).not.toHaveClass(/hide/);
+    await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
   });
 
-  test("style panel options are visible after opening", async ({ page }) => {
-    await page.locator("#style-picker-btn").tap();
+  test("style panel options are visible after opening the menu", async ({ page }) => {
+    await page.locator("#menu-pill").tap();
     await page.waitForTimeout(300);
     const opts = page.locator(".style-opt");
     const count = await opts.count();
@@ -860,10 +860,10 @@ test.describe("Style Picker — Mobile", () => {
     }
   });
 
-  test("style panel does not overflow viewport width", async ({ page }) => {
-    await page.locator("#style-picker-btn").tap();
+  test("menu sheet does not overflow viewport width", async ({ page }) => {
+    await page.locator("#menu-pill").tap();
     await page.waitForTimeout(300);
-    const box = await page.locator("#style-panel").boundingBox();
+    const box = await page.locator("#menu-sheet").boundingBox();
     const vw = await page.evaluate(() => window.innerWidth);
     expect(box.x).toBeGreaterThanOrEqual(-4);
     expect(box.x + box.width).toBeLessThanOrEqual(vw + 4);
@@ -872,7 +872,7 @@ test.describe("Style Picker — Mobile", () => {
   test("selecting a non-active style option updates active state", async ({
     page,
   }) => {
-    await page.locator("#style-picker-btn").tap();
+    await page.locator("#menu-pill").tap();
     await page.waitForTimeout(300);
     // The satellite option (data-style=satellite) should not be active initially
     const satellite = page.locator(".style-opt[data-style='satellite']");
@@ -881,12 +881,12 @@ test.describe("Style Picker — Mobile", () => {
     await expect(satellite).toHaveClass(/active/);
   });
 
-  test("selecting a style option closes the style panel", async ({ page }) => {
-    await page.locator("#style-picker-btn").tap();
+  test("selecting a style option keeps the menu sheet open", async ({ page }) => {
+    await page.locator("#menu-pill").tap();
     await page.waitForTimeout(300);
     await page.locator(".style-opt[data-style='satellite']").tap();
     await page.waitForTimeout(400);
-    await expect(page.locator("#style-panel")).toHaveClass(/hide/);
+    await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
   });
 });
 
