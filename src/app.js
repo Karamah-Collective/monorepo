@@ -252,4 +252,9 @@ map.on("load", async () => {
     e.preventDefault();
     privacyOverlay.classList.remove("hide");
   });
+  // Same overlay, reachable from the Menu sheet's Support row too, not just
+  // the footer link — see index.html's #menu-privacy-pill.
+  document.getElementById("menu-privacy-pill").addEventListener("click", () => {
+    privacyOverlay.classList.remove("hide");
+  });
 });

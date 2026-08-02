@@ -811,7 +811,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
+  gap: var(--sp-3);
   padding-top: var(--sp-8);
 }
 .rv-form-header {
@@ -836,7 +836,7 @@
   display: flex;
   gap: var(--sp-2);
   justify-content: center;
-  padding: var(--sp-3) 0;
+  padding: var(--sp-1) 0;
 }
 .rv-star-btn {
   background: none;
@@ -866,6 +866,16 @@
   text-align: center;
   min-height: 20px;
   transition: opacity var(--t-fast);
+}
+/* Removed from the flex layout entirely while no star is selected yet
+   (textContent === "", so the element has zero child nodes) — min-height:0
+   alone still left .rv-form's own `gap` applying on both sides of a
+   now-invisible item (one gap before it, one after), which read as a lot
+   of stacked dead space even with the label's own height collapsed. Fully
+   removing it from flex participation via display:none eliminates both of
+   those gaps too, not just the label's own reserved height. */
+.rv-rating-label:empty {
+  display: none;
 }
 .rv-text-group {
   display: flex;
@@ -2539,7 +2549,8 @@ body.dark-mode .sp-tip {
   border: 1px solid var(--text-2);
   color: var(--text);
 }
-.menu-account-signin-row .btn-google {
+.menu-account-signin-row .btn-google,
+.menu-account-signin-row .btn-microsoft {
   font-size: var(--txt-sm);
   font-weight: var(--fw-medium);
   border: 1px solid var(--text-2);
@@ -2572,6 +2583,7 @@ body.dark-mode .sp-tip {
   display: flex;
   align-items: center;
   justify-content: center;
+  object-fit: cover;
   font-size: var(--txt-base);
   font-weight: var(--fw-bold);
 }
@@ -3881,6 +3893,7 @@ body.dark-mode .sp-tip {
 .pp-actions .pp-contact-btn,
 .pp-actions .pp-share-btn,
 .pp-actions .pp-edit-btn,
+.pp-actions .pp-add-event-btn,
 .pp-actions .pp-rm-btn {
   flex: 1;
   height: 34px;
@@ -5238,6 +5251,12 @@ body.dark-mode .sp-tip {
   border-color: color-mix(in srgb, var(--google-btn-text) 25%, transparent);
   border-top-color: var(--google-btn-text);
 }
+/* Same reasoning as .btn-google's spinner override above — .btn-microsoft
+   shares the identical chrome tokens, so it needs the identical fix. */
+.btn-microsoft .btn-spinner {
+  border-color: color-mix(in srgb, var(--google-btn-text) 25%, transparent);
+  border-top-color: var(--google-btn-text);
+}
 /* .btn-google's height comes from the shared .rv-action-btn class unchanged
    (var(--h-submit), which actually resolves to 44px in this codebase, not
    the 48px DESIGN_SYSTEM.md's Component Sizing table currently — and
@@ -5250,6 +5269,10 @@ body.dark-mode .sp-tip {
    branding-guidelines), so only font-size is overridden here (font-weight is
    already medium via the base .btn-google rule above). */
 .btn-google {
+  font-size: var(--txt-base);
+}
+/* Same Microsoft branding guideline as Google's (14px medium label). */
+.btn-microsoft {
   font-size: var(--txt-base);
 }
 
@@ -9396,6 +9419,22 @@ body.dark-mode .mse-export {
   animation: fadeIn 0.2s ease;
 }
 .eid-mk-tip {
+  display: none;
+}
+/* ── Event-only marker (an event at a place with no directory listing —
+   e.g. a rented hall) — same gold "temporary, date-bound, non-place"
+   treatment as the Eid marker above, since both classes of marker share
+   that exact meaning; see src/places.js's addEventOnlyMarkers(). ── */
+.event-mk-wrap {
+  cursor: pointer;
+  transition: opacity var(--t-fast);
+}
+.event-mk {
+  background: var(--gold);
+  position: relative;
+  animation: fadeIn 0.2s ease;
+}
+.event-mk-tip {
   display: none;
 }
 

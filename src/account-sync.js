@@ -42,7 +42,7 @@
  * (this module already imports both of those for the merge itself).
  */
 import { EVT } from "./events.js";
-import { getSavedPins, setSavedPinState, getHomeLocation, setHomeLocation, clearHomeLocation } from "./utils.js";
+import { getSavedPins, setSavedPinState, getHomeLocation, setHomeLocation, clearHomeLocation, showToast } from "./utils.js";
 import { getFavouriteIds, setFavouriteState } from "./places.js";
 
 const ACCOUNT_API = "/api/account";
@@ -246,12 +246,25 @@ async function _syncOnSignIn() {
   }
 }
 
-async function _backgroundSync(kind, action, fields) {
+/**
+ * Fire a background save/unsave for a favourite/pin/home toggle that has
+ * already been applied optimistically to local state. If the request never
+ * actually succeeds server-side, `onFailure` is called to roll the local
+ * state back to what it was — the toggle itself is instant/local, but it
+ * must not silently stay "saved" locally while the server never got it.
+ * @param {string} kind - "favorite" | "pin" | "home"
+ * @param {string} action - "save" | "unsave"
+ * @param {object} fields - extra payload fields (placeId, pinLat, etc.)
+ * @param {() => void} onFailure - reverts the optimistic local change
+ * @returns {Promise<void>}
+ */
+async function _backgroundSync(kind, action, fields, onFailure) {
   const auth = await _getAuthModule();
   if (!auth.getCachedAccount()) return; // signed out — no-op, purely additive feature
   const idToken = await auth.getIdToken();
-  if (!idToken) return;
-  _callAccountApi(action, { kind, ...fields }, idToken);
+  if (!idToken) { onFailure?.(); return; }
+  const result = await _callAccountApi(action, { kind, ...fields }, idToken);
+  if (!result.success) onFailure?.();
 }
 
 /**
@@ -270,13 +283,23 @@ export function initAccountSync() {
   window.addEventListener(EVT.FAVOURITE_TOGGLED, (e) => {
     const { placeId, saved } = e.detail || {};
     if (!placeId) return;
-    _backgroundSync("favorite", saved ? "save" : "unsave", { placeId });
+    _backgroundSync("favorite", saved ? "save" : "unsave", { placeId }, () => {
+      // Revert to what it was before this toggle, then let the Places list
+      // pick it back up the same way it picks up any other sync change.
+      setFavouriteState(placeId, !saved);
+      window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+      showToast(saved ? "Couldn't save favourite" : "Couldn't remove favourite", "error", "Please try again");
+    });
   });
 
   window.addEventListener(EVT.SAVED_PIN_TOGGLED, (e) => {
     const { lat, lng, name, saved } = e.detail || {};
     if (lat == null || lng == null) return;
-    _backgroundSync("pin", saved ? "save" : "unsave", { pinLat: lat, pinLng: lng, pinName: name });
+    _backgroundSync("pin", saved ? "save" : "unsave", { pinLat: lat, pinLng: lng, pinName: name }, () => {
+      setSavedPinState(lat, lng, name, !saved);
+      window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+      showToast(saved ? "Couldn't save pin" : "Couldn't remove pin", "error", "Please try again");
+    });
   });
 
   // hf:home-updated is a pre-existing string-literal event (utils.js) — kept
@@ -286,9 +309,16 @@ export function initAccountSync() {
     if (_merging) return; // this exact event was just fired by our own merge above
     const home = e.detail?.home;
     if (home) {
-      _backgroundSync("home", "save", { pinLat: home.lat, pinLng: home.lng, pinName: home.name });
+      _backgroundSync("home", "save", { pinLat: home.lat, pinLng: home.lng, pinName: home.name }, () => {
+        // Not a full rollback (the previous home, if any, isn't captured
+        // here) — surfacing the failure is still strictly better than the
+        // previous silent no-op, which gave no indication anything was wrong.
+        showToast("Couldn't sync home location", "error", "Please try again");
+      });
     } else {
-      _backgroundSync("home", "unsave", {});
+      _backgroundSync("home", "unsave", {}, () => {
+        showToast("Couldn't sync home removal", "error", "Please try again");
+      });
     }
   });
 

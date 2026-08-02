@@ -298,6 +298,25 @@ export function hideLoadingToast() {
   setTimeout(() => slot.remove(), 300);
 }
 
+/**
+ * Build a personalized "Welcome, X" / "Welcome back, X" greeting for a
+ * just-completed sign-in — shared by every sign-in entry point (Google
+ * popup, Microsoft popup, magic link) in src/menu.js and src/reviews.js so
+ * the wording/fallback logic lives in exactly one place.
+ * @param {{displayName?: string, email?: string}|null} account
+ * @param {boolean} isNewUser - from Firebase's getAdditionalUserInfo(cred)
+ * @returns {string}
+ */
+export function buildWelcomeGreeting(account, isNewUser) {
+  const greeting = isNewUser ? "Welcome" : "Welcome back";
+  // Magic-link sign-ins have no displayName at all — fall back to the
+  // email's local-part rather than a name-less generic greeting, since a
+  // first name is almost always derivable from either source.
+  const source = account?.displayName?.trim() || account?.email?.split("@")[0] || "";
+  const firstName = source.split(/\s+/)[0];
+  return firstName ? `${greeting}, ${firstName}!` : `${greeting}!`;
+}
+
 function _getToastStack() {
   let stack = document.getElementById("toast-stack");
   if (!stack) {

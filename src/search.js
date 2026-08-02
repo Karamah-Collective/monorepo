@@ -3,7 +3,7 @@ import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
-import { placesData, openPlaceSheet, activeSponsor } from "./places.js";
+import { placesData, openPlaceSheet, activeSponsor, openEventOverlay } from "./places.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -181,6 +181,9 @@ function _openPinPopup(lng, lat, kind, entry) {
             <button class="pp-share-btn" title="Share this location" aria-label="Share this location">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
+            <button class="pp-add-event-btn" data-lng="${lng}" data-lat="${lat}" title="Submit an event here" aria-label="Submit an event here">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
             <button class="pp-rm-btn" title="Remove pin" aria-label="Remove pin">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -239,12 +242,17 @@ function _openPinPopup(lng, lat, kind, entry) {
     const rmBtn  = ev.target.closest(".pp-rm-btn");
     const favBtn = ev.target.closest(".pp-fav-btn");
     const shrBtn = ev.target.closest(".pp-share-btn");
+    const evtBtn = ev.target.closest(".pp-add-event-btn");
     const resolvedAddr = isSearch ? _searchAddrCache : entry?.addrCache;
     if (addBtn) {
       const pLng = +addBtn.dataset.lng, pLat = +addBtn.dataset.lat;
       const addr = resolvedAddr || "";
       fadeAndRemovePopup(popup);
       window.dispatchEvent(new CustomEvent("hf:add-place-from-pin", { detail: { lat: pLat, lng: pLng, address: addr } }));
+    } else if (evtBtn) {
+      const pLng = +evtBtn.dataset.lng, pLat = +evtBtn.dataset.lat;
+      const fallbackName = `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`;
+      openEventOverlay(null, null, { name: resolvedAddr || fallbackName, address: resolvedAddr || "", lat: pLat, lng: pLng });
     } else if (homeBtn) {
       const fallbackName = `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
       const homeLabel = resolvedAddr || fallbackName;

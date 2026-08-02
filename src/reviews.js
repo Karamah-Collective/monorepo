@@ -10,8 +10,8 @@
  *
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
-import { esc, showToast, animateElementHeight, isReduceMotionActive } from "./utils.js";
-import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML } from "./icons.js";
+import { esc, showToast, animateElementHeight, isReduceMotionActive, buildWelcomeGreeting } from "./utils.js";
+import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML } from "./icons.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -795,6 +795,12 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
   signinRow.appendChild(googleBtn);
 
+  const microsoftBtn = document.createElement("button");
+  microsoftBtn.type = "button";
+  microsoftBtn.className = "rv-action-btn btn-microsoft";
+  microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
+  signinRow.appendChild(microsoftBtn);
+
   const emailToggle = document.createElement("button");
   emailToggle.type = "button";
   emailToggle.className = "rv-action-btn btn-secondary";
@@ -850,7 +856,7 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
 
     const result = await auth.signInWithGoogle();
     if (result.success) {
-      showToast("Signed in", "check");
+      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
       _animateReviewCardHeight(overlay, () => {
         container.remove();
         _showRatingForm(placeId, overlay, insertBefore);
@@ -859,6 +865,27 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
       googleBtn.disabled = false;
       googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
       // Don't show an error for a simple popup-close/cancel — that's not a failure.
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
+  });
+
+  microsoftBtn.addEventListener("click", async () => {
+    hideError();
+    microsoftBtn.disabled = true;
+    microsoftBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+
+    const result = await auth.signInWithMicrosoft();
+    if (result.success) {
+      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
+      _animateReviewCardHeight(overlay, () => {
+        container.remove();
+        _showRatingForm(placeId, overlay, insertBefore);
+      });
+    } else {
+      microsoftBtn.disabled = false;
+      microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
       if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
         showError("Sign-in failed. Please try again.");
       }
@@ -976,10 +1003,21 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
       return;
     }
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `<span class="btn-spinner"></span> Submitting…`;
+    const ratingAtSubmit = selectedRating;
+    // _activeOverlayPlaceName is cleared by closeReviewsOverlay() below —
+    // capture it now, before that happens, in case the request fails and
+    // this needs to reopen.
+    const reopenPlaceName = _activeOverlayPlaceName;
 
-    const result = await submitReview(placeId, selectedRating, text);
+    // Optimistic: close immediately rather than making the user sit through
+    // a spinner for the network round-trip — this form's own copy already
+    // promises "Your review will appear immediately." If the request
+    // actually fails, the exact rating/text is never discarded: the form
+    // reopens pre-filled with it below, so nothing the user typed is lost.
+    closeReviewsOverlay();
+    showToast(existing ? "Updating review…" : "Submitting review…", "check");
+
+    const result = await submitReview(placeId, ratingAtSubmit, text);
 
     if (result.success) {
       if (result.status === "updated") {
@@ -989,30 +1027,27 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
       } else {
         showToast("Review published", "check");
       }
-      closeReviewsOverlay();
-    } else {
-      const msgs = {
-        already_reviewed: "You've already reviewed this place",
-        rate_limited: "Too many reviews today. Try again tomorrow.",
-        invalid_place: "Place not found",
-        invalid_rating: "Invalid rating",
-        invalid_token: "Session expired. Please sign in again.",
-        text_too_short: `Minimum ${MIN_TEXT_LEN} characters for text`,
-        network_error: "Network error. Try again.",
-      };
-      if (result.error === "invalid_token") {
-        localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
-        showToast(msgs[result.error], "error");
-        _animateReviewCardHeight(overlay, () => {
-          form.remove();
-          _showReviewForm(placeId, overlay);
-        });
-        return;
-      }
-      showToast(msgs[result.error] || "Submission failed", "error");
-      submitBtn.disabled = false;
-      submitBtn.textContent = existing ? "Update review" : "Submit review";
+      return;
     }
+
+    const msgs = {
+      already_reviewed: "You've already reviewed this place",
+      rate_limited: "Too many reviews today. Try again tomorrow.",
+      invalid_place: "Place not found",
+      invalid_rating: "Invalid rating",
+      invalid_token: "Session expired. Please sign in again.",
+      text_too_short: `Minimum ${MIN_TEXT_LEN} characters for text`,
+      network_error: "Network error. Try again.",
+    };
+    showToast(msgs[result.error] || "Submission failed", "error");
+    if (result.error === "invalid_token") {
+      localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+      // Re-render from scratch — current auth state decides sign-in-gate
+      // vs. rating form, same as any other fresh open.
+      openReviewsOverlay(placeId, reopenPlaceName);
+      return;
+    }
+    openReviewsOverlayForEdit(placeId, reopenPlaceName, { rating: ratingAtSubmit, text });
   });
 
   form.appendChild(submitBtn);

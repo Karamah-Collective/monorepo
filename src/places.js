@@ -23,6 +23,7 @@ export function activeSponsor(place) {
 }
 let placeMarkers = [];
 let savedPinMarkers = [];
+let eventOnlyMarkers = [];
 
 // Sort subtag arrays (e.g. cuisine) alphabetically by label.
 // Called after every tagsData assignment so all consumers get sorted data.
@@ -849,7 +850,7 @@ export async function loadPlacesData() {
           updatePlacesBadge();
           renderPromosPill();
         }
-        if (data.events) { eventsData = data.events; renderEventsPill(); }
+        if (data.events) { eventsData = data.events; renderEventsPill(); addEventOnlyMarkers(); }
         if (data.reviews) hydrateReviews(data.reviews);
         writeCache(normalizePlacesData(data.places), data.tags || {});
       });
@@ -898,7 +899,7 @@ export async function loadPlacesData() {
         updatePlacesBadge();
         renderPromosPill();
       }
-      if (data.events) { eventsData = data.events; renderEventsPill(); }
+      if (data.events) { eventsData = data.events; renderEventsPill(); addEventOnlyMarkers(); }
       if (data.reviews) hydrateReviews(data.reviews);
       writeCache(normalizePlacesData(data.places), data.tags || {});
     });
@@ -917,6 +918,16 @@ export async function loadPlacesData() {
 // Zoom < CLUSTER_ZOOM: GeoJSON cluster circles rendered by MapLibre.
 // Zoom ≥ CLUSTER_ZOOM: individual HTML pin markers (existing behaviour).
 const CLUSTER_ZOOM = 10;
+// Zoom-in floor on a regular place-marker click — same Math.max(currentZoom,
+// floor) pattern already used everywhere else in this app for "click to
+// focus a point" (dropped/searched pins, home, search results, all floor at
+// 15 in src/search.js/map-controls.js). An earlier version added a relative
+// "+1 every click" bump instead of a fixed floor, which compounded on every
+// single place clicked in a row (click place 1 → zoom in, click place 2 →
+// zoom in further on top of that, etc.) — a floor means once the map is
+// already at or past this zoom, clicking just pans/recenters, it never
+// zooms in further.
+const PLACE_CLICK_ZOOM = 14;
 let _clusterLayersReady = false;
 
 function _buildPlacesGeoJSON(places) {
@@ -1045,6 +1056,11 @@ function _setupClusterLayers(geojson) {
     if (_activePlaceSheetId === place.id) {
       closePlaceSheet();
     } else {
+      map.easeTo({
+        center: [place.lng, place.lat],
+        zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
+        duration: 500,
+      });
       openPlaceSheet(place);
     }
   });
@@ -1112,6 +1128,11 @@ export function addPlaceMarkers() {
       if (_activePlaceSheetId === place.id) {
         closePlaceSheet();
       } else {
+        map.easeTo({
+          center: [place.lng, place.lat],
+          zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
+          duration: 500,
+        });
         openPlaceSheet(place);
       }
     });
@@ -1140,6 +1161,36 @@ export function addPlaceMarkers() {
   });
   refreshHeatmapSource();
   syncHomeMarker();
+}
+
+/**
+ * Show a marker for any event whose location has no matching directory
+ * place — e.g. a rented hall for a one-off event. Filtered to only events
+ * that are still upcoming/active via _nextEventDate() (handles both
+ * one-time and recurring events), so a past one-time event's marker just
+ * stops appearing the next time this runs (page load, or any eventsData
+ * refresh) — no separate live/midnight timer needed.
+ * @returns {void}
+ */
+function addEventOnlyMarkers() {
+  eventOnlyMarkers.forEach((m) => m.remove());
+  eventOnlyMarkers = [];
+
+  const directoryIds = new Set(placesData.map((p) => p.id));
+  eventsData
+    .filter((ev) => (!ev.placeId || !directoryIds.has(ev.placeId)) && ev.lat != null && ev.lng != null)
+    .filter((ev) => _nextEventDate(ev) !== null)
+    .forEach((ev) => {
+      const el = document.createElement("div");
+      el.className = "event-mk-wrap";
+      el.innerHTML = `<div class="event-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div class="event-mk-tip"></div></div>`;
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([ev.lng, ev.lat]).addTo(map);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        _openEventsOverlayToEvent(ev.id);
+      });
+      eventOnlyMarkers.push(marker);
+    });
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
@@ -1409,9 +1460,12 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     inner.appendChild(hoursEl);
   }
 
-  // Events section — only for mosques/prayer rooms with active events
+  // Events section — always shown, for every place type (not just mosques —
+  // events can be hosted anywhere, same "always visible even at zero" rule
+  // the top-level #events-pill already follows so users can discover and
+  // submit the first one at any place).
   const placeEvents = eventsData.filter((ev) => ev.placeId === place.id);
-  if (placeEvents.length || place.type === "mosque") {
+  {
     const eventsSection = document.createElement("div");
     eventsSection.className = "pp-events";
     const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Submit an event" aria-label="Submit event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
@@ -1809,6 +1863,18 @@ window.addEventListener("hf:current-location-updated", () => {
   _resolveUserLocation();
   _resolveSortLocation();
   refreshPlacesSort();
+});
+// account-sync.js's background reconcile (src/account-sync.js) adopts/removes
+// favourites and pins from other signed-in devices via setFavouriteState()/
+// setSavedPinState() — deliberately WITHOUT firing EVT.FAVOURITE_TOGGLED/
+// EVT.SAVED_PIN_TOGGLED (those exist to trigger an *upload*, which a merge
+// must not re-trigger for data it just downloaded). That meant this list had
+// no way to learn a sync happened short of a full page reload. Re-render
+// unconditionally (cheap) so a cross-device favourite/pin change is reflected
+// immediately, not just after a manual refresh.
+window.addEventListener(EVT.SAVED_SYNCED, () => {
+  addPlaceMarkers();
+  if (activeTypeFilter === "saved") renderPlacesList();
 });
 
 document.getElementById("places-type-chips").addEventListener("click", (e) => {
@@ -3203,7 +3269,18 @@ _setupEventPlaceCombo({
  * @param {string} [preselectedPlaceId] - Pre-select this place as the venue in add mode
  * @param {object} [editEvent] - If provided, opens in edit mode pre-filled with this event
  */
-function openEventOverlay(preselectedPlaceId, editEvent) {
+/**
+ * Open the event-submission overlay, optionally pre-filled.
+ * @param {string} [preselectedPlaceId] - a directory place to pre-select as the venue
+ * @param {Object} [editEvent] - an existing event being edited (see the location branches below)
+ * @param {{name: string, address?: string, lat: number, lng: number}} [presetLocation] -
+ *   pre-fills the "geocoded" location tier for a brand-new event at a custom
+ *   dropped pin or an unsaved OSM/Digitransit search result — places that have
+ *   no directory place_id at all. Ignored if preselectedPlaceId or editEvent
+ *   is given (those take priority, same as the existing location-resolution order).
+ * @returns {void}
+ */
+export function openEventOverlay(preselectedPlaceId, editEvent, presetLocation) {
   const overlay = document.getElementById("event-overlay");
   const form = document.getElementById("event-form");
   const heading = document.getElementById("ev-heading");
@@ -3248,6 +3325,18 @@ function openEventOverlay(preselectedPlaceId, editEvent) {
       lng: editEvent.lng,
     };
     document.getElementById("ev-loc-search").value = editEvent.locationName || "";
+  } else if (presetLocation && presetLocation.lat != null && presetLocation.lng != null) {
+    // A brand-new event at a custom dropped pin or an unsaved OSM/Digitransit
+    // search result — same "geocoded" tier as the editEvent branch above,
+    // just for a fresh submission instead of an edit.
+    _evLocationMode = "geocoded";
+    _evGeocodedLocation = {
+      name: presetLocation.name || "",
+      address: presetLocation.address || "",
+      lat: presetLocation.lat,
+      lng: presetLocation.lng,
+    };
+    document.getElementById("ev-loc-search").value = presetLocation.name || "";
   }
 
   // Organizer combo — independent of location; may or may not be a listed place.

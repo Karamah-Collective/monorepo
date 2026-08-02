@@ -23,6 +23,19 @@ export const EMAIL_SIGNIN_ICON_SVG = `<svg class="btn-email-icon" viewBox="0 0 2
   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
   <polyline points="22,6 12,13 2,6"/>
 </svg>`;
+
+// Official Microsoft four-square logomark — stable, unchanged since
+// Microsoft's 2012 rebrand, so these exact colors/layout are safe to hardcode
+// rather than treat as something that needs sourcing per-use. Same "never
+// recolor a third-party brand mark" rule as GOOGLE_G_LOGO_SVG above.
+export const MICROSOFT_LOGO_SVG = `<svg class="btn-microsoft-icon" viewBox="0 0 21 21" aria-hidden="true" focusable="false">
+  <rect x="1" y="1" width="9" height="9" fill="var(--ms-red)"/>
+  <rect x="11" y="1" width="9" height="9" fill="var(--ms-green)"/>
+  <rect x="1" y="11" width="9" height="9" fill="var(--ms-blue)"/>
+  <rect x="11" y="11" width="9" height="9" fill="var(--ms-yellow)"/>
+</svg>`;
+export const MICROSOFT_SIGNIN_LABEL = "Continue with Microsoft";
+export const MICROSOFT_SIGNIN_BTN_HTML = `${MICROSOFT_LOGO_SVG}<span class="btn-microsoft-label">${MICROSOFT_SIGNIN_LABEL}</span>`;
 export const EMAIL_SIGNIN_LABEL = "Continue with email";
 export const EMAIL_SIGNIN_BTN_HTML = `${EMAIL_SIGNIN_ICON_SVG}<span class="btn-email-label">${EMAIL_SIGNIN_LABEL}</span>`;
 

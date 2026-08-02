@@ -27,10 +27,10 @@
  * initMenuPreferences(), dynamically importing prayer.js the same lazy way
  * initMenuAccount() imports auth.js/reviews.js.
  */
-import { initSheetDrag, esc, showToast, showConfirmDialog, isReduceMotionActive, setReduceMotionOverride, animateElementHeight } from "./utils.js";
+import { initSheetDrag, esc, escA, showToast, showConfirmDialog, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, buildWelcomeGreeting } from "./utils.js";
 import { EVT } from "./events.js";
 import { placesData, openPlaceSheet } from "./places.js";
-import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML } from "./icons.js";
+import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML } from "./icons.js";
 
 // Icons reused as the confirm dialog's icon-circle content (showConfirmDialog(),
 // src/utils.js) — same trash/sign-out glyphs already used on the triggering
@@ -115,17 +115,19 @@ export async function initMenuAccount() {
   // running on page load). Found via the mocked-SDK harness in
   // tests/14-auth-account.spec.js, not caught by code review alone.
   initAccountSync();
-  const justCompletedMagicLink = await _auth.initAuth();
+  const magicLinkResult = await _auth.initAuth();
 
   _account = _auth.getCachedAccount();
   _renderAccountSection();
   // Only the just-completed-a-magic-link case gets a toast here — a restored
   // already-signed-in session (the far more common case, on every normal page
   // load) stays silent, matching this feature's "purely additive, invisible"
-  // background-sync design. The interactive Google popup path shows its own
-  // toast right in _wireSignedOutView() instead, since that's a direct user
-  // action with its own immediate success/failure branch.
-  if (justCompletedMagicLink && _account) showToast("Signed in", "check");
+  // background-sync design. The interactive Google/Microsoft popup paths show
+  // their own toast right in _wireSignedOutView() instead, since those are a
+  // direct user action with their own immediate success/failure branch.
+  if (magicLinkResult.completed && _account) {
+    showToast(buildWelcomeGreeting(magicLinkResult.account, magicLinkResult.isNewUser), "check");
+  }
 
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
     _account = e.detail?.account || null;
@@ -182,6 +184,7 @@ function _buildSignedOutHTML() {
   return `<div class="menu-account-panel">
     <div class="menu-account-signin-row">
       <button id="menu-google-signin" class="rv-action-btn btn-google" type="button">${GOOGLE_SIGNIN_BTN_HTML}</button>
+      <button id="menu-microsoft-signin" class="rv-action-btn btn-microsoft" type="button">${MICROSOFT_SIGNIN_BTN_HTML}</button>
       <button id="menu-email-signin-toggle" class="rv-action-btn btn-secondary" type="button">${EMAIL_SIGNIN_BTN_HTML}</button>
     </div>
     <div id="menu-email-signin-panel" class="rv-verify-step hide">
@@ -198,9 +201,15 @@ function _buildSignedOutHTML() {
 function _buildSignedInHTML(account) {
   const label = account.displayName || account.email || "Signed in";
   const initial = (account.displayName || account.email || "?").trim().charAt(0).toUpperCase();
+  // Google supplies photoURL automatically; Microsoft sign-in never does
+  // (see the note on _cacheAccount() in src/auth.js) — falls back to the
+  // initial-letter avatar for Microsoft and magic-link accounts alike.
+  const avatarHTML = account.photoURL
+    ? `<img class="menu-account-avatar" src="${escA(account.photoURL)}" alt="" referrerpolicy="no-referrer">`
+    : `<div class="menu-account-avatar">${esc(initial)}</div>`;
   return `<div class="menu-account-panel">
     <div class="menu-account-profile">
-      <div class="menu-account-avatar">${esc(initial)}</div>
+      ${avatarHTML}
       <div class="menu-account-info">
         <span class="menu-account-name">${esc(label)}</span>
         ${account.displayName && account.email ? `<span class="menu-account-email">${esc(account.email)}</span>` : ""}
@@ -216,6 +225,7 @@ function _buildSignedInHTML(account) {
 
 function _wireSignedOutView() {
   const googleBtn = document.getElementById("menu-google-signin");
+  const microsoftBtn = document.getElementById("menu-microsoft-signin");
   const emailToggle = document.getElementById("menu-email-signin-toggle");
   const emailPanel = document.getElementById("menu-email-signin-panel");
   const emailInput = document.getElementById("menu-email-input");
@@ -231,10 +241,10 @@ function _wireSignedOutView() {
     googleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
     const result = await _auth.signInWithGoogle();
     if (result.success) {
-      // Same "Signed in" toast convention as the reviews sign-in prompt
+      // Same welcome-greeting convention as the reviews sign-in prompt
       // (src/reviews.js's _showSignInPrompt) — this is the primary sign-in
       // entry point, so a visible confirmation matters most here.
-      showToast("Signed in", "check");
+      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
     } else {
       googleBtn.disabled = false;
       googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
@@ -243,6 +253,22 @@ function _wireSignedOutView() {
       }
     }
     // On success, EVT.AUTH_CHANGED also fires and _renderAccountSection() re-runs.
+  });
+
+  microsoftBtn.addEventListener("click", async () => {
+    hideError();
+    microsoftBtn.disabled = true;
+    microsoftBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    const result = await _auth.signInWithMicrosoft();
+    if (result.success) {
+      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
+    } else {
+      microsoftBtn.disabled = false;
+      microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
   });
 
   emailToggle.addEventListener("click", () => {
@@ -275,15 +301,20 @@ function _wireSignedInView() {
   document.getElementById("menu-signout").addEventListener("click", async () => {
     const confirmed = await showConfirmDialog({
       title: "Sign out?",
-      message: "You'll need to sign in again to write reviews or sync your saved places.",
+      message: "You'll need to sign back in for reviews and sync.",
       confirmLabel: "Sign out",
       cancelLabel: "Cancel",
       variant: "default",
       icon: SIGNOUT_ICON_SVG,
     });
     if (!confirmed) return;
-    await _auth.signOut();
-    // EVT.AUTH_CHANGED fires and _renderAccountSection() re-runs.
+    const result = await _auth.signOut();
+    // EVT.AUTH_CHANGED fires and _renderAccountSection() re-runs on success.
+    if (result.success) {
+      showToast("Signed out", "check");
+    } else {
+      showToast("Couldn't sign out", "error", "Please try again");
+    }
   });
   _loadAndRenderMyReviews();
 }
@@ -350,7 +381,11 @@ function _wireMyReviewRows(list, reviews) {
   });
 
   list.querySelectorAll(".acc-review-delete").forEach((btn) => {
-    btn.addEventListener("click", () => _confirmAndDeleteReview(btn));
+    btn.addEventListener("click", () => {
+      const r = byPlaceId.get(btn.dataset.placeId);
+      const place = r && placesData.find((p) => p.id === r.placeId);
+      _confirmAndDeleteReview(btn, place?.name || r?.placeName || "");
+    });
   });
 }
 
@@ -361,11 +396,13 @@ function _wireMyReviewRows(list, reviews) {
  * shared showConfirmDialog() component (src/utils.js), the same one used for
  * account sign-out.
  * @param {HTMLButtonElement} btn
+ * @param {string} placeName - names the place in the dialog so it's clear
+ *   which review is about to be removed, not a generic "delete this?" prompt.
  * @returns {Promise<void>}
  */
-async function _confirmAndDeleteReview(btn) {
+async function _confirmAndDeleteReview(btn, placeName) {
   const confirmed = await showConfirmDialog({
-    title: "Delete this review?",
+    title: placeName ? `Delete your review for ${placeName}?` : "Delete this review?",
     message: "This can't be undone.",
     confirmLabel: "Delete",
     cancelLabel: "Cancel",
@@ -376,19 +413,35 @@ async function _confirmAndDeleteReview(btn) {
   await _performDelete(btn);
 }
 
+/**
+ * Optimistic delete: the row disappears the instant the user confirms,
+ * before the server has actually acknowledged it — if the request fails,
+ * the row is restored to its exact original position and a failure toast
+ * explains why, rather than making the user wait on the network round-trip
+ * to see anything happen at all.
+ * @param {HTMLButtonElement} btn
+ * @returns {Promise<void>}
+ */
 async function _performDelete(btn) {
   const placeId = btn.dataset.placeId;
   const row = btn.closest(".acc-review-row");
-  btn.disabled = true;
+  const list = document.getElementById("menu-my-reviews");
+  const nextSibling = row?.nextElementSibling || null;
+
+  row?.remove();
+  let emptyPlaceholder = null;
+  if (list && !list.querySelector(".acc-review-row")) {
+    emptyPlaceholder = document.createElement("p");
+    emptyPlaceholder.className = "menu-placeholder";
+    emptyPlaceholder.textContent = "You haven't written any reviews yet.";
+    list.appendChild(emptyPlaceholder);
+  }
+
   const result = await _reviewsMod.deleteReview(placeId);
-  if (result.success) {
-    row?.remove();
-    const list = document.getElementById("menu-my-reviews");
-    if (list && !list.querySelector(".acc-review-row")) {
-      list.innerHTML = `<p class="menu-placeholder">You haven't written any reviews yet.</p>`;
-    }
-  } else {
-    btn.disabled = false;
+  if (!result.success) {
+    // Roll back the optimistic removal exactly where it was.
+    emptyPlaceholder?.remove();
+    if (row && list) list.insertBefore(row, nextSibling);
     // Surface *why* nothing happened — previously this failed silently,
     // which was indistinguishable from the button just not working at all
     // (see the review-delete root-cause writeup in docs/PREFERENCE_LOG.md).
