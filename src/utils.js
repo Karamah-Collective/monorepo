@@ -331,6 +331,80 @@ export function showToast(label, icon = "check", sub = null) {
   }, 2400);
 }
 
+let _activeConfirmCleanup = null; // the open dialog's own finish() fn, if any
+
+/**
+ * Show a reusable Yes/No confirm dialog for a destructive or state-changing
+ * action — the one confirm-before-action component in this app (replaces
+ * the earlier press-twice-to-confirm pattern used for review delete; see
+ * docs/DESIGN_SYSTEM.md). Built and torn down entirely in JS, matching
+ * showToast()'s own create-on-demand convention, rather than a static
+ * always-in-the-DOM overlay in index.html.
+ * @param {Object} opts
+ * @param {string} opts.title - short question, e.g. "Delete this review?"
+ * @param {string} [opts.message=""] - supporting detail line
+ * @param {string} [opts.confirmLabel="Confirm"]
+ * @param {string} [opts.cancelLabel="Cancel"]
+ * @param {"danger"|"default"} [opts.variant="default"] - "danger" renders the
+ *   confirm button as .btn-danger-filled and the icon circle red-tinted, for
+ *   a hard-destructive action with no easy undo (matches .btn-danger-filled's
+ *   own definition); "default" uses .btn-primary / accent-tinted for a
+ *   state-changing but non-destructive action (e.g. sign-out).
+ * @param {string} [opts.icon=""] - inline SVG markup for the icon circle
+ * @returns {Promise<boolean>} true if confirmed, false if cancelled/dismissed
+ */
+export function showConfirmDialog({
+  title,
+  message = "",
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  variant = "default",
+  icon = "",
+} = {}) {
+  // A second call while one is already open cancels the first rather than
+  // stacking dialogs — this app only ever needs one confirmation in flight.
+  if (_activeConfirmCleanup) _activeConfirmCleanup(false);
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay hide";
+    const iconClass = variant === "danger" ? "confirm-icon confirm-icon--danger" : "confirm-icon";
+    const confirmBtnClass = variant === "danger" ? "btn-danger-filled" : "btn-primary";
+    overlay.innerHTML = `<div class="confirm-card">
+      ${icon ? `<span class="${iconClass}">${icon}</span>` : ""}
+      <h3 class="confirm-title">${esc(title || "Are you sure?")}</h3>
+      ${message ? `<p class="confirm-desc">${esc(message)}</p>` : ""}
+      <div class="confirm-actions">
+        <button type="button" class="btn-secondary confirm-cancel">${esc(cancelLabel)}</button>
+        <button type="button" class="${confirmBtnClass} confirm-ok">${esc(confirmLabel)}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    void overlay.offsetHeight; // commit .hide's start state before animating out of it
+
+    function finish(result) {
+      overlay.classList.add("hide");
+      document.removeEventListener("keydown", onKeydown);
+      if (_activeConfirmCleanup === finish) _activeConfirmCleanup = null;
+      setTimeout(() => overlay.remove(), 250);
+      resolve(result);
+    }
+    function onKeydown(e) {
+      if (e.key === "Escape") finish(false);
+    }
+
+    overlay.querySelector(".confirm-cancel").addEventListener("click", () => finish(false));
+    overlay.querySelector(".confirm-ok").addEventListener("click", () => finish(true));
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) finish(false);
+    });
+    document.addEventListener("keydown", onKeydown);
+
+    _activeConfirmCleanup = finish;
+    overlay.classList.remove("hide");
+  });
+}
+
 // --- Early-development notice (shown to everyone, every visit) ---
 
 export function showEarlyDevNotice() {

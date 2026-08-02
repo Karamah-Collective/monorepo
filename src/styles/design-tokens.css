@@ -1379,6 +1379,88 @@ html.reduce-motion *::after {
   color: var(--gold);
 }
 
+/* ── Generic Yes/No Confirm Dialog (showConfirmDialog(), src/utils.js) ──
+   The one confirm-before-destructive/state-changing-action component in
+   this app — reused for review delete and account sign-out (replaces the
+   earlier press-twice-to-confirm pattern for review delete specifically;
+   see docs/DESIGN_SYSTEM.md). Built and torn down entirely in JS per call
+   (matching .share-toast's create-on-demand convention), so these are
+   reusable classes rather than one static named overlay/card like
+   #promos-overlay/#promos-card — the fixed-centered-overlay shell itself is
+   the same pattern as that one, just expressed as classes since this is
+   spawned on demand from anywhere in the app. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: var(--sp-8);
+  transition: opacity var(--t-med);
+}
+.confirm-overlay.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+.confirm-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-9) var(--sp-8) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-2);
+  transform: scale(1);
+  transition: transform var(--t-med);
+}
+.confirm-overlay.hide .confirm-card {
+  transform: scale(0.96);
+}
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: var(--sp-2);
+}
+.confirm-icon--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.confirm-title {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  margin: 0;
+  letter-spacing: var(--ls-tight);
+}
+.confirm-desc {
+  font-size: var(--txt-sm);
+  color: var(--text-2);
+  margin: 0;
+  line-height: var(--lh-normal);
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--sp-4);
+  width: 100%;
+  margin-top: var(--sp-5);
+}
+.confirm-actions button {
+  flex: 1;
+  height: var(--h-submit);
+}
+
 /* ── Eid banner icon (crescent moon, gold theme) ─── */
 .eid-banner-icon {
   background: var(--gold-soft);

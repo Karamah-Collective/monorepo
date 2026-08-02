@@ -68,12 +68,26 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
     expect(cached?.email).toBe("mockuser@example.com");
   });
 
-  test("signing out reverts to the signed-out view and clears hf_account", async ({ page }) => {
+  test("signing out asks for Yes/No confirmation, cancel leaves the session signed in", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expect(page.locator("#menu-signout")).toBeVisible({ timeout: 10_000 });
 
     await page.click("#menu-signout");
+    await expect(page.locator(".confirm-title", { hasText: "Sign out?" })).toBeVisible();
+    await page.click(".confirm-cancel");
+    await expect(page.locator(".confirm-overlay")).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.locator("#menu-signout")).toBeVisible(); // still signed in
+  });
+
+  test("signing out and confirming reverts to the signed-out view and clears hf_account", async ({ page }) => {
+    await openMenuAndWaitForAccount(page);
+    await page.click("#menu-google-signin");
+    await expect(page.locator("#menu-signout")).toBeVisible({ timeout: 10_000 });
+
+    await page.click("#menu-signout");
+    await expect(page.locator(".confirm-title", { hasText: "Sign out?" })).toBeVisible();
+    await page.click(".confirm-ok");
     await expect(page.locator("#menu-google-signin")).toBeVisible({ timeout: 10_000 });
     const cached = await page.evaluate(() => localStorage.getItem("hf_account"));
     expect(cached).toBeNull();
@@ -125,17 +139,28 @@ test.describe("Menu Account section — Your reviews list", () => {
     await expect(page.locator(".acc-review-row").first().locator(".acc-review-delete")).toBeVisible();
   });
 
-  test("delete requires two clicks (press-to-confirm) before removing the row", async ({ page }) => {
+  test("delete shows a Yes/No confirm dialog; cancelling leaves the row in place", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expect(page.locator(".acc-review-row")).toHaveCount(2, { timeout: 10_000 });
 
     const firstDelete = page.locator(".acc-review-row").first().locator(".acc-review-delete");
     await firstDelete.click();
-    await expect(firstDelete).toHaveAttribute("aria-label", "Click again to confirm delete");
-    await expect(page.locator(".acc-review-row")).toHaveCount(2); // not yet removed
+    await expect(page.locator(".confirm-title", { hasText: "Delete this review?" })).toBeVisible();
+    await page.click(".confirm-cancel");
+    await expect(page.locator(".confirm-overlay")).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.locator(".acc-review-row")).toHaveCount(2); // not removed
+  });
 
+  test("delete confirmed via the Yes/No dialog removes the row", async ({ page }) => {
+    await openMenuAndWaitForAccount(page);
+    await page.click("#menu-google-signin");
+    await expect(page.locator(".acc-review-row")).toHaveCount(2, { timeout: 10_000 });
+
+    const firstDelete = page.locator(".acc-review-row").first().locator(".acc-review-delete");
     await firstDelete.click();
+    await expect(page.locator(".confirm-title", { hasText: "Delete this review?" })).toBeVisible();
+    await page.click(".confirm-ok");
     await expect(page.locator(".acc-review-row")).toHaveCount(1, { timeout: 10_000 });
   });
 

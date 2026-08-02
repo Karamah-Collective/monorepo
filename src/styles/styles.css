@@ -2524,7 +2524,15 @@ body.dark-mode .sp-tip {
   padding-left: var(--sp-2);
   padding-right: var(--sp-2);
 }
+/* Temporarily hidden (2026-08-02): Firebase's Spark-plan email-link
+   sign-in quota is 5/day project-wide — far too low to leave this
+   live. Hides via `display: none` only, on purpose — the JS wiring,
+   EMAIL_SIGNIN_BTN_HTML, and the send-link panel are all left completely
+   intact, so removing just the `display: none` line below is the entire
+   revert once the project moves to the Blaze plan. Google sign-in is
+   unaffected (different, much higher quota — see docs/PREFERENCE_LOG.md). */
 .menu-account-signin-row .btn-secondary {
+  display: none;
   gap: var(--sp-2);
   font-size: var(--txt-sm);
   font-weight: var(--fw-medium);

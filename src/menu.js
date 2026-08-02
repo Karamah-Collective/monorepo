@@ -27,12 +27,16 @@
  * initMenuPreferences(), dynamically importing prayer.js the same lazy way
  * initMenuAccount() imports auth.js/reviews.js.
  */
-import { initSheetDrag, esc, showToast, isReduceMotionActive, setReduceMotionOverride, animateElementHeight } from "./utils.js";
+import { initSheetDrag, esc, showToast, showConfirmDialog, isReduceMotionActive, setReduceMotionOverride, animateElementHeight } from "./utils.js";
 import { EVT } from "./events.js";
 import { placesData, openPlaceSheet } from "./places.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML } from "./icons.js";
 
-const DELETE_CONFIRM_WINDOW_MS = 3000;
+// Icons reused as the confirm dialog's icon-circle content (showConfirmDialog(),
+// src/utils.js) — same trash/sign-out glyphs already used on the triggering
+// buttons themselves, just larger, so the dialog visually matches its trigger.
+const TRASH_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>`;
+const SIGNOUT_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
 
 const menuSheet = document.getElementById("menu-sheet");
 const menuScrim = document.getElementById("scrim");
@@ -269,6 +273,15 @@ function _wireSignedOutView() {
 
 function _wireSignedInView() {
   document.getElementById("menu-signout").addEventListener("click", async () => {
+    const confirmed = await showConfirmDialog({
+      title: "Sign out?",
+      message: "You'll need to sign in again to write reviews or sync your saved places.",
+      confirmLabel: "Sign out",
+      cancelLabel: "Cancel",
+      variant: "default",
+      icon: SIGNOUT_ICON_SVG,
+    });
+    if (!confirmed) return;
     await _auth.signOut();
     // EVT.AUTH_CHANGED fires and _renderAccountSection() re-runs.
   });
@@ -337,39 +350,30 @@ function _wireMyReviewRows(list, reviews) {
   });
 
   list.querySelectorAll(".acc-review-delete").forEach((btn) => {
-    btn.addEventListener("click", () => _handleDeleteClick(btn));
+    btn.addEventListener("click", () => _confirmAndDeleteReview(btn));
   });
 }
 
 /**
- * Press-twice-to-confirm delete (no native window.confirm(), which would
- * feel jarring against this app's own polished overlay/toast UI). First
- * click swaps the icon to a checkmark for DELETE_CONFIRM_WINDOW_MS; a second
- * click within that window actually deletes. Any other row's delete button
- * resets this one back to its normal icon.
+ * Real Yes/No confirmation before deleting a review — replaces the earlier
+ * press-twice-to-confirm pattern (see docs/DESIGN_SYSTEM.md for why: the
+ * user explicitly asked for a real confirm affordance instead). Uses the
+ * shared showConfirmDialog() component (src/utils.js), the same one used for
+ * account sign-out.
  * @param {HTMLButtonElement} btn
+ * @returns {Promise<void>}
  */
-function _handleDeleteClick(btn) {
-  if (btn.dataset.confirming === "1") {
-    clearTimeout(btn._confirmTimer);
-    _performDelete(btn);
-    return;
-  }
-
-  document.querySelectorAll(".acc-review-delete[data-confirming='1']").forEach(_resetDeleteButton);
-
-  btn.dataset.confirming = "1";
-  btn.title = "Click again to confirm";
-  btn.setAttribute("aria-label", "Click again to confirm delete");
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-  btn._confirmTimer = setTimeout(() => _resetDeleteButton(btn), DELETE_CONFIRM_WINDOW_MS);
-}
-
-function _resetDeleteButton(btn) {
-  delete btn.dataset.confirming;
-  btn.title = "Delete review";
-  btn.setAttribute("aria-label", "Delete review");
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>`;
+async function _confirmAndDeleteReview(btn) {
+  const confirmed = await showConfirmDialog({
+    title: "Delete this review?",
+    message: "This can't be undone.",
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    variant: "danger",
+    icon: TRASH_ICON_SVG,
+  });
+  if (!confirmed) return;
+  await _performDelete(btn);
 }
 
 async function _performDelete(btn) {
@@ -385,7 +389,10 @@ async function _performDelete(btn) {
     }
   } else {
     btn.disabled = false;
-    _resetDeleteButton(btn);
+    // Surface *why* nothing happened — previously this failed silently,
+    // which was indistinguishable from the button just not working at all
+    // (see the review-delete root-cause writeup in docs/PREFERENCE_LOG.md).
+    showToast("Couldn't delete review", "error", "Please try again");
   }
 }
 
