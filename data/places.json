@@ -23,7 +23,9 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "phone": "040 5493738",
+    "mapsUrl": "https://maps.google.com/?cid=174061119965777685"
   },
   {
     "id": "cxjnht",
@@ -50,7 +52,11 @@
       "thu": "05:00-22:00",
       "fri": "05:00-22:00",
       "sat": "05:00-22:00"
-    }
+    },
+    "website": "http://www.rabita.fi/",
+    "phone": "050 5335592",
+    "mapsUrl": "https://maps.google.com/?cid=12615234801892639415",
+    "wheelchairAccessible": true
   },
   {
     "id": "0v9lwu",
@@ -76,7 +82,9 @@
       "thu": "09:00-20:00",
       "fri": "09:00-20:00",
       "sat": "10:00-19:00"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=2379118445623293143",
+    "wheelchairAccessible": true
   },
   {
     "id": "9m5ck3",
@@ -100,7 +108,15 @@
       "thu": "09:00-00:00",
       "fri": "09:00-00:00",
       "sat": "09:00-00:00"
-    }
+    },
+    "website": "https://kfc.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=14655800620825660944",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "m90m87",
@@ -124,7 +140,16 @@
       "thu": "09:00-22:00",
       "fri": "09:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "website": "http://www.kfc.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=10828254302117292570",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true,
+    "about": "Restaurant chain known for its buckets of fried chicken, plus combo meals & sides."
   },
   {
     "id": "hdgwe2",
@@ -148,7 +173,15 @@
       "thu": "07:00-00:00",
       "fri": "07:00-04:00",
       "sat": "08:00-04:00"
-    }
+    },
+    "website": "https://kfc.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=14363540210516295329",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "7gp6mz",
@@ -172,7 +205,16 @@
       "thu": "08:00-21:00",
       "fri": "08:00-21:00",
       "sat": "09:00-20:00"
-    }
+    },
+    "website": "http://www.kfc.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=13905319717158785206",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true,
+    "about": "Restaurant chain known for its buckets of fried chicken, plus combo meals & sides."
   },
   {
     "id": "eyvteo",
@@ -196,7 +238,16 @@
       "thu": "09:00-23:00",
       "fri": "09:00-00:00",
       "sat": "09:00-00:00"
-    }
+    },
+    "website": "https://burgerking.fi/",
+    "phone": "040 5724921",
+    "mapsUrl": "https://maps.google.com/?cid=1602822110868197519",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "servesVegetarian": true,
+    "about": "Well-known fast-food chain serving grilled burgers, fries & shakes."
   },
   {
     "id": "t87tko",
@@ -220,7 +271,12 @@
       "thu": "09:00-01:00",
       "fri": "09:00-01:30",
       "sat": "09:00-01:30"
-    }
+    },
+    "website": "https://www.forum.fi/",
+    "phone": "09 56574523",
+    "mapsUrl": "https://maps.google.com/?cid=15119665254692828330",
+    "wheelchairAccessible": true,
+    "about": "Shopping & leisure center filled with brand name stores & taking up an entire city block."
   },
   {
     "id": "ets6od",
@@ -244,7 +300,16 @@
       "thu": "10:00-21:30",
       "fri": "10:00-21:30",
       "sat": "10:00-21:30"
-    }
+    },
+    "website": "https://burgerking.fi/",
+    "phone": "040 6672172",
+    "mapsUrl": "https://maps.google.com/?cid=9673122037315538413",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "servesVegetarian": true,
+    "about": "Well-known fast-food chain serving grilled burgers, fries & shakes."
   },
   {
     "id": "zneup4",
@@ -268,7 +333,16 @@
       "thu": "07:00-01:00",
       "fri": "07:00-00:00",
       "sat": null
-    }
+    },
+    "website": "https://burgerking.fi/toimipiste/burger-king-tripla/",
+    "phone": "041 7326832",
+    "mapsUrl": "https://maps.google.com/?cid=744229636940344180",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "about": "Well-known fast-food chain serving grilled burgers, fries & shakes."
   },
   {
     "id": "xnc8up",
@@ -292,7 +366,15 @@
       "thu": "10:00-22:00",
       "fri": "10:00-00:00",
       "sat": "10:00-00:00"
-    }
+    },
+    "website": "https://burgerking.fi/",
+    "phone": "041 7326239",
+    "mapsUrl": "https://maps.google.com/?cid=13129085306342906188",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "about": "Well-known fast-food chain serving grilled burgers, fries & shakes."
   },
   {
     "id": "z7k66e",
@@ -316,7 +398,15 @@
       "thu": "09:00-00:00",
       "fri": "09:00-05:30",
       "sat": "09:00-05:30"
-    }
+    },
+    "website": "https://burgerking.fi/",
+    "phone": "040 6858725",
+    "mapsUrl": "https://maps.google.com/?cid=8348487436122013990",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "about": "Well-known fast-food chain serving grilled burgers, fries & shakes."
   },
   {
     "id": "lf5l20",
@@ -342,7 +432,11 @@
       "thu": "09:00-21:00",
       "fri": "09:00-21:00",
       "sat": "09:00-21:00"
-    }
+    },
+    "website": "http://www.alanyamarket.fi/",
+    "phone": "09 7531022",
+    "mapsUrl": "https://maps.google.com/?cid=17828606263705068124",
+    "wheelchairAccessible": true
   },
   {
     "id": "8uaffs",
@@ -361,7 +455,8 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "3rd Floor"
+    "notes": "3rd Floor",
+    "mapsUrl": "https://maps.google.com/?cid=8247950681412544410"
   },
   {
     "id": "kv7blx",
@@ -387,7 +482,10 @@
       "thu": "09:30-20:30",
       "fri": "09:30-13:00,14:00-20:30",
       "sat": "09:30-20:30"
-    }
+    },
+    "website": "https://www.facebook.com/beno.fin",
+    "mapsUrl": "https://maps.google.com/?cid=14457665686762133383",
+    "wheelchairAccessible": true
   },
   {
     "id": "9mr44x",
@@ -413,7 +511,10 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "phone": "041 3122479",
+    "mapsUrl": "https://maps.google.com/?cid=4010512516580242653",
+    "wheelchairAccessible": true
   },
   {
     "id": "pa61kp",
@@ -441,7 +542,11 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.facebook.com/EMCespoo",
+    "phone": "044 9871541",
+    "mapsUrl": "https://maps.google.com/?cid=140036156456307305",
+    "wheelchairAccessible": true
   },
   {
     "id": "1m0auf",
@@ -456,7 +561,9 @@
       "taraweeh": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "phone": "050 3627718",
+    "mapsUrl": "https://maps.google.com/?cid=3301942505063908025"
   },
   {
     "id": "7rbzu8",
@@ -467,9 +574,11 @@
     "lat": 60.2935895,
     "lng": 25.0351338,
     "tags": {
-      "fully_halal": true
+      "partially_halal": true,
+      "cuisine_arab": true,
+      "cuisine_pizza": true
     },
-    "notes": "",
+    "notes": "All meat, including pepperoni and salami--but has pork pizza, hence partially halal",
     "hours": {
       "sun": "10:00-22:00",
       "mon": "10:00-22:00",
@@ -478,7 +587,15 @@
       "thu": "10:00-22:00",
       "fri": "10:00-00:00",
       "sat": "10:00-00:00"
-    }
+    },
+    "website": "https://order.site/king-kebab/fi/fin/vantaa/restaurant/king-kebab-tikkurila-sf",
+    "phone": "050 4784057",
+    "mapsUrl": "https://maps.google.com/?cid=5968721383710497802",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "pnznbn",
@@ -500,7 +617,15 @@
       "thu": "11:00-20:00",
       "fri": "11:00-20:00",
       "sat": "11:00-19:00"
-    }
+    },
+    "website": "https://order.site/ahaan-tam-sang",
+    "phone": "050 3439509",
+    "mapsUrl": "https://maps.google.com/?cid=9451584222565758281",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "yua29z",
@@ -524,7 +649,16 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "11:30-21:30"
-    }
+    },
+    "website": "http://www.uyghurnoodlehouse.com/",
+    "phone": "050 3139358",
+    "mapsUrl": "https://maps.google.com/?cid=15916595523462536934",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "ofmcd6",
@@ -547,7 +681,16 @@
       "thu": "10:30-21:00",
       "fri": "10:30-22:00",
       "sat": "12:00-22:00"
-    }
+    },
+    "website": "https://www.chingu.fi/",
+    "phone": "041 7223690",
+    "mapsUrl": "https://maps.google.com/?cid=14943434924767814948",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true
   },
   {
     "id": "tsatr6",
@@ -576,7 +719,11 @@
       "thu": "11:00-21:00",
       "fri": "10:30-22:00",
       "sat": "09:00-22:00"
-    }
+    },
+    "website": "http://www.hic.fi/",
+    "phone": "045 1282818",
+    "mapsUrl": "https://maps.google.com/?cid=566832530752025796",
+    "wheelchairAccessible": true
   },
   {
     "id": "4vxx5n",
@@ -601,7 +748,10 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://taqwacommunitycenter.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=17320637972733509611",
+    "wheelchairAccessible": true
   },
   {
     "id": "j74tjs",
@@ -618,7 +768,9 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://www.facebook.com/olarimasjid/",
+    "mapsUrl": "https://maps.google.com/?cid=2693731533604382184"
   },
   {
     "id": "oq2wi2",
@@ -642,7 +794,11 @@
       "thu": "11:30-20:00",
       "fri": "11:30-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "website": "https://masjidbox.com/prayer-times/kilo-mosque",
+    "phone": "045 3424177",
+    "mapsUrl": "https://maps.google.com/?cid=14743420782288699371",
+    "wheelchairAccessible": true
   },
   {
     "id": "anzxjj",
@@ -665,7 +821,17 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.ravintola-malacca.fi/",
+    "phone": "045 6492086",
+    "mapsUrl": "https://maps.google.com/?cid=3676278785187854142",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "3yqkym",
@@ -688,7 +854,16 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.seoulgood.fi/",
+    "phone": "050 4548355",
+    "mapsUrl": "https://maps.google.com/?cid=1464316119614768437",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "l8wj1i",
@@ -712,7 +887,12 @@
       "fri": "11:00-23:00",
       "sat": "11:00-23:00",
       "sun": "11:00-23:00"
-    }
+    },
+    "website": "https://www.hungryhub.fi/",
+    "phone": "041 3275071",
+    "mapsUrl": "https://maps.google.com/?cid=10452532307171271858",
+    "priceLevel": 2,
+    "dineIn": true
   },
   {
     "id": "1dshyj",
@@ -736,7 +916,16 @@
       "fri": "11:00-23:00",
       "sat": "11:00-23:00",
       "sun": "11:00-23:00"
-    }
+    },
+    "website": "https://hungryhub.fi/home",
+    "phone": "044 2466970",
+    "mapsUrl": "https://maps.google.com/?cid=341446869763196855",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "ntho35",
@@ -760,7 +949,16 @@
       "thu": "11:00-23:00",
       "fri": "11:00-00:00",
       "sat": "11:00-00:00"
-    }
+    },
+    "website": "https://hungryhub.fi/home",
+    "phone": "041 3677787",
+    "mapsUrl": "https://maps.google.com/?cid=132433295559627918",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "89bg9y",
@@ -784,7 +982,14 @@
       "fri": "10:30-23:00",
       "sat": "10:30-23:00",
       "sun": "11:00-23:00"
-    }
+    },
+    "website": "https://www.hungryhub.fi/",
+    "phone": "041 3109417",
+    "mapsUrl": "https://maps.google.com/?cid=1725411533043768292",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "l5kwds",
@@ -808,7 +1013,16 @@
       "fri": "12:00-03:00",
       "sat": "12:00-03:00",
       "sun": "12:00-22:00"
-    }
+    },
+    "website": "https://hungryhub.fi/home",
+    "phone": "040 7776720",
+    "mapsUrl": "https://maps.google.com/?cid=10364418013436487980",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "j13ysd",
@@ -835,7 +1049,10 @@
       "thu": "09:00-20:00",
       "fri": "09:00-19:00",
       "sat": "09:00-19:00"
-    }
+    },
+    "phone": "044 2483818",
+    "mapsUrl": "https://maps.google.com/?cid=16923421250504165567",
+    "wheelchairAccessible": true
   },
   {
     "id": "f54kwd",
@@ -860,7 +1077,9 @@
       "thu": "10:00-20:00",
       "fri": "10:00-20:00",
       "sat": "11:00-19:00"
-    }
+    },
+    "phone": "045 1133514",
+    "mapsUrl": "https://maps.google.com/?cid=15672220749140489773"
   },
   {
     "id": "11mlq9",
@@ -884,7 +1103,9 @@
       "thu": "11:00-20:00",
       "fri": "11:00-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "phone": "050 3567604",
+    "mapsUrl": "https://maps.google.com/?cid=8433477299716247538"
   },
   {
     "id": "7dn24u",
@@ -909,7 +1130,12 @@
       "thu": "09:00-21:00",
       "fri": "09:00-21:00",
       "sat": "09:00-21:00"
-    }
+    },
+    "phone": "044 3309343",
+    "mapsUrl": "https://maps.google.com/?cid=11968668022503350680",
+    "wheelchairAccessible": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "c3ecup",
@@ -933,7 +1159,17 @@
       "thu": null,
       "fri": null,
       "sat": null
-    }
+    },
+    "website": "https://pizzakuningas.fi/",
+    "phone": "09 3511660",
+    "mapsUrl": "https://maps.google.com/?cid=10902637103862888120",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "8j7scl",
@@ -956,7 +1192,15 @@
       "fri": "11:00-00:00",
       "sat": "12:00-00:00",
       "sun": "12:00-22:00"
-    }
+    },
+    "website": "http://www.dustfry.fi/",
+    "phone": "041 3258939",
+    "mapsUrl": "https://maps.google.com/?cid=11038411295777637000",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "l4pclo",
@@ -980,7 +1224,12 @@
       "fri": "10:30-15:00",
       "sat": null,
       "sun": null
-    }
+    },
+    "website": "https://www.yamanoon.fi/",
+    "phone": "041 3298932",
+    "mapsUrl": "https://maps.google.com/?cid=15642379113663264645",
+    "priceLevel": 3,
+    "dineIn": true
   },
   {
     "id": "lxtmd9",
@@ -1002,7 +1251,12 @@
       "thu": "08:00-20:00",
       "fri": "08:00-20:00",
       "sat": "11:00-17:00"
-    }
+    },
+    "website": "https://www.helsinki.fi/fi/helsingin-yliopiston-kirjasto/asioi-kirjastossa/toimipaikat-ja-tilat/paakirjasto-kaisa-talo",
+    "phone": "029 4123920",
+    "mapsUrl": "https://maps.google.com/?cid=14725571844229938038",
+    "wheelchairAccessible": true,
+    "about": "Contemporary-style library featuring educational, legal, theological & political reference books."
   },
   {
     "id": "13tova",
@@ -1025,7 +1279,15 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "11:00-22:00"
-    }
+    },
+    "website": "https://order.site/king-kebab/fi/fin/helsinki/restaurant/king-kebab-malmi-sf",
+    "phone": "050 3075828",
+    "mapsUrl": "https://maps.google.com/?cid=15370693245630117526",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "trjf07",
@@ -1052,7 +1314,11 @@
       "thu": "09:00-20:00",
       "fri": "09:00-13:30,14:30-20:00",
       "sat": "10:00-19:00"
-    }
+    },
+    "website": "http://www.yalla.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=16702366346291892268",
+    "wheelchairAccessible": true,
+    "delivery": true
   },
   {
     "id": "f30ugd",
@@ -1079,7 +1345,10 @@
       "thu": "10:00-19:00",
       "fri": "10:00-19:00",
       "sat": "10:00-19:00"
-    }
+    },
+    "phone": "045 2361747",
+    "mapsUrl": "https://maps.google.com/?cid=4245868027309042549",
+    "wheelchairAccessible": true
   },
   {
     "id": "q65nwj",
@@ -1102,7 +1371,10 @@
       "thu": "09:30-20:30",
       "fri": "09:30-20:30",
       "sat": "10:00-20:00"
-    }
+    },
+    "website": "https://m.facebook.com/pages/category/Grocery-Store/Nari-108560924073171/",
+    "phone": "050 3646549",
+    "mapsUrl": "https://maps.google.com/?cid=14309109468577924237"
   },
   {
     "id": "xfgge7",
@@ -1125,7 +1397,11 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "phone": "046 5382252",
+    "mapsUrl": "https://maps.google.com/?cid=12960988379843669223",
+    "priceLevel": 2,
+    "dineIn": true
   },
   {
     "id": "9admdr",
@@ -1148,7 +1424,14 @@
       "thu": "10:00-21:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "website": "https://www.afghanravintola.fi/",
+    "phone": "010 5821899",
+    "mapsUrl": "https://maps.google.com/?cid=7537945948484629483",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "tdqcws",
@@ -1171,7 +1454,12 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=9156340605595165384",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "pimapy",
@@ -1194,7 +1482,19 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "website": "https://www.kirkukravintola.fi/",
+    "phone": "045 2647788",
+    "mapsUrl": "https://maps.google.com/?cid=2308917043716611182",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "254ggv",
@@ -1217,7 +1517,15 @@
       "thu": "08:00-22:00",
       "fri": "08:00-00:00",
       "sat": "08:00-00:00"
-    }
+    },
+    "website": "https://zahiiba.fi/",
+    "phone": "044 9876674",
+    "mapsUrl": "https://maps.google.com/?cid=2223049333207491984",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "fd1ocx",
@@ -1231,7 +1539,9 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "phone": "046 6597897",
+    "mapsUrl": "https://maps.google.com/?cid=10548279605044021015"
   },
   {
     "id": "a5cru1",
@@ -1254,7 +1564,12 @@
       "thu": "11:00-22:00",
       "fri": "11:00-22:00",
       "sat": "11:00-22:00"
-    }
+    },
+    "phone": "046 684867",
+    "mapsUrl": "https://maps.google.com/?cid=4514118910396673873",
+    "dineIn": true,
+    "takeout": true,
+    "curbsidePickup": true
   },
   {
     "id": "bk9bjh",
@@ -1277,7 +1592,11 @@
       "thu": "09:00-22:00",
       "fri": "09:00-22:00",
       "sat": "09:00-22:30"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=14404140126169122415",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "8oe1jh",
@@ -1300,7 +1619,13 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "website": "https://www.facebook.com/ravintola.newroz21/",
+    "phone": "020 7416860",
+    "mapsUrl": "https://maps.google.com/?cid=7896365957914431971",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "8ez1cj",
@@ -1323,7 +1648,11 @@
       "thu": "09:00-22:00",
       "fri": "09:00-22:00",
       "sat": "09:00-22:30"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=14404140126169122415",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "cx9zp7",
@@ -1337,7 +1666,9 @@
       "fully_halal": true,
       "no_alcohol": true
     },
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=9505342791670112633",
+    "dineIn": true
   },
   {
     "id": "ghirir",
@@ -1360,7 +1691,11 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "website": "https://www.facebook.com/hamada.zuher",
+    "phone": "044 2072221",
+    "mapsUrl": "https://maps.google.com/?cid=500684897526265458",
+    "priceLevel": 2
   },
   {
     "id": "b3oiuf",
@@ -1384,7 +1719,9 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "phone": "045 1820200",
+    "mapsUrl": "https://maps.google.com/?cid=6281613733243425125"
   },
   {
     "id": "uks2ox",
@@ -1398,7 +1735,8 @@
       "halal_meat": true,
       "halal_butchery": true
     },
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=1041204205650331764"
   },
   {
     "id": "qwxwzj",
@@ -1421,7 +1759,11 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "phone": "040 9327373",
+    "mapsUrl": "https://maps.google.com/?cid=13584696531121043579",
+    "priceLevel": 3,
+    "takeout": true
   },
   {
     "id": "1kx1m2",
@@ -1441,7 +1783,10 @@
       "thu": "10:00-20:00",
       "fri": "10:00-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "http://www.souriana.fi/",
+    "phone": "040 1410330",
+    "mapsUrl": "https://maps.google.com/?cid=12113360028303220115"
   },
   {
     "id": "vtdidd",
@@ -1456,7 +1801,10 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://www.facebook.com/hikmahnuoret/",
+    "phone": "045 6664222",
+    "mapsUrl": "https://maps.google.com/?cid=14887926590164642357"
   },
   {
     "id": "tibuac",
@@ -1475,7 +1823,11 @@
       "daily_prayers": false,
       "eid_prayer": false
     },
-    "notes": "It's a madrasah"
+    "notes": "It's a madrasah",
+    "website": "https://www.rauhapiiri.fi/",
+    "phone": "046 8918555",
+    "mapsUrl": "https://maps.google.com/?cid=16647435634095756146",
+    "wheelchairAccessible": true
   },
   {
     "id": "d5tlw7",
@@ -1494,7 +1846,10 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://damic.fi/",
+    "phone": "040 9132762",
+    "mapsUrl": "https://maps.google.com/?cid=18079087269844117054"
   },
   {
     "id": "1ktepz",
@@ -1510,7 +1865,11 @@
       "female_wudu": true,
       "quran_available": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "http://www.rabita.fi/",
+    "phone": "050 5335592",
+    "mapsUrl": "https://maps.google.com/?cid=12615234801892639415",
+    "wheelchairAccessible": true
   },
   {
     "id": "bj0psd",
@@ -1521,7 +1880,8 @@
     "lat": 60.2048645,
     "lng": 24.6561164,
     "tags": {
-      "fully_halal": true
+      "fully_halal": true,
+      "no_alcohol": false
     },
     "notes": "",
     "hours": {
@@ -1532,7 +1892,15 @@
       "thu": "10:00-22:00",
       "fri": "10:00-23:00",
       "sat": "11:00-23:00"
-    }
+    },
+    "website": "http://www.zava.fi/",
+    "phone": "050 4009748",
+    "mapsUrl": "https://maps.google.com/?cid=11505533292429822045",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true
   },
   {
     "id": "f5gz4k",
@@ -1557,7 +1925,13 @@
       "thu": "11:00-20:00",
       "fri": "11:00-13:00,13:30-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "website": "https://www.facebook.com/profile.php?id=100063505366250",
+    "phone": "044 9879491",
+    "mapsUrl": "https://maps.google.com/?cid=11920006598836043119",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "nopo3k",
@@ -1580,7 +1954,18 @@
       "thu": "10:30-15:00",
       "fri": "10:30-20:00",
       "sat": "12:00-18:00"
-    }
+    },
+    "website": "https://www.delhirasoi.fi/",
+    "phone": "050 3766001",
+    "mapsUrl": "https://maps.google.com/?cid=4785247283108770075",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "4l2lrd",
@@ -1603,7 +1988,15 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "http://peshawar.fi/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=9479231224210509977",
+    "phone": "09 8881520",
+    "mapsUrl": "https://maps.google.com/?cid=13680911831016013946",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "cmn32z",
@@ -1625,7 +2018,12 @@
       "thu": "07:00-22:00",
       "fri": "07:00-22:00",
       "sat": "08:00-22:00"
-    }
+    },
+    "website": "https://www.k-ruoka.fi/kauppa/k-market-tapuli",
+    "phone": "050 3211972",
+    "mapsUrl": "https://maps.google.com/?cid=1248456509533390949",
+    "wheelchairAccessible": true,
+    "delivery": true
   },
   {
     "id": "rnmk12",
@@ -1652,7 +2050,10 @@
       "thu": "09:00-18:00",
       "fri": "09:00-12:30,13:00-20:00",
       "sat": "10:00-19:00"
-    }
+    },
+    "website": "http://www.yalla.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=5132245947956951218",
+    "wheelchairAccessible": true
   },
   {
     "id": "ld8pqr",
@@ -1672,7 +2073,11 @@
       "thu": "07:45-21:00",
       "fri": "07:45-20:00",
       "sat": null
-    }
+    },
+    "website": "http://aalto.fi/",
+    "phone": "050 3427223",
+    "mapsUrl": "https://maps.google.com/?cid=995208774436285981",
+    "wheelchairAccessible": true
   },
   {
     "id": "83cdtk",
@@ -1692,7 +2097,11 @@
       "thu": "07:45-18:00",
       "fri": "07:45-18:00",
       "sat": null
-    }
+    },
+    "website": "https://tilavaraus.helsinki.fi/en/kumpula/chemicum-i-virtasen-aukio-1",
+    "phone": "029 4150100",
+    "mapsUrl": "https://maps.google.com/?cid=7720744476101035804",
+    "wheelchairAccessible": true
   },
   {
     "id": "vp0tml",
@@ -1705,7 +2114,11 @@
     "tags": {
       "quran_available": true
     },
-    "notes": "Second floor of building E, bathroom on ground floor for wudu"
+    "notes": "Second floor of building E, bathroom on ground floor for wudu",
+    "website": "https://www.helsinki.fi/fi/tutustu-meihin/tama-helsingin-yliopisto/kampukset/viikin-kampus",
+    "phone": "029 4157600",
+    "mapsUrl": "https://maps.google.com/?cid=14262896804190476635",
+    "wheelchairAccessible": true
   },
   {
     "id": "372bxr",
@@ -1725,7 +2138,11 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.hus.fi/potilaalle/sairaalat-ja-toimipisteet/meilahden-tornisairaala",
+    "phone": "Fri Sep 01 4711 00:00:00 GMT+0300 (Itä-Euroopan kesäaika)",
+    "mapsUrl": "https://maps.google.com/?cid=1511550353847246462",
+    "wheelchairAccessible": true
   },
   {
     "id": "yoqkv8",
@@ -1752,7 +2169,10 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.facebook.com/share/1MBmHQiCGD/?mibextid=wwXIfr",
+    "phone": "044 2442824",
+    "mapsUrl": "https://maps.google.com/?cid=2347894077537352092"
   },
   {
     "id": "6morhi",
@@ -1776,7 +2196,16 @@
       "thu": "11:00-22:00",
       "fri": "11:00-22:00",
       "sat": "12:00-22:00"
-    }
+    },
+    "website": "http://www.hanamiravintola.fi/",
+    "phone": "050 5113758",
+    "mapsUrl": "https://maps.google.com/?cid=2395358914980857717",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "8jp8hr",
@@ -1800,7 +2229,16 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "https://noodlemaster.fi/https://noodlemaster.fi/1303-2/",
+    "phone": "040 4868687",
+    "mapsUrl": "https://maps.google.com/?cid=15659206095373819326",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true,
+    "about": "Compact choice with a down-home vibe dishing up Chinese street food standards, with vegan options."
   },
   {
     "id": "5x7lmi",
@@ -1823,7 +2261,13 @@
       "thu": "08:00-22:00",
       "fri": "08:00-22:00",
       "sat": "08:00-22:00"
-    }
+    },
+    "website": "https://www.k-ruoka.fi/kauppa/k-supermarket-suuris",
+    "phone": "010 4061110",
+    "mapsUrl": "https://maps.google.com/?cid=11031324250679739309",
+    "wheelchairAccessible": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "qo8fs0",
@@ -1847,7 +2291,9 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "phone": "045 1227121",
+    "mapsUrl": "https://maps.google.com/?cid=3221477097516191013"
   },
   {
     "id": "trkq3z",
@@ -1871,7 +2317,10 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "phone": "044 0646410",
+    "mapsUrl": "https://maps.google.com/?cid=11172760614607358000",
+    "wheelchairAccessible": true
   },
   {
     "id": "0t3ogz",
@@ -1887,7 +2336,10 @@
       "taraweeh": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://www.vsiy.fi/",
+    "phone": "050 5388780",
+    "mapsUrl": "https://maps.google.com/?cid=18158985089271543873"
   },
   {
     "id": "93v21q",
@@ -1916,7 +2368,9 @@
       "thu": "09:00-20:00",
       "fri": "09:00-20:00",
       "sat": "10:30-20:00"
-    }
+    },
+    "website": "http://www.tisy.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=18148431432866815638"
   },
   {
     "id": "8s3a3j",
@@ -1944,7 +2398,10 @@
       "thu": "09:00-20:30",
       "fri": "09:00-20:30",
       "sat": "09:00-20:00"
-    }
+    },
+    "phone": "041 5720736",
+    "mapsUrl": "https://maps.google.com/?cid=3626653265523549480",
+    "wheelchairAccessible": true
   },
   {
     "id": "0h13qo",
@@ -1972,7 +2429,8 @@
       "thu": "10:00-20:30",
       "fri": "10:00-20:30",
       "sat": "10:00-20:30"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=17420505370957273193"
   },
   {
     "id": "uj177l",
@@ -1999,7 +2457,10 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "http://www.masjidalnuur.com/",
+    "phone": "044 9858629",
+    "mapsUrl": "https://maps.google.com/?cid=11599940665592145672"
   },
   {
     "id": "i0mxzn",
@@ -2018,7 +2479,10 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://mawaqit.net/en/m/abubakar-sadiq-espoo-02230-finland",
+    "mapsUrl": "https://maps.google.com/?cid=16298965931491328318",
+    "wheelchairAccessible": true
   },
   {
     "id": "2ivnxo",
@@ -2034,7 +2498,10 @@
       "taraweeh": true,
       "quran_classes": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "https://www.lansivayla.fi/paikalliset/9532903",
+    "mapsUrl": "https://maps.google.com/?cid=2558276655595582188",
+    "wheelchairAccessible": true
   },
   {
     "id": "r1ckxd",
@@ -2053,7 +2520,8 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Khutbah in both English and Arabic"
+    "notes": "Khutbah in both English and Arabic",
+    "mapsUrl": "https://maps.google.com/?cid=10997055533427375842"
   },
   {
     "id": "onu9dw",
@@ -2071,7 +2539,9 @@
       "quran_classes": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=15057108167475571840",
+    "wheelchairAccessible": true
   },
   {
     "id": "butyl8",
@@ -2095,7 +2565,9 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "phone": "046 9433733",
+    "mapsUrl": "https://maps.google.com/?cid=14627590463247270975"
   },
   {
     "id": "t2ul0o",
@@ -2110,7 +2582,8 @@
       "jummah": true,
       "taraweeh": true
     },
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=6736739975724145572"
   },
   {
     "id": "0da753",
@@ -2134,7 +2607,16 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "website": "https://www.kontulankebab.fi/",
+    "phone": "09 301447",
+    "mapsUrl": "https://maps.google.com/?cid=13338380137586048199",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "eoq1d0",
@@ -2148,7 +2630,8 @@
       "fully_halal": true,
       "cuisine_arab": true,
       "cuisine_pizza": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "no_alcohol": false
     },
     "notes": "",
     "hours": {
@@ -2159,7 +2642,18 @@
       "thu": "10:00-22:00",
       "fri": "10:00-23:00",
       "sat": "11:00-23:00"
-    }
+    },
+    "website": "https://kontula.kalkanpizza.fi/",
+    "phone": "09 3404300",
+    "mapsUrl": "https://maps.google.com/?cid=6118500853754104862",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "d9hwaf",
@@ -2184,7 +2678,13 @@
       "thu": "10:00-03:00",
       "fri": "10:00-04:00",
       "sat": "10:00-04:00"
-    }
+    },
+    "phone": "041 5738042",
+    "mapsUrl": "https://maps.google.com/?cid=8765613886135308436",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true
   },
   {
     "id": "x8z3u0",
@@ -2207,7 +2707,16 @@
       "thu": "10:00-03:00",
       "fri": "10:00-05:00",
       "sat": "10:00-05:00"
-    }
+    },
+    "website": "https://donerking.fi/",
+    "phone": "09 42893404",
+    "mapsUrl": "https://maps.google.com/?cid=2453975677526660903",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true
   },
   {
     "id": "zbyu0l",
@@ -2230,7 +2739,12 @@
       "thu": "10:30-20:00",
       "fri": "10:30-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "phone": "046 6570513",
+    "mapsUrl": "https://maps.google.com/?cid=14305176638396635220",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "izifkc",
@@ -2253,7 +2767,17 @@
       "thu": "09:00-20:00",
       "fri": "09:00-20:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "website": "https://ravintolaantalya.wixsite.com/antalya-ravintola",
+    "phone": "050 5541410",
+    "mapsUrl": "https://maps.google.com/?cid=8866373162721520522",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "curbsidePickup": true
   },
   {
     "id": "wg4zxd",
@@ -2276,7 +2800,15 @@
       "thu": "10:00-02:00",
       "fri": "10:00-04:00",
       "sat": "10:00-04:00"
-    }
+    },
+    "website": "https://taorminapizzakebab.fi/",
+    "phone": "050 4317196",
+    "mapsUrl": "https://maps.google.com/?cid=6321433881767348880",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "qxmkuj",
@@ -2300,7 +2832,10 @@
       "thu": "11:00-22:00",
       "fri": "11:00-22:00",
       "sat": "11:00-22:00"
-    }
+    },
+    "website": "http://www.masjidiman.com/",
+    "phone": "040 7036896",
+    "mapsUrl": "https://maps.google.com/?cid=4532423827918715877"
   },
   {
     "id": "tc4qvi",
@@ -2325,7 +2860,8 @@
       "thu": "12:00-20:00",
       "fri": "11:30-20:00",
       "sat": "09:00-20:00"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=2856477197803506784"
   },
   {
     "id": "l3517t",
@@ -2353,7 +2889,11 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.instagram.com/ummahmoskeija/",
+    "phone": "040 1503155",
+    "mapsUrl": "https://maps.google.com/?cid=4744478881194353685",
+    "wheelchairAccessible": true
   },
   {
     "id": "54bqty",
@@ -2378,7 +2918,15 @@
       "thu": "09:00-19:00",
       "fri": "09:00-19:00",
       "sat": "09:00-19:00"
-    }
+    },
+    "website": "https://instagram.com/ziarascafe?igshid=MzRlODBiNWFlZA==",
+    "phone": "044 7154388",
+    "mapsUrl": "https://maps.google.com/?cid=9340284217988241591",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true
   },
   {
     "id": "u9uzjc",
@@ -2402,7 +2950,9 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "08:00-21:00"
-    }
+    },
+    "phone": "046 8023776",
+    "mapsUrl": "https://maps.google.com/?cid=6767928417319941643"
   },
   {
     "id": "zrr1ng",
@@ -2427,7 +2977,14 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "https://hanamisushi.fi/",
+    "phone": "050 5430966",
+    "mapsUrl": "https://maps.google.com/?cid=12015581576975417681",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "servesVegetarian": true
   },
   {
     "id": "w4u80v",
@@ -2452,7 +3009,16 @@
       "thu": "10:30-20:00",
       "fri": "10:30-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "website": "https://social.quandoo.com/en/groups/qazan-restaurant-109643",
+    "phone": "046 8897305",
+    "mapsUrl": "https://maps.google.com/?cid=4411111504026062901",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "s3bdjv",
@@ -2478,7 +3044,10 @@
       "thu": "11:30-20:00",
       "fri": "11:30-20:00",
       "sat": "11:30-20:00"
-    }
+    },
+    "website": "http://www.assic.fi/",
+    "phone": "045 1950139",
+    "mapsUrl": "https://maps.google.com/?cid=7711701246701619539"
   },
   {
     "id": "hjs5gl",
@@ -2504,7 +3073,15 @@
       "thu": "11:00-20:30",
       "fri": "11:00-20:30",
       "sat": "11:00-20:30"
-    }
+    },
+    "website": "https://www.falafelbox.fi/",
+    "phone": "029 1700089",
+    "mapsUrl": "https://maps.google.com/?cid=15261968173375912127",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "servesVegetarian": true
   },
   {
     "id": "43jqf3",
@@ -2523,7 +3100,8 @@
       "female_prayer": true,
       "female_wudu": true
     },
-    "notes": "Enter from parking area as the mosque has its own doors located between a pizzeria and a hairsalon. The mosque is in the second floor."
+    "notes": "Enter from parking area as the mosque has its own doors located between a pizzeria and a hairsalon. The mosque is in the second floor.",
+    "mapsUrl": "https://maps.google.com/?cid=10142652171784495036"
   },
   {
     "id": "zqnplx",
@@ -2534,7 +3112,8 @@
     "lat": 60.1735388,
     "lng": 24.9390951,
     "tags": {
-      "cuisine_steak": true
+      "cuisine_steak": true,
+      "no_alcohol": false
     },
     "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\"",
     "hours": {
@@ -2545,7 +3124,16 @@
       "thu": "11:00-00:00",
       "fri": "11:00-00:00",
       "sat": "12:00-00:00"
-    }
+    },
+    "website": "http://www.woolshed.eu/",
+    "phone": "044 7604086",
+    "mapsUrl": "https://maps.google.com/?cid=1675448480998063348",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "1dzuhd",
@@ -2561,7 +3149,11 @@
       "cuisine_fried_chicken": true,
       "cuisine_korean": true
     },
-    "notes": ""
+    "notes": "",
+    "phone": "050 5486066",
+    "mapsUrl": "https://maps.google.com/?cid=15814535698843091235",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "priceLevel": 2
   },
   {
     "id": "3zau87",
@@ -2586,7 +3178,16 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "https://haruplus.com/freda/index.html",
+    "phone": "040 7447435",
+    "mapsUrl": "https://maps.google.com/?cid=9890374400502667406",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true,
+    "about": "Low-key eatery with a lunch & dinner buffet featuring sushi, salads & soups, plus weekend breakfast."
   },
   {
     "id": "sow6vc",
@@ -2611,7 +3212,17 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "https://haruplus.com/haru-plus/",
+    "phone": "044 9898962",
+    "mapsUrl": "https://maps.google.com/?cid=11434366886732405324",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true,
+    "about": "Low-key Japanese restaurant offering all-you-can-eat sushi rolls, nigiri, soups & fried bites."
   },
   {
     "id": "98gx71",
@@ -2636,7 +3247,16 @@
       "thu": "10:30-20:30",
       "fri": "10:30-20:30",
       "sat": "12:00-21:30"
-    }
+    },
+    "website": "https://www.hanamisushi.fi/",
+    "phone": "040 7296788",
+    "mapsUrl": "https://maps.google.com/?cid=11458621095534270267",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "m8mf0p",
@@ -2660,7 +3280,17 @@
       "thu": "11:00-20:00",
       "fri": "11:00-21:00",
       "sat": "12:00-20:00"
-    }
+    },
+    "website": "https://order.site/ahaan-tam-sang",
+    "phone": "050 5440111",
+    "mapsUrl": "https://maps.google.com/?cid=15721188612638890220",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "bjdubw",
@@ -2684,7 +3314,14 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://orientexpress.fi/",
+    "phone": "050 3440923",
+    "mapsUrl": "https://maps.google.com/?cid=4365229989301406379",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "20revp",
@@ -2709,7 +3346,16 @@
       "fri": "10:00-22:00",
       "sat": "11:00-22:00",
       "sun": "12:00-22:00"
-    }
+    },
+    "website": "http://www.istanbulgrilli.fi/",
+    "phone": "050 4633727",
+    "mapsUrl": "https://maps.google.com/?cid=16298023856961914454",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true,
+    "about": "Casual Turkish restaurant serving kebabs, grilled meat & veggie dishes, plus pizza, pasta & burgers."
   },
   {
     "id": "zo9423",
@@ -2733,7 +3379,18 @@
       "thu": "10:30-22:30",
       "fri": "10:30-22:30",
       "sat": "10:30-22:30"
-    }
+    },
+    "website": "https://phoviethelsinki.fi/",
+    "phone": "041 3171616",
+    "mapsUrl": "https://maps.google.com/?cid=15493818572905937263",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true,
+    "about": "Casual restaurant offering up Vietnamese cuisine in a snug dining room with large windows."
   },
   {
     "id": "luazrl",
@@ -2757,7 +3414,16 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.streetcanteen.fi/",
+    "phone": "050 3245468",
+    "mapsUrl": "https://maps.google.com/?cid=18405499449935269426",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "scbd9a",
@@ -2781,7 +3447,15 @@
       "thu": "11:00-20:00",
       "fri": "11:00-21:00",
       "sat": "11:00-20:30"
-    }
+    },
+    "website": "https://www.itsuyaki.fi/",
+    "phone": "050 5053212",
+    "mapsUrl": "https://maps.google.com/?cid=7860536648953959431",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "8fq5x6",
@@ -2805,7 +3479,17 @@
       "thu": "11:00-21:00",
       "fri": "11:00-21:30",
       "sat": "12:00-21:30"
-    }
+    },
+    "phone": "045 2660008",
+    "mapsUrl": "https://maps.google.com/?cid=8138888142032326134",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "curbsidePickup": true,
+    "servesVegetarian": true
   },
   {
     "id": "3i1yjb",
@@ -2818,7 +3502,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_indian": true,
-      "cuisine_sri_lankan": true
+      "cuisine_sri_lankan": true,
+      "no_alcohol": false
     },
     "notes": "Please check on the counter for full halal verification.",
     "hours": {
@@ -2829,7 +3514,15 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "13:00-21:00"
-    }
+    },
+    "website": "http://www.ravintolasri.fi/",
+    "phone": "050 3801220",
+    "mapsUrl": "https://maps.google.com/?cid=12482594194597199647",
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "zt6ipb",
@@ -2853,7 +3546,16 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "10:30-21:00"
-    }
+    },
+    "website": "https://villanepal.fi/kamppi/",
+    "phone": "041 3657123",
+    "mapsUrl": "https://maps.google.com/?cid=3414059862897784721",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "s2m2g6",
@@ -2877,7 +3579,12 @@
       "thu": "08:30-20:00",
       "fri": "08:30-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "website": "http://www.shin.fi/",
+    "phone": "050 3054957",
+    "mapsUrl": "https://maps.google.com/?cid=231964097527720162",
+    "priceLevel": 2,
+    "dineIn": true
   },
   {
     "id": "qazhwu",
@@ -2902,7 +3609,17 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "https://linktr.ee/resturantyemeni",
+    "phone": "044 9883320",
+    "mapsUrl": "https://maps.google.com/?cid=8156125932660802078",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "6llkdn",
@@ -2925,7 +3642,17 @@
       "thu": "10:00-21:30",
       "fri": "10:00-22:00",
       "sat": "11:30-22:00"
-    }
+    },
+    "website": "https://tandoorivilla.fi/",
+    "phone": "050 5478888",
+    "mapsUrl": "https://maps.google.com/?cid=4898842279065556554",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "rbw2fc",
@@ -2949,7 +3676,15 @@
       "thu": "11:00-20:00",
       "fri": "11:00-21:00",
       "sat": "12:00-21:00"
-    }
+    },
+    "website": "http://www.tasteuyghur.com/",
+    "phone": "040 0287968",
+    "mapsUrl": "https://maps.google.com/?cid=11054147310827709803",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "72pehq",
@@ -2975,7 +3710,11 @@
       "thu": "10:00-21:00",
       "fri": "10:00-21:00",
       "sat": "10:00-21:00"
-    }
+    },
+    "website": "https://www.alshifa.fi/",
+    "phone": "045 1338124",
+    "mapsUrl": "https://maps.google.com/?cid=5686310284840962846",
+    "wheelchairAccessible": true
   },
   {
     "id": "a46hp3",
@@ -3000,7 +3739,17 @@
       "thu": "08:00-18:00",
       "fri": "08:00-18:00",
       "sat": null
-    }
+    },
+    "website": "https://linktr.ee/resturantyemeni",
+    "phone": "044 9883320",
+    "mapsUrl": "https://maps.google.com/?cid=8156125932660802078",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "msue5i",
@@ -3025,7 +3774,15 @@
       "thu": "10:30-20:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.facebook.com/ravintolakungfoodpanda",
+    "phone": "041 3196181",
+    "mapsUrl": "https://maps.google.com/?cid=16723895006811143055",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "ee19wp",
@@ -3045,7 +3802,11 @@
       "thu": "06:00-22:00",
       "fri": "06:00-22:00",
       "sat": "06:00-22:00"
-    }
+    },
+    "website": "https://www.honkanummenhautausmaa.fi/",
+    "phone": "09 23401111",
+    "mapsUrl": "https://maps.google.com/?cid=2647512668129749968",
+    "wheelchairAccessible": true
   },
   {
     "id": "ljw5l9",
@@ -3065,7 +3826,11 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.espoonseurakunnat.fi/hautausmaat/kellonummen-hautausmaa",
+    "phone": "09 80501",
+    "mapsUrl": "https://maps.google.com/?cid=2633305243593727929",
+    "wheelchairAccessible": true
   },
   {
     "id": "oxh7uk",
@@ -3076,7 +3841,11 @@
     "lat": 60.316787,
     "lng": 24.9933122,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "website": "https://www.vantaanseurakunnat.fi/hautausmaat/ruskeasannan-hautausmaa",
+    "phone": "09 83061",
+    "mapsUrl": "https://maps.google.com/?cid=6919686003870259258",
+    "wheelchairAccessible": true
   },
   {
     "id": "mfj9pf",
@@ -3087,7 +3856,10 @@
     "lat": 60.1258821,
     "lng": 24.4327794,
     "tags": {},
-    "notes": "Muslim section available."
+    "notes": "Muslim section available.",
+    "website": "https://www.kirkkonummenseurakunnat.fi/hautausmaat/rajakummun-hautausmaa",
+    "mapsUrl": "https://maps.google.com/?cid=16095040597553310569",
+    "wheelchairAccessible": true
   },
   {
     "id": "gsyyri",
@@ -3107,7 +3879,11 @@
       "thu": "07:00-21:00",
       "fri": "07:00-21:00",
       "sat": "07:00-21:00"
-    }
+    },
+    "phone": "040 3417540",
+    "mapsUrl": "https://maps.google.com/?cid=1443417220459951935",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "wheelchairAccessible": true
   },
   {
     "id": "94w0gd",
@@ -3127,7 +3903,10 @@
       "thu": "07:00-21:00",
       "fri": "07:00-21:00",
       "sat": "07:00-21:00"
-    }
+    },
+    "website": "http://www.turunseurakunnat.fi/hautausmaat/turun-hautausmaa",
+    "mapsUrl": "https://maps.google.com/?cid=13531136552312993947",
+    "wheelchairAccessible": true
   },
   {
     "id": "epocsc",
@@ -3138,7 +3917,8 @@
     "lat": 60.17096279999999,
     "lng": 24.9454601,
     "tags": {
-      "partially_halal": true
+      "partially_halal": true,
+      "no_alcohol": false
     },
     "notes": "Only chicken  items are halal.",
     "hours": {
@@ -3149,7 +3929,18 @@
       "thu": "11:00-22:00",
       "fri": "11:00-23:00",
       "sat": "11:00-23:00"
-    }
+    },
+    "website": "https://vapiano.fi/",
+    "phone": "050 4355657",
+    "mapsUrl": "https://maps.google.com/?cid=16678534225702409036",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true,
+    "about": "Laid-back restaurant featuring made-to-order fresh pasta dishes, along with pizza & salad."
   },
   {
     "id": "sxupkz",
@@ -3173,7 +3964,16 @@
       "thu": "11:00-21:30",
       "fri": "11:00-23:30",
       "sat": "11:00-23:30"
-    }
+    },
+    "website": "https://palki.fi/",
+    "phone": "045 8490999",
+    "mapsUrl": "https://maps.google.com/?cid=2966888270860318588",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "curbsidePickup": true
   },
   {
     "id": "g1l3nr",
@@ -3190,7 +3990,9 @@
       "quran_classes": true,
       "female_prayer": true
     },
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=11508178269760927144",
+    "wheelchairAccessible": true
   },
   {
     "id": "pt2ybu",
@@ -3214,7 +4016,12 @@
       "thu": "11:00-14:30",
       "fri": "11:00-14:30",
       "sat": null
-    }
+    },
+    "phone": "09 6942763",
+    "mapsUrl": "https://maps.google.com/?cid=9011226353256527690",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "ojfy1o",
@@ -3225,7 +4032,8 @@
     "lat": 60.2925937,
     "lng": 25.0369127,
     "tags": {
-      "cuisine_mexican": true
+      "cuisine_mexican": true,
+      "no_alcohol": false
     },
     "notes": "Confirmed via instagram.",
     "hours": {
@@ -3236,7 +4044,14 @@
       "thu": "10:00-21:30",
       "fri": "10:00-22:30",
       "sat": "11:00-22:30"
-    }
+    },
+    "website": "https://the-amigos.fi/",
+    "phone": "050 4080201",
+    "mapsUrl": "https://maps.google.com/?cid=15200910552860908996",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "b8kta7",
@@ -3258,7 +4073,16 @@
       "thu": "11:00-00:00",
       "fri": "11:00-01:00",
       "sat": "12:00-01:00"
-    }
+    },
+    "website": "https://mexman.fi/",
+    "phone": "044 9733765",
+    "mapsUrl": "https://maps.google.com/?cid=14935756618351739342",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "pey53u",
@@ -3283,7 +4107,10 @@
       "thu": "10:00-20:30",
       "fri": "10:00-20:30",
       "sat": "10:00-20:30"
-    }
+    },
+    "phone": "040 8158515",
+    "mapsUrl": "https://maps.google.com/?cid=3778381033569601637",
+    "wheelchairAccessible": true
   },
   {
     "id": "eu1rov",
@@ -3297,7 +4124,8 @@
       "partially_halal": true,
       "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_sushi": true
+      "cuisine_sushi": true,
+      "no_alcohol": false
     },
     "notes": "The chicken items are Halal",
     "hours": {
@@ -3308,7 +4136,17 @@
       "thu": "10:30-21:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "http://www.houwei.fi/",
+    "phone": "045 6428843",
+    "mapsUrl": "https://maps.google.com/?cid=4324798422371867148",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "rcbxc6",
@@ -3328,7 +4166,11 @@
       "thu": "10:00-20:00",
       "fri": "10:00-20:00",
       "sat": "10:00-18:00"
-    }
+    },
+    "website": "https://www.tiktok.com/@novamarkit",
+    "phone": "041 3140614",
+    "mapsUrl": "https://maps.google.com/?cid=8238503882771905",
+    "wheelchairAccessible": true
   },
   {
     "id": "8qjhd5",
@@ -3339,7 +4181,9 @@
     "lat": 60.2110461,
     "lng": 25.0501729,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "phone": "040 5492146",
+    "mapsUrl": "https://maps.google.com/?cid=14366033004932397769"
   },
   {
     "id": "s51qiw",
@@ -3359,7 +4203,10 @@
       "thu": "12:00-02:10",
       "fri": "11:00-02:10",
       "sat": "12:00-02:10"
-    }
+    },
+    "phone": "041 969096",
+    "mapsUrl": "https://maps.google.com/?cid=11384887820516826778",
+    "wheelchairAccessible": true
   },
   {
     "id": "eht0iz",
@@ -3379,7 +4226,10 @@
       "thu": "10:00-22:00",
       "fri": "10:00-22:00",
       "sat": "10:00-22:00"
-    }
+    },
+    "phone": "044 7022023",
+    "mapsUrl": "https://maps.google.com/?cid=17934544340455930895",
+    "wheelchairAccessible": true
   },
   {
     "id": "op2vb3",
@@ -3390,7 +4240,8 @@
     "lat": 60.23044819999999,
     "lng": 25.0922228,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=10919293126085836785"
   },
   {
     "id": "qykn23",
@@ -3410,7 +4261,8 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=13690685109105863904"
   },
   {
     "id": "dsnc5z",
@@ -3430,7 +4282,8 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "mapsUrl": "https://maps.google.com/?cid=13690685109105863904"
   },
   {
     "id": "6bgjr1",
@@ -3450,7 +4303,10 @@
       "thu": "05:00-22:00",
       "fri": "05:00-22:00",
       "sat": "05:00-22:00"
-    }
+    },
+    "website": "https://givealittle.co/c/Masjidahlusunna",
+    "phone": "045 8073443",
+    "mapsUrl": "https://maps.google.com/?cid=17451365646976633346"
   },
   {
     "id": "21vodd",
@@ -3461,7 +4317,11 @@
     "lat": 60.2106764,
     "lng": 25.0786672,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "website": "https://www.facebook.com/share/WMCp7z3zsVoVNFFw/",
+    "phone": "045 2013246",
+    "mapsUrl": "https://maps.google.com/?cid=15922359988238870648",
+    "wheelchairAccessible": true
   },
   {
     "id": "drop5g",
@@ -3481,7 +4341,9 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "phone": "044 2766921",
+    "mapsUrl": "https://maps.google.com/?cid=17031430934092369186"
   },
   {
     "id": "gasko9",
@@ -3492,7 +4354,10 @@
     "lat": 60.2141653,
     "lng": 25.0809507,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "website": "http://andalus.fi/yhteystiedot/",
+    "phone": "040 9694434",
+    "mapsUrl": "https://maps.google.com/?cid=15419331489763790854"
   },
   {
     "id": "4fhwnv",
@@ -3503,7 +4368,9 @@
     "lat": 60.1544832,
     "lng": 24.63547,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=13782644752072679069",
+    "wheelchairAccessible": true
   },
   {
     "id": "00chb3",
@@ -3514,7 +4381,8 @@
     "lat": 60.4752816,
     "lng": 25.1000611,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=9333172210770941048"
   },
   {
     "id": "5eiayd",
@@ -3534,7 +4402,11 @@
       "thu": "09:00-21:00",
       "fri": "09:00-16:00",
       "sat": null
-    }
+    },
+    "website": "https://resalat.fi/",
+    "phone": "040 3533086",
+    "mapsUrl": "https://maps.google.com/?cid=8321145632653611012",
+    "wheelchairAccessible": true
   },
   {
     "id": "np6sfu",
@@ -3545,7 +4417,9 @@
     "lat": 60.4726683,
     "lng": 25.1010635,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "website": "https://tatar.fi/",
+    "mapsUrl": "https://maps.google.com/?cid=14988831371460787433"
   },
   {
     "id": "ade1es",
@@ -3556,7 +4430,8 @@
     "lat": 60.20392870000001,
     "lng": 25.1188082,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=10142652171784495036"
   },
   {
     "id": "91oxis",
@@ -3567,7 +4442,8 @@
     "lat": 60.3508937,
     "lng": 25.0760731,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=16983748796310621279"
   },
   {
     "id": "ynoxha",
@@ -3578,7 +4454,9 @@
     "lat": 60.2890606,
     "lng": 25.0297216,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "phone": "044 9368184",
+    "mapsUrl": "https://maps.google.com/?cid=1631189121075242590"
   },
   {
     "id": "fgcar2",
@@ -3598,7 +4476,10 @@
       "thu": "11:30-20:00",
       "fri": "11:30-20:00",
       "sat": "11:30-20:00"
-    }
+    },
+    "website": "http://www.assic.fi/",
+    "phone": "045 1950139",
+    "mapsUrl": "https://maps.google.com/?cid=7711701246701619539"
   },
   {
     "id": "9szw5c",
@@ -3609,7 +4490,8 @@
     "lat": 60.2037413,
     "lng": 24.7642179,
     "tags": {},
-    "notes": ""
+    "notes": "",
+    "mapsUrl": "https://maps.google.com/?cid=10677517398879941672"
   },
   {
     "id": "9vx4pf",
@@ -3632,7 +4514,15 @@
       "fri": "10:30-20:00",
       "sat": "11:00-20:00",
       "sun": "11:00-20:00"
-    }
+    },
+    "website": "https://www.seoulgood.fi/",
+    "phone": "044 9855076",
+    "mapsUrl": "https://maps.google.com/?cid=10531741644029078866",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "dyjru5",
@@ -3661,7 +4551,17 @@
       "fri": "15:00-22:00",
       "sat": "11:00-22:00",
       "sun": "11:00-22:00"
-    }
+    },
+    "website": "http://bigbite.fi/",
+    "phone": "050 5578291",
+    "mapsUrl": "https://maps.google.com/?cid=17050251733078413774",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
   },
   {
     "id": "lsd79a",
@@ -3674,7 +4574,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_middle_eastern": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "no_alcohol": false
     },
     "notes": "Chicken and Kebab are confirmed Halal",
     "hours": {
@@ -3685,7 +4586,13 @@
       "fri": "11:00-06:00",
       "sat": "11:00-06:00",
       "sun": "11:00-05:00"
-    }
+    },
+    "phone": "045 8061490",
+    "mapsUrl": "https://maps.google.com/?cid=14567826513745217275",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "servesVegetarian": true
   },
   {
     "id": "7i5in8",
@@ -3708,7 +4615,13 @@
       "thu": "10:30-21:00",
       "fri": "10:30-22:30",
       "sat": "12:00-22:30"
-    }
+    },
+    "phone": "044 9719577",
+    "mapsUrl": "https://maps.google.com/?cid=18079545644171217034",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "bu20bb",
@@ -3731,7 +4644,11 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://mawaqit.net/en/m/hervanta-new-mosque-tampere-33720-finland",
+    "phone": "040 7749172",
+    "mapsUrl": "https://maps.google.com/?cid=10893618376377255634",
+    "wheelchairAccessible": true
   },
   {
     "id": "9xdwol",
@@ -3745,7 +4662,10 @@
       "daily_prayers": true,
       "jummah": true
     },
-    "notes": ""
+    "notes": "",
+    "website": "http://www.islamtampere.com/",
+    "phone": "050 3235594",
+    "mapsUrl": "https://maps.google.com/?cid=14151980558316711587"
   },
   {
     "id": "ahxxu8",
@@ -3765,7 +4685,9 @@
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
       "sat": "00:00-23:59"
-    }
+    },
+    "website": "https://www.facebook.com/zamzam.finland",
+    "mapsUrl": "https://maps.google.com/?cid=5149381425822521287"
   },
   {
     "id": "o7mgdm",
@@ -3789,7 +4711,15 @@
       "thu": "11:00-00:00",
       "fri": "11:00-03:00",
       "sat": "11:00-03:00"
-    }
+    },
+    "phone": "040 0182652",
+    "mapsUrl": "https://maps.google.com/?cid=12698025891727050087",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "606d8e",
@@ -3814,7 +4744,13 @@
       "thu": "10:30-20:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.itsuyaki.fi/",
+    "phone": "050 3566682",
+    "mapsUrl": "https://maps.google.com/?cid=6475922826875265706",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true
   },
   {
     "id": "aql0uu",
@@ -3839,7 +4775,15 @@
       "thu": "10:30-20:00",
       "fri": "10:30-20:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "website": "https://www.itsuyaki.fi/",
+    "phone": "050 3694465",
+    "mapsUrl": "https://maps.google.com/?cid=7951452355653506041",
+    "priceLevel": 3,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true,
+    "servesVegetarian": true
   },
   {
     "id": "3mc8fd",
@@ -3864,7 +4808,13 @@
       "thu": "10:30-20:00",
       "fri": "10:30-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "http://www.itsuyaki.fi/",
+    "phone": "050 5499551",
+    "mapsUrl": "https://maps.google.com/?cid=8881913888469961286",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true
   },
   {
     "id": "q29ooe",
@@ -3889,7 +4839,15 @@
       "thu": "11:00-20:00",
       "fri": "11:00-21:00",
       "sat": "11:00-20:30"
-    }
+    },
+    "website": "https://www.itsuyaki.fi/",
+    "phone": "050 5053212",
+    "mapsUrl": "https://maps.google.com/?cid=7860536648953959431",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "ej3r5e",
@@ -3914,7 +4872,15 @@
       "thu": "10:30-20:00",
       "fri": "10:30-21:00",
       "sat": "11:00-20:00"
-    }
+    },
+    "website": "https://www.itsuyaki.fi/tampere",
+    "phone": "050 3133530",
+    "mapsUrl": "https://maps.google.com/?cid=13106159320440336239",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "mu7yqm",
@@ -3937,7 +4903,15 @@
       "thu": "10:30-22:00",
       "fri": "10:30-22:00",
       "sat": "10:30-22:00"
-    }
+    },
+    "website": "https://www.koskikeskus.fi/liikkeet/kahvilat-ja-ravintolat/burger-company/-/f68a2",
+    "phone": "040 1911740",
+    "mapsUrl": "https://maps.google.com/?cid=7380468509341392908",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "delivery": true
   },
   {
     "id": "898dg5",
@@ -3961,6 +4935,126 @@
       "thu": "10:30-20:30",
       "fri": "11:00-21:00",
       "sat": "11:00-21:00"
-    }
+    },
+    "website": "https://www.7kora.fi/",
+    "phone": "045 3340077",
+    "mapsUrl": "https://maps.google.com/?cid=12932680735382333666",
+    "priceLevel": 2,
+    "takeout": true,
+    "delivery": true,
+    "reservable": true,
+    "servesVegetarian": true
+  },
+  {
+    "id": "onqe1j",
+    "name": "Tikkurilan Ruokakauppa",
+    "type": "shop",
+    "address": "Asematie 1c, 01300 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2924629,
+    "lng": 25.0424742,
+    "tags": {
+      "halal_meat": true,
+      "halal_butchery": true,
+      "halal_groceries": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "10:00-19:00",
+      "mon": "09:00-19:00",
+      "tue": "09:00-19:00",
+      "wed": "09:00-19:00",
+      "thu": "09:00-19:00",
+      "fri": "09:00-19:00",
+      "sat": "10:00-19:00"
+    },
+    "phone": "040 8111674",
+    "mapsUrl": "https://maps.google.com/?cid=841206065291784686"
+  },
+  {
+    "id": "2ppzo6",
+    "name": "Melo Pizza",
+    "type": "restaurant",
+    "address": "Asematie 1, 01300 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.2924108,
+    "lng": 25.0425984,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_arab": true,
+      "cuisine_pizza": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "11:00-03:00",
+      "mon": "10:00-03:00",
+      "tue": "10:00-03:00",
+      "wed": "10:00-03:00",
+      "thu": "10:00-03:00",
+      "fri": "10:00-05:00",
+      "sat": "11:00-05:00"
+    },
+    "website": "https://melopizzeria.fi/",
+    "phone": "040 5573866",
+    "mapsUrl": "https://maps.google.com/?cid=10544930227341871957",
+    "priceLevel": 2,
+    "dineIn": true,
+    "takeout": true
+  },
+  {
+    "id": "079ch6",
+    "name": "Atusa Market",
+    "type": "shop",
+    "address": "Asematie 4, 01300 Vantaa",
+    "city": "Vantaa",
+    "lat": 60.29278279999999,
+    "lng": 25.0412505,
+    "tags": {
+      "asian_products": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-18:00",
+      "mon": "10:00-20:00",
+      "tue": "10:00-20:00",
+      "wed": "10:00-20:00",
+      "thu": "10:00-20:00",
+      "fri": "10:00-20:00",
+      "sat": "10:00-18:00"
+    },
+    "website": "http://www.atusamarket.fi/",
+    "phone": "040 6312811",
+    "mapsUrl": "https://maps.google.com/?cid=8164355195860084714",
+    "wheelchairAccessible": true
+  },
+  {
+    "id": "ukpm4j",
+    "name": "Döner Harju Aikatalo",
+    "type": "restaurant",
+    "address": "Mikonkatu 8, 00100 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.1694547,
+    "lng": 24.9452285,
+    "tags": {
+      "fully_halal": true,
+      "cuisine_d_ner": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "12:00-21:00",
+      "mon": "11:00-21:00",
+      "tue": "11:00-21:00",
+      "wed": "11:00-21:00",
+      "thu": "11:00-21:00",
+      "fri": "11:00-22:00",
+      "sat": "11:00-22:00"
+    },
+    "website": "https://donerharju.fi/",
+    "phone": "044 7383668",
+    "mapsUrl": "https://maps.google.com/?cid=3524512888894094766",
+    "priceLevel": 2,
+    "wheelchairAccessible": true,
+    "dineIn": true
   }
 ]

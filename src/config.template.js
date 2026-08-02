@@ -15,3 +15,8 @@ export const NOMINATIM_REV       = 'https://nominatim.openstreetmap.org/reverse?
 export const NOMINATIM_VB        = '24.0,60.8,25.8,59.8';
 export const HF_TOKEN_KEY        = 'your-strong-random-key-here';
 export const SHEETS_URL          = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+
+// Firebase Auth config is NOT listed here — it isn't secret (it's public
+// client config baked into every Firebase web app's JS bundle), so it's
+// hardcoded directly as FIREBASE_CONFIG in src/config.js instead of following
+// the config.local.js/api/config indirection the keys above use.

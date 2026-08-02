@@ -30,6 +30,17 @@ export const NOMINATIM_VB = _cfg.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
 export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
 export const RECAPTCHA_SITE_KEY = "6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v";
 
+// Firebase Auth (identity layer only — no Firestore/Analytics/FCM). Not secret:
+// this is public client config baked into every Firebase web app's JS bundle
+// (see docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 4), so it's committed directly
+// rather than routed through config.local.js/api/config like the keys above.
+export const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA8eOK1dL3hzz6cbQ2C73S4K4IQv9foMGU",
+  authDomain: "halal-map-karamah.firebaseapp.com",
+  projectId: "halal-map-karamah",
+  appId: "1:372947925614:web:e4f700b0512e1aa25bc47f",
+};
+
 export const HELSINKI = [24.9384, 60.1699];
 
 // Finland's border polygon (loaded from GeoJSON at runtime for point-in-polygon checks).

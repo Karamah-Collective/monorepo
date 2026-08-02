@@ -358,27 +358,12 @@
   text-align: right !important;
 }
 
-#style-picker {
+/* ─── Menu Pill ─── */
+#menu-pill-wrap {
   position: absolute;
   z-index: var(--z-ctrl-mid);
   right: var(--map-edge);
   bottom: calc(var(--tab-h) + var(--safe-b) + 163px);
-}
-
-/* ─── Contact Pill ─── */
-#contact-pill-wrap {
-  position: absolute;
-  z-index: var(--z-ctrl-mid);
-  right: var(--map-edge);
-  bottom: calc(var(--tab-h) + var(--safe-b) + 215px);
-}
-
-/* ─── Wishlist Pill ─── */
-#wish-pill-wrap {
-  position: absolute;
-  z-index: var(--z-ctrl-mid);
-  right: var(--map-edge);
-  bottom: calc(var(--tab-h) + var(--safe-b) + 267px);
 }
 
 /* ─── Contact Overlay ─── */
@@ -695,7 +680,11 @@
 .rv-write-panel {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 0.3s var(--ease-expo);
+  /* Matches .rv-overlay-card's own `height` transition (both var(--t-spring))
+     so the card's outer growth and this panel's inner reveal run in lockstep
+     as one motion, not two visibly distinct animations racing each other —
+     see _insertReviewPanel() in reviews.js and docs/PREFERENCE_LOG.md. */
+  transition: grid-template-rows var(--t-spring);
 }
 .rv-write-panel.shut {
   grid-template-rows: 0fr;
@@ -1214,10 +1203,39 @@
   flex-shrink: 0;
 }
 
+/* #style-panel now holds two labeled sub-groups (Theme: Light/Dark/Auto —
+   Overlay: Satellite/Heatmap) side by side in one row instead of one flat
+   row of 4 thumbnails with a stray divider between the 2nd and 3rd item.
+   Each group is only as wide as its own content (3 vs 2 options) and the
+   groups sit left-aligned with a clear divider between them — any leftover
+   space after Overlay is now expected/normal (two meaningfully-labeled
+   groups sized to their own content), not the earlier bug (4 unlabeled
+   thumbnails arbitrarily not filling the row for no apparent reason). */
 #style-panel {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
   padding: 8px;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   white-space: nowrap;
+}
+.style-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+/* Divider between the two groups — reuses --border like every other divider
+   in this app, replacing the old standalone .style-divider flex child. The
+   parent's own `gap` already provides breathing room before the line; this
+   padding adds breathing room after it, before the group's own content. */
+.style-group + .style-group {
+  border-left: 1px solid var(--border);
+  padding-left: var(--sp-3);
+}
+.style-group-row {
+  display: flex;
+  gap: var(--sp-2);
 }
 
 .style-opt {
@@ -1228,7 +1246,7 @@
   background: none;
   border: 2px solid transparent;
   border-radius: var(--r-sm);
-  padding: 6px 8px;
+  padding: 4px 6px;
   cursor: pointer;
   transition: border-color var(--t-fast);
 }
@@ -1246,8 +1264,8 @@
   color: var(--text-2);
 }
 .style-thumb {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-inner);
 }
 .thumb-light {
@@ -1284,6 +1302,24 @@
 .thumb-dark {
   background: url("../../data/thumbs/default.png") center/cover no-repeat;
   filter: invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04);
+}
+/* "Auto" (follow OS theme) has no map style of its own to preview, so the
+   swatch is the same map thumbnail as Light/Dark, diagonally split between
+   its normal (Light) rendering and the same dark-mode filter .thumb-dark
+   uses — depicting both halves at once rather than a flat placeholder
+   gradient unrelated to the actual map styles. */
+.thumb-auto {
+  position: relative;
+  overflow: hidden;
+  background: url("../../data/thumbs/default.png") center/cover no-repeat;
+}
+.thumb-auto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../../data/thumbs/default.png") center/cover no-repeat;
+  filter: invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
 /* When dark theme is active, show heatmap thumb on dark bg */
@@ -1388,6 +1424,13 @@ body.dark-mode {
 
   --walk:         #8a96a8;
   --funicular:    #9898a0;
+
+  /* Google "Sign in with Google" dark-theme chrome — values fixed by Google's
+     branding guidelines, not derived from --surface/--text (the G-logo
+     colors themselves never change with theme, only this button's chrome). */
+  --google-btn-bg:     #131314;
+  --google-btn-border: #8e918f;
+  --google-btn-text:   #e3e3e3;
 }
 
 /* Map background behind tiles */
@@ -1472,13 +1515,6 @@ body.dark-mode .skel-bone {
   background: var(--surface-3);
 }
 
-/* Tools toggle active state */
-body.dark-mode #app.tools-open #tools-toggle,
-body.dark-mode #tools-toggle.style-active {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
 /* Form inputs in dark mode */
 body.dark-mode .sg-label input,
 body.dark-mode .sg-label select,
@@ -1486,7 +1522,8 @@ body.dark-mode .sg-label textarea,
 body.dark-mode .dir-field input {
   color: var(--text);
 }
-body.dark-mode .sg-label select {
+body.dark-mode .sg-label select,
+body.dark-mode .rv-select {
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a0a8ba' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
@@ -1748,17 +1785,9 @@ body.dark-mode .sp-tip {
     right: 26px;
     bottom: 24px;
   }
-  #style-picker {
+  #menu-pill-wrap {
     right: 26px;
     bottom: 172px;
-  }
-  #contact-pill-wrap {
-    right: 26px;
-    bottom: 224px;
-  }
-  #wish-pill-wrap {
-    right: 26px;
-    bottom: 276px;
   }
   #search-card {
     right: 26px;
@@ -1779,176 +1808,22 @@ body.dark-mode .sp-tip {
   }
 }
 
-/* ─── Tools Toggle: visible on phone + tablet, hidden on desktop ─── */
-#tools-toggle {
-  display: flex;
-  position: absolute;
-  z-index: var(--z-ctrl-mid);
-  right: var(--map-edge);
-  bottom: 165px;
-  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
-}
-
-/* ─── Shared: hide pills behind toggle on phone + tablet (+ short desktop) ─── */
-@media (max-width: 1199px), (min-width: 1200px) and (max-height: 779px) {
-  #search-card,
-  #contact-pill-wrap,
-  #wish-pill-wrap,
-  #style-picker {
-    opacity: 0;
-    pointer-events: none;
-    /* Exit: quick fade + ease-in pull-away */
-    transition:
-      opacity 0.12s ease-in,
-      transform 0.18s ease-in,
-      width 0.3s var(--ease-expo),
-      border-radius 0.3s ease,
-      box-shadow 0.3s ease;
-  }
-
-  #app.tools-open #search-card,
-  #app.tools-open #contact-pill-wrap,
-  #app.tools-open #wish-pill-wrap,
-  #app.tools-open #style-picker {
-    opacity: 1;
-    pointer-events: auto;
-    /* Enter: spring-pop overshoot + slower fade-in */
-    transition:
-      opacity 0.22s ease-out,
-      transform 0.38s var(--ease-spring-pop),
-      width 0.3s var(--ease-expo),
-      border-radius 0.3s ease,
-      box-shadow 0.3s ease;
-  }
-
-  /* Stagger reveal */
-  #app.tools-open #search-card       { transition-delay: 0s; }
-  #app.tools-open #style-picker      { transition-delay: 0.04s; }
-  #app.tools-open #contact-pill-wrap { transition-delay: 0.08s; }
-  #app.tools-open #wish-pill-wrap    { transition-delay: 0.12s; }
-
-  /* Stagger hide (reverse) */
-  #app:not(.tools-open) #wish-pill-wrap    { transition-delay: 0s; }
-  #app:not(.tools-open) #contact-pill-wrap { transition-delay: 0.02s; }
-  #app:not(.tools-open) #style-picker      { transition-delay: 0.04s; }
-  #app:not(.tools-open) #search-card       { transition-delay: 0.06s; }
-
-  /* Active state for toggle */
-  #app.tools-open #tools-toggle,
-  #tools-toggle.style-active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
-  }
-}
-
-/* ─── Phone: pills fan out vertically above toggle ─── */
-@media (max-width: 768px) {
-  #tools-toggle {
-    right: var(--map-edge);
-    bottom: 165px; /* sits just above zoom pill top (~157px) */
-  }
-
-  /* Stack pills above the toggle: 165 + 52 = 217, +52 = 269, +52 = 321, +52 = 373 */
-  #search-card       { right: var(--map-edge); bottom: 217px; }
-  #style-picker      { right: var(--map-edge); bottom: 269px; }
-  #contact-pill-wrap { right: var(--map-edge); bottom: 321px; }
-  #wish-pill-wrap    { right: var(--map-edge); bottom: 373px; }
-
-  #search-card       { transform: translateY(14px) scale(0.82); }
-  #style-picker      { transform: translateY(14px) scale(0.82); }
-  #contact-pill-wrap { transform: translateY(14px) scale(0.82); }
-  #wish-pill-wrap    { transform: translateY(14px) scale(0.82); }
-
-  #app.tools-open #search-card,
-  #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap,
-  #app.tools-open #wish-pill-wrap {
-    transform: translateY(0) scale(1);
-  }
-
-  /* Safety net: cap panel width to available space (harmless on wider phones) */
-  #style-panel {
-    max-width: calc(100vw - var(--map-edge) - var(--btn-icon-size) - 16px);
-  }
-}
-
-/* Shrink thumbnails only on viewports too narrow for the full 337 px panel */
-@media (max-width: 399px) {
-  #style-panel .style-thumb {
-    width: 44px;
-    height: 44px;
-  }
-  #style-panel .style-opt {
-    padding: 4px 6px;
-  }
-}
-
-/* ─── Tablet: pills fan out horizontally left of toggle ─── */
+/* ─── Tablet: search expands leftward to leave room for the menu pill's column ─── */
 @media (min-width: 769px) and (max-width: 1199px) {
-  #tools-toggle {
-    right: 26px;
-    bottom: 119px;
-  }
-
-  /* Horizontal row left of toggle */
-  #search-card       { right: 82px;  bottom: 119px; }
-  #style-picker      { right: 138px; bottom: 119px; }
-  #contact-pill-wrap { right: 194px; bottom: 119px; }
-  #wish-pill-wrap    { right: 250px; bottom: 119px; }
-
-  /* Search expands leftward */
   #search-card:not(.collapsed) {
     width: min(50vw, 360px);
   }
-
-  #search-card       { transform: translateX(16px) scale(0.82); }
-  #style-picker      { transform: translateX(16px) scale(0.82); }
-  #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
-  #wish-pill-wrap    { transform: translateX(16px) scale(0.82); }
-
-  #app.tools-open #search-card,
-  #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap,
-  #app.tools-open #wish-pill-wrap {
-    transform: translateX(0) scale(1);
-  }
 }
 
-/* ─── Desktop (≥1200px) + short viewport: horizontal toggle above zoom pill ─── */
+/* ─── Desktop (≥1200px) + short viewport: narrower search expansion ─── */
 @media (min-width: 1200px) and (max-height: 779px) {
-  #tools-toggle {
-    right: 26px;
-    bottom: 119px;
-  }
-
-  #search-card       { right: 82px;  bottom: 119px; }
-  #style-picker      { right: 138px; bottom: 119px; }
-  #contact-pill-wrap { right: 194px; bottom: 119px; }
-  #wish-pill-wrap    { right: 250px; bottom: 119px; }
-
   #search-card:not(.collapsed) {
     width: min(40vw, 360px);
   }
-
-  #search-card       { transform: translateX(16px) scale(0.82); }
-  #style-picker      { transform: translateX(16px) scale(0.82); }
-  #contact-pill-wrap { transform: translateX(16px) scale(0.82); }
-  #wish-pill-wrap    { transform: translateX(16px) scale(0.82); }
-
-  #app.tools-open #search-card,
-  #app.tools-open #style-picker,
-  #app.tools-open #contact-pill-wrap,
-  #app.tools-open #wish-pill-wrap {
-    transform: translateX(0) scale(1);
-  }
 }
 
-/* ─── Desktop (≥1200px, tall enough): toggle hidden, pills always visible ─── */
+/* ─── Desktop (≥1200px, tall enough) ─── */
 @media (min-width: 1200px) and (min-height: 780px) {
-  #tools-toggle {
-    display: none;
-  }
   /* Align scale bar's right edge with the tab bar (right: 16px) */
   .maplibregl-ctrl-top-right {
     right: 16px !important;
@@ -2044,6 +1919,14 @@ body.dark-mode .sp-tip {
   font-weight: var(--fw-bold);
   color: var(--text);
   letter-spacing: var(--ls-tight);
+}
+
+/* Place names can run long (unlike "Places"/"Directions") — clip with ellipsis
+   instead of wrapping and blowing out the header row's height. */
+#place-sheet-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 @media (min-width: 769px) {
@@ -2483,7 +2366,8 @@ body.dark-mode .sp-tip {
   transform: scale(0.95) translateY(-4px);
   pointer-events: none;
 }
-.sort-section-label {
+.sort-section-label,
+.menu-section-label {
   padding: 6px 14px 3px;
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
@@ -2498,7 +2382,8 @@ body.dark-mode .sp-tip {
   background: var(--border-light);
   margin: 4px 0;
 }
-.sort-opt {
+.sort-opt,
+.menu-row {
   display: flex;
   align-items: center;
   width: 100%;
@@ -2516,7 +2401,8 @@ body.dark-mode .sp-tip {
     color 0.12s;
 }
 @media (hover: hover) {
-  .sort-opt:hover:not(:disabled) {
+  .sort-opt:hover:not(:disabled),
+  .menu-row:hover {
     background: var(--surface-2);
     color: var(--text);
   }
@@ -2540,6 +2426,235 @@ body.dark-mode .sp-tip {
   cursor: default;
   pointer-events: none;
 }
+
+/* ─── Menu sheet: Account / Map View / Support / Preferences ─── */
+/* .menu-row shares .sort-opt's full-bleed hover fill (background: var(--surface-2)
+   on hover, no border-radius override there), which works fine inside the narrow
+   #sort-wrap dropdown where the rounded corners are the container's own corners.
+   Inside the much wider Menu sheet, an edge-to-edge fill with rounded corners on
+   all four sides reads as a stray floating pill rather than a highlighted row,
+   and its corners sit flush against the sheet's own edges with zero breathing
+   room ("touching the border"). Inset the row from the sheet edges so the pill
+   floats the way this app's other rounded pill components do, and reduce the
+   inner horizontal padding by the same amount so the icon/text stay visually
+   aligned with the 14px inset already used by .menu-section-label above it
+   (margin var(--sp-3) + padding var(--sp-2) = 14px, matching the label). */
+.menu-row {
+  gap: var(--sp-3);
+  border-radius: var(--r-sm);
+  width: calc(100% - var(--sp-3) * 2);
+  margin: 0 var(--sp-3);
+  padding: var(--sp-3) var(--sp-2);
+}
+.menu-row svg {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+/* Support section: Contact us / Wishlist sit side by side instead of
+   stacked. The pair container supplies the same var(--sp-3) outer inset the
+   standalone .menu-row otherwise gets from its own margin, so each row keeps
+   the exact same breathing-room fix from the edge-to-edge hover-pill bug —
+   .menu-row itself just switches from a fixed self-margin to an even flex-1
+   split of the space the pair container provides. */
+.menu-row-pair {
+  display: flex;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-3);
+}
+.menu-row-pair .menu-row {
+  flex: 1;
+  width: auto;
+  margin: 0;
+}
+.menu-section {
+  padding: var(--sp-2) 0;
+}
+.menu-placeholder {
+  padding: 6px 14px 14px;
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  font-style: italic;
+}
+#menu-sheet-body {
+  padding: var(--sp-3) 0 var(--sp-7);
+}
+#menu-sheet-body #style-panel {
+  padding: var(--sp-2) 14px;
+}
+
+/* ─── Menu sheet: Account section (sign-in, profile, "Your reviews") ─── */
+.menu-account-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 14px var(--sp-4);
+  /* Lets _animateMenuPanelHeight() (menu.js) run a smooth height tween when
+     the email sign-in panel opens/closes below it — same role as
+     .rv-overlay-card's height transition for reviews.js's own
+     _animateReviewCardHeight(). */
+  transition: height var(--t-spring);
+}
+.menu-account-panel .menu-placeholder {
+  padding-left: 0;
+  padding-right: 0;
+}
+/* Google sign-in + email option share one row instead of a full-width Google
+   button stacked over a small centered text link — and neither should read
+   as more "primary"/prominent than the other. Both are .rv-action-btn with
+   flex: 1 (equal ~50/50 split, 44px height) and both now carry an icon +
+   label (see EMAIL_SIGNIN_BTN_HTML in src/icons.js) — an icon-only email
+   button next to a full logo+label Google button was tried first and
+   rejected for reading as two different apps' buttons side by side (see
+   docs/PREFERENCE_LOG.md). .btn-secondary's *default* border/text (--border
+   #e2e2e2, --text-2 #525252) is deliberately subtle everywhere else it's
+   used (a genuinely de-emphasized secondary action) — overridden here,
+   along with .btn-google's own border/weight, to the same shared neutral
+   tokens (--text-2 border, --fw-medium) so both buttons carry identical
+   visual weight, not just matching box size. */
+.menu-account-signin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.menu-account-signin-row > * {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: var(--sp-2);
+  padding-right: var(--sp-2);
+}
+.menu-account-signin-row .btn-secondary {
+  gap: var(--sp-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  border: 1px solid var(--text-2);
+  color: var(--text);
+}
+.menu-account-signin-row .btn-google {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  border: 1px solid var(--text-2);
+}
+@media (hover: hover) {
+  .menu-account-signin-row .btn-secondary:hover {
+    border-color: var(--text);
+  }
+}
+/* Ties the expanded email panel visually to the sign-in row above it instead
+   of reading as a loose, disconnected stack — same divider convention as
+   .pp-reviews (border-top + padding-top on --border-light). Only shows once
+   .rv-verify-step's own "hide" class is removed. */
+#menu-email-signin-panel {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--sp-4);
+}
+.menu-account-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.menu-account-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--txt-base);
+  font-weight: var(--fw-bold);
+}
+.menu-account-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.menu-account-name,
+.menu-account-email {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-account-name {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.menu-account-email {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+}
+.menu-reviews-label {
+  padding-left: 0;
+  padding-right: 0;
+  margin-top: var(--sp-2);
+}
+#menu-my-reviews.rv-list {
+  gap: 0;
+}
+.acc-review-row {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.acc-review-place-name {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .acc-review-place-name:hover {
+    color: var(--accent);
+  }
+}
+.acc-review-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--sp-1);
+}
+
+/* ─── Menu sheet: Preferences section ─── */
+.menu-pref-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  /* Same horizontal inset as .menu-account-panel above it, so every Menu
+     sheet section's content lines up under the same 14px left edge as its
+     section label. */
+  padding: var(--sp-2) 14px var(--sp-4);
+}
+.menu-pref-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.menu-pref-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  min-width: 0;
+}
+.menu-pref-toggle-label {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+.menu-pref-toggle-sub {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+}
+
 #tag-filter-chips {
   overflow: hidden;
   touch-action: manipulation;
@@ -2561,6 +2676,11 @@ body.dark-mode .sp-tip {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+#place-sheet-body {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Cross-fade content on tab switch ── */
@@ -3205,6 +3325,9 @@ body.dark-mode .sp-tip {
     0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+/* Shared floating-popup card chrome — still used by dropped-pin and
+   current-location popups (search.js, map-controls.js). Directory place
+   details no longer use this; they live in the #place-sheet bottom sheet. */
 .place-popup-wrap .maplibregl-popup-tip {
   display: none !important;
 }
@@ -3218,13 +3341,6 @@ body.dark-mode .sp-tip {
   box-shadow: var(--shadow-xl) !important;
   background: var(--surface) !important;
   animation: popupEnter 0.25s var(--ease-expo);
-}
-.place-popup-wrap.popup-positioning {
-  opacity: 0;
-  pointer-events: none;
-}
-.place-popup-wrap.popup-positioning .maplibregl-popup-content {
-  animation: none !important;
 }
 .place-popup-wrap .maplibregl-popup-content::after {
   content: "";
@@ -3297,14 +3413,6 @@ body.dark-mode .sp-tip {
   letter-spacing: var(--ls-caps);
   border-radius: var(--r-pill);
   padding: var(--sp-0h) var(--sp-3);
-}
-
-.pp-title {
-  font-size: var(--txt-lg);
-  font-weight: var(--fw-semibold);
-  color: var(--text);
-  line-height: var(--lh-snug);
-  letter-spacing: var(--ls-tight);
 }
 
 .pp-fav-btn {
@@ -3384,6 +3492,73 @@ body.dark-mode .sp-tip {
   color: var(--text-2);
   font-style: italic;
   line-height: 1.5;
+}
+
+/* ── Google's editorial summary ("about" blurb) — attributed, never mistaken for a user note ── */
+.pp-about {
+  font-size: var(--txt-base);
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.pp-about-label {
+  display: block;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+.pp-about p {
+  margin: 0;
+}
+
+/* ── Business status banner (per Google) — same shape as .pp-boycott-callout ── */
+.pp-status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-xs);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+}
+.pp-status-banner svg {
+  flex-shrink: 0;
+  align-self: center;
+}
+.pp-status-banner--warn {
+  background: var(--gold-soft);
+  color: color-mix(in srgb, var(--gold) 70%, var(--text));
+}
+.pp-status-banner--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ── Contact row — phone / website / Google Maps link ── */
+.pp-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.pp-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  text-decoration: none;
+}
+.pp-contact-link svg {
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  .pp-contact-link:hover {
+    text-decoration: underline;
+  }
 }
 
 /* ── Popup opening hours ──────────────────────────────────────────────────── */
@@ -3695,6 +3870,7 @@ body.dark-mode .sp-tip {
 }
 .pp-actions .pp-dir-btn,
 .pp-actions .pp-home-btn,
+.pp-actions .pp-contact-btn,
 .pp-actions .pp-share-btn,
 .pp-actions .pp-edit-btn,
 .pp-actions .pp-rm-btn {
@@ -4286,12 +4462,13 @@ body.dark-mode .sp-tip {
   resize: vertical;
   min-height: 60px;
 }
-.sg-label select {
+.sg-label select,
+.rv-select {
   -webkit-appearance: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23506070' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right var(--sp-5) center;
   padding-right: 32px;
 }
 
@@ -5034,6 +5211,7 @@ body.dark-mode .sp-tip {
   }
 }
 
+
 /* Inline button loading spinner */
 .btn-spinner {
   display: inline-block;
@@ -5044,6 +5222,27 @@ body.dark-mode .sp-tip {
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
   flex-shrink: 0;
+}
+/* .btn-google's chrome is a light/dark neutral (not --accent), so the default
+   white-on-accent spinner colors above are invisible against it — override
+   to use the button's own text/border tokens instead. */
+.btn-google .btn-spinner {
+  border-color: color-mix(in srgb, var(--google-btn-text) 25%, transparent);
+  border-top-color: var(--google-btn-text);
+}
+/* .btn-google's height comes from the shared .rv-action-btn class unchanged
+   (var(--h-submit), which actually resolves to 44px in this codebase, not
+   the 48px DESIGN_SYSTEM.md's Component Sizing table currently — and
+   incorrectly — documents; see docs/PREFERENCE_LOG.md for the drift this
+   surfaced). 44px is already this app's own touch-target-safe CTA height, so
+   it isn't shrunk further. What actually made the button read "oversized"
+   next to the small "Use an email link instead" text link was the 16px bold
+   label inherited from .rv-action-btn — Google's own branding guidelines
+   specify a 14px Google Sans Medium label (developers.google.com/identity/
+   branding-guidelines), so only font-size is overridden here (font-weight is
+   already medium via the base .btn-google rule above). */
+.btn-google {
+  font-size: var(--txt-base);
 }
 
 @keyframes fadeOut {
@@ -5830,7 +6029,6 @@ body.dark-mode .fallback-notice {
 
 /* Hide non-essential controls during navigation for clean map */
 body.nav-mode #search-card,
-body.nav-mode #tools-toggle,
 body.nav-mode .tool-pill,
 body.nav-mode #zoom-pill,
 body.nav-mode #prayer-snack,
@@ -5839,9 +6037,7 @@ body.nav-mode #events-pill,
 body.nav-mode #promos-pill,
 body.nav-mode #tab-bar,
 body.nav-mode #route-snackbar,
-body.nav-mode #contact-pill-wrap,
-body.nav-mode #wish-pill-wrap,
-body.nav-mode #style-picker {
+body.nav-mode #menu-pill-wrap {
   display: none !important;
 }
 
@@ -8141,6 +8337,8 @@ body.dark-mode .sp-chip {
                 visibility 0s 0.4s; /* snap hidden only after slide completes */
   }
 
+  /* Dropped-pin / current-location popups (search.js, map-controls.js) —
+     viewport-capped height with internal scroll, unrelated to place-sheet. */
   .place-popup-wrap .maplibregl-popup-content {
     max-width: min(300px, calc(100vw - (var(--sp-8) * 2)));
     max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - (var(--sp-8) * 2));

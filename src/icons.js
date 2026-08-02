@@ -1,5 +1,31 @@
 // SVG icons, place/transit type configs, and marker HTML builders
 
+// Official Google "G" logomark (4-color), per Google's Sign in with Google
+// branding guidelines — must render at its standard colors, never recolored
+// to match this app's own accent palette. Inlined as SVG (no external asset
+// fetch) matching how every other icon in this app is embedded. Shared here
+// (rather than living in either caller) because both src/menu.js's Account
+// sign-in prompt and src/reviews.js's "sign in to write a review" gate render
+// the identical "Continue with Google" button and must stay visually in sync.
+export const GOOGLE_G_LOGO_SVG = `<svg class="btn-google-icon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+  <path fill="var(--google-g-blue)" d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.8749 2.6836-6.615z"/>
+  <path fill="var(--google-g-green)" d="M9 18c2.43 0 4.4673-.806 5.9564-2.1805l-2.9087-2.2581c-.8059.54-1.8368.859-3.0477.859-2.3436 0-4.3282-1.5831-5.036-3.7104H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"/>
+  <path fill="var(--google-g-yellow)" d="M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1023-1.17.2822-1.71V4.9582H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0418L3.964 10.71z"/>
+  <path fill="var(--google-g-red)" d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.891 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.6564 3.5795 9 3.5795z"/>
+</svg>`;
+export const GOOGLE_SIGNIN_LABEL = "Continue with Google";
+export const GOOGLE_SIGNIN_BTN_HTML = `${GOOGLE_G_LOGO_SVG}<span class="btn-google-label">${GOOGLE_SIGNIN_LABEL}</span>`;
+
+// Envelope icon for the "Continue with email" peer button beside it — same
+// path as the Menu sheet's Contact-us row icon (index.html), reused here for
+// icon parity with the Google button rather than a plain text-only button.
+export const EMAIL_SIGNIN_ICON_SVG = `<svg class="btn-email-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+  <polyline points="22,6 12,13 2,6"/>
+</svg>`;
+export const EMAIL_SIGNIN_LABEL = "Continue with email";
+export const EMAIL_SIGNIN_BTN_HTML = `${EMAIL_SIGNIN_ICON_SVG}<span class="btn-email-label">${EMAIL_SIGNIN_LABEL}</span>`;
+
 const PURPLE_LIGHT = "#8C4799";
 const PURPLE_DARK = "#C47EC8";
 

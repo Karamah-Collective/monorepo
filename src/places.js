@@ -1,11 +1,12 @@
 import { map, scheduleMapViewportSync } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, fadeAndRemovePopup, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
+import { EVT } from "./events.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -32,20 +33,16 @@ function sortSubtags() {
     }
   }
 }
-let _activePlacePopupId = null;
-let _activePlacePopup = null;
+let _activePlaceSheetId = null;
+let _activePlaceSheetReviewsListener = null;
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 
-const PHONE_VIEWPORT_MAX_WIDTH = 768;
-const PLACE_POPUP_OFFSET_Y = -42;
-
-const PLACE_POPUP_MOVE_MS = 460;
-const PLACE_POPUP_CENTER_Y_OFFSET = -55; // shift popup above viewport centre for better framing
-const PLACE_POPUP_CENTER_TOLERANCE_PX = 1;
-const PLACE_POPUP_REVEAL_FALLBACK_MS = 140;
-const MERCATOR_TILE_SIZE = 512;
-const MAX_MERCATOR_LAT = 85.05112878;
+const _CLOSE_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
+// Contact action-row button icon (phone) — reuses the exact path from the existing
+// .pp-contact row's tel: link icon.
+const _CONTACT_PHONE_ICON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
 
 /** Place types grouped under the "Religious" tab (everything except mosques). */
 const RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"]);
@@ -66,208 +63,55 @@ let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
 
 
-function clearActivePlacePopup() {
-  _cancelPlacePopupCameraTween();
-  if (_activePlacePopup) {
-    try { _activePlacePopup.remove(); } catch (_) {}
-    _activePlacePopup = null;
+const placeSheetEl = document.getElementById("place-sheet");
+const placeSheetTitle = document.getElementById("place-sheet-title");
+const placeSheetBody = document.getElementById("place-sheet-body");
+const placeSheetCloseBtn = document.getElementById("place-sheet-close");
+const placeSheetScrim = document.getElementById("scrim");
+let _placeSheetFromListScrollTop = null;
+
+/** Close the place-detail sheet and clear its active-marker tracking state. */
+export function closePlaceSheet() {
+  if (placeSheetEl._animCleanup) { clearTimeout(placeSheetEl._animCleanup); placeSheetEl._animCleanup = null; }
+  if (placeSheetEl._hideTimeout) { clearTimeout(placeSheetEl._hideTimeout); placeSheetEl._hideTimeout = null; }
+  if (_activePlaceSheetReviewsListener) {
+    window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
+    _activePlaceSheetReviewsListener = null;
   }
-  _activePlacePopupId = null;
-  document.querySelectorAll(".place-popup-wrap.maplibregl-popup").forEach((p) => p.remove());
+  _activePlaceSheetId = null;
+  _placeSheetFromListScrollTop = null;
+  placeSheetSnap.close();
+  placeSheetScrim.classList.add("hide");
+  placeSheetEl._hideTimeout = setTimeout(() => {
+    placeSheetEl.hidden = true;
+    placeSheetSnap.cleanup();
+    placeSheetEl._hideTimeout = null;
+  }, 400);
 }
 
-let _sheetCloseRAF1 = 0;
-let _sheetCloseRAF2 = 0;
-let _mobilePlaceFocusLocked = false;
-let _mobilePlaceFocusUnlockTimer = 0;
-let _mobilePlaceFocusToken = 0;
-let _placePopupRevealTimer = 0;
-let _placePopupMoveEndHandler = null;
-
-function isPhoneViewport() {
-  return window.innerWidth <= PHONE_VIEWPORT_MAX_WIDTH;
+function _resetPlaceSheetCloseButton() {
+  placeSheetCloseBtn.setAttribute("aria-label", "Close");
+  placeSheetCloseBtn.innerHTML = _CLOSE_ICON_SVG;
+  placeSheetCloseBtn.classList.remove("place-sheet-close--back");
 }
 
-function unlockMobilePlaceFocus() {
-  _mobilePlaceFocusLocked = false;
-  clearTimeout(_mobilePlaceFocusUnlockTimer);
-  _mobilePlaceFocusUnlockTimer = 0;
+function _setPlaceSheetCloseAsBack() {
+  placeSheetCloseBtn.setAttribute("aria-label", "Back to places");
+  placeSheetCloseBtn.innerHTML = _BACK_ICON_SVG;
+  placeSheetCloseBtn.classList.add("place-sheet-close--back");
 }
 
-function lockMobilePlaceFocus(fallbackMs = 650) {
-  if (!isPhoneViewport()) return true;
-  if (_mobilePlaceFocusLocked) return false;
-  _mobilePlaceFocusLocked = true;
-  clearTimeout(_mobilePlaceFocusUnlockTimer);
-  _mobilePlaceFocusUnlockTimer = setTimeout(() => {
-    unlockMobilePlaceFocus();
-  }, fallbackMs);
-  return true;
-}
-
-function focusPlaceOnPhone(place, token) {
-  if (token !== _mobilePlaceFocusToken) return;
-  showPlacePopup(place);
-  unlockMobilePlaceFocus();
-}
-
-function _revealMeasuredPopup(popup) {
-  const popupEl = popup.getElement();
-  if (popupEl) popupEl.classList.remove("popup-positioning");
-}
-
-function _cancelPlacePopupCameraTween() {
-  clearTimeout(_placePopupRevealTimer);
-  _placePopupRevealTimer = 0;
-  if (_placePopupMoveEndHandler) {
-    map.off("moveend", _placePopupMoveEndHandler);
-    _placePopupMoveEndHandler = null;
-  }
-}
-
-function _measurePopupCenterDelta(popupEl) {
-  const mapRect = map.getContainer().getBoundingClientRect();
-  const popupRect = popupEl.getBoundingClientRect();
-  const popupCenterX = popupRect.left + popupRect.width / 2;
-  const popupCenterY = popupRect.top + popupRect.height / 2;
-  const viewportCenterX = mapRect.left + mapRect.width / 2;
-  const viewportCenterY = mapRect.top + mapRect.height / 2;
-
-  return {
-    mapRect,
-    deltaX: popupCenterX - viewportCenterX,
-    deltaY: popupCenterY - viewportCenterY,
-  };
-}
-
-function _measurePopupAnchorOffset(popupEl, place) {
-  const mapRect = map.getContainer().getBoundingClientRect();
-  const popupRect = popupEl.getBoundingClientRect();
-  const anchor = map.project([place.lng, place.lat]);
-  const popupCenterX = popupRect.left + popupRect.width / 2;
-  const popupCenterY = popupRect.top + popupRect.height / 2;
-  const anchorX = mapRect.left + anchor.x;
-  const anchorY = mapRect.top + anchor.y;
-
-  return {
-    x: popupCenterX - anchorX,
-    y: popupCenterY - anchorY,
-  };
-}
-
-function _easePlacePopupCamera(t) {
-  return 1 - Math.pow(1 - t, 3); // ease-out cubic — quick start, smooth settle
-}
-
-function _projectLngLatToWorld(lng, lat, zoom) {
-  const worldSize = MERCATOR_TILE_SIZE * Math.pow(2, zoom);
-  const clampedLat = Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat));
-  const sinLat = Math.sin(clampedLat * Math.PI / 180);
-
-  return {
-    x: ((lng + 180) / 360) * worldSize,
-    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize,
-  };
-}
-
-function _unprojectWorldToLngLat(worldX, worldY, zoom) {
-  const worldSize = MERCATOR_TILE_SIZE * Math.pow(2, zoom);
-  const lng = (worldX / worldSize) * 360 - 180;
-  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * worldY / worldSize))) * 180 / Math.PI;
-  return { lng, lat };
-}
-
-function _centerForPlaceAtScreenPoint(place, screenPoint, zoom) {
-  const mapEl = map.getContainer();
-  const placeWorld = _projectLngLatToWorld(place.lng, place.lat, zoom);
-  const centerWorld = {
-    x: placeWorld.x - (screenPoint.x - mapEl.clientWidth / 2),
-    y: placeWorld.y - (screenPoint.y - mapEl.clientHeight / 2),
-  };
-
-  return _unprojectWorldToLngLat(centerWorld.x, centerWorld.y, zoom);
-}
-
-function _animatePopupCameraToCenter(popup, place, anchorOffset) {
-  _cancelPlacePopupCameraTween();
-
-  const mapEl = map.getContainer();
-  const currentZoom = map.getZoom();
-  const targetPopupCenter = {
-    x: mapEl.clientWidth / 2,
-    y: mapEl.clientHeight / 2 + PLACE_POPUP_CENTER_Y_OFFSET,
-  };
-  const anchorPoint = {
-    x: targetPopupCenter.x - anchorOffset.x,
-    y: targetPopupCenter.y - anchorOffset.y,
-  };
-  const center = _centerForPlaceAtScreenPoint(place, anchorPoint, currentZoom);
-  let settled = false;
-
-  const finish = () => {
-    if (settled) return;
-    settled = true;
-    _cancelPlacePopupCameraTween();
-    clearTimeout(_placePopupRevealTimer);
-    _placePopupRevealTimer = 0;
-    popup.setLngLat([place.lng, place.lat]);
-    _revealMeasuredPopup(popup);
-    scheduleMapViewportSync();
-  };
-
-  _placePopupMoveEndHandler = finish;
-  map.once("moveend", _placePopupMoveEndHandler);
-  map.easeTo({
-    center,
-    duration: PLACE_POPUP_MOVE_MS,
-    easing: _easePlacePopupCamera,
-    essential: true,
-  });
-  _placePopupRevealTimer = setTimeout(finish, PLACE_POPUP_MOVE_MS + PLACE_POPUP_REVEAL_FALLBACK_MS);
-}
-
-function _centerPopupCardInViewport(popup, place) {
-  const popupEl = popup.getElement();
-  if (!popupEl) return;
-
-  popupEl.classList.add("popup-positioning");
-
-  requestAnimationFrame(() => {
-    const latestPopupEl = popup.getElement();
-    if (!latestPopupEl || !document.body.contains(latestPopupEl)) return;
-
-    const { deltaX, deltaY } = _measurePopupCenterDelta(latestPopupEl);
-    const anchorOffset = _measurePopupAnchorOffset(latestPopupEl, place);
-    const shouldMove =
-      Math.abs(deltaX) > PLACE_POPUP_CENTER_TOLERANCE_PX ||
-      Math.abs(deltaY) > PLACE_POPUP_CENTER_TOLERANCE_PX;
-
-    if (!shouldMove) {
-      _revealMeasuredPopup(popup);
-      scheduleMapViewportSync();
-      return;
-    }
-
-    _animatePopupCameraToCenter(popup, place, anchorOffset);
-  });
-}
-
-function runAfterPlacesSheetClose(task) {
-  // Cancel any in-flight chain from a previous rapid click
-  cancelAnimationFrame(_sheetCloseRAF1);
-  cancelAnimationFrame(_sheetCloseRAF2);
-  closePlacesSheet();
-  _sheetCloseRAF1 = requestAnimationFrame(() => {
-    _sheetCloseRAF1 = 0;
-    scheduleMapViewportSync();
-    _sheetCloseRAF2 = requestAnimationFrame(() => {
-      _sheetCloseRAF2 = 0;
-      task();
-      // No sync here — showPlacePopup's flyTo handles its own rendering,
-      // and extra resize calls exhaust mobile GPU memory.
+placeSheetCloseBtn.addEventListener("click", () => {
+  const scrollTop = _placeSheetFromListScrollTop;
+  closePlaceSheet();
+  if (scrollTop !== null) {
+    openPlacesSheet();
+    requestAnimationFrame(() => {
+      const scrollEl = document.getElementById("places-scroll");
+      if (scrollEl) scrollEl.scrollTop = scrollTop;
     });
-  });
-}
+  }
+});
 
 // When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
 // would read "✗ No Alcohol" — a confusing double negative. Map tag IDs to the label
@@ -282,6 +126,27 @@ const TAG_POS_LABELS = {
 
 // Tags whose true-state should use an amber/warn chip instead of green.
 const WARN_TAGS = new Set(["partially_halal"]);
+
+// Price level as returned by Google (0-4) → display label.
+const PRICE_LEVEL_LABELS = ["Free", "€", "€€", "€€€", "€€€€"];
+
+// Builds neutral info chips (price level, accessibility, service options) sourced from
+// Google Place Details enrichment — absence of a flag means "unknown", never "no", so
+// these only ever appear when Google explicitly confirmed them.
+function _buildPlaceInfoChipsHTML(place) {
+  const chips = [];
+  if (place.priceLevel != null && PRICE_LEVEL_LABELS[place.priceLevel]) {
+    chips.push(`<span class="pp-chip pp-info-chip">${PRICE_LEVEL_LABELS[place.priceLevel]}</span>`);
+  }
+  if (place.wheelchairAccessible) chips.push(`<span class="pp-chip pp-info-chip">Wheelchair accessible</span>`);
+  if (place.dineIn) chips.push(`<span class="pp-chip pp-info-chip">Dine-in</span>`);
+  if (place.takeout) chips.push(`<span class="pp-chip pp-info-chip">Takeout</span>`);
+  if (place.delivery) chips.push(`<span class="pp-chip pp-info-chip">Delivery</span>`);
+  if (place.reservable) chips.push(`<span class="pp-chip pp-info-chip">Reservations</span>`);
+  if (place.curbsidePickup) chips.push(`<span class="pp-chip pp-info-chip">Curbside pickup</span>`);
+  if (place.servesVegetarian) chips.push(`<span class="pp-chip pp-info-chip">Vegetarian options</span>`);
+  return chips.join("");
+}
 
 // Expandable tag groups where only one child may be selected at a time (radio behaviour).
 const EXCLUSIVE_GROUPS = new Set(["halal_status"]);
@@ -472,9 +337,27 @@ function applySort(arr) {
 let favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
 function saveFavourites() { localStorage.setItem("hf_favs", JSON.stringify([...favourites])); }
 export function isFavourite(id) { return favourites.has(id); }
+/** All currently-favourited place IDs — used by src/account-sync.js's merge. */
+export function getFavouriteIds() { return [...favourites]; }
+/**
+ * Set (not toggle) a place's favourite state directly — used by
+ * src/account-sync.js when adopting a server-only favourite during the
+ * sign-in merge. Unlike toggleFavourite(), this never fires
+ * EVT.FAVOURITE_TOGGLED (the merge already knows which side needs uploading).
+ * @param {string} id
+ * @param {boolean} saved
+ */
+export function setFavouriteState(id, saved) {
+  const has = favourites.has(id);
+  if (saved === has) return;
+  if (saved) favourites.add(id); else favourites.delete(id);
+  saveFavourites();
+}
 export function toggleFavourite(id) {
   if (favourites.has(id)) favourites.delete(id); else favourites.add(id);
   saveFavourites();
+  const saved = favourites.has(id);
+  window.dispatchEvent(new CustomEvent(EVT.FAVOURITE_TOGGLED, { detail: { placeId: id, saved } }));
 }
 
 // Recently viewed
@@ -1159,10 +1042,10 @@ function _setupClusterLayers(geojson) {
     if (!feature) return;
     const place = placesData.find((p) => p.id === feature.properties.id);
     if (!place) return;
-    if (_activePlacePopupId === place.id) {
-      clearActivePlacePopup();
+    if (_activePlaceSheetId === place.id) {
+      closePlaceSheet();
     } else {
-      showPlacePopup(place);
+      openPlaceSheet(place);
     }
   });
 
@@ -1226,10 +1109,10 @@ export function addPlaceMarkers() {
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([place.lng, place.lat]).addTo(map);
     el.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (_activePlacePopupId === place.id) {
-        clearActivePlacePopup();
+      if (_activePlaceSheetId === place.id) {
+        closePlaceSheet();
       } else {
-        showPlacePopup(place);
+        openPlaceSheet(place);
       }
     });
     placeMarkers.push(marker);
@@ -1356,12 +1239,27 @@ function _renderPopupRating(container, placeId, placeName, ratingData) {
 }
 
 /**
- * Open the place popup and move the camera to its best viewing position.
+ * Render the compact rating chip into the place sheet's reviews section.
+ * Reviews themselves stay behind a tap — opened in the separate `#reviews-overlay` —
+ * so long review text never pushes tags/hours/notes out of immediate view.
+ */
+function _renderPlaceSheetReviews(reviewsSection, placeId, placeName, ratingData) {
+  reviewsSection.innerHTML = "";
+  _renderPopupRating(reviewsSection, placeId, placeName, ratingData);
+}
+
+/**
+ * Build and open the place-detail bottom sheet for a place.
  * @param {object} place - Place data object with id, coordinates, type, and display fields.
- * @param {{ skipMove?: boolean }} [options={}] - Popup options.
+ * @param {{ fromListScrollTop?: number|null }} [options={}] - Pass the places-list scrollTop
+ *   when opened from a list card so the close button becomes a back arrow that restores it.
  * @returns {void}
  */
-export function showPlacePopup(place, { skipMove = false } = {}) {
+export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
+  if (_activePlaceSheetReviewsListener) {
+    window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
+    _activePlaceSheetReviewsListener = null;
+  }
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
   const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[place.type] || cfg.color;
@@ -1391,11 +1289,16 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     });
   }
 
-  // Title
-  const title = document.createElement("div");
-  title.className = "pp-title";
-  title.textContent = place.name;
-  inner.appendChild(title);
+  // Business status banner (per Google) — only shown when non-operational
+  if (place.businessStatus === "CLOSED_TEMPORARILY" || place.businessStatus === "CLOSED_PERMANENTLY") {
+    const isPermanent = place.businessStatus === "CLOSED_PERMANENTLY";
+    const statusBanner = document.createElement("div");
+    statusBanner.className = `pp-status-banner${isPermanent ? " pp-status-banner--danger" : " pp-status-banner--warn"}`;
+    statusBanner.innerHTML =
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` +
+      `<span>${isPermanent ? "Permanently closed" : "Temporarily closed"} (per Google)</span>`;
+    inner.appendChild(statusBanner);
+  }
 
   // Address
   const addr = document.createElement("div");
@@ -1403,46 +1306,61 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   addr.textContent = place.address;
   inner.appendChild(addr);
 
+  // Contact row — phone / website / Google Maps link (Google-enriched or user-submitted)
+  if (place.phone || place.website || place.mapsUrl) {
+    const contact = document.createElement("div");
+    contact.className = "pp-contact";
+    const links = [];
+    if (place.phone) {
+      links.push(`<a class="pp-contact-link" href="tel:${escA(place.phone)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${esc(place.phone)}</span></a>`);
+    }
+    if (place.website) {
+      links.push(`<a class="pp-contact-link" href="${escA(place.website)}" target="_blank" rel="noopener noreferrer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>Website</span></a>`);
+    }
+    if (place.mapsUrl) {
+      links.push(`<a class="pp-contact-link" href="${escA(place.mapsUrl)}" target="_blank" rel="noopener noreferrer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Google Maps</span></a>`);
+    }
+    contact.innerHTML = links.join("");
+    inner.appendChild(contact);
+  }
+
   // Community Rating
   const ratingData = getPlaceRating(place.id);
   const reviewsSection = document.createElement("div");
   reviewsSection.className = "pp-reviews";
   reviewsSection.dataset.placeId = place.id;
 
-  _renderPopupRating(reviewsSection, place.id, place.name, ratingData);
+  _renderPlaceSheetReviews(reviewsSection, place.id, place.name, ratingData);
 
-  // Re-render reviews section when data arrives after popup is already open
+  // Re-render reviews section when data arrives after the sheet is already open
   const _onReviewsLoaded = () => {
-    const freshData = getPlaceRating(place.id);
-    const existing = reviewsSection.querySelector(".pp-rating");
-    if (existing) existing.remove();
-    _renderPopupRating(reviewsSection, place.id, place.name, freshData);
+    _renderPlaceSheetReviews(reviewsSection, place.id, place.name, getPlaceRating(place.id));
   };
   window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
+  _activePlaceSheetReviewsListener = _onReviewsLoaded;
 
   inner.appendChild(reviewsSection);
 
-  // Tags (plain text labels, no icons)
-  if (typeTags.length) {
-    const chips = typeTags
-      .filter((tag) => place.tags?.[tag.id] !== undefined)
-      .map((tag) => {
-        const val = place.tags[tag.id];
-        const cls = val === true
-          ? (WARN_TAGS.has(tag.id) ? "pp-chip-warn" : "pp-chip-yes")
-          : "pp-chip-no";
-        const label = val === true
-          ? (TAG_POS_LABELS[tag.id] || tag.label)
-          : (TAG_NEG_LABELS[tag.id] || tag.negLabel || tag.label);
-        return `<span class="pp-chip ${cls}">${esc(label)}</span>`;
-      })
-      .join("");
-    if (chips) {
-      const tagsEl = document.createElement("div");
-      tagsEl.className = "pp-tags";
-      tagsEl.innerHTML = chips;
-      inner.appendChild(tagsEl);
-    }
+  // Tags (plain text labels, no icons) + Google-sourced info chips (price, accessibility, service options)
+  const tagChips = typeTags
+    .filter((tag) => place.tags?.[tag.id] !== undefined)
+    .map((tag) => {
+      const val = place.tags[tag.id];
+      const cls = val === true
+        ? (WARN_TAGS.has(tag.id) ? "pp-chip-warn" : "pp-chip-yes")
+        : "pp-chip-no";
+      const label = val === true
+        ? (TAG_POS_LABELS[tag.id] || tag.label)
+        : (TAG_NEG_LABELS[tag.id] || tag.negLabel || tag.label);
+      return `<span class="pp-chip ${cls}">${esc(label)}</span>`;
+    })
+    .join("");
+  const allChips = tagChips + _buildPlaceInfoChipsHTML(place);
+  if (allChips) {
+    const tagsEl = document.createElement("div");
+    tagsEl.className = "pp-tags";
+    tagsEl.innerHTML = allChips;
+    inner.appendChild(tagsEl);
   }
 
   if (place.boycott) {
@@ -1459,6 +1377,14 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     notes.className = "pp-notes";
     notes.textContent = place.notes;
     inner.appendChild(notes);
+  }
+
+  // Google's editorial summary — clearly attributed so it's never mistaken for a user note
+  if (place.about) {
+    const about = document.createElement("div");
+    about.className = "pp-about";
+    about.innerHTML = `<span class="pp-about-label">From Google</span><p>${esc(place.about)}</p>`;
+    inner.appendChild(about);
   }
 
   // Opening hours
@@ -1528,10 +1454,33 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     document.getElementById("dir-to").value = place.name;
     placeDestMarker(place.lng, place.lat);
     updateGoButton();
-    fadeAndRemovePopup(popup);
+    closePlaceSheet();
     closePlacesSheet();
     openDirPanel();
   });
+
+  // Contact button — quick-access Call affordance, positioned between
+  // Directions and Share. Uses place.phone only: Phase 3's Google-enriched place
+  // data model has exactly two contact-adjacent fields (phone, website) and no
+  // place-level email field at all, so "call vs. email" collapses to phone-only
+  // for now — website deliberately stays out of this button (it already has its
+  // own link in the .pp-contact row above the tags). Absent means "unknown," same
+  // convention as every other Google-sourced field on this sheet, so the button
+  // doesn't render at all when there's no phone number. If a place-level email
+  // field is ever added, this is the button to extend into a call/email chooser.
+  let contactBtn = null;
+  if (place.phone) {
+    contactBtn = document.createElement("button");
+    contactBtn.className = "pp-contact-btn";
+    contactBtn.type = "button";
+    contactBtn.title = "Call";
+    contactBtn.setAttribute("aria-label", "Call");
+    contactBtn.innerHTML = _CONTACT_PHONE_ICON_SVG;
+    contactBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.location.href = `tel:${place.phone}`;
+    });
+  }
 
   const shareBtn = document.createElement("button");
   shareBtn.className = "pp-share-btn";
@@ -1554,6 +1503,7 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
   editBtn.addEventListener("click", (e) => { e.stopPropagation(); openEditOverlay(place); });
 
   actions.appendChild(dirBtn);
+  if (contactBtn) actions.appendChild(contactBtn);
   actions.appendChild(shareBtn);
   actions.appendChild(editBtn);
   inner.appendChild(actions);
@@ -1600,48 +1550,19 @@ export function showPlacePopup(place, { skipMove = false } = {}) {
     root.appendChild(promoBtn);
   }
 
-  clearActivePlacePopup();
+  // Track the open sheet's place id for toggle-close, and the back-vs-close context
+  _activePlaceSheetId = place.id;
+  _placeSheetFromListScrollTop = fromListScrollTop;
+  if (fromListScrollTop !== null) _setPlaceSheetCloseAsBack();
+  else _resetPlaceSheetCloseButton();
 
-  // Track the open popup id for toggle-close
-  _activePlacePopupId = place.id;
+  placeSheetTitle.textContent = place.name;
+  placeSheetBody.innerHTML = "";
+  placeSheetBody.appendChild(root);
 
-  const popupOptions = {
-    offset: [0, PLACE_POPUP_OFFSET_Y],
-    closeButton: false,
-    focusAfterOpen: false,
-    maxWidth: "300px",
-    className: "place-popup-wrap",
-    anchor: "bottom",
-  };
-
-  if (!skipMove) map.stop();
-
-  const popup = new maplibregl.Popup(popupOptions)
-    .setLngLat([place.lng, place.lat])
-    .setDOMContent(root)
-    .addTo(map);
-
-  _activePlacePopup = popup;
-
-  popup.on("close", () => {
-    if (_activePlacePopupId === place.id) _activePlacePopupId = null;
-    if (_activePlacePopup === popup) _activePlacePopup = null;
-    window.removeEventListener("hf:reviews-loaded", _onReviewsLoaded);
-  });
-
-  if (skipMove) return;
-
-  _centerPopupCardInViewport(popup, place);
-}
-
-function openPlaceAfterSheetClose(place) {
-  if (isPhoneViewport()) {
-    if (!lockMobilePlaceFocus(900)) return;
-    const token = ++_mobilePlaceFocusToken;
-    runAfterPlacesSheetClose(() => focusPlaceOnPhone(place, token));
-    return;
-  }
-  runAfterPlacesSheetClose(() => showPlacePopup(place));
+  placeSheetEl.hidden = false;
+  placeSheetScrim.classList.remove("hide");
+  placeSheetSnap.open();
 }
 
 export function checkShareUrl() {
@@ -1743,8 +1664,8 @@ export function checkShareUrl() {
   if (qPlaceId) {
     const place = placesData.find((p) => String(p.id) === qPlaceId);
     if (place) {
-      if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); showPlacePopup(place); }
-      else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => showPlacePopup(place)); }
+      if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); openPlaceSheet(place); }
+      else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
     }
     history.replaceState(null, "", location.pathname);
     return;
@@ -1787,8 +1708,8 @@ export function checkShareUrl() {
       });
     }
     if (!place) return;
-    if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); showPlacePopup(place); }
-    else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => showPlacePopup(place)); }
+    if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); openPlaceSheet(place); }
+    else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
     // Clear hash so the popup isn't re-opened on refresh
     history.replaceState(null, "", location.pathname + location.search);
   }
@@ -1838,6 +1759,7 @@ document.getElementById("places-btn").addEventListener("click", () =>
 document.getElementById("places-close").addEventListener("click", closePlacesSheet);
 
 const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
+const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet);
 
 let _placesDirty = false;
 
@@ -2764,7 +2686,7 @@ _eventsList.addEventListener("click", (e) => {
     const place = placesData.find((p) => p.id === pid);
     if (place) {
       _eventsOverlay.classList.add("hide");
-      openPlaceAfterSheetClose(place);
+      openPlaceSheet(place);
     }
   }
 });
@@ -2874,7 +2796,7 @@ function _renderSponsorCarousel(filteredPlaces) {
     const card = e.target.closest(".sponsor-card");
     if (!card) return;
     const place = placesData.find(p => p.id === card.dataset.placeId);
-    if (place) { closePlacesSheet(); showPlacePopup(place); }
+    if (place) { closePlacesSheet(); openPlaceSheet(place); }
   });
 
   // Desktop: mouse wheel over carousel → scroll horizontally, not vertically
@@ -3652,10 +3574,9 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   if (pinLi) {
     const pin = getSavedPins().find(p => p.id === pinLi.dataset.customPinId);
     if (pin) {
-      runAfterPlacesSheetClose(() => {
-        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
-        map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
-      });
+      closePlacesSheet();
+      window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+      map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
     }
     return;
   }
@@ -3664,7 +3585,11 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   if (!li) return;
   const placeId = li.dataset.placeId;
   const place = placesData.find((p) => String(p.id) === placeId);
-  if (place) openPlaceAfterSheetClose(place);
+  if (place) {
+    const savedScrollTop = document.getElementById("places-scroll").scrollTop;
+    closePlacesSheet();
+    openPlaceSheet(place, { fromListScrollTop: savedScrollTop });
+  }
 });
 
 document.getElementById("suggest-close").addEventListener("click", () => {
@@ -3915,6 +3840,8 @@ suggestForm.addEventListener("submit", async (e) => {
   const name = document.getElementById("sg-name").value.trim();
   const type = sgTypeSelect.value;
   const address = document.getElementById("sg-address").value.trim();
+  const website = document.getElementById("sg-website").value.trim();
+  const phone = document.getElementById("sg-phone").value.trim();
   const notes = document.getElementById("sg-notes").value.trim();
 
   const yesTags = [], noTags = [];
@@ -3940,6 +3867,8 @@ suggestForm.addEventListener("submit", async (e) => {
   const sgHoursContainer = document.getElementById("sg-hours-container");
   const openingHours = isEidType ? null : _collectHoursFromForm(sgHoursContainer, "sg");
   const payload = { token: null, formType: isEidType ? "eid" : "new", name, type, address, tags: tagsStr, gmaps, notes };
+  if (website) payload.website = website;
+  if (phone) payload.phone = phone;
   if (openingHours) payload.openingHours = openingHours;
   if (newCuisines.length) payload.newCuisines = newCuisines;
   if (pinLat && pinLng) {
@@ -4054,6 +3983,8 @@ function openEditOverlay(place) {
   document.getElementById("ed-place-id").value = place.id;
   document.getElementById("ed-name").value = place.name || "";
   document.getElementById("ed-address").value = place.address || "";
+  document.getElementById("ed-website").value = place.website || "";
+  document.getElementById("ed-phone").value = place.phone || "";
   document.getElementById("ed-notes").value = place.notes || "";
   edTypeSelect.value = place.type || "mosque";
   renderEditTags(place.type, place.tags || {});
@@ -4172,6 +4103,8 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const name = document.getElementById("ed-name").value.trim();
   const type = edTypeSelect.value;
   const address = document.getElementById("ed-address").value.trim();
+  const website = document.getElementById("ed-website").value.trim();
+  const phone = document.getElementById("ed-phone").value.trim();
   const notes = document.getElementById("ed-notes").value.trim();
   const gmaps = document.getElementById("ed-gmaps").value.trim();
 
@@ -4203,6 +4136,8 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   }
   if (address && address !== orig.address) diffs.push(`Address: "${orig.address || ""}" → "${address}"`);
   if (gmaps) diffs.push("Maps link: added/updated");
+  if (website !== (orig.website || "")) diffs.push(website ? `Website: "${orig.website || ""}" → "${website}"` : "Website removed");
+  if (phone !== (orig.phone || "")) diffs.push(phone ? `Phone: "${orig.phone || ""}" → "${phone}"` : "Phone removed");
   if (notes !== (orig.notes || "")) {
     if (!orig.notes && notes) diffs.push(`Notes added: "${notes}"`);
     else if (orig.notes && !notes) diffs.push("Notes removed");
@@ -4246,6 +4181,8 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
     );
     const editPayload = { token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined };
+    if (website) editPayload.website = website;
+    if (phone) editPayload.phone = phone;
     if (editOpeningHours) editPayload.openingHours = editOpeningHours;
     const res = await fetch("/api/submit", {
       method: "POST",

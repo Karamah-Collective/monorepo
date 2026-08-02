@@ -47,6 +47,19 @@
   --danger-vivid: #c62828;
   --danger-soft: #fce8e8;
 
+  /* Google brand — "Sign in with Google" button, per Google's official
+     branding guidelines (developers.google.com/identity/branding-guidelines).
+     These are fixed brand colors, not app palette — do not derive from
+     --accent/--surface tokens, and the G-logo colors never change with
+     theme (light/dark override only the button chrome, never the logo). */
+  --google-btn-bg: #ffffff;
+  --google-btn-border: #747775;
+  --google-btn-text: #1f1f1f;
+  --google-g-blue: #4285f4;
+  --google-g-green: #34a853;
+  --google-g-yellow: #fbbc05;
+  --google-g-red: #ea4335;
+
   --hsl-bus: #1a73b8;
   --hsl-trunk: #ff6319;
   --hsl-tram: #1fa86a;
@@ -164,6 +177,9 @@
   --btn-icon-size: 42px;
   --btn-roundel-size: 32px;
   --btn-roundel-sm-size: 30px;
+  --switch-w: 44px;
+  --switch-h: 24px;
+  --switch-thumb-size: 18px;
   --tab-h: 56px;
   --nav-turn-marker-size: 36px;
   --nav-turn-icon-size: 20px;
@@ -337,16 +353,22 @@ select:focus-visible {
   top: var(--sp-3);
 }
 
-/* ─── Reduced motion: respect user preference ─── */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+/* ─── Reduced motion: respect user preference ───
+   Driven entirely by html.reduce-motion, applied by utils.js's
+   isReduceMotionActive()/setReduceMotionOverride() — a single mechanism, not
+   a bare `@media (prefers-reduced-motion: reduce)` block competing with a
+   separate in-app toggle. The class is set on load from the OS-level media
+   feature and re-applied whenever the user flips the explicit override in
+   the Menu sheet's Preferences section, so the in-app toggle can force
+   reduced motion on even when the OS doesn't report the preference, or force
+   it off even when the OS does. */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 .btn-icon {
@@ -437,6 +459,7 @@ select:focus-visible {
 
 .btn-secondary,
 .pp-home-btn,
+.pp-contact-btn,
 .pp-share-btn,
 .pp-edit-btn,
 .sp-share-btn,
@@ -462,6 +485,7 @@ select:focus-visible {
 @media (hover: hover) {
   .btn-secondary:hover,
   .pp-home-btn:hover,
+  .pp-contact-btn:hover,
   .pp-share-btn:hover,
   .pp-edit-btn:hover,
   .sp-share-btn:hover,
@@ -473,6 +497,57 @@ select:focus-visible {
     box-shadow: var(--shadow-xs);
   }
 }
+/* "Sign in with Google" button — deliberately diverges from this app's own
+   filled-accent CTA look. Google's branding guidelines require the standard
+   white/neutral (or dark-theme) button chrome with an unaltered "G" logo;
+   recoloring it to match --accent would look like an unofficial knockoff and
+   undermine the exact trust signal the button exists to provide. Combine
+   with `.rv-action-btn` for shared sizing (width/height/radius) with the
+   email sign-in button beside it. */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--google-btn-bg);
+  color: var(--google-btn-text);
+  border: 1px solid var(--google-btn-border);
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-google:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-google:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-google-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-google-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-email-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-email-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .btn-danger-pill {
   display: inline-flex;
   align-items: center;
@@ -726,6 +801,45 @@ select:focus-visible {
   border-color: var(--accent);
 }
 
+/* ─── Toggle switch ───────────────────────────────────────────────────────────
+   New pattern — no on/off switch existed anywhere else in this app before the
+   Menu sheet's Preferences → "Reduce motion" control. A <button role="switch"
+   aria-checked> rather than a native checkbox, matching this app's existing
+   button-driven state-toggle convention (.btn-chip.active, .sort-opt.active)
+   instead of mixing in a native form control that would need its own separate
+   styling system. */
+.pref-switch {
+  position: relative;
+  width: var(--switch-w);
+  height: var(--switch-h);
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  cursor: pointer;
+  transition: background-color var(--t-fast);
+}
+.pref-switch.on {
+  background: var(--accent);
+}
+.pref-switch:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.pref-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
+  border-radius: 50%;
+  background: var(--on-accent);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--t-fast);
+}
+.pref-switch.on .pref-switch-thumb {
+  transform: translateX(calc(var(--switch-w) - var(--switch-thumb-size) - 6px));
+}
+
 /* ─── Filter bar: expandable subtag groups ─── */
 .tf-group-toggle {
   gap: var(--sp-1);
@@ -800,14 +914,6 @@ select:focus-visible {
   overflow-y: hidden;
   pointer-events: none;
   display: none;
-}
-
-/* ─── Style panel divider ─── */
-.style-divider {
-  width: 1px;
-  align-self: stretch;
-  margin: var(--sp-2) 0;
-  background: var(--border);
 }
 
 .btn-inline,
@@ -1232,29 +1338,6 @@ select:focus-visible {
   transition: opacity var(--t-fast);
 }
 
-.pill-panel {
-  position: absolute;
-  top: 50%;
-  right: calc(100% + 8px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xl);
-  display: flex;
-  transform-origin: right center;
-  transform: translateY(-50%);
-  transition:
-    opacity var(--t-spring),
-    transform var(--t-spring);
-}
-
-.pill-panel.hide {
-  display: flex !important;
-  opacity: 0 !important;
-  transform: translateY(-50%) translateX(12px);
-  pointer-events: none;
-}
-
 .snack {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1356,6 +1439,13 @@ select:focus-visible {
 .pp-chip-sponsor,
 .pl-sponsor-chip {
   --chip-c: var(--sponsor);
+}
+
+/* ── Neutral info chip (price level, accessibility, service options) ───────── */
+/* Distinct blue tint so Google-sourced amenity facts don't read as halal-status
+   yes/no tags, which already use green/red/gold. */
+.pp-info-chip {
+  --chip-c: var(--hsl-bus);
 }
 
 /* ── Open / Closed inline badges ───────────────────────────────────────────── */

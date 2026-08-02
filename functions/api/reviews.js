@@ -2,12 +2,17 @@
  * Cloudflare Pages Function – /api/reviews
  *
  * GET  → List all live reviews grouped by placeId, never edge-cached
- * POST → Submit a review, send/verify OTP, or check existing review
+ * POST → Submit/edit/delete a review, list "my reviews", send/verify OTP, or
+ *        check an existing review. `submit`/`check` accept either a legacy
+ *        OTP `verifyToken` or a Firebase `idToken` (verified here via
+ *        ../_firebase-verify.js); `delete`/`my-reviews` are Firebase-only —
+ *        see docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 6/7.
  *
  * Required Cloudflare Pages Environment Variables:
  *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key (used for send-otp only)
  *   GAS_URL          – Google Apps Script web app URL
  */
+import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const MIN_SCORE = 0.5;
@@ -18,6 +23,7 @@ const MIN_TEXT_LEN = 20;
 const MAX_PLACE_ID_LEN = 6;
 const MAX_EMAIL_LEN = 254;
 const MAX_TOKEN_LEN = 512;
+const MAX_ID_TOKEN_LEN = 2048; // Firebase ID tokens (JWTs) run ~1000-1300 chars
 
 function allowedOrigin(request) {
   const origin = request.headers.get("Origin") || "";
@@ -100,13 +106,29 @@ export async function onRequestPost(context) {
   }
 
   const { action } = body;
-  if (!["submit", "check", "send-otp", "verify-otp"].includes(action)) {
+  if (!["submit", "check", "send-otp", "verify-otp", "delete", "my-reviews"].includes(action)) {
     return json({ error: "Invalid request" }, 400, headers);
   }
 
   // Compute IP hash server-side (raw IP never stored/forwarded)
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipHash = await sha256(clientIp);
+
+  /**
+   * Verify a Firebase ID token and reduce it to just an emailHash — never
+   * the plaintext email, per the Phase 6 privacy rule. Returns null (never
+   * throws) so callers can treat any failure as "unauthenticated".
+   * @param {string} idToken
+   * @returns {Promise<{emailHash: string}|null>}
+   */
+  async function resolveFirebaseIdentity(idToken) {
+    const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
+    if (!cleanToken) return null;
+    const verified = await verifyFirebaseIdToken(cleanToken);
+    if (!verified || !verified.email) return null;
+    const emailHash = await sha256(verified.email.trim().toLowerCase());
+    return { emailHash };
+  }
 
   // ── send-otp: requires reCAPTCHA to prevent bot spam on email sending ──
   if (action === "send-otp") {
@@ -176,28 +198,29 @@ export async function onRequestPost(context) {
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
   }
 
-  // ── check: check if user already reviewed a place ──
+  // ── check: check if user already reviewed a place (either auth path) ──
   if (action === "check") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.verifyToken) {
+    if (!placeId || (!body.verifyToken && !body.idToken)) {
       return json({ error: "Missing required fields" }, 400, headers);
     }
 
-    const gasPayload = {
-      formType: "review",
-      action: "check",
-      placeId,
-      ipHash,
-      verifyToken: truncate(body.verifyToken, MAX_TOKEN_LEN),
-    };
+    const gasPayload = { formType: "review", action: "check", placeId, ipHash };
+    if (body.idToken) {
+      const identity = await resolveFirebaseIdentity(body.idToken);
+      if (!identity) return json({ reviewed: false }, 200, headers);
+      gasPayload.emailHash = identity.emailHash;
+    } else {
+      gasPayload.verifyToken = truncate(body.verifyToken, MAX_TOKEN_LEN);
+    }
 
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
   }
 
-  // ── submit: submit or update a review ──
+  // ── submit: submit or update a review (either auth path) ──
   if (action === "submit") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.verifyToken) {
+    if (!placeId || (!body.verifyToken && !body.idToken)) {
       return json({ error: "Missing required fields" }, 400, headers);
     }
 
@@ -211,16 +234,40 @@ export async function onRequestPost(context) {
       return json({ error: "text_too_short" }, 400, headers);
     }
 
-    const gasPayload = {
-      formType: "review",
-      action: "submit",
-      placeId,
-      rating,
-      text,
-      ipHash,
-      verifyToken: truncate(body.verifyToken, MAX_TOKEN_LEN),
-    };
+    const gasPayload = { formType: "review", action: "submit", placeId, rating, text, ipHash };
+    if (body.idToken) {
+      const identity = await resolveFirebaseIdentity(body.idToken);
+      if (!identity) return json({ error: "invalid_token" }, 401, headers);
+      gasPayload.emailHash = identity.emailHash;
+    } else {
+      gasPayload.verifyToken = truncate(body.verifyToken, MAX_TOKEN_LEN);
+    }
 
+    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+  }
+
+  // ── delete: remove the caller's own review for a place (Firebase-only) ──
+  if (action === "delete") {
+    const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
+    if (!placeId || !body.idToken) {
+      return json({ error: "Missing required fields" }, 400, headers);
+    }
+    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!identity) return json({ error: "invalid_token" }, 401, headers);
+
+    const gasPayload = { formType: "review", action: "delete", placeId, emailHash: identity.emailHash };
+    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+  }
+
+  // ── my-reviews: list the caller's own reviews (Firebase-only) ──
+  if (action === "my-reviews") {
+    if (!body.idToken) {
+      return json({ error: "Missing required fields" }, 400, headers);
+    }
+    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!identity) return json({ error: "invalid_token" }, 401, headers);
+
+    const gasPayload = { formType: "review", action: "my-reviews", emailHash: identity.emailHash };
     return await forwardToGAS(env.GAS_URL, gasPayload, headers);
   }
 

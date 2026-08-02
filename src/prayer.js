@@ -11,11 +11,93 @@ const HELSINKI_LNG = 24.9384;
 function isFriday() { return new Date().getDay() === 5; }
 function prayerDisplayName(name) { return (name === "Dhuhr" && isFriday()) ? "Jumu\u2019ah" : name; }
 
+// --- Time-format preference (Menu sheet \u2192 Preferences \u2192 "12-hour prayer times") ---
+const TIME_FORMAT_KEY = "hf_prayer_time_format"; // "12" | "24", default "24" (matches previous hardcoded behavior)
+const DEFAULT_TIME_FORMAT = "24";
+
+/** @returns {"12"|"24"} the currently-selected prayer time display format. */
+export function getPrayerTimeFormat() {
+  return localStorage.getItem(TIME_FORMAT_KEY) === "12" ? "12" : DEFAULT_TIME_FORMAT;
+}
+/** @param {"12"|"24"} format @returns {void} */
+export function setPrayerTimeFormat(format) {
+  localStorage.setItem(TIME_FORMAT_KEY, format === "12" ? "12" : "24");
+}
+/**
+ * Format a prayer time Date per the current 12h/24h preference.
+ * @param {Date} date
+ * @returns {string}
+ */
+function _formatPrayerTime(date) {
+  return getPrayerTimeFormat() === "12"
+    ? date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    : date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
 let prayerTimesToday = null;
 let sunriseTime = null;
 let isRamadan = false;
 let prayerWatchInterval = null;
 let lastAlertedPrayer = null;
+// Last coordinates used to fetch prayer times \u2014 reused by refreshPrayerTimes()
+// so changing a Preferences dropdown re-fetches without a fresh geolocation
+// prompt (initPrayerTimes() only ever reads location silently, on launch).
+let _lastLat = HELSINKI_LAT;
+let _lastLng = HELSINKI_LNG;
+
+// --- Prayer calculation preferences (Menu sheet \u2192 Preferences) ---
+// Aladhan API `method`/`school` params \u2014 see src/menu.js for the UI. Defaults
+// (method 3, school 0) match this app's previous hardcoded call exactly, so
+// nothing changes for existing users until they actively pick something else.
+const PRAYER_METHOD_KEY = "hf_prayer_method";
+const PRAYER_SCHOOL_KEY = "hf_prayer_school";
+const DEFAULT_PRAYER_METHOD = "3"; // Muslim World League
+const DEFAULT_PRAYER_SCHOOL = "0"; // Shafi / standard Asr calculation
+
+/**
+ * Aladhan `method` parameter values \u2014 fetched directly from
+ * https://api.aladhan.com/v1/methods (not guessed) on 2026-08-02. Method 99
+ * ("CUSTOM") is intentionally excluded \u2014 it requires extra angle parameters
+ * this app doesn't collect a UI for.
+ */
+export const PRAYER_METHODS = [
+  { id: "0", label: "Shia Ithna-Ashari, Leva Institute, Qum" },
+  { id: "1", label: "University of Islamic Sciences, Karachi" },
+  { id: "2", label: "Islamic Society of North America (ISNA)" },
+  { id: "3", label: "Muslim World League" },
+  { id: "4", label: "Umm Al-Qura University, Makkah" },
+  { id: "5", label: "Egyptian General Authority of Survey" },
+  { id: "7", label: "Institute of Geophysics, University of Tehran" },
+  { id: "8", label: "Gulf Region" },
+  { id: "9", label: "Kuwait" },
+  { id: "10", label: "Qatar" },
+  { id: "11", label: "Majlis Ugama Islam Singapura, Singapore" },
+  { id: "12", label: "Union Organization Islamic de France" },
+  { id: "13", label: "Diyanet \u0130\u015fleri Ba\u015fkanl\u0131\u011f\u0131, Turkey" },
+  { id: "14", label: "Spiritual Administration of Muslims of Russia" },
+  { id: "15", label: "Moonsighting Committee Worldwide" },
+  { id: "16", label: "Dubai" },
+  { id: "17", label: "Jabatan Kemajuan Islam Malaysia (JAKIM)" },
+  { id: "18", label: "Tunisia" },
+  { id: "19", label: "Algeria" },
+  { id: "20", label: "Kementerian Agama Republik Indonesia" },
+  { id: "21", label: "Morocco" },
+  { id: "22", label: "Comunidade Islamica de Lisboa" },
+  { id: "23", label: "Ministry of Awqaf, Islamic Affairs and Holy Places, Jordan" },
+];
+
+/** @returns {string} the currently-selected Aladhan `method` id (default "3"). */
+export function getPrayerMethod() {
+  return localStorage.getItem(PRAYER_METHOD_KEY) || DEFAULT_PRAYER_METHOD;
+}
+/** @returns {string} the currently-selected Aladhan `school` id (default "0"). */
+export function getPrayerSchool() {
+  return localStorage.getItem(PRAYER_SCHOOL_KEY) || DEFAULT_PRAYER_SCHOOL;
+}
+/** @param {string} id Aladhan `method` id to persist. @returns {void} */
+export function setPrayerMethod(id) { localStorage.setItem(PRAYER_METHOD_KEY, String(id)); }
+/** @param {string} id Aladhan `school` id to persist (0 = Shafi, 1 = Hanafi). @returns {void} */
+export function setPrayerSchool(id) { localStorage.setItem(PRAYER_SCHOOL_KEY, String(id)); }
 
 // --- Prayer-contextual mosque scoring ---
 // Returns an effective "cost" for a mosque — lower is better.
@@ -72,7 +154,9 @@ function _isEidWindow() {
 // --- Fetch & parse ---
 async function fetchPrayerTimes(lat, lng) {
   const ts = Math.floor(Date.now() / 1000);
-  const url = `https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=3`;
+  const method = getPrayerMethod();
+  const school = getPrayerSchool();
+  const url = `https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
   const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!resp.ok) throw new Error(`Aladhan HTTP ${resp.status}`);
   return (await resp.json()).data;
@@ -180,39 +264,50 @@ async function _openQiblaOverlay() {
   }
 }
 
+/**
+ * Rebuild the expanded prayer-times list's contents in place. Shared by
+ * togglePrayerExpanded() (opening the list) and refreshPrayerTimes()
+ * (re-rendering it live if it's already open when a Preferences change
+ * re-fetches today's times).
+ * @returns {void}
+ */
+function _renderExpandedPrayerList() {
+  const listEl = document.getElementById("prayer-times-inner");
+  listEl.innerHTML = "";
+  if (!prayerTimesToday) {
+    listEl.innerHTML = Array.from({ length: 5 }, () =>
+      '<div class="prayer-skel-item"><div class="skel-bone skel-line prayer-skel-name"></div><div class="skel-bone skel-line prayer-skel-time"></div></div>'
+    ).join("");
+    return;
+  }
+  const current = getCurrentPrayer(), next = getNextPrayer();
+  for (const name of PRAYER_NAMES) {
+    const time = prayerTimesToday[name];
+    const timeStr = _formatPrayerTime(time);
+    const item = document.createElement("div");
+    item.className = "prayer-time-item";
+    if (current?.name === name) item.classList.add("current");
+    if (next?.name === name) item.classList.add("next");
+    const nameEl = document.createElement("div"); nameEl.className = "prayer-time-name"; nameEl.textContent = prayerDisplayName(name);
+    const timeEl = document.createElement("div"); timeEl.className = "prayer-time-value"; timeEl.textContent = timeStr;
+    item.appendChild(nameEl); item.appendChild(timeEl);
+    listEl.appendChild(item);
+  }
+  // Qibla button — mobile only, needs compass sensor
+  if (_hasOrientationSupport()) {
+    const qiblaBtn = document.createElement("button");
+    qiblaBtn.className = "qibla-btn";
+    qiblaBtn.textContent = "Qibla";
+    qiblaBtn.addEventListener("click", _openQiblaOverlay);
+    listEl.appendChild(qiblaBtn);
+  }
+}
+
 function togglePrayerExpanded() {
   const el = document.getElementById("prayer-snack");
   const isExpanded = el.classList.toggle("expanded");
   if (isExpanded) {
-    const listEl = document.getElementById("prayer-times-inner");
-    listEl.innerHTML = "";
-    if (!prayerTimesToday) {
-      listEl.innerHTML = Array.from({ length: 5 }, () =>
-        '<div class="prayer-skel-item"><div class="skel-bone skel-line prayer-skel-name"></div><div class="skel-bone skel-line prayer-skel-time"></div></div>'
-      ).join("");
-    } else {
-      const current = getCurrentPrayer(), next = getNextPrayer();
-      for (const name of PRAYER_NAMES) {
-        const time = prayerTimesToday[name];
-        const timeStr = time.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-        const item = document.createElement("div");
-        item.className = "prayer-time-item";
-        if (current?.name === name) item.classList.add("current");
-        if (next?.name === name) item.classList.add("next");
-        const nameEl = document.createElement("div"); nameEl.className = "prayer-time-name"; nameEl.textContent = prayerDisplayName(name);
-        const timeEl = document.createElement("div"); timeEl.className = "prayer-time-value"; timeEl.textContent = timeStr;
-        item.appendChild(nameEl); item.appendChild(timeEl);
-        listEl.appendChild(item);
-      }
-      // Qibla button — mobile only, needs compass sensor
-      if (_hasOrientationSupport()) {
-        const qiblaBtn = document.createElement("button");
-        qiblaBtn.className = "qibla-btn";
-        qiblaBtn.textContent = "Qibla";
-        qiblaBtn.addEventListener("click", _openQiblaOverlay);
-        listEl.appendChild(qiblaBtn);
-      }
-    }
+    _renderExpandedPrayerList();
   } else {
     const inner = document.getElementById("prayer-times-inner");
     setTimeout(() => { if (!el.classList.contains("expanded")) inner.innerHTML = ""; }, 350);
@@ -264,6 +359,64 @@ function findNearestMosque() {
   );
 }
 
+/**
+ * Fetch + parse today's prayer times for the given coordinates and update
+ * every dependent bit of UI (Ramadan suhoor/iftar labels, the collapsed
+ * snack's countdown text, the prayer watcher, and — if already open — the
+ * expanded prayer-times list). Shared by initPrayerTimes() (first load) and
+ * refreshPrayerTimes() (re-fetch after a Preferences change).
+ * @param {number} lat
+ * @param {number} lng
+ * @returns {Promise<void>}
+ */
+async function _loadAndApplyPrayerTimes(lat, lng) {
+  try {
+    const data = await fetchPrayerTimes(lat, lng);
+    prayerTimesToday = parsePrayerTimings(data.timings);
+    isRamadan = Number(data.date?.hijri?.month?.number) === 9;
+    _applyPrayerTimesToUI();
+  } catch (err) {
+    console.warn("[Prayer] Could not fetch prayer times:", err.message);
+  }
+}
+
+/**
+ * Push whatever is currently in `prayerTimesToday`/`isRamadan` out to every
+ * dependent bit of UI (Ramadan suhoor/iftar labels, the collapsed snack's
+ * countdown text, the prayer watcher, and — if already open — the expanded
+ * prayer-times list). Separated from the fetch itself so a display-only
+ * change (e.g. the 12-hour/24-hour time-format preference) can re-render
+ * without a network round-trip — see refreshPrayerTimeDisplay().
+ * @returns {void}
+ */
+function _applyPrayerTimesToUI() {
+  if (!prayerTimesToday) return;
+  const snackEl = document.getElementById("prayer-snack");
+  if (isRamadan) {
+    snackEl.classList.add("ramadan-active");
+    document.getElementById("ramadan-suhoor").textContent = _formatPrayerTime(prayerTimesToday.Fajr);
+    document.getElementById("ramadan-iftar").textContent = _formatPrayerTime(prayerTimesToday.Maghrib);
+  } else {
+    snackEl.classList.remove("ramadan-active");
+  }
+  const next = getNextPrayer();
+  if (next) showPrayerSnack(`${prayerDisplayName(next.name)} ${formatPrayerCountdown(next.time)}`);
+  startPrayerWatcher();
+  if (snackEl.classList.contains("expanded")) _renderExpandedPrayerList();
+}
+
+/**
+ * Re-render already-fetched prayer times with the current time-format
+ * preference, with no network re-fetch (unlike refreshPrayerTimes(), which
+ * re-fetches because method/school actually change the underlying times).
+ * Called by the Menu sheet's Preferences section when the 12-hour/24-hour
+ * toggle changes. No-ops if today's times haven't loaded yet.
+ * @returns {void}
+ */
+export function refreshPrayerTimeDisplay() {
+  _applyPrayerTimesToUI();
+}
+
 export async function initPrayerTimes() {
   let lat = HELSINKI_LAT, lng = HELSINKI_LNG;
   // Only use geolocation if already granted — don't trigger the browser prompt
@@ -278,25 +431,20 @@ export async function initPrayerTimes() {
       lat = pos.coords.latitude; lng = pos.coords.longitude;
     }
   } catch (_) {}
-  try {
-    const data = await fetchPrayerTimes(lat, lng);
-    prayerTimesToday = parsePrayerTimings(data.timings);
-    isRamadan = Number(data.date?.hijri?.month?.number) === 9;
-    const snackEl = document.getElementById("prayer-snack");
-    if (isRamadan) {
-      snackEl.classList.add("ramadan-active");
-      document.getElementById("ramadan-suhoor").textContent = prayerTimesToday.Fajr.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-      document.getElementById("ramadan-iftar").textContent = prayerTimesToday.Maghrib.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    } else {
-      snackEl.classList.remove("ramadan-active");
-    }
-    const next = getNextPrayer();
-    if (next) showPrayerSnack(`${prayerDisplayName(next.name)} ${formatPrayerCountdown(next.time)}`);
-    startPrayerWatcher();
-  } catch (err) {
-    console.warn("[Prayer] Could not fetch prayer times:", err.message);
-  }
+  _lastLat = lat; _lastLng = lng;
+  await _loadAndApplyPrayerTimes(lat, lng);
   window.dispatchEvent(new Event("hf:prayer-ready"));
+}
+
+/**
+ * Re-fetch today's prayer times using the current calculation-method/madhab
+ * preference and the last-known coordinates (no new geolocation prompt).
+ * Called by the Menu sheet's Preferences section whenever the user changes
+ * either dropdown, so already-displayed times update immediately.
+ * @returns {Promise<void>}
+ */
+export async function refreshPrayerTimes() {
+  await _loadAndApplyPrayerTimes(_lastLat, _lastLng);
 }
 
 // --- UI listeners ---

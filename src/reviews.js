@@ -1,13 +1,17 @@
 /**
  * Reviews — in-app community rating & review system.
  *
- * Users verify via email OTP, then rate places (1–5 stars) with optional text.
- * Verified reviews go live immediately. Verification token persists 7 days.
+ * Writing a review requires signing in (Google or email magic link, see
+ * src/auth.js) — this replaces the legacy anonymous email-OTP flow for new
+ * reviews going forward (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 7). Users
+ * who already hold a still-valid OTP verification token from before this
+ * change keep working via that token for continuity (isVerified() below) —
+ * only the *entry point* that mints new tokens has moved to sign-in.
  *
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
-import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { esc, escA, showToast, loadRecaptcha, animateElementHeight } from "./utils.js";
+import { esc, showToast, animateElementHeight, isReduceMotionActive } from "./utils.js";
+import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML } from "./icons.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -15,9 +19,26 @@ const STORAGE_KEY_VERIFY_TOKEN = "hf_verify_token";
 const CACHE_TTL_MS = 300_000; // 5 min local cache
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
-const OTP_RESEND_COOLDOWN_MS = 30_000;
 const OVERLAY_CLEAR_DELAY_MS = 420;
-const REVIEW_PANEL_ANIMATION_MS = 280;
+// Matches .rv-write-panel's grid-template-rows transition duration
+// (styles.css, var(--t-spring) = 0.35s) so _restoreReviewSummary() waits for
+// the shut-collapse to actually finish before swapping in the summary HTML.
+const REVIEW_PANEL_ANIMATION_MS = 350;
+// Fallback for releasing _insertReviewPanel()'s temporary height lock if a
+// "transitionend" never fires (e.g. .rv-write-panel's grid-template-rows
+// transition gets interrupted, or reduced-motion collapses its duration to
+// 0 so no transition event fires at all). Comfortably longer than the
+// panel's own var(--t-spring) (0.35s) CSS transition (styles.css .rv-write-panel).
+const WRITE_PANEL_OPEN_RELEASE_FALLBACK_MS = 450;
+
+// auth.js is dynamically imported (never a static top-level import) so the
+// heavy Firebase CDN modules it pulls in stay lazy — only fetched the first
+// time a reviews action actually needs sign-in state, not on every page load.
+let _authModulePromise = null;
+function _getAuthModule() {
+  if (!_authModulePromise) _authModulePromise = import("./auth.js");
+  return _authModulePromise;
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 /** @type {Map<string, {avg: number, count: number, items: Array}>} */
@@ -72,57 +93,6 @@ function _storeVerificationToken(token, expiresAt) {
  */
 export function isVerified() {
   return _getVerificationToken() !== null;
-}
-
-/**
- * Send OTP to an email address.
- * @param {string} email
- * @returns {Promise<{success: boolean, error?: string}>}
- */
-async function _sendOTP(email) {
-  await loadRecaptcha(RECAPTCHA_SITE_KEY);
-  const token = await new Promise((resolve) =>
-    grecaptcha.ready(() =>
-      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "review_verify" }).then(resolve)
-    )
-  );
-
-  try {
-    const res = await fetch("/api/reviews", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "send-otp", email, token }),
-    });
-    const result = await res.json();
-    if (result.success) return { success: true };
-    return { success: false, error: result.error };
-  } catch {
-    return { success: false, error: "network_error" };
-  }
-}
-
-/**
- * Verify an OTP and obtain a signed token.
- * @param {string} email
- * @param {string} otp
- * @returns {Promise<{success: boolean, error?: string}>}
- */
-async function _verifyOTP(email, otp) {
-  try {
-    const res = await fetch("/api/reviews", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "verify-otp", email, otp }),
-    });
-    const result = await res.json();
-    if (result.success && result.token) {
-      _storeVerificationToken(result.token, result.expiresAt);
-      return { success: true };
-    }
-    return { success: false, error: result.error };
-  } catch {
-    return { success: false, error: "network_error" };
-  }
 }
 
 // ─── Data Loading ────────────────────────────────────────────────────────────
@@ -257,23 +227,35 @@ export function getPlaceReviews(placeId) {
 // ─── Review Submission ───────────────────────────────────────────────────────
 
 /**
- * Submit a review for a place. Requires email-verified token.
+ * Resolve the current identity to attach to a reviews API call: a Firebase
+ * ID token when signed in (preferred — see src/auth.js), falling back to a
+ * still-valid legacy OTP verification token for continuity.
+ * @returns {Promise<{idToken: string}|{verifyToken: string}|null>}
+ */
+async function _resolveReviewIdentity() {
+  const auth = await _getAuthModule();
+  if (auth.getCachedAccount()) {
+    const idToken = await auth.getIdToken();
+    if (idToken) return { idToken };
+  }
+  const verification = _getVerificationToken();
+  if (verification) return { verifyToken: verification.token };
+  return null;
+}
+
+/**
+ * Submit a review for a place. Requires the caller to be signed in (Google or
+ * email magic link) or hold a still-valid legacy OTP verification token.
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
  * @returns {Promise<{success: boolean, status?: string, error?: string}>}
  */
 export async function submitReview(placeId, rating, text) {
-  const verification = _getVerificationToken();
-  if (!verification) return { success: false, error: "invalid_token" };
+  const identity = await _resolveReviewIdentity();
+  if (!identity) return { success: false, error: "invalid_token" };
 
-  const payload = {
-    action: "submit",
-    placeId,
-    rating,
-    text: text || "",
-    verifyToken: verification.token,
-  };
+  const payload = { action: "submit", placeId, rating, text: text || "", ...identity };
 
   try {
     const res = await fetch("/api/reviews", {
@@ -299,14 +281,10 @@ export async function submitReview(placeId, rating, text) {
  * @returns {Promise<{reviewed: boolean, rating?: number}>}
  */
 export async function checkExistingReview(placeId) {
-  const verification = _getVerificationToken();
-  if (!verification) return { reviewed: false };
+  const identity = await _resolveReviewIdentity();
+  if (!identity) return { reviewed: false };
 
-  const payload = {
-    action: "check",
-    placeId,
-    verifyToken: verification.token,
-  };
+  const payload = { action: "check", placeId, ...identity };
 
   try {
     const res = await fetch("/api/reviews", {
@@ -318,6 +296,88 @@ export async function checkExistingReview(placeId) {
   } catch {
     return { reviewed: false };
   }
+}
+
+/**
+ * Fetch every review written by the signed-in user, across all places, for
+ * the Menu sheet's "Your reviews" list (Phase 7). Signed-out users get an
+ * empty list — this is Firebase-authenticated only, no legacy OTP fallback,
+ * since an OTP token only ever proves ownership of a single place's review.
+ * @returns {Promise<{reviews: Array<{placeId: string, placeName: string, rating: number, text: string, timestamp: string}>}>}
+ */
+export async function fetchMyReviews() {
+  const auth = await _getAuthModule();
+  if (!auth.getCachedAccount()) return { reviews: [] };
+  const idToken = await auth.getIdToken();
+  if (!idToken) return { reviews: [] };
+
+  try {
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "my-reviews", idToken }),
+    });
+    const result = await res.json();
+    return { reviews: Array.isArray(result.reviews) ? result.reviews : [] };
+  } catch {
+    return { reviews: [] };
+  }
+}
+
+/**
+ * Delete the signed-in user's own review for a place (Phase 7). Firebase-
+ * authenticated only, matching fetchMyReviews().
+ * @param {string} placeId
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteReview(placeId) {
+  const auth = await _getAuthModule();
+  const idToken = auth.getCachedAccount() ? await auth.getIdToken() : null;
+  if (!idToken) return { success: false, error: "invalid_token" };
+
+  try {
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", placeId, idToken }),
+    });
+    const result = await res.json();
+    if (result.success) _removeLocalReviewEntry(placeId);
+    return result;
+  } catch {
+    return { success: false, error: "network_error" };
+  }
+}
+
+/**
+ * Open a place's reviews overlay straight into the (pre-filled) edit form,
+ * skipping the summary view — used by the Menu sheet's "Your reviews" list
+ * (Phase 7) so editing reuses the exact same rating/text form as writing a
+ * fresh review, instead of a second bespoke edit UI.
+ * @param {string} placeId
+ * @param {string} placeName
+ * @param {{rating: number, text: string}} existing
+ */
+export function openReviewsOverlayForEdit(placeId, placeName, existing) {
+  openReviewsOverlay(placeId, placeName);
+  const overlay = document.getElementById("reviews-overlay");
+  const list = overlay?.querySelector(".rv-list");
+  if (!list) return;
+  overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
+  _showRatingForm(placeId, overlay, list, existing);
+}
+
+/**
+ * Best-effort local cache adjustment after deleting a review — decrements
+ * the cached count so any currently-open summary reflects the delete
+ * immediately. Not authoritative; the next full reviews refetch reconciles it.
+ * @param {string} placeId
+ */
+function _removeLocalReviewEntry(placeId) {
+  const existing = _reviewsMap.get(placeId);
+  if (!existing) return;
+  existing.count = Math.max(0, (existing.count || 0) - 1);
+  _reviewsMap.set(placeId, existing);
 }
 
 function _updateLocalReview(placeId, rating, text, status) {
@@ -497,7 +557,7 @@ function _restoreReviewSummary(overlay) {
     _renderReviewsOverlayContent(overlay, _activeOverlayPlaceId, _activeOverlayPlaceName);
   };
 
-  if (!activePanel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (!activePanel || isReduceMotionActive()) {
     if (card) card.style.removeProperty("height");
     renderSummary();
     return;
@@ -678,162 +738,95 @@ function _relativeTime(timestamp) {
 // ─── UI: Review Form ─────────────────────────────────────────────────────────
 
 /**
- * Show the review form — with email verification gate if not verified.
+ * Show the review form — gated on sign-in (Google/email link) unless the
+ * caller still holds a valid legacy OTP token from before Phase 7.
  * @param {string} placeId
  * @param {HTMLElement} overlay
+ * @returns {Promise<void>}
  */
-function _showReviewForm(placeId, overlay) {
+async function _showReviewForm(placeId, overlay) {
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
 
   const list = overlay.querySelector(".rv-list");
 
   if (isVerified()) {
     _showRatingForm(placeId, overlay, list);
-  } else {
-    _showVerificationForm(placeId, overlay, list);
+    return;
   }
+
+  const auth = await _getAuthModule();
+  if (auth.getCachedAccount()) {
+    _showRatingForm(placeId, overlay, list);
+    return;
+  }
+
+  _showSignInPrompt(placeId, overlay, list, auth);
 }
 
 /**
- * Show email verification UI (email input → OTP input).
+ * Show the sign-in gate (Google popup, or an email magic link) that replaces
+ * the legacy anonymous OTP flow as the entry point for new reviewers.
+ * @param {string} placeId
+ * @param {HTMLElement} overlay
+ * @param {HTMLElement} insertBefore
+ * @param {Object} auth - the already-loaded src/auth.js module namespace
  */
-function _showVerificationForm(placeId, overlay, insertBefore) {
+function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   const container = document.createElement("div");
   container.className = "rv-verify-form";
   container.appendChild(_buildFormHideButton(overlay));
 
-  // State
-  let _email = "";
-  let _lastSendTime = 0;
-
-  // ─── Email Step ─────────────────────────────────────────────────────
-  const emailStep = document.createElement("div");
-  emailStep.className = "rv-verify-step";
-  emailStep.innerHTML = [
-    `<div class="rv-verify-header">`,
-    `<div class="rv-verify-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>`,
-    `<p class="rv-verify-title">Verify your email</p>`,
-    `<p class="rv-verify-desc">A 6-digit code will be sent to confirm your identity</p>`,
-    `</div>`,
+  const header = document.createElement("div");
+  header.className = "rv-verify-header";
+  header.innerHTML = [
+    `<div class="rv-verify-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`,
+    `<p class="rv-verify-title">Sign in to write a review</p>`,
+    `<p class="rv-verify-desc">One identity, synced across your devices</p>`,
   ].join("");
+  container.appendChild(header);
+
+  const signinRow = document.createElement("div");
+  signinRow.className = "menu-account-signin-row";
+  container.appendChild(signinRow);
+
+  const googleBtn = document.createElement("button");
+  googleBtn.type = "button";
+  googleBtn.className = "rv-action-btn btn-google";
+  googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
+  signinRow.appendChild(googleBtn);
+
+  const emailToggle = document.createElement("button");
+  emailToggle.type = "button";
+  emailToggle.className = "rv-action-btn btn-secondary";
+  emailToggle.disabled = false;
+  emailToggle.innerHTML = EMAIL_SIGNIN_BTN_HTML;
+  signinRow.appendChild(emailToggle);
+
+  const emailStep = document.createElement("div");
+  emailStep.className = "rv-verify-step hide";
 
   const emailField = document.createElement("div");
   emailField.className = "rv-field";
-
   const emailLabel = document.createElement("label");
   emailLabel.className = "rv-field-label";
   emailLabel.textContent = "Email address";
-
   const emailInput = document.createElement("input");
   emailInput.type = "email";
   emailInput.className = "rv-input";
   emailInput.placeholder = "you@example.com";
   emailInput.maxLength = 254;
   emailInput.autocomplete = "email";
-
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
   emailStep.appendChild(emailField);
 
-  const sendBtn = document.createElement("button");
-  sendBtn.type = "button";
-  sendBtn.className = "rv-action-btn btn-primary";
-  sendBtn.textContent = "Send verification code";
-  sendBtn.disabled = true;
-
-  emailInput.addEventListener("input", () => {
-    sendBtn.disabled = !emailInput.value.includes("@");
-  });
-
-  emailStep.appendChild(sendBtn);
+  const sendLinkBtn = document.createElement("button");
+  sendLinkBtn.type = "button";
+  sendLinkBtn.className = "rv-action-btn btn-primary";
+  sendLinkBtn.textContent = "Send sign-in link";
+  emailStep.appendChild(sendLinkBtn);
   container.appendChild(emailStep);
 
-  // ─── OTP Step ───────────────────────────────────────────────────────
-  const otpStep = document.createElement("div");
-  otpStep.className = "rv-verify-step rv-otp-step hide";
-  otpStep.innerHTML = [
-    `<div class="rv-verify-header">`,
-    `<div class="rv-verify-icon rv-verify-icon--success"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg></div>`,
-    `<p class="rv-verify-title">Check your inbox</p>`,
-    `<p class="rv-verify-desc rv-otp-email-hint">Code sent — enter it below</p>`,
-    `</div>`,
-  ].join("");
-
-  // Individual OTP digit boxes
-  const otpBoxes = document.createElement("div");
-  otpBoxes.className = "rv-otp-boxes";
-  const otpDigits = [];
-  for (let i = 0; i < 6; i++) {
-    const digit = document.createElement("input");
-    digit.type = "text";
-    digit.inputMode = "numeric";
-    digit.pattern = "[0-9]";
-    digit.maxLength = 1;
-    digit.className = "rv-otp-digit";
-    digit.autocomplete = i === 0 ? "one-time-code" : "off";
-    digit.setAttribute("aria-label", `Digit ${i + 1}`);
-    otpDigits.push(digit);
-    otpBoxes.appendChild(digit);
-  }
-  otpStep.appendChild(otpBoxes);
-
-  // OTP digit navigation logic
-  otpDigits.forEach((input, idx) => {
-    input.addEventListener("input", (e) => {
-      const val = e.target.value.replace(/\D/g, "");
-      if (val.length > 0) {
-        input.value = val[0];
-        if (idx < 5) otpDigits[idx + 1].focus();
-      } else {
-        input.value = "";
-      }
-      _checkOtpComplete();
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && !input.value && idx > 0) {
-        otpDigits[idx - 1].focus();
-        otpDigits[idx - 1].value = "";
-        _checkOtpComplete();
-      }
-    });
-    input.addEventListener("paste", (e) => {
-      e.preventDefault();
-      const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
-      for (let j = 0; j < pasted.length && j < 6; j++) {
-        otpDigits[j].value = pasted[j];
-      }
-      const focusIdx = Math.min(pasted.length, 5);
-      otpDigits[focusIdx].focus();
-      _checkOtpComplete();
-    });
-  });
-
-  const verifyBtn = document.createElement("button");
-  verifyBtn.type = "button";
-  verifyBtn.className = "rv-action-btn btn-primary";
-  verifyBtn.textContent = "Verify";
-  verifyBtn.disabled = true;
-  otpStep.appendChild(verifyBtn);
-
-  function _checkOtpComplete() {
-    const full = otpDigits.every((d) => d.value.length === 1);
-    verifyBtn.disabled = !full;
-  }
-
-  function _getOtpValue() {
-    return otpDigits.map((d) => d.value).join("");
-  }
-
-  const resendLink = document.createElement("button");
-  resendLink.type = "button";
-  resendLink.className = "rv-resend-link";
-  resendLink.textContent = "Resend code";
-  resendLink.disabled = true;
-  otpStep.appendChild(resendLink);
-
-  container.appendChild(otpStep);
-
-  // Error display
   const errorMsg = document.createElement("p");
   errorMsg.className = "rv-verify-error hide";
   container.appendChild(errorMsg);
@@ -846,134 +839,67 @@ function _showVerificationForm(placeId, overlay, insertBefore) {
     errorMsg.classList.add("hide");
   }
 
-  // Send OTP handler
-  async function handleSend() {
-    hideError();
-    _email = emailInput.value.trim().toLowerCase();
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = `<span class="btn-spinner"></span> Sending...`;
-
-    const result = await _sendOTP(_email);
-
-    if (result.success) {
-      _lastSendTime = Date.now();
-      _animateReviewCardHeight(overlay, () => {
-        emailStep.classList.add("hide");
-        otpStep.classList.remove("hide");
-        const hint = otpStep.querySelector(".rv-otp-email-hint");
-        if (hint) hint.textContent = `Code sent to ${_email}`;
-      });
-      requestAnimationFrame(() => otpDigits[0].focus());
-      _startResendCooldown(resendLink);
-    } else {
-      const msgs = {
-        invalid_email: "Please enter a valid email address",
-        rate_limited_email: "Too many codes requested. Try again later.",
-        rate_limited_ip: "Too many requests. Try again later.",
-        quota_exhausted: "Verification unavailable right now. Please try again later.",
-        email_send_failed: "Could not send email. Try again later.",
-        network_error: "Network error. Check your connection.",
-      };
-      showError(msgs[result.error] || "Could not send code. Try again.");
-      sendBtn.disabled = false;
-      sendBtn.textContent = "Send verification code";
-    }
-  }
-
-  sendBtn.addEventListener("click", handleSend);
-  emailInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !sendBtn.disabled) handleSend();
+  emailToggle.addEventListener("click", () => {
+    _animateReviewCardHeight(overlay, () => emailStep.classList.toggle("hide"));
   });
 
-  // Verify OTP handler
-  async function handleVerify() {
+  googleBtn.addEventListener("click", async () => {
     hideError();
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = `<span class="btn-spinner"></span> Verifying...`;
+    googleBtn.disabled = true;
+    googleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
 
-    const result = await _verifyOTP(_email, _getOtpValue());
-
+    const result = await auth.signInWithGoogle();
     if (result.success) {
+      showToast("Signed in", "check");
       _animateReviewCardHeight(overlay, () => {
         container.remove();
         _showRatingForm(placeId, overlay, insertBefore);
       });
-      showToast("Email verified", "check");
     } else {
-      const msgs = {
-        wrong_otp: "Incorrect code. Please try again.",
-        otp_expired: "Code expired. Request a new one.",
-        too_many_attempts: "Too many attempts. Request a new code.",
-        invalid_otp: "Enter a 6-digit code.",
-        network_error: "Network error. Check your connection.",
-      };
-      showError(msgs[result.error] || "Verification failed. Try again.");
-      verifyBtn.disabled = false;
-      verifyBtn.textContent = "Verify";
-      if (result.error === "otp_expired" || result.error === "too_many_attempts") {
-        _animateReviewCardHeight(overlay, () => {
-          otpStep.classList.add("hide");
-          emailStep.classList.remove("hide");
-          otpDigits.forEach((d) => { d.value = ""; });
-          sendBtn.disabled = false;
-          sendBtn.textContent = "Send verification code";
-        });
+      googleBtn.disabled = false;
+      googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
+      // Don't show an error for a simple popup-close/cancel — that's not a failure.
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
       }
     }
-  }
-
-  verifyBtn.addEventListener("click", handleVerify);
-  // Submit on last digit entry
-  otpDigits[5].addEventListener("input", () => {
-    setTimeout(() => { if (!verifyBtn.disabled) handleVerify(); }, 50);
   });
 
-  // Resend handler
-  resendLink.addEventListener("click", async () => {
+  sendLinkBtn.addEventListener("click", async () => {
     hideError();
-    resendLink.disabled = true;
-    const result = await _sendOTP(_email);
+    const email = emailInput.value.trim();
+    if (!email.includes("@")) {
+      showError("Please enter a valid email address");
+      return;
+    }
+    sendLinkBtn.disabled = true;
+    sendLinkBtn.innerHTML = `<span class="btn-spinner"></span> Sending…`;
+
+    const result = await auth.sendMagicLink(email);
     if (result.success) {
-      _lastSendTime = Date.now();
-      _startResendCooldown(resendLink);
-      showToast("Code resent", "check");
+      _animateReviewCardHeight(overlay, () => {
+        emailStep.innerHTML = `<p class="rv-verify-desc">Check <strong>${esc(email)}</strong> for a sign-in link, then come back and open this review form again.</p>`;
+      });
     } else {
-      showError("Could not resend. Try again later.");
-      resendLink.disabled = false;
+      sendLinkBtn.disabled = false;
+      sendLinkBtn.textContent = "Send sign-in link";
+      showError("Could not send the link. Please try again.");
     }
   });
 
   _insertReviewPanel(insertBefore, container);
-  requestAnimationFrame(() => emailInput.focus());
 }
 
 /**
- * Start the resend cooldown timer on the resend link.
- * @param {HTMLElement} resendLink
- */
-function _startResendCooldown(resendLink) {
-  resendLink.disabled = true;
-  let remaining = Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000);
-  resendLink.textContent = `Resend code (${remaining}s)`;
-  const interval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(interval);
-      resendLink.disabled = false;
-      resendLink.textContent = "Resend code";
-    } else {
-      resendLink.textContent = `Resend code (${remaining}s)`;
-    }
-  }, 1000);
-}
-
-/**
- * Show the actual rating + text form (after email verification).
+ * Show the actual rating + text form (after sign-in, or when re-opened from
+ * the Menu sheet's "Your reviews" list to edit an existing review).
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @param {HTMLElement} insertBefore
+ * @param {{rating: number, text: string}|null} [existing=null] - pre-fills the
+ *   form and switches the submit button to "Update review" when editing.
  */
-function _showRatingForm(placeId, overlay, insertBefore) {
+function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
   const form = document.createElement("div");
   form.className = "rv-form";
   form.appendChild(_buildFormHideButton(overlay));
@@ -982,23 +908,23 @@ function _showRatingForm(placeId, overlay, insertBefore) {
   const header = document.createElement("div");
   header.className = "rv-form-header";
   header.innerHTML = [
-    `<p class="rv-form-title">How was your experience?</p>`,
+    `<p class="rv-form-title">${existing ? "Edit your review" : "How was your experience?"}</p>`,
     `<p class="rv-form-subtitle">Tap a star to rate</p>`,
   ].join("");
   form.appendChild(header);
 
-  let selectedRating = 0;
+  let selectedRating = existing?.rating || 0;
   const RATING_LABELS = ["", "Terrible", "Poor", "Okay", "Good", "Excellent"];
 
   const ratingLabel = document.createElement("span");
   ratingLabel.className = "rv-rating-label";
-  ratingLabel.textContent = "";
+  ratingLabel.textContent = RATING_LABELS[selectedRating] || "";
 
   const starInput = _buildStarInput((rating) => {
     selectedRating = rating;
     ratingLabel.textContent = RATING_LABELS[rating] || "";
     submitBtn.disabled = rating === 0;
-  });
+  }, selectedRating);
 
   form.appendChild(starInput);
   form.appendChild(ratingLabel);
@@ -1016,10 +942,11 @@ function _showRatingForm(placeId, overlay, insertBefore) {
   textArea.placeholder = "Share your experience…";
   textArea.maxLength = MAX_TEXT_LEN;
   textArea.rows = 3;
+  textArea.value = existing?.text || "";
 
   const charCounter = document.createElement("span");
   charCounter.className = "rv-char-count";
-  charCounter.textContent = `0/${MAX_TEXT_LEN}`;
+  charCounter.textContent = `${textArea.value.length}/${MAX_TEXT_LEN}`;
 
   textArea.addEventListener("input", () => {
     charCounter.textContent = `${textArea.value.length}/${MAX_TEXT_LEN}`;
@@ -1033,8 +960,8 @@ function _showRatingForm(placeId, overlay, insertBefore) {
   const submitBtn = document.createElement("button");
   submitBtn.className = "rv-submit-btn btn-primary";
   submitBtn.type = "button";
-  submitBtn.textContent = "Submit review";
-  submitBtn.disabled = true;
+  submitBtn.textContent = existing ? "Update review" : "Submit review";
+  submitBtn.disabled = selectedRating === 0;
 
   const note = document.createElement("p");
   note.className = "rv-form-note";
@@ -1069,23 +996,22 @@ function _showRatingForm(placeId, overlay, insertBefore) {
         rate_limited: "Too many reviews today. Try again tomorrow.",
         invalid_place: "Place not found",
         invalid_rating: "Invalid rating",
-        invalid_token: "Session expired. Please verify again.",
+        invalid_token: "Session expired. Please sign in again.",
         text_too_short: `Minimum ${MIN_TEXT_LEN} characters for text`,
         network_error: "Network error. Try again.",
       };
       if (result.error === "invalid_token") {
         localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
+        showToast(msgs[result.error], "error");
         _animateReviewCardHeight(overlay, () => {
           form.remove();
-          const list = overlay.querySelector(".rv-list");
-          if (list) _showVerificationForm(placeId, overlay, list);
+          _showReviewForm(placeId, overlay);
         });
-        showToast(msgs[result.error], "error");
         return;
       }
       showToast(msgs[result.error] || "Submission failed", "error");
       submitBtn.disabled = false;
-      submitBtn.textContent = "Submit review";
+      submitBtn.textContent = existing ? "Update review" : "Submit review";
     }
   });
 
@@ -1098,11 +1024,6 @@ function _showRatingForm(placeId, overlay, insertBefore) {
 // ─── Initialization ──────────────────────────────────────────────────────────
 
 function _insertReviewPanel(insertBefore, contentEl) {
-  // Lock the card at its current height so the expanding panel doesn't push
-  // review cards downward — the form reveals within the scroll area instead.
-  const card = insertBefore.closest(".rv-overlay-card");
-  if (card) card.style.height = `${card.offsetHeight}px`;
-
   const panel = document.createElement("div");
   panel.className = "rv-write-panel shut";
   const inner = document.createElement("div");
@@ -1113,8 +1034,63 @@ function _insertReviewPanel(insertBefore, contentEl) {
   inner.appendChild(content);
   panel.appendChild(inner);
   insertBefore.insertAdjacentElement("beforebegin", panel);
+
+  const card = insertBefore.closest(".rv-overlay-card");
+  if (!card || isReduceMotionActive()) {
+    requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.remove("shut")));
+    return;
+  }
+
+  // FLIP the card's outer height and the panel's own grid-template-rows
+  // reveal *together*, from the same frame, so they run as one continuous
+  // motion instead of the earlier freeze → invisible-grow → abrupt-snap
+  // sequence (the card was pinned at its old height for the panel's entire
+  // reveal, then popped to its true size the instant the lock released —
+  // two disjoint phases stitched together read as jank). See
+  // docs/PREFERENCE_LOG.md.
+  //
+  // Measurement: pin the card at its current height (so the DOM insert above
+  // doesn't itself cause a jump), then momentarily force the panel fully
+  // open with transitions disabled to read the card's true post-reveal
+  // height, then revert both back to their closed/pinned state before
+  // starting the real, visible transition — the same disable-transition /
+  // measure / restore idiom animateElementHeight() uses for a single
+  // element, applied here across the two elements (card + panel) at once.
+  const oldHeight = card.offsetHeight;
+  card.style.transition = "none";
+  card.style.height = `${oldHeight}px`;
+  panel.style.transition = "none";
+
+  panel.classList.remove("shut");
+  // Release the pinned height to auto just for this measurement — leaving
+  // it pinned at oldHeight here (a bug in an earlier pass) made newHeight
+  // always equal oldHeight, silently no-opping the transition below and
+  // leaving the release-lock's removeProperty("height") as the only thing
+  // that ever actually resized the card — an abrupt snap, not a transition.
+  card.style.height = "auto";
+  void card.offsetHeight;
+  const newHeight = card.offsetHeight;
+  card.style.height = `${oldHeight}px`;
+  panel.classList.add("shut");
+  void card.offsetHeight;
+
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.remove("shut"));
+    card.style.removeProperty("transition");
+    panel.style.removeProperty("transition");
+    card.style.height = `${newHeight}px`;
+    panel.classList.remove("shut");
+
+    let releaseTimer;
+    const releaseHeightLock = () => {
+      panel.removeEventListener("transitionend", onPanelTransitionEnd);
+      clearTimeout(releaseTimer);
+      if (card.isConnected) card.style.removeProperty("height");
+    };
+    const onPanelTransitionEnd = (e) => {
+      if (e.target === panel && e.propertyName === "grid-template-rows") releaseHeightLock();
+    };
+    panel.addEventListener("transitionend", onPanelTransitionEnd);
+    releaseTimer = setTimeout(releaseHeightLock, WRITE_PANEL_OPEN_RELEASE_FALLBACK_MS);
   });
 }
 

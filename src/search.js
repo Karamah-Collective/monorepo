@@ -3,7 +3,7 @@ import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
-import { placesData, showPlacePopup, activeSponsor } from "./places.js";
+import { placesData, openPlaceSheet, activeSponsor } from "./places.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -414,7 +414,7 @@ rList.addEventListener("click", (e) => {
   inp.blur();
   if (li.dataset.placeId) {
     const place = placesData.find(p => p.id === li.dataset.placeId);
-    if (place) { showPlacePopup(place); return; }
+    if (place) { openPlaceSheet(place); return; }
   }
   showSearchMarker(lng, lat);
   map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });

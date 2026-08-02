@@ -3,6 +3,7 @@
 // Persists completion state in localStorage so it only shows once.
 // The card physically animates between positions for a fluid experience.
 // Steps adapt to the current layout: desktop / tablet / phone.
+import { openMenuSheet, closeMenuSheet } from "./menu.js";
 
 const TUTORIAL_KEY = "hf_tutorial_v1";
 
@@ -57,61 +58,35 @@ const ALL_STEPS = [
     phoneOrder: 4,
   },
 
-  // ─── Desktop-only: pills are always visible ─────────────────────────
+  // ─── Shared: always visible on all layouts ────────────────────
   {
-    target: "#wish-pill",
-    title: "Wishlist",
-    body: "Vote on feature ideas or suggest your own \u2014 the community shapes what we build next",
-    icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
-    layout: ["desktop"],
-  },
-  {
-    target: "#contact-pill",
-    title: "Contact",
-    body: "Have feedback or a question? Reach us directly from the map",
-    icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
-    layout: ["desktop"],
-  },
-  {
-    target: "#style-picker-btn",
-    title: "Map Style",
-    body: "Switch between the street map and satellite imagery",
-    icon: '<path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>',
-    layout: ["desktop"],
+    target: "#zoom-pill",
+    title: "Zoom",
+    body: "Use <b>+</b> and <b>\u2212</b> to zoom, or pinch on a touch screen",
+    icon: '<path d="M12 5v14M5 12h14"/>',
+    before() { return closeMenuSheet(); },
+    phoneOrder: 5,
   },
   {
     target: "#search-pill",
     title: "Search",
     body: "Find any address or place in Helsinki \u2014 just start typing",
     icon: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
-    layout: ["desktop"],
-  },
-
-  // ─── Phone + Tablet: tools toggle groups search / style / contact ───
-  {
-    target: "#tools-toggle",
-    title: "Tools",
-    body: "Tap to reveal <b>Search</b>, <b>Map Style</b>, <b>Contact</b> and <b>Wishlist</b> \u2014 all tucked away to save space",
-    icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-    layout: ["phone", "tablet"],
-    before() { return closeToolsMenu(); },
     phoneOrder: 6,
   },
   {
-    target: "#search-pill",
-    title: "Search",
-    body: "Find any address or place in Helsinki \u2014 just start typing",
-    icon: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
-    layout: ["phone", "tablet"],
-    before() { return openToolsMenu(); },
+    target: "#menu-pill",
+    title: "Menu",
+    body: "Sign in, switch map style, contact us, or vote on the wishlist \u2014 all in one place",
+    icon: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+    before() { return openMenuSheet(); },
     phoneOrder: 7,
   },
   {
-    target: "#style-picker-btn",
+    target: "#style-panel",
     title: "Map Style",
-    body: "Switch between the street map and satellite imagery",
+    body: "Switch between the street map, satellite imagery, and more",
     icon: '<path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>',
-    layout: ["phone", "tablet"],
     phoneOrder: 8,
   },
   {
@@ -119,7 +94,6 @@ const ALL_STEPS = [
     title: "Contact",
     body: "Have feedback or a question? Reach us directly from the map",
     icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
-    layout: ["phone", "tablet"],
     phoneOrder: 9,
   },
   {
@@ -127,18 +101,7 @@ const ALL_STEPS = [
     title: "Wishlist",
     body: "Vote on feature ideas or suggest your own \u2014 the community shapes what we build next",
     icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
-    layout: ["phone", "tablet"],
     phoneOrder: 10,
-  },
-
-  // ─── Shared: always visible on all layouts ──────────────────────────
-  {
-    target: "#zoom-pill",
-    title: "Zoom",
-    body: "Use <b>+</b> and <b>\u2212</b> to zoom, or pinch on a touch screen",
-    icon: '<path d="M12 5v14M5 12h14"/>',
-    before() { return closeToolsMenu(); },
-    phoneOrder: 5,
   },
   {
     target: "#events-pill",
@@ -146,7 +109,7 @@ const ALL_STEPS = [
     body: "Browse mosque events \u2014 classes, lectures, community gatherings and more",
     icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
     forceShow: true,
-    before() { _showEventsPillForTutorial(); },
+    before() { closeMenuSheet(); return _showEventsPillForTutorial(); },
     phoneOrder: 11,
   },
   {
@@ -172,32 +135,6 @@ const ALL_STEPS = [
     phoneOrder: 99,
   },
 ];
-
-// ─── Helpers: open / close the tools toggle ───────────────────────────────────
-function openToolsMenu() {
-  const app = document.getElementById("app");
-  if (app && !app.classList.contains("tools-open")) {
-    app.classList.add("tools-open");
-    const grid = document.getElementById("tools-icon-grid");
-    const x    = document.getElementById("tools-icon-x");
-    if (grid) grid.style.display = "none";
-    if (x)    x.style.display = "";
-    return true;
-  }
-  return false;
-}
-function closeToolsMenu() {
-  const app = document.getElementById("app");
-  if (app && app.classList.contains("tools-open")) {
-    app.classList.remove("tools-open");
-    const grid = document.getElementById("tools-icon-grid");
-    const x    = document.getElementById("tools-icon-x");
-    if (grid) grid.style.display = "";
-    if (x)    x.style.display = "none";
-    return true;
-  }
-  return false;
-}
 
 /** Re-hide the events pill if it has no events (was only shown for the tutorial step). */
 let _eventsPillWasHidden = false;
@@ -503,7 +440,7 @@ function retreat() {
 
 function dismiss() {
   localStorage.setItem(TUTORIAL_KEY, "1");
-  closeToolsMenu();
+  closeMenuSheet();
   _restoreEventsPill();
   overlayEl.classList.remove("visible");
   cardEl.classList.remove("visible");

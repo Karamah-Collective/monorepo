@@ -32,6 +32,7 @@ import "./directions.js";
 import "./navigation.js"; // registers nav hooks with directions.js
 import { loadPlacesData, placesLoaded } from "./places.js";
 import "./search.js";
+import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
 
 function hasIncomingSharedState() {
@@ -214,6 +215,13 @@ map.on("load", async () => {
   // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
   initTrafficOverlay();
   checkGeoNotice();
+  // Account sign-in (Firebase) — non-critical, so it's wired here rather than
+  // eagerly, same as the other lazy-loaded modules above.
+  initMenuAccount();
+  // Preferences section (prayer method/madhab, reduce-motion) — prayer.js is
+  // already loaded by the Promise.all above, so this dynamic import just
+  // resolves to the cached module instead of loading it a second time.
+  initMenuPreferences();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
   // NOTE: Disabled — keep code for future re-enable
@@ -243,36 +251,5 @@ map.on("load", async () => {
   document.getElementById("privacy-link").addEventListener("click", (e) => {
     e.preventDefault();
     privacyOverlay.classList.remove("hide");
-  });
-
-  // ─── Tools Toggle (tablet: collapsible pill group) ─── 
-  const toolsBtn = document.getElementById("tools-toggle");
-  const iconDots = document.getElementById("tools-icon-grid");
-  const iconX    = document.getElementById("tools-icon-x");
-  const appEl    = document.getElementById("app");
-
-  toolsBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const opening = !appEl.classList.contains("tools-open");
-    appEl.classList.toggle("tools-open");
-    iconDots.style.display = opening ? "none" : "";
-    iconX.style.display    = opening ? "" : "none";
-
-    // If closing, also collapse search if it was open
-    if (!opening) {
-      const sc = document.getElementById("search-card");
-      if (sc && !sc.classList.contains("collapsed")) {
-        sc.classList.add("collapsed");
-        const inp = document.getElementById("search-input");
-        if (inp) { inp.value = ""; inp.blur(); }
-        const sd = document.getElementById("search-drop");
-        if (sd) sd.classList.add("hide");
-        const cb = document.getElementById("clear-input");
-        if (cb) cb.classList.add("hide");
-      }
-      // Close style panel if open
-      const sp = document.getElementById("style-panel");
-      if (sp) sp.classList.add("hide");
-    }
   });
 });

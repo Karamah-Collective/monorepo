@@ -1,5 +1,6 @@
 import { _CRYPTO_KEY } from "./config.js";
 import { map } from "./map-init.js";
+import { EVT } from "./events.js";
 
 // ─── Saved custom pins ─────────────────────────────────────────────────────────────
 const SAVED_PINS_KEY = "hf_saved_pins";
@@ -15,10 +16,29 @@ export function toggleSavedPin(lat, lng, name) {
   const exists = pins.some(p => p.id === id);
   pins = exists ? pins.filter(p => p.id !== id) : [...pins, { id, lat: +lat, lng: +lng, name: name || id }];
   localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
-  return !exists; // returns new saved state (true = now saved)
+  const saved = !exists; // new saved state (true = now saved)
+  _emitWindowEvent(EVT.SAVED_PIN_TOGGLED, { lat: +lat, lng: +lng, name: name || id, saved });
+  return saved;
 }
 export function removeSavedPin(id) {
   localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(_loadPins().filter(p => p.id !== id)));
+}
+/**
+ * Set (not toggle) a saved-pin's state directly — used by
+ * src/account-sync.js when adopting a server-only pin during the sign-in
+ * merge. Unlike toggleSavedPin(), this never fires EVT.SAVED_PIN_TOGGLED.
+ * @param {number} lat
+ * @param {number} lng
+ * @param {string} name
+ * @param {boolean} saved
+ */
+export function setSavedPinState(lat, lng, name, saved) {
+  const id = pinId(lat, lng);
+  let pins = _loadPins();
+  const exists = pins.some((p) => p.id === id);
+  if (saved === exists) return;
+  pins = saved ? [...pins, { id, lat: +lat, lng: +lng, name: name || id }] : pins.filter((p) => p.id !== id);
+  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
 }
 
 function _emitWindowEvent(name, detail) {
@@ -93,6 +113,72 @@ export function setCurrentLocationState({ lat, lng, accuracy, active = true } = 
 export function clearCurrentLocationState() {
   return setCurrentLocationState({ active: false, lat: null, lng: null });
 }
+// ─────────────────────────────────────────────────────────────
+
+// --- Reduced motion (Menu sheet → Preferences → "Reduce motion") ---
+//
+// Single source of truth for "should this app dampen animations right now?",
+// consulted by both CSS (the html.reduce-motion selector in design-tokens.css,
+// which replaced a bare `@media (prefers-reduced-motion: reduce)` block) and
+// any JS-level motion checks (animateElementHeight() below, reviews.js's
+// panel-close animation) — not two competing mechanisms. An explicit in-app
+// override (this preference) takes precedence over the OS-level
+// `prefers-reduced-motion` media feature; absent an override, the OS setting
+// is followed live (including if the user changes it while the app is open).
+const REDUCE_MOTION_KEY = "hf_reduce_motion"; // "true" | "false" | absent = follow OS
+const REDUCE_MOTION_CLASS = "reduce-motion";
+const _reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/**
+ * The user's explicit reduce-motion override, if any has been set.
+ * @returns {boolean | null} true/false if explicitly set via the Preferences
+ *   toggle, or null if there's no override (following the OS setting).
+ */
+export function getReduceMotionOverride() {
+  const stored = localStorage.getItem(REDUCE_MOTION_KEY);
+  if (stored === "true") return true;
+  if (stored === "false") return false;
+  return null;
+}
+
+/**
+ * The effective reduce-motion state right now: the explicit override if one
+ * is set, otherwise the OS-level `prefers-reduced-motion` media feature.
+ * @returns {boolean}
+ */
+export function isReduceMotionActive() {
+  const override = getReduceMotionOverride();
+  return override === null ? _reduceMotionMQ.matches : override;
+}
+
+function _applyReduceMotionClass() {
+  const active = isReduceMotionActive();
+  document.documentElement.classList.toggle(REDUCE_MOTION_CLASS, active);
+  document.body.classList.toggle(REDUCE_MOTION_CLASS, active);
+}
+
+/**
+ * Set (or clear) the explicit reduce-motion override and re-apply the class
+ * immediately. Called by the Menu sheet's Preferences toggle.
+ * @param {boolean | null} value true/false to force a state, or null to clear
+ *   the override and go back to following the OS setting.
+ * @returns {void}
+ */
+export function setReduceMotionOverride(value) {
+  if (value === null) localStorage.removeItem(REDUCE_MOTION_KEY);
+  else localStorage.setItem(REDUCE_MOTION_KEY, value ? "true" : "false");
+  _applyReduceMotionClass();
+}
+
+// Apply as early as possible (mirrors map-controls.js's restoreSavedTheme()
+// dark-mode IIFE) so animations are already dampened before anything else
+// on the page starts animating in.
+_applyReduceMotionClass();
+// If there's no explicit override, keep following live OS-setting changes
+// (e.g. the user flips their OS's reduce-motion toggle while the app is open).
+_reduceMotionMQ.addEventListener("change", () => {
+  if (getReduceMotionOverride() === null) _applyReduceMotionClass();
+});
 // ─────────────────────────────────────────────────────────────
 
 // --- Device ID (stable per browser profile, shared across modules) ---
@@ -457,8 +543,7 @@ const HEIGHT_ANIMATION_FALLBACK_MS = 500;
  * @returns {void}
  */
 export function animateElementHeight(element, changeFn, { skip = false } = {}) {
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!element || skip || reduceMotion || !element.isConnected) {
+  if (!element || skip || isReduceMotionActive() || !element.isConnected) {
     changeFn();
     return;
   }

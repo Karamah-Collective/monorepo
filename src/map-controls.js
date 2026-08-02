@@ -35,7 +35,9 @@ navigator.permissions?.query({ name: "geolocation" })
 const HOME_VIEW_ZOOM = 14.2;
 const HOME_MARKER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
 
-export let currentTheme = "light";     // "light" | "dark"
+export let currentTheme = "light";     // "light" | "dark" — the actually-applied visual theme
+export let themeMode = "light";        // "light" | "dark" | "auto" — the user's selected Theme option
+let _systemThemeMQ = null;             // matchMedia("(prefers-color-scheme: dark)"), created lazily
 export let isSatelliteActive = false;
 
 const SAT_SOURCE_ID = "satellite-src";
@@ -685,30 +687,66 @@ export function disable3D() {
   map.setLayoutProperty("building_outline", "visibility", "visible");
 }
 
-// ── Theme: switch between light and dark ──────────────────────────
-export function setTheme(theme) {
-  if (theme === currentTheme) return;
-  currentTheme = theme;
-  const isDark = theme === "dark";
+// ── Theme: switch between light, dark, and "auto" (follow OS) ──────────────
+function _getSystemThemeMQ() {
+  if (!_systemThemeMQ) _systemThemeMQ = window.matchMedia("(prefers-color-scheme: dark)");
+  return _systemThemeMQ;
+}
+
+/** Applies the actual light/dark visual theme (not a mode) to the DOM. */
+function _applyResolvedTheme(isDark) {
+  currentTheme = isDark ? "dark" : "light";
   document.body.classList.add("theme-transition");
   document.documentElement.classList.toggle("dark-mode", isDark);
   document.body.classList.toggle("dark-mode", isDark);
-  document.getElementById("map").classList.toggle("dark-mode", isDark);
+  document.getElementById("map")?.classList.toggle("dark-mode", isDark);
   setTimeout(() => document.body.classList.remove("theme-transition"), 500);
-  try { localStorage.setItem("theme", theme); } catch (_) {}
+}
+
+/** Re-applies the resolved OS theme while "auto" mode is selected and the OS preference changes live. */
+function _onSystemThemeChange() {
+  if (themeMode !== "auto") return;
+  _applyResolvedTheme(_getSystemThemeMQ().matches);
   _syncStyleButtons();
-  console.log(`[Style] Theme → ${theme}`);
+}
+
+/**
+ * Set the Theme mode: "light", "dark", or "auto" (follow the OS-level
+ * `prefers-color-scheme` setting live, same "explicit override on top of
+ * the OS preference" shape as utils.js's reduce-motion toggle). "auto" isn't
+ * a third visual theme of its own — it resolves to light or dark based on
+ * the OS preference and keeps following it for as long as it stays selected.
+ * @param {"light"|"dark"|"auto"} mode
+ * @returns {void}
+ */
+export function setTheme(mode) {
+  if (mode === themeMode) return;
+  themeMode = mode;
+  const mq = _getSystemThemeMQ();
+  mq.removeEventListener("change", _onSystemThemeChange);
+  if (mode === "auto") {
+    mq.addEventListener("change", _onSystemThemeChange);
+    _applyResolvedTheme(mq.matches);
+  } else {
+    _applyResolvedTheme(mode === "dark");
+  }
+  try { localStorage.setItem("theme", mode); } catch (_) {}
+  _syncStyleButtons();
 }
 
 // ── Restore saved theme on load (before first render to avoid flash) ──
 (function restoreSavedTheme() {
   try {
     const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      currentTheme = "dark";
-      document.documentElement.classList.add("dark-mode");
-      document.body.classList.add("dark-mode");
-      document.getElementById("map")?.classList.add("dark-mode");
+    if (saved === "dark" || saved === "auto") {
+      themeMode = saved;
+      const mq = _getSystemThemeMQ();
+      const isDark = saved === "auto" ? mq.matches : true;
+      if (saved === "auto") mq.addEventListener("change", _onSystemThemeChange);
+      currentTheme = isDark ? "dark" : "light";
+      document.documentElement.classList.toggle("dark-mode", isDark);
+      document.body.classList.toggle("dark-mode", isDark);
+      document.getElementById("map")?.classList.toggle("dark-mode", isDark);
       _syncStyleButtons();
     }
   } catch (_) {}
@@ -870,7 +908,6 @@ export function toggleSatellite() {
 
   updateMarkerVisibility();
   _syncStyleButtons();
-  console.log(`[Style] Satellite ${isSatelliteActive ? "ON" : "OFF"}`);
 }
 
 // ── Heatmap toggle ────────────────────────────────────────────────
@@ -969,8 +1006,8 @@ function _snapshotLabels() {
 function _syncStyleButtons() {
   document.querySelectorAll(".style-opt").forEach((el) => {
     const s = el.dataset.style;
-    if (s === "light" || s === "dark") {
-      el.classList.toggle("active", s === currentTheme);
+    if (s === "light" || s === "dark" || s === "auto") {
+      el.classList.toggle("active", s === themeMode);
     } else if (s === "satellite") {
       el.classList.toggle("active", isSatelliteActive);
     } else if (s === "heatmap") {
@@ -978,8 +1015,7 @@ function _syncStyleButtons() {
     }
   });
   const isNonDefault = isSatelliteActive || isHeatmapActive;
-  document.getElementById("style-picker-btn")?.classList.toggle("active", isNonDefault);
-  document.getElementById("tools-toggle")?.classList.toggle("style-active", isNonDefault);
+  document.getElementById("menu-pill")?.classList.toggle("active", isNonDefault);
 }
 
 export function refreshHeatmapSource() {
@@ -988,21 +1024,13 @@ export function refreshHeatmapSource() {
   if (src) src.setData(buildHeatmapGeoJSON());
 }
 
-// Style picker toggle
-document.getElementById("style-picker-btn")?.addEventListener("click", () => {
-  document.getElementById("style-panel")?.classList.toggle("hide");
-});
 document.querySelectorAll(".style-opt").forEach((btn) => {
   btn.addEventListener("click", () => {
     const s = btn.dataset.style;
-    if (s === "light" || s === "dark") setTheme(s);
+    if (s === "light" || s === "dark" || s === "auto") setTheme(s);
     else if (s === "satellite") toggleSatellite();
     else if (s === "heatmap") toggleHeatmap();
   });
-});
-document.addEventListener("click", (e) => {
-  const picker = document.getElementById("style-picker");
-  if (picker && !picker.contains(e.target)) document.getElementById("style-panel")?.classList.add("hide");
 });
 
 // Home / zoom / locate buttons

@@ -257,6 +257,10 @@
     {
       "id": "cuisine_teppanyaki",
       "label": "Teppanyaki"
+    },
+    {
+      "id": "cuisine_d_ner",
+      "label": "Döner"
     }
   ]
 }
