@@ -46,7 +46,7 @@ import {
   updateSubmissionStatusCache,
 } from "./places.js";
 import { fetchMyReviews, buildStarDisplay, deleteReview, openReviewsOverlayForEdit } from "./reviews.js";
-import { computeContributionStats, isVerifiedContributor, formatMemberSince } from "./account-profile.js";
+import { computeContributionStats, formatMemberSince } from "./account-profile.js";
 
 const ACCOUNT_API = "/api/account";
 
@@ -81,7 +81,6 @@ let _reviewsCache = [];
 let _submittedPlacesCache = [];
 let _submittedEditsCache = [];
 let _accountMetaCache = { saved: [], firstSeenAt: null };
-let _verifiedCache = false;
 
 let _authModulePromise = null;
 function _getAuthModule() {
@@ -135,12 +134,11 @@ export async function loadProfileContent() {
   if (!_account) return; // shouldn't happen — Profile is only ever reachable while signed in
   _renderCard();
 
-  const [reviewsResult, placesResult, editsResult, meta, verified] = await Promise.all([
+  const [reviewsResult, placesResult, editsResult, meta] = await Promise.all([
     fetchMyReviews(),
     fetchMySubmittedPlaces(),
     fetchMySubmittedEdits(),
     _fetchAccountMeta(),
-    isVerifiedContributor(),
   ]);
   // The merged sheet may have been closed (or the account signed out) while
   // these were in flight — bail rather than render into a stale/gone sheet
@@ -151,9 +149,8 @@ export async function loadProfileContent() {
   _submittedPlacesCache = placesResult.submissions;
   _submittedEditsCache = editsResult.submissions;
   _accountMetaCache = meta;
-  _verifiedCache = verified;
 
-  _renderCard(); // re-render with "member since"/verified badge now resolved
+  _renderCard(); // re-render with "member since" now resolved
   _renderStats();
   _renderSubmissionList(submittedPlacesEl, _submittedPlacesCache, "You haven't submitted any places yet.");
   _renderSubmissionList(submittedEditsEl, _submittedEditsCache, "You haven't submitted any edits yet.");
@@ -195,7 +192,7 @@ async function _fetchAccountMeta() {
   }
 }
 
-// ─── Identity card (avatar, name, email, verified badge, member since, sign out) ──
+// ─── Identity card (avatar, name, email, member since, sign out) ──
 
 function _renderCard() {
   if (!_account) return;
@@ -208,20 +205,11 @@ function _renderCard() {
     ? `<img class="menu-account-avatar pf-card-avatar" src="${escA(_account.photoURL)}" alt="" referrerpolicy="no-referrer">`
     : `<div class="menu-account-avatar pf-card-avatar">${esc(initial)}</div>`;
   const memberSince = formatMemberSince(_accountMetaCache.firstSeenAt);
-  // Profile is only ever reachable while _account is truthy, which is
-  // itself defined identically to isVerifiedContributor() ("signed in via
-  // Firebase at all") — so this is always true in practice here, but goes
-  // through the shared helper anyway rather than re-deriving the rule
-  // locally, per its own doc comment's stated purpose (one place, reused
-  // consistently by every UI surface that shows this badge).
-  const verifiedBadge = _verifiedCache
-    ? `<span class="sponsor-badge verified-badge">Verified</span>`
-    : "";
 
   cardBody.innerHTML = `<div class="menu-account-profile">
     ${avatarHTML}
     <div class="menu-account-info">
-      <span class="menu-account-name">${esc(label)} ${verifiedBadge}</span>
+      <span class="menu-account-name">${esc(label)}</span>
       ${_account.displayName && _account.email ? `<span class="menu-account-email">${esc(_account.email)}</span>` : ""}
       ${memberSince ? `<span class="pf-member-since">Member since ${esc(memberSince)}</span>` : ""}
     </div>

@@ -281,7 +281,12 @@ function _openPinPopup(lng, lat, kind, entry) {
       favBtn.classList.toggle("active", nowSaved);
       favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save pin");
       favBtn.innerHTML = _starSVG(nowSaved);
-      showToast(nowSaved ? "Pin saved" : "Pin removed", "check");
+      // No toast here — src/account-sync.js's EVT.SAVED_PIN_TOGGLED listener
+      // owns it now, since it's the only place that actually knows whether
+      // this succeeded (signed out: confirms immediately; signed in: only
+      // after the real cloud result). Showing "Pin saved" right here, before
+      // that's known, is what previously produced a stacked "Pin saved" +
+      // "Couldn't save pin" pair for the same tap.
     } else if (shrBtn) {
       shareUrl(_buildPinShareUrl(lat, lng), badgeLabel, `${badgeLabel} – Halal Finder`);
     } else if (rmBtn) {

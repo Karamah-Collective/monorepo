@@ -324,10 +324,22 @@ async function _handleSignIn() {
 
 /**
  * Fire a background save/unsave for a favourite/pin/home toggle that has
- * already been applied optimistically to the in-memory cloud state. If the
- * request never actually succeeds server-side, `onFailure` is called to roll
- * that state back — the toggle itself is instant, but it must not silently
- * stay "saved" in the UI while the server never got it.
+ * already been applied optimistically to the in-memory state. Optimistic
+ * means the STATE change is instant (the caller already applied it before
+ * calling this) — it does NOT mean announcing a result before it's known.
+ * This function is the one place that actually knows the real outcome, so
+ * every "did it work" callback belongs here, not at the call site:
+ *   - `onSignedOut`: there is no cloud round-trip to wait for at all (signed
+ *     out is a purely local, synchronous operation) — safe to confirm right
+ *     away, since nothing further can fail.
+ *   - `onSuccess`: the cloud request actually confirmed. This is the ONLY
+ *     correct moment for a "Saved" toast when the caller is signed in —
+ *     showing it earlier (e.g. immediately after the optimistic local
+ *     mutation, before this async call even starts) is exactly the bug that
+ *     produced a "Pin saved" success toast stacked with a later "Couldn't
+ *     save pin" failure toast for the SAME action (reported 2026-08-03).
+ *   - `onFailure`: the request failed (or never had a valid session) — rolls
+ *     the optimistic state back AND is the moment to show a failure toast.
  *
  * `_syncGeneration` is captured here, as the very first line — before any
  * `await`, so it's equivalent to capturing it at the moment the optimistic
@@ -338,21 +350,25 @@ async function _handleSignIn() {
  * `onFailure`'s rollback pointed at whatever the CURRENT state now is — which
  * is the just-restored local device cache, not the cloud state the mutation
  * actually applied to — silently corrupting the local cache with a rollback
- * that was never about it.
+ * that was never about it. Same guard applies to `onSuccess` for the
+ * identical reason — a stale success callback firing after a sign-out would
+ * announce success against an account that's no longer active.
  * @param {string} kind - "favorite" | "pin" | "home"
  * @param {string} action - "save" | "unsave"
  * @param {object} fields - extra payload fields (placeId, pinLat, etc.)
- * @param {() => void} onFailure - reverts the optimistic in-memory change
+ * @param {{onSuccess?: () => void, onFailure?: () => void, onSignedOut?: () => void}} callbacks
  * @returns {Promise<void>}
  */
-async function _backgroundSync(kind, action, fields, onFailure) {
+async function _backgroundSync(kind, action, fields, { onSuccess, onFailure, onSignedOut } = {}) {
   const generation = _syncGeneration;
   const auth = await _getAuthModule();
-  if (!auth.getCachedAccount()) return; // signed out — no-op, purely additive feature
+  if (!auth.getCachedAccount()) { onSignedOut?.(); return; } // signed out — nothing async to wait for, confirm right away
   const idToken = await auth.getIdToken();
   if (!idToken) { if (generation === _syncGeneration) onFailure?.(); return; }
   const result = await _callAccountApi(action, { kind, ...fields }, idToken);
-  if (!result.success && generation === _syncGeneration) onFailure?.();
+  if (generation !== _syncGeneration) return;
+  if (result.success) onSuccess?.();
+  else onFailure?.();
 }
 
 /**
@@ -372,39 +388,64 @@ export function initAccountSync() {
   window.addEventListener(EVT.FAVOURITE_TOGGLED, (e) => {
     const { placeId, saved } = e.detail || {};
     if (!placeId) return;
-    _backgroundSync("favorite", saved ? "save" : "unsave", { placeId }, () => {
-      setFavouriteState(placeId, !saved);
-      window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
-      showToast(saved ? "Couldn't save favourite" : "Couldn't remove favourite", "error", "Please try again");
+    _backgroundSync("favorite", saved ? "save" : "unsave", { placeId }, {
+      // No onSuccess/onSignedOut — favouriting has never shown a toast at
+      // all (the star icon's own fill/unfill is the confirmation), only a
+      // rollback + explanation on actual failure.
+      onFailure: () => {
+        setFavouriteState(placeId, !saved);
+        window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+        showToast(saved ? "Couldn't save favourite" : "Couldn't remove favourite", "error", "Please try again");
+      },
     });
   });
 
+  // Pin save/remove toast now lives entirely here, not at the click-handler
+  // call site (src/search.js / src/transit-stops.js no longer show one at
+  // all) — this is the only place that actually knows whether the action
+  // succeeded. Signed out: nothing async happens, so confirming immediately
+  // is honest. Signed in: wait for the real cloud result — showing "Pin
+  // saved" before that was confirmed is exactly what produced a stacked
+  // "Pin saved" + "Couldn't save pin" pair for the same tap (reported bug).
   window.addEventListener(EVT.SAVED_PIN_TOGGLED, (e) => {
     const { lat, lng, name, saved } = e.detail || {};
     if (lat == null || lng == null) return;
-    _backgroundSync("pin", saved ? "save" : "unsave", { pinLat: lat, pinLng: lng, pinName: name }, () => {
-      setSavedPinState(lat, lng, name, !saved);
-      window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
-      showToast(saved ? "Couldn't save pin" : "Couldn't remove pin", "error", "Please try again");
+    const confirmToast = () => showToast(saved ? "Pin saved" : "Pin removed", "check");
+    _backgroundSync("pin", saved ? "save" : "unsave", { pinLat: lat, pinLng: lng, pinName: name }, {
+      onSignedOut: confirmToast,
+      onSuccess: confirmToast,
+      onFailure: () => {
+        setSavedPinState(lat, lng, name, !saved);
+        window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+        showToast(saved ? "Couldn't save pin" : "Couldn't remove pin", "error", "Please try again");
+      },
     });
   });
 
   // hf:home-updated is a pre-existing string-literal event (utils.js) — kept
   // as-is rather than routed through EVT, per this codebase's convention of
   // not retrofitting every existing event name (see src/events.js header).
+  // Home's own "Home saved... Saved locally on this device" toast (shown at
+  // the call site, src/search.js) is honest as written — it's true the
+  // instant it fires, regardless of whether the background cloud sync below
+  // later succeeds or fails, so it doesn't have the pin toast's bug and
+  // isn't changed here — only the failure/rollback path is this function's
+  // job.
   window.addEventListener("hf:home-updated", (e) => {
     if (_suppressHomeBackgroundSync) return; // this exact event was just fired by our own cloud-mode entry/exit above
     const home = e.detail?.home;
     if (home) {
-      _backgroundSync("home", "save", { pinLat: home.lat, pinLng: home.lng, pinName: home.name }, () => {
-        // Not a full rollback (the previous home, if any, isn't captured
-        // here) — surfacing the failure is still strictly better than the
-        // previous silent no-op, which gave no indication anything was wrong.
-        showToast("Couldn't sync home location", "error", "Please try again");
+      _backgroundSync("home", "save", { pinLat: home.lat, pinLng: home.lng, pinName: home.name }, {
+        onFailure: () => {
+          // Not a full rollback (the previous home, if any, isn't captured
+          // here) — surfacing the failure is still strictly better than the
+          // previous silent no-op, which gave no indication anything was wrong.
+          showToast("Couldn't sync home location", "error", "Please try again");
+        },
       });
     } else {
-      _backgroundSync("home", "unsave", {}, () => {
-        showToast("Couldn't sync home removal", "error", "Please try again");
+      _backgroundSync("home", "unsave", {}, {
+        onFailure: () => showToast("Couldn't sync home removal", "error", "Please try again"),
       });
     }
   });

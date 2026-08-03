@@ -1651,9 +1651,7 @@ html.reduce-motion *::after {
   cursor: help;
 }
 
-/* Shared "Sponsored"/"Verified" inline badge — reuse chip sizing, tint via
-   --badge-c (defaults to the sponsor gold so every pre-existing usage stays
-   pixel-identical; .verified-badge below is the only other consumer today). */
+/* Shared "Sponsored" inline badge — reuse chip sizing but with gold tint */
 .sponsor-badge {
   display: inline-flex;
   align-items: center;
@@ -1662,17 +1660,9 @@ html.reduce-motion *::after {
   border-radius: var(--r-pill);
   font-size: var(--txt-xs);
   font-weight: var(--fw-semibold);
-  color: var(--badge-c, var(--sponsor));
-  background: color-mix(in srgb, var(--badge-c, var(--sponsor)) 14%, transparent);
+  color: var(--sponsor);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
   white-space: nowrap;
-}
-
-/* "Verified reviewer" badge (src/profile.js, next to the account name) —
-   signed in via Firebase at all (see account-profile.js's
-   isVerifiedContributor()). Same .sponsor-badge shape, accent tint instead
-   of gold so it doesn't read as a sponsorship/featured signal. */
-.verified-badge {
-  --badge-c: var(--accent);
 }
 
 /* Sponsor glow ring for map markers — featured + spotlight */

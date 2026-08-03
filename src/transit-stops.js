@@ -211,7 +211,9 @@ function _openStopFeaturePopup(f) {
       favBtn.classList.toggle("active", nowSaved);
       favBtn.setAttribute("aria-label", nowSaved ? "Remove from saved" : "Save stop");
       favBtn.innerHTML = _starSVG(nowSaved);
-      showToast(nowSaved ? "Stop saved" : "Stop removed", "check");
+      // No toast here — src/account-sync.js's EVT.SAVED_PIN_TOGGLED listener
+      // owns it now (see src/search.js's identical fix for the full
+      // rationale — this was the other call site of the same bug).
     } else if (dirBtn) {
       const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
       dir.origin = { lat, lng, name: stopName };

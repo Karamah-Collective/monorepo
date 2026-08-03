@@ -8,19 +8,7 @@
  * is an array already fetched elsewhere: fetchMyReviews() (reviews.js), the
  * sync-saved response's `saved` list (account-sync.js), and
  * fetchMySubmittedPlaces()/fetchMySubmittedEdits() (places.js).
- *
- * Not yet imported anywhere — src/profile.js (a later phase) is what will
- * wire this in once index.html's #profile-sheet exists.
  */
-
-// auth.js is dynamically imported (never a static top-level import) so its
-// heavy Firebase CDN modules stay lazy — matching reviews.js/account-sync.js/
-// places.js's own _getAuthModule() helpers.
-let _authModulePromise = null;
-function _getAuthModule() {
-  if (!_authModulePromise) _authModulePromise = import("./auth.js");
-  return _authModulePromise;
-}
 
 // "Member since" display, e.g. "August 2026" — index into this by
 // Date#getMonth() (0-based).
@@ -58,19 +46,6 @@ export function computeContributionStats({ reviews = [], savedPlaces = [], submi
     placesAddedCount: places.length,
     editsCount: edits.length,
   };
-}
-
-/**
- * Whether the current session counts as a "verified reviewer" — signed in
- * via Firebase at all (Google, Microsoft, or email link), i.e. identity is
- * emailHash-linked rather than the legacy anonymous OTP flow. Centralises
- * this rule in one place so a later UI phase (public reviews list, Profile
- * badge) doesn't reimplement it inconsistently.
- * @returns {Promise<boolean>}
- */
-export async function isVerifiedContributor() {
-  const auth = await _getAuthModule();
-  return Boolean(auth.getCachedAccount());
 }
 
 /**
