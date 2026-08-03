@@ -2764,14 +2764,16 @@ body.dark-mode .sp-tip {
 #profile-my-reviews.rv-list {
   gap: 0;
   margin-top: 0;
-  padding: var(--sp-2) 14px var(--sp-4);
+  padding: 0 14px var(--sp-2);
 }
 /* Tighter than the full reviews-overlay's own .rv-review-card (var(--sp-5)) —
    this list sits inside an already-padded .menu-section, so the overlay's
    spacing compounds with the section's own padding into visibly too much
-   air above/below each row. */
+   air above/below each row. Tightened further (var(--sp-3) → var(--sp-2))
+   after user feedback that a single-row list still read as too airy even
+   with the list's own top/bottom padding removed above. */
 #profile-my-reviews .rv-review-card {
-  padding: var(--sp-3) 0;
+  padding: var(--sp-2) 0;
 }
 /* The last card's own bottom padding would otherwise double up with the
    section's own trailing padding below it. */
@@ -2885,7 +2887,7 @@ body.dark-mode .sp-tip {
 
 /* Submitted places / edits lists */
 .pf-submission-list {
-  padding: var(--sp-2) 14px var(--sp-4);
+  padding: 0 14px var(--sp-2);
 }
 /* Empty-state placeholder ("You haven't submitted any places yet.") only ever
    got the populated-row case tightened (.pf-submission-item's own padding
@@ -2899,12 +2901,28 @@ body.dark-mode .sp-tip {
   padding: 0;
 }
 .pf-submission-item {
-  padding: var(--sp-3) 0;
+  padding: var(--sp-2) 0;
   border-bottom: 1px solid var(--border-light);
 }
 .pf-submission-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+/* Only a "live" submission has a resolved placeId to navigate to (see
+   _buildSubmissionRow() in src/profile.js) — pending/rejected rows stay
+   plain, non-interactive text. */
+.pf-submission-item--clickable {
+  margin: 0 calc(var(--sp-2) * -1);
+  padding-left: var(--sp-2);
+  padding-right: var(--sp-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color var(--t-fast);
+}
+@media (hover: hover) {
+  .pf-submission-item--clickable:hover {
+    background: var(--surface-2);
+  }
 }
 .pf-submission-row {
   display: flex;

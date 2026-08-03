@@ -316,7 +316,13 @@ function _buildSubmissionRow(item) {
   // where hover tooltips aren't discoverable at all.
   const titleAttr = hasReason ? ` title="${escA(item.rejectReason)}"` : "";
   const reasonHtml = hasReason ? `<p class="pf-submission-reason">${esc(item.rejectReason)}</p>` : "";
-  return `<div class="pf-submission-item">
+  // Only a "live" submission is guaranteed to have a resolved placeId
+  // (getMySubmittedPlaces() only performs its Places-sheet lookup once a
+  // row is approved); a still-pending/rejected row has nothing to navigate
+  // to yet, so it stays a plain, non-interactive row.
+  const clickable = Boolean(item.placeId);
+  const clickableAttrs = clickable ? ` data-place-id="${escA(item.placeId)}" role="button" tabindex="0"` : "";
+  return `<div class="pf-submission-item${clickable ? " pf-submission-item--clickable" : ""}"${clickableAttrs}>
     <div class="pf-submission-row">
       <span class="pf-submission-name">${esc(name)}</span>
       <span class="status-pill status-pill--${status}"${titleAttr}>${STATUS_LABELS[status]}</span>
@@ -332,6 +338,33 @@ function _renderSubmissionList(container, list, emptyText) {
     return;
   }
   container.innerHTML = list.map((item) => _buildSubmissionRow(item)).join("");
+  _wireSubmissionRows(container);
+}
+
+/**
+ * Clicking/tapping a submitted place or edit row that has a resolved
+ * placeId opens that place's sheet, same navigate-away pattern as
+ * _wireMyReviewRows() below — closes the whole merged sheet first so the
+ * place sheet doesn't stack behind/alongside it.
+ * @param {HTMLElement} container
+ * @returns {void}
+ */
+function _wireSubmissionRows(container) {
+  container.querySelectorAll(".pf-submission-item--clickable").forEach((row) => {
+    const open = () => {
+      const place = placesData.find((p) => p.id === row.dataset.placeId);
+      if (!place) return;
+      _closeAccountSheet();
+      openPlaceSheet(place);
+    };
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
 }
 
 /**
