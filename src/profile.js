@@ -304,7 +304,13 @@ const STATUS_LABELS = { pending: "Pending", live: "Live", rejected: "Rejected" }
 
 function _buildSubmissionRow(item) {
   const status = item.status === "live" || item.status === "rejected" ? item.status : "pending";
-  const name = item.name || "Untitled";
+  // Code.gs's getMySubmittedPlaces() returns this field as `name`;
+  // getMySubmittedEdits() returns the same information as `placeName` —
+  // reading only `item.name` here meant every edit row fell through to
+  // "Untitled" regardless of the actual place name (reported bug). Handles
+  // both field names rather than requiring another Code.gs redeploy just to
+  // rename one of them for consistency.
+  const name = item.name || item.placeName || "Untitled";
   const hasReason = status === "rejected" && item.rejectReason;
   // Native title= tooltip for desktop hover; the <p> below covers mobile,
   // where hover tooltips aren't discoverable at all.
