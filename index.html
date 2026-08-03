@@ -42,7 +42,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260803-12" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260803-13" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -947,20 +947,34 @@
            the row's own height never changed to fit whichever pane was
            actually showing.
 
-           This (3rd) iteration instead lets #mp-pane-track's children size to
-           their own real content (`align-items: flex-start` in styles.css) and
-           has src/menu.js's `_setActivePane()`/`_syncPaneHeight()` explicitly,
-           smoothly animate #mp-scroll's own height to match ONLY the
-           currently-active pane, in sync with #mp-pane-track's translateX
-           slide (same 0.32s var(--ease-expo) on both, two independent CSS
-           transitions on two different elements so animateElementHeight()'s
-           height-freeze on #mp-scroll can never interrupt #mp-pane-track's own
-           transform transition). #mp-pane-track's `height: 100%` always
-           mirrors #mp-scroll, and its `overflow: hidden` hard-clips whichever
-           pane isn't active (often taller) so its excess is never visible NOR
-           scroll-reachable. See docs/DESIGN_SYSTEM.md's "Menu/Profile merged
-           sheet" entry and docs/PREFERENCE_LOG.md for the complete history
-           across all three rounds. -->
+           A 3rd iteration let #mp-pane-track's children size to their own
+           real content (`align-items: flex-start`) and animated #mp-scroll's
+           own height to match the active pane directly, pinning
+           #mp-pane-track to exactly 100% of it. This looked right but broke
+           scrolling entirely: #mp-scroll never had flex:1/min-height:0 (so it
+           couldn't shrink to fit whatever .sheet actually had available), and
+           since its one child was always clamped to match it exactly,
+           #mp-scroll.scrollHeight could never exceed its own clientHeight —
+           overflow-y: auto had nothing to ever scroll (Menu/Profile became
+           unscrollable on phone, live-reported production bug).
+
+           This (4th) iteration adds a dedicated #mp-height-wrap between
+           #mp-scroll and #mp-pane-track specifically so three separate
+           concerns never collide on one element: #mp-scroll (flex: 1;
+           min-height: 0; overflow-y: auto) shrinks to fit whatever .sheet
+           actually allows; #mp-height-wrap is the one src/menu.js's
+           `_syncPaneHeight()` animates to the ACTIVE pane's true content
+           height (and CAN legitimately exceed #mp-scroll's own rendered
+           size, restoring genuine scrollable overflow); #mp-pane-track
+           mirrors #mp-height-wrap via a now-safe `height: 100%` and keeps
+           its own transform transition completely untouched by the height
+           animation (an interim fix that animated #mp-pane-track's height
+           directly instead of introducing this wrapper hit the same
+           animateElementHeight()-disables-all-transitions-on-its-target
+           issue this design has always avoided — pane switches stopped
+           sliding and snapped instantly). See docs/DESIGN_SYSTEM.md's
+           "Menu/Profile merged sheet" entry and docs/PREFERENCE_LOG.md for
+           the complete history across all four rounds. -->
       <div id="menu-sheet" class="sheet shut" hidden>
         <div id="mp-sheet-drag" class="sheet-drag"><span></span></div>
         <div class="sheet-head">
@@ -980,6 +994,7 @@
           </button>
         </div>
         <div id="mp-scroll" class="t-scroll mp-scroll">
+          <div id="mp-height-wrap" class="mp-height-wrap">
           <div id="mp-pane-track" class="mp-pane-track">
             <div id="menu-sheet-body" class="mp-pane">
               <div class="menu-section">
@@ -1169,6 +1184,7 @@
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

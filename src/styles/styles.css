@@ -2547,6 +2547,29 @@ body.dark-mode .sp-tip {
    were the target too. Both durations/easings are hardcoded to the same
    0.32s var(--ease-expo) so they read as one coordinated motion, not two. */
 #mp-scroll {
+  /* #mp-scroll plays the same role every other sheet's own scrollable body
+     element does (e.g. #place-sheet-body: "flex: 1; min-height: 0;") — fill
+     whatever space .sheet's own flex column (.sheet-drag + .sheet-head +
+     this) has left, and let overflow-y: auto handle anything taller than
+     that. Without this, this element defaulted to flex:0 1 auto with
+     min-height:auto, refusing to shrink below its content's full height —
+     and since .mp-pane-track used to be pinned to exactly 100% of THIS
+     element's own height (round 3's original mistake), the two heights
+     chased each other 1:1 with nothing ever exceeding the other —
+     #mp-scroll.scrollHeight always equalled its own clientHeight, so
+     overflow-y: auto never had any actual overflow to scroll. Regression:
+     Menu/Profile became unscrollable on phone whenever content was taller
+     than .sheet's own available height. NOT display:flex itself — #mp-scroll
+     is a flex ITEM of .sheet (hence flex:1 here), but its own child
+     (#mp-height-wrap below) is a plain block, not a flex item of THIS
+     element, specifically so #mp-height-wrap's explicit height can
+     legitimately exceed #mp-scroll's own (flex-shrunk) rendered height —
+     the round-4 fix (this comment's history) initially tried making
+     #mp-pane-track itself the height-JS-target directly inside #mp-scroll,
+     which reopened the identical circular-clamp bug one level down, AND
+     broke the slide transition (see #mp-height-wrap's own comment below). */
+  flex: 1;
+  min-height: 0;
   /* Only overflow-x needs stating explicitly here — .t-scroll (the other
      class this element also carries) already sets overflow-y: auto, and per
      the CSS overflow spec a non-visible overflow-y forces overflow-x's
@@ -2555,15 +2578,31 @@ body.dark-mode .sp-tip {
      `overflow: hidden` would already clip it visually, but not suppress
      that scrollbar. */
   overflow-x: hidden;
-  /* JS-owned (src/menu.js's `_syncPaneHeight()`) and kept permanently
-     pinned to an explicit px value (animateElementHeight()'s
-     `keepExplicitHeight` option) rather than ever reverting to `auto` —
-     #mp-pane-track's `height: 100%` below depends on this always being a
-     definite value; if it were ever "auto", the percentage would resolve to
-     "auto" too and the track would fall back to its natural (tallest-pane)
-     size, reopening the round-2 dead-space bug. Same 0.32s var(--ease-expo)
-     as #mp-pane-track's transform transition just below, so the resize and
-     the slide feel like one motion. */
+}
+/* Sits between #mp-scroll and #mp-pane-track specifically so the height
+   animation and the horizontal slide never share an element. JS-owned
+   (src/menu.js's `_syncPaneHeight()`) and kept permanently pinned to an
+   explicit px value matching the ACTIVE pane's own true content height
+   (animateElementHeight()'s `keepExplicitHeight` option) — never `100%` of
+   #mp-scroll, which is what let #mp-scroll's own overflow never have
+   anything to scroll (see its comment above). A first attempt at this fix
+   put the height target directly on #mp-pane-track instead of introducing
+   this separate wrapper — animateElementHeight() briefly sets
+   `element.style.transition = "none"` on whatever element it's given while
+   it works, which on #mp-pane-track also cancelled ITS OWN transform
+   transition (the slide), making pane switches snap instantly instead of
+   sliding. This wrapper carries ONLY the height transition; #mp-pane-track
+   (below) carries ONLY the transform transition — animating one can never
+   disable the other now. */
+.mp-height-wrap {
+  /* Reuses .sheet's own --ease-expo curve (this is a direct sibling concern
+     of .sheet's transform transition just above, not a design-tokens
+     template) rather than a bundled --t-* token, matching how .sheet's own
+     transform/opacity/height transition already hardcodes its durations
+     alongside --ease-expo a few rules up in this same file. Same duration
+     as .mp-pane-track's own transform transition below, so the resize and
+     the slide read as one motion. */
+  height: 220px; /* placeholder — src/menu.js sets the real value on load */
   transition: height 0.32s var(--ease-expo);
 }
 .mp-pane-track {
@@ -2575,21 +2614,15 @@ body.dark-mode .sp-tip {
      an accurate, sibling-independent measurement. */
   align-items: flex-start;
   width: 200%;
-  /* Always exactly #mp-scroll's (JS-animated) height — never this row's own
-     natural/auto height, which (both panes being permanently mounted) would
-     otherwise still equal the taller pane's height regardless of
-     align-items. See the round-3 writeup above. */
+  /* Always exactly #mp-height-wrap's (JS-animated) height — safe to mirror
+     via 100% now, unlike mirroring #mp-scroll directly, because
+     #mp-height-wrap's OWN height is independently JS-set and can be taller
+     than #mp-scroll's actual rendered size. */
   height: 100%;
   /* Hard-clips the inactive (often taller) pane's excess — not just
-     visually, but not scroll-reachable either, unlike leaving this to
-     #mp-scroll's own overflow-y: auto alone would be. */
+     visually, but not scroll-reachable either, since it's fully offscreen
+     horizontally anyway (only the active pane should ever be reachable). */
   overflow: hidden;
-  /* Reuses .sheet's own --ease-expo curve (this is a direct sibling concern
-     of .sheet's transform transition just above, not a design-tokens
-     template) rather than a bundled --t-* token, matching how .sheet's own
-     transform/opacity/height transition already hardcodes its durations
-     alongside --ease-expo a few rules up in this same file. Same duration as
-     #mp-scroll's height transition above — see that rule's comment. */
   transition: transform 0.32s var(--ease-expo);
 }
 .mp-pane-track.mp-pane-track--profile {

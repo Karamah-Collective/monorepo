@@ -65,7 +65,7 @@ const menuSheet = document.getElementById("menu-sheet");
 const menuScrim = document.getElementById("scrim");
 const sheetTitleEl = document.getElementById("mp-sheet-title");
 const sheetCloseBtn = document.getElementById("mp-sheet-close");
-const mpScrollEl = document.getElementById("mp-scroll");
+const heightWrapEl = document.getElementById("mp-height-wrap");
 const paneTrack = document.getElementById("mp-pane-track");
 const menuPaneEl = document.getElementById("menu-sheet-body");
 const profilePaneEl = document.getElementById("profile-sheet-body");
@@ -207,19 +207,42 @@ function _setActivePane(pane, { instant = false } = {}) {
 }
 
 /**
- * Smoothly resize #mp-scroll to match `paneEl`'s own true natural content
- * height — the "actual fix" for round 2's dead-space bug (see the file-level
- * doc comment above and styles.css's writeup on .mp-pane-track/#mp-scroll).
+ * Smoothly resize #mp-height-wrap to match `paneEl`'s own true natural
+ * content height — the "actual fix" for round 2's dead-space bug (see the
+ * file-level doc comment above and styles.css's writeup on
+ * .mp-height-wrap/.mp-pane-track/#mp-scroll).
+ *
+ * Targets the dedicated #mp-height-wrap element, NOT #mp-scroll (round 3's
+ * mistake) and NOT #mp-pane-track directly (round 4's FIRST attempt at this
+ * fix, also wrong — see docs/PREFERENCE_LOG.md for the full history):
+ * - Round 3 animated #mp-scroll's own height and pinned #mp-pane-track to
+ *   exactly 100% of it — the two heights could never differ, so
+ *   #mp-scroll.scrollHeight always equalled its own clientHeight, leaving
+ *   nothing for overflow-y: auto to ever scroll (Menu/Profile became
+ *   unscrollable on phone).
+ * - Fixing that by moving the height target onto #mp-pane-track directly
+ *   introduced a NEW bug: animateElementHeight() briefly sets
+ *   `element.style.transition = "none"` on whatever element it's given —
+ *   on #mp-pane-track that also cancelled its own transform transition (the
+ *   slide), so pane switches stopped sliding and just snapped instantly.
+ * - #mp-height-wrap exists specifically so the height animation and the
+ *   transform/slide animation are never the same element's problem: this
+ *   function's target (#mp-height-wrap) carries ONLY the height
+ *   transition; #mp-pane-track carries ONLY the transform transition and
+ *   mirrors #mp-height-wrap's height via a safe `100%` (safe now because
+ *   #mp-height-wrap's own height is independently JS-set and CAN exceed
+ *   #mp-scroll's actual rendered size, unlike round 3's #mp-scroll target).
+ *
  * Thin wrapper around utils.js's animateElementHeight(), passing a
  * `measureHeight` override rather than relying on its default "set
  * height:auto, remeasure" trick — that trick would still read
  * #mp-pane-track's own natural/auto height, which (both panes being
  * permanently mounted, see styles.css) is STILL the taller sibling's height
  * regardless of which one is active; only `paneEl.offsetHeight` directly is
- * accurate, since `.mp-pane-track`'s new `align-items: flex-start` (styles.css)
+ * accurate, since `.mp-pane-track`'s `align-items: flex-start` (styles.css)
  * means each `.mp-pane` always reports its own real content height,
  * independent of its sibling.
- * @param {HTMLElement} paneEl - the pane #mp-scroll's height should now match.
+ * @param {HTMLElement} paneEl - the pane #mp-height-wrap's height should now match.
  * @param {() => void} [changeFn] - DOM mutation to run in lockstep with the
  *   height tween (typically the pane-track slide + inert/aria-hidden
  *   toggle). Omit when only re-measuring already-changed content (e.g. after
@@ -231,7 +254,7 @@ function _setActivePane(pane, { instant = false } = {}) {
  * @returns {void}
  */
 function _syncPaneHeight(paneEl, changeFn = () => {}, { skip = false } = {}) {
-  animateElementHeight(mpScrollEl, changeFn, {
+  animateElementHeight(heightWrapEl, changeFn, {
     skip,
     measureHeight: () => paneEl.offsetHeight,
     keepExplicitHeight: true,
@@ -348,6 +371,19 @@ export async function initMenuAccount() {
 
   _account = _auth.getCachedAccount();
   _renderAccountSection();
+  // initMenuAccount()'s own async work (the dynamic imports + initAuth()
+  // above) can easily still be in flight the very first time a user opens
+  // the Menu sheet right after page load — #menu-account-body was measured
+  // back at _setActivePane()'s initial "instant" sync while it still showed
+  // just the "Loading…" placeholder, so #mp-height-wrap ended up pinned to
+  // that placeholder's much shorter height. Without a resync here, the sheet
+  // stayed stuck at that first-open height forever (reported bug: opens to
+  // ~25% height the first time, correct only after closing and reopening,
+  // by which point this async work has long since finished). Same
+  // _activePane guard as _goToProfilePane()'s own post-async resync — only
+  // matters if the user hasn't already navigated to the Profile pane by the
+  // time this resolves.
+  if (_activePane === "menu") { _syncPaneHeight(menuPaneEl); menuSnap.softRemeasure(); }
   // Only the just-completed-a-magic-link case gets a toast here — a restored
   // already-signed-in session (the far more common case, on every normal page
   // load) stays silent, matching this feature's "purely additive, invisible"
@@ -361,6 +397,11 @@ export async function initMenuAccount() {
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
     _account = e.detail?.account || null;
     _renderAccountSection();
+    // Signing in/out changes the Account section's own height (sign-in
+    // buttons vs. a signed-in profile row) — same resync this file's own
+    // initMenuAccount() already does after ITS async render, for the exact
+    // same reason.
+    if (_activePane === "menu") { _syncPaneHeight(menuPaneEl); menuSnap.softRemeasure(); }
     // Profile only ever shows signed-in content; if the account just signed
     // out while its pane was the one on screen, there's nothing left to
     // show — mirrors this sheet's pre-merge behavior (src/profile.js used to
