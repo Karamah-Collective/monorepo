@@ -1871,6 +1871,7 @@ body.dark-mode .sp-tip {
   visibility: hidden;
   pointer-events: none;
 }
+
 .sheet.dragging {
   transition: none;
   will-change: transform, height;
@@ -1996,6 +1997,18 @@ body.dark-mode .sp-tip {
   #dir-go {
     display: flex;
     width: calc(100% - 32px);
+  }
+  /* #place-sheet keeps its flex column + pinned-footer layout even at tablet
+     width (an ID-selector override of the generic .sheet rule two rules up) —
+     the action row must stay outside the scrolling body here too, otherwise
+     collapsing the whole sheet into one scroll container would let it scroll
+     out of reach just like the mobile bug this layout exists to fix. */
+  #place-sheet {
+    display: flex;
+    overflow: hidden;
+  }
+  #place-sheet-body {
+    overflow-y: auto;
   }
 }
 
@@ -2492,6 +2505,102 @@ body.dark-mode .sp-tip {
   padding: var(--sp-2) 14px;
 }
 
+/* ─── Merged Menu/Profile sheet: pane-swap mechanics (3rd iteration) ───
+   See index.html's header comment on #menu-sheet and src/menu.js's
+   _setActivePane()/_syncPaneHeight() for the full writeup, and
+   docs/PREFERENCE_LOG.md's "Menu/Profile pane-switch: real height animation,
+   not stretch-to-tallest" entry (2026-08-03, 3rd round on this exact sheet)
+   for the full history of why this looks the way it does.
+
+   Round 1 (superseded): two independent .sheet elements, coordinated slide —
+   still wobbled, each auto-sized to its OWN content height underneath the
+   slide.
+   Round 2 (superseded): one physical sheet, two .mp-pane siblings inside
+   #mp-pane-track with NO align-items override (flexbox's stretch default) —
+   the row's own auto-height became the TALLER pane's height always, and the
+   shorter pane got force-stretched to match, leaving a permanent block of
+   dead white space below its real content whenever it was shorter than its
+   sibling (user-reported, screenshot: empty Profile pane before real data
+   loads). Eliminated the wobble, but only by permanently freezing at the
+   worst-case (tallest) height rather than actually animating to fit.
+   Round 3 (this one): #mp-pane-track no longer stretches its children
+   (`align-items: flex-start`) or auto-sizes itself — its own `height: 100%`
+   always exactly mirrors #mp-scroll's height, which src/menu.js now
+   explicitly (and smoothly) animates to match ONLY the currently-active
+   pane's true natural content height via `_syncPaneHeight()` (a thin wrapper
+   around utils.js's `animateElementHeight()`, passing a `measureHeight`
+   override since the *default* "set height:auto, remeasure" trick would
+   still read the tallest-sibling value — both panes remain permanently
+   mounted, so #mp-pane-track's own natural/auto height is STILL tallest-
+   sibling-driven even with align-items changed; only reading the target
+   `.mp-pane`'s own offsetHeight directly is accurate). `overflow: hidden` on
+   #mp-pane-track hard-clips whatever the (often taller) INACTIVE pane sticks
+   out below the active pane's height — not just visually hidden but never
+   scroll-reachable either, unlike relying on #mp-scroll's own
+   `overflow-y: auto` alone would be (that would let a user scroll down into
+   the inactive pane's blank tail). The height tween and the horizontal slide
+   are two independent CSS transitions on two DIFFERENT elements (#mp-scroll
+   vs #mp-pane-track) triggered from the same synchronous call in
+   `_setActivePane()`, deliberately NOT the same element — `animateElementHeight()`
+   briefly sets `element.style.transition = "none"` on whatever element it's
+   given, which would cancel #mp-pane-track's own transform transition if it
+   were the target too. Both durations/easings are hardcoded to the same
+   0.32s var(--ease-expo) so they read as one coordinated motion, not two. */
+#mp-scroll {
+  /* Only overflow-x needs stating explicitly here — .t-scroll (the other
+     class this element also carries) already sets overflow-y: auto, and per
+     the CSS overflow spec a non-visible overflow-y forces overflow-x's
+     computed value to auto too if left unset, which would put a visible
+     horizontal scrollbar under the 200%-wide track below. This sheet's own
+     `overflow: hidden` would already clip it visually, but not suppress
+     that scrollbar. */
+  overflow-x: hidden;
+  /* JS-owned (src/menu.js's `_syncPaneHeight()`) and kept permanently
+     pinned to an explicit px value (animateElementHeight()'s
+     `keepExplicitHeight` option) rather than ever reverting to `auto` —
+     #mp-pane-track's `height: 100%` below depends on this always being a
+     definite value; if it were ever "auto", the percentage would resolve to
+     "auto" too and the track would fall back to its natural (tallest-pane)
+     size, reopening the round-2 dead-space bug. Same 0.32s var(--ease-expo)
+     as #mp-pane-track's transform transition just below, so the resize and
+     the slide feel like one motion. */
+  transition: height 0.32s var(--ease-expo);
+}
+.mp-pane-track {
+  display: flex;
+  /* Round 2 relied on the un-set default (`stretch`) to force both panes to
+     the same height — that's precisely what caused the dead-space bug.
+     `flex-start` lets each `.mp-pane`'s own box always equal its own true
+     content height, which src/menu.js's `_syncPaneHeight()` depends on for
+     an accurate, sibling-independent measurement. */
+  align-items: flex-start;
+  width: 200%;
+  /* Always exactly #mp-scroll's (JS-animated) height — never this row's own
+     natural/auto height, which (both panes being permanently mounted) would
+     otherwise still equal the taller pane's height regardless of
+     align-items. See the round-3 writeup above. */
+  height: 100%;
+  /* Hard-clips the inactive (often taller) pane's excess — not just
+     visually, but not scroll-reachable either, unlike leaving this to
+     #mp-scroll's own overflow-y: auto alone would be. */
+  overflow: hidden;
+  /* Reuses .sheet's own --ease-expo curve (this is a direct sibling concern
+     of .sheet's transform transition just above, not a design-tokens
+     template) rather than a bundled --t-* token, matching how .sheet's own
+     transform/opacity/height transition already hardcodes its durations
+     alongside --ease-expo a few rules up in this same file. Same duration as
+     #mp-scroll's height transition above — see that rule's comment. */
+  transition: transform 0.32s var(--ease-expo);
+}
+.mp-pane-track.mp-pane-track--profile {
+  transform: translateX(-50%);
+}
+.mp-pane {
+  flex: 0 0 50%;
+  width: 50%;
+  min-width: 0;
+}
+
 /* ─── Menu sheet: Account section (sign-in, profile, "Your reviews") ─── */
 .menu-account-panel {
   display: flex;
@@ -2505,8 +2614,7 @@ body.dark-mode .sp-tip {
   transition: height var(--t-spring);
 }
 .menu-account-panel .menu-placeholder {
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0;
 }
 /* Google sign-in + email option share one row instead of a full-width Google
    button stacked over a small centered text link — and neither should read
@@ -2608,13 +2716,34 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-xs);
   color: var(--text-3);
 }
-.menu-reviews-label {
-  padding-left: 0;
-  padding-right: 0;
-  margin-top: var(--sp-2);
-}
-#menu-my-reviews.rv-list {
+/* "Your reviews" list — relocated to #profile-sheet (contribution-profile
+   plan Phase 4); these rules moved from #menu-my-reviews to #profile-my-reviews
+   along with the markup itself. .menu-reviews-label (a left/right-inset
+   override for when this list sat directly inside .menu-account-panel) is
+   gone — Profile's own "Your reviews" label is a plain .menu-section-label
+   in its own bare .menu-section, which has NO horizontal padding of its own
+   (unlike the old .menu-account-panel this list used to live inside, which
+   supplied a 14px inset ambiently for everything inside it). Give this list
+   the exact same padding shape as .pf-submission-list (the sibling
+   "submitted places"/"submitted edits" sections) so all three read as one
+   consistent set instead of "Your reviews" sitting flush-left with a
+   different vertical rhythm. */
+#profile-my-reviews.rv-list {
   gap: 0;
+  margin-top: 0;
+  padding: var(--sp-2) 14px var(--sp-4);
+}
+/* Tighter than the full reviews-overlay's own .rv-review-card (var(--sp-5)) —
+   this list sits inside an already-padded .menu-section, so the overlay's
+   spacing compounds with the section's own padding into visibly too much
+   air above/below each row. */
+#profile-my-reviews .rv-review-card {
+  padding: var(--sp-3) 0;
+}
+/* The last card's own bottom padding would otherwise double up with the
+   section's own trailing padding below it. */
+#profile-my-reviews .rv-review-card:last-child {
+  padding-bottom: 0;
 }
 .acc-review-row {
   flex-direction: row;
@@ -2641,6 +2770,146 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-shrink: 0;
   gap: var(--sp-1);
+}
+
+/* ─── Menu sheet: compact signed-in "Profile →" row ─── */
+/* Whole row is one button (see src/menu.js's _buildSignedInHTML()) — reuses
+   .menu-account-profile's own flex layout, just adds hover/press affordance
+   and the trailing chevron since the entire row now navigates to Profile. */
+.menu-profile-link {
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: var(--r-sm);
+  padding: var(--sp-2);
+  margin: calc(var(--sp-2) * -1);
+  width: calc(100% + var(--sp-2) * 2);
+  transition: background-color var(--t-fast);
+}
+@media (hover: hover) {
+  .menu-profile-link:hover {
+    background: var(--surface-2);
+  }
+}
+.menu-profile-chevron {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+
+/* ─── Profile sheet ─── */
+/* #profile-card-body reuses .menu-account-panel/.menu-account-profile
+   verbatim (Component Alias — same identity-chip layout Menu's old in-panel
+   Account section used) rather than a new card class; .pf-card-avatar just
+   bumps the avatar up from Menu's compact 36px to a more prominent 56px for
+   Profile's own full identity card. */
+#profile-sheet-body {
+  padding: var(--sp-3) 0 var(--sp-7);
+}
+.pf-card-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--txt-xl);
+}
+.pf-member-since {
+  display: block;
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+}
+
+/* Contribution stats grid */
+.pf-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-2) 14px var(--sp-4);
+}
+.pf-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-4) var(--sp-2);
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+.pf-stat-num {
+  font-size: var(--txt-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.pf-stat-label {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  line-height: var(--lh-tight);
+}
+
+/* Submitted places / edits lists */
+.pf-submission-list {
+  padding: var(--sp-2) 14px var(--sp-4);
+}
+/* Empty-state placeholder ("You haven't submitted any places yet.") only ever
+   got the populated-row case tightened (.pf-submission-item's own padding
+   below) — the placeholder still carried the generic .menu-placeholder
+   padding, which stacks with .pf-submission-list's own padding AND the
+   surrounding .menu-section's padding into visibly too much air above/below
+   the text. Same fix as .menu-account-panel .menu-placeholder further up —
+   applies broadly to every list in the Profile sheet (submitted places,
+   submitted edits, and "Your reviews"), not just this one. */
+#profile-sheet-body .menu-placeholder {
+  padding: 0;
+}
+.pf-submission-item {
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.pf-submission-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.pf-submission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.pf-submission-name {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-submission-reason {
+  margin-top: var(--sp-1);
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* "Erase my data" — danger variant of the shared .menu-row template */
+.menu-row--danger {
+  color: var(--danger);
+}
+.menu-row--danger svg {
+  color: var(--danger);
+}
+@media (hover: hover) {
+  .menu-row--danger:hover {
+    background: var(--danger-soft);
+    color: var(--danger-vivid);
+  }
+  .menu-row--danger:hover svg {
+    color: var(--danger-vivid);
+  }
 }
 
 /* ─── Menu sheet: Preferences section ─── */
@@ -3507,30 +3776,25 @@ body.dark-mode .sp-tip {
 }
 /* .pp-chip, .pp-chip-yes, .pp-chip-no → see .chip template in design-tokens.css */
 
-.pp-notes {
+/* ── Notes / about — left accent bar, no fill, no text label. Distinguished
+   from each other purely by bar/text color, same approach as the tag chips
+   (.pp-chip-yes/.pp-info-chip etc. also carry no source label, just color). */
+.pp-notes,
+.pp-about {
+  padding-left: var(--sp-4);
+  border-left: 3px solid transparent;
   font-size: var(--txt-base);
-  color: var(--text-2);
-  font-style: italic;
   line-height: 1.5;
 }
 
-/* ── Google's editorial summary ("about" blurb) — attributed, never mistaken for a user note ── */
-.pp-about {
-  font-size: var(--txt-base);
+.pp-notes {
+  border-left-color: var(--accent);
   color: var(--text-2);
-  line-height: 1.5;
 }
-.pp-about-label {
-  display: block;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--ls-wide);
-  text-transform: uppercase;
-  color: var(--text-3);
-  margin-bottom: 2px;
-}
-.pp-about p {
-  margin: 0;
+
+.pp-about {
+  border-left-color: var(--border);
+  color: var(--text-2);
 }
 
 /* ── Business status banner (per Google) — same shape as .pp-boycott-callout ── */
@@ -3885,7 +4149,7 @@ body.dark-mode .sp-tip {
 .pp-actions {
   display: flex;
   gap: var(--sp-2);
-  padding-top: 10px;
+  padding-top: var(--sp-4);
   border-top: 1px solid var(--border-light);
 }
 .pp-actions .pp-dir-btn,
@@ -3898,6 +4162,20 @@ body.dark-mode .sp-tip {
   flex: 1;
   height: 34px;
   padding: 0;
+}
+
+/* ── Place-detail sheet: pinned action row ──────────────────────────────────
+   #place-sheet-actions is a flex sibling of #place-sheet-body (not nested
+   inside it), so Directions/Call/Share/Edit stay reachable even when the
+   scrollable body content (e.g. an expanded Hours section) grows tall.
+   It reuses the generic .pp-actions template (flex row, gap, border-top
+   divider) but needs its own horizontal padding since it's no longer inside
+   .pp-inner, which normally supplies that padding for free. */
+#place-sheet-actions {
+  flex-shrink: 0;
+  padding-left: var(--sp-8);
+  padding-right: var(--sp-8);
+  padding-bottom: calc(var(--sp-6) + var(--safe-b));
 }
 .pp-home-btn.active {
   background: var(--accent-soft);

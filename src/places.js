@@ -67,6 +67,10 @@ let _editOriginalPlace = null;
 const placeSheetEl = document.getElementById("place-sheet");
 const placeSheetTitle = document.getElementById("place-sheet-title");
 const placeSheetBody = document.getElementById("place-sheet-body");
+// Pinned action row (Directions/Call/Share/Edit) — a sibling of the scrollable
+// #place-sheet-body, not a child of it, so it never scrolls out of reach when
+// the body's content (e.g. an expanded Hours section) grows tall.
+const placeSheetActionsEl = document.getElementById("place-sheet-actions");
 const placeSheetCloseBtn = document.getElementById("place-sheet-close");
 const placeSheetScrim = document.getElementById("scrim");
 let _placeSheetFromListScrollTop = null;
@@ -335,16 +339,39 @@ function applySort(arr) {
   }
 }
 
+// Favourites — account-scoping model (see src/account-sync.js's module header
+// for the full writeup). Signed out: hf_favs in localStorage is the single
+// source of truth, as before. Signed in: src/account-sync.js puts this module
+// into "cloud mode" via enterCloudFavourites()/exitCloudFavourites() below —
+// the in-memory `favourites` Set becomes the account's cloud copy, and
+// saveFavourites() stops touching localStorage entirely, so hf_favs reappears
+// untouched the moment exitCloudFavourites() runs on sign-out.
 let favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
-function saveFavourites() { localStorage.setItem("hf_favs", JSON.stringify([...favourites])); }
+let _favouritesCloudScoped = false;
+// True only for the (usually brief, but real — a GAS cold-start round-trip
+// can be hundreds of ms) window between EVT.AUTH_CHANGED firing and
+// enterCloudFavourites() actually landing. Without this gate, a favourite
+// tapped in that window would write straight into hf_favs (still in local
+// mode at that point) and then get silently discarded when the cloud Set
+// replaces `favourites` moments later — but the localStorage write already
+// happened, reintroducing the exact cross-account local-cache bleed this
+// whole account-scoping model exists to prevent. See src/account-sync.js
+// and docs/PREFERENCE_LOG.md's adversarial-review follow-up.
+let _favouritesSyncPending = false;
+function saveFavourites() {
+  if (_favouritesCloudScoped) return; // cloud-scoped: local device cache stays untouched while signed in
+  localStorage.setItem("hf_favs", JSON.stringify([...favourites]));
+}
 export function isFavourite(id) { return favourites.has(id); }
-/** All currently-favourited place IDs — used by src/account-sync.js's merge. */
+/** All currently-favourited place IDs (local or cloud, whichever is active). */
 export function getFavouriteIds() { return [...favourites]; }
 /**
- * Set (not toggle) a place's favourite state directly — used by
- * src/account-sync.js when adopting a server-only favourite during the
- * sign-in merge. Unlike toggleFavourite(), this never fires
- * EVT.FAVOURITE_TOGGLED (the merge already knows which side needs uploading).
+ * Set (not toggle) a place's favourite state directly, without firing
+ * EVT.FAVOURITE_TOGGLED — used by src/account-sync.js only, to roll a
+ * favourite's optimistic state back if its background cloud save/unsave
+ * request actually fails server-side (the toggle that got rolled back
+ * already fired the event once; re-firing it here would re-trigger another
+ * sync attempt).
  * @param {string} id
  * @param {boolean} saved
  */
@@ -355,10 +382,44 @@ export function setFavouriteState(id, saved) {
   saveFavourites();
 }
 export function toggleFavourite(id) {
+  if (_favouritesSyncPending) {
+    showToast("Still signing in…", "clock", "Try again in a moment");
+    return;
+  }
   if (favourites.has(id)) favourites.delete(id); else favourites.add(id);
   saveFavourites();
   const saved = favourites.has(id);
   window.dispatchEvent(new CustomEvent(EVT.FAVOURITE_TOGGLED, { detail: { placeId: id, saved } }));
+}
+/**
+ * Block/unblock favourite mutations while a sign-in's cloud-state resolution
+ * is still in flight — called by src/account-sync.js only. See
+ * `_favouritesSyncPending`'s own comment above for the exact race this closes.
+ * @param {boolean} pending
+ * @returns {void}
+ */
+export function setFavouritesSyncPending(pending) {
+  _favouritesSyncPending = pending;
+}
+/**
+ * Enter cloud-scoped favourites mode — called once by src/account-sync.js
+ * after a sign-in resolves to a cloud state. Local device storage (hf_favs)
+ * is never read or written again until exitCloudFavourites() runs.
+ * @param {string[]} ids
+ * @returns {void}
+ */
+export function enterCloudFavourites(ids) {
+  _favouritesCloudScoped = true;
+  favourites = new Set(ids || []);
+}
+/**
+ * Exit cloud-scoped favourites mode (sign-out) — reverts to whatever is in
+ * localStorage, untouched throughout the whole cloud session.
+ * @returns {void}
+ */
+export function exitCloudFavourites() {
+  _favouritesCloudScoped = false;
+  favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
 }
 
 // Recently viewed
@@ -426,6 +487,29 @@ function _highlightMatch(escaped, q) {
 const _DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const _DAY_LABELS = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 const _DAY_LABELS_FULL = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
+// "Opening soon" / "closing soon" badge threshold, in minutes.
+const HOURS_SOON_THRESHOLD_MIN = 30;
+
+/**
+ * Parse a single day's hours string (e.g. "09:00-17:00,18:00-21:00") into
+ * minute-of-day open/close ranges. Shared by isPlaceOpenNow() and getHoursStatus()
+ * so the range-parsing logic lives in exactly one place.
+ * @param {string|null|undefined} dayStr - Raw hours string for one day, or falsy if closed
+ * @returns {{openMin: number, closeMin: number}[]} Parsed ranges, empty if closed/malformed
+ */
+function _parseDayRanges(dayStr) {
+  if (!dayStr) return [];
+  return dayStr
+    .split(",")
+    .map((range) => {
+      const [open, close] = range.trim().split("-");
+      if (!open || !close) return null;
+      const [oh, om] = open.split(":").map(Number);
+      const [ch, cm] = close.split(":").map(Number);
+      return { openMin: oh * 60 + om, closeMin: ch * 60 + cm };
+    })
+    .filter(Boolean);
+}
 
 /**
  * Check if a place is currently open based on its hours data.
@@ -436,16 +520,52 @@ function isPlaceOpenNow(hours) {
   if (!hours || typeof hours !== "object") return null;
   const now = new Date();
   const dayKey = _DAY_KEYS[(now.getDay() + 6) % 7]; // JS getDay: 0=Sun → shift to mon=0
-  const todayHours = hours[dayKey];
-  if (!todayHours) return false;
+  const ranges = _parseDayRanges(hours[dayKey]);
+  if (!ranges.length) return false;
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  return todayHours.split(",").some((range) => {
-    const [open, close] = range.trim().split("-");
-    if (!open || !close) return false;
-    const [oh, om] = open.split(":").map(Number);
-    const [ch, cm] = close.split(":").map(Number);
-    return nowMin >= oh * 60 + om && nowMin < ch * 60 + cm;
-  });
+  return ranges.some((r) => nowMin >= r.openMin && nowMin < r.closeMin);
+}
+
+/**
+ * Get a richer 4-state open/closed status for badge display — same underlying
+ * data as isPlaceOpenNow(), but additionally distinguishes "closing soon" and
+ * "opening soon" within a HOURS_SOON_THRESHOLD_MIN-minute window, so the badge
+ * can warn a visitor before they arrive at an about-to-close place. Kept as a
+ * separate function (rather than changing isPlaceOpenNow()'s return shape) so
+ * the two existing true/false/null filter call sites are unaffected.
+ * @param {{ [day: string]: string | null }} hours - Opening hours object
+ * @returns {"open"|"closing-soon"|"closed"|"opening-soon"|null} Status, or null if no hours data
+ */
+function getHoursStatus(hours) {
+  if (!hours || typeof hours !== "object") return null;
+  const now = new Date();
+  const dayIdx = (now.getDay() + 6) % 7; // JS getDay: 0=Sun → shift to mon=0
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const todayRanges = _parseDayRanges(hours[_DAY_KEYS[dayIdx]]);
+
+  const openRange = todayRanges.find((r) => nowMin >= r.openMin && nowMin < r.closeMin);
+  if (openRange) {
+    return (openRange.closeMin - nowMin) <= HOURS_SOON_THRESHOLD_MIN ? "closing-soon" : "open";
+  }
+
+  // Closed right now — opening later today (either the next range, or today's
+  // hours simply haven't started yet)?
+  const nextToday = todayRanges.find((r) => r.openMin > nowMin);
+  if (nextToday && (nextToday.openMin - nowMin) <= HOURS_SOON_THRESHOLD_MIN) return "opening-soon";
+
+  // Only worth checking tomorrow's opening when we're already within the
+  // threshold of midnight — otherwise "opens tomorrow at 08:00" would wrongly
+  // flag as "soon" every night. This mainly catches places open past midnight.
+  const minutesUntilMidnight = 24 * 60 - nowMin;
+  if (minutesUntilMidnight <= HOURS_SOON_THRESHOLD_MIN) {
+    const tomorrowRanges = _parseDayRanges(hours[_DAY_KEYS[(dayIdx + 1) % 7]]);
+    const firstTomorrow = tomorrowRanges[0];
+    if (firstTomorrow && (minutesUntilMidnight + firstTomorrow.openMin) <= HOURS_SOON_THRESHOLD_MIN) {
+      return "opening-soon";
+    }
+  }
+
+  return "closed";
 }
 
 /**
@@ -1323,12 +1443,13 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   inner.className = "pp-inner";
 
   // Header: icon + type badge
+  const popupSponsor = activeSponsor(place);
   const hdr = document.createElement("div");
   hdr.className = "pp-hdr";
   hdr.innerHTML =
     `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
     `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>` +
-    (activeSponsor(place) ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
+    (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
 
   // Tap-to-show tooltip on mobile for the Featured badge
@@ -1430,32 +1551,39 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     inner.appendChild(notes);
   }
 
-  // Google's editorial summary — clearly attributed so it's never mistaken for a user note
+  // Google's editorial summary — distinguished from the community note above
+  // purely by accent color (same approach as the tag chips), no text label
   if (place.about) {
     const about = document.createElement("div");
     about.className = "pp-about";
-    about.innerHTML = `<span class="pp-about-label">From Google</span><p>${esc(place.about)}</p>`;
+    about.textContent = place.about;
     inner.appendChild(about);
   }
 
   // Opening hours
   if (place.hours) {
-    const openStatus = isPlaceOpenNow(place.hours);
-    const statusBadge = openStatus === true
-      ? `<span class="pp-hours-badge pp-hours-open">Open</span>`
-      : openStatus === false
-        ? `<span class="pp-hours-badge pp-hours-shut">Closed</span>`
-        : "";
+    const _HOURS_BADGE_HTML = {
+      open: `<span class="pp-hours-badge pp-hours-open">Open</span>`,
+      "closing-soon": `<span class="pp-hours-badge pp-hours-soon">Closing soon</span>`,
+      closed: `<span class="pp-hours-badge pp-hours-shut">Closed</span>`,
+      "opening-soon": `<span class="pp-hours-badge pp-hours-soon">Opening soon</span>`,
+    };
+    const statusBadge = _HOURS_BADGE_HTML[getHoursStatus(place.hours)] || "";
     const hoursEl = document.createElement("div");
     hoursEl.className = "pp-hours";
     hoursEl.innerHTML = `<div class="pp-hours-hdr"><span class="pp-hours-label">Hours</span><span class="pp-hours-right">${statusBadge}<button class="pp-hours-expand-btn" type="button" aria-label="Toggle hours" aria-expanded="false"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></span></div><div class="pp-hours-body pp-hours-collapsed"><div class="pp-hours-body-inner"><div class="pp-hours-body-content">${_formatHoursForPopup(place.hours)}</div></div></div>`;
+    const hoursHdr = hoursEl.querySelector(".pp-hours-hdr");
     const expandBtn = hoursEl.querySelector(".pp-hours-expand-btn");
     const hoursBody = hoursEl.querySelector(".pp-hours-body");
-    expandBtn.addEventListener("click", (e) => {
+    // Single listener on the whole row (not just the button) — clicking anywhere
+    // in the header toggles expand/collapse. The button stays a real <button>
+    // for keyboard/a11y; its own click bubbles up into this same listener rather
+    // than needing a second handler.
+    hoursHdr.addEventListener("click", (e) => {
       e.stopPropagation();
       const isNowCollapsed = hoursBody.classList.toggle("pp-hours-collapsed");
       expandBtn.setAttribute("aria-expanded", !isNowCollapsed);
-      expandBtn.closest(".pp-hours-hdr").classList.toggle("expanded", !isNowCollapsed);
+      hoursHdr.classList.toggle("expanded", !isNowCollapsed);
     });
     inner.appendChild(hoursEl);
   }
@@ -1494,8 +1622,11 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     inner.appendChild(eventsSection);
   }
 
-  const actions = document.createElement("div");
-  actions.className = "pp-actions";
+  // Pinned action row lives outside the scrollable body (see placeSheetActionsEl
+  // above) — reuse the persistent element and clear it rather than creating a
+  // new one, since it's a fixed slot in #place-sheet, not sheet-body content.
+  const actions = placeSheetActionsEl;
+  actions.innerHTML = "";
 
   const dirBtn = document.createElement("button");
   dirBtn.className = "pp-dir-btn";
@@ -1560,7 +1691,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   if (contactBtn) actions.appendChild(contactBtn);
   actions.appendChild(shareBtn);
   actions.appendChild(editBtn);
-  inner.appendChild(actions);
   root.appendChild(inner);
 
   // Fav button (absolute positioned, top-right)
@@ -1588,7 +1718,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   root.appendChild(favBtn);
 
   // Promo copy button — beside fav star, only for sponsors with a CTA (promo code)
-  const popupSponsor = activeSponsor(place);
   if (popupSponsor?.cta) {
     const promoBtn = document.createElement("button");
     promoBtn.className = "pp-promo-btn";
@@ -1864,14 +1993,12 @@ window.addEventListener("hf:current-location-updated", () => {
   _resolveSortLocation();
   refreshPlacesSort();
 });
-// account-sync.js's background reconcile (src/account-sync.js) adopts/removes
-// favourites and pins from other signed-in devices via setFavouriteState()/
-// setSavedPinState() — deliberately WITHOUT firing EVT.FAVOURITE_TOGGLED/
-// EVT.SAVED_PIN_TOGGLED (those exist to trigger an *upload*, which a merge
-// must not re-trigger for data it just downloaded). That meant this list had
-// no way to learn a sync happened short of a full page reload. Re-render
-// unconditionally (cheap) so a cross-device favourite/pin change is reflected
-// immediately, not just after a manual refresh.
+// Fired by src/account-sync.js whenever it enters/exits cloud-scoped mode
+// (sign-in resolving to a cloud state, or sign-out reverting to the local
+// device cache) — both swap out `favourites`/saved-pins wholesale rather than
+// going through toggleFavourite()/toggleSavedPin(), so this is the only
+// signal this list gets that its content just changed underneath it.
+// Re-render unconditionally (cheap) rather than requiring a manual refresh.
 window.addEventListener(EVT.SAVED_SYNCED, () => {
   addPlaceMarkers();
   if (activeTypeFilter === "saved") renderPlacesList();
@@ -4293,6 +4420,146 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     submitBtn.innerHTML = btnOriginal;
   }
 });
+
+// ── My submitted places/edits + submission-status notifications ────────────
+// (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 2/3/6). Firebase-only, no
+// anonymous variant — mirrors reviews.js's fetchMyReviews() exactly: same
+// getCachedAccount()/getIdToken() guard shape, same silent-empty-array
+// failure mode on any network/server error, same POST-body convention. These
+// two fetches return an empty list gracefully until Phase 6's Code.gs
+// `my-submitted-places`/`my-submitted-edits` actions are deployed — that's
+// expected, not a bug, during this development window.
+
+// auth.js is dynamically imported (never a static top-level import) so its
+// heavy Firebase CDN modules stay lazy — matching reviews.js/account-sync.js.
+let _authModulePromise = null;
+function _getAuthModule() {
+  if (!_authModulePromise) _authModulePromise = import("./auth.js");
+  return _authModulePromise;
+}
+
+// Namespaced localStorage cache of each submission kind's last-seen
+// {id, name, status} snapshot, used by diffSubmissionStatuses()/
+// updateSubmissionStatusCache() below to detect pending→live (or
+// pending→anything-else) transitions between Profile-page loads.
+const STORAGE_KEY_SUBMISSION_STATUS = "hf_submission_status_v1";
+
+/**
+ * Fetch every new-place submission made by the signed-in user. Signed-out
+ * users get an empty list. Response shape is defensive about the exact key
+ * name the backend settles on (`submissions` is the documented contract;
+ * `places` is accepted as a fallback) since Phase 6's Code.gs deploy hasn't
+ * landed yet — never throws, always resolves to an array.
+ * @returns {Promise<{submissions: Array<{id: string, name: string, status: string, submittedAt?: string}>}>}
+ */
+export async function fetchMySubmittedPlaces() {
+  const auth = await _getAuthModule();
+  if (!auth.getCachedAccount()) return { submissions: [] };
+  const idToken = await auth.getIdToken();
+  if (!idToken) return { submissions: [] };
+
+  try {
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formType: "new", action: "my-submitted-places", idToken }),
+    });
+    const result = await res.json();
+    const list = Array.isArray(result.submissions) ? result.submissions : Array.isArray(result.places) ? result.places : [];
+    return { submissions: list };
+  } catch {
+    return { submissions: [] };
+  }
+}
+
+/**
+ * Fetch every edit submission made by the signed-in user. Same guard shape
+ * and defensive response handling as fetchMySubmittedPlaces() above.
+ * @returns {Promise<{submissions: Array<{id: string, name: string, status: string, submittedAt?: string}>}>}
+ */
+export async function fetchMySubmittedEdits() {
+  const auth = await _getAuthModule();
+  if (!auth.getCachedAccount()) return { submissions: [] };
+  const idToken = await auth.getIdToken();
+  if (!idToken) return { submissions: [] };
+
+  try {
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formType: "edit", action: "my-submitted-edits", idToken }),
+    });
+    const result = await res.json();
+    const list = Array.isArray(result.submissions) ? result.submissions : Array.isArray(result.edits) ? result.edits : [];
+    return { submissions: list };
+  } catch {
+    return { submissions: [] };
+  }
+}
+
+/**
+ * Read the last-persisted "last seen status" snapshot for one submission
+ * kind, for use as diffSubmissionStatuses()'s `previousList` argument. Empty
+ * array if nothing has been cached yet (first-ever check) or on any parse
+ * failure.
+ * @param {"new"|"edit"} kind
+ * @returns {Array<{id: string, name?: string, status: string}>}
+ */
+export function getSubmissionStatusCache(kind) {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEY_SUBMISSION_STATUS) || "{}");
+    return Array.isArray(all[kind]) ? all[kind] : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Compare a previous {id,status} snapshot against a freshly-fetched
+ * submissions list and report every transition away from "pending" (not just
+ * to "live" — any status change from "pending" is reported, future-proofing
+ * against a possible explicit "rejected" status Phase 6 may or may not add).
+ * Pure comparison only — does not read or write localStorage itself. Callers
+ * should diff first, show toasts for the result, and only then call
+ * updateSubmissionStatusCache() to persist the new snapshot, so a
+ * toast-display failure can never silently lose a detected transition.
+ * @param {Array<{id: string, name?: string, status: string}>} previousList
+ * @param {Array<{id: string, name?: string, status: string}>} currentList
+ * @returns {Array<{id: string, name: string, oldStatus: string, newStatus: string}>}
+ */
+export function diffSubmissionStatuses(previousList, currentList) {
+  if (!Array.isArray(previousList) || !Array.isArray(currentList)) return [];
+  const prevStatusById = new Map(previousList.map((s) => [s.id, s.status]));
+  const changes = [];
+  for (const item of currentList) {
+    const oldStatus = prevStatusById.get(item.id);
+    if (oldStatus && oldStatus === "pending" && item.status && item.status !== oldStatus) {
+      changes.push({ id: item.id, name: item.name || "", oldStatus, newStatus: item.status });
+    }
+  }
+  return changes;
+}
+
+/**
+ * Persist the given submissions list as the new "last seen status" snapshot
+ * for one submission kind, for future diffSubmissionStatuses() calls. Call
+ * this only after the caller has finished displaying toasts for a diff —
+ * never atomically with the diff itself (see diffSubmissionStatuses() above).
+ * @param {"new"|"edit"} kind
+ * @param {Array<{id: string, name?: string, status: string}>} currentList
+ * @returns {void}
+ */
+export function updateSubmissionStatusCache(kind, currentList) {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEY_SUBMISSION_STATUS) || "{}");
+    all[kind] = Array.isArray(currentList)
+      ? currentList.map((s) => ({ id: s.id, name: s.name, status: s.status }))
+      : [];
+    localStorage.setItem(STORAGE_KEY_SUBMISSION_STATUS, JSON.stringify(all));
+  } catch {
+    /* localStorage unavailable (private browsing quota, etc.) — non-fatal */
+  }
+}
 
 // ── Event Submission Form ────────────────────────────────────────────────────
 const _eventOverlay = document.getElementById("event-overlay");

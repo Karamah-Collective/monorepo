@@ -7,7 +7,18 @@
  * reduced to an emailHash before anything reaches Google Sheets — no
  * plaintext email is ever forwarded, per the Phase 6 privacy rule.
  *
- * POST actions: sync-saved (list), save, unsave.
+ * POST actions: sync-saved (list; also returns localImportResolved — whether
+ * this account has already answered its one-time "import your local device
+ * data?" prompt, see src/account-sync.js — and firstSeenAt, a "member since"
+ * timestamp set once by Apps Script and passed through here unmodified),
+ * save, unsave, resolve-import (marks that one-time prompt answered, so it's
+ * never shown again for this account on any device — 2026-08-03
+ * account-scoping fix, see docs/PREFERENCE_LOG.md), erase-data (deletes every
+ * Sheets row matching this emailHash across every identity-linked sheet —
+ * see accounts/profile plan Phase 5/6 — and returns Apps Script's
+ * {deleted, failed} partial-success shape unmodified; no cross-sheet
+ * transaction primitive exists in Apps Script, so this is never assumed to
+ * be all-or-nothing).
  *
  * Required Cloudflare Pages Environment Variables:
  *   GAS_URL – Google Apps Script web app URL
@@ -85,7 +96,7 @@ export async function onRequestPost(context) {
     }
 
     const { action, idToken } = body;
-    if (!["sync-saved", "save", "unsave"].includes(action)) {
+    if (!["sync-saved", "save", "unsave", "resolve-import", "erase-data"].includes(action)) {
       return json({ error: "Invalid request" }, 400, headers);
     }
 
@@ -93,7 +104,20 @@ export async function onRequestPost(context) {
     if (!emailHash) return json({ error: "invalid_token" }, 401, headers);
 
     if (action === "sync-saved") {
+      // Apps Script's response ({saved, localImportResolved, firstSeenAt}) is
+      // spread verbatim into the client response by forwardToGAS below — no
+      // reshaping needed here.
       return await forwardToGAS(env.GAS_URL, { formType: "account", action: "sync-saved", emailHash }, headers);
+    }
+
+    if (action === "resolve-import") {
+      return await forwardToGAS(env.GAS_URL, { formType: "account", action: "resolve-import", emailHash }, headers);
+    }
+
+    if (action === "erase-data") {
+      // Apps Script's {deleted, failed} partial-success shape is passed
+      // through unmodified — see accounts/profile plan Phase 5/6.
+      return await forwardToGAS(env.GAS_URL, { formType: "account", action: "erase-data", emailHash }, headers);
     }
 
     // save / unsave share the same field validation

@@ -10,7 +10,8 @@
  *
  * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
  */
-import { esc, showToast, animateElementHeight, isReduceMotionActive, buildWelcomeGreeting } from "./utils.js";
+import { esc, showToast, animateElementHeight, isReduceMotionActive, showWelcomeGreeting } from "./utils.js";
+import { EVT } from "./events.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML } from "./icons.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -267,6 +268,14 @@ export async function submitReview(placeId, rating, text) {
     const result = await res.json();
     if (result.success) {
       _updateLocalReview(placeId, rating, text, result.status);
+      // Narrower than the generic hf:reviews-loaded (dispatched inside
+      // _updateLocalReview() below for the currently-open place sheet) —
+      // this one specifically tells the account menu's "Your reviews" list
+      // (src/menu.js) that THIS user's own review set changed, so it can
+      // refetch without reacting to every unrelated rating-cache hydration.
+      window.dispatchEvent(new CustomEvent(EVT.MY_REVIEW_SUBMITTED, {
+        detail: { placeId, rating, text, status: result.status },
+      }));
       return { success: true, status: result.status };
     }
     return { success: false, error: result.error };
@@ -402,6 +411,13 @@ function _updateLocalReview(placeId, rating, text, status) {
     const cacheObj = { ts: Date.now(), data: Object.fromEntries(_reviewsMap) };
     localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(cacheObj));
   } catch { /* quota */ }
+
+  // Announce the patch exactly like _hydrateMap()/hydrateReviews() already do,
+  // so the currently-open place sheet's review section (src/places.js's
+  // _onReviewsLoaded listener) reflects a just-submitted review immediately
+  // instead of only after the next background poll or a full page reload.
+  window.dispatchEvent(new Event("hf:reviews-loaded"));
+  _refreshActiveOverlay();
 }
 
 // ─── UI: Star Rating Component ───────────────────────────────────────────────
@@ -856,7 +872,7 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
 
     const result = await auth.signInWithGoogle();
     if (result.success) {
-      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
+      showWelcomeGreeting(result.account, result.isNewUser);
       _animateReviewCardHeight(overlay, () => {
         container.remove();
         _showRatingForm(placeId, overlay, insertBefore);
@@ -878,7 +894,7 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
 
     const result = await auth.signInWithMicrosoft();
     if (result.success) {
-      showToast(buildWelcomeGreeting(result.account, result.isNewUser), "check");
+      showWelcomeGreeting(result.account, result.isNewUser);
       _animateReviewCardHeight(overlay, () => {
         container.remove();
         _showRatingForm(placeId, overlay, insertBefore);

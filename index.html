@@ -42,7 +42,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260802-6" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260803-12" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -921,14 +921,51 @@
           </button>
         </div>
         <div id="place-sheet-body" class="t-scroll"></div>
+        <div id="place-sheet-actions" class="pp-actions"></div>
       </div>
 
-      <!-- ─── Menu Sheet: Account / Map View / Support / Preferences ─── -->
+      <!-- ─── Menu/Profile Sheet: one physical sheet, two internal panes ───
+           Menu (Account summary / Map View / Support / Preferences) and Profile
+           (identity card, stats, submissions, reviews, data actions) used to be
+           two independent .sheet elements coordinated by swapSheetsHorizontally()
+           (src/utils.js) — visually smoother than a plain close/open, but each
+           sheet still auto-sized to ITS OWN content height (Profile is much
+           taller than Menu), so the coordinated swap still "wobbled" via a
+           height reflow underneath the slide. Now there is exactly ONE .sheet
+           (one initSheetDrag() lifecycle, opened/closed only here) with two
+           pane containers, #menu-sheet-body and #profile-sheet-body (ids kept
+           from the old per-sheet bodies so every existing getElementById lookup
+           in menu.js/profile.js still resolves), riding side-by-side inside
+           #mp-pane-track.
+
+           A 2nd iteration (same-day, superseded) relied on flexbox's un-set
+           `align-items: stretch` default to make #mp-pane-track's own height
+           always equal the TALLER pane's natural height, force-stretching the
+           shorter one to match — this eliminated the wobble, but left a
+           permanent block of dead white space below whichever pane was
+           actually shorter (e.g. Profile before its real data loads), since
+           the row's own height never changed to fit whichever pane was
+           actually showing.
+
+           This (3rd) iteration instead lets #mp-pane-track's children size to
+           their own real content (`align-items: flex-start` in styles.css) and
+           has src/menu.js's `_setActivePane()`/`_syncPaneHeight()` explicitly,
+           smoothly animate #mp-scroll's own height to match ONLY the
+           currently-active pane, in sync with #mp-pane-track's translateX
+           slide (same 0.32s var(--ease-expo) on both, two independent CSS
+           transitions on two different elements so animateElementHeight()'s
+           height-freeze on #mp-scroll can never interrupt #mp-pane-track's own
+           transform transition). #mp-pane-track's `height: 100%` always
+           mirrors #mp-scroll, and its `overflow: hidden` hard-clips whichever
+           pane isn't active (often taller) so its excess is never visible NOR
+           scroll-reachable. See docs/DESIGN_SYSTEM.md's "Menu/Profile merged
+           sheet" entry and docs/PREFERENCE_LOG.md for the complete history
+           across all three rounds. -->
       <div id="menu-sheet" class="sheet shut" hidden>
-        <div id="menu-drag" class="sheet-drag"><span></span></div>
+        <div id="mp-sheet-drag" class="sheet-drag"><span></span></div>
         <div class="sheet-head">
-          <h2>Menu</h2>
-          <button id="menu-close" class="sheet-x btn-roundel" aria-label="Close">
+          <h2 id="mp-sheet-title">Menu</h2>
+          <button id="mp-sheet-close" class="sheet-x btn-roundel" aria-label="Close">
             <svg
               width="16"
               height="16"
@@ -942,120 +979,194 @@
             </svg>
           </button>
         </div>
-        <div id="menu-sheet-body" class="t-scroll">
-          <div class="menu-section">
-            <div class="menu-section-label">Account</div>
-            <div id="menu-account-body">
-              <p class="menu-placeholder">Loading…</p>
+        <div id="mp-scroll" class="t-scroll mp-scroll">
+          <div id="mp-pane-track" class="mp-pane-track">
+            <div id="menu-sheet-body" class="mp-pane">
+              <div class="menu-section">
+                <div class="menu-section-label">Account</div>
+                <div id="menu-account-body">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Map View</div>
+                <div id="style-panel">
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Theme</div>
+                    <div class="style-group-row">
+                      <button class="style-opt active" data-style="light">
+                        <div class="style-thumb thumb-light"></div>
+                        <span>Light</span>
+                      </button>
+                      <button class="style-opt" data-style="dark">
+                        <div class="style-thumb thumb-dark"></div>
+                        <span>Dark</span>
+                      </button>
+                      <button class="style-opt" data-style="auto">
+                        <div class="style-thumb thumb-auto"></div>
+                        <span>Auto</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Overlay</div>
+                    <div class="style-group-row">
+                      <button class="style-opt" data-style="satellite">
+                        <div class="style-thumb thumb-satellite"></div>
+                        <span>Satellite</span>
+                      </button>
+                      <button class="style-opt" data-style="heatmap">
+                        <div class="style-thumb thumb-heatmap"></div>
+                        <span>Heatmap</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Support</div>
+                <div class="menu-row-pair">
+                  <button id="contact-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <span>Contact us</span>
+                  </button>
+                  <button id="wish-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
+                    </svg>
+                    <span>Wishlist</span>
+                  </button>
+                  <button id="menu-privacy-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span>Privacy</span>
+                  </button>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Preferences</div>
+                <div class="menu-pref-panel">
+                  <div class="rv-field">
+                    <label class="rv-field-label" for="pref-prayer-method">Prayer calculation method</label>
+                    <select id="pref-prayer-method" class="rv-input rv-select"></select>
+                  </div>
+                  <div class="rv-field">
+                    <label class="rv-field-label" for="pref-prayer-school">Asr calculation (madhab)</label>
+                    <select id="pref-prayer-school" class="rv-input rv-select">
+                      <option value="0">Standard (Shafi, Maliki, Hanbali)</option>
+                      <option value="1">Hanafi</option>
+                    </select>
+                  </div>
+                  <div class="menu-pref-toggle-row">
+                    <div class="menu-pref-toggle-text">
+                      <span class="menu-pref-toggle-label">12-hour prayer times</span>
+                      <span class="menu-pref-toggle-sub">Show times like 5:12 PM instead of 17:12</span>
+                    </div>
+                    <button
+                      id="pref-time-format-toggle"
+                      class="pref-switch"
+                      type="button"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="12-hour prayer times"
+                    >
+                      <span class="pref-switch-thumb"></span>
+                    </button>
+                  </div>
+                  <div class="menu-pref-toggle-row">
+                    <div class="menu-pref-toggle-text">
+                      <span class="menu-pref-toggle-label">Reduce motion</span>
+                      <span class="menu-pref-toggle-sub">Dampen sheet, marker, and toast animations</span>
+                    </div>
+                    <button
+                      id="pref-reduce-motion-toggle"
+                      class="pref-switch"
+                      type="button"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Reduce motion"
+                    >
+                      <span class="pref-switch-thumb"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="sort-divider"></div>
-          <div class="menu-section">
-            <div class="menu-section-label">Map View</div>
-            <div id="style-panel">
-              <div class="style-group">
-                <div class="style-group-label t-micro-label">Theme</div>
-                <div class="style-group-row">
-                  <button class="style-opt active" data-style="light">
-                    <div class="style-thumb thumb-light"></div>
-                    <span>Light</span>
-                  </button>
-                  <button class="style-opt" data-style="dark">
-                    <div class="style-thumb thumb-dark"></div>
-                    <span>Dark</span>
-                  </button>
-                  <button class="style-opt" data-style="auto">
-                    <div class="style-thumb thumb-auto"></div>
-                    <span>Auto</span>
-                  </button>
+
+            <!-- ─── Profile pane: identity, stats, submissions, reviews, data actions ───
+                 Always entered from the Menu pane's signed-in "Profile →" row — never
+                 any other origin — so the shared header's close button permanently
+                 shows the back-arrow convention while this pane is active (see
+                 src/menu.js's _updateHeaderForPane(), which mirrors src/places.js's
+                 _setPlaceSheetCloseAsBack()/_resetPlaceSheetCloseButton() for
+                 #place-sheet). Kept mounted (not re-created) while the Menu pane is
+                 showing — only `inert`/aria-hidden and its off-screen slide position
+                 change, so it stays measurable (src/menu.js's `_syncPaneHeight()`
+                 reads its real `offsetHeight` on every switch to that pane) even while
+                 it isn't the visible one; #mp-pane-track's `overflow: hidden` (see
+                 styles.css) hard-clips it out of view/reach while Menu is active
+                 instead of it stretching the shared row taller (that was the
+                 now-superseded 2nd iteration's approach — see index.html's #menu-sheet
+                 header comment). -->
+
+            <div id="profile-sheet-body" class="mp-pane" inert aria-hidden="true">
+              <div class="menu-section">
+                <div id="profile-card-body" class="menu-account-panel">
+                  <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
-              <div class="style-group">
-                <div class="style-group-label t-micro-label">Overlay</div>
-                <div class="style-group-row">
-                  <button class="style-opt" data-style="satellite">
-                    <div class="style-thumb thumb-satellite"></div>
-                    <span>Satellite</span>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your activity</div>
+                <div id="profile-stats-grid" class="pf-stat-grid"></div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your submitted places</div>
+                <div id="profile-submitted-places" class="pf-submission-list">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your submitted edits</div>
+                <div id="profile-submitted-edits" class="pf-submission-list">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your reviews</div>
+                <div id="profile-my-reviews" class="rv-list">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your data</div>
+                <div class="menu-row-pair">
+                  <button id="profile-export-btn" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Export your data</span>
                   </button>
-                  <button class="style-opt" data-style="heatmap">
-                    <div class="style-thumb thumb-heatmap"></div>
-                    <span>Heatmap</span>
+                  <button id="profile-erase-btn" class="menu-row menu-row--danger" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/>
+                    </svg>
+                    <span>Erase my data</span>
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="sort-divider"></div>
-          <div class="menu-section">
-            <div class="menu-section-label">Support</div>
-            <div class="menu-row-pair">
-              <button id="contact-pill" class="menu-row" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
-                </svg>
-                <span>Contact us</span>
-              </button>
-              <button id="wish-pill" class="menu-row" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
-                </svg>
-                <span>Wishlist</span>
-              </button>
-              <button id="menu-privacy-pill" class="menu-row" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-                <span>Privacy</span>
-              </button>
-            </div>
-          </div>
-          <div class="sort-divider"></div>
-          <div class="menu-section">
-            <div class="menu-section-label">Preferences</div>
-            <div class="menu-pref-panel">
-              <div class="rv-field">
-                <label class="rv-field-label" for="pref-prayer-method">Prayer calculation method</label>
-                <select id="pref-prayer-method" class="rv-input rv-select"></select>
-              </div>
-              <div class="rv-field">
-                <label class="rv-field-label" for="pref-prayer-school">Asr calculation (madhab)</label>
-                <select id="pref-prayer-school" class="rv-input rv-select">
-                  <option value="0">Standard (Shafi, Maliki, Hanbali)</option>
-                  <option value="1">Hanafi</option>
-                </select>
-              </div>
-              <div class="menu-pref-toggle-row">
-                <div class="menu-pref-toggle-text">
-                  <span class="menu-pref-toggle-label">12-hour prayer times</span>
-                  <span class="menu-pref-toggle-sub">Show times like 5:12 PM instead of 17:12</span>
-                </div>
-                <button
-                  id="pref-time-format-toggle"
-                  class="pref-switch"
-                  type="button"
-                  role="switch"
-                  aria-checked="false"
-                  aria-label="12-hour prayer times"
-                >
-                  <span class="pref-switch-thumb"></span>
-                </button>
-              </div>
-              <div class="menu-pref-toggle-row">
-                <div class="menu-pref-toggle-text">
-                  <span class="menu-pref-toggle-label">Reduce motion</span>
-                  <span class="menu-pref-toggle-sub">Dampen sheet, marker, and toast animations</span>
-                </div>
-                <button
-                  id="pref-reduce-motion-toggle"
-                  class="pref-switch"
-                  type="button"
-                  role="switch"
-                  aria-checked="false"
-                  aria-label="Reduce motion"
-                >
-                  <span class="pref-switch-thumb"></span>
-                </button>
               </div>
             </div>
           </div>

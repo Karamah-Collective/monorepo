@@ -29,6 +29,7 @@ import {
   getAdditionalUserInfo,
   onAuthStateChanged,
   signOut as _fbSignOut,
+  deleteUser as _fbDeleteUser,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 import { FIREBASE_CONFIG } from "./config.js";
@@ -37,6 +38,12 @@ import { EVT } from "./events.js";
 const ACCOUNT_STORAGE_KEY = "hf_account"; // instant-hydration cache only — never a trust boundary
 const MAGIC_LINK_EMAIL_KEY = "hf_magic_link_email";
 const MAGIC_LINK_QUERY_PARAM = "signin"; // marks the return URL so isSignInWithEmailLink has something stable to check
+const MICROSOFT_PROVIDER_ID = "microsoft.com";
+// The Graph photo call is a network request during a fire-and-forget flow
+// nobody's watching — worth one retry before giving up, since a transient
+// blip here otherwise means "no photo, ever, on this device" permanently.
+const MS_PHOTO_FETCH_MAX_ATTEMPTS = 2;
+const MS_PHOTO_FETCH_RETRY_DELAY_MS = 800;
 
 let _initialized = false;
 let _auth = null;
@@ -72,15 +79,27 @@ function _cacheAccount(user) {
     try { localStorage.removeItem(ACCOUNT_STORAGE_KEY); } catch { /* quota/blocked */ }
     return null;
   }
+  // Google supplies user.photoURL automatically and keeps it fresh on every
+  // Firebase user object; Microsoft's is NEVER populated here (per Firebase's
+  // own docs, Microsoft "does not provide a photo URL") — the only source for
+  // a Microsoft photo is the separate Graph API fetch below, merged in
+  // asynchronously after it succeeds. Since Firebase's user.photoURL is thus
+  // permanently meaningless for Microsoft, rebuilding the cached account from
+  // it alone every time onAuthStateChanged fires would silently overwrite an
+  // already-merged photo back to "" the moment this listener re-fires for any
+  // reason (token refresh, multi-tab storage sync, SDK internals) — preserve
+  // whatever's already cached for this exact uid in that case instead. Google
+  // accounts are excluded from this preservation on purpose: its photoURL is
+  // always authoritative, so if it's ever genuinely empty (e.g. removed),
+  // that should actually clear the cached photo rather than keep it stale.
+  const isMicrosoft = user.providerData?.[0]?.providerId === MICROSOFT_PROVIDER_ID;
+  const existing = isMicrosoft ? getCachedAccount() : null;
+  const preservedPhoto = existing && existing.uid === user.uid ? existing.photoURL : "";
   const account = {
     uid: user.uid,
     email: user.email || "",
     displayName: user.displayName || "",
-    // Google supplies this automatically; Firebase itself never populates it
-    // for Microsoft (per Firebase's own docs, Microsoft "does not provide a
-    // photo URL") — signInWithMicrosoft() below fills this in asynchronously
-    // afterward via a separate Microsoft Graph API call, once one succeeds.
-    photoURL: user.photoURL || "",
+    photoURL: user.photoURL || preservedPhoto || "",
   };
   try { localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(account)); } catch { /* quota/blocked */ }
   return account;
@@ -116,26 +135,59 @@ function _mergeCachedPhoto(photoURL) {
  * page reload. Runs in the background — never blocks or fails sign-in
  * itself, since plenty of Microsoft accounts (especially personal ones)
  * simply have no photo set, which is an expected, silent no-op here.
+ *
+ * A missing photo is silent by design, but every OTHER way this can come up
+ * empty (no access token on the credential, Graph rejecting the token,
+ * transient network failure) previously gave up just as silently — logging
+ * a warning here isn't for the user, it's the only diagnostic trail available
+ * the next time "the avatar never loaded" gets reported, since this whole
+ * path can't be exercised by automated tests (needs a live Microsoft account
+ * + interactive popup). A single retry covers transient network blips /
+ * Graph 5xx responses; a bad token (401/403) or "no photo" (404) won't be
+ * fixed by retrying, so those return immediately.
  * @param {string} accessToken - the Microsoft OAuth access token from this sign-in
  * @returns {Promise<void>}
  */
 async function _fetchAndCacheMicrosoftPhoto(accessToken) {
-  if (!accessToken) return;
-  try {
-    const res = await fetch("https://graph.microsoft.com/v1.0/me/photo/$value", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return; // no photo set, or account type doesn't have one — silent, expected
-    const blob = await res.blob();
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    _mergeCachedPhoto(dataUrl);
-  } catch {
-    /* network error / no photo — leave the initial-letter avatar fallback in place */
+  if (!accessToken) {
+    // Per Firebase's docs this SHOULD always be populated after signInWithPopup
+    // once a non-default scope (addScope("User.Read") above) is requested —
+    // if this fires in practice, that assumption doesn't hold for this
+    // sign-in and is worth knowing about precisely.
+    console.warn("[auth] Microsoft photo skipped: no OAuth access token on this credential.");
+    return;
+  }
+  for (let attempt = 1; attempt <= MS_PHOTO_FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch("https://graph.microsoft.com/v1.0/me/photo/$value", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.status === 404) return; // no photo set on this account — expected, silent
+      if (!res.ok) {
+        const isTransient = res.status >= 500;
+        if (isTransient && attempt < MS_PHOTO_FETCH_MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, MS_PHOTO_FETCH_RETRY_DELAY_MS));
+          continue;
+        }
+        console.warn(`[auth] Microsoft photo fetch failed: Graph API returned HTTP ${res.status}.`);
+        return;
+      }
+      const blob = await res.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      _mergeCachedPhoto(dataUrl);
+      return;
+    } catch (err) {
+      if (attempt < MS_PHOTO_FETCH_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, MS_PHOTO_FETCH_RETRY_DELAY_MS));
+        continue;
+      }
+      console.warn("[auth] Microsoft photo fetch failed after retry:", err?.message || err);
+    }
   }
 }
 
@@ -293,5 +345,32 @@ export async function signOut() {
     return { success: true };
   } catch {
     return { success: false };
+  }
+}
+
+/**
+ * Best-effort attempt to delete the underlying Firebase Auth user record —
+ * used by src/profile.js's "Erase my data" flow as a bonus on top of the
+ * Sheets-side row deletion, per this project's explicit design decision
+ * (docs/PREFERENCE_LOG.md): this app has no Admin SDK infrastructure to
+ * force-delete a Firebase Auth record server-side, and the client SDK's
+ * deleteUser() commonly fails with `auth/requires-recent-login` for a
+ * session that's been open a while (Firebase requires a *recent*
+ * re-authentication for this specific operation, unlike sign-out). Silently
+ * no-ops on ANY failure — the caller never awaits this for its own
+ * correctness, never shows an error for it, and always signs out
+ * unconditionally regardless of whether this actually succeeded. Must be
+ * called BEFORE signOut() while auth.currentUser still exists — a
+ * successful deleteUser() also signs the user out as a side effect, but a
+ * failed one leaves them still signed in, which is exactly why the caller's
+ * own explicit signOut() call afterward is unconditional rather than
+ * skipped "because deleteUser probably already did it".
+ * @returns {Promise<void>}
+ */
+export async function deleteCurrentUserBestEffort() {
+  try {
+    if (_auth?.currentUser) await _fbDeleteUser(_auth.currentUser);
+  } catch {
+    /* best-effort only — auth/requires-recent-login etc. are expected, not errors */
   }
 }

@@ -23,4 +23,47 @@ export const EVT = {
   /** Fired by toggleSavedPin() (utils.js) on every toggle, same pattern as
    *  FAVOURITE_TOGGLED above. detail: { lat: number, lng: number, name: string, saved: boolean } */
   SAVED_PIN_TOGGLED: "hf:saved-pin-toggled",
+  /** Fired by submitReview() (reviews.js) after a review write actually
+   *  succeeds server-side — narrower and rarer than the generic (pre-EVT-registry)
+   *  `hf:reviews-loaded`, which fires for ANY place's rating cache being
+   *  hydrated/patched, not just the current user's own submission. src/menu.js
+   *  listens for this to keep the account menu's "Your reviews" list live
+   *  without re-fetching on every unrelated `hf:reviews-loaded` firing.
+   *  detail: { placeId: string, rating: number, text: string, status?: string } */
+  MY_REVIEW_SUBMITTED: "hf:my-review-submitted",
+  /** Fired by src/account-sync.js's _handleSignIn() once it has determined
+   *  whether the signed-in account has any prior server-side data (saved
+   *  places/pins/home, or an already-resolved local-import decision) —
+   *  fires on every sign-in resolution, including a plain session restore on
+   *  page load, not just a fresh interactive sign-in. src/utils.js's
+   *  showWelcomeGreeting() listens for this (one-shot, per call) to correct
+   *  a "Welcome back" greeting to "Welcome" for the "erased data, signed
+   *  back in with the same credentials" edge case, where Firebase's own
+   *  isNewUser flag incorrectly says "returning" (see docs/PREFERENCE_LOG.md's
+   *  Phase 7 welcome-toast writeup for the full rationale).
+   *  `uid` identifies WHICH account this resolution is for — required so a
+   *  listener registered for one sign-in attempt can ignore a same-named
+   *  event that actually resolved for a different account that signed in
+   *  shortly after (found by adversarial review — see
+   *  docs/PREFERENCE_LOG.md's cross-account welcome-toast-misattribution
+   *  writeup). Never compare on generation/session epoch alone; compare on
+   *  `uid`, since a listener must react only to ITS OWN account's
+   *  resolution, not merely "the next resolution to fire".
+   *  detail: { uid: string, hasPriorData: boolean } */
+  ACCOUNT_DATA_RESOLVED: "hf:account-data-resolved",
+  /** Fired by src/profile.js when it needs to close the WHOLE merged
+   *  Menu/Profile sheet (e.g. navigating away to view a place from a review
+   *  row, or right after "Erase my data" succeeds) rather than just its own
+   *  pane — src/menu.js owns the merged sheet's lifecycle (it's the only
+   *  module that ever calls initSheetDrag()/openMenuSheet()/closeMenuSheet()
+   *  for it) and listens for this. Event-based (rather than profile.js
+   *  importing closeMenuSheet from src/menu.js directly) to avoid a circular
+   *  import: src/menu.js already statically imports loadProfileContent from
+   *  src/profile.js (same avoid-circular-imports-via-events convention
+   *  src/account-sync.js's own header comment documents for its own
+   *  places.js/utils.js imports). Navigating BETWEEN the two panes (Menu ↔
+   *  Profile) needs no event at all any more — that's a same-module pane
+   *  swap entirely inside src/menu.js now that both panes live in one
+   *  physical sheet. detail: {} */
+  ACCOUNT_SHEET_CLOSE: "hf:account-sheet-close",
 };

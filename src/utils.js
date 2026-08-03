@@ -2,31 +2,75 @@ import { _CRYPTO_KEY } from "./config.js";
 import { map } from "./map-init.js";
 import { EVT } from "./events.js";
 
-// ─── Saved custom pins ─────────────────────────────────────────────────────────────
+// ─── Saved custom pins / home location — account-scoping model ─────────────────────
+// Signed OUT (the default): hf_saved_pins/hf_home_location in localStorage are the
+// single source of truth, exactly as before.
+// Signed IN: this module is put into "cloud mode" by src/account-sync.js
+// (enterCloudScope()/exitCloudScope() below), and every read/write here is
+// redirected to an in-memory-only mirror (_cloudPins/_cloudHome) — the local
+// device keys are never read or written while cloud mode is active, so they
+// reappear untouched the instant exitCloudScope() runs on sign-out. Actual
+// persistence to the signed-in account happens separately, via the existing
+// EVT.SAVED_PIN_TOGGLED / "hf:home-updated" background-sync listeners in
+// account-sync.js — this module only ever holds the current *display* state.
+// See docs/PREFERENCE_LOG.md for the full account-scoping writeup.
 const SAVED_PINS_KEY = "hf_saved_pins";
 const HOME_LOCATION_KEY = "hf_home_location";
 let _currentLocationState = { active: false, lat: null, lng: null, accuracy: null };
+let _cloudScoped = false; // true only while a signed-in cloud session is active
+let _cloudPins = [];
+let _cloudHome = null;
+// True only for the (usually brief, but real — a GAS cold-start round-trip
+// can be hundreds of ms) window between EVT.AUTH_CHANGED firing and
+// enterCloudScope() actually landing. Without this gate, a pin/home mutation
+// made in that window would write straight into hf_saved_pins/
+// hf_home_location (still in local mode at that point) and then get silently
+// discarded when the cloud state replaces it moments later — but the
+// localStorage write already happened, reintroducing the exact cross-account
+// local-cache bleed this whole account-scoping model exists to prevent. See
+// src/account-sync.js and docs/PREFERENCE_LOG.md's adversarial-review
+// follow-up.
+let _pinsHomeSyncPending = false;
 export function pinId(lat, lng) { return `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
 function _loadPins() { try { return JSON.parse(localStorage.getItem(SAVED_PINS_KEY) || "[]"); } catch { return []; } }
-export function getSavedPins() { return _loadPins(); }
-export function isPinSaved(lat, lng) { return _loadPins().some(p => p.id === pinId(lat, lng)); }
+function _writePins(pins) {
+  if (_cloudScoped) _cloudPins = pins;
+  else localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
+}
+function _blockedBySyncPending() {
+  if (!_pinsHomeSyncPending) return false;
+  showToast("Still signing in…", "clock", "Try again in a moment");
+  return true;
+}
+export function getSavedPins() { return _cloudScoped ? _cloudPins : _loadPins(); }
+export function isPinSaved(lat, lng) { return getSavedPins().some(p => p.id === pinId(lat, lng)); }
 export function toggleSavedPin(lat, lng, name) {
+  if (_blockedBySyncPending()) return isPinSaved(lat, lng);
   const id = pinId(lat, lng);
-  let pins = _loadPins();
+  let pins = getSavedPins();
   const exists = pins.some(p => p.id === id);
   pins = exists ? pins.filter(p => p.id !== id) : [...pins, { id, lat: +lat, lng: +lng, name: name || id }];
-  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
+  _writePins(pins);
   const saved = !exists; // new saved state (true = now saved)
   _emitWindowEvent(EVT.SAVED_PIN_TOGGLED, { lat: +lat, lng: +lng, name: name || id, saved });
   return saved;
 }
 export function removeSavedPin(id) {
-  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(_loadPins().filter(p => p.id !== id)));
+  if (_blockedBySyncPending()) return;
+  const pins = getSavedPins();
+  const pin = pins.find((p) => p.id === id);
+  _writePins(pins.filter((p) => p.id !== id));
+  // Fire the same toggle event toggleSavedPin() does — this call site (the
+  // Saved-places list's unsave button) previously bypassed it entirely, so a
+  // removal made here never reached cross-device cloud sync at all.
+  if (pin) _emitWindowEvent(EVT.SAVED_PIN_TOGGLED, { lat: pin.lat, lng: pin.lng, name: pin.name, saved: false });
 }
 /**
- * Set (not toggle) a saved-pin's state directly — used by
- * src/account-sync.js when adopting a server-only pin during the sign-in
- * merge. Unlike toggleSavedPin(), this never fires EVT.SAVED_PIN_TOGGLED.
+ * Set (not toggle) a saved-pin's state directly, without firing
+ * EVT.SAVED_PIN_TOGGLED — used by src/account-sync.js only, to roll a pin's
+ * optimistic local state back if its background cloud save/unsave request
+ * actually fails server-side (the toggle that got rolled back already fired
+ * the event once; re-firing it here would re-trigger another sync attempt).
  * @param {number} lat
  * @param {number} lng
  * @param {string} name
@@ -34,11 +78,11 @@ export function removeSavedPin(id) {
  */
 export function setSavedPinState(lat, lng, name, saved) {
   const id = pinId(lat, lng);
-  let pins = _loadPins();
+  let pins = getSavedPins();
   const exists = pins.some((p) => p.id === id);
   if (saved === exists) return;
   pins = saved ? [...pins, { id, lat: +lat, lng: +lng, name: name || id }] : pins.filter((p) => p.id !== id);
-  localStorage.setItem(SAVED_PINS_KEY, JSON.stringify(pins));
+  _writePins(pins);
 }
 
 function _emitWindowEvent(name, detail) {
@@ -64,6 +108,7 @@ function _normalizeStoredLocation(raw) {
 }
 
 export function getHomeLocation() {
+  if (_cloudScoped) return _cloudHome;
   try {
     return _normalizeStoredLocation(JSON.parse(localStorage.getItem(HOME_LOCATION_KEY) || "null"));
   } catch {
@@ -81,16 +126,61 @@ export function isHomeLocation(lat, lng) {
 }
 
 export function setHomeLocation({ lat, lng, name, address } = {}) {
+  if (_blockedBySyncPending()) return getHomeLocation();
   const home = _normalizeStoredLocation({ lat, lng, name, address });
   if (!home) return null;
-  localStorage.setItem(HOME_LOCATION_KEY, JSON.stringify(home));
+  if (_cloudScoped) _cloudHome = home;
+  else localStorage.setItem(HOME_LOCATION_KEY, JSON.stringify(home));
   _emitWindowEvent("hf:home-updated", { home });
   return home;
 }
 
 export function clearHomeLocation() {
-  localStorage.removeItem(HOME_LOCATION_KEY);
+  if (_blockedBySyncPending()) return;
+  if (_cloudScoped) _cloudHome = null;
+  else localStorage.removeItem(HOME_LOCATION_KEY);
   _emitWindowEvent("hf:home-updated", { home: null });
+}
+
+/**
+ * Block/unblock saved-pin and home-location mutations while a sign-in's
+ * cloud-state resolution is still in flight — called by src/account-sync.js
+ * only. See `_pinsHomeSyncPending`'s own comment above for the exact race
+ * this closes.
+ * @param {boolean} pending
+ * @returns {void}
+ */
+export function setPinsHomeSyncPending(pending) {
+  _pinsHomeSyncPending = pending;
+}
+
+/**
+ * Enter cloud-scoped mode for saved pins + home location — called once by
+ * src/account-sync.js after a sign-in resolves to a cloud state (either
+ * fetched fresh from the server, or from a just-accepted local import).
+ * Local device storage (hf_saved_pins/hf_home_location) is never read or
+ * written again until exitCloudScope() runs on sign-out.
+ * @param {Array<{lat:number,lng:number,name:string}>} pins
+ * @param {{lat:number,lng:number,name:string}|null} home
+ * @returns {void}
+ */
+export function enterCloudScope(pins, home) {
+  _cloudScoped = true;
+  _cloudPins = Array.isArray(pins) ? pins.map((p) => ({ id: pinId(p.lat, p.lng), lat: +p.lat, lng: +p.lng, name: p.name })) : [];
+  _cloudHome = home ? _normalizeStoredLocation(home) : null;
+  _emitWindowEvent("hf:home-updated", { home: _cloudHome });
+}
+
+/**
+ * Exit cloud-scoped mode (sign-out) — reverts saved pins / home location to
+ * whatever is in localStorage, untouched throughout the whole cloud session.
+ * @returns {void}
+ */
+export function exitCloudScope() {
+  _cloudScoped = false;
+  _cloudPins = [];
+  _cloudHome = null;
+  _emitWindowEvent("hf:home-updated", { home: getHomeLocation() });
 }
 
 export function getCurrentLocationState() {
@@ -315,6 +405,74 @@ export function buildWelcomeGreeting(account, isNewUser) {
   const source = account?.displayName?.trim() || account?.email?.split("@")[0] || "";
   const firstName = source.split(/\s+/)[0];
   return firstName ? `${greeting}, ${firstName}!` : `${greeting}!`;
+}
+
+// How long showWelcomeGreeting() waits for src/account-sync.js's
+// EVT.ACCOUNT_DATA_RESOLVED before giving up on a possible correction —
+// bounds the one-shot listener's lifetime so it can never linger to
+// misfire against a later, unrelated sign-in in the same page session (see
+// showWelcomeGreeting()'s own comment for why a listener could otherwise
+// outlive the sign-in it belongs to).
+const WELCOME_CORRECTION_TIMEOUT_MS = 15000;
+
+/**
+ * Show a "Welcome"/"Welcome back" toast for a just-completed sign-in, then
+ * silently correct it to "Welcome" if a later EVT.ACCOUNT_DATA_RESOLVED
+ * (src/account-sync.js's post-sign-in check) reports the account actually
+ * has no prior data. This is the "erase my data, then sign back in with the
+ * same credentials" edge case: Firebase's own `isNewUser` flag says
+ * "returning" (the Firebase Auth record still exists — erasure never
+ * touches it, see docs/PREFERENCE_LOG.md) even though our own system has
+ * nothing left for this account. Firebase's flag is trusted immediately for
+ * the (vast majority) common case — this never delays or withholds the
+ * first toast, it only ever adds a second, corrective one, and only when
+ * the two signals actually disagree.
+ *
+ * The correction is scoped to THIS account (`account.uid`, matched against
+ * EVT.ACCOUNT_DATA_RESOLVED's own `detail.uid`) — not just "whichever
+ * ACCOUNT_DATA_RESOLVED fires next". Without this, a listener registered
+ * for one sign-in attempt (e.g. Alice's) can still be alive — its own
+ * account's resolution never having arrived, e.g. because Alice signed out
+ * before her own `sync-saved` round-trip finished — when a DIFFERENT
+ * account's sign-in (Bob's) resolves shortly after; the stale listener would
+ * otherwise catch Bob's event and show a corrective toast built from
+ * Alice's closure data to Bob. Found by adversarial review (see
+ * docs/PREFERENCE_LOG.md) — an event whose `uid` doesn't match is ignored
+ * (kept waiting, not removed), so only this exact sign-in's own resolution
+ * can ever complete or cancel this listener.
+ *
+ * Shared by every sign-in entry point (src/menu.js, src/reviews.js) so this
+ * correction logic lives in exactly one place rather than being duplicated
+ * per caller.
+ * @param {{uid?: string, displayName?: string, email?: string}|null} account
+ * @param {boolean} isNewUser - from Firebase's getAdditionalUserInfo(cred)
+ * @returns {void}
+ */
+export function showWelcomeGreeting(account, isNewUser) {
+  showToast(buildWelcomeGreeting(account, isNewUser), "check");
+  if (isNewUser) return; // "Welcome" is already correct regardless of prior-data signal
+
+  let done = false;
+  const timeoutId = setTimeout(() => {
+    if (done) return;
+    done = true;
+    window.removeEventListener(EVT.ACCOUNT_DATA_RESOLVED, onResolved);
+  }, WELCOME_CORRECTION_TIMEOUT_MS);
+
+  function onResolved(e) {
+    if (done) return;
+    // Not this sign-in attempt's own resolution (a different account's
+    // _handleSignIn() resolved instead) — ignore and keep waiting for ours;
+    // never treat "the next event to fire" as automatically ours.
+    if (e.detail?.uid !== account?.uid) return;
+    done = true;
+    clearTimeout(timeoutId);
+    window.removeEventListener(EVT.ACCOUNT_DATA_RESOLVED, onResolved);
+    if (e.detail?.hasPriorData === false) {
+      showToast(buildWelcomeGreeting(account, true), "check");
+    }
+  }
+  window.addEventListener(EVT.ACCOUNT_DATA_RESOLVED, onResolved);
 }
 
 function _getToastStack() {
@@ -632,12 +790,29 @@ const HEIGHT_ANIMATION_FALLBACK_MS = 500;
  * Smoothly animate an element's height while its DOM content changes.
  * @param {HTMLElement | null | undefined} element
  * @param {() => void} changeFn
- * @param {{ skip?: boolean }} [options]
+ * @param {{ skip?: boolean, measureHeight?: () => number, keepExplicitHeight?: boolean }} [options]
+ *   measureHeight: supply this when the element's own natural `height: auto`
+ *   measurement wouldn't reflect the real target (e.g. src/menu.js's
+ *   `#mp-scroll`, whose sibling-stretched auto-height would still equal the
+ *   OTHER, inactive pane's height — see `_syncPaneHeight()`) — bypasses the
+ *   default "set height:auto, re-measure offsetHeight" step entirely in
+ *   favor of calling this instead, run right after changeFn().
+ *   keepExplicitHeight: by default, once the transition finishes (or the
+ *   old/new heights are within epsilon of each other), the inline `height`
+ *   is removed so the element reverts to its natural CSS sizing. Pass true
+ *   to instead leave the inline px height permanently pinned at the target
+ *   value — needed when something ELSE (e.g. a sibling's `height: 100%`)
+ *   depends on this element's height staying an explicit, JS-owned number
+ *   rather than snapping back to `auto`.
  * @returns {void}
  */
-export function animateElementHeight(element, changeFn, { skip = false } = {}) {
+export function animateElementHeight(element, changeFn, { skip = false, measureHeight, keepExplicitHeight = false } = {}) {
   if (!element || skip || isReduceMotionActive() || !element.isConnected) {
     changeFn();
+    if (keepExplicitHeight) {
+      const h = typeof measureHeight === "function" ? measureHeight() : element.offsetHeight;
+      element.style.height = `${h}px`;
+    }
     return;
   }
 
@@ -649,11 +824,17 @@ export function animateElementHeight(element, changeFn, { skip = false } = {}) {
 
   changeFn();
 
-  element.style.height = "auto";
-  const newHeight = element.offsetHeight;
+  let newHeight;
+  if (typeof measureHeight === "function") {
+    newHeight = measureHeight();
+  } else {
+    element.style.height = "auto";
+    newHeight = element.offsetHeight;
+  }
 
   if (Math.abs(newHeight - oldHeight) < HEIGHT_ANIMATION_EPSILON_PX) {
-    element.style.removeProperty("height");
+    if (keepExplicitHeight) element.style.height = `${newHeight}px`;
+    else element.style.removeProperty("height");
     element.style.removeProperty("transition");
     return;
   }
@@ -667,7 +848,7 @@ export function animateElementHeight(element, changeFn, { skip = false } = {}) {
     clearTimeout(element._heightAnimTimer);
     element.removeEventListener("transitionend", onEnd);
     element._heightAnimCleanup = null;
-    if (element.isConnected) element.style.removeProperty("height");
+    if (element.isConnected && !keepExplicitHeight) element.style.removeProperty("height");
   };
   const onEnd = (e) => {
     if (e.propertyName === "height") cleanup();
@@ -984,6 +1165,20 @@ export function initSheetDrag(sheet, closeFn) {
     }
   };
 }
+
+// Removed: swapSheetsHorizontally() + its SWAP_CLEANUP_MS constant (dated
+// 2026-08-03, superseded same-day). It coordinated a horizontal "swap"
+// transition between #menu-sheet and #profile-sheet as two independent
+// .sheet elements — smoother than a plain close/open, but each sheet still
+// auto-sized to its OWN content height, so the coordinated swap still
+// visibly "wobbled" via a height reflow underneath the slide (Profile is
+// far taller than Menu). Superseded by merging Menu and Profile into one
+// physical .sheet with two internal panes that stretch to a shared height
+// (see index.html's #menu-sheet, #mp-pane-track, and src/menu.js's
+// _setActivePane()) — navigation between them is now an internal transform
+// swap that never touches sheet-level open/close or height at all, so this
+// helper (and the .sheet.shut.sheet--swap-left/-right CSS it depended on)
+// is no longer needed by anything.
 
 // --- Pure math ---
 

@@ -192,18 +192,20 @@ map.on("load", async () => {
     { initStyleEditor },
     _contact, // side-effect import — attaches event listeners
     { initEidPrayers },
-    // { initGpsSim },
+    { initGpsSim },
     { initWishlist, preloadWishes },
     { initTrafficOverlay },
+    { initProfile },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
     import("./map-style-editor.js"),
     import("./contact.js"),
     import("./eid-prayers.js"),
-    // import("./gps-sim.js"),
+    import("./gps-sim.js"),
     import("./wishlist.js"),
     import("./traffic-overlay.js"),
+    import("./profile.js"),
   ]);
 
   loadTransitCache();
@@ -222,6 +224,13 @@ map.on("load", async () => {
   // already loaded by the Promise.all above, so this dynamic import just
   // resolves to the cached module instead of loading it a second time.
   initMenuPreferences();
+  // Profile pane content (contribution-profile plan Phase 4, merged into
+  // src/menu.js's single account sheet 2026-08-03) — src/menu.js already
+  // statically imports loadProfileContent from profile.js (same "small,
+  // non-CDN core module" pattern as its places.js import), so by the time
+  // this dynamic import resolves it's almost certainly already cached; this
+  // call is what actually wires up its own listeners/state.
+  initProfile();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
   // NOTE: Disabled — keep code for future re-enable
