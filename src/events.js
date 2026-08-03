@@ -13,8 +13,16 @@ export const EVT = {
   /** Fired on window whenever the signed-in Firebase account changes (sign-in,
    *  sign-out, or auth state restored on load). detail: { account: {uid,email,displayName}|null } */
   AUTH_CHANGED: "hf:auth-changed",
-  /** Fired on window after a signed-in user's local favourites/saved pins/home
-   *  location have finished merging with their server-synced copies. detail: {} */
+  /** Fired on window whenever a signed-in user's server-synced favourites/
+   *  saved pins/home location have just changed: on sign-in/sign-out (a full
+   *  merge with the server-synced copies), and — since 2026-08-03, see
+   *  docs/PREFERENCE_LOG.md's "Saved pins" stats-staleness fix — after EVERY
+   *  individual favourite/pin background save-or-unsave request resolves,
+   *  success or failure alike (src/account-sync.js's _backgroundSync()
+   *  callbacks). Anything that derives its own state from the server's
+   *  saved-places list rather than this module's in-memory mirror (e.g.
+   *  src/profile.js's contribution stats) should listen for this rather than
+   *  assuming its own last-fetched snapshot is still current. detail: {} */
   SAVED_SYNCED: "hf:saved-synced",
   /** Fired by toggleFavourite() (places.js) on every toggle, signed in or not —
    *  src/account-sync.js listens to fire a background save/unsave when signed in.

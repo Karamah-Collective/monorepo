@@ -116,8 +116,42 @@ export async function initProfile() {
     // sheet's lifecycle.
   });
 
+  // Keep the stats grid live while the Profile pane is already open, instead
+  // of only ever refreshing on the next full loadProfileContent() re-run
+  // (i.e. navigating away and back). SAVED_SYNCED now fires after every
+  // individual favourite/pin background save-or-unsave resolves (not just on
+  // sign-in/out merges — see events.js's doc comment and account-sync.js's
+  // 2026-08-03 fix), so this also closes most of the "Saved pins" count
+  // staying stale until a full page reload" gap: as long as the Profile pane
+  // is still open by the time that background request resolves, the count
+  // self-corrects right here rather than needing a reload to outlast it.
+  // This does NOT fully eliminate the underlying race for someone who closes
+  // Profile and immediately reopens it before the background request has
+  // resolved — that reopen's loadProfileContent() fetches fresh regardless,
+  // but a request still legitimately in flight can't be waited on from here
+  // (see account-sync.js's own fire-and-forget design note).
+  window.addEventListener(EVT.SAVED_SYNCED, () => _refreshStatsLive());
+
   exportBtn?.addEventListener("click", _handleExport);
   eraseBtn?.addEventListener("click", _handleErase);
+}
+
+/**
+ * Re-fetch just the account-meta (saved favourites/pins/home) and re-render
+ * the stats grid, without the rest of loadProfileContent()'s full
+ * reviews/submissions refetch — called on EVT.SAVED_SYNCED so the grid stays
+ * live while the Profile pane is already open. A no-op while signed out or
+ * while the merged sheet is shut, mirroring loadProfileContent()'s own guard.
+ * @returns {Promise<void>}
+ */
+async function _refreshStatsLive() {
+  if (!_account || !menuSheetEl || menuSheetEl.classList.contains("shut")) return;
+  const meta = await _fetchAccountMeta();
+  // Signed out (or the sheet got closed) while that fetch was in flight —
+  // bail rather than render a signed-out account's data or into a gone sheet.
+  if (!_account || menuSheetEl.classList.contains("shut")) return;
+  _accountMetaCache = meta;
+  _renderStats();
 }
 
 // ─── Content loading ─────────────────────────────────────────────────────────

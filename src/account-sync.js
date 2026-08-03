@@ -389,9 +389,16 @@ export function initAccountSync() {
     const { placeId, saved } = e.detail || {};
     if (!placeId) return;
     _backgroundSync("favorite", saved ? "save" : "unsave", { placeId }, {
-      // No onSuccess/onSignedOut — favouriting has never shown a toast at
-      // all (the star icon's own fill/unfill is the confirmation), only a
-      // rollback + explanation on actual failure.
+      // No toast on success — favouriting has never shown one at all (the
+      // star icon's own fill/unfill is the confirmation) — but SAVED_SYNCED
+      // still fires so anything deriving state from the server's saved-places
+      // list (src/profile.js's contribution stats) knows a mutation actually
+      // landed. Previously only the onFailure rollback below fired this event,
+      // which meant a *successful* toggle never told anyone — see this
+      // function's own SAVED_SYNCED-on-success fix, 2026-08-03 (Profile's
+      // "Saved pins"/"Favourites" counts staying stale until a full reload —
+      // see docs/PREFERENCE_LOG.md).
+      onSuccess: () => window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} })),
       onFailure: () => {
         setFavouriteState(placeId, !saved);
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
@@ -413,7 +420,14 @@ export function initAccountSync() {
     const confirmToast = () => showToast(saved ? "Pin saved" : "Pin removed", "check");
     _backgroundSync("pin", saved ? "save" : "unsave", { pinLat: lat, pinLng: lng, pinName: name }, {
       onSignedOut: confirmToast,
-      onSuccess: confirmToast,
+      // SAVED_SYNCED fires here too (not just onFailure below) — this is the
+      // ONLY signal anything gets that a pin save/unsave actually landed
+      // server-side. Without it, src/profile.js's contribution stats (which
+      // read the server's saved-places list, not this module's in-memory
+      // mirror) had no way to know a *successful* toggle happened and stayed
+      // stale until the next full page reload happened to outlast this
+      // fire-and-forget request. See docs/PREFERENCE_LOG.md, 2026-08-03.
+      onSuccess: () => { confirmToast(); window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} })); },
       onFailure: () => {
         setSavedPinState(lat, lng, name, !saved);
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));

@@ -160,19 +160,19 @@
     "lat": 60.1984,
     "lng": 24.9295,
     "tags": {
-      "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "fully_halal": true
     },
-    "notes": "Mall of Tripla branch.",
+    "notes": "Mall of Tripla branch",
     "boycott": true,
     "hours": {
-      "sun": "08:00-00:00",
       "mon": "07:00-00:00",
       "tue": "07:00-00:00",
       "wed": "07:00-00:00",
       "thu": "07:00-00:00",
       "fri": "07:00-04:00",
-      "sat": "08:00-04:00"
+      "sat": "08:00-04:00",
+      "sun": "08:00-00:00"
     },
     "website": "https://kfc.fi/",
     "mapsUrl": "https://maps.google.com/?cid=14363540210516295329",
@@ -2131,16 +2131,16 @@
     "tags": {},
     "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor.",
     "hours": {
-      "sun": "00:00-23:59",
       "mon": "00:00-23:59",
       "tue": "00:00-23:59",
       "wed": "00:00-23:59",
       "thu": "00:00-23:59",
       "fri": "00:00-23:59",
-      "sat": "00:00-23:59"
+      "sat": "00:00-23:59",
+      "sun": "00:00-23:59"
     },
     "website": "https://www.hus.fi/potilaalle/sairaalat-ja-toimipisteet/meilahden-tornisairaala",
-    "phone": "Fri Sep 01 4711 00:00:00 GMT+0300 (Itä-Euroopan kesäaika)",
+    "phone": "94711",
     "mapsUrl": "https://maps.google.com/?cid=1511550353847246462",
     "wheelchairAccessible": true
   },

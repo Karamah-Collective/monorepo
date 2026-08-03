@@ -1995,10 +1995,13 @@ window.addEventListener("hf:current-location-updated", () => {
 });
 // Fired by src/account-sync.js whenever it enters/exits cloud-scoped mode
 // (sign-in resolving to a cloud state, or sign-out reverting to the local
-// device cache) — both swap out `favourites`/saved-pins wholesale rather than
-// going through toggleFavourite()/toggleSavedPin(), so this is the only
-// signal this list gets that its content just changed underneath it.
-// Re-render unconditionally (cheap) rather than requiring a manual refresh.
+// device cache — both swap out `favourites`/saved-pins wholesale rather than
+// going through toggleFavourite()/toggleSavedPin()), AND — since 2026-08-03 —
+// after every individual background save/unsave request resolves too (see
+// events.js's own doc comment). Either way this list's own optimistic state
+// is already correct by the time this fires, so re-rendering here is just a
+// cheap, harmless no-visible-change pass for the toggle case; it only
+// actually matters for the wholesale sign-in/out swap.
 window.addEventListener(EVT.SAVED_SYNCED, () => {
   addPlaceMarkers();
   if (activeTypeFilter === "saved") renderPlacesList();
@@ -4119,6 +4122,21 @@ suggestForm.addEventListener("submit", async (e) => {
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "suggest_place" }).then(resolve)),
     );
     payload.token = token;
+    // Optional identity, only when signed in — mirrors reviews.js's
+    // _resolveReviewIdentity() exactly. Anonymous submission must stay
+    // byte-identical (no idToken key at all) when signed out. This was the
+    // one piece of the "my submitted places" feature that never actually
+    // got wired in: the backend (functions/api/submit.js) and Code.gs have
+    // been ready to accept/store an emailHash since the feature shipped,
+    // but this payload never included idToken at all — every submission,
+    // signed in or not, landed with a blank emailHash column (reported bug:
+    // Profile always showed "0 places added"/"0 edits" regardless of what
+    // was actually submitted).
+    const auth = await _getAuthModule();
+    if (auth.getCachedAccount()) {
+      const idToken = await auth.getIdToken();
+      if (idToken) payload.idToken = idToken;
+    }
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -4400,6 +4418,14 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     if (website) editPayload.website = website;
     if (phone) editPayload.phone = phone;
     if (editOpeningHours) editPayload.openingHours = editOpeningHours;
+    // Optional identity, only when signed in — see the identical fix + full
+    // rationale on the new-place submit handler just above (same bug, same
+    // fix, this was the "edits" half of "0 places added"/"0 edits").
+    const auth = await _getAuthModule();
+    if (auth.getCachedAccount()) {
+      const idToken = await auth.getIdToken();
+      if (idToken) editPayload.idToken = idToken;
+    }
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
