@@ -1,0 +1,12 @@
+name = "halal-finder"
+pages_build_output_dir = "."
+compatibility_date = "2026-08-04"
+
+# Local-only for now (Phase 1-6 of docs/D1_MIGRATION_PLAN.md) — `database_id`
+# is a placeholder used only by `--local` execution, which runs against a
+# local SQLite file under .wrangler/state and needs no Cloudflare login.
+# Phase 7 replaces this with the real database_id once it exists.
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "local-dev-placeholder"

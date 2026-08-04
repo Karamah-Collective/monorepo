@@ -17,6 +17,11 @@ scripts/cache/
 scripts/local-backups/
 *.cache
 
+# D1 migration (see docs/D1_MIGRATION_PLAN.md) — local dev state and
+# generated one-time migration SQL, never committed
+.wrangler/
+scripts/migrate-to-d1/generated/
+
 # Playwright generated output
 playwright-report/
 test-results/
