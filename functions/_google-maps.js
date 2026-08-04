@@ -259,6 +259,32 @@ export function extractGoogleReviewText(review) {
   return "";
 }
 
+// Code.gs:4567 — parses the Reviews table's embedded googleReview JSON blob
+// into the same item shape community reviews use, tagged source:'google'.
+export function parseGoogleReviewsField(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const out = [];
+    for (const r0 of parsed) {
+      const r = r0 || {};
+      const rating = normalizeGoogleReviewRating(r.rating || r.starRating || r.score);
+      if (rating < 1 || rating > 5) continue;
+      out.push({
+        rating,
+        text: extractGoogleReviewText(r),
+        timestamp: (r.timestamp || "").toString(),
+        source: "google",
+        authorName: (r.authorName || r.author_name || "").toString(),
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 // ── Geocoding via Nominatim (replaces Code.gs's free Maps.newGeocoder()) ──
 
 /**

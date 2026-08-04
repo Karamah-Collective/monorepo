@@ -43,13 +43,14 @@ The live "database" is a Google Sheet read/written through a Google Apps Script 
 
 **Known pre-existing gap, not fixed here** (found while reading `submit.js`): the frontend already sends rich event-location fields (`locationName`, `locationAddress`, `locationLat/Lng`, `organizerName`, `organizerPlaceId`) for event submissions, and `submit.js` forwards them, but `Code.gs`'s actual `Events`/`EventEdit` append logic never reads or persists them — they're silently dropped today. This matches the "dead columns" found in Phase 2. Phase 4's `submit.js` port keeps dropping them too (behavior parity, not a fix) — flagging here in case it's worth fixing in a later, separate task.
 
-### Phase 4 — Rewrite `functions/api/*.js` against D1
-- [ ] `submit.js`
-- [ ] `reviews.js` (Firebase-idToken-only; `send-otp`/`verify-otp` removed)
-- [ ] `account.js`
-- [ ] `wishes.js`
-- [ ] `places.js`
-- [ ] `eid-prayers.js`
+### Phase 4 — Rewrite `functions/api/*.js` against D1 ✅ done (code written + syntax-checked; behavioral validation is Phase 6)
+- [x] `submit.js` — dedup, enrichment (Places Details + Nominatim), Draft/New/Edit/Contact/Event/EventEdit/EidNew writes, my-submitted-places/edits reads.
+- [x] `reviews.js` — Firebase-idToken-only; `send-otp`/`verify-otp` removed. **Upsert via `UNIQUE(place_id, email_hash)`** instead of Code.gs's scan-then-branch.
+- [x] `account.js` — sync-saved/save/unsave/resolve-import, atomic `erase-data` via `db.batch()`.
+- [x] `wishes.js`, `places.js`, `eid-prayers.js` — straightforward D1 query ports.
+- All 6 pass `node --check`.
+
+**⚠️ Follow-up needed, not done here (frontend, out of this phase's scope):** `src/reviews.js`'s `_resolveReviewIdentity()` still falls back to a legacy `verifyToken` when the user isn't signed in but holds a still-valid OTP token (`_getVerificationToken()`) — there's a UI path (likely a "verify by email" flow) that leads here. Since the backend no longer accepts `verifyToken` for `submit`/`check` and `send-otp`/`verify-otp` no longer exist, that path will now fail with a generic "Invalid request"/400 instead of working. **Before cutover, either remove that UI entry point or confirm the resulting error is acceptable** — needs a decision, not just a code change, since it's a real capability being removed (anonymous review without an account), not a bug fix.
 
 ### Phase 5 — New admin API, no UI
 - [ ] `functions/api/admin.js` — all 26 admin GET/POST actions, `adminKey` guard, D1 `batch()` transactions for approval side-effects, unrestricted CORS on this file only.

@@ -2,64 +2,35 @@
  * Cloudflare Pages Function – /api/submit
  *
  * Handles form submissions from the "Suggest a Place" and "Suggest Edit" forms,
- * plus (Phase 2 of the accounts/profile plan) two Firebase-only read actions
- * for a signed-in user's own past submissions.
- * Flow (default — no `action` field, the original single-purpose behavior):
- *   1. Validate the incoming JSON payload
- *   2. Verify the reCAPTCHA v3 token with Google (server-side)
- *   3. Optionally resolve an `idToken` to an emailHash (Phase 1 — never
- *      required, never fails the submission if it doesn't resolve)
- *   4. Forward the data to the Google Apps Script web app → Google Sheet
- * Flow (`action: "my-submitted-places"|"my-submitted-edits"`): Firebase-only,
- * no reCAPTCHA — verifies `idToken`, forwards `{formType, action, emailHash}`
- * to Apps Script and returns whatever it responds with. Mirrors
- * `functions/api/reviews.js`'s `my-reviews` action.
+ * plus the Firebase-only "my submitted places/edits" read actions. Writes
+ * directly to D1 (see docs/D1_MIGRATION_PLAN.md) instead of forwarding to
+ * Google Apps Script — every downstream side effect Code.gs used to perform
+ * (dedup check, Places/Places-enrichment pipeline, custom-cuisine-tag
+ * persistence) is ported into this file and functions/_gas-compat.js /
+ * functions/_google-maps.js.
  *
- * Required Cloudflare Pages Environment Variables (set in Pages -> Settings -> Variables):
- *   RECAPTCHA_SECRET   – reCAPTCHA v3 secret key
- *   GAS_URL            – Google Apps Script web app URL (https://script.google.com/macros/s/…/exec)
+ * Required Cloudflare Pages Environment Variables:
+ *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key
+ *   MAPS_API_KEY      – Google Places API key (enrichment only; geocoding uses free Nominatim)
+ *   DB                – D1 database binding
  */
-import { verifyFirebaseIdToken } from '../_firebase-verify.js';
+import { verifyFirebaseIdToken } from "../_firebase-verify.js";
+import { allowedOrigin, truncate, sha256, json, helsinkiTimestamp } from "../_shared.js";
+import { isDuplicateInPlaces, isDuplicateInNew, isInsideFinlandBounds, namesMatch } from "../_gas-compat.js";
+import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 
-const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const MIN_SCORE = 0.5;
-const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
 const MAX_FIELD_LEN = 500;
 const MAX_NOTES_LEN = 2000;
-const MAX_BODY_SIZE = 8192; // 8 KB
-const MAX_ID_TOKEN_LEN = 2048; // Firebase ID tokens (JWTs) run ~1000-1300 chars
+const MAX_BODY_SIZE = 8192;
+const MAX_ID_TOKEN_LEN = 2048;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SUBMIT_ACTIONS = ['my-submitted-places', 'my-submitted-edits'];
+const SUBMIT_ACTIONS = ["my-submitted-places", "my-submitted-edits"];
+const PROXIMITY_THRESHOLD = 0.0005; // ~50m, matches Code.gs
 
-function allowedOrigin(request) {
-  const origin = request.headers.get('Origin') || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-}
-
-function truncate(str, max) {
-  return typeof str === 'string' ? str.slice(0, max) : '';
-}
-
-/**
- * Compute SHA-256 hex hash of a string using Web Crypto API.
- * @param {string} input
- * @returns {Promise<string>}
- */
-async function sha256(input) {
-  const data = new TextEncoder().encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Verify a Firebase ID token and reduce it to just an emailHash — never the
- * plaintext email, per the Phase 6 privacy rule. Returns null (never throws)
- * so callers can treat any failure as "unauthenticated".
- * @param {string} idToken
- * @returns {Promise<{emailHash: string}|null>}
- */
 async function resolveFirebaseIdentity(idToken) {
-  const cleanToken = truncate((idToken || '').toString(), MAX_ID_TOKEN_LEN);
+  const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;
@@ -67,268 +38,327 @@ async function resolveFirebaseIdentity(idToken) {
   return { emailHash };
 }
 
-/**
- * Dispatch action-based (non-plain-submission) POST requests — the
- * Firebase-only "my submitted places/edits" read paths. Unlike the default
- * plain-submission path (where identity is optional), an unresolvable
- * idToken here is rejected rather than silently omitted, since there is no
- * meaningful anonymous variant of "list my own submissions".
- * @param {string} action
- * @param {string} formType
- * @param {object} body - full parsed request body (for body.idToken)
- * @param {object} headers - response headers
- * @param {object} env - Cloudflare Pages environment bindings
- * @returns {Promise<Response>}
- */
+// Code.gs:3012 — persists user-typed custom cuisine tags to the Tags table.
+async function addNewCuisineTags(db, newCuisines) {
+  if (!Array.isArray(newCuisines) || !newCuisines.length) return;
+  for (const c of newCuisines) {
+    const id = (c && c.id || "").toString().trim();
+    let label = (c && c.label || "").toString().trim();
+    if (!id || !label) continue;
+    if (!/^cuisine_[a-z0-9_]+$/.test(id)) continue;
+    if (label.length > 40) label = label.substring(0, 40);
+    await db.prepare("INSERT INTO tags (type, tag_id, label) VALUES ('restaurant_cuisine', ?, ?) ON CONFLICT(type, tag_id) DO NOTHING").bind(id, label).run();
+  }
+}
+
+// Code.gs:3811 — best-effort fuzzy Places lookup (name match OR name+type+proximity).
+async function findPlacesIdByFuzzyMatch(db, name, type, lat, lng) {
+  const { results } = await db.prepare("SELECT id, name, type, lat, lng FROM places").all();
+  const t = (type || "").toString().trim().toLowerCase();
+  for (const row of results) {
+    const nameOk = namesMatch(name, row.name);
+    const proxOk = !isNaN(lat) && !isNaN(lng) && row.lat != null && row.lng != null &&
+      Math.abs(row.lat - lat) < PROXIMITY_THRESHOLD && Math.abs(row.lng - lng) < PROXIMITY_THRESHOLD &&
+      t && (row.type || "").toLowerCase() === t;
+    if (nameOk || proxOk) return row.id;
+  }
+  return "";
+}
+
+// Code.gs:3739 getMySubmittedPlaces
+async function getMySubmittedPlaces(db, emailHash) {
+  const { results } = await db.prepare("SELECT * FROM new_places WHERE email_hash = ? ORDER BY timestamp DESC").bind(emailHash).all();
+  const out = [];
+  for (const row of results) {
+    const name = row.google_name || row.name || "";
+    const type = row.type || "";
+    const address = row.google_address || row.address || "";
+    const status = row.status === "yes" ? "live" : row.status === "no" ? "rejected" : "pending";
+    const entry = { name, type, address, status, submittedAt: row.timestamp || "", rejectReason: status === "rejected" ? row.reject_reason || "" : "", placeId: "" };
+    if (status === "live") {
+      entry.placeId = row.app_place_id || (await findPlacesIdByFuzzyMatch(db, name, type, row.lat, row.lng));
+    }
+    out.push(entry);
+  }
+  return { places: out };
+}
+
+// Code.gs:3941 getMySubmittedEdits
+async function getMySubmittedEdits(db, emailHash) {
+  const { results } = await db.prepare("SELECT * FROM edits WHERE email_hash = ? ORDER BY timestamp DESC").bind(emailHash).all();
+  const out = [];
+  for (const row of results) {
+    const status = row.status === "yes" ? "live" : row.status === "no" ? "rejected" : "pending";
+    let placeName = row.name || "";
+    if (row.place_id) {
+      const place = await db.prepare("SELECT name FROM places WHERE id = ?").bind(row.place_id).first();
+      if (place && place.name) placeName = place.name;
+    }
+    out.push({
+      placeId: row.place_id || "",
+      placeName,
+      changesSummary: row.changes_summary || "",
+      status,
+      submittedAt: row.timestamp || "",
+      rejectReason: status === "rejected" ? row.reject_reason || "" : "",
+    });
+  }
+  return { edits: out };
+}
+
 async function handleSubmitAction(action, formType, body, headers, env) {
-  if (!SUBMIT_ACTIONS.includes(action)) {
-    return json({ error: 'Invalid request' }, 400, headers);
-  }
-  const expectedFormType = action === 'my-submitted-places' ? 'new' : 'edit';
-  if (formType !== expectedFormType) {
-    return json({ error: 'Invalid request' }, 400, headers);
-  }
+  if (!SUBMIT_ACTIONS.includes(action)) return json({ error: "Invalid request" }, 400, headers);
+  const expectedFormType = action === "my-submitted-places" ? "new" : "edit";
+  if (formType !== expectedFormType) return json({ error: "Invalid request" }, 400, headers);
 
   const identity = await resolveFirebaseIdentity(body.idToken);
-  if (!identity) {
-    return json({ error: 'invalid_token' }, 401, headers);
-  }
+  if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
-  return await forwardToGAS(env.GAS_URL, { formType, action, emailHash: identity.emailHash }, headers);
+  const result = action === "my-submitted-places"
+    ? await getMySubmittedPlaces(env.DB, identity.emailHash)
+    : await getMySubmittedEdits(env.DB, identity.emailHash);
+  return json({ success: true, ...result }, 200, headers);
 }
 
-/**
- * Forward a payload to Google Apps Script, following redirects, returning
- * whatever GAS responds with. Used only by the action-based read paths above
- * — the default plain-submission path below keeps its own inline
- * redirect-following logic untouched, for byte-identical backward compatibility.
- * @param {string} gasUrl
- * @param {object} payload
- * @param {object} headers - response headers
- * @returns {Promise<Response>}
- */
-async function forwardToGAS(gasUrl, payload, headers) {
-  try {
-    let res = await fetch(gasUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      redirect: 'manual',
-    });
+// ── New-place submission (Code.gs formType:'new', doPost:68-158) ─────────
+async function handleNewSubmission(env, data, emailHash) {
+  const db = env.DB;
+  const ts = helsinkiTimestamp();
+  const tags = (data.tags || "").toString();
+  const mapsLink = (data.gmaps || "").toString().trim();
+  const submittedName = (data.name || "").toString().trim();
+  const submittedType = (data.type || "").toString().trim();
+  const pinLat = data.pinLat != null ? parseFloat(data.pinLat) : null;
+  const pinLng = data.pinLng != null ? parseFloat(data.pinLng) : null;
+  const hasPin = pinLat != null && !isNaN(pinLat) && pinLng != null && !isNaN(pinLng);
+  const openingHours = (data.openingHours || "").toString().trim();
 
-    for (let i = 0; i < 5; i++) {
-      const loc = res.headers.get('Location');
-      if ([301, 302, 307, 308].includes(res.status) && loc) {
-        res = await fetch(loc, { redirect: 'manual' });
-        continue;
-      }
-      break;
+  if (data.newCuisines && data.newCuisines.length) await addNewCuisineTags(db, data.newCuisines);
+
+  // 1. Always archive to Draft.
+  await db.prepare(
+    "INSERT INTO draft (timestamp, name, type, address, tags, maps_link, notes, score, opening_hours, email_hash) VALUES (?,?,?,?,?,?,?,?,?,?)"
+  ).bind(ts, data.name || "", data.type || "", data.address || "", tags, mapsLink, data.notes || "", (data.score != null ? Number(data.score).toFixed(2) : ""), openingHours, emailHash || "").run();
+
+  if (hasPin && !isInsideFinlandBounds(pinLat, pinLng)) {
+    return { error: "Location must be inside Finland" };
+  }
+
+  // 2. Deduplicate: only add to New if not already present.
+  const isDupe = (await isDuplicateInPlaces(db, { submittedName, submittedType, pinLat, pinLng })) ||
+    (await isDuplicateInNew(db, { mapsLink, submittedName, submittedType, pinLat, pinLng }));
+  if (isDupe) return { success: true };
+
+  const userWebsite = (data.website || "").toString().trim();
+  const userPhone = (data.phone || "").toString().trim();
+
+  let googleName = "", googleAddress = "", lat = null, lng = null, placeId = "", website = userWebsite, phone = userPhone, enrichedAt = "", storedOpeningHours = openingHours;
+  let googleReview = "", googleRating = null, googleRatingCount = null, googleInfo = {};
+
+  if (hasPin) {
+    let addr = "";
+    try { addr = await reverseGeocode(pinLat, pinLng, env); } catch { /* best-effort */ }
+    googleName = data.name || "";
+    googleAddress = addr || data.address || "";
+    lat = pinLat; lng = pinLng;
+    enrichedAt = `pin:${ts}`;
+  } else if (mapsLink) {
+    const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: submittedName, userAddress: data.address || "", website: userWebsite, phone: userPhone, rich: true });
+    if (enriched.hasData && !enriched.outsideFinland) {
+      googleName = enriched.googleName; googleAddress = enriched.googleAddress;
+      lat = enriched.lat; lng = enriched.lng; placeId = enriched.placeId;
+      website = enriched.website; phone = enriched.phone;
+      enrichedAt = ts;
+      if (enriched.openingHours && !storedOpeningHours) storedOpeningHours = enriched.openingHours;
+      googleReview = enriched.googleReview; googleRating = enriched.googleRating; googleRatingCount = enriched.googleRatingCount; googleInfo = enriched.googleInfo;
     }
-
-    const result = JSON.parse(await res.text());
-    if (result.error) return json({ error: result.error }, 400, headers);
-    return json({ success: true, ...result }, 200, headers);
-  } catch {
-    return json({ error: 'Service error' }, 502, headers);
+    // If enrichment found nothing (or the resolved location is outside
+    // Finland), the row is still inserted below with enriched_at='' so a
+    // later retry (Code.gs relied on its 1-min trigger; here the same
+    // background sweep in a later submission's waitUntil can pick it up).
   }
+
+  await db.prepare(
+    `INSERT INTO new_places (timestamp, name, type, address, tags, maps_link, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status, reject_reason, opening_hours, google_review, google_rating, google_rating_count, phone, email_hash, app_place_id)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?,?,'')`
+  ).bind(
+    ts, data.name || "", data.type || "", data.address || "", tags, mapsLink, data.notes || "", (data.score != null ? Number(data.score).toFixed(2) : ""),
+    googleName, googleAddress, lat, lng, placeId, website, enrichedAt,
+    storedOpeningHours, googleReview, googleRating, googleRatingCount, phone, emailHash || ""
+  ).run();
+
+  return { success: true };
 }
 
-// ── Main handler ─────────────────────────────────────────────────────────────
+// ── Edit submission (Code.gs formType:'edit', doPost:160-180) ────────────
+async function handleEditSubmission(env, data, emailHash) {
+  const db = env.DB;
+  if (data.newCuisines && data.newCuisines.length) await addNewCuisineTags(db, data.newCuisines);
+  await db.prepare(
+    "INSERT INTO edits (timestamp, place_id, name, type, address, tags, maps_link, notes, score, changes_summary, status, reject_reason, opening_hours, website, phone, email_hash) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?)"
+  ).bind(
+    helsinkiTimestamp(), data.placeId || "", data.name || "", data.type || "", data.address || "", (data.tags || "").toString(), data.gmaps || "", data.notes || "",
+    (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "", (data.openingHours || "").toString().trim(), data.website || "", data.phone || "", emailHash || ""
+  ).run();
+  return { success: true };
+}
+
+// ── Eid submission (Code.gs formType:'eid', doPost:274-326) ──────────────
+async function handleEidSubmission(env, data) {
+  const db = env.DB;
+  const ts = helsinkiTimestamp();
+  const mapsLink = (data.gmaps || "").toString().trim();
+  const pinLat = data.pinLat != null ? parseFloat(data.pinLat) : null;
+  const pinLng = data.pinLng != null ? parseFloat(data.pinLng) : null;
+  const hasPin = pinLat != null && !isNaN(pinLat) && pinLng != null && !isNaN(pinLng);
+  if (hasPin && !isInsideFinlandBounds(pinLat, pinLng)) return { error: "Location must be inside Finland" };
+
+  let googleName = "", googleAddress = "", lat = null, lng = null, placeId = "", website = "", enrichedAt = "";
+  if (hasPin) {
+    let addr = "";
+    try { addr = await reverseGeocode(pinLat, pinLng, env); } catch { /* best-effort */ }
+    googleName = data.name || "";
+    googleAddress = addr || data.address || "";
+    lat = pinLat; lng = pinLng;
+    enrichedAt = `pin:${ts}`;
+  } else if (mapsLink) {
+    const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: data.name || "", userAddress: data.address || "", website: "", phone: "", rich: false });
+    if (enriched.hasData && !enriched.outsideFinland) {
+      googleName = enriched.googleName; googleAddress = enriched.googleAddress;
+      lat = enriched.lat; lng = enriched.lng; placeId = enriched.placeId; website = enriched.website;
+      enrichedAt = ts;
+    }
+  }
+
+  await db.prepare(
+    "INSERT INTO eid_new (timestamp, name, address, maps_link, organizer, jamaats, date, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')"
+  ).bind(
+    ts, data.name || "", data.address || "", mapsLink, data.eidOrganizer || "", data.eidJamaats || "", data.eidDate || "", data.notes || "",
+    (data.score != null ? Number(data.score).toFixed(2) : ""), googleName, googleAddress, lat, lng, placeId, website, enrichedAt
+  ).run();
+
+  return { success: true };
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const responseHeaders = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
 
-  const responseHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': allowedOrigin(request),
-  };
+  if (!env.RECAPTCHA_SECRET) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
 
-  // ── Guard: env vars must be present ──
-  if (!env.RECAPTCHA_SECRET) {
-    return json({ error: 'Service temporarily unavailable' }, 500, responseHeaders);
-  }
-  if (!env.GAS_URL) {
-    return json({ error: 'Service temporarily unavailable' }, 500, responseHeaders);
-  }
-
-  // ── Reject oversized payloads ──
-  const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
-  if (contentLength > MAX_BODY_SIZE) {
-    return json({ error: 'Payload too large' }, 413, responseHeaders);
-  }
+  const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
+  if (contentLength > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, responseHeaders);
 
   let rawText;
-  try {
-    rawText = await request.text();
-  } catch {
-    return json({ error: 'Invalid request body' }, 400, responseHeaders);
-  }
-  if (rawText.length > MAX_BODY_SIZE) {
-    return json({ error: 'Payload too large' }, 413, responseHeaders);
-  }
+  try { rawText = await request.text(); } catch { return json({ error: "Invalid request body" }, 400, responseHeaders); }
+  if (rawText.length > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, responseHeaders);
 
   let body;
-  try {
-    body = JSON.parse(rawText);
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400, responseHeaders);
-  }
+  try { body = JSON.parse(rawText); } catch { return json({ error: "Invalid JSON body" }, 400, responseHeaders); }
 
   const { token, formType, action, idToken, ...formData } = body;
 
-  // ── Action-based dispatch (Phase 2): Firebase-only "my submissions" read
-  // paths. No reCAPTCHA required (read-only, identity-gated). Absent `action`
-  // (the default) falls through unchanged below — byte-identical behavior
-  // for anonymous/plain place & edit submissions. ──
-  if (action) {
-    return await handleSubmitAction(action, formType, body, responseHeaders, env);
+  if (action) return await handleSubmitAction(action, formType, body, responseHeaders, env);
+
+  if (!token || typeof token !== "string") return json({ error: "Missing reCAPTCHA token" }, 400, responseHeaders);
+  if (!formType || !["new", "edit", "contact", "event", "event-edit", "eid"].includes(formType)) {
+    return json({ error: "Invalid form type" }, 400, responseHeaders);
   }
 
-  // ── Basic validation ──
-  if (!token || typeof token !== 'string') {
-    return json({ error: 'Missing reCAPTCHA token' }, 400, responseHeaders);
-  }
-  if (!formType || !['new', 'edit', 'contact', 'event', 'event-edit', 'eid'].includes(formType)) {
-    return json({ error: 'Invalid form type' }, 400, responseHeaders);
-  }
-
-  // ── Field-level validation & truncation ──
-  if (formData.name)    formData.name    = truncate(formData.name, MAX_FIELD_LEN);
+  if (formData.name) formData.name = truncate(formData.name, MAX_FIELD_LEN);
   if (formData.address) formData.address = truncate(formData.address, MAX_FIELD_LEN);
-  if (formData.gmaps)   formData.gmaps   = truncate(formData.gmaps, MAX_FIELD_LEN);
-  if (formData.notes)   formData.notes   = truncate(formData.notes, MAX_NOTES_LEN);
+  if (formData.gmaps) formData.gmaps = truncate(formData.gmaps, MAX_FIELD_LEN);
+  if (formData.notes) formData.notes = truncate(formData.notes, MAX_NOTES_LEN);
   if (formData.message) formData.message = truncate(formData.message, MAX_NOTES_LEN);
-  if (formData.tags)    formData.tags    = truncate(formData.tags, MAX_FIELD_LEN);
+  if (formData.tags) formData.tags = truncate(formData.tags, MAX_FIELD_LEN);
   if (formData.changesSummary) formData.changesSummary = truncate(formData.changesSummary, MAX_NOTES_LEN);
-  if (formData.openingHours)   formData.openingHours   = truncate(formData.openingHours, MAX_NOTES_LEN);
-  if (formData.website)        formData.website        = truncate(formData.website, MAX_FIELD_LEN);
+  if (formData.openingHours) formData.openingHours = truncate(formData.openingHours, MAX_NOTES_LEN);
+  if (formData.website) formData.website = truncate(formData.website, MAX_FIELD_LEN);
 
-  // Event-specific fields
-  if (formData.title)       formData.title       = truncate(formData.title, MAX_FIELD_LEN);
+  if (formData.title) formData.title = truncate(formData.title, MAX_FIELD_LEN);
   if (formData.description) formData.description = truncate(formData.description, MAX_NOTES_LEN);
-  if (formData.placeId)     formData.placeId     = truncate(formData.placeId, 20);
-  if (formData.eventDate)   formData.eventDate   = truncate(formData.eventDate, 10);
-  if (formData.eventTime)   formData.eventTime   = truncate(formData.eventTime, 5);
-  if (formData.endTime)     formData.endTime     = truncate(formData.endTime, 5);
+  if (formData.placeId) formData.placeId = truncate(formData.placeId, 20);
+  if (formData.eventDate) formData.eventDate = truncate(formData.eventDate, 10);
+  if (formData.eventTime) formData.eventTime = truncate(formData.eventTime, 5);
+  if (formData.endTime) formData.endTime = truncate(formData.endTime, 5);
   if (formData.recurrencePattern) formData.recurrencePattern = truncate(formData.recurrencePattern, MAX_FIELD_LEN);
-  if (formData.url)         formData.url         = truncate(formData.url, MAX_FIELD_LEN);
-  if (formData.eventId)     formData.eventId     = truncate(formData.eventId, 50);
-  if (formData.locationName)       formData.locationName       = truncate(formData.locationName, MAX_FIELD_LEN);
-  if (formData.locationGmapsLink)  formData.locationGmapsLink  = truncate(formData.locationGmapsLink, MAX_FIELD_LEN);
-  if (formData.locationAddress)    formData.locationAddress    = truncate(formData.locationAddress, MAX_FIELD_LEN);
-  if (formData.locationLat != null || formData.locationLng != null) {
-    const lat = Number(formData.locationLat);
-    const lng = Number(formData.locationLng);
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      formData.locationLat = lat;
-      formData.locationLng = lng;
-    } else {
-      delete formData.locationLat;
-      delete formData.locationLng;
-    }
-  }
-  if (formData.organizerName)   formData.organizerName   = truncate(formData.organizerName, MAX_FIELD_LEN);
-  if (formData.organizerPlaceId) formData.organizerPlaceId = truncate(formData.organizerPlaceId, 20);
+  if (formData.url) formData.url = truncate(formData.url, MAX_FIELD_LEN);
+  if (formData.eventId) formData.eventId = truncate(formData.eventId, 50);
 
-  // Eid-specific fields
   if (formData.eidOrganizer) formData.eidOrganizer = truncate(formData.eidOrganizer, MAX_FIELD_LEN);
-  if (formData.eidDate)      formData.eidDate      = truncate(formData.eidDate, 10);
-  if (formData.eidJamaats)   formData.eidJamaats   = truncate(formData.eidJamaats, MAX_FIELD_LEN);
+  if (formData.eidDate) formData.eidDate = truncate(formData.eidDate, 10);
+  if (formData.eidJamaats) formData.eidJamaats = truncate(formData.eidJamaats, MAX_FIELD_LEN);
 
-  // Validate email format for contact forms
-  if (formType === 'contact' && formData.email && !EMAIL_RE.test(formData.email)) {
-    return json({ error: 'Invalid email address' }, 400, responseHeaders);
+  if (formType === "contact" && formData.email && !EMAIL_RE.test(formData.email)) {
+    return json({ error: "Invalid email address" }, 400, responseHeaders);
   }
   if (formData.email) formData.email = truncate(formData.email, 254);
   if (formData.phone) formData.phone = truncate(formData.phone, 30);
 
-  // ── 1. Verify reCAPTCHA v3 ────────────────────────────────────────────────
   let captcha;
   try {
     const verifyRes = await fetch(RECAPTCHA_VERIFY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        secret:   env.RECAPTCHA_SECRET,
-        response: token,
-      }),
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
     });
     captcha = await verifyRes.json();
-  } catch (err) {
-    return json({ error: 'Verification unavailable. Please try again.' }, 502, responseHeaders);
+  } catch {
+    return json({ error: "Verification unavailable. Please try again." }, 502, responseHeaders);
   }
+  if (!captcha.success) return json({ error: "Verification failed. Please try again." }, 403, responseHeaders);
+  if (captcha.score < MIN_SCORE) return json({ error: "Submission blocked. Please try again later." }, 403, responseHeaders);
 
-  if (!captcha.success) {
-    return json({ error: 'Verification failed. Please try again.' }, 403, responseHeaders);
-  }
-  if (captcha.score < MIN_SCORE) {
-    return json({ error: 'Submission blocked. Please try again later.' }, 403, responseHeaders);
-  }
+  const data = { ...formData, score: captcha.score };
 
-  // ── 2. Forward to Google Apps Script ───────────────────────────────────────
-  // GAS web apps return a 302 redirect after POST. The redirect target must be
-  // fetched with GET (per HTTP spec). We follow the chain manually so we can
-  // read the final JSON response and surface any errors to the user.
-  const gasPayload = { ...formData, formType, score: captcha.score };
-
-  // ── Optional identity (Phase 1) — attach emailHash if the caller is signed
-  // in via Firebase. Silently omitted on any resolution failure; never blocks
-  // the submission (reCAPTCHA above already gates abuse either way). ──
+  let emailHash = null;
   if (idToken) {
     const identity = await resolveFirebaseIdentity(idToken);
-    if (identity) gasPayload.emailHash = identity.emailHash;
-  }
-
-  const payload = JSON.stringify(gasPayload);
-
-  async function sendToGAS() {
-    // 1. Initial POST to GAS exec URL
-    let res = await fetch(env.GAS_URL, {
-      method:   'POST',
-      headers:  { 'Content-Type': 'application/json' },
-      body:     payload,
-      redirect: 'manual',
-    });
-
-    // 2. Follow redirect chain with GET (302 switches POST → GET)
-    for (let i = 0; i < 5; i++) {
-      const loc = res.headers.get('Location');
-      if ((res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) && loc) {
-        res = await fetch(loc, { redirect: 'manual' });
-        continue;
-      }
-      break;
-    }
-    return res;
+    if (identity) emailHash = identity.emailHash;
   }
 
   try {
-    const gasRes = await sendToGAS();
-    const gasText = gasRes ? await gasRes.text() : '';
-    let gasData = null;
-    try { gasData = JSON.parse(gasText); } catch { /* not JSON */ }
-    if (!gasData || gasData.error) {
-      return json({ success: false, error: 'Submission could not be processed. Please try again.' }, 200, responseHeaders);
+    let result;
+    if (formType === "new") {
+      result = await handleNewSubmission(env, data, emailHash);
+    } else if (formType === "edit") {
+      result = await handleEditSubmission(env, data, emailHash);
+    } else if (formType === "contact") {
+      await env.DB.prepare("INSERT INTO contacts (timestamp, name, email, phone, message, score, replied) VALUES (?,?,?,?,?,?,'')")
+        .bind(helsinkiTimestamp(), data.name || "", data.email || "", data.phone || "", data.message || "", (data.score != null ? Number(data.score).toFixed(2) : "")).run();
+      result = { success: true };
+    } else if (formType === "event") {
+      const eventId = crypto.randomUUID();
+      await env.DB.prepare("INSERT INTO events (id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, status, reject_reason, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?)")
+        .bind(eventId, data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", helsinkiTimestamp()).run();
+      result = { success: true, eventId };
+    } else if (formType === "event-edit") {
+      await env.DB.prepare("INSERT INTO event_edits (timestamp, event_id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, score, changes_summary, status, reject_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','')")
+        .bind(helsinkiTimestamp(), data.eventId || "", data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "").run();
+      result = { success: true };
+    } else if (formType === "eid") {
+      result = await handleEidSubmission(env, data);
+    }
+
+    if (!result || result.error) {
+      return json({ success: false, error: "Submission could not be processed. Please try again." }, 200, responseHeaders);
     }
     return json({ success: true }, 200, responseHeaders);
   } catch {
-    return json({ success: false, error: 'Submission failed. Please try again later.' }, 200, responseHeaders);
+    return json({ success: false, error: "Submission failed. Please try again later." }, 200, responseHeaders);
   }
 }
 
-// ── OPTIONS preflight (CORS) ──────────────────────────────────────────────────
 export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin':  allowedOrigin(context.request),
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age':       '86400',
+      "Access-Control-Allow-Origin": allowedOrigin(context.request),
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400",
     },
   });
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), { status, headers });
 }

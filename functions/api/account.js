@@ -2,75 +2,40 @@
  * Cloudflare Pages Function – /api/account
  *
  * Cross-device sync for signed-in users: favourites, saved custom pins, home
- * location, and "visited" marks (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase
- * 6/8, plus the badges feature's own 'visited' kind). Every action
- * requires a Firebase ID token, verified here via ../_firebase-verify.js and
- * reduced to an emailHash before anything reaches Google Sheets — no
- * plaintext email is ever forwarded, per the Phase 6 privacy rule.
+ * location, and "visited" marks. Every action requires a Firebase ID token,
+ * verified here via ../_firebase-verify.js and reduced to an emailHash before
+ * touching D1 (see docs/D1_MIGRATION_PLAN.md) — no plaintext email is ever
+ * stored, per the privacy rule.
  *
- * POST actions: sync-saved (list; also returns localImportResolved — whether
- * this account has already answered its one-time "import your local device
- * data?" prompt, see src/account-sync.js — and firstSeenAt, a "member since"
- * timestamp set once by Apps Script and passed through here unmodified),
- * save, unsave, resolve-import (marks that one-time prompt answered, so it's
- * never shown again for this account on any device — 2026-08-03
- * account-scoping fix, see docs/PREFERENCE_LOG.md), erase-data (deletes every
- * Sheets row matching this emailHash across every identity-linked sheet —
- * see accounts/profile plan Phase 5/6 — and returns Apps Script's
- * {deleted, failed} partial-success shape unmodified; no cross-sheet
- * transaction primitive exists in Apps Script, so this is never assumed to
- * be all-or-nothing).
+ * POST actions: sync-saved (list; also returns localImportResolved,
+ * firstSeenAt, isFirstEverSignIn, lifetime badge counters), save, unsave,
+ * resolve-import, erase-data (deletes every D1 row matching this emailHash
+ * across every identity-linked table, via one atomic env.DB.batch() — a
+ * genuine improvement over Code.gs's sequential per-sheet deletes, which it
+ * documented as "never assumed to be all-or-nothing"; the {deleted, failed}
+ * response shape is kept for the client either way).
  *
  * Required Cloudflare Pages Environment Variables:
- *   GAS_URL – Google Apps Script web app URL
+ *   DB – D1 database binding
  */
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
+import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
 
-const ALLOWED_ORIGINS = ["https://maps.karamahcollective.com"];
 const MAX_BODY_SIZE = 2048;
 const MAX_ID_TOKEN_LEN = 2048;
 const MAX_PLACE_ID_LEN = 20;
 const MAX_PIN_NAME_LEN = 200;
-// Must stay in sync with Code.gs's own SAVED_PLACE_KINDS — a kind missing here
-// is rejected with invalid_kind before it ever reaches Apps Script, however
-// completely the sheet side supports it ("visited" was exactly that: the
-// badges-feature Code.gs deploy added it server-side, but every client
-// save/unsave still 400'd here, surfacing as "Couldn't mark as visited" and a
-// permanently-0 "Visited" stat on the Profile page).
 const SAVED_PLACE_KINDS = ["favorite", "pin", "home", "visited"];
-// Kinds identified by a place id rather than coordinates.
 const PLACE_ID_KINDS = ["favorite", "visited"];
+const ERASE_TARGETS = [
+  { table: "saved_places", col: "email_hash" },
+  { table: "account_meta", col: "email_hash" },
+  { table: "reviews", col: "email_hash" },
+  { table: "new_places", col: "email_hash" },
+  { table: "draft", col: "email_hash" },
+  { table: "edits", col: "email_hash" },
+];
 
-function allowedOrigin(request) {
-  const origin = request.headers.get("Origin") || "";
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-}
-
-function truncate(str, max) {
-  return typeof str === "string" ? str.slice(0, max) : "";
-}
-
-function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), { status, headers });
-}
-
-/**
- * Compute SHA-256 hex hash of a string using Web Crypto API.
- * @param {string} input
- * @returns {Promise<string>}
- */
-async function sha256(input) {
-  const data = new TextEncoder().encode(input);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/**
- * Verify a Firebase ID token and reduce it to just an emailHash — never the
- * plaintext email, per the Phase 6 privacy rule.
- * @param {string} idToken
- * @returns {Promise<string|null>}
- */
 async function resolveEmailHash(idToken) {
   const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
   if (!cleanToken) return null;
@@ -79,30 +44,101 @@ async function resolveEmailHash(idToken) {
   return sha256(verified.email.trim().toLowerCase());
 }
 
-// ── POST: sync-saved, save, unsave ───────────────────────────────────────────
+// ── Account row helpers ────────────────────────────────────────────────────
+
+async function getAccountMeta(db, emailHash) {
+  return await db.prepare("SELECT * FROM account_meta WHERE email_hash = ?").bind(emailHash).first();
+}
+
+async function getSavedPlaces(db, emailHash) {
+  const { results } = await db.prepare("SELECT kind, place_id, pin_lat, pin_lng, pin_name, saved_at FROM saved_places WHERE email_hash = ?").bind(emailHash).all();
+  return results.map((r) => ({ kind: r.kind || "", placeId: r.place_id || "", pinLat: r.pin_lat, pinLng: r.pin_lng, pinName: r.pin_name || "", savedAt: r.saved_at || "" }));
+}
+
+// Code.gs:3374 — only ever called for a genuinely new review row (never an edit).
+export async function incrementLifetimeReviewCount(db, emailHash) {
+  await db.prepare(
+    "INSERT INTO account_meta (email_hash, lifetime_review_count) VALUES (?, 1) ON CONFLICT(email_hash) DO UPDATE SET lifetime_review_count = lifetime_review_count + 1"
+  ).bind(emailHash).run();
+}
+
+// Code.gs:3555 saveSavedPlace
+async function saveSavedPlace(db, emailHash, { kind, placeId, pinLat, pinLng, pinName }) {
+  if (kind === "home") {
+    await db.batch([
+      db.prepare("DELETE FROM saved_places WHERE email_hash = ? AND kind = 'home'").bind(emailHash),
+      db.prepare("INSERT INTO saved_places (email_hash, kind, place_id, pin_lat, pin_lng, pin_name, saved_at) VALUES (?, 'home', '', ?, ?, ?, ?)")
+        .bind(emailHash, pinLat, pinLng, pinName || "", new Date().toISOString()),
+    ]);
+    return { success: true };
+  }
+
+  if (kind === "favorite" || kind === "visited") {
+    const { meta } = await db.prepare(
+      "INSERT INTO saved_places (email_hash, kind, place_id, pin_lat, pin_lng, pin_name, saved_at) VALUES (?, ?, ?, NULL, NULL, '', ?) ON CONFLICT(email_hash, kind, place_id) DO NOTHING"
+    ).bind(emailHash, kind, placeId, new Date().toISOString()).run();
+    // rows_written === 0 means the ON CONFLICT DO NOTHING branch fired, i.e.
+    // this was already saved — mirrors Code.gs's alreadyExists no-op exactly,
+    // including skipping the lifetime-visit record in that case.
+    if (kind === "visited" && meta.rows_written > 0) {
+      const row = await db.prepare("SELECT lifetime_visited_place_ids FROM account_meta WHERE email_hash = ?").bind(emailHash).first();
+      let ids = [];
+      try { ids = JSON.parse((row && row.lifetime_visited_place_ids) || "[]"); } catch { ids = []; }
+      if (!ids.includes(placeId)) {
+        ids.push(placeId);
+        await db.prepare("INSERT INTO account_meta (email_hash, lifetime_visited_place_ids) VALUES (?, ?) ON CONFLICT(email_hash) DO UPDATE SET lifetime_visited_place_ids = ?")
+          .bind(emailHash, JSON.stringify(ids), JSON.stringify(ids)).run();
+      }
+    }
+    return { success: true };
+  }
+
+  // kind === 'pin' — float-keyed, not safely indexable; JS-level existence check.
+  const existing = await db.prepare("SELECT id FROM saved_places WHERE email_hash = ? AND kind = 'pin' AND pin_lat = ? AND pin_lng = ?").bind(emailHash, pinLat, pinLng).first();
+  if (!existing) {
+    await db.prepare("INSERT INTO saved_places (email_hash, kind, place_id, pin_lat, pin_lng, pin_name, saved_at) VALUES (?, 'pin', '', ?, ?, ?, ?)")
+      .bind(emailHash, pinLat, pinLng, pinName || "", new Date().toISOString()).run();
+  }
+  return { success: true };
+}
+
+// Code.gs:3608 unsaveSavedPlace
+async function unsaveSavedPlace(db, emailHash, { kind, placeId, pinLat, pinLng }) {
+  if (kind === "favorite" || kind === "visited") {
+    await db.prepare("DELETE FROM saved_places WHERE email_hash = ? AND kind = ? AND place_id = ?").bind(emailHash, kind, placeId).run();
+  } else if (kind === "pin") {
+    await db.prepare("DELETE FROM saved_places WHERE email_hash = ? AND kind = 'pin' AND pin_lat = ? AND pin_lng = ?").bind(emailHash, pinLat, pinLng).run();
+  } else if (kind === "home") {
+    await db.prepare("DELETE FROM saved_places WHERE email_hash = ? AND kind = 'home'").bind(emailHash).run();
+  }
+  return { success: true };
+}
+
+// Code.gs:3492 handleAccountErase — atomic via db.batch(), unlike Code.gs's
+// sequential per-sheet deletes (which it documented as never all-or-nothing).
+async function handleAccountErase(db, emailHash) {
+  const names = ERASE_TARGETS.map((t) => t.table);
+  try {
+    await db.batch(ERASE_TARGETS.map((t) => db.prepare(`DELETE FROM ${t.table} WHERE ${t.col} = ?`).bind(emailHash)));
+    return { deleted: names, failed: [] };
+  } catch {
+    return { deleted: [], failed: names };
+  }
+}
+
+// ── POST: sync-saved, save, unsave, resolve-import, erase-data ───────────
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": allowedOrigin(request),
-  };
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
 
   try {
-    if (!env.GAS_URL) {
-      return json({ error: "Service temporarily unavailable" }, 500, headers);
-    }
+    if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
     const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
-    if (contentLength > MAX_BODY_SIZE) {
-      return json({ error: "Payload too large" }, 413, headers);
-    }
+    if (contentLength > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, headers);
 
     let body;
-    try {
-      body = JSON.parse(await request.text());
-    } catch {
-      return json({ error: "Invalid JSON" }, 400, headers);
-    }
+    try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
 
     const { action, idToken } = body;
     if (!["sync-saved", "save", "unsave", "resolve-import", "erase-data"].includes(action)) {
@@ -112,91 +148,75 @@ export async function onRequestPost(context) {
     const emailHash = await resolveEmailHash(idToken);
     if (!emailHash) return json({ error: "invalid_token" }, 401, headers);
 
+    const db = env.DB;
+
+    if (action === "erase-data") {
+      // Bypasses the firstSeenAt stamp below — an account being erased
+      // should not have its row resurrected by the very request deleting it.
+      const result = await handleAccountErase(db, emailHash);
+      return json({ success: true, ...result }, 200, headers);
+    }
+
+    // "set once" firstSeenAt stamp, ported from Code.gs's ensureFirstSeenAt —
+    // a plain read-then-write is unambiguous and cheap at this data volume.
+    const existingMeta = await getAccountMeta(db, emailHash);
+    const isFirstEverSignIn = !existingMeta || !existingMeta.first_seen_at;
+    if (isFirstEverSignIn) {
+      await db.prepare("INSERT INTO account_meta (email_hash, first_seen_at) VALUES (?, ?) ON CONFLICT(email_hash) DO UPDATE SET first_seen_at = excluded.first_seen_at WHERE account_meta.first_seen_at = ''")
+        .bind(emailHash, new Date().toISOString()).run();
+    }
+
     if (action === "sync-saved") {
-      // Apps Script's response ({saved, localImportResolved, firstSeenAt}) is
-      // spread verbatim into the client response by forwardToGAS below — no
-      // reshaping needed here.
-      return await forwardToGAS(env.GAS_URL, { formType: "account", action: "sync-saved", emailHash }, headers);
+      const meta = await getAccountMeta(db, emailHash);
+      let visitedIds = [];
+      try { visitedIds = JSON.parse((meta && meta.lifetime_visited_place_ids) || "[]"); } catch { visitedIds = []; }
+      return json({
+        success: true,
+        saved: await getSavedPlaces(db, emailHash),
+        localImportResolved: !!(meta && meta.local_import_resolved),
+        firstSeenAt: (meta && meta.first_seen_at) || "",
+        isFirstEverSignIn,
+        lifetimeReviewCount: (meta && meta.lifetime_review_count) || 0,
+        lifetimeVisitedCount: visitedIds.length,
+      }, 200, headers);
     }
 
     if (action === "resolve-import") {
-      return await forwardToGAS(env.GAS_URL, { formType: "account", action: "resolve-import", emailHash }, headers);
-    }
-
-    if (action === "erase-data") {
-      // Apps Script's {deleted, failed} partial-success shape is passed
-      // through unmodified — see accounts/profile plan Phase 5/6.
-      return await forwardToGAS(env.GAS_URL, { formType: "account", action: "erase-data", emailHash }, headers);
+      await db.prepare("INSERT INTO account_meta (email_hash, local_import_resolved, resolved_at) VALUES (?, 1, ?) ON CONFLICT(email_hash) DO UPDATE SET local_import_resolved = 1, resolved_at = excluded.resolved_at")
+        .bind(emailHash, new Date().toISOString()).run();
+      return json({ success: true }, 200, headers);
     }
 
     // save / unsave share the same field validation
     const kind = truncate((body.kind || "").toString().trim(), 20);
-    if (!SAVED_PLACE_KINDS.includes(kind)) {
-      return json({ error: "invalid_kind" }, 400, headers);
-    }
+    if (!SAVED_PLACE_KINDS.includes(kind)) return json({ error: "invalid_kind" }, 400, headers);
 
-    const gasPayload = { formType: "account", action, emailHash, kind };
-
+    const fields = { kind };
     const placeId = truncate((body.placeId || "").toString().trim(), MAX_PLACE_ID_LEN);
-    if (placeId) gasPayload.placeId = placeId;
+    if (placeId) fields.placeId = placeId;
 
     if (body.pinLat != null || body.pinLng != null) {
       const lat = Number(body.pinLat);
       const lng = Number(body.pinLng);
       if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        gasPayload.pinLat = lat;
-        gasPayload.pinLng = lng;
+        fields.pinLat = lat;
+        fields.pinLng = lng;
       }
     }
-    if (body.pinName) gasPayload.pinName = truncate(body.pinName.toString(), MAX_PIN_NAME_LEN);
+    if (body.pinName) fields.pinName = truncate(body.pinName.toString(), MAX_PIN_NAME_LEN);
 
-    if (PLACE_ID_KINDS.includes(kind) && !gasPayload.placeId) {
-      return json({ error: "missing_place_id" }, 400, headers);
-    }
-    if ((kind === "pin" || kind === "home") && (gasPayload.pinLat == null || gasPayload.pinLng == null)) {
+    if (PLACE_ID_KINDS.includes(kind) && !fields.placeId) return json({ error: "missing_place_id" }, 400, headers);
+    if ((kind === "pin" || kind === "home") && (fields.pinLat == null || fields.pinLng == null)) {
       return json({ error: "missing_coordinates" }, 400, headers);
     }
 
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
-  } catch {
-    return json({ error: "Service error" }, 502, headers);
-  }
-}
-
-/**
- * Forward a payload to Google Apps Script, following redirects.
- * @param {string} gasUrl
- * @param {object} payload
- * @param {object} headers - response headers
- * @returns {Promise<Response>}
- */
-async function forwardToGAS(gasUrl, payload, headers) {
-  try {
-    let res = await fetch(gasUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      redirect: "manual",
-    });
-
-    for (let i = 0; i < 5; i++) {
-      const loc = res.headers.get("Location");
-      if ([301, 302, 307, 308].includes(res.status) && loc) {
-        res = await fetch(loc, { redirect: "manual" });
-        continue;
-      }
-      break;
-    }
-
-    const result = JSON.parse(await res.text());
-    if (result.error) return json({ error: result.error }, 400, headers);
+    const result = action === "save" ? await saveSavedPlace(db, emailHash, fields) : await unsaveSavedPlace(db, emailHash, fields);
     return json({ success: true, ...result }, 200, headers);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }
 }
 
-// ── OPTIONS: CORS preflight ──────────────────────────────────────────────────
 export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,

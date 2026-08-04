@@ -78,6 +78,17 @@ export function normaliseAddress(address) {
   return parts.join(",").trim();
 }
 
+// Code.gs:697
+export function extractCityFromAddress(address) {
+  const raw = (address || "").toString().trim();
+  if (!raw) return "";
+  const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) return "";
+  let tail = parts[parts.length - 1];
+  if (/^finland$/i.test(tail) && parts.length > 1) tail = parts[parts.length - 2];
+  return tail.replace(/^\d{5}\s+/, "").trim();
+}
+
 // Code.gs:2990
 export function isInsideFinlandBounds(lat, lng) {
   const la = parseFloat(lat);

@@ -2,55 +2,35 @@
  * Cloudflare Pages Function – /api/reviews
  *
  * GET  → List all live reviews grouped by placeId, never edge-cached
- * POST → Submit/edit/delete a review, list "my reviews", send/verify OTP, or
- *        check an existing review. `submit`/`check` accept either a legacy
- *        OTP `verifyToken` or a Firebase `idToken` (verified here via
- *        ../_firebase-verify.js); `delete`/`my-reviews` are Firebase-only —
- *        see docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 6/7.
+ * POST → Submit/edit/delete a review, or list "my reviews" — all
+ *        Firebase-idToken-only (see docs/D1_MIGRATION_PLAN.md: the legacy
+ *        anonymous OTP-verified review flow, including `send-otp`/
+ *        `verify-otp`, is retired now that Firebase Auth covers identity;
+ *        historical OTP-submitted rows still read back fine, this just
+ *        stops creating new ones that way).
  *
  * Required Cloudflare Pages Environment Variables:
- *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key (used for send-otp only)
- *   GAS_URL          – Google Apps Script web app URL
+ *   DB – D1 database binding
  */
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
+import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
+import { parseGoogleReviewsField } from "../_google-maps.js";
 
-const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
-const MIN_SCORE = 0.5;
-const ALLOWED_ORIGINS = ["https://maps.karamahcollective.com"];
 const MAX_BODY_SIZE = 4096;
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
 const MAX_PLACE_ID_LEN = 6;
-const MAX_EMAIL_LEN = 254;
-const MAX_TOKEN_LEN = 512;
-const MAX_ID_TOKEN_LEN = 2048; // Firebase ID tokens (JWTs) run ~1000-1300 chars
+const MAX_ID_TOKEN_LEN = 2048;
 
-function allowedOrigin(request) {
-  const origin = request.headers.get("Origin") || "";
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+async function resolveFirebaseIdentity(idToken) {
+  const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
+  if (!cleanToken) return null;
+  const verified = await verifyFirebaseIdToken(cleanToken);
+  if (!verified || !verified.email) return null;
+  return { emailHash: await sha256(verified.email.trim().toLowerCase()) };
 }
 
-function truncate(str, max) {
-  return typeof str === "string" ? str.slice(0, max) : "";
-}
-
-function json(data, status, headers) {
-  return new Response(JSON.stringify(data), { status, headers });
-}
-
-/**
- * Compute SHA-256 hex hash of a string using Web Crypto API.
- * @param {string} input
- * @returns {Promise<string>}
- */
-async function sha256(input) {
-  const data = new TextEncoder().encode(input);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// ── GET: list all live reviews ───────────────────────────────────────────────
+// ── GET: list all live reviews, grouped by placeId (Code.gs:4378 getReviewsJSON) ──
 export async function onRequestGet(context) {
   const { env, request } = context;
   const headers = {
@@ -61,254 +41,162 @@ export async function onRequestGet(context) {
     "Cloudflare-CDN-Cache-Control": "no-store",
   };
 
-  // Use SHEETS_URL (same as places/events) with GAS_URL fallback
-  const gasUrl = env.SHEETS_URL || env.GAS_URL;
-  if (!gasUrl) {
-    return json({ error: "Service temporarily unavailable" }, 500, headers);
-  }
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   try {
-    const upstream = await fetch(`${gasUrl}?action=reviews&_=${Date.now()}`, {
-      cf: { cacheTtl: 0, cacheEverything: false },
-    });
-    const body = await upstream.text();
-    return new Response(body, {
-      status: upstream.status,
-      headers,
-    });
+    const { results } = await env.DB.prepare("SELECT * FROM reviews").all();
+    const grouped = {};
+    const ensure = (pid) => {
+      if (!grouped[pid]) grouped[pid] = { total: 0, sum: 0, items: [], googleReviewRaw: "", googleRatingRaw: "", googleRatingCountRaw: "" };
+      return grouped[pid];
+    };
+    for (const row of results) {
+      const placeId = row.place_id;
+      const rating = Number(row.rating);
+      const status = (row.status || "").toString().trim().toLowerCase();
+      if (status !== "no" && rating >= 1 && rating <= 5) {
+        const g = ensure(placeId);
+        g.total++;
+        g.sum += rating;
+        g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community" });
+      }
+      if (placeId) {
+        const g = ensure(placeId);
+        if (row.google_review) g.googleReviewRaw = row.google_review;
+        if (row.google_rating != null && row.google_rating !== "") g.googleRatingRaw = row.google_rating;
+        if (row.google_rating_count != null && row.google_rating_count !== "") g.googleRatingCountRaw = row.google_rating_count;
+      }
+    }
+
+    const result = {};
+    for (const pid in grouped) {
+      const g = grouped[pid];
+      const googleItems = parseGoogleReviewsField(g.googleReviewRaw);
+      let googleRating = Number(g.googleRatingRaw || 0);
+      let googleRatingCount = Number(g.googleRatingCountRaw || 0);
+      if (!googleRatingCount && googleItems.length) googleRatingCount = googleItems.length;
+      if (!googleRatingCount && googleRating > 0) googleRatingCount = 1;
+      g.items.push(...googleItems);
+
+      const totalCount = g.total + Math.max(0, googleRatingCount);
+      let totalSum = g.sum;
+      if (googleRating > 0 && googleRatingCount > 0) totalSum += googleRating * googleRatingCount;
+
+      g.items.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
+      result[pid] = {
+        avg: totalCount > 0 ? Math.round((totalSum / totalCount) * 10) / 10 : 0,
+        count: totalCount,
+        sources: {
+          community: { avg: g.total > 0 ? Math.round((g.sum / g.total) * 10) / 10 : 0, count: g.total },
+          google: { avg: googleRating > 0 ? googleRating : 0, count: Math.max(0, googleRatingCount) },
+        },
+        items: g.items,
+      };
+    }
+    return json({ reviews: result }, 200, headers);
   } catch {
     return json({ error: "Failed to fetch reviews" }, 502, headers);
   }
 }
 
-// ── POST: submit review, send OTP, verify OTP, or check existing ─────────────
+// ── POST: submit review, check existing, delete, or list "my reviews" ────
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": allowedOrigin(request),
-  };
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
 
-  if (!env.GAS_URL) {
-    return json({ error: "Service temporarily unavailable" }, 500, headers);
-  }
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
-  if (contentLength > MAX_BODY_SIZE) {
-    return json({ error: "Payload too large" }, 413, headers);
-  }
+  if (contentLength > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, headers);
 
   let body;
-  try {
-    body = JSON.parse(await request.text());
-  } catch {
-    return json({ error: "Invalid JSON" }, 400, headers);
-  }
+  try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
 
   const { action } = body;
-  if (!["submit", "check", "send-otp", "verify-otp", "delete", "my-reviews"].includes(action)) {
+  if (!["submit", "check", "delete", "my-reviews"].includes(action)) {
     return json({ error: "Invalid request" }, 400, headers);
   }
 
-  // Compute IP hash server-side (raw IP never stored/forwarded)
-  const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
-  const ipHash = await sha256(clientIp);
+  const db = env.DB;
 
-  /**
-   * Verify a Firebase ID token and reduce it to just an emailHash — never
-   * the plaintext email, per the Phase 6 privacy rule. Returns null (never
-   * throws) so callers can treat any failure as "unauthenticated".
-   * @param {string} idToken
-   * @returns {Promise<{emailHash: string}|null>}
-   */
-  async function resolveFirebaseIdentity(idToken) {
-    const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
-    if (!cleanToken) return null;
-    const verified = await verifyFirebaseIdToken(cleanToken);
-    if (!verified || !verified.email) return null;
-    const emailHash = await sha256(verified.email.trim().toLowerCase());
-    return { emailHash };
-  }
-
-  // ── send-otp: requires reCAPTCHA to prevent bot spam on email sending ──
-  if (action === "send-otp") {
-    if (!env.RECAPTCHA_SECRET) {
-      return json({ error: "Service temporarily unavailable" }, 500, headers);
-    }
-
-    const { token, email } = body;
-    if (!token || !email) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
-
-    // Validate email format
-    const cleanEmail = email.trim().toLowerCase().slice(0, MAX_EMAIL_LEN);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return json({ error: "invalid_email" }, 400, headers);
-    }
-
-    // Verify reCAPTCHA (prevents bots from burning daily email quota)
-    let captcha;
-    try {
-      const res = await fetch(RECAPTCHA_VERIFY_URL, {
-        method: "POST",
-        body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
-      });
-      captcha = await res.json();
-    } catch {
-      return json({ error: "Verification unavailable" }, 502, headers);
-    }
-
-    if (!captcha.success || captcha.score < MIN_SCORE) {
-      return json({ error: "Verification failed" }, 403, headers);
-    }
-
-    const gasPayload = {
-      formType: "review",
-      action: "send-otp",
-      email: cleanEmail,
-      ipHash,
-    };
-
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
-  }
-
-  // ── verify-otp: validate OTP, get signed token back ──
-  if (action === "verify-otp") {
-    const { email, otp } = body;
-    if (!email || !otp) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
-
-    const cleanEmail = email.trim().toLowerCase().slice(0, MAX_EMAIL_LEN);
-    const cleanOtp = (otp + "").trim().slice(0, 6);
-
-    if (!/^\d{6}$/.test(cleanOtp)) {
-      return json({ error: "invalid_otp" }, 400, headers);
-    }
-
-    const gasPayload = {
-      formType: "review",
-      action: "verify-otp",
-      email: cleanEmail,
-      otp: cleanOtp,
-      ipHash,
-    };
-
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
-  }
-
-  // ── check: check if user already reviewed a place (either auth path) ──
+  // ── check: has the caller already reviewed this place? ──
   if (action === "check") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || (!body.verifyToken && !body.idToken)) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
-
-    const gasPayload = { formType: "review", action: "check", placeId, ipHash };
-    if (body.idToken) {
-      const identity = await resolveFirebaseIdentity(body.idToken);
-      if (!identity) return json({ reviewed: false }, 200, headers);
-      gasPayload.emailHash = identity.emailHash;
-    } else {
-      gasPayload.verifyToken = truncate(body.verifyToken, MAX_TOKEN_LEN);
-    }
-
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
+    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!identity) return json({ reviewed: false }, 200, headers);
+    const row = await db.prepare("SELECT rating FROM reviews WHERE place_id = ? AND email_hash = ? AND status != 'no'").bind(placeId, identity.emailHash).first();
+    return json(row ? { reviewed: true, rating: Number(row.rating) } : { reviewed: false }, 200, headers);
   }
 
-  // ── submit: submit or update a review (either auth path) ──
+  // ── submit: create or update the caller's review for a place ──
   if (action === "submit") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || (!body.verifyToken && !body.idToken)) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
+    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
 
     const rating = parseInt(body.rating, 10);
-    if (!rating || rating < 1 || rating > 5) {
-      return json({ error: "invalid_rating" }, 400, headers);
+    if (!rating || rating < 1 || rating > 5) return json({ error: "invalid_rating" }, 400, headers);
+
+    let text = truncate((body.text || "").trim(), MAX_TEXT_LEN);
+    if (text && text.length < MIN_TEXT_LEN) return json({ error: "text_too_short" }, 400, headers);
+
+    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!identity) return json({ error: "invalid_token" }, 401, headers);
+
+    const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
+    if (!place) return json({ error: "invalid_place" }, 400, headers);
+
+    const now = new Date().toISOString();
+    const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ? AND status != 'no'").bind(placeId, identity.emailHash).first();
+
+    if (existing) {
+      // Rating/timestamp always update; text/status only touched when new
+      // text was actually provided — same "editing rating alone keeps your
+      // existing text" behavior Code.gs had.
+      if (text) {
+        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, text = ?, status = 'yes' WHERE id = ?").bind(rating, now, text, existing.id).run();
+      } else {
+        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ? WHERE id = ?").bind(rating, now, existing.id).run();
+      }
+      return json({ success: true, status: "updated" }, 200, headers);
     }
 
-    const text = truncate((body.text || "").trim(), MAX_TEXT_LEN);
-    if (text && text.length < MIN_TEXT_LEN) {
-      return json({ error: "text_too_short" }, 400, headers);
-    }
+    await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash) VALUES (?,?,?,'',?,'yes',?)")
+      .bind(placeId, rating, text, now, identity.emailHash).run();
+    // Lifetime counter for the Reviewer badge — only on a genuinely new row,
+    // never on the update branch above, so editing can't double-count.
+    await db.prepare("INSERT INTO account_meta (email_hash, lifetime_review_count) VALUES (?, 1) ON CONFLICT(email_hash) DO UPDATE SET lifetime_review_count = lifetime_review_count + 1")
+      .bind(identity.emailHash).run();
 
-    const gasPayload = { formType: "review", action: "submit", placeId, rating, text, ipHash };
-    if (body.idToken) {
-      const identity = await resolveFirebaseIdentity(body.idToken);
-      if (!identity) return json({ error: "invalid_token" }, 401, headers);
-      gasPayload.emailHash = identity.emailHash;
-    } else {
-      gasPayload.verifyToken = truncate(body.verifyToken, MAX_TOKEN_LEN);
-    }
-
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+    return json({ success: true, status: "yes" }, 200, headers);
   }
 
-  // ── delete: remove the caller's own review for a place (Firebase-only) ──
+  // ── delete: remove the caller's own review for a place ──
   if (action === "delete") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.idToken) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
+    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
     const identity = await resolveFirebaseIdentity(body.idToken);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
-    const gasPayload = { formType: "review", action: "delete", placeId, emailHash: identity.emailHash };
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+    const { meta } = await db.prepare("DELETE FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).run();
+    return json(meta.rows_written > 0 ? { success: true } : { error: "not_found" }, meta.rows_written > 0 ? 200 : 400, headers);
   }
 
-  // ── my-reviews: list the caller's own reviews (Firebase-only) ──
+  // ── my-reviews: list the caller's own live reviews, newest first ──
   if (action === "my-reviews") {
-    if (!body.idToken) {
-      return json({ error: "Missing required fields" }, 400, headers);
-    }
+    if (!body.idToken) return json({ error: "Missing required fields" }, 400, headers);
     const identity = await resolveFirebaseIdentity(body.idToken);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
-    const gasPayload = { formType: "review", action: "my-reviews", emailHash: identity.emailHash };
-    return await forwardToGAS(env.GAS_URL, gasPayload, headers);
+    const { results } = await db.prepare("SELECT r.place_id, r.rating, r.text, r.timestamp, p.name FROM reviews r LEFT JOIN places p ON p.id = r.place_id WHERE r.email_hash = ? AND r.status != 'no' ORDER BY r.timestamp DESC")
+      .bind(identity.emailHash).all();
+    const reviews = results.map((row) => ({ placeId: row.place_id, placeName: row.name || "", rating: Number(row.rating), text: row.text || "", timestamp: row.timestamp || "" }));
+    return json({ success: true, reviews }, 200, headers);
   }
 
   return json({ error: "Invalid request" }, 400, headers);
 }
 
-/**
- * Forward a payload to Google Apps Script, following redirects.
- * @param {string} gasUrl
- * @param {object} payload
- * @param {object} headers - response headers
- * @returns {Promise<Response>}
- */
-async function forwardToGAS(gasUrl, payload, headers) {
-  try {
-    let res = await fetch(gasUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      redirect: "manual",
-    });
-
-    // Follow redirects (GAS returns 302)
-    for (let i = 0; i < 5; i++) {
-      const loc = res.headers.get("Location");
-      if ([301, 302, 307, 308].includes(res.status) && loc) {
-        res = await fetch(loc, { redirect: "manual" });
-        continue;
-      }
-      break;
-    }
-
-    const result = JSON.parse(await res.text());
-    if (result.error) return json({ error: result.error }, 400, headers);
-    return json({ success: true, ...result }, 200, headers);
-  } catch {
-    return json({ error: "Service error" }, 502, headers);
-  }
-}
-
-// ── OPTIONS: CORS preflight ──────────────────────────────────────────────────
 export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
