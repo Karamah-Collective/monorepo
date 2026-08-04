@@ -167,6 +167,14 @@ async function _refreshStatsLive() {
 export async function loadProfileContent() {
   if (!_account) return; // shouldn't happen — Profile is only ever reachable while signed in
   _renderCard();
+  // On a session's first-ever Profile visit, this just swapped the identity
+  // card from a short "Loading…" placeholder to the real (taller) card,
+  // BEFORE the fetch below even starts — src/menu.js's pane-height sync
+  // already ran once at pane-switch time using the shorter measurement, so
+  // it needs telling now or the newly-taller card pushes everything below
+  // it (down through "Your data") past that pinned height until the second,
+  // post-fetch sync corrects it. See EVT.PROFILE_CARD_RENDERED's doc comment.
+  window.dispatchEvent(new CustomEvent(EVT.PROFILE_CARD_RENDERED, { detail: {} }));
 
   const [reviewsResult, placesResult, editsResult, meta] = await Promise.all([
     fetchMyReviews(),

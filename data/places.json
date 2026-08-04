@@ -5056,5 +5056,38 @@
     "priceLevel": 2,
     "wheelchairAccessible": true,
     "dineIn": true
+  },
+  {
+    "id": "r3vjks",
+    "name": "Bagdad Cafe Malmi",
+    "type": "restaurant",
+    "address": "Kirkonkyläntie 10, 00700 Helsinki",
+    "city": "Helsinki",
+    "lat": 60.2522236,
+    "lng": 25.0058202,
+    "tags": {
+      "no_alcohol": true,
+      "fully_halal": true,
+      "cuisine_cafe": true,
+      "cuisine_middle_eastern": true
+    },
+    "notes": "",
+    "hours": {
+      "sun": "11:00-01:00",
+      "mon": "10:00-01:00",
+      "tue": "10:00-01:00",
+      "wed": "10:00-01:00",
+      "thu": "10:00-01:00",
+      "fri": "10:00-02:00",
+      "sat": "11:00-02:00"
+    },
+    "phone": "044 9825750",
+    "mapsUrl": "https://maps.google.com/?cid=5507464472408835563",
+    "priceLevel": 3,
+    "wheelchairAccessible": true,
+    "dineIn": true,
+    "takeout": true,
+    "reservable": true,
+    "servesVegetarian": true
   }
 ]

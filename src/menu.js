@@ -422,6 +422,15 @@ export async function initMenuAccount() {
   // imports loadProfileContent from profile.js — see EVT.ACCOUNT_SHEET_CLOSE
   // in events.js).
   window.addEventListener(EVT.ACCOUNT_SHEET_CLOSE, () => closeMenuSheet());
+  // Same "first-open height stuck at the pre-render measurement" bug as the
+  // AUTH_CHANGED/initMenuAccount() resyncs above, just for Profile's own
+  // identity card instead of Menu's Account section — see
+  // EVT.PROFILE_CARD_RENDERED's doc comment in events.js for the full
+  // mechanism (reported: "Your data" cropped only while Profile is still
+  // loading, self-correcting once the fetch finishes).
+  window.addEventListener(EVT.PROFILE_CARD_RENDERED, () => {
+    if (_activePane === "profile") { _syncPaneHeight(profilePaneEl); menuSnap.softRemeasure(); }
+  });
 }
 
 function _renderAccountSection() {

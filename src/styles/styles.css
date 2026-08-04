@@ -2787,18 +2787,26 @@ body.dark-mode .sp-tip {
 }
 .acc-review-place-name {
   display: block;
+  /* .rv-review-body (the flex-column parent) defaults align-items to
+     `stretch`, which would otherwise force this button to the full row
+     width — sizing it to content instead is what keeps the hover chip
+     below wrapped tightly around just the name, not the whole row. */
+  align-self: flex-start;
   background: none;
   border: none;
-  padding: 0;
+  padding: var(--sp-0h) var(--sp-2);
+  margin: calc(var(--sp-0h) * -1) calc(var(--sp-2) * -1);
+  border-radius: var(--r-sm);
   font-size: var(--txt-sm);
   font-weight: var(--fw-semibold);
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--t-fast);
 }
 @media (hover: hover) {
   .acc-review-place-name:hover {
-    color: var(--accent);
+    background: var(--surface-2);
   }
 }
 .acc-review-actions {
@@ -2841,7 +2849,12 @@ body.dark-mode .sp-tip {
    bumps the avatar up from Menu's compact 36px to a more prominent 56px for
    Profile's own full identity card. */
 #profile-sheet-body {
-  padding: var(--sp-3) 0 var(--sp-7);
+  /* Bottom padding bumped sp-7 → sp-9: "Your data" (Export/Erase), the
+     last section, was reported cropped specifically while Profile is
+     still loading (its own content is static and unaffected by the
+     fetch, so this is extra clearance against the loading-state pane
+     height, not a fix to that section itself). */
+  padding: var(--sp-3) 0 var(--sp-9);
 }
 .pf-card-avatar {
   width: 56px;
@@ -2860,6 +2873,14 @@ body.dark-mode .sp-tip {
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-3);
   padding: var(--sp-2) 14px var(--sp-4);
+}
+/* Loading-state placeholder (cleared by _renderStats() once real stats
+   arrive) — without this the grid sat empty while its three sibling
+   sections ("submitted places/edits", "reviews") showed "Loading…", which
+   read as a rendering glitch rather than a consistent loading skeleton.
+   Spans every column so it doesn't get squeezed into the first cell alone. */
+.pf-stat-grid .menu-placeholder {
+  grid-column: 1 / -1;
 }
 .pf-stat-card {
   display: flex;
@@ -2908,21 +2929,17 @@ body.dark-mode .sp-tip {
   border-bottom: none;
   padding-bottom: 0;
 }
-/* Only a "live" submission has a resolved placeId to navigate to (see
-   _buildSubmissionRow() in src/profile.js) — pending/rejected rows stay
-   plain, non-interactive text. */
+/* Only a submission with a resolved placeId has anything to navigate to
+   (see _buildSubmissionRow() in src/profile.js) — everything else stays
+   plain, non-interactive text. Hover chip on .pf-submission-name below is
+   the appwide standard (matches .acc-review-place-name's own) — a
+   background chip wrapping only the name text, never the whole row/pill:
+   the whole-item background-fill version this replaced visually clashed
+   with the item's own border-bottom divider, reading as a rendering
+   glitch, and always reached edge-to-edge including the status pill,
+   which read as covering more than just "the place." */
 .pf-submission-item--clickable {
-  margin: 0 calc(var(--sp-2) * -1);
-  padding-left: var(--sp-2);
-  padding-right: var(--sp-2);
-  border-radius: var(--r-sm);
   cursor: pointer;
-  transition: background-color var(--t-fast);
-}
-@media (hover: hover) {
-  .pf-submission-item--clickable:hover {
-    background: var(--surface-2);
-  }
 }
 .pf-submission-row {
   display: flex;
@@ -2938,6 +2955,15 @@ body.dark-mode .sp-tip {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: var(--sp-0h) var(--sp-2);
+  margin: calc(var(--sp-0h) * -1) calc(var(--sp-2) * -1);
+  border-radius: var(--r-sm);
+  transition: background-color var(--t-fast);
+}
+@media (hover: hover) {
+  .pf-submission-item--clickable:hover .pf-submission-name {
+    background: var(--surface-2);
+  }
 }
 .pf-submission-reason {
   margin-top: var(--sp-1);

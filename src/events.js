@@ -74,4 +74,21 @@ export const EVT = {
    *  swap entirely inside src/menu.js now that both panes live in one
    *  physical sheet. detail: {} */
   ACCOUNT_SHEET_CLOSE: "hf:account-sheet-close",
+  /** Fired by src/profile.js's loadProfileContent() right after its first,
+   *  synchronous _renderCard() call — on the very first Profile visit in a
+   *  session, that call swaps the identity card from a one-line "Loading…"
+   *  placeholder to the real (noticeably taller) avatar/name/email/sign-out
+   *  card, BEFORE the async reviews/submissions/account-meta fetch even
+   *  starts. Without a resync at that exact point, src/menu.js's
+   *  _syncPaneHeight() (called once already, at pane-switch time) has
+   *  already pinned #mp-height-wrap to the shorter "Loading…" measurement —
+   *  so the now-taller card pushes everything below it (down through "Your
+   *  data") past that pinned height, clipped by #mp-pane-track's
+   *  overflow:hidden until the second, post-fetch sync corrects it (reported
+   *  as "Your data looks cropped while Profile is loading, self-corrects
+   *  once it finishes" — see docs/PREFERENCE_LOG.md). Event-based rather
+   *  than profile.js importing menu.js's private _syncPaneHeight() directly,
+   *  same avoid-circular-imports convention as ACCOUNT_SHEET_CLOSE above.
+   *  detail: {} */
+  PROFILE_CARD_RENDERED: "hf:profile-card-rendered",
 };
