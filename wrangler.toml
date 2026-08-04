@@ -1,12 +1,17 @@
-name = "halal-finder"
+name = "maps"
 pages_build_output_dir = "."
 compatibility_date = "2026-08-04"
 
-# Local-only for now (Phase 1-6 of docs/D1_MIGRATION_PLAN.md) — `database_id`
-# is a placeholder used only by `--local` execution, which runs against a
-# local SQLite file under .wrangler/state and needs no Cloudflare login.
-# Phase 7 replaces this with the real database_id once it exists.
+# Real D1 database, created in Phase 7 (docs/D1_MIGRATION_PLAN.md). This file
+# only drives local tooling (`wrangler d1 execute`, `wrangler pages dev`) —
+# the production Pages project is Git-integration deployed and reads its own
+# binding from the Cloudflare dashboard (Settings -> Functions -> D1 database
+# bindings), not from this file. `--local` execution still uses a local
+# SQLite file under .wrangler/state regardless of database_id.
+#
+# Preview database (bound in the dashboard for Preview deployments):
+#   halal-finder-db-preview, id 13c3fa62-68a5-4e51-adf8-8c668abfd9c9
 [[d1_databases]]
 binding = "DB"
 database_name = "halal-finder-db"
-database_id = "local-dev-placeholder"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"

@@ -64,14 +64,18 @@ Ran `wrangler pages dev . --port 8788` against local D1 (seeded with the real mi
 
 **Real constraint, not a gap I could close alone**: `/api/submit`'s and `/api/wishes`'s POST paths require a real reCAPTCHA v3 response token, and `/api/reviews`/`/api/account`'s POST paths require a real signed Firebase ID token — both are cryptographically verified against live external services (Google's reCAPTCHA siteverify, Google's Secure Token JWKS) and can't be forged from a local script. Confirmed the failure paths behave correctly (403/"Verification failed", 401/"invalid_token" — never a crash), but the actual *successful* submission/dedup/enrichment/save code paths for these four actions are verified by code review + the same schema/columns already proven correct via the tests above, not by a live HTTP round-trip. **This is exactly what Phase 7.5's manual click-through (real browser, real sign-in, real reCAPTCHA) is for** — treat that step as the true first end-to-end test of new-place submission, review submission, and save/favorite, not a formality.
 
-### Phase 7 — Single consolidated human checkpoint
-- [ ] `wrangler login`
-- [ ] Real D1 database(s) created (`halal-finder-db` [+ preview]) and migrated
-- [ ] D1 bound to the Pages project in the Cloudflare dashboard (Settings → Functions → D1 database bindings, variable `DB`) — no CLI equivalent exists for Git-integration Pages projects
-- [ ] `MAPS_API_KEY` provided by the user (from Apps Script → Project Settings → Script Properties, or Google Cloud Console) and set as a Cloudflare secret
-- [ ] `ADMIN_SECRET` generated fresh and set as a Cloudflare secret
+### Phase 7 — Single consolidated human checkpoint (in progress)
+- [x] `wrangler login` — done, account "Karamah Collective" (karamahcollective@gmail.com).
+- [x] Real D1 databases created and migrated, both verified byte-for-byte against the source: `halal-finder-db` (id `a360600d-c92c-42c4-a41b-fe493866f13f`, production) and `halal-finder-db-preview` (id `13c3fa62-68a5-4e51-adf8-8c668abfd9c9`, preview). Region EEUR.
+- [x] Real Pages project name discovered: **`maps`** (not `halal-finder` — fixed in `wrangler.toml`). Also discovered the user's separate admin panel is real and already live at `admin.maps.karamahcollective.com` (Pages project `halal-finder-admin`) — the eventual repoint target for Phase 5's `/api/admin`.
+- [x] `ADMIN_SECRET` generated fresh, set as a **production** Cloudflare secret via `wrangler pages secret put` (CLI only supports production — Preview secrets need the dashboard, see below).
+- [x] Confirmed `NOMINATIM_REV`/`NOMINATIM_VB` already exist as production secrets from before this migration — zero new setup needed for geocoding.
+- [ ] **`MAPS_API_KEY`** — waiting on the user to provide it (not previously a Cloudflare secret at all; it only ever lived in Apps Script's Script Properties, since GAS did Places enrichment internally before this migration).
+- [ ] **Dashboard visit needed (batch these together):**
+  1. Bind D1 to the `maps` Pages project (Settings → Functions → D1 database bindings): Production → `halal-finder-db`, Preview → `halal-finder-db-preview`, both as binding name `DB`. No CLI equivalent exists for Git-integration Pages projects.
+  2. Add Preview-environment secrets `ADMIN_SECRET` and `MAPS_API_KEY` (Settings → Environment variables → Preview tab) — same values as production, CLI can't set these.
 - [ ] Branch pushed, preview deployment clicked through manually by the user
-- [ ] Final go-ahead given: fresh data pull → `--remote` import → verify → merge to production
+- [ ] Final go-ahead given: fresh data pull → `--remote` import into `halal-finder-db` → verify → merge to production
 
 ### Phase 8 — Decommission Sheets/Apps Script (optional, user's own pace, weeks later)
 - [ ] Archive the Apps Script web app deployment
