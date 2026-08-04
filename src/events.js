@@ -31,6 +31,15 @@ export const EVT = {
   /** Fired by toggleSavedPin() (utils.js) on every toggle, same pattern as
    *  FAVOURITE_TOGGLED above. detail: { lat: number, lng: number, name: string, saved: boolean } */
   SAVED_PIN_TOGGLED: "hf:saved-pin-toggled",
+  /** Fired by toggleVisited() (places.js) on every toggle, signed in or not —
+   *  same pattern as FAVOURITE_TOGGLED above, just a different `kind`
+   *  ("visited" vs "favorite") on the SavedPlaces row. This is a manual,
+   *  unverified "I've been here" mark (no GPS check, no confirmed date) —
+   *  purely a badge-eligibility signal (see account-profile.js's Explorer
+   *  category), NOT the future location-verified visitor-timeline feature.
+   *  src/account-sync.js listens to fire a background save/unsave when
+   *  signed in. detail: { placeId: string, visited: boolean } */
+  VISITED_TOGGLED: "hf:visited-toggled",
   /** Fired by submitReview() (reviews.js) after a review write actually
    *  succeeds server-side — narrower and rarer than the generic (pre-EVT-registry)
    *  `hf:reviews-loaded`, which fires for ANY place's rating cache being

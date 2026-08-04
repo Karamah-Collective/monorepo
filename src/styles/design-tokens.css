@@ -57,6 +57,17 @@
   --warning: var(--review);
   --warning-soft: var(--review-soft);
 
+  /* Badge LEVEL colors (src/profile.js's Profile "Your badges" grid) — these
+     are deliberately NEW and NOT aliased to any existing semantic color
+     (--success/--danger/--warning/--gold/--home): badge tier is conveyed by
+     the icon's own fill/ring/accent treatment, not color, so these 3 colors
+     mean ONLY "level I/II/III" and are reused identically across every tier
+     (Bronze through Legend) — see account-profile.js's computeBadges() doc
+     comment for the full tier/level design. */
+  --badge-lvl-1: #6b7280; /* level I — muted slate */
+  --badge-lvl-2: #3b6fd1; /* level II — clear blue */
+  --badge-lvl-3: #7c3aed; /* level III — vivid violet */
+
   /* Google brand — "Sign in with Google" button, per Google's official
      branding guidelines (developers.google.com/identity/branding-guidelines).
      These are fixed brand colors, not app palette — do not derive from
@@ -1172,8 +1183,15 @@ html.reduce-motion *::after {
   font-weight: var(--fw-regular);
 }
 
+/* .pp-visit-chip (src/places.js's "Mark as visited"/"Visited" toggle,
+   place-detail sheet) is a Component Alias of this same tri-state chip —
+   only ever uses the "yes" state (binary, no "no" state needed), and its
+   label TEXT also swaps ("Mark as visited" → "Visited"), unlike a tag-chip's
+   fixed label — everything else (shape, icon-visibility mechanism, colour)
+   is identical, driven by the same data-state attribute. */
 .tag-chip,
-.sg-tag {
+.sg-tag,
+.pp-visit-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
@@ -1196,13 +1214,15 @@ html.reduce-motion *::after {
 }
 @media (hover: hover) {
   .tag-chip:hover,
-  .sg-tag:hover {
+  .sg-tag:hover,
+  .pp-visit-chip:hover {
     border-color: var(--surface-3);
   }
 }
 
 .tag-chip .tag-icon,
-.sg-tag .sg-tag-icon {
+.sg-tag .sg-tag-icon,
+.pp-visit-chip .pp-visit-icon {
   display: none;
   width: 12px;
   height: 12px;
@@ -1210,13 +1230,15 @@ html.reduce-motion *::after {
 }
 
 .tag-chip[data-state="yes"],
-.sg-tag[data-state="yes"] {
+.sg-tag[data-state="yes"],
+.pp-visit-chip[data-state="yes"] {
   background: var(--success-soft);
   border-color: var(--success);
   color: var(--success);
 }
 .tag-chip[data-state="yes"] .tag-icon.tag-yes,
-.sg-tag[data-state="yes"] .sg-tag-icon.sg-yes {
+.sg-tag[data-state="yes"] .sg-tag-icon.sg-yes,
+.pp-visit-chip[data-state="yes"] .pp-visit-icon {
   display: inline-block;
 }
 
@@ -1546,9 +1568,16 @@ html.reduce-motion *::after {
 /* ── Chip (display badge, non-interactive) ─────────────────────────────────── */
 /* Set --chip-c to control the tint. .chip-yes / .chip-no are semantic aliases. */
 /* .pp-chip and .sp-chip are component aliases — add new ones here, don't copy.  */
+/* .pf-badge-pill (src/profile.js's identity-card "flair" pill — the
+   account's single highest badge across all 4 categories, see
+   account-profile.js's computeTopBadge()) is also a Component Alias here —
+   its tint is driven by LEVEL (--badge-lvl-1/2/3), not by any of the
+   semantic --chip-c values above, since a badge's color means "level",
+   never "positive/negative/sponsor" the way every other chip's does. */
 .chip,
 .pp-chip,
-.sp-chip {
+.sp-chip,
+.pf-badge-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-0h);
@@ -1583,6 +1612,17 @@ html.reduce-motion *::after {
 .pp-chip-sponsor,
 .pl-sponsor-chip {
   --chip-c: var(--sponsor);
+}
+
+/* ── Badge flair pill level tints (.pf-badge-pill, above) ───────────────────── */
+.pf-badge-pill--lvl1 {
+  --chip-c: var(--badge-lvl-1);
+}
+.pf-badge-pill--lvl2 {
+  --chip-c: var(--badge-lvl-2);
+}
+.pf-badge-pill--lvl3 {
+  --chip-c: var(--badge-lvl-3);
 }
 
 /* ── Neutral info chip (price level, accessibility, service options) ───────── */

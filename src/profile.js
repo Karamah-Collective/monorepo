@@ -46,7 +46,7 @@ import {
   updateSubmissionStatusCache,
 } from "./places.js";
 import { fetchMyReviews, buildStarDisplay, deleteReview, openReviewsOverlayForEdit } from "./reviews.js";
-import { computeContributionStats, formatMemberSince } from "./account-profile.js";
+import { computeContributionStats, formatMemberSince, computeTopBadge } from "./account-profile.js";
 
 const ACCOUNT_API = "/api/account";
 
@@ -80,7 +80,7 @@ let _account = null;
 let _reviewsCache = [];
 let _submittedPlacesCache = [];
 let _submittedEditsCache = [];
-let _accountMetaCache = { saved: [], firstSeenAt: null };
+let _accountMetaCache = { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
 
 let _authModulePromise = null;
 function _getAuthModule() {
@@ -192,7 +192,7 @@ export async function loadProfileContent() {
   _submittedEditsCache = editsResult.submissions;
   _accountMetaCache = meta;
 
-  _renderCard(); // re-render with "member since" now resolved
+  _renderCard(); // re-render with "member since"/top badge now resolved
   _renderStats();
   _renderSubmissionList(submittedPlacesEl, _submittedPlacesCache, "You haven't submitted any places yet.");
   _renderSubmissionList(submittedEditsEl, _submittedEditsCache, "You haven't submitted any edits yet.");
@@ -213,11 +213,11 @@ export async function loadProfileContent() {
  * independently here since account-sync.js exposes no getter for its
  * result (by design — it only keeps an in-memory cloud-mode mirror via
  * places.js/utils.js, not the raw server rows or firstSeenAt).
- * @returns {Promise<{saved: Array, firstSeenAt: string|null}>}
+ * @returns {Promise<{saved: Array, firstSeenAt: string|null, lifetimeReviewCount: number, lifetimeVisitedCount: number}>}
  */
 async function _fetchAccountMeta() {
   const idToken = await _auth.getIdToken();
-  if (!idToken) return { saved: [], firstSeenAt: null };
+  if (!idToken) return { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
   try {
     const res = await fetch(ACCOUNT_API, {
       method: "POST",
@@ -228,13 +228,24 @@ async function _fetchAccountMeta() {
     return {
       saved: Array.isArray(result.saved) ? result.saved : [],
       firstSeenAt: result.firstSeenAt || null,
+      // Badge-eligibility lifetime counters (Code.gs's AccountMeta columns) —
+      // see account-profile.js's computeBadges() doc comment for why these
+      // are separate from the live "saved" counts above.
+      lifetimeReviewCount: Number(result.lifetimeReviewCount) || 0,
+      lifetimeVisitedCount: Number(result.lifetimeVisitedCount) || 0,
     };
   } catch {
-    return { saved: [], firstSeenAt: null };
+    return { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
   }
 }
 
 // ─── Identity card (avatar, name, email, member since, sign out) ──
+
+/** Only "live" (approved) submissions count toward the Contributor badge —
+ *  see _renderCard()'s computeTopBadge() call for the full rationale. */
+function _approvedCount(list) {
+  return list.filter((item) => item.status === "live").length;
+}
 
 function _renderCard() {
   if (!_account) return;
@@ -248,10 +259,41 @@ function _renderCard() {
     : `<div class="menu-account-avatar pf-card-avatar">${esc(initial)}</div>`;
   const memberSince = formatMemberSince(_accountMetaCache.firstSeenAt);
 
+  // Compact "flair" pill — the single highest badge across all 4 categories
+  // (see account-profile.js's computeTopBadge() doc comment). Deliberately
+  // just this one small pill next to the name, not a dedicated section —
+  // scaled down after feedback that a full 4-card grid was too much for
+  // what's meant to be a flair, not its own destination. Every account gets
+  // a pill, even at zero activity ("Newcomer") — per user feedback, this
+  // never renders empty. Shows "Newcomer" on the FIRST (pre-fetch) render
+  // too, same timing as memberSince above — self-corrects to the real
+  // badge once loadProfileContent()'s fetch resolves, if there is one.
+  const topBadge = computeTopBadge({
+    lifetimeReviewCount: _accountMetaCache.lifetimeReviewCount,
+    lifetimeVisitedCount: _accountMetaCache.lifetimeVisitedCount,
+    // Contributor badge credit only counts APPROVED submissions (status
+    // "live") — a still-pending or rejected one hasn't added anything real
+    // yet. Deliberately different from the stats grid below (_renderStats()),
+    // which shows raw submission counts including pending/rejected, since
+    // each row there already carries its own status pill. Kept consistent
+    // with src/account-sync.js's _checkBadgeLevelUps(), which uses this same
+    // approved-only filter for the app-load badge-notification check.
+    placesAddedCount: _approvedCount(_submittedPlacesCache),
+    editsCount: _approvedCount(_submittedEditsCache),
+    firstSeenAt: _accountMetaCache.firstSeenAt,
+  });
+  const badgePillText = topBadge.unranked
+    ? topBadge.tierName
+    : `${topBadge.tierName} ${topBadge.levelRoman} — ${topBadge.label}`;
+  const badgePillHtml = `<span class="pf-badge-pill pf-badge-pill--lvl${topBadge.level}">${esc(badgePillText)}</span>`;
+
   cardBody.innerHTML = `<div class="menu-account-profile">
     ${avatarHTML}
     <div class="menu-account-info">
-      <span class="menu-account-name">${esc(label)}</span>
+      <div class="pf-card-name-row">
+        <span class="menu-account-name">${esc(label)}</span>
+        ${badgePillHtml}
+      </div>
       ${_account.displayName && _account.email ? `<span class="menu-account-email">${esc(_account.email)}</span>` : ""}
       ${memberSince ? `<span class="pf-member-since">Member since ${esc(memberSince)}</span>` : ""}
     </div>
@@ -287,6 +329,7 @@ const STAT_DEFS = [
   { key: "reviewCount", label: "Reviews" },
   { key: "favoriteCount", label: "Favourites" },
   { key: "pinCount", label: "Saved pins" },
+  { key: "visitedCount", label: "Visited" },
   { key: "placesAddedCount", label: "Places added" },
   { key: "editsCount", label: "Edits made" },
 ];

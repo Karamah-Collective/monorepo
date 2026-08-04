@@ -422,6 +422,81 @@ export function exitCloudFavourites() {
   favourites = new Set(JSON.parse(localStorage.getItem("hf_favs") || "[]"));
 }
 
+// Visited places — a manual, unverified "I've been here" mark (no GPS check,
+// no confirmed date), purely a badge-eligibility signal for the Explorer
+// category (see account-profile.js) — NOT the future location-verified
+// visitor-timeline feature. Architecturally an exact clone of the favourites
+// block above: same account-scoping model (signed out = hf_visited in
+// localStorage is truth; signed in = src/account-sync.js's
+// enterCloudVisited()/exitCloudVisited() below puts this into cloud-scoped
+// mode), own Set, own storage key, own sync-pending guard — deliberately not
+// sharing state with favourites even though the mechanics are identical.
+let visitedPlaces = new Set(JSON.parse(localStorage.getItem("hf_visited") || "[]"));
+let _visitedCloudScoped = false;
+let _visitedSyncPending = false;
+function saveVisitedPlaces() {
+  if (_visitedCloudScoped) return;
+  localStorage.setItem("hf_visited", JSON.stringify([...visitedPlaces]));
+}
+export function isVisited(id) { return visitedPlaces.has(id); }
+/** All currently-visited place IDs (local or cloud, whichever is active). */
+export function getVisitedIds() { return [...visitedPlaces]; }
+/**
+ * Set (not toggle) a place's visited state directly, without firing
+ * EVT.VISITED_TOGGLED — used by src/account-sync.js only, to roll a visit's
+ * optimistic state back if its background cloud save/unsave request
+ * actually fails server-side. Mirrors setFavouriteState() exactly.
+ * @param {string} id
+ * @param {boolean} visited
+ * @returns {void}
+ */
+export function setVisitedState(id, visited) {
+  const has = visitedPlaces.has(id);
+  if (visited === has) return;
+  if (visited) visitedPlaces.add(id); else visitedPlaces.delete(id);
+  saveVisitedPlaces();
+}
+export function toggleVisited(id) {
+  if (_visitedSyncPending) {
+    showToast("Still signing in…", "clock", "Try again in a moment");
+    return;
+  }
+  if (visitedPlaces.has(id)) visitedPlaces.delete(id); else visitedPlaces.add(id);
+  saveVisitedPlaces();
+  const visited = visitedPlaces.has(id);
+  window.dispatchEvent(new CustomEvent(EVT.VISITED_TOGGLED, { detail: { placeId: id, visited } }));
+}
+/**
+ * Block/unblock visited mutations while a sign-in's cloud-state resolution
+ * is still in flight — called by src/account-sync.js only. Mirrors
+ * setFavouritesSyncPending() exactly.
+ * @param {boolean} pending
+ * @returns {void}
+ */
+export function setVisitedSyncPending(pending) {
+  _visitedSyncPending = pending;
+}
+/**
+ * Enter cloud-scoped visited mode — called once by src/account-sync.js
+ * after a sign-in resolves to a cloud state. Mirrors enterCloudFavourites().
+ * @param {string[]} ids
+ * @returns {void}
+ */
+export function enterCloudVisited(ids) {
+  _visitedCloudScoped = true;
+  visitedPlaces = new Set(ids || []);
+}
+/**
+ * Exit cloud-scoped visited mode (sign-out) — reverts to whatever is in
+ * localStorage, untouched throughout the whole cloud session. Mirrors
+ * exitCloudFavourites().
+ * @returns {void}
+ */
+export function exitCloudVisited() {
+  _visitedCloudScoped = false;
+  visitedPlaces = new Set(JSON.parse(localStorage.getItem("hf_visited") || "[]"));
+}
+
 // Recently viewed
 const RECENT_KEY = "hf_recent";
 let recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
@@ -877,6 +952,32 @@ function _buildCard(p, i) {
       </button>
     </div>
     ${evDrawerBody}
+  </li>`;
+}
+
+// Saved-pin card — same .pl-card grid as _buildCard()'s real-place cards, but
+// simpler (no type/tags/rating/hours, just the coordinate-derived id as the
+// "address" line). Its dir/unsave buttons live inside .pl-meta (next to the
+// "Dropped Pin" chip) rather than in the shared grid's "acts" column, so they
+// sit in the same row as that chip instead of vertically centered against the
+// whole card — reuses .pl-acts verbatim for button styling (its `grid-area`
+// rule is a no-op here since this usage isn't a direct grid child).
+function _buildPinCardHTML(pin, i) {
+  return `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${i}">
+    <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
+    <span class="pl-name">${esc(pin.name)}</span>
+    <span class="pl-addr">${esc(pin.id)}</span>
+    <div class="pl-meta">
+      <span class="pl-tags-summary" style="--type-c:var(--accent)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
+      <div class="pl-acts">
+        <button class="pl-dir-btn" data-lat="${pin.lat}" data-lng="${pin.lng}" data-name="${escA(pin.name)}" aria-label="Directions to ${escA(pin.name)}" title="Directions">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+        </button>
+        <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
+          <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
+        </button>
+      </div>
+    </div>
   </li>`;
 }
 
@@ -1392,13 +1493,21 @@ function _buildEventCard(ev) {
  */
 function _renderPopupRating(container, placeId, placeName, ratingData) {
   const ratingEl = document.createElement("div");
+  // Static right-chevron — same "this row navigates elsewhere on tap"
+  // affordance already used by src/menu.js's "Profile →" row
+  // (.menu-profile-chevron), not the rotate-on-toggle chevron used for
+  // in-place expand/collapse (.pp-hours-expand-btn/.sg-expand-arrow) —
+  // tapping this row opens the separate reviews overlay, it doesn't expand
+  // in place. Added after user feedback that the rating summary read as a
+  // static summary with no indication it was tappable.
+  const _chevronSVG = `<svg class="pp-rating-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
   if (ratingData) {
     ratingEl.className = "pp-rating";
-    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>`;
+    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>${_chevronSVG}`;
     ratingEl.title = "View reviews";
   } else {
     ratingEl.className = "pp-rating pp-rating--empty";
-    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>`;
+    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>${_chevronSVG}`;
   }
   ratingEl.setAttribute("role", "button");
   ratingEl.setAttribute("tabindex", "0");
@@ -1693,7 +1802,38 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   actions.appendChild(editBtn);
   root.appendChild(inner);
 
-  // Fav button (absolute positioned, top-right)
+  // Top-right icon/chip row: "Mark as visited" chip, fav star (to its
+  // right), and (for sponsors with a CTA) the promo-copy button — one flex
+  // row, positioned as a group (see .pp-icon-row in styles.css), so a
+  // wider chip can sit beside the fav star without needing per-button
+  // pixel math.
+  const iconRow = document.createElement("div");
+  iconRow.className = "pp-icon-row";
+
+  // "Mark as visited" — same tri-state tag-chip design language as the
+  // suggest/edit-place form's feature tags (.tag-chip/.sg-tag in
+  // design-tokens.css), aliased as .pp-visit-chip — only ever the "yes"
+  // state (binary, no "no" state), with its label TEXT also swapping
+  // ("Mark as visited" → "Visited"), unlike a fixed-label tag chip. Manual,
+  // unverified "I've been here" mark — see EVT.VISITED_TOGGLED's doc
+  // comment in events.js for why this is separate from the future
+  // location-verified visitor-timeline feature.
+  const _VISIT_CHECK_ICON = `<svg class="pp-visit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const visitBtn = document.createElement("button");
+  visitBtn.type = "button";
+  visitBtn.className = "pp-visit-chip";
+  const _renderVisitChip = (visited) => {
+    visitBtn.dataset.state = visited ? "yes" : "";
+    visitBtn.innerHTML = `${_VISIT_CHECK_ICON}<span>${visited ? "Visited" : "Mark as visited"}</span>`;
+  };
+  _renderVisitChip(isVisited(place.id));
+  visitBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleVisited(place.id);
+    _renderVisitChip(isVisited(place.id));
+  });
+  iconRow.appendChild(visitBtn);
+
   const _isFav = isFavourite(place.id);
   const _starSVG = (filled) =>
     `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
@@ -1715,9 +1855,9 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     }
     if (activeTypeFilter === "saved" && !saved) { addPlaceMarkers(); renderPlacesList(); }
   });
-  root.appendChild(favBtn);
+  iconRow.appendChild(favBtn);
 
-  // Promo copy button — beside fav star, only for sponsors with a CTA (promo code)
+  // Promo copy button — only for sponsors with a CTA (promo code)
   if (popupSponsor?.cta) {
     const promoBtn = document.createElement("button");
     promoBtn.className = "pp-promo-btn";
@@ -1730,8 +1870,10 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
       const sub = popupSponsor.text || null;
       showToast(popupSponsor.cta, "check", sub);
     });
-    root.appendChild(promoBtn);
+    iconRow.appendChild(promoBtn);
   }
+
+  root.appendChild(iconRow);
 
   // Track the open sheet's place id for toggle-close, and the back-vs-close context
   _activePlaceSheetId = place.id;
@@ -2514,7 +2656,7 @@ function renderPlacesList() {
 
   // Hide entire toolbar row when the tab has no data to search/sort/filter
   const _preSearchCount = filtered.length +
-    (activeTypeFilter === "saved" ? getSavedPins().length : 0);
+    (activeTypeFilter === "saved" ? getSavedPins().length + getVisitedIds().length : 0);
   _tfRow.classList.toggle("hide", _preSearchCount === 0);
   if (_preSearchCount === 0 && _plSearchWrap.classList.contains("open")) {
     _closePlaceSearch();
@@ -2537,7 +2679,20 @@ function renderPlacesList() {
       (pin.name || "").toLowerCase().includes(q) || (pin.id || "").toLowerCase().includes(q),
     );
   }
-  const totalCount = sorted.length + customPins.length;
+  // "Places you've visited" — a separate section from the favourites/pins
+  // above, since a place can be visited without being favourited (or vice
+  // versa). Manual, unverified marks (see EVT.VISITED_TOGGLED's doc comment
+  // in events.js) — not the same list as a future location-verified
+  // visitor timeline.
+  let visitedPlacesList = activeTypeFilter === "saved"
+    ? getVisitedIds().map((id) => placesData.find((p) => p.id === id)).filter(Boolean)
+    : [];
+  if (q && visitedPlacesList.length) {
+    visitedPlacesList = visitedPlacesList.filter((p) =>
+      (p.name || "").toLowerCase().includes(q) || (p.address || "").toLowerCase().includes(q),
+    );
+  }
+  const totalCount = sorted.length + customPins.length + visitedPlacesList.length;
 
   if (!totalCount) {
     list.innerHTML = "";
@@ -2580,46 +2735,45 @@ function renderPlacesList() {
   empty.classList.add("hide");
   ct.textContent = `${totalCount} place${totalCount > 1 ? "s" : ""}`;
 
-  const buildGroupedPlacesHTML = (sorted) => {
+  // Entries are type-tagged ({place} or {city, pin}) so a group can mix real
+  // places and saved pins under one city header — a saved pin has no .city
+  // field of its own, so its city is derived from its reverse-geocoded
+  // display name via the same extractCityFromAddress() real places use.
+  const buildGroupedPlacesHTML = (entries) => {
     const groups = new Map();
-    sorted.forEach((place) => {
-      const city = getPlaceCity(place);
+    entries.forEach((entry) => {
+      const city = entry.place ? getPlaceCity(entry.place) : entry.city;
       if (!groups.has(city)) groups.set(city, []);
-      groups.get(city).push(place);
+      groups.get(city).push(entry);
     });
 
     _lastGroupedData = groups;
     let animationIndex = 0;
     return [...groups.entries()].map(([city, group]) => {
       const collapsed = collapsedCityGroups.has(city);
-      const cards = collapsed ? "" : group.map((place) => _buildCard(place, animationIndex++)).join("");
+      const cards = collapsed
+        ? ""
+        : group.map((entry) => entry.place
+          ? _buildCard(entry.place, animationIndex++)
+          : _buildPinCardHTML(entry.pin, animationIndex++)).join("");
       if (collapsed) animationIndex += group.length;
       return `<li class="pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(city)}"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(city)}</span></button><span class="pl-city-count">${group.length}</span></li><li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(city)}"${collapsed ? ' data-lazy="1"' : ''}><div class="pl-city-group-inner"><ul class="pl-city-group-list">${cards}</ul></div></li>`;
     }).join("");
   };
 
-  const regularHTML = activeSortField === "default"
-    ? buildGroupedPlacesHTML(sorted)
-    : sorted.map((p, i) => _buildCard(p, i)).join("");
-
-  const pinHTML = customPins
-    .map((pin, pi) => `<li class="pl-card" data-custom-pin-id="${escA(pin.id)}" style="--place-c:var(--accent);--i:${sorted.length + pi}">
-      <span class="pl-dot" style="background:var(--accent)"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></span>
-      <span class="pl-name">${esc(pin.name)}</span>
-      <span class="pl-addr">${esc(pin.id)}</span>
-      <div class="pl-meta">
-        <span class="pl-tags-summary" style="--type-c:var(--accent)" data-type="Dropped Pin" data-tags="[]">0 tags</span>
-      </div>
-      <div class="pl-acts">
-        <button class="pl-dir-btn" data-lat="${pin.lat}" data-lng="${pin.lng}" data-name="${escA(pin.name)}" aria-label="Directions to ${escA(pin.name)}" title="Directions">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
-        </button>
-        <button class="pl-fav-btn active pl-unsave-pin-btn" data-pin-id="${escA(pin.id)}" aria-label="Remove from saved">
-          <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="currentColor">${_starPath}</svg>
-        </button>
-      </div>
-    </li>`)
-    .join("");
+  let regularHTML, pinHTML;
+  if (activeSortField === "default") {
+    const placeEntries = sorted.map((place) => ({ place }));
+    const pinEntries = customPins.map((pin) => ({
+      city: String(extractCityFromAddress(pin.name) || "Other places").trim(),
+      pin,
+    }));
+    regularHTML = buildGroupedPlacesHTML([...placeEntries, ...pinEntries]);
+    pinHTML = "";
+  } else {
+    regularHTML = sorted.map((p, i) => _buildCard(p, i)).join("");
+    pinHTML = customPins.map((pin, pi) => _buildPinCardHTML(pin, sorted.length + pi)).join("");
+  }
 
   // Recently viewed section (skip on saved tab and when searching)
   let recentHtml = "";
@@ -2635,7 +2789,19 @@ function renderPlacesList() {
     }
   }
 
-  list.innerHTML = recentHtml + regularHTML + pinHTML;
+  // "Places you've visited" — its own collapsible section on the Saved tab,
+  // same sentinel-key collapse mechanism the Recently-viewed section above
+  // already uses ("__recent__" → "__visited__"), separate from the
+  // favourites/pins already shown above it since visited and favourited are
+  // independent states.
+  let visitedHTML = "";
+  if (visitedPlacesList.length) {
+    const visitedCollapsed = collapsedCityGroups.has("__visited__");
+    const visitedCards = visitedPlacesList.map((p, i) => _buildCard(p, sorted.length + customPins.length + i)).join("");
+    visitedHTML = `<li class="pl-section-hdr pl-city-hdr${visitedCollapsed ? " is-collapsed" : ""}" data-city-group="__visited__"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">Places you've visited</span></button><span class="pl-city-count">${visitedPlacesList.length}</span></li><li class="pl-city-group-body${visitedCollapsed ? " shut" : ""}" data-city-group-body="__visited__"><div class="pl-city-group-inner"><ul class="pl-city-group-list">${visitedCards}</ul></div></li>`;
+  }
+
+  list.innerHTML = recentHtml + regularHTML + pinHTML + visitedHTML;
 
   // Render sponsored carousel at the top of the places list
   _renderSponsorCarousel(filtered);
@@ -3690,7 +3856,11 @@ document.getElementById("places-list").addEventListener("click", (e) => {
       if (body.dataset.lazy) {
         const list = body.querySelector(".pl-city-group-list");
         const group = _lastGroupedData.get(city);
-        if (group && list) list.innerHTML = group.map((p, i) => _buildCard(p, i)).join("");
+        if (group && list) {
+          list.innerHTML = group.map((entry, i) => entry.place
+            ? _buildCard(entry.place, i)
+            : _buildPinCardHTML(entry.pin, i)).join("");
+        }
         delete body.dataset.lazy;
         // Force reflow so browser measures content at 0fr before transitioning to 1fr
         void body.offsetHeight;

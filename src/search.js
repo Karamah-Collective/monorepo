@@ -13,7 +13,7 @@ function _buildPinShareUrl(lat, lng) {
   return `${location.origin}${location.pathname}?p=${encodeCompactPin(+lat, +lng, map.getZoom(), false)}`;
 }
 const _starSVG = (filled) =>
-  `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+  `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
 
 // ─── Pin SVG icons ──────────────────────────────────────────────────────────────
 const _searchPinSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>`;
@@ -189,7 +189,9 @@ function _openPinPopup(lng, lat, kind, entry) {
             </button>
           </div>
         </div>
-        <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
+        <div class="pp-icon-row">
+          <button class="pp-fav-btn${saved ? ' active' : ''}" aria-label="${saved ? 'Remove from saved' : 'Save pin'}">${_starSVG(saved)}</button>
+        </div>
       </div>
     `)
     .addTo(map);

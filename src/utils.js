@@ -680,6 +680,78 @@ export async function checkGeoNotice() {
   } catch {}
 }
 
+// --- Badge achievement notice (shown when a signed-in user crosses a new
+// badge tier/level — see account-profile.js's computeBadges()/
+// diffBadgeLevelUps(), checked on app load by account-sync.js's
+// _checkBadgeLevelUps()) ---
+
+// One glyph per badge category (account-profile.js's BADGE_DEFS `glyph` key)
+// — Reviewer/Contributor/Explorer/Veteran read as star/pin-with-plus/heart/
+// medal, matching the names those categories were designed under. All 4
+// share the same 24x24/stroke-2/round-cap convention as every other icon in
+// this file so they sit consistently inside .snack-icon regardless of which
+// one renders.
+const _BADGE_GLYPH_SVG = {
+  star: `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`,
+  plusPin: `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="9" y1="9" x2="15" y2="9"/>`,
+  heart: `<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>`,
+  medal: `<circle cx="12" cy="8" r="6"/><polyline points="8.21 13.89 7 22 12 19 17 22 15.79 13.88"/>`,
+};
+
+/**
+ * Show a big, explicitly-closable "you earned a new badge" notification —
+ * same .snack shape as showGeoNotice()/showEarlyDevNotice() (an icon, a
+ * label, a sub-line, and a close button), deliberately NOT auto-dismissing
+ * like showToast()'s small 2.4s toasts, since this is a genuine
+ * achievement worth letting the user actually read and dismiss on their own
+ * terms. Unlike those two, this is NOT a page-wide singleton (no fixed id,
+ * dedup-by-id guard) — up to 4 categories can plausibly cross a tier between
+ * two checks (e.g. after being offline a while), and each should get its own
+ * dismissable notice, stacked in the toast stack like showToast()'s own
+ * multi-instance toasts.
+ *
+ * The icon shape identifies WHICH category leveled up (`glyph`, from
+ * account-profile.js's BADGE_DEFS); its color identifies WHICH level (I/II/
+ * III) via the same --badge-lvl-1/2/3 tokens the identity-card pill already
+ * uses — deliberately no separate per-TIER icon treatment on top of that
+ * (Bronze/Silver/Gold/etc. is already spelled out in `tierName`), matching
+ * how the pill itself scoped down to level-color + text with no per-tier
+ * icon either.
+ * @param {{categoryLabel: string, tierName: string, levelRoman: string, glyph?: string, level?: number}} badge
+ * @returns {void}
+ */
+export function showBadgeNotice({ categoryLabel, tierName, levelRoman, glyph = "star", level = 1 }) {
+  const slot = document.createElement("div");
+  slot.className = "toast-slot";
+  const el = document.createElement("div");
+  el.className = "snack badge-notice";
+  const glyphSVG = _BADGE_GLYPH_SVG[glyph] || _BADGE_GLYPH_SVG.star;
+  const levelColorVar = `var(--badge-lvl-${level >= 1 && level <= 3 ? level : 1})`;
+  el.innerHTML = `
+    <span class="snack-icon" style="background:color-mix(in srgb, ${levelColorVar} 14%, transparent);color:${levelColorVar}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyphSVG}</svg>
+    </span>
+    <span class="snack-body">
+      <span class="snack-label">New badge earned! 🎉</span>
+      <span class="snack-sub">${esc(tierName)} ${esc(levelRoman)} — ${esc(categoryLabel)}</span>
+    </span>
+    <button class="sheet-x btn-roundel" aria-label="Dismiss">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  `;
+  el.querySelector(".sheet-x").addEventListener("click", () => {
+    el.classList.remove("badge-notice-show");
+    slot.classList.remove("toast-slot-show");
+    slot.classList.add("toast-slot-collapsing");
+    setTimeout(() => slot.remove(), 300);
+  });
+  slot.appendChild(el);
+  _getToastStack().appendChild(slot);
+  void slot.offsetHeight; // commit grid-template-rows:0fr before transition
+  slot.classList.add("toast-slot-show");
+  el.classList.add("badge-notice-show");
+}
+
 // --- Lazy reCAPTCHA loader ---
 
 let _recaptchaPromise = null;

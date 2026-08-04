@@ -1115,6 +1115,13 @@
   color: var(--text-2);
   margin-left: auto;
 }
+/* Static "this row opens the reviews overlay" affordance — same visual
+   language as .menu-profile-chevron (src/menu.js's "Profile →" row), not
+   the rotate-on-toggle chevrons used for in-place expand/collapse. */
+.pp-rating-chevron {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
 .pp-rating--empty {
   cursor: pointer;
   display: flex;
@@ -1137,6 +1144,7 @@
   font-size: var(--txt-sm);
   color: var(--text-2);
   font-weight: var(--fw-medium);
+  margin-right: auto;
 }
 
 /* ─── Place card rating chip ─── */
@@ -2849,12 +2857,7 @@ body.dark-mode .sp-tip {
    bumps the avatar up from Menu's compact 36px to a more prominent 56px for
    Profile's own full identity card. */
 #profile-sheet-body {
-  /* Bottom padding bumped sp-7 → sp-9: "Your data" (Export/Erase), the
-     last section, was reported cropped specifically while Profile is
-     still loading (its own content is static and unaffected by the
-     fetch, so this is extra clearance against the loading-state pane
-     height, not a fix to that section itself). */
-  padding: var(--sp-3) 0 var(--sp-9);
+  padding: var(--sp-3) 0 var(--sp-7);
 }
 .pf-card-avatar {
   width: 56px;
@@ -2904,6 +2907,23 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-xs);
   color: var(--text-3);
   line-height: var(--lh-tight);
+}
+
+/* Identity card name row — name + the compact "top badge" flair pill
+   (.pf-badge-pill, design-tokens.css) on the same line. Name keeps its own
+   ellipsis-on-overflow (min-width:0 lets it actually shrink in this flex
+   row instead of pushing the pill out); the pill never shrinks. */
+.pf-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pf-card-name-row .menu-account-name {
+  min-width: 0;
+}
+.pf-card-name-row .pf-badge-pill {
+  flex-shrink: 0;
 }
 
 /* Submitted places / edits lists */
@@ -3379,6 +3399,11 @@ body.dark-mode .sp-tip {
   display: flex;
   align-items: center;
   gap: 0;
+  /* No-op when .pl-acts is the grid's own "acts" column (already the exact
+     width of its content there) — only takes effect when nested inside
+     .pl-meta (the saved-pin card), pushing it to that row's right edge next
+     to the "Dropped Pin" chip instead of stacking after it. */
+  margin-left: auto;
 }
 .pl-acts > button {
   background: none;
@@ -3781,10 +3806,21 @@ body.dark-mode .sp-tip {
   padding: var(--sp-0h) var(--sp-3);
 }
 
-.pp-fav-btn {
+/* Top-right icon/chip row (fav star, "Mark as visited" chip, promo button)
+   — one flex group so a wider chip can sit beside the small fav star with
+   no per-button pixel offsets (see src/places.js's iconRow). Positioning
+   lives here per the design system's split (templates own visual design
+   only — see docs/DESIGN_SYSTEM.md's Rule 3); .pp-fav-btn/.pp-visit-chip's
+   own visual rules live in design-tokens.css. */
+.pp-icon-row {
   position: absolute;
   top: var(--sp-7);
   right: var(--sp-8);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.pp-fav-btn {
   background: none;
   border: none;
   padding: 2px;
@@ -3797,12 +3833,7 @@ body.dark-mode .sp-tip {
   transition: color var(--t-fast);
   -webkit-tap-highlight-color: transparent;
 }
-
-/* Promo copy button — positioned beside fav star */
-.pp .pp-promo-btn {
-  position: absolute;
-  top: var(--sp-7);
-  right: calc(var(--sp-8) + 22px);
+.pp-promo-btn {
   background: none;
   border: none;
   padding: 2px;
@@ -3816,7 +3847,7 @@ body.dark-mode .sp-tip {
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
-  .pp .pp-promo-btn:hover {
+  .pp-promo-btn:hover {
     color: color-mix(in srgb, var(--sponsor) 70%, var(--text));
   }
   .pp-fav-btn:hover {
@@ -4385,6 +4416,27 @@ body.dark-mode .sp-tip {
 }
 #toast-stack #geo-notice.geo-notice-show,
 #toast-stack #dev-notice.dev-notice-show {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Badge achievement notice (src/utils.js's showBadgeNotice()) — same shape
+   as the geo/dev notices above, but class- not id-scoped: several can stack
+   at once (up to 4 categories can plausibly level up between checks), where
+   #geo-notice/#dev-notice are page-wide singletons by design. */
+.badge-notice {
+  opacity: 0;
+  transform: translateY(6px);
+  width: max-content;
+  max-width: min(calc(100vw - 24px), 460px);
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+.badge-notice.badge-notice-show {
+  opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }

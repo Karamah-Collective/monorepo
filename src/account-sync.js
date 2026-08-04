@@ -55,8 +55,14 @@ import {
   setPinsHomeSyncPending,
   showConfirmDialog,
   showToast,
+  showBadgeNotice,
 } from "./utils.js";
-import { getFavouriteIds, setFavouriteState, enterCloudFavourites, exitCloudFavourites, setFavouritesSyncPending } from "./places.js";
+import {
+  getFavouriteIds, setFavouriteState, enterCloudFavourites, exitCloudFavourites, setFavouritesSyncPending,
+  getVisitedIds, setVisitedState, enterCloudVisited, exitCloudVisited, setVisitedSyncPending,
+  fetchMySubmittedPlaces, fetchMySubmittedEdits,
+} from "./places.js";
+import { computeBadges, diffBadgeLevelUps, buildBadgeSnapshot } from "./account-profile.js";
 
 const ACCOUNT_API = "/api/account";
 
@@ -78,6 +84,69 @@ function _getAuthModule() {
 // to a genuine user-initiated home change) — those already reflect exactly
 // what the server just returned (or, on exit, don't touch the server at all).
 let _suppressHomeBackgroundSync = false;
+
+// Namespaced localStorage snapshot of each badge category's last-seen tier/
+// level step, used by _checkBadgeLevelUps() below to detect a crossing since
+// the last check — the badge equivalent of places.js's own
+// STORAGE_KEY_SUBMISSION_STATUS/diffSubmissionStatuses() pattern.
+const STORAGE_KEY_BADGE_SNAPSHOT = "hf_badge_snapshot_v1";
+
+function _getBadgeSnapshotCache() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_BADGE_SNAPSHOT) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function _persistBadgeSnapshot(badges) {
+  try {
+    localStorage.setItem(STORAGE_KEY_BADGE_SNAPSHOT, JSON.stringify(buildBadgeSnapshot(badges)));
+  } catch {
+    /* localStorage unavailable (private browsing quota, etc.) — non-fatal */
+  }
+}
+
+/**
+ * Check all 4 badge categories (see account-profile.js's computeBadges())
+ * for a level-up since the last time this ran, and show one closable
+ * showBadgeNotice() per category that crossed. Called once per app
+ * load/sign-in resolution (see _handleSignIn() below) — deliberately not
+ * gated behind a Profile-pane visit, so a level-up is surfaced the next time
+ * the user simply opens the map, not only if they happen to check Profile.
+ *
+ * Contributor's counts are fetched fresh here and filtered to `status ===
+ * "live"` — a place/edit submission earns badge credit only once a
+ * moderator has actually approved it, not at submit time (a still-pending
+ * or rejected submission hasn't added anything real yet). Since approval
+ * happens out-of-band (a moderator acting while the submitter isn't even in
+ * the app), this app-load check is the ONLY way that transition ever gets
+ * noticed — unlike Reviewer/Explorer/Veteran, there's no in-session action
+ * to hook a real-time check onto instead.
+ *
+ * Fire-and-forget from _handleSignIn() — never awaited, so a slow or failed
+ * fetch here can't delay entering cloud-scoped mode.
+ * @param {{lifetimeReviewCount?: number, lifetimeVisitedCount?: number, firstSeenAt?: string|null}} result - the sync-saved response
+ * @returns {Promise<void>}
+ */
+async function _checkBadgeLevelUps(result) {
+  const [placesResult, editsResult] = await Promise.all([fetchMySubmittedPlaces(), fetchMySubmittedEdits()]);
+  const approvedPlacesCount = placesResult.submissions.filter((s) => s.status === "live").length;
+  const approvedEditsCount = editsResult.submissions.filter((s) => s.status === "live").length;
+  const badges = computeBadges({
+    lifetimeReviewCount: Number(result.lifetimeReviewCount) || 0,
+    lifetimeVisitedCount: Number(result.lifetimeVisitedCount) || 0,
+    placesAddedCount: approvedPlacesCount,
+    editsCount: approvedEditsCount,
+    firstSeenAt: result.firstSeenAt || null,
+  });
+  const levelUps = diffBadgeLevelUps(_getBadgeSnapshotCache(), badges);
+  for (const b of levelUps) {
+    showBadgeNotice({ categoryLabel: b.label, tierName: b.tierName, levelRoman: b.levelRoman, glyph: b.glyph, level: b.level });
+  }
+  _persistBadgeSnapshot(badges);
+}
 
 async function _callAccountApi(action, fields, idToken) {
   try {
@@ -109,10 +178,11 @@ async function _callAccountApi(action, fields, idToken) {
  * @param {string[]} favIds
  * @param {Array<{lat:number,lng:number,name:string}>} pins
  * @param {{lat:number,lng:number,name:string}|null} home
+ * @param {string[]} visitedIds
  * @param {number} generation - _syncGeneration captured when this import began
  * @returns {Promise<void>}
  */
-async function _pushLocalDataToCloud(idToken, favIds, pins, home, generation) {
+async function _pushLocalDataToCloud(idToken, favIds, pins, home, visitedIds, generation) {
   for (const placeId of favIds) {
     if (generation !== _syncGeneration) return;
     await _callAccountApi("save", { kind: "favorite", placeId }, idToken);
@@ -125,6 +195,10 @@ async function _pushLocalDataToCloud(idToken, favIds, pins, home, generation) {
     if (generation !== _syncGeneration) return;
     await _callAccountApi("save", { kind: "home", pinLat: home.lat, pinLng: home.lng, pinName: home.name }, idToken);
   }
+  for (const placeId of visitedIds) {
+    if (generation !== _syncGeneration) return;
+    await _callAccountApi("save", { kind: "visited", placeId }, idToken);
+  }
 }
 
 /**
@@ -134,10 +208,12 @@ async function _pushLocalDataToCloud(idToken, favIds, pins, home, generation) {
  * @param {string[]} favIds
  * @param {Array<{lat:number,lng:number,name:string}>} pins
  * @param {{lat:number,lng:number,name:string}|null} home
+ * @param {string[]} visitedIds
  * @returns {void}
  */
-function _enterCloudState(favIds, pins, home) {
+function _enterCloudState(favIds, pins, home, visitedIds) {
   enterCloudFavourites(favIds);
+  enterCloudVisited(visitedIds);
   _suppressHomeBackgroundSync = true;
   enterCloudScope(pins, home);
   _suppressHomeBackgroundSync = false;
@@ -153,6 +229,7 @@ function _enterCloudState(favIds, pins, home) {
 function _exitCloudState() {
   _syncGeneration++; // invalidate any _handleSignIn() still in flight
   exitCloudFavourites();
+  exitCloudVisited();
   _suppressHomeBackgroundSync = true;
   exitCloudScope();
   _suppressHomeBackgroundSync = false;
@@ -214,6 +291,7 @@ async function _handleSignIn() {
   _syncing = true;
   setFavouritesSyncPending(true);
   setPinsHomeSyncPending(true);
+  setVisitedSyncPending(true);
   const generation = _syncGeneration;
   try {
     const auth = await _getAuthModule();
@@ -267,7 +345,9 @@ async function _handleSignIn() {
       const pins = saved.filter((s) => s.kind === "pin").map((s) => ({ lat: s.pinLat, lng: s.pinLng, name: s.pinName }));
       const homeRow = saved.find((s) => s.kind === "home");
       const home = homeRow ? { lat: homeRow.pinLat, lng: homeRow.pinLng, name: homeRow.pinName } : null;
-      _enterCloudState(favIds, pins, home);
+      const visitedIds = saved.filter((s) => s.kind === "visited").map((s) => s.placeId);
+      _enterCloudState(favIds, pins, home, visitedIds);
+      _checkBadgeLevelUps(result); // fire-and-forget — never blocks entering cloud mode
       return;
     }
 
@@ -276,13 +356,14 @@ async function _handleSignIn() {
     const localFavIds = getFavouriteIds();
     const localPins = getSavedPins();
     const localHome = getHomeLocation();
-    const localCount = localFavIds.length + localPins.length + (localHome ? 1 : 0);
+    const localVisitedIds = getVisitedIds();
+    const localCount = localFavIds.length + localPins.length + (localHome ? 1 : 0) + localVisitedIds.length;
 
     if (localCount === 0) {
       // Nothing to import and nothing decided — enter empty cloud mode
       // without marking this account resolved, so a different device that
       // DOES have local data can still be offered the prompt later.
-      _enterCloudState([], [], null);
+      _enterCloudState([], [], null, []);
       return;
     }
 
@@ -298,18 +379,24 @@ async function _handleSignIn() {
     if (generation !== _syncGeneration) return; // signed out while the dialog was open
 
     if (confirmed) {
-      await _pushLocalDataToCloud(idToken, localFavIds, localPins, localHome, generation);
+      await _pushLocalDataToCloud(idToken, localFavIds, localPins, localHome, localVisitedIds, generation);
       if (generation !== _syncGeneration) return;
     }
     // Either way, this account's one-time decision is now made — never offer
     // this prompt again, on any device.
     await _callAccountApi("resolve-import", {}, idToken);
     if (generation !== _syncGeneration) return;
-    _enterCloudState(confirmed ? localFavIds : [], confirmed ? localPins : [], confirmed ? localHome : null);
+    _enterCloudState(
+      confirmed ? localFavIds : [],
+      confirmed ? localPins : [],
+      confirmed ? localHome : null,
+      confirmed ? localVisitedIds : [],
+    );
   } finally {
     _syncing = false;
     setFavouritesSyncPending(false);
     setPinsHomeSyncPending(false);
+    setVisitedSyncPending(false);
     if (_rerunRequested) {
       // Exactly one rerun, regardless of how many attempts were queued while
       // this call was running — it re-reads auth.getCachedAccount()/
@@ -403,6 +490,23 @@ export function initAccountSync() {
         setFavouriteState(placeId, !saved);
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
         showToast(saved ? "Couldn't save favourite" : "Couldn't remove favourite", "error", "Please try again");
+      },
+    });
+  });
+
+  // Same shape as EVT.FAVOURITE_TOGGLED above — no success toast (the
+  // button's own fill/unfill is the confirmation), but SAVED_SYNCED still
+  // fires so src/profile.js's badge/stats computation picks up the change
+  // without waiting for a full Profile reload.
+  window.addEventListener(EVT.VISITED_TOGGLED, (e) => {
+    const { placeId, visited } = e.detail || {};
+    if (!placeId) return;
+    _backgroundSync("visited", visited ? "save" : "unsave", { placeId }, {
+      onSuccess: () => window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} })),
+      onFailure: () => {
+        setVisitedState(placeId, !visited);
+        window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+        showToast(visited ? "Couldn't mark as visited" : "Couldn't remove visited mark", "error", "Please try again");
       },
     });
   });
