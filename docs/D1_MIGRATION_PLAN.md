@@ -52,8 +52,9 @@ The live "database" is a Google Sheet read/written through a Google Apps Script 
 
 **Resolved**: user chose to remove the legacy fallback entirely. `src/reviews.js` no longer has any `verifyToken`/`isVerified()`/`STORAGE_KEY_VERIFY_TOKEN` code — `_resolveReviewIdentity()` is Firebase-idToken-only, and the review form always shows the sign-in gate (Google/Microsoft/email-magic-link — already the only *new*-token entry point pre-migration) when signed out. Nothing else in `src/` referenced these symbols, so this was a clean, self-contained removal.
 
-### Phase 5 — New admin API, no UI
-- [ ] `functions/api/admin.js` — all 26 admin GET/POST actions, `adminKey` guard, D1 `batch()` transactions for approval side-effects, unrestricted CORS on this file only.
+### Phase 5 — New admin API, no UI ✅ done (code written + syntax-checked; behavioral validation is Phase 6)
+- [x] `functions/api/admin.js` — all 10 GET + 16 POST admin actions, `adminKey` guard (plain `===`, matches Code.gs), `db.batch()` for approve-new/approve-edit/approve-eid/approve-event-edit's multi-table side-effects, unrestricted CORS on this file only.
+- Parity note: `adminRejectEid` matches Code.gs exactly in discarding its `reason` argument (Code.gs never stored it either — see Phase 2's note on `eid_new.reject_reason` existing for future use, not current use).
 
 ### Phase 6 — Local end-to-end validation
 - [ ] Every rewritten action exercised via `wrangler pages dev` + local D1, diffed against the documented GAS contract.
