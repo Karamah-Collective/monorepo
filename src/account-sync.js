@@ -89,49 +89,161 @@ let _suppressHomeBackgroundSync = false;
 // level step, used by _checkBadgeLevelUps() below to detect a crossing since
 // the last check — the badge equivalent of places.js's own
 // STORAGE_KEY_SUBMISSION_STATUS/diffSubmissionStatuses() pattern.
-const STORAGE_KEY_BADGE_SNAPSHOT = "hf_badge_snapshot_v1";
+//
+// Shape: {uid, steps: {reviewer: step|null, …}} — ONE account's snapshot,
+// tagged with whose it is. `v1` stored the bare steps object with no owner, so
+// on a shared device signing in as B read A's steps as B's baseline and either
+// announced a badge B never earned (A's step lower) or swallowed one B did
+// (A's step higher). Reading it back for a different uid now deliberately
+// yields {} — treated as "no previous snapshot", which diffBadgeLevelUps()
+// already handles as "baseline quietly, announce nothing", so a returning
+// account re-baselines instead of being told something false. Deliberately
+// NOT a uid→steps map: keeping every account that ever signed in on this
+// device would retain per-account achievement history in localStorage, which
+// cuts against this module's own "the local device cache is never written
+// while signed in" privacy rule (see the file header) for no real benefit.
+const STORAGE_KEY_BADGE_SNAPSHOT = "hf_badge_snapshot_v2";
+// v1's unkeyed predecessor, cleared on first write so it doesn't linger.
+const STORAGE_KEY_BADGE_SNAPSHOT_LEGACY = "hf_badge_snapshot_v1";
 
-function _getBadgeSnapshotCache() {
+/**
+ * This account's last-seen badge steps, or {} if the stored snapshot belongs
+ * to a different account (or none exists yet).
+ * @param {string?} uid - the account the caller is checking badges for
+ * @returns {Object<string, number|null>}
+ */
+function _getBadgeSnapshotCache(uid) {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_BADGE_SNAPSHOT) || "{}");
-    return raw && typeof raw === "object" ? raw : {};
+    if (!raw || typeof raw !== "object") return {};
+    // Normalized on BOTH sides (here and in _persistBadgeSnapshot) rather than
+    // requiring a truthy uid, so an account somehow cached without one — which
+    // Firebase shouldn't produce — degrades to v1's device-wide behavior
+    // instead of to "no snapshot ever matches, so no level-up is ever
+    // announced again", a silent failure that would be hard to notice.
+    if ((raw.uid || "") !== (uid || "")) return {};
+    return raw.steps && typeof raw.steps === "object" ? raw.steps : {};
   } catch {
     return {};
   }
 }
 
-function _persistBadgeSnapshot(badges) {
+/**
+ * Record this account's current badge steps as the new baseline.
+ *
+ * MERGES into whatever this same account already had rather than replacing it
+ * wholesale, because a check doesn't always cover all four categories: the
+ * in-session recheck (see _scheduleBadgeRecheck()) only knows the three
+ * categories `sync-saved` carries data for, and a plain replace would write
+ * Contributor back as "unranked", erasing this device's record of it and
+ * making the next app load re-announce a badge it had already announced. A
+ * different account's snapshot is replaced, not merged into — its steps say
+ * nothing about this one.
+ * @param {ReturnType<typeof computeBadges>} badges - only the categories this check actually computed
+ * @param {string?} uid
+ * @returns {void}
+ */
+function _persistBadgeSnapshot(badges, uid) {
   try {
-    localStorage.setItem(STORAGE_KEY_BADGE_SNAPSHOT, JSON.stringify(buildBadgeSnapshot(badges)));
+    const steps = { ..._getBadgeSnapshotCache(uid), ...buildBadgeSnapshot(badges) };
+    localStorage.setItem(STORAGE_KEY_BADGE_SNAPSHOT, JSON.stringify({ uid: uid || "", steps }));
+    localStorage.removeItem(STORAGE_KEY_BADGE_SNAPSHOT_LEGACY);
   } catch {
     /* localStorage unavailable (private browsing quota, etc.) — non-fatal */
   }
 }
 
+// In-session badge recheck (see _scheduleBadgeRecheck()) — how long to wait
+// after a badge-relevant action before actually running the check, so a burst
+// of them (tapping "mark as visited" down a list of places) collapses into one
+// check instead of one per tap. Long enough to coalesce a realistic burst,
+// short enough that the notice still reads as a response to what the user just
+// did rather than something unrelated arriving later.
+const BADGE_RECHECK_DEBOUNCE_MS = 2000;
+let _badgeRecheckTimer = null;
+// A check is currently mid-flight (it always makes at least one network call,
+// so this is a real window). Two overlapping checks would BOTH diff against
+// the same not-yet-updated snapshot and both show the same notice, so a second
+// request arriving during one is deferred rather than run alongside it.
+let _badgeCheckRunning = false;
+let _badgeRecheckQueued = false;
+
+// The three categories computable from a `sync-saved` response ALONE:
+// Reviewer/Explorer from its lifetime counters, Veteran from its firstSeenAt.
+// The in-session recheck covers exactly these, which is why it needs one
+// request rather than three — Contributor is the only category that requires
+// the submitted-places/edits fetches, and it can't change in-session anyway
+// (see _checkBadgeLevelUps()).
+const SYNC_SAVED_BADGE_KEYS = ["reviewer", "explorer", "veteran"];
+
 /**
- * Check all 4 badge categories (see account-profile.js's computeBadges())
- * for a level-up since the last time this ran, and show one closable
- * showBadgeNotice() per category that crossed. Called once per app
- * load/sign-in resolution (see _handleSignIn() below) — deliberately not
- * gated behind a Profile-pane visit, so a level-up is surfaced the next time
- * the user simply opens the map, not only if they happen to check Profile.
+ * Check for a badge level-up since the last check and show one closable
+ * showBadgeNotice() per category that crossed. Runs on every app load/sign-in
+ * resolution (see _handleSignIn() below) AND, in-session, shortly after any
+ * action that can actually raise one of these counts (see
+ * _scheduleBadgeRecheck()). Deliberately not gated behind a Profile-pane
+ * visit, so a level-up is surfaced to someone just using the map, not only if
+ * they happen to check Profile.
  *
- * Contributor's counts are fetched fresh here and filtered to `status ===
- * "live"` — a place/edit submission earns badge credit only once a
- * moderator has actually approved it, not at submit time (a still-pending
- * or rejected submission hasn't added anything real yet). Since approval
- * happens out-of-band (a moderator acting while the submitter isn't even in
- * the app), this app-load check is the ONLY way that transition ever gets
- * noticed — unlike Reviewer/Explorer/Veteran, there's no in-session action
- * to hook a real-time check onto instead.
+ * `keys` selects which categories this run is allowed to judge, and defaults
+ * to all four. Contributor's counts need their own two fetches and are
+ * filtered to `status === "live"` — a place/edit submission earns badge credit
+ * only once a moderator has actually approved it, not at submit time (a
+ * still-pending or rejected submission hasn't added anything real yet). Since
+ * approval happens out-of-band (a moderator acting while the submitter isn't
+ * even in the app), the app-load run is the only one that can ever notice a
+ * Contributor crossing — there is no in-session action to hook it to, unlike
+ * Reviewer/Explorer. So the in-session recheck passes
+ * SYNC_SAVED_BADGE_KEYS and skips those two fetches entirely; the snapshot it
+ * writes MERGES (see _persistBadgeSnapshot()), so leaving Contributor unjudged
+ * leaves its recorded step untouched rather than erasing it.
+ *
+ * Serialized, never concurrent: an overlapping call is deferred (and re-run
+ * once this one finishes, via _scheduleBadgeRecheck() — which re-fetches, so
+ * the deferred run still sees fresh counts) rather than diffing against the
+ * same stale snapshot and duplicating a notice.
  *
  * Fire-and-forget from _handleSignIn() — never awaited, so a slow or failed
  * fetch here can't delay entering cloud-scoped mode.
  * @param {{lifetimeReviewCount?: number, lifetimeVisitedCount?: number, firstSeenAt?: string|null}} result - the sync-saved response
+ * @param {{uid?: string|null, keys?: string[]}} [opts] - uid: whose snapshot to
+ *   diff against/write (see _getBadgeSnapshotCache()); keys: categories this
+ *   run may judge, all four when omitted.
  * @returns {Promise<void>}
  */
-async function _checkBadgeLevelUps(result) {
-  const [placesResult, editsResult] = await Promise.all([fetchMySubmittedPlaces(), fetchMySubmittedEdits()]);
+async function _checkBadgeLevelUps(result, { uid = null, keys = null } = {}) {
+  if (_badgeCheckRunning) {
+    _badgeRecheckQueued = true;
+    return;
+  }
+  _badgeCheckRunning = true;
+  try {
+    await _runBadgeLevelUpCheck(result, uid, keys);
+  } finally {
+    _badgeCheckRunning = false;
+  }
+  if (_badgeRecheckQueued) {
+    _badgeRecheckQueued = false;
+    _scheduleBadgeRecheck();
+  }
+}
+
+/**
+ * _checkBadgeLevelUps()'s actual body, split out so the serialization guard
+ * above wraps it without an early-return path being able to skip the
+ * `_badgeCheckRunning` reset.
+ * @param {{lifetimeReviewCount?: number, lifetimeVisitedCount?: number, firstSeenAt?: string|null}} result
+ * @param {string?} uid
+ * @param {string[]?} keys - null = all categories
+ * @returns {Promise<void>}
+ */
+async function _runBadgeLevelUpCheck(result, uid, keys) {
+  // Only fetched when Contributor is actually being judged — the two calls
+  // exist solely to resolve its approved-submission counts.
+  const needsContributor = !keys || keys.includes("contributor");
+  const [placesResult, editsResult] = needsContributor
+    ? await Promise.all([fetchMySubmittedPlaces(), fetchMySubmittedEdits()])
+    : [{ submissions: [] }, { submissions: [] }];
   const approvedPlacesCount = placesResult.submissions.filter((s) => s.status === "live").length;
   const approvedEditsCount = editsResult.submissions.filter((s) => s.status === "live").length;
   const badges = computeBadges({
@@ -141,11 +253,78 @@ async function _checkBadgeLevelUps(result) {
     editsCount: approvedEditsCount,
     firstSeenAt: result.firstSeenAt || null,
   });
-  const levelUps = diffBadgeLevelUps(_getBadgeSnapshotCache(), badges);
+  // Categories this run wasn't given the data to judge are dropped BEFORE
+  // both the diff and the snapshot write — never judged against counts of 0
+  // (which would report no crossing, harmlessly) and never persisted as such
+  // (which would NOT be harmless — see _persistBadgeSnapshot()).
+  const judged = keys ? badges.filter((b) => keys.includes(b.key)) : badges;
+  const levelUps = diffBadgeLevelUps(_getBadgeSnapshotCache(uid), judged);
   for (const b of levelUps) {
     showBadgeNotice({ categoryLabel: b.label, tierName: b.tierName, levelRoman: b.levelRoman, glyph: b.glyph, level: b.level });
   }
-  _persistBadgeSnapshot(badges);
+  _persistBadgeSnapshot(judged, uid);
+}
+
+/**
+ * Queue a debounced in-session badge check — call this right after any action
+ * that can actually raise a badge count, so crossing a threshold while the app
+ * is open is announced there and then instead of waiting for the next app load
+ * or a sign-in on another device (reported: "I just added the review that
+ * earned it, why am I only told next session?").
+ *
+ * Only wired to actions whose count the SERVER has already incremented by the
+ * time we get here — a new review (EVT.MY_REVIEW_SUBMITTED, dispatched after
+ * /api/reviews resolved, and Code.gs's _incrementLifetimeReviewCount() runs
+ * inside that same request) and a new visited mark (the VISITED_TOGGLED
+ * background save's own onSuccess, likewise after Code.gs's
+ * _recordLifetimeVisit()). Hooking anything earlier than the mutation's own
+ * success would re-read the counters before they'd moved and find nothing.
+ *
+ * Not wired to un-marking a visit or deleting a review: both lifetime counters
+ * are deliberately never decremented server-side, so neither can produce a
+ * level-up and a check would only burn requests. Nor to submitting a place/
+ * edit — those earn Contributor credit at APPROVAL, not submission, which is
+ * out-of-band by nature (see _checkBadgeLevelUps()'s doc comment) and stays an
+ * app-load-only transition.
+ * @returns {void}
+ */
+function _scheduleBadgeRecheck() {
+  clearTimeout(_badgeRecheckTimer);
+  _badgeRecheckTimer = setTimeout(_recheckBadgesNow, BADGE_RECHECK_DEBOUNCE_MS);
+}
+
+/**
+ * Re-fetch this account's badge counters and run the level-up check — the
+ * debounce target of _scheduleBadgeRecheck() above.
+ *
+ * Needs its own sync-saved round-trip because the lifetime counters the
+ * badges are computed from (`lifetimeReviewCount`/`lifetimeVisitedCount`,
+ * Code.gs's AccountMeta columns) live only server-side and aren't returned by
+ * the individual save/submit responses — this module's in-memory cloud mirror
+ * tracks the CURRENT saved-places set, which is deliberately a different thing
+ * from the never-decremented lifetime totals. That ONE request is the whole
+ * cost of an in-session check: it carries everything the three in-session
+ * categories need (SYNC_SAVED_BADGE_KEYS).
+ *
+ * Silently does nothing while signed out (badges are an account concept) or if
+ * the account changed while the fetch was in flight — same `_syncGeneration`
+ * guard every other async path in this module uses. `uid` is captured
+ * alongside the token, before the round-trip, for the same reason
+ * _handleSignIn() captures it there: it must be the identity the fetched data
+ * actually belongs to, not whoever happens to be cached once it returns.
+ * @returns {Promise<void>}
+ */
+async function _recheckBadgesNow() {
+  const generation = _syncGeneration;
+  const auth = await _getAuthModule();
+  const account = auth.getCachedAccount();
+  if (!account) return;
+  const idToken = await auth.getIdToken();
+  if (!idToken) return;
+  const uid = account.uid;
+  const result = await _callAccountApi("sync-saved", {}, idToken);
+  if (generation !== _syncGeneration || !result.success) return;
+  await _checkBadgeLevelUps(result, { uid, keys: SYNC_SAVED_BADGE_KEYS });
 }
 
 async function _callAccountApi(action, fields, idToken) {
@@ -347,7 +526,13 @@ async function _handleSignIn() {
       const home = homeRow ? { lat: homeRow.pinLat, lng: homeRow.pinLng, name: homeRow.pinName } : null;
       const visitedIds = saved.filter((s) => s.kind === "visited").map((s) => s.placeId);
       _enterCloudState(favIds, pins, home, visitedIds);
-      _checkBadgeLevelUps(result); // fire-and-forget — never blocks entering cloud mode
+      // Fire-and-forget — never blocks entering cloud mode. All 4 categories
+      // (no `keys`): this is the one run that can notice a Contributor
+      // crossing, since approval happens while the user isn't in the app.
+      // `uid` is the one captured above, alongside the token this `result`
+      // came from — see _getBadgeSnapshotCache() for why the snapshot is
+      // account-scoped.
+      _checkBadgeLevelUps(result, { uid });
       return;
     }
 
@@ -472,6 +657,18 @@ export function initAccountSync() {
     else _exitCloudState();
   });
 
+  // A new review is the other in-session action that can earn a badge (the
+  // Reviewer category). EVT.MY_REVIEW_SUBMITTED fires from reviews.js's
+  // submitReview() only after /api/reviews has confirmed the write, which is
+  // the same request Code.gs increments the lifetime review counter inside —
+  // so by the time this runs the count this reads has already moved. Editing
+  // an existing review dispatches the same event but deliberately does NOT
+  // increment that counter server-side, so the check just finds no crossing
+  // and shows nothing; not worth distinguishing here, since the alternative
+  // (trusting a client-side "was this an edit?" guess) could miss a real
+  // level-up. See _scheduleBadgeRecheck().
+  window.addEventListener(EVT.MY_REVIEW_SUBMITTED, () => _scheduleBadgeRecheck());
+
   window.addEventListener(EVT.FAVOURITE_TOGGLED, (e) => {
     const { placeId, saved } = e.detail || {};
     if (!placeId) return;
@@ -502,7 +699,16 @@ export function initAccountSync() {
     const { placeId, visited } = e.detail || {};
     if (!placeId) return;
     _backgroundSync("visited", visited ? "save" : "unsave", { placeId }, {
-      onSuccess: () => window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} })),
+      onSuccess: () => {
+        window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+        // Only a NEW mark can move the Explorer badge — the server's lifetime
+        // visited SET is never shrunk by an un-mark, and re-marking a place
+        // already in it doesn't grow it either (the check simply finds no
+        // crossing in that case, so no notice). Scheduled from onSuccess
+        // specifically: the counter this reads has only just been incremented
+        // by the request that resolved into this callback.
+        if (visited) _scheduleBadgeRecheck();
+      },
       onFailure: () => {
         setVisitedState(placeId, !visited);
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
