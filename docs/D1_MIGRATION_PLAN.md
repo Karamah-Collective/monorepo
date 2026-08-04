@@ -50,7 +50,7 @@ The live "database" is a Google Sheet read/written through a Google Apps Script 
 - [x] `wishes.js`, `places.js`, `eid-prayers.js` — straightforward D1 query ports.
 - All 6 pass `node --check`.
 
-**⚠️ Follow-up needed, not done here (frontend, out of this phase's scope):** `src/reviews.js`'s `_resolveReviewIdentity()` still falls back to a legacy `verifyToken` when the user isn't signed in but holds a still-valid OTP token (`_getVerificationToken()`) — there's a UI path (likely a "verify by email" flow) that leads here. Since the backend no longer accepts `verifyToken` for `submit`/`check` and `send-otp`/`verify-otp` no longer exist, that path will now fail with a generic "Invalid request"/400 instead of working. **Before cutover, either remove that UI entry point or confirm the resulting error is acceptable** — needs a decision, not just a code change, since it's a real capability being removed (anonymous review without an account), not a bug fix.
+**Resolved**: user chose to remove the legacy fallback entirely. `src/reviews.js` no longer has any `verifyToken`/`isVerified()`/`STORAGE_KEY_VERIFY_TOKEN` code — `_resolveReviewIdentity()` is Firebase-idToken-only, and the review form always shows the sign-in gate (Google/Microsoft/email-magic-link — already the only *new*-token entry point pre-migration) when signed out. Nothing else in `src/` referenced these symbols, so this was a clean, self-contained removal.
 
 ### Phase 5 — New admin API, no UI
 - [ ] `functions/api/admin.js` — all 26 admin GET/POST actions, `adminKey` guard, D1 `batch()` transactions for approval side-effects, unrestricted CORS on this file only.

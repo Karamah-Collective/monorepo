@@ -2,13 +2,11 @@
  * Reviews — in-app community rating & review system.
  *
  * Writing a review requires signing in (Google or email magic link, see
- * src/auth.js) — this replaces the legacy anonymous email-OTP flow for new
- * reviews going forward (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 7). Users
- * who already hold a still-valid OTP verification token from before this
- * change keep working via that token for continuity (isVerified() below) —
- * only the *entry point* that mints new tokens has moved to sign-in.
+ * src/auth.js) — the legacy anonymous email-OTP flow has been fully retired
+ * (docs/D1_MIGRATION_PLAN.md): the backend no longer accepts a verifyToken
+ * at all, so this module is Firebase-idToken-only end to end.
  *
- * Data stored in Google Sheets "Reviews" worksheet, proxied via /api/reviews.
+ * Data stored in Cloudflare D1, proxied via /api/reviews.
  */
 import { esc, showToast, animateElementHeight, isReduceMotionActive, showWelcomeGreeting } from "./utils.js";
 import { EVT } from "./events.js";
@@ -16,7 +14,6 @@ import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTM
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
-const STORAGE_KEY_VERIFY_TOKEN = "hf_verify_token";
 const CACHE_TTL_MS = 300_000; // 5 min local cache
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
@@ -52,48 +49,6 @@ let _overlayClearTimer = null;
 function _animateReviewCardHeight(overlay, changeFn) {
   const card = overlay?.querySelector(".rv-overlay-card");
   animateElementHeight(card, changeFn, { skip: overlay?.classList.contains("hide") });
-}
-
-// ─── Email Verification Token ────────────────────────────────────────────────
-
-/**
- * Get the stored verification token if still valid.
- * @returns {{token: string, expiresAt: number} | null}
- */
-function _getVerificationToken() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_VERIFY_TOKEN);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data.token || !data.expiresAt) return null;
-    if (Date.now() > data.expiresAt) {
-      localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
-      return null;
-    }
-    return data;
-  } catch {
-    localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
-    return null;
-  }
-}
-
-/**
- * Store a verification token in localStorage.
- * @param {string} token
- * @param {number} expiresAt - Unix ms timestamp
- */
-function _storeVerificationToken(token, expiresAt) {
-  try {
-    localStorage.setItem(STORAGE_KEY_VERIFY_TOKEN, JSON.stringify({ token, expiresAt }));
-  } catch { /* quota */ }
-}
-
-/**
- * Check if the user is currently verified.
- * @returns {boolean}
- */
-export function isVerified() {
-  return _getVerificationToken() !== null;
 }
 
 // ─── Data Loading ────────────────────────────────────────────────────────────
@@ -229,24 +184,19 @@ export function getPlaceReviews(placeId) {
 
 /**
  * Resolve the current identity to attach to a reviews API call: a Firebase
- * ID token when signed in (preferred — see src/auth.js), falling back to a
- * still-valid legacy OTP verification token for continuity.
- * @returns {Promise<{idToken: string}|{verifyToken: string}|null>}
+ * ID token when signed in (see src/auth.js), or null when signed out.
+ * @returns {Promise<{idToken: string}|null>}
  */
 async function _resolveReviewIdentity() {
   const auth = await _getAuthModule();
-  if (auth.getCachedAccount()) {
-    const idToken = await auth.getIdToken();
-    if (idToken) return { idToken };
-  }
-  const verification = _getVerificationToken();
-  if (verification) return { verifyToken: verification.token };
-  return null;
+  if (!auth.getCachedAccount()) return null;
+  const idToken = await auth.getIdToken();
+  return idToken ? { idToken } : null;
 }
 
 /**
  * Submit a review for a place. Requires the caller to be signed in (Google or
- * email magic link) or hold a still-valid legacy OTP verification token.
+ * email magic link).
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
@@ -754,8 +704,7 @@ function _relativeTime(timestamp) {
 // ─── UI: Review Form ─────────────────────────────────────────────────────────
 
 /**
- * Show the review form — gated on sign-in (Google/email link) unless the
- * caller still holds a valid legacy OTP token from before Phase 7.
+ * Show the review form — gated on sign-in (Google/Microsoft/email link).
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @returns {Promise<void>}
@@ -764,11 +713,6 @@ async function _showReviewForm(placeId, overlay) {
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
 
   const list = overlay.querySelector(".rv-list");
-
-  if (isVerified()) {
-    _showRatingForm(placeId, overlay, list);
-    return;
-  }
 
   const auth = await _getAuthModule();
   if (auth.getCachedAccount()) {
@@ -780,8 +724,8 @@ async function _showReviewForm(placeId, overlay) {
 }
 
 /**
- * Show the sign-in gate (Google popup, or an email magic link) that replaces
- * the legacy anonymous OTP flow as the entry point for new reviewers.
+ * Show the sign-in gate (Google/Microsoft popup, or an email magic link) —
+ * the only entry point for writing a review.
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @param {HTMLElement} insertBefore
@@ -1057,7 +1001,6 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     };
     showToast(msgs[result.error] || "Submission failed", "error");
     if (result.error === "invalid_token") {
-      localStorage.removeItem(STORAGE_KEY_VERIFY_TOKEN);
       // Re-render from scratch — current auth state decides sign-in-gate
       // vs. rating form, same as any other fresh open.
       openReviewsOverlay(placeId, reopenPlaceName);
