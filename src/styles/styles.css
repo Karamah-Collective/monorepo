@@ -2926,6 +2926,49 @@ body.dark-mode .sp-tip {
   flex-shrink: 0;
 }
 
+/* ─── Profile's own long lists: capped height, self-scrolling ───
+   Every list on this pane (submitted places, submitted edits, reviews) grows
+   with the account's own history, and the pane has no height of its own to
+   push back with: src/menu.js's _syncPaneHeight() pins the sheet to whatever
+   the ACTIVE pane's full natural content height is, so before this, the more
+   someone contributed the taller the entire Profile pane became — with the
+   sections at the bottom ("Your reviews", then "Your data": export/erase my
+   data) drifting further and further down the sheet's own scroll for exactly
+   the most active accounts. Each list now caps itself and scrolls internally
+   instead, so the pane's overall height is bounded regardless of history and
+   every section stays close at hand.
+
+   The caps are viewport-relative-with-a-ceiling rather than a flat px value,
+   so a short phone doesn't spend most of its screen on one list while a
+   desktop panel still gets a sensible upper bound. Deliberately NOT set to an
+   exact multiple of a row height: a half-visible row at the cut is the
+   clearest "there is more below" affordance available without inventing a new
+   scroll-fade pattern this codebase has no precedent for.
+
+   .t-scroll (design-tokens.css, also on these elements) supplies the
+   overflow-y, the themed thin scrollbar, and — importantly here —
+   overscroll-behavior: contain, so hitting the end of one of these inner
+   lists doesn't chain into scrolling the sheet body underneath it. Nesting a
+   scroller inside the sheet is safe from the sheet's own drag-to-dismiss:
+   initSheetDrag() (src/utils.js) only ever starts a drag from .sheet-drag/
+   .sheet-head, never from the scrollable body. */
+.pf-scroll-list {
+  max-height: min(180px, 22vh);
+  /* Same reasoning as #mp-scroll's own overflow-x above: .t-scroll only sets
+     overflow-y, and per the overflow spec a non-visible overflow-y forces the
+     other axis to compute to `auto` — which would let the rows' negative-margin
+     hover chips (.pf-submission-name/.acc-review-place-name) put a stray
+     horizontal scrollbar under these lists. Nothing here is ever meant to
+     scroll sideways. */
+  overflow-x: hidden;
+}
+/* Review cards are roughly 2.5× the height of a submission row (stars/score/
+   time meta line, place name, and the review text itself), so the same cap
+   would show barely one and a half of them. */
+#profile-my-reviews.pf-scroll-list {
+  max-height: min(280px, 30vh);
+}
+
 /* Submitted places / edits lists */
 .pf-submission-list {
   padding: 0 14px var(--sp-2);

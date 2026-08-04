@@ -1,8 +1,9 @@
 /**
  * Cloudflare Pages Function – /api/account
  *
- * Cross-device sync for signed-in users: favourites, saved custom pins, and
- * home location (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase 6/8). Every action
+ * Cross-device sync for signed-in users: favourites, saved custom pins, home
+ * location, and "visited" marks (docs/ACCOUNTS_AND_REDESIGN_PLAN.md Phase
+ * 6/8, plus the badges feature's own 'visited' kind). Every action
  * requires a Firebase ID token, verified here via ../_firebase-verify.js and
  * reduced to an emailHash before anything reaches Google Sheets — no
  * plaintext email is ever forwarded, per the Phase 6 privacy rule.
@@ -30,7 +31,15 @@ const MAX_BODY_SIZE = 2048;
 const MAX_ID_TOKEN_LEN = 2048;
 const MAX_PLACE_ID_LEN = 20;
 const MAX_PIN_NAME_LEN = 200;
-const SAVED_PLACE_KINDS = ["favorite", "pin", "home"];
+// Must stay in sync with Code.gs's own SAVED_PLACE_KINDS — a kind missing here
+// is rejected with invalid_kind before it ever reaches Apps Script, however
+// completely the sheet side supports it ("visited" was exactly that: the
+// badges-feature Code.gs deploy added it server-side, but every client
+// save/unsave still 400'd here, surfacing as "Couldn't mark as visited" and a
+// permanently-0 "Visited" stat on the Profile page).
+const SAVED_PLACE_KINDS = ["favorite", "pin", "home", "visited"];
+// Kinds identified by a place id rather than coordinates.
+const PLACE_ID_KINDS = ["favorite", "visited"];
 
 function allowedOrigin(request) {
   const origin = request.headers.get("Origin") || "";
@@ -141,7 +150,7 @@ export async function onRequestPost(context) {
     }
     if (body.pinName) gasPayload.pinName = truncate(body.pinName.toString(), MAX_PIN_NAME_LEN);
 
-    if (kind === "favorite" && !gasPayload.placeId) {
+    if (PLACE_ID_KINDS.includes(kind) && !gasPayload.placeId) {
       return json({ error: "missing_place_id" }, 400, headers);
     }
     if ((kind === "pin" || kind === "home") && (gasPayload.pinLat == null || gasPayload.pinLng == null)) {

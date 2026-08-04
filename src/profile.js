@@ -82,6 +82,16 @@ let _submittedPlacesCache = [];
 let _submittedEditsCache = [];
 let _accountMetaCache = { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
 
+// Whether _accountMetaCache above holds a REAL server response yet, as opposed
+// to the all-zeroes initial value. _renderCard() needs this to tell "this
+// account has no activity" apart from "this account's activity hasn't arrived
+// yet" — the two are indistinguishable from the cache's values alone, and
+// treating the second as the first made every account's badge flair flash
+// "Newcomer" on open before correcting itself to the real badge a moment
+// later. Reset on sign-out/account switch so the next account never inherits
+// the previous one's resolved state.
+let _accountMetaLoaded = false;
+
 let _authModulePromise = null;
 function _getAuthModule() {
   if (!_authModulePromise) _authModulePromise = import("./auth.js");
@@ -110,6 +120,9 @@ export async function initProfile() {
 
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
     _account = e.detail?.account || null;
+    // Whatever meta is cached belongs to the account that just went away —
+    // never to whoever signs in next (see _accountMetaLoaded's declaration).
+    _accountMetaLoaded = false;
     // No further action needed here on sign-out — src/menu.js's own
     // EVT.AUTH_CHANGED listener closes the merged sheet if the Profile pane
     // is the one on screen at the time, since it's the module that owns the
@@ -151,6 +164,7 @@ async function _refreshStatsLive() {
   // bail rather than render a signed-out account's data or into a gone sheet.
   if (!_account || menuSheetEl.classList.contains("shut")) return;
   _accountMetaCache = meta;
+  _accountMetaLoaded = true;
   _renderStats();
 }
 
@@ -191,6 +205,7 @@ export async function loadProfileContent() {
   _submittedPlacesCache = placesResult.submissions;
   _submittedEditsCache = editsResult.submissions;
   _accountMetaCache = meta;
+  _accountMetaLoaded = true;
 
   _renderCard(); // re-render with "member since"/top badge now resolved
   _renderStats();
@@ -263,12 +278,22 @@ function _renderCard() {
   // (see account-profile.js's computeTopBadge() doc comment). Deliberately
   // just this one small pill next to the name, not a dedicated section —
   // scaled down after feedback that a full 4-card grid was too much for
-  // what's meant to be a flair, not its own destination. Every account gets
-  // a pill, even at zero activity ("Newcomer") — per user feedback, this
-  // never renders empty. Shows "Newcomer" on the FIRST (pre-fetch) render
-  // too, same timing as memberSince above — self-corrects to the real
-  // badge once loadProfileContent()'s fetch resolves, if there is one.
-  const topBadge = computeTopBadge({
+  // what's meant to be a flair, not its own destination. Every account with
+  // resolved data gets a pill, even at zero activity ("Newcomer") — per user
+  // feedback, this never renders empty for a loaded account.
+  //
+  // Rendered ONLY once the data behind it has actually arrived
+  // (_accountMetaLoaded): computeTopBadge() on the pre-fetch cache's zeroes
+  // returns "Newcomer" for everyone, so the FIRST render used to flash that
+  // at accounts that had long outgrown it before correcting itself a moment
+  // later — showing a wrong badge briefly is worse than showing none, since
+  // the wrong one reads as the account's real standing. Nothing is
+  // substituted in its place (no skeleton/"Loading…" pill): the pill is
+  // small flair on a row that also carries the name and email, so its
+  // absence for one fetch reads as calm, not broken. memberSince above is
+  // deliberately left as-is — it already renders nothing at all until
+  // resolved, which is this same rule.
+  const topBadge = _accountMetaLoaded ? computeTopBadge({
     lifetimeReviewCount: _accountMetaCache.lifetimeReviewCount,
     lifetimeVisitedCount: _accountMetaCache.lifetimeVisitedCount,
     // Contributor badge credit only counts APPROVED submissions (status
@@ -281,11 +306,12 @@ function _renderCard() {
     placesAddedCount: _approvedCount(_submittedPlacesCache),
     editsCount: _approvedCount(_submittedEditsCache),
     firstSeenAt: _accountMetaCache.firstSeenAt,
-  });
-  const badgePillText = topBadge.unranked
-    ? topBadge.tierName
-    : `${topBadge.tierName} ${topBadge.levelRoman} — ${topBadge.label}`;
-  const badgePillHtml = `<span class="pf-badge-pill pf-badge-pill--lvl${topBadge.level}">${esc(badgePillText)}</span>`;
+  }) : null;
+  const badgePillHtml = topBadge
+    ? `<span class="pf-badge-pill pf-badge-pill--lvl${topBadge.level}">${esc(
+        topBadge.unranked ? topBadge.tierName : `${topBadge.tierName} ${topBadge.levelRoman} — ${topBadge.label}`,
+      )}</span>`
+    : "";
 
   cardBody.innerHTML = `<div class="menu-account-profile">
     ${avatarHTML}

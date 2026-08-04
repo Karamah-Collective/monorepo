@@ -42,7 +42,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260804-2" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260804-4" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -1147,21 +1147,25 @@
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your submitted places</div>
-                <div id="profile-submitted-places" class="pf-submission-list">
+                <!-- pf-scroll-list + t-scroll: this list caps its own height and
+                     scrolls internally rather than growing the Profile pane (and
+                     with it the whole sheet) without bound — see .pf-scroll-list
+                     in styles.css. Same for "submitted edits"/"reviews" below. -->
+                <div id="profile-submitted-places" class="pf-submission-list pf-scroll-list t-scroll">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your submitted edits</div>
-                <div id="profile-submitted-edits" class="pf-submission-list">
+                <div id="profile-submitted-edits" class="pf-submission-list pf-scroll-list t-scroll">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your reviews</div>
-                <div id="profile-my-reviews" class="rv-list">
+                <div id="profile-my-reviews" class="rv-list pf-scroll-list t-scroll">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
