@@ -70,7 +70,7 @@ Ran `wrangler pages dev . --port 8788` against local D1 (seeded with the real mi
 - [x] Real Pages project name discovered: **`maps`** (not `halal-finder` — fixed in `wrangler.toml`). Also discovered the user's separate admin panel is real and already live at `admin.maps.karamahcollective.com` (Pages project `halal-finder-admin`) — the eventual repoint target for Phase 5's `/api/admin`.
 - [x] `ADMIN_SECRET` generated fresh, set as a **production** Cloudflare secret via `wrangler pages secret put` (CLI only supports production — Preview secrets need the dashboard, see below).
 - [x] Confirmed `NOMINATIM_REV`/`NOMINATIM_VB` already exist as production secrets from before this migration — zero new setup needed for geocoding.
-- [ ] **`MAPS_API_KEY`** — waiting on the user to provide it (not previously a Cloudflare secret at all; it only ever lived in Apps Script's Script Properties, since GAS did Places enrichment internally before this migration).
+- [x] **`MAPS_API_KEY`** — provided by the user, set as a production secret.
 - [ ] **Dashboard visit needed (batch these together):**
   1. Bind D1 to the `maps` Pages project (Settings → Functions → D1 database bindings): Production → `halal-finder-db`, Preview → `halal-finder-db-preview`, both as binding name `DB`. No CLI equivalent exists for Git-integration Pages projects.
   2. Add Preview-environment secrets `ADMIN_SECRET` and `MAPS_API_KEY` (Settings → Environment variables → Preview tab) — same values as production, CLI can't set these.
