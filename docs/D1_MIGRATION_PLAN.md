@@ -24,11 +24,16 @@ The live "database" is a Google Sheet read/written through a Google Apps Script 
 - [x] `wrangler.toml` with a local-only D1 binding named `DB` (no login needed for `--local`).
 - [x] Schema applied locally via `npx wrangler d1 execute halal-finder-db --local --file=schema.sql`; all 14 tables confirmed present (`account_meta`, `contacts`, `draft`, `edits`, `eid_new`, `eid_prayers`, `event_edits`, `events`, `new_places`, `places`, `reviews`, `saved_places`, `tags`, `wishes`).
 
-### Phase 2 — Migration tooling
-- [ ] `xlsx` added as a devDependency only.
-- [ ] `scripts/migrate-to-d1.js` — parses `scripts/local-backups/sheets/halal-finder-sheet.xlsx`, validates headers, transforms rows (splits Approved/reject-reason overload, applies the same blank-row-skip guards `getPlacesJSON()` uses), generates batched INSERT SQL into gitignored `scripts/migrate-to-d1/generated/`.
-- [ ] `--verify-only` mode: row-count + SHA-256 checksum comparison (source xlsx vs. D1) per table, plus random full-row diffs.
-- [ ] Rehearsed end-to-end against local D1, verification clean.
+### Phase 2 — Migration tooling ✅ done
+- [x] `xlsx` added as a devDependency only.
+- [x] `scripts/migrate-to-d1.js` — parses `scripts/local-backups/sheets/halal-finder-sheet.xlsx`, transforms rows, generates batched INSERT SQL into gitignored `scripts/migrate-to-d1/generated/`. Batches are capped at 80KB (D1 rejects statements over ~100KB with `SQLITE_TOOBIG` — discovered empirically, not documented).
+- [x] `--verify-only` mode: row-count + SHA-256 checksum comparison (source xlsx vs. D1) per table; prints sample mismatched rows on failure.
+- [x] Rehearsed end-to-end against local D1 with the **real production backup** (today's xlsx pull) — all 14 tables verified byte-for-byte clean: draft=180, new_places=169, edits=42, contacts=1, places=185 (matches the ~185 places the user confirmed), tags=63, eid_new=1, eid_prayers=20, events=2, event_edits=3, wishes=4, reviews=192, saved_places=25, account_meta=3. Zero constraint violations (10 real boycotted places, no duplicate reviews, no multi-home accounts).
+
+**Important discovery during this phase** (real data disagreed with `Code.gs`'s header comments in ways worth remembering):
+- Several sheets (`EidNew`, `EventEdit`, `Contact`, `Events`, `Wishes`, `Edit`) are padded to ~999 physical rows by Sheets/export, almost all blank — `migrate-to-d1.js` filters to fully-non-blank rows only, which is what makes the row counts above correct.
+- `Events`/`EventEdit` have 8 extra real columns (`location_name`, `location_address`, `lat`, `lng`, `organizer_name`, `organizer_place_id`, `location_gmaps_link`, plus a genuinely-used `reject_reason`) beyond `Code.gs`'s documented `EVENT_HEADERS`/`EVENT_EDIT_HEADERS`. All but `reject_reason` are confirmed dead (no Code.gs function reads/writes them, always blank in real data) and were not migrated. `reject_reason` **is** real (written by `adminRejectEvent`/`adminRejectEventEdit`) and is migrated as its own column, not an overload.
+- `adminRejectEid`'s `reason` parameter is silently discarded by `Code.gs` today (no column stores it) — the D1 `eid_new.reject_reason` column exists anyway for a future admin.js to actually use, at zero cost.
 
 ### Phase 3 — Shared logic ports
 - [ ] `functions/_shared.js` (dedupe `sha256Hex`/`truncate`/`allowedOrigin`/`json`).

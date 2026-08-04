@@ -37,6 +37,7 @@
   "homepage": "https://github.com/moontasirsoumik/halal-finder#readme",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "serve": "^14.2.5"
+    "serve": "^14.2.5",
+    "xlsx": "^0.18.5"
   }
 }
