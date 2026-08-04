@@ -75,7 +75,7 @@ async function saveSavedPlace(db, emailHash, { kind, placeId, pinLat, pinLng, pi
 
   if (kind === "favorite" || kind === "visited") {
     const { meta } = await db.prepare(
-      "INSERT INTO saved_places (email_hash, kind, place_id, pin_lat, pin_lng, pin_name, saved_at) VALUES (?, ?, ?, NULL, NULL, '', ?) ON CONFLICT(email_hash, kind, place_id) DO NOTHING"
+      "INSERT INTO saved_places (email_hash, kind, place_id, pin_lat, pin_lng, pin_name, saved_at) VALUES (?, ?, ?, NULL, NULL, '', ?) ON CONFLICT(email_hash, kind, place_id) WHERE kind IN ('favorite','visited') DO NOTHING"
     ).bind(emailHash, kind, placeId, new Date().toISOString()).run();
     // rows_written === 0 means the ON CONFLICT DO NOTHING branch fired, i.e.
     // this was already saved — mirrors Code.gs's alreadyExists no-op exactly,
