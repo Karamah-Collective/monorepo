@@ -308,7 +308,6 @@ export async function onRequestPost(context) {
   } catch {
     return json({ error: "Verification unavailable. Please try again." }, 502, responseHeaders);
   }
-  console.log("RECAPTCHA_DEBUG", JSON.stringify({ captcha, tokenLen: token.length, hostname: request.headers.get("Origin") }));
   if (!captcha.success) return json({ error: "Verification failed. Please try again." }, 403, responseHeaders);
   if (captcha.score < MIN_SCORE) return json({ error: "Submission blocked. Please try again later." }, 403, responseHeaders);
 
