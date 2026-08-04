@@ -71,9 +71,7 @@ Ran `wrangler pages dev . --port 8788` against local D1 (seeded with the real mi
 - [x] `ADMIN_SECRET` generated fresh, set as a **production** Cloudflare secret via `wrangler pages secret put` (CLI only supports production — Preview secrets need the dashboard, see below).
 - [x] Confirmed `NOMINATIM_REV`/`NOMINATIM_VB` already exist as production secrets from before this migration — zero new setup needed for geocoding.
 - [x] **`MAPS_API_KEY`** — provided by the user, set as a production secret.
-- [ ] **Dashboard visit needed (batch these together):**
-  1. Bind D1 to the `maps` Pages project (Settings → Functions → D1 database bindings): Production → `halal-finder-db`, Preview → `halal-finder-db-preview`, both as binding name `DB`. No CLI equivalent exists for Git-integration Pages projects.
-  2. Add Preview-environment secrets `ADMIN_SECRET` and `MAPS_API_KEY` (Settings → Environment variables → Preview tab) — same values as production, CLI can't set these.
+- [x] **Dashboard visit — done.** D1 bound on both environments (Production → `halal-finder-db`, Preview → `halal-finder-db-preview`, binding name `DB`). Note: this Pages project's Settings has a Production/Preview toggle near the top (easy to miss — it's above the "Build" section) — Preview turned out to have its own, mostly-empty variable set (only `DIGITRANSIT_URL`/`DT_API_KEY`/`NOMINATIM_REV`/`NOMINATIM_VB`/`TRANSITOUS_URL` pre-existed there). Added `ADMIN_SECRET`, `MAPS_API_KEY`, and `RECAPTCHA_SECRET` (needed for `/api/submit` and `/api/wishes` POST — not flagged until this step) to Preview as secrets. All three real secret values are also saved locally in `src/config.local.js` (gitignored) and `.dev.vars` for future reference/local testing.
 - [ ] Branch pushed, preview deployment clicked through manually by the user
 - [ ] Final go-ahead given: fresh data pull → `--remote` import into `halal-finder-db` → verify → merge to production
 
