@@ -20,7 +20,10 @@ Approvals used to mean hand-editing Google Sheet cells, then were deferred to a 
 
 - [x] **Firebase console** (`halal-map-karamah` project → Authentication → Sign-in method): Email/Password enabled and saved. "Email link (passwordless sign-in)" intentionally left disabled — confirmed by the user that this feature is hidden/unused in the main public app too, so no conflict.
 - [x] **Cloudflare Pages — repoint `halal-finder-admin`**: connected to `Karamah-Collective/halal-finder`, production branch `main`, build command `npm install && npm run build`, output `dist`, root directory `admin`, automatic deployments enabled. Confirmed live in the dashboard.
-- [ ] **Build watch paths** on the `halal-finder-admin` project (Settings → Builds): was showing `*` (rebuilds on every repo commit) — being changed to `admin/*` so it doesn't rebuild on every public-site commit.
+- [x] **Build watch paths** on the `halal-finder-admin` project: set to `admin/*`, confirmed live in the dashboard.
+- [x] Committed and pushed all admin-dashboard code to `origin/main` (commit `8983498`) — triggered `halal-finder-admin`'s first build, which **failed** at the deploy step: `"build output directory is outside of the repository"`. Root cause: no `wrangler.toml` inside `admin/`, so Cloudflare's config auto-detection walked up to the repo root's `wrangler.toml` (`pages_build_output_dir = "."`), which resolves outside `admin/`'s scope.
+- [x] Fix: added `admin/wrangler.toml` (`pages_build_output_dir = "dist"`), committed and pushed (`5c4a878`). Check the Deployments tab again to confirm this build succeeds.
+- [ ] **Important nuance**: this push does NOT put the new Firebase-auth backend live at `maps.karamahcollective.com/api/admin` — that Pages project ("maps") only auto-builds from `deploy`/`preview` branches, not `main`, per this repo's existing convention. Production's `/api/admin` is still running the *old* `adminKey`-based code until the usual `deploy` promotion step is run separately. Test against local `wrangler pages dev` first (already verified working for the auth-rejection paths); only promote to `deploy` once the local end-to-end test passes.
 
 ## Manual steps — deferred (not blocking)
 
