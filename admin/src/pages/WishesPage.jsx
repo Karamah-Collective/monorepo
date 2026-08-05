@@ -61,7 +61,7 @@ export default function WishesPage() {
   );
 
   return (
-    <div>
+    <div className="pp-page">
       <h1 className="pp-page-title">Wishes</h1>
       {isLoading && <p>Loading…</p>}
       {error && <p className="pp-error-text">{error.message}</p>}

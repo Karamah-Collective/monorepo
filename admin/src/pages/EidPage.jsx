@@ -63,22 +63,26 @@ export default function EidPage() {
   );
 
   return (
-    <div>
+    <div className="pp-page">
       <h1 className="pp-page-title">Eid Prayers</h1>
 
-      <h2 style={{ fontSize: 15 }}>Pending Submissions</h2>
-      {pending.isLoading && <p>Loading…</p>}
-      {pending.error && <p className="pp-error-text">{pending.error.message}</p>}
-      {pending.data && (
-        <DataTable data={pending.data} columns={pendingColumns} getRowId={(row) => row.rowId} emptyMessage="No pending Eid submissions." />
-      )}
+      <div className="pp-page" style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px" }}>Pending Submissions</h2>
+        {pending.isLoading && <p>Loading…</p>}
+        {pending.error && <p className="pp-error-text">{pending.error.message}</p>}
+        {pending.data && (
+          <DataTable data={pending.data} columns={pendingColumns} getRowId={(row) => row.rowId} emptyMessage="No pending Eid submissions." />
+        )}
+      </div>
 
-      <h2 style={{ fontSize: 15, marginTop: 28 }}>Approved Eid Prayers</h2>
-      {prayers.isLoading && <p>Loading…</p>}
-      {prayers.error && <p className="pp-error-text">{prayers.error.message}</p>}
-      {prayers.data && (
-        <DataTable data={prayers.data} columns={prayerColumns} getRowId={(row) => String(row.id)} emptyMessage="No Eid prayer locations yet." />
-      )}
+      <div className="pp-page">
+        <h2 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px" }}>Approved Eid Prayers</h2>
+        {prayers.isLoading && <p>Loading…</p>}
+        {prayers.error && <p className="pp-error-text">{prayers.error.message}</p>}
+        {prayers.data && (
+          <DataTable data={prayers.data} columns={prayerColumns} getRowId={(row) => String(row.id)} emptyMessage="No Eid prayer locations yet." />
+        )}
+      </div>
     </div>
   );
 }

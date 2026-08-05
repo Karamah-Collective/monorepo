@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
-// A tiny inline popover (not a full modal) for the one field a rejection
-// needs — keeps the reject flow to "click Reject, type why, confirm."
-export default function ReasonPrompt({ onSubmit, onCancel }) {
+// Rendered via a portal at a fixed screen position (see useAnchoredPopover)
+// so it floats above the table regardless of the row's own scroll clipping.
+export default function ReasonPrompt({ style, popoverRef, onSubmit, onCancel }) {
   const [reason, setReason] = useState("");
 
-  return (
-    <div className="pp-reason-popover" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div className="pp-reason-popover" style={style} ref={popoverRef} onClick={(e) => e.stopPropagation()}>
       <textarea
         placeholder="Reason (optional)"
         value={reason}
@@ -21,6 +22,7 @@ export default function ReasonPrompt({ onSubmit, onCancel }) {
           Confirm reject
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

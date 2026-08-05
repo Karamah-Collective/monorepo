@@ -62,7 +62,7 @@ export default function ReviewsPage() {
   );
 
   return (
-    <div>
+    <div className="pp-page">
       <h1 className="pp-page-title">Reviews</h1>
       {isLoading && <p>Loading…</p>}
       {error && <p className="pp-error-text">{error.message}</p>}

@@ -1,7 +1,25 @@
+// A real styled switch, not a native checkbox — native checkboxes barely
+// theme in dark mode (browsers mostly ignore custom styling on them), which
+// read as a jarring unstyled white box against a dark table.
 export default function ToggleCell({ checked, onChange, disabled, label }) {
   return (
     <label className="pp-toggle-cell">
-      <input type="checkbox" checked={!!checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <span
+        className={`pp-switch${checked ? " pp-switch-on" : ""}`}
+        role="switch"
+        aria-checked={!!checked}
+        tabIndex={disabled ? -1 : 0}
+        onClick={() => !disabled && onChange(!checked)}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            onChange(!checked);
+          }
+        }}
+        aria-disabled={disabled || undefined}
+      >
+        <span className="pp-switch-dot" />
+      </span>
       {label}
     </label>
   );

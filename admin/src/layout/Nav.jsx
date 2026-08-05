@@ -1,37 +1,47 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { Icons, CloseIcon } from "../icons.jsx";
 
 const LINKS = [
-  { to: "/", label: "Dashboard", end: true },
-  { to: "/places", label: "Places" },
-  { to: "/submissions/new", label: "Pending New" },
-  { to: "/submissions/edits", label: "Pending Edits" },
-  { to: "/events", label: "Events" },
-  { to: "/events/edits", label: "Event Edits" },
-  { to: "/eid", label: "Eid" },
-  { to: "/reviews", label: "Reviews" },
-  { to: "/wishes", label: "Wishes" },
-  { to: "/contacts", label: "Contacts" },
-  { to: "/log", label: "Activity Log" },
+  { to: "/", label: "Dashboard", end: true, icon: "dashboard" },
+  { to: "/places", label: "Places", icon: "pin" },
+  { to: "/submissions/new", label: "Pending New", icon: "plusCircle" },
+  { to: "/submissions/edits", label: "Pending Edits", icon: "pencil" },
+  { to: "/events", label: "Events", end: true, icon: "calendar" },
+  { to: "/events/edits", label: "Event Edits", icon: "calendar" },
+  { to: "/eid", label: "Eid", icon: "moon" },
+  { to: "/reviews", label: "Reviews", icon: "star" },
+  { to: "/wishes", label: "Wishes", icon: "heart" },
+  { to: "/contacts", label: "Contacts", icon: "mail" },
+  { to: "/log", label: "Activity Log", icon: "list" },
 ];
 
-export default function Nav() {
+export default function Nav({ open, onClose }) {
   const { user, signOut } = useAuth();
 
   return (
-    <nav className="pp-nav">
-      <div className="pp-nav-brand">Karamah Maps Admin</div>
+    <nav className={`pp-nav pp-scroll${open ? " pp-nav-open" : ""}`}>
+      <div className="pp-nav-brand">
+        Karamah Maps Admin
+        <button className="pp-nav-close" onClick={onClose} aria-label="Close menu">
+          <CloseIcon />
+        </button>
+      </div>
       <div className="pp-nav-links">
-        {LINKS.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            className={({ isActive }) => "pp-nav-link" + (isActive ? " active" : "")}
-          >
-            {link.label}
-          </NavLink>
-        ))}
+        {LINKS.map((link) => {
+          const Icon = Icons[link.icon];
+          return (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => "pp-nav-link" + (isActive ? " active" : "")}
+            >
+              <Icon />
+              {link.label}
+            </NavLink>
+          );
+        })}
       </div>
       <div className="pp-nav-user">
         {user?.displayName || user?.email}

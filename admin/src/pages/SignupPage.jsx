@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { ADMIN_EMAIL_DOMAIN } from "../firebase.js";
+import PasswordInput from "../components/PasswordInput.jsx";
 
 export default function SignupPage() {
   const { user, signUp } = useAuth();
@@ -53,7 +54,7 @@ export default function SignupPage() {
         </div>
         <div className="pp-field">
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput id="password" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         {error && <div className="pp-error-text">{error}</div>}
         <button className="pp-btn pp-btn-primary" type="submit" disabled={submitting}>

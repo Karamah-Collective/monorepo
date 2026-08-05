@@ -1,24 +1,28 @@
-import { useState } from "react";
 import ReasonPrompt from "./ReasonPrompt.jsx";
+import useAnchoredPopover from "./useAnchoredPopover.js";
 
 // Approve fires immediately (no confirmation — approvals are the common,
-// low-risk path). Reject opens a one-field inline reason prompt first.
+// low-risk path). Reject opens a one-field floating reason prompt first,
+// anchored to the button so it never gets clipped by the table's own
+// scroll region (see useAnchoredPopover).
 export default function ActionCell({ onApprove, onReject, approving, rejecting }) {
-  const [showReason, setShowReason] = useState(false);
+  const { open, style, triggerRef, popoverRef, openPopover, close } = useAnchoredPopover();
 
   return (
-    <div className="pp-action-cell" style={{ position: "relative" }}>
+    <div className="pp-action-cell">
       <button className="pp-btn pp-btn-approve" onClick={onApprove} disabled={approving || rejecting}>
         {approving ? "…" : "Approve"}
       </button>
-      <button className="pp-btn pp-btn-reject" onClick={() => setShowReason(true)} disabled={approving || rejecting}>
+      <button ref={triggerRef} className="pp-btn pp-btn-reject" onClick={openPopover} disabled={approving || rejecting}>
         {rejecting ? "…" : "Reject"}
       </button>
-      {showReason && (
+      {open && (
         <ReasonPrompt
-          onCancel={() => setShowReason(false)}
+          style={style}
+          popoverRef={popoverRef}
+          onCancel={close}
           onSubmit={(reason) => {
-            setShowReason(false);
+            close();
             onReject(reason);
           }}
         />

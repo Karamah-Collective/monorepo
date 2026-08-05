@@ -37,7 +37,10 @@ export default function DataTable({ data, columns, getRowId, emptyMessage = "No 
   const rows = table.getRowModel().rows;
 
   return (
-    <div>
+    // Card fills the remaining vertical space of its .pp-page parent. Only
+    // .pp-table-scroll (the row area) scrolls — the toolbar and pagination
+    // stay put and are never pushed off-screen by a long row list.
+    <div className="pp-table-card">
       <div className="pp-table-toolbar">
         <input
           className="pp-table-search"
@@ -51,7 +54,7 @@ export default function DataTable({ data, columns, getRowId, emptyMessage = "No 
         </span>
       </div>
 
-      <div className="pp-table-wrap">
+      <div className="pp-table-scroll pp-scroll">
         <table className="pp-table">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -92,20 +95,21 @@ export default function DataTable({ data, columns, getRowId, emptyMessage = "No 
             )}
           </tbody>
         </table>
-        {table.getPageCount() > 1 && (
-          <div className="pp-table-pagination">
-            <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-              ← Prev
-            </button>
-            <span>
-              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-            </span>
-            <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-              Next →
-            </button>
-          </div>
-        )}
       </div>
+
+      {table.getPageCount() > 1 && (
+        <div className="pp-table-pagination">
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+            ← Prev
+          </button>
+          <span>
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </span>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,29 +1,56 @@
+/* Deliberately a single, fixed "semi-light" theme — no dark mode, no
+   prefers-color-scheme switching. Soft off-white surfaces (never stark
+   pure-white glare), a muted near-black text color instead of pure black,
+   and clearly saturated (not washed-out) accent colors for good contrast
+   without feeling harsh. */
 :root {
-  --accent: #08705b;
-  --accent-dark: #055a48;
+  --accent: #0d8a70;
+  --accent-dark: #076b57;
+  --accent-light: #12a884;
   --success: #1fa86a;
   --success-bg: #e6f6ee;
-  --danger: #c0392b;
-  --danger-bg: #fbeae8;
-  --warning: #b8860b;
-  --warning-bg: #fdf3d9;
-  --text: #1a1a1a;
-  --text-muted: #6b6b6b;
-  --border: #e0e0e0;
+  --danger: #e0483a;
+  --danger-bg: #fdeae8;
+  --warning: #d68a00;
+  --warning-bg: #fdf1d9;
+  --info: #2f6fed;
+  --info-bg: #e8f0fe;
+  --violet: #7c5cf0;
+  --violet-bg: #f0ecfe;
+  --text: #22262b;
+  --text-muted: #667085;
+  --text-faint: #98a2b3;
+  --border: #e4e7ec;
+  --border-strong: #cfd4dc;
   --bg: #ffffff;
-  --bg-alt: #f7f8f9;
-  --bg-nav: #0d3b32;
-  --radius: 6px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --bg-alt: #f7f8fa;
+  --bg-inset: #eef0f3;
+  --bg-nav: #0f3d33;
+  --bg-nav-hover: rgba(255, 255, 255, 0.1);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow: 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.16);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nav-width: 236px;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
   color: var(--text);
   background: var(--bg-alt);
 }
@@ -38,10 +65,37 @@ select,
 textarea {
   font-family: inherit;
   font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
 }
 
 a {
   color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Thin, unobtrusive scrollbars for the scroll regions this app relies on */
+.pp-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.pp-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pp-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+.pp-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .pp-loading-screen {

@@ -36,16 +36,16 @@ export default function VerifyEmailPage() {
     <div className="pp-auth-screen">
       <div className="pp-auth-card">
         <h1>Verify your email</h1>
-        <p>
-          We sent a verification link to <strong>{user.email}</strong>. Click it, then come back and press
-          "I've verified."
+        <p style={{ color: "var(--text-muted)", fontSize: 14, lineHeight: 1.5 }}>
+          We sent a verification link to <strong style={{ color: "var(--text)" }}>{user.email}</strong>. Click it,
+          then come back and press "I've verified."
         </p>
         {status && <div className="pp-error-text">{status}</div>}
         <button className="pp-btn pp-btn-primary" onClick={handleCheck}>
           I've verified, continue
         </button>
         <div className="pp-auth-switch">
-          <button className="pp-btn" onClick={handleResend} style={{ background: "none" }}>
+          <button className="pp-btn pp-btn-text" onClick={handleResend}>
             Resend verification email
           </button>
         </div>

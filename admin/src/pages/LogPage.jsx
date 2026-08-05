@@ -33,7 +33,7 @@ export default function LogPage() {
   );
 
   return (
-    <div>
+    <div className="pp-page">
       <h1 className="pp-page-title">Activity Log</h1>
       <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
         Every approval, rejection, update, sign-in, and sign-up, visible to the whole team.

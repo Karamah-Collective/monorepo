@@ -49,7 +49,7 @@ export default function ContactsPage() {
   );
 
   return (
-    <div>
+    <div className="pp-page">
       <h1 className="pp-page-title">Contacts</h1>
       {isLoading && <p>Loading…</p>}
       {error && <p className="pp-error-text">{error.message}</p>}
