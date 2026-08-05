@@ -276,3 +276,29 @@ CREATE TABLE account_meta (
   lifetime_review_count      INTEGER NOT NULL DEFAULT 0,
   lifetime_visited_place_ids TEXT NOT NULL DEFAULT '[]'  -- JSON array (a set, not a counter)
 );
+
+-- 15. AuditLog — internal admin-action trail (who did what, when), for the
+-- /admin dashboard's activity log.
+--
+-- INTENTIONAL EXCEPTION to the emailHash-only privacy rule used everywhere
+-- else in this schema. That rule protects *public map visitors'* privacy
+-- from being linkable in backend data. This table instead identifies
+-- internal @karamahcollective.com team members performing admin actions —
+-- its entire purpose is showing colleagues "who approved/rejected this,"
+-- the same way any admin console shows real user identities to its own
+-- operators. Storing actor_email/actor_name in plaintext here is required,
+-- correct behavior, not a violation of the hash-only rule.
+CREATE TABLE audit_log (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at        TEXT NOT NULL,              -- helsinkiTimestamp(), display only — NOT sortable as a string (day-first, non-ISO); use id/created_at_epoch for ordering
+  created_at_epoch  INTEGER NOT NULL,            -- Date.now() ms — ordering + login/signup dedup window
+  action            TEXT NOT NULL,               -- e.g. 'approve-new', 'update-sponsor', 'login', 'signup'
+  actor_uid         TEXT NOT NULL DEFAULT '',     -- Firebase uid — stable even if email/name later change
+  actor_email       TEXT NOT NULL DEFAULT '',     -- plaintext by design (internal audit trail — see note above)
+  actor_name        TEXT NOT NULL DEFAULT '',     -- plaintext, from the Firebase ID token's `name` claim
+  target_id         TEXT NOT NULL DEFAULT '',     -- generic rowId/placeId/eventId/wishId/rowIndex, stringified
+  detail            TEXT NOT NULL DEFAULT '',     -- JSON blob: request body minus the `action` field
+  success           INTEGER NOT NULL DEFAULT 1    -- 0/1 — did the handler report {success:true}?
+);
+CREATE INDEX idx_audit_log_action ON audit_log(action);
+CREATE INDEX idx_audit_log_actor_uid ON audit_log(actor_uid);

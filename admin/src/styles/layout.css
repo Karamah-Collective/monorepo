@@ -1,0 +1,192 @@
+.pp-app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.pp-nav {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-nav);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+}
+
+.pp-nav-brand {
+  font-weight: 700;
+  font-size: 15px;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 8px;
+}
+
+.pp-nav-links {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pp-nav-link {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 9px 16px;
+  font-size: 14px;
+}
+
+.pp-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.pp-nav-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pp-nav-user {
+  padding: 12px 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.pp-nav-signout {
+  margin-top: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.pp-nav-signout:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pp-main {
+  flex: 1;
+  padding: 28px 32px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.pp-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+
+.pp-auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-alt);
+}
+
+.pp-auth-card {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  width: 360px;
+}
+
+.pp-auth-card h1 {
+  font-size: 18px;
+  margin: 0 0 20px;
+}
+
+.pp-field {
+  margin-bottom: 14px;
+}
+
+.pp-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pp-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pp-btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pp-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+}
+
+.pp-btn-primary:hover {
+  background: var(--accent-dark);
+}
+
+.pp-error-text {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.pp-auth-switch {
+  margin-top: 16px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.pp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.pp-stat-tile {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.pp-stat-tile .pp-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.pp-stat-tile .pp-stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.pp-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--text);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  z-index: 100;
+}
+
+.pp-toast.pp-toast-error {
+  background: var(--danger);
+}

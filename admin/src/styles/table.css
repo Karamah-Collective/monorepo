@@ -1,0 +1,203 @@
+.pp-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pp-table-search {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  width: 260px;
+}
+
+.pp-table-count {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.pp-table-wrap {
+  overflow-x: auto;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.pp-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+}
+
+.pp-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pp-table th.pp-th-sorted {
+  color: var(--accent-dark);
+}
+
+.pp-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.pp-table tbody tr:hover {
+  background: var(--bg-alt);
+}
+
+.pp-col-filter {
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+.pp-th-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pp-table-pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.pp-table-pagination button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.pp-table-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pp-select-cell,
+.pp-dropdown-cell {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg);
+}
+
+.pp-toggle-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.pp-action-cell {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.pp-btn-approve {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.pp-btn-approve:hover {
+  background: var(--success);
+  color: #fff;
+}
+
+.pp-btn-reject {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.pp-btn-reject:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.pp-reason-popover {
+  position: absolute;
+  z-index: 20;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  width: 240px;
+  margin-top: 4px;
+}
+
+.pp-reason-popover textarea {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.pp-reason-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp-badge-yes {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.pp-badge-no {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pp-badge-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.pp-empty-state {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.pp-current-diff {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pp-current-diff strong {
+  color: var(--text);
+}

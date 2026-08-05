@@ -8,13 +8,16 @@
  *
  * The Firebase project ID is not secret (it's part of every ID token's
  * `aud`/`iss` claims and is already public in the client bundle), so it's
- * hardcoded here rather than routed through a Cloudflare env var.
+ * hardcoded here rather than routed through a Cloudflare env var. Callers
+ * that need a different project (e.g. a separate Firebase project for an
+ * internal tool) can pass `env.FIREBASE_PROJECT_ID` to override it — unused
+ * by default, so existing single-argument callers are unaffected.
  *
- * Imported by functions/api/reviews.js and functions/api/account.js.
+ * Imported by functions/api/reviews.js, functions/api/account.js, and
+ * functions/api/admin.js.
  */
 
 const FIREBASE_PROJECT_ID = "halal-map-karamah";
-const FIREBASE_ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
 const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 const JWKS_CACHE_TTL_MS = 3_600_000; // 1 hour — mirrors the Cache-Control this endpoint itself sends
 const CLOCK_SKEW_TOLERANCE_S = 300; // 5 minutes, absorbs modest client/server clock drift
@@ -68,10 +71,11 @@ function _decodeJwtSegment(part) {
  * Verify a Firebase Auth ID token: RS256 signature (against Google's public
  * JWKS) plus the standard `aud`/`iss`/`exp`/`iat`/`auth_time`/`sub` claims.
  * @param {string} idToken
- * @returns {Promise<{uid: string, email: string, emailVerified: boolean}|null>}
+ * @param {{FIREBASE_PROJECT_ID?: string}} [env] - optional; overrides the hardcoded project id
+ * @returns {Promise<{uid: string, email: string, emailVerified: boolean, name: string}|null>}
  *   null on any verification failure — callers should treat this as "unauthenticated".
  */
-export async function verifyFirebaseIdToken(idToken) {
+export async function verifyFirebaseIdToken(idToken, env) {
   if (!idToken || typeof idToken !== "string") return null;
 
   const parts = idToken.split(".");
@@ -87,9 +91,12 @@ export async function verifyFirebaseIdToken(idToken) {
 
   if (header.alg !== "RS256" || !header.kid) return null;
 
+  const projectId = (env && env.FIREBASE_PROJECT_ID) || FIREBASE_PROJECT_ID;
+  const issuer = `https://securetoken.google.com/${projectId}`;
+
   const now = Math.floor(Date.now() / 1000);
-  if (payload.aud !== FIREBASE_PROJECT_ID) return null;
-  if (payload.iss !== FIREBASE_ISSUER) return null;
+  if (payload.aud !== projectId) return null;
+  if (payload.iss !== issuer) return null;
   if (typeof payload.exp !== "number" || now >= payload.exp) return null;
   if (typeof payload.iat !== "number" || now < payload.iat - CLOCK_SKEW_TOLERANCE_S) return null;
   if (typeof payload.auth_time !== "number" || now < payload.auth_time - CLOCK_SKEW_TOLERANCE_S) return null;
@@ -133,5 +140,6 @@ export async function verifyFirebaseIdToken(idToken) {
     uid: payload.sub,
     email: typeof payload.email === "string" ? payload.email.toLowerCase() : "",
     emailVerified: !!payload.email_verified,
+    name: typeof payload.name === "string" ? payload.name : "",
   };
 }

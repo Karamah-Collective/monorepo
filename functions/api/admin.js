@@ -1,33 +1,128 @@
 /**
  * Cloudflare Pages Function – /api/admin
  *
- * D1-backed replacement for every admin GET/POST action Code.gs's
- * `handleAdminPost`/admin `doGet` branches used to handle against the Sheet
- * (see docs/D1_MIGRATION_PLAN.md). No UI here by design — the user has a
- * separate admin panel (different codebase) that will repoint at this one
- * endpoint later; the `adminKey` guard and every request/response shape
- * below matches Code.gs's admin contract as closely as D1's real columns
- * allow, so that repoint should only need a base-URL + key change.
+ * D1-backed admin API consumed by the React admin dashboard in /admin
+ * (deployed as its own Cloudflare Pages project on a different domain —
+ * see docs for the current architecture). Every action's request/response
+ * shape traces back to Code.gs's original admin contract (see
+ * docs/D1_MIGRATION_PLAN.md), though auth has since moved off the original
+ * shared-secret `adminKey` scheme.
  *
  * `rowId` fields are D1 integer primary keys, stringified — an improvement
  * over Code.gs's `makeRowId(timestamp, name)` hash (collision-prone), but
- * still just an opaque round-trip token from the panel's point of view.
+ * still just an opaque round-trip token from the dashboard's point of view.
  *
- * CORS is deliberately unrestricted on this one endpoint (matches GAS's
- * actual behavior — Apps Script never enforced CORS the way Pages Functions
- * do elsewhere in this app) — `adminKey` is the real security boundary.
+ * Auth: every request must carry `Authorization: Bearer <Firebase ID token>`
+ * for an account whose email ends in `@karamahcollective.com` AND has a
+ * verified email (see `authenticateAdmin` below — the emailVerified check
+ * matters because anyone can self-register any email string at signup;
+ * only Firebase's verification-link flow actually proves mailbox
+ * ownership). CORS is restricted to `ADMIN_ALLOWED_ORIGINS`, since the
+ * dashboard runs cross-origin from this endpoint's own domain.
+ *
+ * Every successful write action is recorded in `audit_log` (see
+ * `logAdminAction`) — viewable by any authenticated colleague via the
+ * `admin-log` action. This intentionally stores the actor's real
+ * email/name in plaintext: that's the whole point of an internal audit
+ * trail and is a deliberate, scoped exception to this schema's usual
+ * emailHash-only rule (which protects *public map visitors'* privacy, not
+ * co-workers' identities from each other in a trusted internal tool).
  *
  * Required Cloudflare Pages Environment Variables:
- *   ADMIN_SECRET – shared admin secret (plain === comparison, matches Code.gs)
- *   DB           – D1 database binding
+ *   DB – D1 database binding
+ * (FIREBASE_PROJECT_ID is optional — only needed if the admin dashboard
+ * ever authenticates against a different Firebase project than the public
+ * site's `halal-map-karamah`.)
  */
-import { json, helsinkiTimestamp } from "../_shared.js";
+import { json, helsinkiTimestamp, truncate } from "../_shared.js";
+import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { normaliseAddress, parseTagString, isSponsorActiveForDate, extractCityFromAddress, generateId } from "../_gas-compat.js";
 
-const CORS_HEADERS = { "Access-Control-Allow-Origin": "*" };
+const ADMIN_ALLOWED_ORIGINS = [
+  "https://admin.maps.karamahcollective.com",
+  "http://localhost:5173",
+];
+function adminAllowedOrigin(request) {
+  const origin = request.headers.get("Origin") || "";
+  return ADMIN_ALLOWED_ORIGINS.includes(origin) ? origin : ADMIN_ALLOWED_ORIGINS[0];
+}
 
-function checkAdminKey(key, env) {
-  return !!env.ADMIN_SECRET && key === env.ADMIN_SECRET;
+const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com"; // leading "@" is load-bearing — endsWith("karamahcollective.com") without it would let "user@evilkaramahcollective.com" through
+const MAX_ID_TOKEN_LEN = 2048;
+
+async function authenticateAdmin(request, env) {
+  const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
+  if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
+
+  const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
+  if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
+  if (!verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
+  if (!verified.email.endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for admin access" };
+
+  return { ok: true, actor: { uid: verified.uid, email: verified.email, name: verified.name || "" } };
+}
+
+// ── Audit log ────────────────────────────────────────────────────────────
+
+const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "rowIndex"];
+function extractTargetId(data) {
+  for (const f of TARGET_ID_FIELDS) {
+    if (data[f] !== undefined && data[f] !== null && data[f] !== "") return String(data[f]);
+  }
+  return "";
+}
+
+const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action"]);
+function buildAuditDetail(data) {
+  const rest = {};
+  for (const k of Object.keys(data)) {
+    if (!AUDIT_DETAIL_NOISE_FIELDS.has(k)) rest[k] = data[k];
+  }
+  return JSON.stringify(rest);
+}
+
+async function logAdminAction(db, { action, actor, targetId, detail, success }) {
+  await db.prepare(
+    "INSERT INTO audit_log (created_at, created_at_epoch, action, actor_uid, actor_email, actor_name, target_id, detail, success) VALUES (?,?,?,?,?,?,?,?,?)"
+  ).bind(
+    helsinkiTimestamp(), Date.now(), action, actor.uid, actor.email, actor.name || "", targetId || "", detail || "", success ? 1 : 0
+  ).run();
+}
+
+const AUTH_EVENT_TYPES = new Set(["login", "signup"]);
+const AUTH_EVENT_DEDUP_WINDOW_MS = 30_000; // absorbs onAuthStateChanged double-fires — a sanity guard, not a security control
+
+async function handleLogAuthEvent(db, actor, data) {
+  const eventType = (data.event || "").toString().trim().toLowerCase();
+  if (!AUTH_EVENT_TYPES.has(eventType)) return { error: "Invalid event type" };
+
+  const recent = await db.prepare(
+    "SELECT id FROM audit_log WHERE actor_uid = ? AND action = ? AND created_at_epoch > ? ORDER BY id DESC LIMIT 1"
+  ).bind(actor.uid, eventType, Date.now() - AUTH_EVENT_DEDUP_WINDOW_MS).first();
+
+  if (!recent) {
+    await logAdminAction(db, { action: eventType, actor, targetId: "", detail: "", success: true });
+  }
+  return { success: true };
+}
+
+async function getAdminLog(db, url) {
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "100", 10) || 100, 1), 200);
+  const beforeRaw = parseInt(url.searchParams.get("before") || "", 10);
+  const hasBefore = Number.isFinite(beforeRaw) && beforeRaw > 0;
+
+  const { results } = await db.prepare(
+    `SELECT * FROM audit_log ${hasBefore ? "WHERE id < ?" : ""} ORDER BY id DESC LIMIT ?`
+  ).bind(...(hasBefore ? [beforeRaw, limit] : [limit])).all();
+
+  return {
+    entries: results.map((r) => ({
+      id: r.id, createdAt: r.created_at, action: r.action,
+      actorUid: r.actor_uid, actorEmail: r.actor_email, actorName: r.actor_name,
+      targetId: r.target_id, detail: r.detail ? JSON.parse(r.detail) : null, success: !!r.success,
+    })),
+    nextBefore: results.length === limit ? results[results.length - 1].id : null,
+  };
 }
 
 // ── GET actions ────────────────────────────────────────────────────────────
@@ -159,6 +254,30 @@ async function getPendingEid(db) {
   }));
 }
 
+// Full (not just pending) listings, so the dashboard can browse every dataset it holds, not only approval queues.
+async function getAdminEvents(db) {
+  const { results } = await db.prepare("SELECT * FROM events ORDER BY event_date DESC, id DESC").all();
+  const out = [];
+  for (const r of results) {
+    const place = r.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(r.place_id).first() : null;
+    out.push({
+      eventId: r.id, placeId: r.place_id, placeName: (place && place.name) || "", title: r.title, description: r.description,
+      eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time, recurring: !!r.recurring,
+      recurrencePattern: r.recurrence_pattern, url: r.url, createdAt: r.created_at,
+      status: r.status || "", rejectReason: r.reject_reason || "",
+    });
+  }
+  return out;
+}
+
+async function getAdminEidPrayers(db) {
+  const { results } = await db.prepare("SELECT * FROM eid_prayers ORDER BY name").all();
+  return results.map((r) => ({
+    id: r.id, name: r.name, address: r.address, lat: r.lat ?? "", lng: r.lng ?? "",
+    organizer: r.organizer, jamaats: r.jamaats, notes: r.notes, date: r.date,
+  }));
+}
+
 const GET_ACTIONS = {
   "admin-stats": (db) => getAdminStats(db),
   "pending-new": (db) => getPendingNew(db),
@@ -170,22 +289,26 @@ const GET_ACTIONS = {
   "pending-event-edits": (db) => getPendingEventEdits(db),
   "admin-reviews": (db) => getAdminReviews(db),
   "pending-eid": (db) => getPendingEid(db),
+  "admin-events": (db) => getAdminEvents(db),
+  "admin-eid-prayers": (db) => getAdminEidPrayers(db),
+  "admin-log": (db, url) => getAdminLog(db, url),
 };
 
 export async function onRequestGet(context) {
   const { env, request } = context;
-  const headers = { "Content-Type": "application/json", ...CORS_HEADERS };
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": adminAllowedOrigin(request) };
   if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "";
-  const adminKey = url.searchParams.get("adminKey") || "";
   const handler = GET_ACTIONS[action];
   if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
-  if (!checkAdminKey(adminKey, env)) return json({ error: "Unauthorized" }, 401, headers);
+
+  const auth = await authenticateAdmin(request, env);
+  if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
 
   try {
-    return json(await handler(env.DB), 200, headers);
+    return json(await handler(env.DB, url), 200, headers);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }
@@ -408,26 +531,49 @@ const POST_ACTIONS = {
 
 export async function onRequestPost(context) {
   const { env, request } = context;
-  const headers = { "Content-Type": "application/json", ...CORS_HEADERS };
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": adminAllowedOrigin(request) };
   if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   let data;
   try { data = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
 
+  if (data.action === "log-auth-event") {
+    const auth = await authenticateAdmin(request, env);
+    if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
+    return json(await handleLogAuthEvent(env.DB, auth.actor, data), 200, headers);
+  }
+
   const handler = POST_ACTIONS[data.action];
   if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
-  if (!data.adminKey || !checkAdminKey(data.adminKey, env)) return json({ error: "Unauthorized" }, 401, headers);
 
+  const auth = await authenticateAdmin(request, env);
+  if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
+
+  let result;
   try {
-    return json(await handler(env.DB, data), 200, headers);
+    result = await handler(env.DB, data);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }
+
+  try {
+    await logAdminAction(env.DB, {
+      action: data.action, actor: auth.actor,
+      targetId: extractTargetId(data), detail: buildAuditDetail(data), success: !!result.success,
+    });
+  } catch { /* audit-log failure must never mask the real response */ }
+
+  return json(result, 200, headers);
 }
 
-export async function onRequestOptions() {
+export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
-    headers: { ...CORS_HEADERS, "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400" },
+    headers: {
+      "Access-Control-Allow-Origin": adminAllowedOrigin(context.request),
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+    },
   });
 }
