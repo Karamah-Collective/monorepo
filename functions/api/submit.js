@@ -35,7 +35,8 @@ async function resolveFirebaseIdentity(idToken) {
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;
   const emailHash = await sha256(verified.email.trim().toLowerCase());
-  return { emailHash };
+  const isUnverifiedPassword = verified.signInProvider === "password" && !verified.emailVerified;
+  return { emailHash, isUnverifiedPassword };
 }
 
 // Code.gs:3012 — persists user-typed custom cuisine tags to the Tags table.
@@ -316,7 +317,17 @@ export async function onRequestPost(context) {
   let emailHash = null;
   if (idToken) {
     const identity = await resolveFirebaseIdentity(idToken);
-    if (identity) emailHash = identity.emailHash;
+    // An unverified password-provider account's identity is never attached
+    // to a new-place/edit submission — this silently degrades to the
+    // already-fully-supported anonymous path (emailHash stays null) rather
+    // than rejecting the whole submission, since these two form types allow
+    // anonymous submission by design; the client-side hard block
+    // (src/places.js) is what actually stops a signed-in-but-unverified
+    // user from getting here in the normal UI flow, this is defense in
+    // depth against a direct API call bypassing it. What matters is that a
+    // fabricated, unverified email is never recorded as this submission's
+    // trusted identity.
+    if (identity && !identity.isUnverifiedPassword) emailHash = identity.emailHash;
   }
 
   try {

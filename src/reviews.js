@@ -1,16 +1,17 @@
 /**
  * Reviews — in-app community rating & review system.
  *
- * Writing a review requires signing in (Google or email magic link, see
- * src/auth.js) — the legacy anonymous email-OTP flow has been fully retired
- * (docs/D1_MIGRATION_PLAN.md): the backend no longer accepts a verifyToken
- * at all, so this module is Firebase-idToken-only end to end.
+ * Writing a review requires signing in (Google, Microsoft, Facebook, Apple,
+ * or email magic link — see src/auth.js) — the legacy anonymous email-OTP
+ * flow has been fully retired (docs/D1_MIGRATION_PLAN.md): the backend no
+ * longer accepts a verifyToken at all, so this module is
+ * Firebase-idToken-only end to end.
  *
  * Data stored in Cloudflare D1, proxied via /api/reviews.
  */
-import { esc, showToast, animateElementHeight, isReduceMotionActive, showWelcomeGreeting } from "./utils.js";
+import { esc, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage } from "./utils.js";
 import { EVT } from "./events.js";
-import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML } from "./icons.js";
+import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -28,6 +29,13 @@ const REVIEW_PANEL_ANIMATION_MS = 350;
 // 0 so no transition event fires at all). Comfortably longer than the
 // panel's own var(--t-spring) (0.35s) CSS transition (styles.css .rv-write-panel).
 const WRITE_PANEL_OPEN_RELEASE_FALLBACK_MS = 450;
+const PASSWORD_MIN_LENGTH = 6; // mirrors Firebase Auth's own minimum — checked client-side only for fast feedback, server-side (Firebase) is authoritative
+// Client-side throttle on the "resend verification email" button on the
+// unverified-password blocking screen — purely to stop rapid re-clicking;
+// Firebase's own Spark-plan quota (1,000 verification emails/day) isn't the
+// constraint here, this is just sane UI debounce. Mirrors this app's
+// existing 60s submission-cooldown convention elsewhere.
+const VERIFY_RESEND_COOLDOWN_MS = 60_000;
 
 // auth.js is dynamically imported (never a static top-level import) so the
 // heavy Firebase CDN modules it pulls in stay lazy — only fetched the first
@@ -46,9 +54,59 @@ let _activeOverlayPlaceId = null;
 let _activeOverlayPlaceName = "";
 let _overlayClearTimer = null;
 
+// `.rv-overlay-card` can also be mid-flight in _insertReviewPanel()'s own
+// entrance-reveal height tween when this runs (e.g. the user taps the email/
+// password toggle, or its "Back to sign-in options" link, before that reveal
+// finishes) — animateElementHeight()'s own `_heightAnimCleanup` handshake is
+// what settles that safely; see _insertReviewPanel()'s `releaseHeightLock`.
+//
+// **Why this suspends `.rv-overlay-card`'s own `overflow: hidden` for the
+// duration of the tween (2026-08-05, "reviews sign-in panel feels less
+// smooth than the Menu sheet's" investigation):** confirmed by reading, not
+// guessed — the sign-in-row-to-email/password-panel swap already goes
+// through the identical primitives as src/menu.js's own equivalent
+// (`crossFadeSwap()` + this function, exactly like `_animateMenuPanelHeight()`
+// there — `_insertReviewPanel()`'s own FLIP system is NOT involved in this
+// swap at all, it only runs once, for inserting the whole sign-in prompt
+// card in the first place), and both `.rv-overlay-card` and
+// `.menu-account-panel` share the identical `height var(--t-spring)`
+// transition — so timing/easing are not the difference. The difference is
+// architectural: `.menu-account-panel` has no `overflow`/`max-height` of its
+// own, and nothing between it and its ancestor chain clips it either (once
+// `#mp-height-wrap` is kept in sync — see menu.js's `_resyncMenuSheetHeight()`
+// — its "outer wrap" always has room), so when the panel opens (a GROW),
+// `changeFn()` reveals the taller content BEFORE the box's own animated
+// height has caught up, and since nothing clips it, that content is simply
+// visible immediately while empty space around it fills in — reads as
+// smooth. `.rv-overlay-card`, by contrast, is BOTH the thing being
+// height-tweened AND the thing that clips (`overflow: hidden`, needed for
+// its rounded corners and to enforce `max-height: min(620px, 85vh)` against
+// a long review list) — so during that exact same window (box smaller than
+// its already-updated content), the growing panel is genuinely masked,
+// un-clipping progressively as the box catches up. That "reveal from behind
+// a moving mask" is a visibly different, more abrupt-feeling technique for
+// the identical timing curve. Fix: suspend `overflow` for exactly the
+// tween's own duration (restored the instant it settles, via the new
+// `onSettled` option on `animateElementHeight()`) so growing content is
+// never clipped, matching `.menu-account-panel`'s feel — `overflow: hidden`
+// is back in force at every OTHER moment (including the tween's own
+// resting start/end points, where content and box height already match, so
+// there's nothing to overflow regardless), so the rounded-corner masking
+// and the `max-height` cap against a genuinely long review list are
+// unaffected.
 function _animateReviewCardHeight(overlay, changeFn) {
   const card = overlay?.querySelector(".rv-overlay-card");
-  animateElementHeight(card, changeFn, { skip: overlay?.classList.contains("hide") });
+  // Settle any tween already in flight on this card FIRST — its own
+  // `onSettled` (below) restores `overflow` — before this new one suspends
+  // it again; otherwise animateElementHeight()'s own internal
+  // `_heightAnimCleanup` re-entrancy guard would run AFTER the line below,
+  // immediately undoing it.
+  if (card?._heightAnimCleanup) card._heightAnimCleanup();
+  if (card) card.style.overflow = "visible";
+  animateElementHeight(card, changeFn, {
+    skip: overlay?.classList.contains("hide"),
+    onSettled: () => { if (card?.isConnected) card.style.removeProperty("overflow"); },
+  });
 }
 
 // ─── Data Loading ────────────────────────────────────────────────────────────
@@ -312,17 +370,34 @@ export async function deleteReview(placeId) {
  * Open a place's reviews overlay straight into the (pre-filled) edit form,
  * skipping the summary view — used by the Menu sheet's "Your reviews" list
  * (Phase 7) so editing reuses the exact same rating/text form as writing a
- * fresh review, instead of a second bespoke edit UI.
+ * fresh review, instead of a second bespoke edit UI. Reaching this at all
+ * already implies the caller is signed in (Profile is only ever reachable
+ * that way), but NOT that the account is verified — this bypasses
+ * _showReviewForm()'s own gate entirely, so it re-runs the identical
+ * unverified-password check itself before ever showing the editable form.
+ * The auth check runs BEFORE openReviewsOverlay() (rather than after, like
+ * _showReviewForm() does) specifically so the summary view is never painted
+ * first only to be immediately swapped out — this function's whole point is
+ * skipping straight to the form.
  * @param {string} placeId
  * @param {string} placeName
  * @param {{rating: number, text: string}} existing
+ * @returns {Promise<void>}
  */
-export function openReviewsOverlayForEdit(placeId, placeName, existing) {
+export async function openReviewsOverlayForEdit(placeId, placeName, existing) {
+  const auth = await _getAuthModule();
+  const blocked = await auth.isCurrentUserUnverifiedPassword();
+
   openReviewsOverlay(placeId, placeName);
   const overlay = document.getElementById("reviews-overlay");
   const list = overlay?.querySelector(".rv-list");
   if (!list) return;
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
+
+  if (blocked) {
+    _showVerifyEmailPrompt(placeId, overlay, list, auth);
+    return;
+  }
   _showRatingForm(placeId, overlay, list, existing);
 }
 
@@ -704,7 +779,11 @@ function _relativeTime(timestamp) {
 // ─── UI: Review Form ─────────────────────────────────────────────────────────
 
 /**
- * Show the review form — gated on sign-in (Google/Microsoft/email link).
+ * Show the review form — gated on sign-in (Google/Microsoft/Facebook/Apple/
+ * email link/email+password), and, for an already-signed-in password
+ * account, further gated on email verification (see src/auth.js's
+ * isCurrentUserUnverifiedPassword() — OAuth/magic-link accounts are never
+ * subject to this second check).
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @returns {Promise<void>}
@@ -715,17 +794,53 @@ async function _showReviewForm(placeId, overlay) {
   const list = overlay.querySelector(".rv-list");
 
   const auth = await _getAuthModule();
-  if (auth.getCachedAccount()) {
-    _showRatingForm(placeId, overlay, list);
+  if (!auth.getCachedAccount()) {
+    _showSignInPrompt(placeId, overlay, list, auth);
     return;
   }
 
-  _showSignInPrompt(placeId, overlay, list, auth);
+  if (await auth.isCurrentUserUnverifiedPassword()) {
+    _showVerifyEmailPrompt(placeId, overlay, list, auth);
+    return;
+  }
+
+  _showRatingForm(placeId, overlay, list);
 }
 
 /**
- * Show the sign-in gate (Google/Microsoft popup, or an email magic link) —
- * the only entry point for writing a review.
+ * Shared "what happens after any sign-in method succeeds" step, called by
+ * every one of _showSignInPrompt()'s provider handlers (Google/Microsoft/
+ * Facebook/Apple) and _wirePasswordStepEvents()'s password submit handler.
+ * Consolidated into one function (rather than duplicated per-provider like
+ * the rest of this file's button boilerplate) specifically because this
+ * particular step is genuinely identical logic, not provider-specific
+ * chrome: show the welcome greeting, then re-check whether the account that
+ * JUST signed in is an unverified password account (true for essentially
+ * every brand-new signup, and for any previously-unverified account
+ * signing back in) and route to the verify-block screen instead of the
+ * rating form when it is. For every OAuth/magic-link account this check is
+ * always false, so their behavior is completely unchanged.
+ * @param {string} placeId
+ * @param {HTMLElement} overlay
+ * @param {HTMLElement} container - the whole sign-in prompt card, removed on success
+ * @param {HTMLElement} insertBefore
+ * @param {Object} auth - the already-loaded src/auth.js module namespace
+ * @param {{account: Object, isNewUser: boolean}} result - a successful sign-in result
+ * @returns {Promise<void>}
+ */
+async function _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result) {
+  showWelcomeGreeting(result.account, result.isNewUser);
+  const blocked = await auth.isCurrentUserUnverifiedPassword();
+  _animateReviewCardHeight(overlay, () => {
+    container.remove();
+    if (blocked) _showVerifyEmailPrompt(placeId, overlay, insertBefore, auth);
+    else _showRatingForm(placeId, overlay, insertBefore);
+  });
+}
+
+/**
+ * Show the sign-in gate (Google/Microsoft/Facebook/Apple popup, or an email
+ * magic link) — the only entry point for writing a review.
  * @param {string} placeId
  * @param {HTMLElement} overlay
  * @param {HTMLElement} insertBefore
@@ -761,6 +876,18 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
   signinRow.appendChild(microsoftBtn);
 
+  const facebookBtn = document.createElement("button");
+  facebookBtn.type = "button";
+  facebookBtn.className = "rv-action-btn btn-facebook";
+  facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
+  signinRow.appendChild(facebookBtn);
+
+  const appleBtn = document.createElement("button");
+  appleBtn.type = "button";
+  appleBtn.className = "rv-action-btn btn-apple";
+  appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
+  signinRow.appendChild(appleBtn);
+
   const emailToggle = document.createElement("button");
   emailToggle.type = "button";
   emailToggle.className = "rv-action-btn btn-secondary";
@@ -769,7 +896,22 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   signinRow.appendChild(emailToggle);
 
   const emailStep = document.createElement("div");
-  emailStep.className = "rv-verify-step hide";
+  // rv-panel-divider (2026-08-05, later round) ties this panel visually to
+  // signinRow above it once collapsed — the same border-top/padding-top
+  // treatment src/menu.js's equivalent panels use, previously scoped to
+  // their own IDs only and missing here. See .rv-panel-divider in
+  // styles.css.
+  emailStep.className = "rv-verify-step rv-panel-divider hide";
+
+  // "Back to sign-in options" link — collapsing signinRow when this panel
+  // opens (below) means it can no longer be reopened by tapping the (now
+  // hidden) toggle button, so this is the only way back. See .rv-back-link
+  // in styles.css and the equivalent pair in src/menu.js's password panel.
+  const emailBackBtn = document.createElement("button");
+  emailBackBtn.type = "button";
+  emailBackBtn.className = "rv-back-link";
+  emailBackBtn.innerHTML = `${BACK_CHEVRON_ICON_SVG}Back to sign-in options`;
+  emailStep.appendChild(emailBackBtn);
 
   const emailField = document.createElement("div");
   emailField.className = "rv-field";
@@ -805,8 +947,33 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
     errorMsg.classList.add("hide");
   }
 
+  // Opening the panel collapses signinRow (Google/Microsoft/Facebook/Apple/
+  // password) rather than stacking the panel below it — on mobile this
+  // overlay card has limited height, and the prior append-below behavior
+  // made the row + panel stack eat most of it. emailBackBtn above reverses
+  // this, so opening it by accident is never a dead end.
+  // crossFadeSwap() (src/utils.js) cross-fades signinRow/emailStep's own
+  // opacity BEFORE the actual .hide toggling below runs — without it, .hide's
+  // instant `display: none` made the row visibly pop out of existence while
+  // _animateReviewCardHeight()'s height-tween smoothly resized the card
+  // around it in the same tick. See crossFadeSwap()'s own doc comment for
+  // why the fade and the height-tween are sequenced, not run concurrently.
   emailToggle.addEventListener("click", () => {
-    _animateReviewCardHeight(overlay, () => emailStep.classList.toggle("hide"));
+    crossFadeSwap(signinRow, emailStep, () => {
+      _animateReviewCardHeight(overlay, () => {
+        signinRow.classList.add("hide");
+        emailStep.classList.remove("hide");
+      });
+    });
+  });
+
+  emailBackBtn.addEventListener("click", () => {
+    crossFadeSwap(emailStep, signinRow, () => {
+      _animateReviewCardHeight(overlay, () => {
+        emailStep.classList.add("hide");
+        signinRow.classList.remove("hide");
+      });
+    });
   });
 
   googleBtn.addEventListener("click", async () => {
@@ -816,11 +983,7 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
 
     const result = await auth.signInWithGoogle();
     if (result.success) {
-      showWelcomeGreeting(result.account, result.isNewUser);
-      _animateReviewCardHeight(overlay, () => {
-        container.remove();
-        _showRatingForm(placeId, overlay, insertBefore);
-      });
+      await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       googleBtn.disabled = false;
       googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
@@ -838,14 +1001,46 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
 
     const result = await auth.signInWithMicrosoft();
     if (result.success) {
-      showWelcomeGreeting(result.account, result.isNewUser);
-      _animateReviewCardHeight(overlay, () => {
-        container.remove();
-        _showRatingForm(placeId, overlay, insertBefore);
-      });
+      await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       microsoftBtn.disabled = false;
       microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
+  });
+
+  facebookBtn.addEventListener("click", async () => {
+    hideError();
+    facebookBtn.disabled = true;
+    facebookBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+
+    const result = await auth.signInWithFacebook();
+    if (result.success) {
+      await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
+    } else {
+      facebookBtn.disabled = false;
+      facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
+      // Same generic Firebase Auth SDK popup-cancel codes as every other
+      // popup-based provider here — not a Facebook-specific error.
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
+  });
+
+  appleBtn.addEventListener("click", async () => {
+    hideError();
+    appleBtn.disabled = true;
+    appleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+
+    const result = await auth.signInWithApple();
+    if (result.success) {
+      await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
+    } else {
+      appleBtn.disabled = false;
+      appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
       if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
         showError("Sign-in failed. Please try again.");
       }
@@ -874,7 +1069,360 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
     }
   });
 
+  // Traditional email + password sign-in/sign-up — a separate Firebase Auth
+  // mechanism from the magic-link emailToggle/emailStep above (which stays
+  // fully intact but hidden, see styles.css). Built by its own helper so this
+  // already-long function doesn't grow further — see
+  // _buildPasswordSignInStep()'s own doc comment.
+  const passwordToggle = _buildPasswordSignInStep({
+    container, signinRow, overlay, insertBefore, placeId, auth, showError, hideError,
+  });
+  signinRow.appendChild(passwordToggle);
+
   _insertReviewPanel(insertBefore, container);
+}
+
+/**
+ * Show the "verify your email to continue" hard-block screen for a
+ * signed-in-but-unverified password account (see src/auth.js's
+ * isCurrentUserUnverifiedPassword()) — reached from _showReviewForm() (fresh
+ * sign-in already in place), _afterSignInSuccess() (just signed in/up via
+ * the password panel), and openReviewsOverlayForEdit() (Profile's "Your
+ * reviews" edit action). Reuses the exact same .rv-verify-form/.rv-action-btn/
+ * .rv-resend-link/.rv-verify-error scaffolding as _showSignInPrompt() and
+ * _insertReviewPanel()'s own reveal animation — this is a THIRD step of the
+ * same sign-in gate, not a separate UI pattern.
+ * @param {string} placeId
+ * @param {HTMLElement} overlay
+ * @param {HTMLElement} insertBefore
+ * @param {Object} auth - the already-loaded src/auth.js module namespace
+ * @returns {void}
+ */
+function _showVerifyEmailPrompt(placeId, overlay, insertBefore, auth) {
+  const container = document.createElement("div");
+  container.className = "rv-verify-form";
+  container.appendChild(_buildFormHideButton(overlay));
+
+  const email = auth.getCachedAccount()?.email || "your email address";
+
+  const header = document.createElement("div");
+  header.className = "rv-verify-header";
+  header.innerHTML = [
+    `<div class="rv-verify-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>`,
+    `<p class="rv-verify-title">Verify your email to continue</p>`,
+    `<p class="rv-verify-desc">We sent a verification link to <strong>${esc(email)}</strong>. Open it, then come back and tap "I've verified" below.</p>`,
+  ].join("");
+  container.appendChild(header);
+
+  const errorMsg = document.createElement("p");
+  errorMsg.className = "rv-verify-error hide";
+  container.appendChild(errorMsg);
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.remove("hide");
+  }
+  function hideError() {
+    errorMsg.classList.add("hide");
+  }
+
+  const refreshBtn = document.createElement("button");
+  refreshBtn.type = "button";
+  refreshBtn.className = "rv-action-btn btn-primary";
+  refreshBtn.textContent = "I've verified — refresh";
+  container.appendChild(refreshBtn);
+
+  const resendBtn = document.createElement("button");
+  resendBtn.type = "button";
+  resendBtn.className = "rv-resend-link";
+  resendBtn.textContent = "Resend verification email";
+  container.appendChild(resendBtn);
+
+  let resendCooldownUntil = 0;
+  resendBtn.addEventListener("click", async () => {
+    hideError();
+    if (Date.now() < resendCooldownUntil || resendBtn.disabled) return;
+    resendBtn.disabled = true;
+    const result = await auth.resendVerificationEmail();
+    if (result.success) {
+      resendCooldownUntil = Date.now() + VERIFY_RESEND_COOLDOWN_MS;
+      showToast("Verification email sent", "check", "Check your inbox and spam folder");
+      setTimeout(() => { resendBtn.disabled = false; }, VERIFY_RESEND_COOLDOWN_MS);
+    } else {
+      resendBtn.disabled = false;
+      showError("Could not resend. Please try again in a moment.");
+    }
+  });
+
+  refreshBtn.addEventListener("click", async () => {
+    hideError();
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = `<span class="btn-spinner"></span> Checking…`;
+    const stillUnverified = await auth.isCurrentUserUnverifiedPassword();
+    if (!stillUnverified) {
+      _animateReviewCardHeight(overlay, () => {
+        container.remove();
+        _showRatingForm(placeId, overlay, insertBefore);
+      });
+      return;
+    }
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = "I've verified — refresh";
+    showError("Still not verified. Check your inbox, then try again.");
+  });
+
+  _insertReviewPanel(insertBefore, container);
+}
+
+/**
+ * Build and wire the traditional email + password step of the sign-in gate
+ * (src/menu.js's #menu-password-signin-panel has the identical structure and
+ * behavior for the Account section — kept as two separate, non-shared
+ * implementations for the same reason every other provider button here is
+ * duplicated rather than factored out: see the file-level convention already
+ * established by _showSignInPrompt()'s Google/Microsoft/Facebook/Apple/email
+ * blocks above). One submit button handles both first-time signup and
+ * returning sign-in via an explicit mode-toggle link, rather than silently
+ * guessing from the error code — `auth/invalid-credential` alone can't
+ * reliably distinguish "no such account" from "wrong password" across
+ * Firebase SDK versions.
+ * @param {Object} deps
+ * @param {HTMLElement} deps.container - the whole sign-in prompt card (the password step is appended directly to it, alongside emailStep)
+ * @param {HTMLElement} deps.signinRow - the row of OAuth/email toggle buttons, collapsed while this step's panel is open
+ * @param {HTMLElement} deps.overlay - passed through to _animateReviewCardHeight
+ * @param {HTMLElement} deps.insertBefore - passed through to _showRatingForm on success
+ * @param {string} deps.placeId
+ * @param {Object} deps.auth - the already-loaded src/auth.js module namespace
+ * @param {(msg: string) => void} deps.showError
+ * @param {() => void} deps.hideError
+ * @returns {HTMLButtonElement} the toggle button — caller appends it to signinRow
+ */
+function _buildPasswordSignInStep({ container, signinRow, overlay, insertBefore, placeId, auth, showError, hideError }) {
+  const els = _buildPasswordStepDOM();
+  container.appendChild(els.passwordStep);
+  _wirePasswordStepEvents({ ...els, container, signinRow, overlay, insertBefore, placeId, auth, showError, hideError });
+  return els.passwordToggle;
+}
+
+/**
+ * Build (but do not insert or wire) every DOM element the email + password
+ * step needs. Split out of _buildPasswordSignInStep() purely to keep both
+ * halves under this codebase's ~100-line function-size guideline.
+ * @returns {Object} every element _wirePasswordStepEvents() and the caller need a reference to
+ */
+function _buildPasswordStepDOM() {
+  const passwordToggle = document.createElement("button");
+  passwordToggle.type = "button";
+  passwordToggle.className = "rv-action-btn btn-password";
+  passwordToggle.innerHTML = EMAIL_PASSWORD_SIGNIN_BTN_HTML;
+
+  const passwordStep = document.createElement("div");
+  // See emailStep's identical rv-panel-divider comment in _showSignInPrompt() above.
+  passwordStep.className = "rv-verify-step rv-panel-divider hide";
+
+  // "Back to sign-in options" link — same purpose as emailBackBtn in
+  // _showSignInPrompt() above, for this separate (non-magic-link) panel.
+  const pwBackBtn = document.createElement("button");
+  pwBackBtn.type = "button";
+  pwBackBtn.className = "rv-back-link";
+  pwBackBtn.innerHTML = `${BACK_CHEVRON_ICON_SVG}Back to sign-in options`;
+  passwordStep.appendChild(pwBackBtn);
+
+  // "Full name" field — only shown in "signup" mode (the mirror case of
+  // pwForgotLink below, which is "signin"-only): an existing password
+  // account already has a name, and every OTHER sign-in provider
+  // (Google/Microsoft/Facebook/Apple) supplies a displayName automatically,
+  // so this is the one path that has to ask for it directly. See
+  // src/auth.js's signUpWithEmailPassword(). _wirePasswordStepEvents()'s
+  // updatePwModeUI() toggles its "hide" class.
+  const pwNameField = document.createElement("div");
+  pwNameField.className = "rv-field hide";
+  const pwNameLabel = document.createElement("label");
+  pwNameLabel.className = "rv-field-label";
+  pwNameLabel.textContent = "Full name";
+  const pwNameInput = document.createElement("input");
+  pwNameInput.type = "text";
+  pwNameInput.className = "rv-input";
+  pwNameInput.placeholder = "Your name";
+  pwNameInput.maxLength = 100;
+  pwNameInput.autocomplete = "name";
+  pwNameField.appendChild(pwNameLabel);
+  pwNameField.appendChild(pwNameInput);
+  passwordStep.appendChild(pwNameField);
+
+  const pwEmailField = document.createElement("div");
+  pwEmailField.className = "rv-field";
+  const pwEmailLabel = document.createElement("label");
+  pwEmailLabel.className = "rv-field-label";
+  pwEmailLabel.textContent = "Email address";
+  const pwEmailInput = document.createElement("input");
+  pwEmailInput.type = "email";
+  pwEmailInput.className = "rv-input";
+  pwEmailInput.placeholder = "you@example.com";
+  pwEmailInput.maxLength = 254;
+  pwEmailInput.autocomplete = "email";
+  pwEmailField.appendChild(pwEmailLabel);
+  pwEmailField.appendChild(pwEmailInput);
+  passwordStep.appendChild(pwEmailField);
+
+  const pwField = document.createElement("div");
+  pwField.className = "rv-field";
+  const pwLabel = document.createElement("label");
+  pwLabel.className = "rv-field-label";
+  pwLabel.textContent = "Password";
+  const pwInputWrap = document.createElement("div");
+  pwInputWrap.className = "rv-field-input-wrap";
+  const pwInput = document.createElement("input");
+  pwInput.type = "password";
+  pwInput.className = "rv-input";
+  pwInput.placeholder = "••••••••";
+  pwInput.maxLength = 128;
+  pwInput.autocomplete = "current-password";
+  const pwVisibilityBtn = document.createElement("button");
+  pwVisibilityBtn.type = "button";
+  pwVisibilityBtn.className = "clear-btn rv-field-input-btn";
+  pwVisibilityBtn.setAttribute("aria-label", "Show password");
+  pwVisibilityBtn.innerHTML = EYE_SHOW_ICON_SVG;
+  pwInputWrap.appendChild(pwInput);
+  pwInputWrap.appendChild(pwVisibilityBtn);
+  pwField.appendChild(pwLabel);
+  pwField.appendChild(pwInputWrap);
+  passwordStep.appendChild(pwField);
+
+  // Only ever shown in "signin" mode (a signup, with no existing password,
+  // has nothing to reset) — _wirePasswordStepEvents()'s updatePwModeUI()
+  // toggles its "hide" class alongside pwModeToggle's own label swap.
+  const pwForgotLink = document.createElement("button");
+  pwForgotLink.type = "button";
+  pwForgotLink.className = "rv-resend-link";
+  pwForgotLink.textContent = "Forgot password?";
+  passwordStep.appendChild(pwForgotLink);
+
+  const pwSubmitBtn = document.createElement("button");
+  pwSubmitBtn.type = "button";
+  pwSubmitBtn.className = "rv-action-btn btn-primary";
+  pwSubmitBtn.textContent = "Sign in";
+  passwordStep.appendChild(pwSubmitBtn);
+
+  const pwModeToggle = document.createElement("button");
+  pwModeToggle.type = "button";
+  pwModeToggle.className = "rv-resend-link";
+  pwModeToggle.textContent = "New here? Create an account";
+  passwordStep.appendChild(pwModeToggle);
+
+  return { passwordToggle, passwordStep, pwBackBtn, pwNameField, pwNameInput, pwEmailInput, pwInput, pwVisibilityBtn, pwForgotLink, pwSubmitBtn, pwModeToggle };
+}
+
+/**
+ * Wire every event listener for the already-built (and already-inserted)
+ * email + password step. Split out of _buildPasswordSignInStep() purely to
+ * keep both halves under this codebase's ~100-line function-size guideline —
+ * see _buildPasswordStepDOM()'s doc comment.
+ * @param {Object} deps - every element from _buildPasswordStepDOM() plus container/signinRow/overlay/insertBefore/placeId/auth/showError/hideError (see _buildPasswordSignInStep()'s own doc comment for those)
+ * @returns {void}
+ */
+function _wirePasswordStepEvents({ passwordToggle, passwordStep, pwBackBtn, pwNameField, pwNameInput, pwEmailInput, pwInput, pwVisibilityBtn, pwForgotLink, pwSubmitBtn, pwModeToggle, container, signinRow, overlay, insertBefore, placeId, auth, showError, hideError }) {
+  let pwMode = "signin"; // "signin" | "signup"
+  function updatePwModeUI() {
+    pwSubmitBtn.textContent = pwMode === "signin" ? "Sign in" : "Create account";
+    pwModeToggle.textContent = pwMode === "signin" ? "New here? Create an account" : "Already have an account? Sign in";
+    // "Forgot password?" only makes sense while signing in to an existing
+    // account — a signup has no password yet to reset.
+    pwForgotLink.classList.toggle("hide", pwMode !== "signin");
+    // Mirror case of pwForgotLink above: only relevant for a brand-new
+    // signup — see pwNameField's own doc comment in _buildPasswordStepDOM().
+    pwNameField.classList.toggle("hide", pwMode !== "signup");
+  }
+
+  // Same collapse-the-row-when-a-panel-opens behavior as emailToggle in
+  // _showSignInPrompt() above — see that handler's comment, and
+  // crossFadeSwap()'s own doc comment (utils.js) for why the row's own
+  // opacity fade is sequenced before, not concurrent with, the height-tween.
+  passwordToggle.addEventListener("click", () => {
+    crossFadeSwap(signinRow, passwordStep, () => {
+      _animateReviewCardHeight(overlay, () => {
+        signinRow.classList.add("hide");
+        passwordStep.classList.remove("hide");
+      });
+    });
+  });
+
+  pwBackBtn.addEventListener("click", () => {
+    crossFadeSwap(passwordStep, signinRow, () => {
+      _animateReviewCardHeight(overlay, () => {
+        passwordStep.classList.add("hide");
+        signinRow.classList.remove("hide");
+      });
+    });
+  });
+
+  pwVisibilityBtn.addEventListener("click", () => {
+    const showing = pwInput.type === "text";
+    pwInput.type = showing ? "password" : "text";
+    pwVisibilityBtn.innerHTML = showing ? EYE_SHOW_ICON_SVG : EYE_HIDE_ICON_SVG;
+    pwVisibilityBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  });
+
+  pwModeToggle.addEventListener("click", () => {
+    pwMode = pwMode === "signin" ? "signup" : "signin";
+    hideError();
+    updatePwModeUI();
+  });
+
+  // Neutral outcome regardless of whether the typed email is actually
+  // registered — see src/auth.js's sendPasswordReset() doc comment for why
+  // this must never reveal that. Unlike the earlier pass, an empty/invalid
+  // email never triggers a native window.prompt() — this panel already has
+  // its own visible email input right above the password field (unlike the
+  // magic-link cross-device case, which has no email field on screen at all
+  // when it prompts), so staying inside this same custom-styled UI just
+  // means focusing that input and showing the panel's own inline error.
+  pwForgotLink.addEventListener("click", async () => {
+    hideError();
+    const email = pwEmailInput.value.trim();
+    if (!email.includes("@")) {
+      pwEmailInput.focus();
+      showError("Enter your email address above first");
+      return;
+    }
+    pwForgotLink.disabled = true;
+    await auth.sendPasswordReset(email);
+    pwForgotLink.disabled = false;
+    showToast("Check your email", "check", "If an account exists for that email, a reset link is on its way.");
+  });
+
+  pwSubmitBtn.addEventListener("click", async () => {
+    hideError();
+    const name = pwNameInput.value.trim();
+    const email = pwEmailInput.value.trim();
+    const password = pwInput.value;
+    if (pwMode === "signup" && !name) {
+      showError("Please enter your name");
+      pwNameInput.focus();
+      return;
+    }
+    if (!email.includes("@")) {
+      showError("Please enter a valid email address");
+      return;
+    }
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      showError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+    pwSubmitBtn.disabled = true;
+    const busyLabel = pwMode === "signin" ? "Signing in…" : "Creating account…";
+    pwSubmitBtn.innerHTML = `<span class="btn-spinner"></span> ${busyLabel}`;
+
+    const result = pwMode === "signin"
+      ? await auth.signInWithEmailPassword(email, password)
+      : await auth.signUpWithEmailPassword(name, email, password);
+    if (result.success) {
+      await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
+    } else {
+      pwSubmitBtn.disabled = false;
+      updatePwModeUI();
+      showError(emailPasswordErrorMessage(result.error, pwMode));
+    }
+  });
 }
 
 /**
@@ -1035,6 +1583,15 @@ function _insertReviewPanel(insertBefore, contentEl) {
     return;
   }
 
+  // This reveal FLIP manipulates `card`'s own inline height/transition
+  // directly, exactly like utils.js's animateElementHeight() does — so it
+  // must participate in that same element's `_heightAnimCleanup` handshake.
+  // Without this guard, a call already in flight here would get clobbered by
+  // (or itself clobber) a `_animateReviewCardHeight()` call that lands on the
+  // very same tick — see the new `card._heightAnimCleanup = releaseHeightLock`
+  // assignment below for the other half of this.
+  if (card._heightAnimCleanup) card._heightAnimCleanup();
+
   // FLIP the card's outer height and the panel's own grid-template-rows
   // reveal *together*, from the same frame, so they run as one continuous
   // motion instead of the earlier freeze → invisible-grow → abrupt-snap
@@ -1075,9 +1632,36 @@ function _insertReviewPanel(insertBefore, contentEl) {
     panel.classList.remove("shut");
 
     let releaseTimer;
+    // Ends this reveal — normally fired once naturally (panel's own
+    // grid-template-rows transitionend, or the fallback timer below), but
+    // ALSO wired up as `card._heightAnimCleanup` so it can be forced to run
+    // early and synchronously. That second path matters because
+    // `_animateReviewCardHeight()`/`animateElementHeight()` (utils.js) can
+    // run on this exact same `card` element before this reveal's own
+    // var(--t-spring) transition would naturally finish — e.g. the user taps
+    // "Continue with email"/"Continue with a password" (or its "Back to
+    // sign-in options" link) while the sign-in prompt is still animating in.
+    // Previously that left this reveal's own transitionend listener/fallback
+    // timer dangling; when it eventually fired — potentially *during* the
+    // second, unrelated row-collapse/-expand transition already running on
+    // `card` — its `card.style.removeProperty("height")` yanked the explicit
+    // height out from under that second transition, snapping it instead of
+    // letting it finish smoothly. That extra stutter is exactly why the
+    // reviews overlay's sign-in row felt different from src/menu.js's
+    // equivalent, which has no competing entrance-reveal animation on its
+    // account panel at all. Forcing BOTH this reveal's card-height tween and
+    // the panel's own grid-template-rows to their final resting state
+    // synchronously (not just clearing the listener/timer) means whatever
+    // runs next reads a fully-settled height, not a mid-flight one. See
+    // docs/PREFERENCE_LOG.md.
     const releaseHeightLock = () => {
       panel.removeEventListener("transitionend", onPanelTransitionEnd);
       clearTimeout(releaseTimer);
+      if (card._heightAnimCleanup === releaseHeightLock) card._heightAnimCleanup = null;
+      panel.style.transition = "none";
+      panel.classList.remove("shut");
+      void panel.offsetHeight;
+      panel.style.removeProperty("transition");
       if (card.isConnected) card.style.removeProperty("height");
     };
     const onPanelTransitionEnd = (e) => {
@@ -1085,6 +1669,7 @@ function _insertReviewPanel(insertBefore, contentEl) {
     };
     panel.addEventListener("transitionend", onPanelTransitionEnd);
     releaseTimer = setTimeout(releaseHeightLock, WRITE_PANEL_OPEN_RELEASE_FALLBACK_MS);
+    card._heightAnimCleanup = releaseHeightLock;
   });
 }
 

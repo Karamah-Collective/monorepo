@@ -1,6 +1,6 @@
 import { map, scheduleMapViewportSync } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
@@ -75,6 +75,22 @@ const placeSheetCloseBtn = document.getElementById("place-sheet-close");
 const placeSheetScrim = document.getElementById("scrim");
 let _placeSheetFromListScrollTop = null;
 
+/**
+ * Highlight the marker for the given place id as "selected" (mk-selected)
+ * and clear that state off every other marker — so it's visually obvious
+ * on the map which place the open sheet belongs to. Pass null to just clear
+ * the highlight. Re-applied after addPlaceMarkers() rebuilds markers (e.g.
+ * on a filter change) so the highlight survives while the sheet stays open.
+ * @param {string|number|null} placeId
+ * @returns {void}
+ */
+function _setActiveMarker(placeId) {
+  document.querySelectorAll(".place-mk-wrap.mk-selected").forEach((el) => el.classList.remove("mk-selected"));
+  if (placeId == null) return;
+  const el = document.querySelector(`.place-mk-wrap[data-place-id="${CSS.escape(String(placeId))}"]`);
+  if (el) el.classList.add("mk-selected");
+}
+
 /** Close the place-detail sheet and clear its active-marker tracking state. */
 export function closePlaceSheet() {
   if (placeSheetEl._animCleanup) { clearTimeout(placeSheetEl._animCleanup); placeSheetEl._animCleanup = null; }
@@ -85,6 +101,7 @@ export function closePlaceSheet() {
   }
   _activePlaceSheetId = null;
   _placeSheetFromListScrollTop = null;
+  _setActiveMarker(null);
   placeSheetSnap.close();
   placeSheetScrim.classList.add("hide");
   placeSheetEl._hideTimeout = setTimeout(() => {
@@ -1277,11 +1294,6 @@ function _setupClusterLayers(geojson) {
     if (_activePlaceSheetId === place.id) {
       closePlaceSheet();
     } else {
-      map.easeTo({
-        center: [place.lng, place.lat],
-        zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
-        duration: 500,
-      });
       openPlaceSheet(place);
     }
   });
@@ -1331,6 +1343,7 @@ export function addPlaceMarkers() {
   filtered.forEach((place) => {
     const el = document.createElement("div");
     el.className = "place-mk-wrap mk-hidden";
+    el.dataset.placeId = place.id;
     el.innerHTML = makePlaceMarkerHTML(place.type);
     // Sponsor glow on the puck — basic gets gold border, featured gets glow, spotlight gets pulse
     // Higher z-index so sponsored pins render on top when overlapping
@@ -1349,11 +1362,6 @@ export function addPlaceMarkers() {
       if (_activePlaceSheetId === place.id) {
         closePlaceSheet();
       } else {
-        map.easeTo({
-          center: [place.lng, place.lat],
-          zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
-          duration: 500,
-        });
         openPlaceSheet(place);
       }
     });
@@ -1382,6 +1390,9 @@ export function addPlaceMarkers() {
   });
   refreshHeatmapSource();
   syncHomeMarker();
+  // Markers were just rebuilt from scratch — re-apply the selected highlight
+  // if a place sheet is currently open, since its old marker element is gone.
+  _setActiveMarker(_activePlaceSheetId);
 }
 
 /**
@@ -1877,6 +1888,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
 
   // Track the open sheet's place id for toggle-close, and the back-vs-close context
   _activePlaceSheetId = place.id;
+  _setActiveMarker(place.id);
   _placeSheetFromListScrollTop = fromListScrollTop;
   if (fromListScrollTop !== null) _setPlaceSheetCloseAsBack();
   else _resetPlaceSheetCloseButton();
@@ -1888,6 +1900,21 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   placeSheetEl.hidden = false;
   placeSheetScrim.classList.remove("hide");
   placeSheetSnap.open();
+
+  // Center the map on the place. On mobile the sheet is a bottom panel that
+  // can cover the pin, so offset via bottom padding to keep it in the
+  // visible area above the sheet. On desktop the sheet is a right-side
+  // panel (see .sheet's @media (min-width: 769px) rule in styles.css) but
+  // there's enough width to spare — keep the pin dead center of the map
+  // itself rather than re-centering the leftover visible strip.
+  const isMobile = window.innerWidth <= 768;
+  const panelH = isMobile ? placeSheetEl.getBoundingClientRect().height : 0;
+  map.easeTo({
+    center: [place.lng, place.lat],
+    zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
+    duration: 500,
+    padding: { top: 0, right: 0, bottom: panelH, left: 0 },
+  });
 }
 
 export function checkShareUrl() {
@@ -4195,6 +4222,16 @@ document.getElementById("sg-eid-date").addEventListener("input", (e) => e.target
 suggestForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  // Hard-block: a signed-in-but-unverified password account never gets to
+  // attach its identity to a submission — anonymous submission (this form's
+  // own long-standing default) is completely unaffected. See
+  // _promptVerifyEmailBlock()'s doc comment.
+  const auth = await _getAuthModule();
+  if (auth.getCachedAccount() && await auth.isCurrentUserUnverifiedPassword()) {
+    await _promptVerifyEmailBlock(auth);
+    return;
+  }
+
   let hasEmpty = false;
   suggestForm.querySelectorAll("[required]").forEach((el) => {
     if (!el.value || !el.value.trim()) { el.classList.add("invalid"); hasEmpty = true; }
@@ -4301,8 +4338,8 @@ suggestForm.addEventListener("submit", async (e) => {
     // but this payload never included idToken at all — every submission,
     // signed in or not, landed with a blank emailHash column (reported bug:
     // Profile always showed "0 places added"/"0 edits" regardless of what
-    // was actually submitted).
-    const auth = await _getAuthModule();
+    // was actually submitted). `auth` was already resolved at the top of
+    // this handler for the unverified-password hard-block check above.
     if (auth.getCachedAccount()) {
       const idToken = await auth.getIdToken();
       if (idToken) payload.idToken = idToken;
@@ -4498,6 +4535,14 @@ document.getElementById("edit-overlay").addEventListener("click", (e) => {
 document.getElementById("edit-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  // Hard-block: see the identical check + full rationale on the new-place
+  // submit handler above (same bug class, same fix).
+  const auth = await _getAuthModule();
+  if (auth.getCachedAccount() && await auth.isCurrentUserUnverifiedPassword()) {
+    await _promptVerifyEmailBlock(auth);
+    return;
+  }
+
   const submitBtn = document.getElementById("ed-submit");
   const btnOriginal = submitBtn.innerHTML;
   submitBtn.disabled = true;
@@ -4590,8 +4635,9 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     if (editOpeningHours) editPayload.openingHours = editOpeningHours;
     // Optional identity, only when signed in — see the identical fix + full
     // rationale on the new-place submit handler just above (same bug, same
-    // fix, this was the "edits" half of "0 places added"/"0 edits").
-    const auth = await _getAuthModule();
+    // fix, this was the "edits" half of "0 places added"/"0 edits"). `auth`
+    // was already resolved at the top of this handler for the
+    // unverified-password hard-block check above.
     if (auth.getCachedAccount()) {
       const idToken = await auth.getIdToken();
       if (idToken) editPayload.idToken = idToken;
@@ -4632,6 +4678,40 @@ let _authModulePromise = null;
 function _getAuthModule() {
   if (!_authModulePromise) _authModulePromise = import("./auth.js");
   return _authModulePromise;
+}
+
+/**
+ * Hard-block a new-place/edit submission and offer to resend the
+ * verification email — used when the currently signed-in user is a
+ * password-provider account whose email isn't verified yet (see
+ * src/auth.js's isCurrentUserUnverifiedPassword()). Both submission forms
+ * fully support anonymous submission (no idToken at all) by design, so this
+ * only ever fires for a user who chose to stay signed in with an unverified
+ * account — signing out (or verifying) lets the exact same submission
+ * through immediately. Reuses utils.js's showConfirmDialog(), this
+ * codebase's one existing modal-dialog pattern for a consequential action,
+ * rather than inventing a new blocking-overlay component for these two
+ * forms (which, unlike reviews.js, have no pre-existing sign-in-gate
+ * scaffolding to extend).
+ * @param {Object} auth - the already-loaded src/auth.js module namespace
+ * @returns {Promise<void>}
+ */
+async function _promptVerifyEmailBlock(auth) {
+  const email = auth.getCachedAccount()?.email || "your email address";
+  const wantsResend = await showConfirmDialog({
+    title: "Verify your email to continue",
+    message: `We sent a verification link to ${email}. Verify it, then submit again — or resend the link now.`,
+    confirmLabel: "Resend email",
+    cancelLabel: "Cancel",
+    icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+  });
+  if (!wantsResend) return;
+  const result = await auth.resendVerificationEmail();
+  if (result.success) {
+    showToast("Verification email sent", "check", "Check your inbox and spam folder");
+  } else {
+    showToast("Could not resend", "error", "Please try again in a moment.");
+  }
 }
 
 // Namespaced localStorage cache of each submission kind's last-seen

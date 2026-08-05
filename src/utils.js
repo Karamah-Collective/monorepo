@@ -475,6 +475,52 @@ export function showWelcomeGreeting(account, isNewUser) {
   window.addEventListener(EVT.ACCOUNT_DATA_RESOLVED, onResolved);
 }
 
+/**
+ * Map a Firebase Auth error code from the email + password sign-in/sign-up
+ * flow (src/auth.js's signInWithEmailPassword/signUpWithEmailPassword) to a
+ * clear, user-facing message — shared by src/menu.js and src/reviews.js so
+ * both password panels report identical wording for the same failure rather
+ * than drifting apart across two copy-pasted switch statements.
+ * `auth/invalid-credential` is the modern, consolidated code several Firebase
+ * SDK versions now return in place of both `auth/wrong-password` AND
+ * `auth/user-not-found` for a sign-in attempt (deliberately vague for
+ * enumeration-safety) — worded generically enough to cover either underlying
+ * cause without confidently mis-telling the user which one it was.
+ * @param {string} code - err?.code from the failed Firebase Auth call
+ * @param {"signin"|"signup"} mode - which action was attempted, since the
+ *   same code (e.g. auth/invalid-credential) reads differently for each
+ * @returns {string}
+ */
+export function emailPasswordErrorMessage(code, mode) {
+  switch (code) {
+    case "auth/weak-password":
+      return "Password must be at least 6 characters.";
+    case "auth/email-already-in-use":
+      return "An account already exists for this email. Try signing in instead.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/user-not-found":
+      return "No account found for this email. Try creating one instead.";
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return mode === "signup"
+        ? "Could not create that account. Please try again."
+        : "Incorrect email or password.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again.";
+    case "missing_name":
+      // src/auth.js's signUpWithEmailPassword() re-validates this itself —
+      // this code should be unreachable in practice since both callers
+      // (src/menu.js/src/reviews.js) already block submission client-side
+      // when the "Full name" field is blank, but it's handled here too so a
+      // future call site that skips that check still gets a clear message
+      // instead of falling through to the generic default below.
+      return "Please enter your name.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
+
 function _getToastStack() {
   let stack = document.getElementById("toast-stack");
   if (!stack) {
@@ -862,7 +908,7 @@ const HEIGHT_ANIMATION_FALLBACK_MS = 500;
  * Smoothly animate an element's height while its DOM content changes.
  * @param {HTMLElement | null | undefined} element
  * @param {() => void} changeFn
- * @param {{ skip?: boolean, measureHeight?: () => number, keepExplicitHeight?: boolean }} [options]
+ * @param {{ skip?: boolean, measureHeight?: () => number, keepExplicitHeight?: boolean, onSettled?: () => void }} [options]
  *   measureHeight: supply this when the element's own natural `height: auto`
  *   measurement wouldn't reflect the real target (e.g. src/menu.js's
  *   `#mp-scroll`, whose sibling-stretched auto-height would still equal the
@@ -876,15 +922,24 @@ const HEIGHT_ANIMATION_FALLBACK_MS = 500;
  *   value — needed when something ELSE (e.g. a sibling's `height: 100%`)
  *   depends on this element's height staying an explicit, JS-owned number
  *   rather than snapping back to `auto`.
+ *   onSettled: called exactly once the height change is fully done and
+ *   visually settled — synchronously, right here, for the skip/reduce-motion
+ *   and no-real-change (epsilon) cases (nothing is animating, so "settled" is
+ *   immediate); otherwise once the real CSS transition's own `transitionend`
+ *   fires (or the fallback timer, if it never does). Added for
+ *   src/reviews.js's `_animateReviewCardHeight()`, which needs to restore a
+ *   temporarily-suspended `overflow` value once — and only once — the tween
+ *   genuinely finishes (see its own doc comment for why).
  * @returns {void}
  */
-export function animateElementHeight(element, changeFn, { skip = false, measureHeight, keepExplicitHeight = false } = {}) {
+export function animateElementHeight(element, changeFn, { skip = false, measureHeight, keepExplicitHeight = false, onSettled } = {}) {
   if (!element || skip || isReduceMotionActive() || !element.isConnected) {
     changeFn();
     if (keepExplicitHeight) {
       const h = typeof measureHeight === "function" ? measureHeight() : element.offsetHeight;
       element.style.height = `${h}px`;
     }
+    onSettled?.();
     return;
   }
 
@@ -908,6 +963,7 @@ export function animateElementHeight(element, changeFn, { skip = false, measureH
     if (keepExplicitHeight) element.style.height = `${newHeight}px`;
     else element.style.removeProperty("height");
     element.style.removeProperty("transition");
+    onSettled?.();
     return;
   }
 
@@ -921,6 +977,7 @@ export function animateElementHeight(element, changeFn, { skip = false, measureH
     element.removeEventListener("transitionend", onEnd);
     element._heightAnimCleanup = null;
     if (element.isConnected && !keepExplicitHeight) element.style.removeProperty("height");
+    onSettled?.();
   };
   const onEnd = (e) => {
     if (e.propertyName === "height") cleanup();
@@ -929,6 +986,75 @@ export function animateElementHeight(element, changeFn, { skip = false, measureH
   element.addEventListener("transitionend", onEnd);
   element._heightAnimCleanup = cleanup;
   element._heightAnimTimer = setTimeout(cleanup, HEIGHT_ANIMATION_FALLBACK_MS);
+}
+
+const CROSS_FADE_FALLBACK_MS = 300; // safety net if transitionend never fires — `--t-fast` is .15s, this leaves a generous margin
+
+/**
+ * Cross-fade `hideEl` out (opacity only, never a layout-affecting property)
+ * BEFORE running `swapFn` — which does the actual `.hide` class toggling,
+ * typically itself wrapped in animateElementHeight() by the caller (e.g.
+ * src/menu.js's `_animateMenuPanelHeight()`/src/reviews.js's
+ * `_animateReviewCardHeight()`) — then cross-fades `revealEl` in once
+ * `swapFn` has run. Exists so a collapsing sibling (e.g. the OAuth/email
+ * sign-in button row) doesn't just vanish instantly via `.hide`'s
+ * `display: none` while the wrapping panel/card's own height-tween resizes
+ * around it in the very same tick — that combination previously read as the
+ * row abruptly popping out of existence mid-resize, even though the
+ * container itself was already animating smoothly.
+ *
+ * Deliberately sequential (fade hideEl out, THEN call swapFn), not
+ * concurrent: an opacity transition never changes an element's own layout
+ * box, so running it at the same time as the height-tween (which measures
+ * its "new" target height assuming hideEl is ALREADY gone) would leave
+ * hideEl's own full-size box visibly disagreeing with that already-final
+ * target height for the whole fade's duration. Revealing `revealEl` and
+ * fading it in, by contrast, is safe to do immediately after `swapFn` runs
+ * (not deferred any further) — revealing an element changes what height the
+ * container tweens to (via its `display: none` state), but fading its
+ * opacity in afterward doesn't change that height a second time, so there's
+ * nothing left for the two to fight over.
+ *
+ * `hideEl`/`revealEl` must each carry their own `transition: opacity
+ * var(--t-fast)` in CSS (see `.rv-verify-step`/`.menu-account-signin-row` in
+ * styles.css) — this function only toggles the `.fade-swap-out`/
+ * `.fade-swap-in` modifier classes (styles.css) that change the opacity
+ * VALUE, using the same "force a reflow, then toggle the class" idiom
+ * animateElementHeight() above already uses for its own height tween, so a
+ * freshly-revealed `revealEl` reliably starts its transition from opacity 0
+ * rather than skipping straight to 1 with no visible animation.
+ * @param {HTMLElement} hideEl - element to fade out, then hide
+ * @param {HTMLElement|null} revealEl - element to reveal, then fade in (omit if nothing is being revealed)
+ * @param {() => void} swapFn - the actual `.hide` toggling (and whatever height-tween wrapper the caller wants around it)
+ * @returns {void}
+ */
+export function crossFadeSwap(hideEl, revealEl, swapFn) {
+  if (!hideEl || isReduceMotionActive() || !hideEl.isConnected || hideEl.classList.contains("hide")) {
+    swapFn();
+    return;
+  }
+  if (hideEl._crossFadeCleanup) hideEl._crossFadeCleanup();
+
+  hideEl.classList.add("fade-swap-out");
+  const cleanup = () => {
+    clearTimeout(fallbackTimer);
+    hideEl.removeEventListener("transitionend", onEnd);
+    hideEl.classList.remove("fade-swap-out");
+    hideEl._crossFadeCleanup = null;
+    swapFn();
+    if (revealEl) {
+      revealEl.classList.add("fade-swap-in");
+      void revealEl.offsetHeight; // commit the opacity:0 starting point before releasing it, below
+      revealEl.classList.remove("fade-swap-in");
+    }
+  };
+  const onEnd = (e) => {
+    if (e.propertyName === "opacity" && e.target === hideEl) cleanup();
+  };
+
+  hideEl.addEventListener("transitionend", onEnd);
+  hideEl._crossFadeCleanup = cleanup;
+  const fallbackTimer = setTimeout(cleanup, CROSS_FADE_FALLBACK_MS);
 }
 
 /**

@@ -72,8 +72,14 @@ function _decodeJwtSegment(part) {
  * JWKS) plus the standard `aud`/`iss`/`exp`/`iat`/`auth_time`/`sub` claims.
  * @param {string} idToken
  * @param {{FIREBASE_PROJECT_ID?: string}} [env] - optional; overrides the hardcoded project id
- * @returns {Promise<{uid: string, email: string, emailVerified: boolean, name: string}|null>}
+ * @returns {Promise<{uid: string, email: string, emailVerified: boolean, name: string, signInProvider: string}|null>}
  *   null on any verification failure — callers should treat this as "unauthenticated".
+ *   `signInProvider` mirrors the client SDK's providerData[0].providerId
+ *   (e.g. "password", "google.com") via the token's own `firebase.sign_in_provider`
+ *   claim — callers use it to hard-block an unverified password account from
+ *   a privileged write the same way the client already does (src/auth.js's
+ *   isCurrentUserUnverifiedPassword()) without trusting the client's own,
+ *   spoofable claim about which provider it used.
  */
 export async function verifyFirebaseIdToken(idToken, env) {
   if (!idToken || typeof idToken !== "string") return null;
@@ -141,5 +147,6 @@ export async function verifyFirebaseIdToken(idToken, env) {
     email: typeof payload.email === "string" ? payload.email.toLowerCase() : "",
     emailVerified: !!payload.email_verified,
     name: typeof payload.name === "string" ? payload.name : "",
+    signInProvider: typeof payload.firebase?.sign_in_provider === "string" ? payload.firebase.sign_in_provider : "",
   };
 }

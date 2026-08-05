@@ -92,6 +92,28 @@
   --ms-blue: #00a4ef;
   --ms-yellow: #ffb900;
 
+  /* Facebook brand — "Continue with Facebook" button, per Meta's official
+     button spec (a solid Facebook-blue fill with a white wordmark + label,
+     not the neutral white chrome Google/Microsoft share). This blue never
+     changes with the app's own light/dark theme — same "fixed brand color,
+     not derived from the app palette" rule as the Google/Microsoft tokens
+     above, just with no light/dark variant of its own since Meta's spec
+     doesn't define one. */
+  --facebook-btn-bg: #1877f2;
+  --facebook-btn-text: #ffffff;
+
+  /* Apple brand — "Sign in with Apple" button, per Apple's Human Interface
+     Guidelines: a solid black button with a white glyph+label in a light
+     context, and — unlike Google/Microsoft/Facebook, whose chrome is either
+     always neutral or always brand-colored — a fully inverted white
+     button/black glyph+label variant is REQUIRED (not optional) whenever the
+     surrounding UI is in dark mode. The dark-mode override lives in
+     styles.css's `body.dark-mode` variable block, alongside every other
+     theme-dependent token swap in this app. */
+  --apple-btn-bg: #000000;
+  --apple-btn-text: #ffffff;
+  --apple-btn-border: transparent;
+
   --hsl-bus: #1a73b8;
   --hsl-trunk: #ff6319;
   --hsl-tram: #1fa86a;
@@ -615,6 +637,82 @@ html.reduce-motion *::after {
   flex-shrink: 0;
 }
 .btn-microsoft-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "Continue with Facebook" button — brand-blue fill per Meta's own button
+   spec (unlike Google/Microsoft's shared neutral chrome above), so this
+   does NOT reuse --google-btn-*. Same interaction-state shape as the other
+   two OAuth buttons otherwise (hover shadow, active brightness dip, disabled
+   opacity). */
+.btn-facebook {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--facebook-btn-bg);
+  color: var(--facebook-btn-text);
+  border: none;
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-facebook:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-facebook:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-facebook:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-facebook-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-facebook-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "Sign in with Apple" button — solid black/white fill per Apple's Human
+   Interface Guidelines, inverting fully in dark mode (--apple-btn-* tokens
+   swap in styles.css's body.dark-mode block) rather than staying fixed like
+   Facebook's blue above — Apple's own guidelines mandate the light/dark
+   variant, it isn't a design choice made in this app. */
+.btn-apple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--apple-btn-bg);
+  color: var(--apple-btn-text);
+  border: 1px solid var(--apple-btn-border);
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-apple:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-apple:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-apple:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-apple-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-apple-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -948,6 +948,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
+  /* Lets src/utils.js's crossFadeSwap() cross-fade this panel in/out instead
+     of an instant .hide `display: none` pop — see .fade-swap-out/
+     .fade-swap-in below and the "OAuth row collapse needs a real animation"
+     entry in docs/PREFERENCE_LOG.md. */
+  transition: opacity var(--t-fast);
 }
 .rv-verify-header {
   display: flex;
@@ -1013,6 +1018,25 @@
 .rv-input::placeholder {
   color: var(--text-3);
 }
+/* Wraps a single .rv-input alongside an absolutely-positioned trailing icon
+   button (currently: the email + password panel's show/hide toggle in
+   src/menu.js/src/reviews.js) — .rv-field itself stays a plain vertical
+   label+input stack for every other field, so this lives on a second,
+   opt-in wrapper rather than changing .rv-field's own layout for everyone. */
+.rv-field-input-wrap {
+  position: relative;
+}
+.rv-field-input-wrap .rv-input {
+  /* Leaves clear room for .rv-field-input-btn (28px, .clear-btn's own size)
+     plus its own inset from the edge, so typed text never runs under it. */
+  padding-right: calc(var(--sp-10) + var(--sp-6));
+}
+.rv-field-input-btn {
+  position: absolute;
+  top: 50%;
+  right: var(--sp-2);
+  transform: translateY(-50%);
+}
 .rv-action-btn {
   width: 100%;
   height: var(--h-submit);
@@ -1065,6 +1089,71 @@
 .rv-resend-link:disabled {
   color: var(--text-3);
   cursor: default;
+}
+/* "Back to sign-in options" link — sits at the top of the expanded
+   email/password panel (src/menu.js's #menu-email-signin-panel/
+   #menu-password-signin-panel, src/reviews.js's equivalent JS-built pair) so
+   collapsing .menu-account-signin-row to open that panel never reads as a
+   dead end. Deliberately a distinct, neutral-colored sibling of
+   .rv-resend-link (not a reuse of it) — .rv-resend-link's centered, accent-
+   colored look is for in-panel *actions* (resend, switch signin/signup
+   mode); this is *navigation back*, so it's left-aligned (align-self:
+   flex-start, rather than stretching full-width like every other direct
+   child of the .rv-verify-step flex column) and a quieter --text-2, since a
+   "go back" affordance shouldn't visually compete with the panel's own
+   primary actions. */
+.rv-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  align-self: flex-start;
+  /* No horizontal margin (2026-08-05, later round — reverted a -18px
+     margin-left tried in the prior round). That attempt pulled the whole
+     icon+text box left by the chevron's own footprint (14px icon +
+     var(--sp-1) gap = 18px) so the TEXT would line up flush with sibling
+     field labels below it — but .rv-verify-step/.rv-panel-divider have no
+     horizontal padding of their own (the 14px inset comes from the parent
+     .menu-account-panel, so the divider's border-top, the field labels, and
+     this link's own un-shifted flex-start position all already start at the
+     exact same x=0 local edge). Shifting the button left by 18px moved the
+     chevron 18px past that shared edge, into .menu-account-panel's own
+     padding gutter — floating disconnected to the left of the divider line
+     it sits directly under, which read as MORE broken than the original
+     complaint, not less. Flush-left (no margin) is the correct fix: the
+     chevron's own leading edge — not the trailing label text — is what
+     aligns with the divider/field-label edge, which is how every real "‹
+     Back" pattern actually works (the icon leads and anchors to the
+     container's edge; the label trailing an icon is expected to start
+     slightly further in, same as this app's own rightward chevron rows
+     elsewhere). The label text now sits ~18px right of "Email address"
+     below it — that offset is normal for an icon-led link, not a bug. */
+  /* Extra breathing room below the link, on top of .rv-verify-step's own
+     `gap: var(--sp-5)` between every child (2026-08-05, later round) — with
+     only the flex gap, this link (sitting directly under a border-top
+     divider — see #menu-email-signin-panel/#menu-password-signin-panel
+     below) read as crammed against the "Email address" field label right
+     after it. Asymmetric on purpose: only this link needs extra clearance
+     from what follows it; every other pair of stacked children in this
+     panel (field-to-field, field-to-button) reads fine with the plain gap
+     alone, so margin was added here rather than widening the shared gap for
+     every child and overspacing the rest of the panel. */
+  margin-bottom: var(--sp-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  transition: color var(--t-fast);
+}
+.rv-back-link svg {
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  .rv-back-link:hover {
+    color: var(--text);
+  }
 }
 .rv-verify-error {
   font-size: var(--txt-xs);
@@ -1449,6 +1538,17 @@ body.dark-mode {
   --google-btn-bg:     #131314;
   --google-btn-border: #8e918f;
   --google-btn-text:   #e3e3e3;
+
+  /* Apple "Sign in with Apple" dark-theme chrome — Apple's Human Interface
+     Guidelines REQUIRE the fully-inverted white/black variant in a dark
+     context (unlike Google's own dark chrome above, which just darkens;
+     Apple's black button would have near-zero contrast against this app's
+     near-black dark-mode surfaces, so a straight "darken" isn't an option
+     here). --facebook-btn-* intentionally has no entry here — Meta's button
+     spec keeps the same brand-blue fill regardless of surrounding theme. */
+  --apple-btn-bg:     #ffffff;
+  --apple-btn-text:   #000000;
+  --apple-btn-border: #d2d2d7;
 }
 
 /* Map background behind tiles */
@@ -2657,26 +2757,85 @@ body.dark-mode .sp-tip {
 .menu-account-panel .menu-placeholder {
   padding: 0;
 }
-/* Google sign-in + email option share one row instead of a full-width Google
-   button stacked over a small centered text link — and neither should read
-   as more "primary"/prominent than the other. Both are .rv-action-btn with
-   flex: 1 (equal ~50/50 split, 44px height) and both now carry an icon +
-   label (see EMAIL_SIGNIN_BTN_HTML in src/icons.js) — an icon-only email
-   button next to a full logo+label Google button was tried first and
-   rejected for reading as two different apps' buttons side by side (see
-   docs/PREFERENCE_LOG.md). .btn-secondary's *default* border/text (--border
-   #e2e2e2, --text-2 #525252) is deliberately subtle everywhere else it's
-   used (a genuinely de-emphasized secondary action) — overridden here,
-   along with .btn-google's own border/weight, to the same shared neutral
-   tokens (--text-2 border, --fw-medium) so both buttons carry identical
-   visual weight, not just matching box size. */
+/* Four OAuth providers (Google, Microsoft, Facebook, Apple) plus a hideable
+   email option all live in this one row/grid as equal-weight peer sign-in
+   options — none should read as more "primary"/prominent than any other.
+   Currently only 3 of those 5 are actually visible at once (Google,
+   Microsoft, and whichever of the email options is un-hidden — right now
+   .btn-password; see the "Temporarily hidden" comments below), so the grid
+   is 3 equal columns (2026-08-05, later round) rather than the 2-column
+   layout an earlier pass used for a 4-visible-button count — with exactly 3
+   real children in DOM order (Facebook/Apple/magic-link-email are all
+   `display: none` and are excluded from grid placement entirely, same as any
+   other display:none element), grid auto-placement alone puts Google +
+   Microsoft + email into one single row with no explicit column assignment
+   needed. Every label in this row also dropped a notch, --txt-sm → --txt-xs
+   (see the .btn-facebook/.btn-apple rule below), to buy back a few more
+   visible characters per button now that 3 share a row instead of 2. Below
+   ~380px (this app's existing tiny-phone breakpoint, see the @media block
+   below), 3 columns of full "Continue with X" labels get too tight even
+   with the smaller font and each label's own ellipsis fallback
+   (.btn-google-label etc. already truncate via overflow:hidden/text-
+   overflow:ellipsis — see design-tokens.css), so that breakpoint reverts to
+   the previous 2-up-1-down shape instead of visually mangling every label.
+   Each button still carries icon + label together (see EMAIL_SIGNIN_BTN_HTML
+   in src/icons.js) — an icon-only email button next to full logo+label
+   provider buttons was tried first and rejected for reading as two different
+   apps' buttons side by side (see docs/PREFERENCE_LOG.md).
+   .btn-secondary's *default* border/text (--border #e2e2e2, --text-2
+   #525252) is deliberately subtle everywhere else it's used (a genuinely
+   de-emphasized secondary action) — overridden here to the same neutral
+   token (--text-2 border) Google/Microsoft's own neutral chrome is nudged
+   toward below, so all THREE neutral-chrome buttons (email, Google,
+   Microsoft) carry identical visual weight. Facebook/Apple are deliberately
+   NOT included in that border override — they're solid brand-colored
+   buttons (Facebook blue, Apple black/white) per their own official button
+   specs, not neutral chrome, so forcing a shared border onto them would
+   fight their own brand guidelines the same way recoloring their logos
+   would. */
 .menu-account-signin-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-3);
+  /* Same crossFadeSwap()-driven cross-fade as .rv-verify-step above — this
+     row is the OTHER side of the same swap (row <-> expanded panel). */
+  transition: opacity var(--t-fast);
+}
+/* Cross-fade choreography for src/utils.js's crossFadeSwap(), used by the
+   OAuth/email sign-in row <-> its expanded email/password panel swap (both
+   src/menu.js and src/reviews.js). `.fade-swap-out` fades an element to
+   opacity 0 BEFORE `.hide`'s instant `display: none` is actually applied to
+   it, so that `display: none` never visibly "pops" — by the time it lands,
+   the element is already fully transparent. `.fade-swap-in` is applied for
+   exactly one synchronous tick right as a previously-.hide-d element becomes
+   visible again (forced to opacity 0 with no time to transition), then
+   removed — letting the resulting opacity 0 -> 1 change animate via
+   .rv-verify-step's/.menu-account-signin-row's own permanent
+   `transition: opacity var(--t-fast)` above, the same
+   force-a-reflow-then-toggle idiom animateElementHeight() (utils.js) already
+   uses for its own height tween. */
+.fade-swap-out,
+.fade-swap-in {
+  opacity: 0;
+}
+/* Below this app's existing tiny-phone breakpoint, 3 equal columns of full
+   "Continue with X" labels get uncomfortably cramped — revert to the
+   pre-2026-08-05(-later-round) 2-up-1-down shape instead (Google + Microsoft
+   side by side, the visible email option alone on its own full-width row).
+   See the .menu-account-signin-row comment above for why this is the ONLY
+   width this needs — 380px already exists elsewhere in this file as the
+   established "very small phone" breakpoint (e.g. #search-card/.pf-icon
+   below), so no new breakpoint was introduced for this. */
+@media (max-width: 380px) {
+  .menu-account-signin-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .menu-account-signin-row .btn-secondary,
+  .menu-account-signin-row .btn-password {
+    grid-column: 1 / -1;
+  }
 }
 .menu-account-signin-row > * {
-  flex: 1;
   width: auto;
   min-width: 0;
   overflow: hidden;
@@ -2688,34 +2847,105 @@ body.dark-mode .sp-tip {
    live. Hides via `display: none` only, on purpose — the JS wiring,
    EMAIL_SIGNIN_BTN_HTML, and the send-link panel are all left completely
    intact, so removing just the `display: none` line below is the entire
-   revert once the project moves to the Blaze plan. Google sign-in is
-   unaffected (different, much higher quota — see docs/PREFERENCE_LOG.md). */
+   revert once the project moves to the Blaze plan. The OAuth providers are
+   unaffected (different, much higher quota — see docs/PREFERENCE_LOG.md).
+   No grid-column span at default widths (2026-08-05, later round) — sits in
+   whichever single column grid auto-placement gives it, alongside Google +
+   Microsoft, in the 3-equal-column row above; only collapses to a
+   full-width span at the ≤380px fallback (see the @media block above
+   .menu-account-signin-row's own rule). */
 .menu-account-signin-row .btn-secondary {
   display: none;
   gap: var(--sp-2);
-  font-size: var(--txt-sm);
+  font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   border: 1px solid var(--text-2);
   color: var(--text);
 }
 .menu-account-signin-row .btn-google,
 .menu-account-signin-row .btn-microsoft {
-  font-size: var(--txt-sm);
+  font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   border: 1px solid var(--text-2);
 }
+/* Facebook/Apple keep their own brand-mandated fill and border (see the rule
+   comment above) but still drop to the same --txt-xs label size as their
+   neutral-chrome siblings in this row, so all six provider/email buttons
+   read as one consistent set despite their differing chrome. Dropped a
+   further notch from --txt-sm (13px) to --txt-xs (11px), 2026-08-05 (later
+   round) — with 3 real buttons sharing one row instead of 2, --txt-sm left
+   noticeably less of each "Continue with X" label visible before its own
+   ellipsis (design-tokens.css's .btn-google-label etc.) kicked in; --txt-xs
+   buys back several characters per button at the smallest size this app's
+   own type scale defines (already used at this exact size for comparably
+   secondary text — .rv-verify-desc, .rv-field-label), rather than
+   introducing a new, smaller ad hoc value. */
+.menu-account-signin-row .btn-facebook,
+.menu-account-signin-row .btn-apple {
+  font-size: var(--txt-xs);
+}
+/* Temporarily hidden (2026-08-05): Facebook/Apple aren't enabled as sign-in
+   providers in the Firebase console yet (needs a Facebook Developer app +
+   an Apple Developer "Sign in with Apple" Services ID/key, both set up
+   outside this codebase). Hides via `display: none` only, on purpose — all
+   the JS wiring (signInWithFacebook/signInWithApple in src/auth.js, the
+   click handlers in src/menu.js and src/reviews.js) and the button HTML
+   stay completely intact, so deleting just this rule is the entire revert
+   once both providers are live. With these two hidden, Google + Microsoft +
+   email fill exactly the one row of the 3-column grid above (2026-08-05,
+   later round) — un-hiding Facebook/Apple would grow this to 5 visible
+   options on a 3-column grid (one full row of 3, one partial row of 2),
+   which is an explicitly-flagged open layout question for that future
+   moment (see docs/PREFERENCE_LOG.md), not solved here. */
+.menu-account-signin-row .btn-facebook,
+.menu-account-signin-row .btn-apple {
+  display: none;
+}
+/* Traditional email + password sign-in, added 2026-08-05. Deliberately its
+   own class (.btn-password) rather than reusing .btn-secondary — reusing it
+   would have inherited that class's `display: none` from the hidden
+   magic-link rule above, since both would otherwise share the exact same
+   selector. Same neutral-chrome visual treatment as .btn-secondary/Google/
+   Microsoft above it (border: var(--text-2), --txt-xs label — see the
+   .btn-facebook/.btn-apple comment above for why this is --txt-xs rather
+   than the original --txt-sm) so all THREE still read as one consistent
+   set. No grid-column span at default widths (2026-08-05, later round — see
+   the "ONE row, not 2-up-1-down" task) — sits in the grid's 3rd column
+   alongside Google + Microsoft, all three in a single row; only collapses
+   to a full-width span at the ≤380px fallback (see the @media block above
+   .menu-account-signin-row's own rule). */
+.menu-account-signin-row .btn-password {
+  gap: var(--sp-2);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  border: 1px solid var(--text-2);
+  color: var(--text);
+}
 @media (hover: hover) {
-  .menu-account-signin-row .btn-secondary:hover {
+  .menu-account-signin-row .btn-secondary:hover,
+  .menu-account-signin-row .btn-password:hover {
     border-color: var(--text);
   }
 }
-/* Ties the expanded email panel visually to the sign-in row above it instead
-   of reading as a loose, disconnected stack — same divider convention as
-   .pp-reviews (border-top + padding-top on --border-light). Only shows once
-   .rv-verify-step's own "hide" class is removed. */
-#menu-email-signin-panel {
+/* Ties an expanded email/password sign-in panel visually to the (now
+   collapsed) sign-in row above it instead of reading as a loose,
+   disconnected stack — same divider convention as .pp-reviews (border-top +
+   padding-top on --border-light). A shared CLASS (2026-08-05, later round —
+   previously two ID selectors, #menu-email-signin-panel/
+   #menu-password-signin-panel, scoped to src/menu.js's Account section
+   only) so the identical treatment applies to src/reviews.js's own
+   JS-built emailStep/passwordStep panels too — the two files' sign-in gates
+   are meant to look and feel identical, and this divider had been missing
+   from reviews.js entirely until this round. Only shows once
+   .rv-verify-step's own "hide" class is removed. padding-top bumped
+   var(--sp-4) → var(--sp-6) (2026-08-05, later round) — the "Back to
+   sign-in options" link sitting right under this divider (the panel's first
+   child) read as cramped against the border line above it at the tighter
+   value; see .rv-back-link's own margin-bottom for the matching fix on its
+   OTHER side, toward the "Email address" field below it. */
+.rv-panel-divider {
   border-top: 1px solid var(--border-light);
-  padding-top: var(--sp-4);
+  padding-top: var(--sp-6);
 }
 .menu-account-profile {
   display: flex;
@@ -3712,6 +3942,27 @@ body.dark-mode .sp-tip {
   .place-mk-wrap:hover .custom-mk {
     transform: rotate(-45deg) scale(1.15);
   }
+}
+
+/* Selected-place marker — toggled via .mk-selected (see places.js's
+   _setActiveMarker()) while that place's detail sheet is open, so it's
+   obvious at a glance which pin the open sheet belongs to. Declared after
+   the :hover block above so its equal-specificity transform wins that tie
+   (stays scaled up even while hovered), and its 3-class selector on
+   .place-mk/.custom-mk outranks the single-class sponsor glow rules below —
+   a place the user is actively viewing should always read as MORE
+   prominent than a passive sponsor decoration. */
+.place-mk-wrap.mk-selected {
+  z-index: 10 !important;
+}
+.place-mk-wrap.mk-selected .place-mk,
+.place-mk-wrap.mk-selected .custom-mk {
+  transform: rotate(-45deg) scale(1.35);
+  border-color: #fff !important;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 6px var(--accent),
+    0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 /* Sponsor marker glow — basic, featured & spotlight tiers */
@@ -5707,6 +5958,24 @@ body.dark-mode .sp-tip {
   border-color: color-mix(in srgb, var(--google-btn-text) 25%, transparent);
   border-top-color: var(--google-btn-text);
 }
+/* .btn-facebook does NOT need a spinner override, unlike Google/Microsoft
+   above: its background is always Facebook-blue (never a light/neutral
+   chrome), so the default white-on-accent spinner colors (border-top-color:
+   var(--on-accent), i.e. white) already read correctly against it in both
+   light and dark mode. */
+/* .btn-apple DOES need one, in exactly one direction: its light-mode chrome
+   is a black button, where the default white spinner already has good
+   contrast — but its REQUIRED dark-mode variant (see the body.dark-mode
+   --apple-btn-* override above) flips to a white/neutral button, the same
+   problem Google/Microsoft have. Using var(--apple-btn-text) rather than a
+   fixed color means this single rule tracks both variants automatically
+   (white in light mode, black in dark mode) without needing a second,
+   dark-mode-scoped override — same trick .btn-google's own override above
+   already relies on via --google-btn-text. */
+.btn-apple .btn-spinner {
+  border-color: color-mix(in srgb, var(--apple-btn-text) 25%, transparent);
+  border-top-color: var(--apple-btn-text);
+}
 /* .btn-google's height comes from the shared .rv-action-btn class unchanged
    (var(--h-submit), which actually resolves to 44px in this codebase, not
    the 48px DESIGN_SYSTEM.md's Component Sizing table currently — and
@@ -5723,6 +5992,15 @@ body.dark-mode .sp-tip {
 }
 /* Same Microsoft branding guideline as Google's (14px medium label). */
 .btn-microsoft {
+  font-size: var(--txt-base);
+}
+/* Facebook/Apple have no equivalently strict documented label-size spec the
+   way Google/Microsoft do, but matching the same 14px here keeps all four
+   OAuth buttons visually consistent when they sit together in
+   .menu-account-signin-row — a mismatched label size would read as one
+   button belonging to a different button family than its three siblings. */
+.btn-facebook,
+.btn-apple {
   font-size: var(--txt-base);
 }
 

@@ -22,12 +22,18 @@ const MIN_TEXT_LEN = 20;
 const MAX_PLACE_ID_LEN = 6;
 const MAX_ID_TOKEN_LEN = 2048;
 
+// isUnverifiedPassword mirrors src/auth.js's isCurrentUserUnverifiedPassword()
+// server-side, from the token's own (unspoofable, since it's inside the
+// signature-verified JWT) claims rather than trusting anything the client
+// sent — the client-side gate in src/reviews.js is UX only; this is the
+// actual security boundary per this project's standing rule.
 async function resolveFirebaseIdentity(idToken) {
   const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;
-  return { emailHash: await sha256(verified.email.trim().toLowerCase()) };
+  const isUnverifiedPassword = verified.signInProvider === "password" && !verified.emailVerified;
+  return { emailHash: await sha256(verified.email.trim().toLowerCase()), isUnverifiedPassword };
 }
 
 // ── GET: list all live reviews, grouped by placeId (Code.gs:4378 getReviewsJSON) ──
@@ -142,6 +148,11 @@ export async function onRequestPost(context) {
 
     const identity = await resolveFirebaseIdentity(body.idToken);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
+    // Hard block — reviews have no anonymous variant, so an unverified
+    // password account can't be let through with its identity silently
+    // stripped the way the optional-identity /api/submit forms are; there's
+    // nothing left to fall back to but rejecting outright.
+    if (identity.isUnverifiedPassword) return json({ error: "email_not_verified" }, 403, headers);
 
     const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
     if (!place) return json({ error: "invalid_place" }, 400, headers);

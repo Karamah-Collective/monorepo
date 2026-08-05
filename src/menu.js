@@ -56,10 +56,10 @@
  * initMenuPreferences(), dynamically importing prayer.js the same lazy way
  * initMenuAccount() imports auth.js/reviews.js.
  */
-import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, showWelcomeGreeting } from "./utils.js";
+import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, crossFadeSwap, showWelcomeGreeting, emailPasswordErrorMessage, showToast } from "./utils.js";
 import { EVT } from "./events.js";
 import { loadProfileContent } from "./profile.js";
-import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML } from "./icons.js";
+import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
 const menuSheet = document.getElementById("menu-sheet");
 const menuScrim = document.getElementById("scrim");
@@ -84,6 +84,7 @@ const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="no
 // hardcodes 0.32s var(--ease-expo) rather than a bundled token (see
 // styles.css's comment on .mp-pane-track/#mp-scroll).
 const RESIZE_RESYNC_DEBOUNCE_MS = 120; // window-resize re-sync debounce (viewport rotation/reflow while sheet is open)
+const PASSWORD_MIN_LENGTH = 6; // mirrors Firebase Auth's own minimum — checked client-side only for fast feedback, server-side (Firebase) is authoritative
 
 let _activePane = "menu"; // "menu" | "profile" — which pane is currently slid into view
 let _auth = null; // lazily-loaded src/auth.js module namespace
@@ -454,40 +455,190 @@ function _animateMenuPanelHeight(changeFn) {
   animateElementHeight(panel, changeFn);
 }
 
+/**
+ * Re-sync BOTH the inner `#mp-height-wrap` (via `_syncPaneHeight()`) and the
+ * outer `#menu-sheet` itself (via `menuSnap.remeasure()`) to the Menu pane's
+ * Account section's real, current rendered height. Never called directly any
+ * more (see the `_menuAccountResizeObserver` right below this function,
+ * which is what actually calls it now) — kept as its own named function
+ * purely so both steps stay bundled under one clearly-documented name.
+ *
+ * `_animateMenuPanelHeight()` only tweens `.menu-account-panel`'s OWN height
+ * (a descendant, several levels below `#mp-height-wrap`); it never touches
+ * `#mp-height-wrap` (JS-pinned by `_syncPaneHeight()`, mirrored 1:1 by
+ * `#mp-pane-track`'s `height: 100%` + `overflow: hidden` — see styles.css)
+ * or `#menu-sheet`'s own snap height (owned by `menuSnap`/`initSheetDrag()`
+ * in utils.js). Left alone, `#mp-height-wrap` stays pinned at whatever
+ * height it was last explicitly set to — so once the email/password panel's
+ * own growth un-clips past that stale, smaller cap (`#mp-pane-track`'s
+ * `overflow: hidden` swallows the excess) or, on collapse, shrinks back down
+ * while `#mp-height-wrap`/`#menu-sheet` stay pinned at the earlier (larger)
+ * height, the sheet is left oversized with dead space below the now-shorter
+ * content — the reported bug.
+ *
+ * **Root cause of why a PRIOR fix attempt (calling this synchronously,
+ * immediately after `_animateMenuPanelHeight()` returned, from every
+ * toggle/back-link handler) did not actually work, confirmed live by the
+ * user despite that fix's confident reasoning:** that reasoning claimed a
+ * synchronous `offsetHeight`/`scrollHeight` read, taken right after setting
+ * a new inline `height` on a transitioning element, always reflects the new
+ * FINAL target rather than a mid-transition value — and generalized this
+ * from `animateElementHeight()`'s OWN internal measurements, which
+ * genuinely are always safe this way. But look closer at HOW
+ * `animateElementHeight()` gets away with that: every one of its own
+ * `offsetHeight` reads happens while the element's `transition` is
+ * explicitly `"none"` (disabled) — it disables the transition, measures,
+ * THEN re-enables the transition and sets the final value, and never reads
+ * that element's geometry again afterward. `_syncPaneHeight(menuPaneEl)`
+ * does something categorically different: it reads `menuPaneEl.offsetHeight`
+ * — an ANCESTOR of `.menu-account-panel` — in the very same script tick
+ * `.menu-account-panel`'s OWN height transition was just re-enabled AND
+ * retargeted by the PRECEDING `_animateMenuPanelHeight()` call. At that
+ * instant zero real time has elapsed on that transition's timeline and no
+ * rendering frame has been produced for the new target yet, so a forced,
+ * synchronous reflow of an ancestor whose size depends on that
+ * just-(re)started transition does not reliably report the transition's END
+ * value — unlike reading the SAME element with its OWN transition
+ * temporarily disabled, this is reading a DIFFERENT element THROUGH an
+ * already-active transition on a descendant, which is exactly the
+ * genuinely-ambiguous case the previous round's reasoning quietly assumed
+ * away. That's the actual, confirmed-by-rereading gap, and it explains the
+ * live symptom precisely: the resync ran once, synchronously, captured a
+ * still-essentially-unchanged (stale) height, and nothing ever corrected it
+ * afterward once the panel's OWN transition had genuinely finished settling.
+ *
+ * **The actual fix, assumption-free regardless of any CSS-transition-timing
+ * subtlety:** stop trying to measure through a just-triggered transition at
+ * all. A `ResizeObserver` only ever invokes its callback once the browser
+ * has ACTUALLY computed a real layout for a real, current rendering
+ * opportunity — whether that reflects an instant, non-transitioned change
+ * (reduce motion) or one genuine frame of an in-progress CSS transition.
+ * Re-running this exact same `_syncPaneHeight()` + `menuSnap.remeasure()`
+ * pair from a ResizeObserver callback needs no theory about WHEN a
+ * synchronous read is safe, because every read it does happens strictly
+ * after a real layout pass — always correct for that frame. And since
+ * ResizeObserver keeps firing for every subsequent frame
+ * `.menu-account-panel`'s own height is still actively changing,
+ * `#mp-height-wrap` (and, via `menuSnap.remeasure()`, `#menu-sheet` itself on
+ * mobile — on desktop `#menu-sheet` uses `fit-content` and needs no JS
+ * resize at all once `#mp-height-wrap` is correct, see `initSheetDrag()`)
+ * continuously, smoothly chases the real value in lockstep with the panel's
+ * own animation, all the way to settlement, instead of committing to one
+ * unreliable guess at t=0 and never revisiting it.
+ * @returns {void}
+ */
+function _resyncMenuSheetHeight() {
+  if (_activePane !== "menu") return;
+  _syncPaneHeight(menuPaneEl);
+  menuSnap.remeasure();
+}
+
+/**
+ * Fires `_resyncMenuSheetHeight()` any time the Account section's own
+ * rendered size genuinely changes, for ANY reason (email/password panel
+ * toggle open/closed, the toggle's "check your email" content swap,
+ * sign-in/out re-render, the async post-load resync, ...) — see
+ * `_resyncMenuSheetHeight()`'s own doc comment just above for why this
+ * replaces the previous approach of manually calling it, synchronously,
+ * right after each individual DOM change (that approach read stale,
+ * pre-transition heights and left the sheet oversized). Observes
+ * `#menu-account-body`, not `.menu-account-panel` — `#menu-account-body` is
+ * a stable node across every `_renderAccountSection()` re-render (only its
+ * `innerHTML` is ever replaced, the node itself never is), so this only
+ * needs to be set up once, at module load, rather than re-observing a fresh
+ * element after every render. Guarded against the sheet being closed/hidden
+ * — while closed, `menuPaneEl.offsetHeight` would read 0 (a `[hidden]`
+ * ancestor has no box at all), which would otherwise incorrectly pin
+ * `#mp-height-wrap` to 0 the moment the sheet re-opens and this fires again.
+ */
+const _menuAccountResizeObserver = new ResizeObserver(() => {
+  if (menuSheet.hidden || menuSheet.classList.contains("shut")) return;
+  _resyncMenuSheetHeight();
+});
+_menuAccountResizeObserver.observe(accountBody);
+
 function _buildSignedOutHTML() {
-  // Google and email are two equal-weight peer sign-in options in one row —
-  // neither should read as the primary choice over the other. Both share
-  // .rv-action-btn (44px height) with flex:1 (equal width split); Google
-  // keeps its full logo + "Continue with Google" label (its own branding
-  // guidelines require both together for recognizability, and the exact
-  // text can't be abbreviated — see .btn-google in docs/DESIGN_SYSTEM.md).
-  // The email option is "Continue with email" — deliberately mirroring
-  // Google's own phrasing so the two read as parallel, equally-weighted
-  // actions rather than one being the "real" option and the other a
-  // secondary afterthought. Its border/text color are overridden
-  // (styles.css) to this app's higher-contrast neutral tokens (--text-2
-  // border, --text label) instead of .btn-secondary's default subtle look.
-  // Also carries its own envelope icon (EMAIL_SIGNIN_BTN_HTML) so both
-  // buttons in the row match icon+label structure, border color, and font
-  // weight exactly — an earlier icon-only-for-Google version read as two
-  // different apps' buttons sitting side by side. This is now a second,
-  // deliberate exception to the Button content rule (see .btn-google in
-  // docs/DESIGN_SYSTEM.md for the first) for the same reason: two peer
-  // sign-in options need to visually match each other more than either
-  // needs to match this app's default plain-text-button convention.
+  // Google, Microsoft, Facebook, Apple, and email are five equal-weight peer
+  // sign-in options in one row/grid — none should read as the primary choice
+  // over any other. All share .rv-action-btn (44px height); the 3-column
+  // grid layout (2026-08-05, later round — was 2-column) that puts however
+  // many of these five are actually visible (currently 3: Google, Microsoft,
+  // the un-hidden email option) into a single row lives in
+  // .menu-account-signin-row (styles.css). Each
+  // OAuth provider keeps its full logo + "Continue with X" label (each
+  // brand's own guidelines require both together for recognizability, and
+  // the exact text can't be abbreviated — see .btn-google in
+  // docs/DESIGN_SYSTEM.md). The email option is "Continue with email" —
+  // deliberately mirroring the OAuth buttons' own phrasing so all five read
+  // as parallel, equally-weighted actions rather than one being the "real"
+  // option and the others secondary afterthoughts. Its border/text color are
+  // overridden (styles.css) to this app's higher-contrast neutral tokens
+  // (--text-2 border, --text label) instead of .btn-secondary's default
+  // subtle look. Also carries its own envelope icon (EMAIL_SIGNIN_BTN_HTML)
+  // so it still matches the OAuth buttons' icon+label structure — an earlier
+  // icon-only-for-email version read as a different app's button sitting
+  // beside the others. This is now a second, deliberate exception to the
+  // Button content rule (see .btn-google in docs/DESIGN_SYSTEM.md for the
+  // first) for the same reason: peer sign-in options need to visually match
+  // each other more than any one needs to match this app's default
+  // plain-text-button convention.
+  // menu-password-signin-toggle/-panel (added 2026-08-05) is a SEPARATE
+  // traditional email + password mechanism from the magic-link toggle/panel
+  // right above it — the magic-link one stays fully intact but hidden (see
+  // the "Temporarily hidden (2026-08-02)" CSS comment); this new one is what
+  // actually renders in that row right now (its own .btn-password class is
+  // NOT caught by that hide rule — see styles.css). One button handles both
+  // first-time signup and returning sign-in via an explicit mode toggle link
+  // (see _wireSignedOutView()) rather than silently guessing from the error
+  // code, since auth/invalid-credential alone can't reliably distinguish
+  // "no such account" from "wrong password" across Firebase SDK versions.
+  // menu-email-signin-back / menu-password-signin-back (added this round):
+  // each expanded panel's own "Back to sign-in options" link — clicking it
+  // re-collapses the panel and restores menu-account-signin-row, the
+  // opposite of what the row's own toggle button (now hidden, along with
+  // every other row button, while its panel is open) just did. See
+  // _wireSignedOutView()/_wirePasswordSignIn() for the collapse/restore
+  // wiring, and .rv-back-link in styles.css for why this is a distinct
+  // template from .rv-resend-link right below it in each panel.
   return `<div class="menu-account-panel">
-    <div class="menu-account-signin-row">
+    <div id="menu-account-signin-row" class="menu-account-signin-row">
       <button id="menu-google-signin" class="rv-action-btn btn-google" type="button">${GOOGLE_SIGNIN_BTN_HTML}</button>
       <button id="menu-microsoft-signin" class="rv-action-btn btn-microsoft" type="button">${MICROSOFT_SIGNIN_BTN_HTML}</button>
+      <button id="menu-facebook-signin" class="rv-action-btn btn-facebook" type="button">${FACEBOOK_SIGNIN_BTN_HTML}</button>
+      <button id="menu-apple-signin" class="rv-action-btn btn-apple" type="button">${APPLE_SIGNIN_BTN_HTML}</button>
       <button id="menu-email-signin-toggle" class="rv-action-btn btn-secondary" type="button">${EMAIL_SIGNIN_BTN_HTML}</button>
+      <button id="menu-password-signin-toggle" class="rv-action-btn btn-password" type="button">${EMAIL_PASSWORD_SIGNIN_BTN_HTML}</button>
     </div>
-    <div id="menu-email-signin-panel" class="rv-verify-step hide">
+    <div id="menu-email-signin-panel" class="rv-verify-step rv-panel-divider hide">
+      <button id="menu-email-signin-back" class="rv-back-link" type="button">${BACK_CHEVRON_ICON_SVG}Back to sign-in options</button>
       <div class="rv-field">
         <label class="rv-field-label" for="menu-email-input">Email address</label>
         <input id="menu-email-input" class="rv-input" type="email" placeholder="you@example.com" maxlength="254" autocomplete="email" />
       </div>
       <button id="menu-email-send" class="rv-action-btn btn-primary" type="button">Send sign-in link</button>
       <p id="menu-email-error" class="rv-verify-error hide"></p>
+    </div>
+    <div id="menu-password-signin-panel" class="rv-verify-step rv-panel-divider hide">
+      <button id="menu-password-signin-back" class="rv-back-link" type="button">${BACK_CHEVRON_ICON_SVG}Back to sign-in options</button>
+      <div id="menu-password-name-field" class="rv-field hide">
+        <label class="rv-field-label" for="menu-password-name-input">Full name</label>
+        <input id="menu-password-name-input" class="rv-input" type="text" placeholder="Your name" maxlength="100" autocomplete="name" />
+      </div>
+      <div class="rv-field">
+        <label class="rv-field-label" for="menu-password-email-input">Email address</label>
+        <input id="menu-password-email-input" class="rv-input" type="email" placeholder="you@example.com" maxlength="254" autocomplete="email" />
+      </div>
+      <div class="rv-field">
+        <label class="rv-field-label" for="menu-password-input">Password</label>
+        <div class="rv-field-input-wrap">
+          <input id="menu-password-input" class="rv-input" type="password" placeholder="••••••••" maxlength="128" autocomplete="current-password" />
+          <button id="menu-password-toggle-visibility" class="clear-btn rv-field-input-btn" type="button" aria-label="Show password">${EYE_SHOW_ICON_SVG}</button>
+        </div>
+      </div>
+      <button id="menu-password-forgot" class="rv-resend-link" type="button">Forgot password?</button>
+      <button id="menu-password-submit" class="rv-action-btn btn-primary" type="button">Sign in</button>
+      <button id="menu-password-mode-toggle" class="rv-resend-link" type="button">New here? Create an account</button>
+      <p id="menu-password-error" class="rv-verify-error hide"></p>
     </div>
   </div>`;
 }
@@ -522,10 +673,14 @@ function _buildSignedInHTML(account) {
 }
 
 function _wireSignedOutView() {
+  const signinRow = document.getElementById("menu-account-signin-row");
   const googleBtn = document.getElementById("menu-google-signin");
   const microsoftBtn = document.getElementById("menu-microsoft-signin");
+  const facebookBtn = document.getElementById("menu-facebook-signin");
+  const appleBtn = document.getElementById("menu-apple-signin");
   const emailToggle = document.getElementById("menu-email-signin-toggle");
   const emailPanel = document.getElementById("menu-email-signin-panel");
+  const emailBackBtn = document.getElementById("menu-email-signin-back");
   const emailInput = document.getElementById("menu-email-input");
   const sendBtn = document.getElementById("menu-email-send");
   const errorMsg = document.getElementById("menu-email-error");
@@ -569,8 +724,72 @@ function _wireSignedOutView() {
     }
   });
 
+  facebookBtn.addEventListener("click", async () => {
+    hideError();
+    facebookBtn.disabled = true;
+    facebookBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    const result = await _auth.signInWithFacebook();
+    if (result.success) {
+      showWelcomeGreeting(result.account, result.isNewUser);
+    } else {
+      facebookBtn.disabled = false;
+      facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
+      // Facebook's popup-cancel surfaces through the same generic Firebase
+      // Auth SDK error codes every popup-based provider uses (this isn't a
+      // per-provider error — it's the SDK's own popup lifecycle handling),
+      // so no extra error code is needed here beyond Google/Microsoft's.
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
+  });
+
+  appleBtn.addEventListener("click", async () => {
+    hideError();
+    appleBtn.disabled = true;
+    appleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    const result = await _auth.signInWithApple();
+    if (result.success) {
+      showWelcomeGreeting(result.account, result.isNewUser);
+    } else {
+      appleBtn.disabled = false;
+      appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
+      // Same reasoning as Facebook's cancel check above — Apple's popup
+      // cancel is the same generic Firebase Auth SDK code too.
+      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
+        showError("Sign-in failed. Please try again.");
+      }
+    }
+  });
+
+  // Opening the panel collapses the row of other sign-in options (Google/
+  // Microsoft/Facebook/Apple/password) rather than stacking the panel below
+  // them — on mobile this sheet has limited height, and the prior
+  // append-below behavior made the row + panel stack eat most of it. The
+  // panel's own "Back to sign-in options" link (emailBackBtn) reverses this,
+  // so opening it by accident is never a dead end.
+  // crossFadeSwap() (src/utils.js) cross-fades signinRow/emailPanel's own
+  // opacity BEFORE the actual .hide toggling below runs — without it, .hide's
+  // instant `display: none` made the row visibly pop out of existence while
+  // _animateMenuPanelHeight()'s height-tween smoothly resized the panel
+  // around it in the same tick. See crossFadeSwap()'s own doc comment for
+  // why the fade and the height-tween are sequenced, not run concurrently.
   emailToggle.addEventListener("click", () => {
-    _animateMenuPanelHeight(() => emailPanel.classList.toggle("hide"));
+    crossFadeSwap(signinRow, emailPanel, () => {
+      _animateMenuPanelHeight(() => {
+        signinRow.classList.add("hide");
+        emailPanel.classList.remove("hide");
+      });
+    });
+  });
+
+  emailBackBtn.addEventListener("click", () => {
+    crossFadeSwap(emailPanel, signinRow, () => {
+      _animateMenuPanelHeight(() => {
+        emailPanel.classList.add("hide");
+        signinRow.classList.remove("hide");
+      });
+    });
   });
 
   sendBtn.addEventListener("click", async () => {
@@ -591,6 +810,145 @@ function _wireSignedOutView() {
       sendBtn.disabled = false;
       sendBtn.textContent = "Send sign-in link";
       showError("Could not send the link. Please try again.");
+    }
+  });
+
+  _wirePasswordSignIn();
+}
+
+/**
+ * Wire the traditional email + password panel: the toggle button that opens
+ * it, the show/hide password button, the signin/signup mode-switch link, and
+ * the submit button that calls either signInWithEmailPassword or
+ * signUpWithEmailPassword depending on the currently-selected mode. A
+ * private helper (rather than inlined in _wireSignedOutView() directly)
+ * purely to keep that function's own length in check — see src/reviews.js's
+ * near-identical wiring for the review-form sign-in gate's copy of this same
+ * panel.
+ *
+ * The "Full name" field (#menu-password-name-field, added 2026-08-05, later
+ * round) is the mirror case of forgotLink below: forgotLink only makes
+ * sense in "signin" mode, this field only makes sense in "signup" mode
+ * (mirrored via the same updateModeUI() toggle) — an existing password
+ * account already has whatever name it was created with; every other
+ * sign-in provider (Google/Microsoft/Facebook/Apple) supplies a displayName
+ * automatically, so this is the one path that has to ask for it directly.
+ * @returns {void}
+ */
+function _wirePasswordSignIn() {
+  const signinRow = document.getElementById("menu-account-signin-row");
+  const toggle = document.getElementById("menu-password-signin-toggle");
+  const panel = document.getElementById("menu-password-signin-panel");
+  const backBtn = document.getElementById("menu-password-signin-back");
+  const nameField = document.getElementById("menu-password-name-field");
+  const nameInput = document.getElementById("menu-password-name-input");
+  const emailInput = document.getElementById("menu-password-email-input");
+  const passwordInput = document.getElementById("menu-password-input");
+  const visibilityBtn = document.getElementById("menu-password-toggle-visibility");
+  const submitBtn = document.getElementById("menu-password-submit");
+  const modeToggle = document.getElementById("menu-password-mode-toggle");
+  const forgotLink = document.getElementById("menu-password-forgot");
+  const errorMsg = document.getElementById("menu-password-error");
+
+  let mode = "signin"; // "signin" | "signup" — see _updateModeUI() below
+
+  function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.remove("hide"); }
+  function hideError() { errorMsg.classList.add("hide"); }
+
+  function updateModeUI() {
+    submitBtn.textContent = mode === "signin" ? "Sign in" : "Create account";
+    modeToggle.textContent = mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in";
+    // Only relevant while signing in to an existing account — a signup has
+    // no password yet to reset.
+    forgotLink.classList.toggle("hide", mode !== "signin");
+    // Mirror case of forgotLink above: only relevant for a brand-new
+    // signup — an existing account already has a name (or not, but there's
+    // nothing to re-collect on sign-in either way). Google/Microsoft/
+    // Facebook/Apple all supply a displayName from the provider for free;
+    // this is the one sign-in path that needs to ask for it directly (see
+    // src/auth.js's signUpWithEmailPassword()).
+    nameField.classList.toggle("hide", mode !== "signup");
+  }
+
+  // Same collapse-the-row-when-a-panel-opens behavior as the magic-link
+  // toggle in _wireSignedOutView() above — see that handler's comment, and
+  // crossFadeSwap()'s own doc comment (utils.js) for why the row's own
+  // opacity fade is sequenced before, not concurrent with, the height-tween.
+  toggle.addEventListener("click", () => {
+    crossFadeSwap(signinRow, panel, () => {
+      _animateMenuPanelHeight(() => {
+        signinRow.classList.add("hide");
+        panel.classList.remove("hide");
+      });
+    });
+  });
+
+  backBtn.addEventListener("click", () => {
+    crossFadeSwap(panel, signinRow, () => {
+      _animateMenuPanelHeight(() => {
+        panel.classList.add("hide");
+        signinRow.classList.remove("hide");
+      });
+    });
+  });
+
+  visibilityBtn.addEventListener("click", () => {
+    const showing = passwordInput.type === "text";
+    passwordInput.type = showing ? "password" : "text";
+    visibilityBtn.innerHTML = showing ? EYE_SHOW_ICON_SVG : EYE_HIDE_ICON_SVG;
+    visibilityBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  });
+
+  modeToggle.addEventListener("click", () => {
+    mode = mode === "signin" ? "signup" : "signin";
+    hideError();
+    updateModeUI();
+  });
+
+  // Neutral outcome regardless of whether the typed email is actually
+  // registered — see src/auth.js's sendPasswordReset() doc comment for why
+  // this must never reveal that. Unlike the earlier pass, an empty/invalid
+  // email never triggers a native window.prompt() — this panel already has
+  // its own visible email input right above the password field (unlike the
+  // magic-link cross-device case, which has no email field on screen at all
+  // when it prompts), so staying inside this same custom-styled UI just
+  // means focusing that input and showing the panel's own inline error.
+  forgotLink.addEventListener("click", async () => {
+    hideError();
+    const email = emailInput.value.trim();
+    if (!email.includes("@")) {
+      emailInput.focus();
+      showError("Enter your email address above first");
+      return;
+    }
+    forgotLink.disabled = true;
+    await _auth.sendPasswordReset(email);
+    forgotLink.disabled = false;
+    showToast("Check your email", "check", "If an account exists for that email, a reset link is on its way.");
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    hideError();
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (mode === "signup" && !name) { showError("Please enter your name"); nameInput.focus(); return; }
+    if (!email.includes("@")) { showError("Please enter a valid email address"); return; }
+    if (password.length < PASSWORD_MIN_LENGTH) { showError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`); return; }
+
+    submitBtn.disabled = true;
+    const busyLabel = mode === "signin" ? "Signing in…" : "Creating account…";
+    submitBtn.innerHTML = `<span class="btn-spinner"></span> ${busyLabel}`;
+    const result = mode === "signin"
+      ? await _auth.signInWithEmailPassword(email, password)
+      : await _auth.signUpWithEmailPassword(name, email, password);
+    if (result.success) {
+      showWelcomeGreeting(result.account, result.isNewUser);
+      // On success, EVT.AUTH_CHANGED also fires and _renderAccountSection() re-runs.
+    } else {
+      submitBtn.disabled = false;
+      updateModeUI();
+      showError(emailPasswordErrorMessage(result.error, mode));
     }
   });
 }
