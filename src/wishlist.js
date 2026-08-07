@@ -1,8 +1,8 @@
 /**
  * Wishlist — community feature request board.
  *
- * Users browse, vote on, and submit wishes. Data stored in Google Sheets
- * via Apps Script, proxied through /api/wishes. Votes can be toggled
+ * Users browse, vote on, and submit wishes. Data is stored in Cloudflare D1,
+ * proxied through /api/wishes. Votes can be toggled
  * per device per wish (localStorage + server-side state).
  */
 import { RECAPTCHA_SITE_KEY } from "./config.js";
@@ -197,26 +197,14 @@ function _toggleExpand(wishId) {
 
 // ─── Fetch wishes ─────────────────────────────────────────────────────────────
 async function _fetchWishesApi() {
-  const urls = ["/api/wishes"];
-
   try {
-    const cfg = await import("./config.local.js");
-    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=wishes`);
-  } catch {
-    // config.local.js absent in production — expected
-  }
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
+    const res = await fetch("/api/wishes");
+    if (res.ok) {
       const data = await res.json();
       const wishes = Array.isArray(data) ? data : (data.wishes || []);
       if (Array.isArray(wishes)) return wishes;
-    } catch {
-      continue;
     }
-  }
+  } catch { /* network/API unavailable */ }
 
   return null;
 }

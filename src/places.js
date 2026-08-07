@@ -1016,33 +1016,25 @@ function writeCache(places, tags) {
 }
 
 /** Strip sponsor fields so stale cache/static data never shows outdated sponsors.
- *  Live API (Google Sheets) is the only source of truth for sponsor status. */
+ *  Live API (Cloudflare D1) is the only source of truth for sponsor status. */
 function stripSponsorFields(places) {
   for (const p of places) delete p.sponsor;
   return places;
 }
 
 async function fetchFresh() {
-  const urls = ['/api/places?action=all'];
-  // Local dev: config.local.js provides SHEETS_URL as direct GAS fallback
-  // (CF Functions aren't running on localhost, so /api/places 404s)
   try {
-    const cfg = await import("./config.local.js");
-    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=all`);
-  } catch { /* config.local.js absent in production — expected */ }
-  for (const url of urls) {
-    try {
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.places?.length) {
-          console.log(`[Places] Fetched ${data.places.length} places from ${url}`);
-          return data;
-        }
+    const url = '/api/places?action=all';
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.places?.length) {
+        console.log(`[Places] Fetched ${data.places.length} places from ${url}`);
+        return data;
       }
-    } catch (err) {
-      console.warn(`[Places] Fetch from ${url} failed:`, err.message);
     }
+  } catch (err) {
+    console.warn("[Places] Fetch from /api/places failed:", err.message);
   }
   return null;
 }

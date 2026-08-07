@@ -23,7 +23,7 @@ A community-driven Progressive Web App for discovering halal food, shops, and pr
 - [Architecture](#architecture)
 - [Local Development Setup](#local-development-setup)
 - [Configuration & Environment Variables](#configuration--environment-variables)
-- [Backend (Cloudflare Functions & Google Sheets)](#backend-cloudflare-functions--google-sheets)
+- [Backend (Cloudflare Functions & D1)](#backend-cloudflare-functions--d1)
 - [Data Management](#data-management)
 - [Service Worker & Caching](#service-worker--caching)
 - [CSS & Design System](#css--design-system)
@@ -78,7 +78,7 @@ The entire frontend is written in plain JavaScript with no framework. Zero runti
 
 - Zoom in / zoom out buttons with disabled state at min/max zoom
 - Locate button — requests browser geolocation, shows an accuracy circle, auto-centers the map
-- Home marker — saves and restores a custom home location in `localStorage`
+- Home marker — saves and restores a custom home location locally when signed out, or syncs it to the signed-in account
 - Style picker — light, dark, satellite, heatmap radio buttons
 - Heatmap toggle — dynamic place scoring visualization
 
@@ -117,7 +117,7 @@ All halal locations are stored in `data/places.json` (76+ entries). Each place h
 - Sponsor badge if applicable
 - Quick-action buttons: Directions, Share, Save to Favorites, Report
 
-**Favorites** — users can star any place; saved to `localStorage` and accessible in the Places sheet under a Favorites filter.
+**Favorites** — users can star any place; saved locally when signed out and synced to the signed-in account when available. Favorites are accessible in the Places sheet under a Favorites filter.
 
 **Sponsorship System** — places can have active sponsor badges tied to date ranges. A `boycott` flag on a place overrides any sponsor display.
 
@@ -137,7 +137,7 @@ The collapsible search pill at the top of the screen provides:
 
 **Dropped Pins** — any map tap during search pick-mode creates a dropped pin with:
 - Reverse geocoding via Nominatim to get a human-readable address
-- Save pin to `localStorage` with optional name
+- Save pin locally when signed out, or sync it to the signed-in account, with an optional name
 - Share pin via Web Share API or clipboard (URL-encoded format)
 - "Get Directions" shortcut from the pin popup
 
@@ -260,12 +260,12 @@ A seasonal feature (`src/eid-prayers.js`) for listing outdoor Eid prayer venues 
 
 - **Two-phase loading:**
   1. Immediately loads from a pre-cached static file (`data/eid-prayers.json`)
-  2. Background fetch from `/api/eid-prayers` (Cloudflare Function → Google Sheets) to get any updates
+  2. Background fetch from `/api/eid-prayers` (Cloudflare Function → D1) to get any updates
 - Filters entries so only future events are shown
 - Renders distinct map markers separate from regular places
 - **Banner** — a temporary dismissible notice when Eid locations are available
 - **Share** — each Eid location can be shared via `?eid=<id>` URL parameter
-- Data is managed in a Google Sheet via an Apps Script deployment
+- Data is managed in Cloudflare D1 via the admin API
 
 ---
 
@@ -273,15 +273,14 @@ A seasonal feature (`src/eid-prayers.js`) for listing outdoor Eid prayer venues 
 
 **Reviews (`src/reviews.js`):**
 
-The review system requires email verification before submission to prevent spam.
+The review system requires signing in before submission to prevent spam and allow account-linked edits/deletes.
 
 Flow:
 1. User taps "Write a Review" on a place popup
-2. User enters their email; reCAPTCHA v3 token is generated
-3. `/api/reviews` sends a 6-digit OTP to the email (via Apps Script)
-4. User enters the OTP; a verification token is stored in `localStorage` (valid 7 days)
-5. User submits a 1–5 star rating with optional text (20–500 characters)
-6. Review appears in the list with a Verified badge
+2. User signs in with Google, Microsoft, or email/password via Firebase Authentication
+3. Email/password accounts must verify their email before continuing
+4. User submits a 1–5 star rating with optional text (20–500 characters)
+5. Review appears in the list with a Verified badge and is linked using a one-way hash of the verified email
 
 Review display:
 - Scrollable list per place
@@ -298,13 +297,13 @@ A community board for requesting new features or reporting data gaps.
 - Submit a new wish (name, description, category)
 - Status labels: `Active` / `In Progress` / `Implemented` / `Out of Scope`
 - Sorted by status priority then vote count descending
-- Backed by a Google Sheet via Apps Script
+- Backed by Cloudflare D1 via `/api/wishes`
 
 **Contact Form (`src/contact.js`):**
 
 - Name, email, and message fields
 - reCAPTCHA v3 spam protection
-- Submissions are written to a Google Sheet row via Apps Script
+- Submissions are written to Cloudflare D1 via `/api/submit`
 - Toast notification on success or error
 
 **Suggest a Place / Suggest an Edit:**
@@ -312,8 +311,8 @@ A community board for requesting new features or reporting data gaps.
 - "Suggest Place" overlay — fill in name, type, address, coordinates, tags
 - "Suggest Edit" overlay — pre-populated form for an existing place
 - Tag chips are toggleable (click cycles true/false)
-- Submitted via `/api/submit` (Cloudflare Function → Apps Script)
-- Admin workflow reviews and approves suggestions in the Google Sheet
+- Submitted via `/api/submit` (Cloudflare Function → D1)
+- Admin workflow reviews and approves suggestions in the D1-backed admin API
 
 ---
 
@@ -391,7 +390,7 @@ A `localStorage` flag prevents the tutorial from showing again on return visits.
 | Voice | Web Speech API | Turn-by-turn announcements |
 | Compass | DeviceOrientationEvent | Qibla bearing |
 | Serverless | Cloudflare Pages Functions | 7 API functions |
-| Data Persistence | Google Sheets + Apps Script | Places, reviews, contact |
+| Data Persistence | Cloudflare D1 | Places, reviews, contact, saved account data |
 | Spam Protection | Google reCAPTCHA v3 | Reviews, contact, suggest |
 | Offline | Service Worker | Stale-while-revalidate |
 | Testing | Playwright | 1 005 tests, 4 browsers |
@@ -470,7 +469,7 @@ Maps/
 │   ├── fetch-and-cache-places.js
 │   ├── check_places_osm.py     # Validates place coords against OSM
 │   ├── strip-comments.py       # Minification helper
-│   └── apps-script/            # Google Apps Script backend source
+│   └── apps-script/            # Legacy retired Apps Script source
 │
 ├── tests/
 │   ├── helpers.js
@@ -516,30 +515,29 @@ Two environments share the same export shape:
 ```
 Browser
   └─ src/app.js
-       ├─ places.js ──────────── data/places.json (bundled, no API call)
-       │                         └─ /api/places (Cloudflare → GAS → Sheets, 1h cache)
+       ├─ places.js ──────────── data/places.json (bundled fallback)
+       │                         └─ /api/places (Cloudflare → D1, 1h cache)
        ├─ prayer.js ──────────── aladhan.com/v1/timings (real-time)
        ├─ directions.js ──────── Digitransit GraphQL / OSRM REST / Transitous REST
        ├─ search.js ──────────── Nominatim / Digitransit Geocoding
-       ├─ reviews.js ─────────── /api/reviews (Cloudflare → GAS → Sheets)
+       ├─ reviews.js ─────────── /api/reviews (Cloudflare → D1)
        ├─ transit-stops.js ───── Overpass API + scripts/transit-cache.json (local)
        └─ eid-prayers.js ─────── data/eid-prayers.json + /api/eid-prayers
 ```
 
 ### Backend Architecture
 
-All mutable data lives in a Google Sheet with multiple named sheets (places, reviews, wishes, contacts, eid-prayers). A Google Apps Script web app acts as the single backend:
+All mutable data lives in Cloudflare D1. Cloudflare Pages Functions are the single backend for reads, writes, auth-gated account sync, and admin actions:
 
 ```
-Client → Cloudflare Pages Function (CORS, cache headers)
-              └─ Google Apps Script Web App (doGet / doPost)
-                     └─ Google Sheets (data store)
+Client → Cloudflare Pages Function (CORS, cache headers, auth checks)
+              └─ Cloudflare D1 database
 ```
 
 Cloudflare Functions add:
 - CORS protection (single allowed origin)
 - Cloudflare CDN cache headers (`s-maxage`, `stale-while-revalidate`)
-- Secrets kept server-side (RECAPTCHA_SECRET, GAS_URL)
+- Secrets kept server-side (RECAPTCHA_SECRET, ADMIN_SECRET)
 
 ---
 
@@ -577,7 +575,6 @@ cp src/config.template.js src/config.local.js
 Open `src/config.local.js` and fill in the values. See [Configuration](#configuration--environment-variables) for what each variable does. At minimum you need:
 - `DT_API_KEY` — get a free key from [digitransit.fi/developers](https://digitransit.fi/developers/)
 - `RECAPTCHA_SITE_KEY` — register at google.com/recaptcha (v3)
-- `SHEETS_URL` — your Google Apps Script deployment URL (for reviews/contacts to work locally)
 
 **4. Start the dev server**
 
@@ -616,31 +613,30 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 | `NOMINATIM_REV` | Nominatim reverse geocoding URL | Public, no key |
 | `NOMINATIM_VB` | Nominatim bounding box (`W,N,E,S`) | Set to Helsinki metro area |
 | `HF_TOKEN_KEY` | AES encryption key for route/pin sharing URLs | Any strong random string |
-| `SHEETS_URL` | Google Apps Script web app deployment URL | Apps Script console |
 | `RECAPTCHA_SITE_KEY` | reCAPTCHA v3 public site key | Google reCAPTCHA Admin |
 
 **Production-only (Cloudflare environment variables, never committed):**
 
 | Variable | Description |
 |----------|-------------|
-| `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for OTP verification) |
-| `GAS_URL` | Same as `SHEETS_URL` but kept server-side for security |
+| `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for protected form writes) |
+| `ADMIN_SECRET` | Shared secret for the D1-backed admin API |
 
 Set these in the Cloudflare Pages dashboard under Settings → Environment Variables.
 
 ---
 
-## Backend (Cloudflare Functions & Google Sheets)
+## Backend (Cloudflare Functions & D1)
 
 ### Cloudflare Pages Functions (`functions/api/`)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `GET /api/config` | GET | Returns non-secret config variables as JSON to the client |
-| `GET /api/places` | GET | Proxies place data from GAS; adds 1-hour Cloudflare cache |
+| `GET /api/places` | GET | Reads place data from D1; adds 1-hour Cloudflare cache |
 | `GET /api/reviews?placeId=` | GET | Fetches reviews for a place |
-| `POST /api/reviews` | POST | Submit review / request OTP / verify OTP |
-| `GET /api/eid-prayers` | GET | Fetches Eid prayer locations from GAS |
+| `POST /api/reviews` | POST | Submit, check, delete, and list account reviews |
+| `GET /api/eid-prayers` | GET | Fetches Eid prayer locations from D1 |
 | `POST /api/submit` | POST | Place suggestion, place edit, contact form |
 | `GET /api/wishes` | GET | Lists feature wishes |
 | `POST /api/wishes` | POST | Vote on or submit a wish |
@@ -648,18 +644,14 @@ Set these in the Cloudflare Pages dashboard under Settings → Environment Varia
 
 All functions share common patterns:
 - Check `Origin` header against an allowed origin whitelist
-- Forward to the Google Apps Script URL (stored in `GAS_URL` env var)
+- Read/write Cloudflare D1 through the `DB` binding
 - Return appropriate `Cache-Control` headers for Cloudflare CDN
 
-### Google Apps Script
+### Cloudflare D1
 
-The Apps Script (`scripts/apps-script/`) is deployed as a web app and handles:
-- `doGet(e)` — read operations (list places, reviews, wishes, eid prayers)
-- `doPost(e)` — write operations (submit review, OTP email, contact, place suggestion)
-- OTP generation and email delivery (using `MailApp.sendEmail`)
-- Row insertion and update in the relevant Google Sheet
-
-To deploy a new version: open the Apps Script editor, click Deploy → New Deployment → Web App, set execute as "Me" and access to "Anyone", copy the deployment URL to `SHEETS_URL`.
+D1 is bound to the Pages Functions as `DB` and stores places, tags, reviews,
+wishes, contacts, Eid prayers, submitted edits, account sync rows, and admin
+metadata. The legacy Apps Script/Google Sheets backend is retired.
 
 ---
 
@@ -886,8 +878,7 @@ NOMINATIM_VB
 HF_TOKEN_KEY
 RECAPTCHA_SITE_KEY
 RECAPTCHA_SECRET
-GAS_URL
-SHEETS_URL
+ADMIN_SECRET
 ```
 
 ### Deployment Checklist

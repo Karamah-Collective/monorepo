@@ -1,7 +1,7 @@
 // ─── Eid Prayer Locations ────────────────────────────────────────────────────
 // Temporary feature: shows Eid prayer locations, timings, and organizers
-// on the map with special markers and a banner. Data sourced from the
-// "EidPrayers" Google Sheet worksheet via /api/eid-prayers.
+// on the map with special markers and a banner. Data is read from Cloudflare
+// D1 via /api/eid-prayers.
 
 import { map } from "./map-init.js";
 import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl, requestLocation } from "./utils.js";
@@ -14,7 +14,7 @@ let _bannerDismissed = false;
 
 // ── Fetch & initialise ──────────────────────────────────────────────────────
 
-// Phase 1: load from the pre-cached static JSON immediately (no Sheets round-trip)
+// Phase 1: load from the pre-cached static JSON immediately
 async function _fetchEidStatic() {
   try {
     const res = await fetch("/data/eid-prayers.json", { signal: AbortSignal.timeout(5000) });
@@ -26,22 +26,15 @@ async function _fetchEidStatic() {
   return null;
 }
 
-// Phase 2: background refresh via CF proxy → Sheets (for live updates)
+// Phase 2: background refresh via Cloudflare Function → D1 (for live updates)
 async function _fetchEidApi() {
-  const urls = ["/api/eid-prayers"];
   try {
-    const cfg = await import("./config.local.js");
-    if (cfg.SHEETS_URL) urls.push(`${cfg.SHEETS_URL}?action=eid`);
-  } catch { /* config.local.js absent in production — expected */ }
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) continue;
+    const res = await fetch("/api/eid-prayers", { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length) return data;
-    } catch { continue; }
-  }
+    }
+  } catch { /* network/API unavailable; static data remains in use */ }
   return null;
 }
 

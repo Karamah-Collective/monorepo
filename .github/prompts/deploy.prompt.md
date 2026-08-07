@@ -65,11 +65,11 @@ that is fine — leave it commented and continue.
 
 | Command | What it runs | When to use |
 |---|---|---|
-| `npm run update` | version bump + places refresh | Data-only refresh without deploying |
-| `npm run update:full` | version + places + transit cache | Full sweep — ~15 s; do ~once a year or when transit data is stale |
-| `npm run update:force` | **force** version bump + places | **Default for all deploys** — always busts cache |
+| `npm run update` | version bump only | Routine cache-version refresh |
+| `npm run update:full` | version + transit cache | Full sweep — do when transit data is stale |
+| `npm run update:force` | **force** version bump only | **Default for all deploys** — always busts cache |
 | `npm run update:version` | version bump only | When only bumping the cache string |
-| `npm run update:places` | places + tags fetch only | When only refreshing place data |
+| `npm run update:places` | legacy Apps Script places fetch only | Retired; do not use for deploys now that D1 is the data source |
 | `npm run update:transit` | transit stop cache rebuild only | When only rebuilding HSL stop data |
 
 ---
@@ -85,13 +85,13 @@ that is fine — leave it commented and continue.
   This always produces a new VERSION string — bumping the date, or if already today appending
   a counter (e.g. `20260316` → `20260316-2` → `20260316-3`). Every deploy forces every user's
   service worker to install the new version and wipe their old caches on next visit. **Saved
-  favourites are stored in `localStorage` and are never affected by a VERSION change.**
+  favourites are stored locally/account-synced separately and are never affected by a VERSION change.**
 
 - User says "full sweep", "update everything", or "update transit" → run:
   ```
   npm run update:full
   ```
-  Note: `update:full` does not force — only rebuilds version+places+transit. Use
+  Note: `update:full` does not force — only rebuilds version+transit. Use
   `node scripts/update-all.js --force --all` if a force bump is also needed.
 
 - User asks for a specific step only → use the matching `update:version`, `update:places`,
@@ -109,7 +109,7 @@ like. You need this context to write an accurate commit message. At minimum capt
 
 - Which files changed
 - The old → new VERSION / `?v=` strings (if the version was bumped)
-- The old vs new place count (if `places.json` changed)
+- The old vs new place count (only if a deliberate legacy/static places update changed `places.json`)
 - The old vs new transit stop count (if `transit-cache.json` changed)
 
 ---
@@ -144,7 +144,7 @@ Construct the commit message according to the **Commit Message Standard** define
 | `docs:`      | Documentation-only changes                                      |
 | `security:`  | Security hardening or vulnerability fix                         |
 
-A typical deploy (version bump + data refresh) uses **`chore:`**.
+A typical deploy (version bump) uses **`chore:`**.
 
 #### Format
 
@@ -186,29 +186,27 @@ Affects: <comma-separated file list>
 - **No present-tense narration in the body**: write "Updated X to fix Y" → instead write
   "Fixes Y by updating X"
 
-#### Example: routine deploy (standard — version + places)
+#### Example: routine deploy (standard — version only)
 
 ```
-chore: bump cache version to 20260311, refresh places data
+chore: bump cache version to 20260311
 
 - SERVICE WORKER: VERSION 20260308 → 20260311 (forces cache invalidation on next visit)
 - CSS CACHE: ?v param 20260308 → 20260311 (cache-busting for styles.css)
-- PLACES DATA: 63 → 65 places (2 new entries approved in spreadsheet)
 
-Affects: sw.js, index.html, data/places.json, data/tags.json
+Affects: sw.js, index.html
 ```
 
-#### Example: full sweep (version + places + transit)
+#### Example: full sweep (version + transit)
 
 ```
-chore: full sweep — bump version to 20260311, refresh places and transit data
+chore: full sweep — bump version to 20260311, refresh transit data
 
 - SERVICE WORKER: VERSION 20260308 → 20260311 (forces cache invalidation on next visit)
 - CSS CACHE: ?v param 20260308 → 20260311 (cache-busting for styles.css)
-- PLACES DATA: 63 → 65 places (2 new entries approved in spreadsheet)
 - TRANSIT CACHE: 7 689 → 7 712 stops (23 new OSM nodes matched via Digitransit)
 
-Affects: sw.js, index.html, data/places.json, data/tags.json, scripts/transit-cache.json
+Affects: sw.js, index.html, scripts/transit-cache.json
 ```
 
 #### Example: bug fix only
@@ -222,18 +220,6 @@ the entire map and cascading to places/routing failures.
 
 Affects: functions/_middleware.js
 ```
-
-#### Example: data-only refresh (no version bump)
-
-```
-chore: refresh places data from Google Sheets
-
-PLACES: 65 → 67 places (added Hakaniemi mosque and Kallio halal butcher)
-
-Affects: data/places.json, data/tags.json
-```
-
----
 
 ## Step 5 — Commit
 

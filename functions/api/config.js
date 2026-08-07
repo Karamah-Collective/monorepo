@@ -11,7 +11,6 @@
  *   HF_TOKEN_KEY        – Share-link encryption key
  *
  * Optional (have sensible defaults if omitted):
- *   SHEETS_URL           – Google Apps Script web app URL (serves live places/tags data)
  *   DIGITRANSIT_URL     – Digitransit routing endpoint
  *   DIGITRANSIT_GEO_URL – Digitransit geocoding endpoint
  *   DIGITRANSIT_REV_URL – Digitransit reverse geocoding endpoint
@@ -39,7 +38,7 @@ export async function onRequestGet(context) {
     NOMINATIM_REV:       env.NOMINATIM_REV       || 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1',
     NOMINATIM_VB:        env.NOMINATIM_VB        || '24.0,60.8,25.8,59.8',
     HF_TOKEN_KEY:        env.HF_TOKEN_KEY        || '',
-    // SHEETS_URL intentionally omitted — clients use /api/places proxy instead
+    // Database details intentionally omitted — clients use /api/* functions.
   };
 
   return new Response(JSON.stringify(cfg), {

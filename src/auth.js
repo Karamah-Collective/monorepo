@@ -3,12 +3,11 @@
  * popups, plus passwordless email magic link, plus traditional email +
  * password accounts).
  *
- * A pure identity layer: no Firestore, no new database. Google Sheets (via the
- * existing Apps Script backend) stays the single source of truth for synced
- * data. Firebase only issues ID tokens, which get verified at the Cloudflare
- * edge (functions/_firebase-verify.js) and reduced to a privacy-preserving
- * emailHash before anything is written to a Sheet — see Phase 6 of
- * docs/ACCOUNTS_AND_REDESIGN_PLAN.md.
+ * A pure identity layer: no Firestore. Cloudflare D1 is the source of truth
+ * for synced data. Firebase only issues ID tokens, which get verified at the
+ * Cloudflare edge (functions/_firebase-verify.js) and reduced to a
+ * privacy-preserving emailHash before account-linked data is written — see
+ * Phase 6 of docs/ACCOUNTS_AND_REDESIGN_PLAN.md.
  *
  * Email/password accounts are the ONE sign-in method here where Firebase
  * itself never proves the person actually controls the typed email address
@@ -16,7 +15,7 @@
  * that before Firebase ever hands us a token; the passwordless magic link
  * proves it too, since the link only works if the recipient can open it).
  * Since this app's whole identity-linking design treats emailHash as a
- * trust anchor (Sheets/D1 never store plaintext email, only the hash — see
+ * trust anchor (D1 never stores plaintext email, only the hash — see
  * the privacy policy), an unverified password account undermines that
  * anchor. `signUpWithEmailPassword()` fires a verification email on
  * account creation; `isCurrentUserUnverifiedPassword()` is the single check

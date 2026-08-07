@@ -1041,7 +1041,7 @@ document.getElementById("home-btn").addEventListener("click", () => {
   setActiveTab(null);
   if (centerStoredHomeIfAvailable()) return;
   map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
-  showToast("Add home", "home", "Pick an address or pin. It stays only on this device.");
+  showToast("Add home", "home", "Pick an address or pin.");
 });
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));
 document.getElementById("zoomout-btn").addEventListener("click", () => map.zoomOut({ duration: 300 }));

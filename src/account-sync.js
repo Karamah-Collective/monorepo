@@ -449,8 +449,8 @@ let _rerunRequested = false;
  *
  * Favourite/pin/home mutations are blocked (via setFavouritesSyncPending()/
  * setPinsHomeSyncPending()) for this entire function's duration, not just
- * after it resolves — the network round-trip below (a GAS cold start can be
- * hundreds of ms) plus a possible confirm-dialog wait both happen BEFORE
+ * after it resolves — the network round-trip below plus a possible
+ * confirm-dialog wait both happen BEFORE
  * places.js/utils.js actually flip into cloud mode. A favourite tapped in
  * that window would otherwise still write straight into the local device
  * cache and then get silently discarded moments later when the cloud state
@@ -749,12 +749,9 @@ export function initAccountSync() {
   // hf:home-updated is a pre-existing string-literal event (utils.js) — kept
   // as-is rather than routed through EVT, per this codebase's convention of
   // not retrofitting every existing event name (see src/events.js header).
-  // Home's own "Home saved... Saved locally on this device" toast (shown at
-  // the call site, src/search.js) is honest as written — it's true the
-  // instant it fires, regardless of whether the background cloud sync below
-  // later succeeds or fails, so it doesn't have the pin toast's bug and
-  // isn't changed here — only the failure/rollback path is this function's
-  // job.
+  // Home's own success toast is shown at the call site, src/search.js, where
+  // it can distinguish signed-out device storage from signed-in account sync.
+  // Only the failure/rollback path belongs in this function.
   window.addEventListener("hf:home-updated", (e) => {
     if (_suppressHomeBackgroundSync) return; // this exact event was just fired by our own cloud-mode entry/exit above
     const home = e.detail?.home;

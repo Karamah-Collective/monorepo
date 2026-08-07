@@ -4,21 +4,21 @@
  *
  * Steps:
  *   version  — Bump VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
- *   places   — Fetch fresh places + tags from Google Apps Script
+ *   places   — Legacy: fetch static places + tags from Google Apps Script
  *   transit  — Rebuild transit stop cache from Overpass + HSL Digitransit
  *
  * Usage:
- *   node scripts/update-all.js                  # standard: version + places
- *   node scripts/update-all.js --all            # full sweep: version + places + transit
+ *   node scripts/update-all.js                  # standard: version only
+ *   node scripts/update-all.js --all            # full sweep: version + transit
  *   node scripts/update-all.js --force          # force version bump even if already today
  *   node scripts/update-all.js --version        # version bump only
  *   node scripts/update-all.js --places         # places fetch only
  *   node scripts/update-all.js --transit        # transit cache rebuild only
  *   node scripts/update-all.js --places --transit  # any combination
  *
- *   npm run update             # standard (version + places)
- *   npm run update:full        # full sweep (all three)
- *   npm run update:force       # force version bump + places (same-day re-deploy)
+ *   npm run update             # standard (version only)
+ *   npm run update:full        # full sweep (version + transit)
+ *   npm run update:force       # force version bump (same-day re-deploy)
  *   npm run update:version     # version bump only
  *   npm run update:places      # places only
  *   npm run update:transit     # transit only
@@ -124,10 +124,10 @@ function bumpVersionStrings(newVersion) {
   if (!anyChange) info('Cache-busting params already up to date.');
 }
 
-// ─── Step 2: Fetch places + tags ──────────────────────────────────────────────
+// ─── Step 2: Legacy fetch places + tags ───────────────────────────────────────
 
 function fetchPlaces() {
-  banner('Places — Fetch places & tags from Google Apps Script');
+  banner('Places — Legacy fetch places & tags from Google Apps Script');
   try {
     execFileSync(NODE, [path.join(__dirname, 'fetch-and-cache-places.js')], {
       stdio: 'inherit',
@@ -164,12 +164,12 @@ async function main() {
   const explicit = args.some(a => ['--version','--places','--transit'].includes(a));
 
   // Which steps to run:
-  //   --all              → all three
-  //   --force            → standard (version + places) with forced version increment
+  //   --all              → version + transit
+  //   --force            → version with forced version increment
   //   explicit flags     → only those named
-  //   no flags (default) → standard deploy: version + places
+  //   no flags (default) → standard deploy: version only
   const runVersion = force || all || (!explicit) || args.includes('--version');
-  const runPlaces  = force || all || (!explicit) || args.includes('--places');
+  const runPlaces  = args.includes('--places');
   const runTransit = all || args.includes('--transit');
 
   const stepList = [

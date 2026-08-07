@@ -120,6 +120,10 @@ export function hasHomeLocation() {
   return !!getHomeLocation();
 }
 
+export function isSavedDataCloudScoped() {
+  return _cloudScoped;
+}
+
 export function isHomeLocation(lat, lng) {
   const home = getHomeLocation();
   return !!home && home.id === pinId(lat, lng);

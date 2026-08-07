@@ -133,19 +133,9 @@ export async function loadReviews() {
 }
 
 async function _fetchReviews() {
-  const urls = [_withCacheBust("/api/reviews")];
-
   try {
-    const cfg = await import("./config.local.js");
-    if (cfg.SHEETS_URL) urls.push(_withCacheBust(`${cfg.SHEETS_URL}?action=reviews`));
-  } catch {
-    // config.local.js absent in production — expected
-  }
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) continue;
+    const res = await fetch(_withCacheBust("/api/reviews"), { cache: "no-store" });
+    if (res.ok) {
       const json = await res.json();
       if (json.reviews) {
         _hydrateMap(json.reviews);
@@ -157,10 +147,8 @@ async function _fetchReviews() {
         _refreshActiveOverlay();
         return;
       }
-    } catch {
-      continue;
     }
-  }
+  } catch { /* network/API unavailable; keep cached reviews if present */ }
 }
 
 function _withCacheBust(url) {
