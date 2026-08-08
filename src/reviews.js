@@ -9,7 +9,7 @@
  *
  * Data stored in Cloudflare D1, proxied via /api/reviews.
  */
-import { esc, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage } from "./utils.js";
+import { esc, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast } from "./utils.js";
 import { EVT } from "./events.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
@@ -818,6 +818,7 @@ async function _showReviewForm(placeId, overlay) {
  */
 async function _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result) {
   showWelcomeGreeting(result.account, result.isNewUser);
+  showLinkedProviderToast(result?.linkedProvider);
   const blocked = await auth.isCurrentUserUnverifiedPassword();
   _animateReviewCardHeight(overlay, () => {
     container.remove();
@@ -855,24 +856,32 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   const googleBtn = document.createElement("button");
   googleBtn.type = "button";
   googleBtn.className = "rv-action-btn btn-google";
+  googleBtn.setAttribute("aria-label", "Continue with Google");
+  googleBtn.title = "Google";
   googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
   signinRow.appendChild(googleBtn);
 
   const microsoftBtn = document.createElement("button");
   microsoftBtn.type = "button";
   microsoftBtn.className = "rv-action-btn btn-microsoft";
+  microsoftBtn.setAttribute("aria-label", "Continue with Microsoft");
+  microsoftBtn.title = "Microsoft";
   microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
   signinRow.appendChild(microsoftBtn);
 
   const facebookBtn = document.createElement("button");
   facebookBtn.type = "button";
   facebookBtn.className = "rv-action-btn btn-facebook";
+  facebookBtn.setAttribute("aria-label", "Continue with Facebook");
+  facebookBtn.title = "Facebook";
   facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
   signinRow.appendChild(facebookBtn);
 
   const appleBtn = document.createElement("button");
   appleBtn.type = "button";
   appleBtn.className = "rv-action-btn btn-apple";
+  appleBtn.setAttribute("aria-label", "Continue with Apple");
+  appleBtn.title = "Apple";
   appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
   signinRow.appendChild(appleBtn);
 
@@ -880,6 +889,8 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   emailToggle.type = "button";
   emailToggle.className = "rv-action-btn btn-secondary";
   emailToggle.disabled = false;
+  emailToggle.setAttribute("aria-label", "Continue with email link");
+  emailToggle.title = "Email link";
   emailToggle.innerHTML = EMAIL_SIGNIN_BTN_HTML;
   signinRow.appendChild(emailToggle);
 
@@ -934,6 +945,12 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   function hideError() {
     errorMsg.classList.add("hide");
   }
+  function showProviderFailure(result, providerLabel) {
+    const toast = oauthSignInErrorToast(result, providerLabel);
+    if (!toast) return;
+    showError(toast.inline);
+    showToast(toast.title, "error", toast.sub);
+  }
 
   // Opening the panel collapses signinRow (Google/Microsoft/Facebook/Apple/
   // password) rather than stacking the panel below it — on mobile this
@@ -967,71 +984,71 @@ function _showSignInPrompt(placeId, overlay, insertBefore, auth) {
   googleBtn.addEventListener("click", async () => {
     hideError();
     googleBtn.disabled = true;
-    googleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    googleBtn.setAttribute("aria-label", "Signing in with Google");
+    googleBtn.innerHTML = `<span class="btn-spinner"></span>`;
 
     const result = await auth.signInWithGoogle();
     if (result.success) {
       await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       googleBtn.disabled = false;
+      googleBtn.setAttribute("aria-label", "Continue with Google");
       googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
       // Don't show an error for a simple popup-close/cancel — that's not a failure.
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Google");
     }
   });
 
   microsoftBtn.addEventListener("click", async () => {
     hideError();
     microsoftBtn.disabled = true;
-    microsoftBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    microsoftBtn.setAttribute("aria-label", "Signing in with Microsoft");
+    microsoftBtn.innerHTML = `<span class="btn-spinner"></span>`;
 
     const result = await auth.signInWithMicrosoft();
     if (result.success) {
       await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       microsoftBtn.disabled = false;
+      microsoftBtn.setAttribute("aria-label", "Continue with Microsoft");
       microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Microsoft");
     }
   });
 
   facebookBtn.addEventListener("click", async () => {
     hideError();
     facebookBtn.disabled = true;
-    facebookBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    facebookBtn.setAttribute("aria-label", "Signing in with Facebook");
+    facebookBtn.innerHTML = `<span class="btn-spinner"></span>`;
 
     const result = await auth.signInWithFacebook();
     if (result.success) {
       await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       facebookBtn.disabled = false;
+      facebookBtn.setAttribute("aria-label", "Continue with Facebook");
       facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
       // Same generic Firebase Auth SDK popup-cancel codes as every other
       // popup-based provider here — not a Facebook-specific error.
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Facebook");
     }
   });
 
   appleBtn.addEventListener("click", async () => {
     hideError();
     appleBtn.disabled = true;
-    appleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    appleBtn.setAttribute("aria-label", "Signing in with Apple");
+    appleBtn.innerHTML = `<span class="btn-spinner"></span>`;
 
     const result = await auth.signInWithApple();
     if (result.success) {
       await _afterSignInSuccess(placeId, overlay, container, insertBefore, auth, result);
     } else {
       appleBtn.disabled = false;
+      appleBtn.setAttribute("aria-label", "Continue with Apple");
       appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Apple");
     }
   });
 
@@ -1201,6 +1218,8 @@ function _buildPasswordStepDOM() {
   const passwordToggle = document.createElement("button");
   passwordToggle.type = "button";
   passwordToggle.className = "rv-action-btn btn-password";
+  passwordToggle.setAttribute("aria-label", "Continue with email");
+  passwordToggle.title = "Email";
   passwordToggle.innerHTML = EMAIL_PASSWORD_SIGNIN_BTN_HTML;
 
   const passwordStep = document.createElement("div");

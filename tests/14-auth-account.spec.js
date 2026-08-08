@@ -24,32 +24,29 @@ test.describe("Menu Account section — signed out", () => {
     await setupApp(page);
   });
 
-  test("shows Google + email sign-in options, no OTP UI", async ({ page }) => {
+  test("shows icon-only Google, Microsoft, Facebook, and email sign-in options, no OTP UI", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
-    await expect(page.locator("#menu-google-signin")).toBeVisible();
-    await expect(page.locator("#menu-google-signin")).toHaveText("Continue with Google");
-    await expect(page.locator("#menu-email-signin-toggle")).toBeVisible();
+    const visibleOptions = page.locator("#menu-account-signin-row > button:visible");
+    await expect(visibleOptions).toHaveCount(4);
+    const labels = await visibleOptions.evaluateAll((buttons) => buttons.map((btn) => btn.getAttribute("aria-label")));
+    expect(labels).toEqual(["Continue with Google", "Continue with Microsoft", "Continue with Facebook", "Continue with email"]);
+    await expect(page.locator("#menu-google-signin")).toHaveText("");
+    await expect(page.locator("#menu-microsoft-signin")).toHaveText("");
+    await expect(page.locator("#menu-facebook-signin")).toHaveText("");
+    await expect(page.locator("#menu-password-signin-toggle")).toHaveText("");
+    await expect(page.locator("#menu-apple-signin")).not.toBeVisible();
     await expect(page.locator("#menu-signout")).toHaveCount(0);
     await expect(page.locator("#menu-my-reviews")).toHaveCount(0);
   });
 
-  test("email link panel reveals an email field and send button", async ({ page }) => {
+  test("email panel reveals the email/password fields", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
-    await expect(page.locator("#menu-email-signin-panel")).toHaveClass(/hide/);
-    await page.click("#menu-email-signin-toggle");
-    await expect(page.locator("#menu-email-signin-panel")).not.toHaveClass(/hide/);
-    await expect(page.locator("#menu-email-input")).toBeVisible();
-    await expect(page.locator("#menu-email-send")).toBeVisible();
-  });
-
-  test("sending a magic link shows a confirmation and calls sendSignInLinkToEmail", async ({ page }) => {
-    await openMenuAndWaitForAccount(page);
-    await page.click("#menu-email-signin-toggle");
-    await page.fill("#menu-email-input", "someone@example.com");
-    await page.click("#menu-email-send");
-    await expect(page.locator("#menu-email-signin-panel")).toContainText("someone@example.com");
-    const sent = await page.evaluate(() => window.__mockMagicLinkSent);
-    expect(sent?.email).toBe("someone@example.com");
+    await expect(page.locator("#menu-password-signin-panel")).toHaveClass(/hide/);
+    await page.click("#menu-password-signin-toggle");
+    await expect(page.locator("#menu-password-signin-panel")).not.toHaveClass(/hide/);
+    await expect(page.locator("#menu-password-email-input")).toBeVisible();
+    await expect(page.locator("#menu-password-input")).toBeVisible();
+    await expect(page.locator("#menu-password-submit")).toBeVisible();
   });
 });
 
@@ -189,7 +186,7 @@ test.describe("Review write-gate — sign-in replaces the OTP flow", () => {
     await setupApp(page);
   });
 
-  test("signed out: shows a sign-in prompt (Google + email link), never the OTP code UI", async ({ page }) => {
+  test("signed out: shows icon-only sign-in prompt, never the OTP code UI", async ({ page }) => {
     await page.evaluate(async () => {
       const mod = await import("/src/reviews.js");
       mod.openReviewsOverlay("test-place-gate", "Gate Test Place");
@@ -198,7 +195,11 @@ test.describe("Review write-gate — sign-in replaces the OTP flow", () => {
     await page.click(".rv-write-btn");
 
     await expect(page.locator(".rv-verify-title")).toHaveText("Sign in to write a review");
-    await expect(page.locator(".rv-verify-form .rv-action-btn").first()).toHaveText("Continue with Google");
+    const visibleOptions = page.locator(".rv-verify-form .menu-account-signin-row > button:visible");
+    await expect(visibleOptions).toHaveCount(4);
+    const labels = await visibleOptions.evaluateAll((buttons) => buttons.map((btn) => btn.getAttribute("aria-label")));
+    expect(labels).toEqual(["Continue with Google", "Continue with Microsoft", "Continue with Facebook", "Continue with email"]);
+    await expect(visibleOptions).toHaveText(["", "", "", ""]);
     await expect(page.locator(".rv-otp-boxes")).toHaveCount(0);
     // Email field exists but stays visually hidden (.hide) until "use an email link" is toggled.
     await expect(page.locator('.rv-verify-form input[type="email"]')).not.toBeVisible();

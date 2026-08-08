@@ -2086,6 +2086,53 @@ export function openPlacesSheet() {
   scheduleMapViewportSync();
 }
 
+function _setPlacesTypeFilter(type) {
+  activeTypeFilter = type;
+  document.querySelectorAll("#places-type-chips .pf-chip").forEach((chip) =>
+    chip.classList.toggle("active", chip.dataset.type === type),
+  );
+  activeTagFilters.clear();
+  placeSearchQuery = "";
+  _plSearchInput.value = "";
+  _openNowFilter = false;
+  _ratedFilter = false;
+  _closePlaceSearch();
+  renderTagFilterBar();
+  updateClearButton();
+}
+
+function _scrollPlacesListToElement(targetEl) {
+  const scrollEl = document.getElementById("places-scroll");
+  if (!scrollEl || !targetEl) return false;
+  const scrollRect = scrollEl.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+  const top = scrollEl.scrollTop + targetRect.top - scrollRect.top - 12;
+  scrollEl.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  return true;
+}
+
+export function openSavedPlacesAtSection(section) {
+  const target = section === "visited" ? "visited" : "pins";
+  if (target === "visited") {
+    collapsedCityGroups.delete("__visited__");
+  } else {
+    collapsedCityGroups.clear();
+  }
+  _setPlacesTypeFilter("saved");
+  openPlacesSheet();
+  const scrollEl = document.getElementById("places-scroll");
+  if (scrollEl) scrollEl.scrollTop = 0;
+  requestAnimationFrame(() => {
+    placesSnap.softRemeasure();
+    requestAnimationFrame(() => {
+      const selector = target === "visited"
+        ? '[data-city-group="__visited__"]'
+        : "[data-custom-pin-id]";
+      _scrollPlacesListToElement(document.querySelector(selector));
+    });
+  });
+}
+
 export function closePlacesSheet() {
   // Cancel any pending animateSheetHeight cleanup that could corrupt a future open
   if (placesSheet._animCleanup) { clearTimeout(placesSheet._animCleanup); placesSheet._animCleanup = null; }

@@ -56,7 +56,7 @@
  * initMenuPreferences(), dynamically importing prayer.js the same lazy way
  * initMenuAccount() imports auth.js/reviews.js.
  */
-import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, crossFadeSwap, showWelcomeGreeting, emailPasswordErrorMessage, showToast } from "./utils.js";
+import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, crossFadeSwap, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast, showToast } from "./utils.js";
 import { EVT } from "./events.js";
 import { loadProfileContent } from "./profile.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
@@ -393,6 +393,7 @@ export async function initMenuAccount() {
   // direct user action with their own immediate success/failure branch.
   if (magicLinkResult.completed && _account) {
     showWelcomeGreeting(magicLinkResult.account, magicLinkResult.isNewUser);
+    showLinkedProviderToast(magicLinkResult.linkedProvider);
   }
 
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
@@ -602,12 +603,12 @@ function _buildSignedOutHTML() {
   // template from .rv-resend-link right below it in each panel.
   return `<div class="menu-account-panel">
     <div id="menu-account-signin-row" class="menu-account-signin-row">
-      <button id="menu-google-signin" class="rv-action-btn btn-google" type="button">${GOOGLE_SIGNIN_BTN_HTML}</button>
-      <button id="menu-microsoft-signin" class="rv-action-btn btn-microsoft" type="button">${MICROSOFT_SIGNIN_BTN_HTML}</button>
-      <button id="menu-facebook-signin" class="rv-action-btn btn-facebook" type="button">${FACEBOOK_SIGNIN_BTN_HTML}</button>
-      <button id="menu-apple-signin" class="rv-action-btn btn-apple" type="button">${APPLE_SIGNIN_BTN_HTML}</button>
-      <button id="menu-email-signin-toggle" class="rv-action-btn btn-secondary" type="button">${EMAIL_SIGNIN_BTN_HTML}</button>
-      <button id="menu-password-signin-toggle" class="rv-action-btn btn-password" type="button">${EMAIL_PASSWORD_SIGNIN_BTN_HTML}</button>
+      <button id="menu-google-signin" class="rv-action-btn btn-google" type="button" aria-label="Continue with Google" title="Google">${GOOGLE_SIGNIN_BTN_HTML}</button>
+      <button id="menu-microsoft-signin" class="rv-action-btn btn-microsoft" type="button" aria-label="Continue with Microsoft" title="Microsoft">${MICROSOFT_SIGNIN_BTN_HTML}</button>
+      <button id="menu-facebook-signin" class="rv-action-btn btn-facebook" type="button" aria-label="Continue with Facebook" title="Facebook">${FACEBOOK_SIGNIN_BTN_HTML}</button>
+      <button id="menu-apple-signin" class="rv-action-btn btn-apple" type="button" aria-label="Continue with Apple" title="Apple">${APPLE_SIGNIN_BTN_HTML}</button>
+      <button id="menu-email-signin-toggle" class="rv-action-btn btn-secondary" type="button" aria-label="Continue with email link" title="Email link">${EMAIL_SIGNIN_BTN_HTML}</button>
+      <button id="menu-password-signin-toggle" class="rv-action-btn btn-password" type="button" aria-label="Continue with email" title="Email">${EMAIL_PASSWORD_SIGNIN_BTN_HTML}</button>
     </div>
     <div id="menu-email-signin-panel" class="rv-verify-step rv-panel-divider hide">
       <button id="menu-email-signin-back" class="rv-back-link" type="button">${BACK_CHEVRON_ICON_SVG}Back to sign-in options</button>
@@ -687,23 +688,33 @@ function _wireSignedOutView() {
 
   function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.remove("hide"); }
   function hideError() { errorMsg.classList.add("hide"); }
+  function showProviderFailure(result, providerLabel) {
+    const toast = oauthSignInErrorToast(result, providerLabel);
+    if (!toast) return;
+    showError(toast.inline);
+    showToast(toast.title, "error", toast.sub);
+  }
+  function showLinkedProviderResult(result) {
+    showLinkedProviderToast(result?.linkedProvider);
+  }
 
   googleBtn.addEventListener("click", async () => {
     hideError();
     googleBtn.disabled = true;
-    googleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    googleBtn.setAttribute("aria-label", "Signing in with Google");
+    googleBtn.innerHTML = `<span class="btn-spinner"></span>`;
     const result = await _auth.signInWithGoogle();
     if (result.success) {
       // Same welcome-greeting convention as the reviews sign-in prompt
       // (src/reviews.js's _showSignInPrompt) — this is the primary sign-in
       // entry point, so a visible confirmation matters most here.
       showWelcomeGreeting(result.account, result.isNewUser);
+      showLinkedProviderResult(result);
     } else {
       googleBtn.disabled = false;
+      googleBtn.setAttribute("aria-label", "Continue with Google");
       googleBtn.innerHTML = GOOGLE_SIGNIN_BTN_HTML;
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Google");
     }
     // On success, EVT.AUTH_CHANGED also fires and _renderAccountSection() re-runs.
   });
@@ -711,54 +722,57 @@ function _wireSignedOutView() {
   microsoftBtn.addEventListener("click", async () => {
     hideError();
     microsoftBtn.disabled = true;
-    microsoftBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    microsoftBtn.setAttribute("aria-label", "Signing in with Microsoft");
+    microsoftBtn.innerHTML = `<span class="btn-spinner"></span>`;
     const result = await _auth.signInWithMicrosoft();
     if (result.success) {
       showWelcomeGreeting(result.account, result.isNewUser);
+      showLinkedProviderResult(result);
     } else {
       microsoftBtn.disabled = false;
+      microsoftBtn.setAttribute("aria-label", "Continue with Microsoft");
       microsoftBtn.innerHTML = MICROSOFT_SIGNIN_BTN_HTML;
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Microsoft");
     }
   });
 
   facebookBtn.addEventListener("click", async () => {
     hideError();
     facebookBtn.disabled = true;
-    facebookBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    facebookBtn.setAttribute("aria-label", "Signing in with Facebook");
+    facebookBtn.innerHTML = `<span class="btn-spinner"></span>`;
     const result = await _auth.signInWithFacebook();
     if (result.success) {
       showWelcomeGreeting(result.account, result.isNewUser);
+      showLinkedProviderResult(result);
     } else {
       facebookBtn.disabled = false;
+      facebookBtn.setAttribute("aria-label", "Continue with Facebook");
       facebookBtn.innerHTML = FACEBOOK_SIGNIN_BTN_HTML;
       // Facebook's popup-cancel surfaces through the same generic Firebase
       // Auth SDK error codes every popup-based provider uses (this isn't a
       // per-provider error — it's the SDK's own popup lifecycle handling),
       // so no extra error code is needed here beyond Google/Microsoft's.
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Facebook");
     }
   });
 
   appleBtn.addEventListener("click", async () => {
     hideError();
     appleBtn.disabled = true;
-    appleBtn.innerHTML = `<span class="btn-spinner"></span> Signing in…`;
+    appleBtn.setAttribute("aria-label", "Signing in with Apple");
+    appleBtn.innerHTML = `<span class="btn-spinner"></span>`;
     const result = await _auth.signInWithApple();
     if (result.success) {
       showWelcomeGreeting(result.account, result.isNewUser);
+      showLinkedProviderResult(result);
     } else {
       appleBtn.disabled = false;
+      appleBtn.setAttribute("aria-label", "Continue with Apple");
       appleBtn.innerHTML = APPLE_SIGNIN_BTN_HTML;
       // Same reasoning as Facebook's cancel check above — Apple's popup
       // cancel is the same generic Firebase Auth SDK code too.
-      if (result.error !== "auth/popup-closed-by-user" && result.error !== "auth/cancelled-popup-request") {
-        showError("Sign-in failed. Please try again.");
-      }
+      showProviderFailure(result, "Apple");
     }
   });
 
@@ -944,6 +958,7 @@ function _wirePasswordSignIn() {
       : await _auth.signUpWithEmailPassword(name, email, password);
     if (result.success) {
       showWelcomeGreeting(result.account, result.isNewUser);
+      showLinkedProviderToast(result.linkedProvider);
       // On success, EVT.AUTH_CHANGED also fires and _renderAccountSection() re-runs.
     } else {
       submitBtn.disabled = false;

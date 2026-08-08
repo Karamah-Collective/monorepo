@@ -42,7 +42,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260807-3" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260808" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -1950,7 +1950,7 @@
             </ul>
             <p><strong>Signing in, ratings, reviews &amp; saved places:</strong></p>
             <ul>
-              <li>Writing a review, or syncing your favourites, saved pins, visited places, and home location across devices, requires signing in through Firebase Authentication with Google, Microsoft, or email/password</li>
+              <li>Writing a review, or syncing your favourites, saved pins, visited places, and home location across devices, requires signing in through Firebase Authentication with Google, Microsoft, Facebook, or email/password</li>
               <li>For email/password accounts, Firebase handles sign-up, sign-in, password resets, and email verification. We never see or store your password</li>
               <li>Your rating (1 to 5) and optional review text</li>
               <li>Saved place IDs, saved pin coordinates/names, visited-place IDs, and home location coordinates/name that you choose to sync</li>
@@ -1992,11 +1992,11 @@
               <li><strong><a href="https://services.arcgisonline.com" target="_blank" rel="noopener">Esri / ArcGIS</a></strong> — Satellite imagery layer, provided by Esri. Subject to <a href="https://www.esri.com/en-us/legal/terms/full-master-agreement" target="_blank" rel="noopener">Esri's terms of use</a>.</li>
               <li><strong><a href="https://aladhan.com/prayer-times-api" target="_blank" rel="noopener">AlAdhan API</a></strong> — Prayer time calculations based on your device's location (using the Muslim World League method). No personal data is stored by this service.</li>
               <li><strong><a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></strong> — Open-source map rendering library used to display the map.</li>
-              <li><strong><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Authentication</a></strong> — Handles signing in with Google, Microsoft, or email/password. We never see or store your password; Firebase issues a verified identity token, which we reduce to a one-way hash before storing synced account data. Governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and additionally by Microsoft's <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Privacy Statement</a> when signing in with a Microsoft account.</li>
+              <li><strong><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Authentication</a></strong> — Handles signing in with Google, Microsoft, Facebook, or email/password. We never see or store your password; Firebase issues a verified identity token, which we reduce to a one-way hash before storing synced account data. Governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and additionally by Microsoft's <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Privacy Statement</a> when signing in with a Microsoft account and Meta's <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener">Privacy Policy</a> when signing in with Facebook.</li>
             </ul>
 
             <h4>7. Data Storage &amp; Security</h4>
-            <p>Form submissions (place suggestions, contact messages, and reviews) are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+            <p>Form submissions (place suggestions, contact messages, and reviews) are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
             <h4>8. Your Rights (GDPR)</h4>
             <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form submissions, reviews, and account-synced saved data, we can locate your data using the email address associated with the submission or account.</p>

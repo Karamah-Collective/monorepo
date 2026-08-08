@@ -97,14 +97,48 @@ exports.test = base.test.extend({
             setUser(u) { _currentUser = u; _notify(); },
           };
           export function getAuth(app) { return { app, get currentUser() { return _currentUser; } }; }
-          export class GoogleAuthProvider {}
-          export async function signInWithPopup() {
-            _currentUser = window.__mockGoogleUser || {
-              uid: "mock-uid-google", email: "mockuser@example.com", displayName: "Mock User",
-              getIdToken: async () => "mock-id-token-google",
+          function _makeOAuthUser(providerId) {
+            const presets = {
+              "google.com": { uid: "mock-uid-google", email: "mockuser@example.com", displayName: "Mock User", token: "mock-id-token-google" },
+              "microsoft.com": { uid: "mock-uid-microsoft", email: "microsoft@example.com", displayName: "Microsoft User", token: "mock-id-token-microsoft" },
+              "facebook.com": { uid: "mock-uid-facebook", email: "facebook@example.com", displayName: "Facebook User", token: "mock-id-token-facebook" },
+              "apple.com": { uid: "mock-uid-apple", email: "apple@example.com", displayName: "Apple User", token: "mock-id-token-apple" },
             };
+            const p = presets[providerId] || presets["google.com"];
+            return {
+              uid: p.uid,
+              email: p.email,
+              displayName: p.displayName,
+              photoURL: \`https://example.com/\${providerId}.jpg\`,
+              emailVerified: true,
+              providerData: [{ providerId, photoURL: \`https://example.com/\${providerId}.jpg\` }],
+              reload: async () => {},
+              getIdToken: async () => p.token,
+            };
+          }
+          export class GoogleAuthProvider { constructor() { this.providerId = "google.com"; } }
+          export class FacebookAuthProvider {
+            constructor() { this.providerId = "facebook.com"; }
+            addScope() {}
+            static credentialFromError(error) { return error?.credential || { providerId: "facebook.com" }; }
+            static credentialFromResult() { return { providerId: "facebook.com", accessToken: "mock-facebook-access-token" }; }
+          }
+          export class OAuthProvider {
+            constructor(providerId) { this.providerId = providerId; }
+            addScope() {}
+            static credentialFromResult() { return { accessToken: "mock-oauth-access-token" }; }
+          }
+          export async function signInWithPopup(auth, provider) {
+            _currentUser = window.__mockOAuthUser || window.__mockGoogleUser || _makeOAuthUser(provider?.providerId || "google.com");
             _notify();
             return { user: _currentUser };
+          }
+          export function getAdditionalUserInfo() { return { isNewUser: false }; }
+          export async function fetchSignInMethodsForEmail() { return ["google.com"]; }
+          export async function linkWithCredential(user, credential) {
+            const providerId = credential?.providerId || "facebook.com";
+            user.providerData = [...(user.providerData || []), { providerId, photoURL: \`https://example.com/\${providerId}.jpg\` }];
+            return { user };
           }
           export async function sendSignInLinkToEmail(auth, email, actionCodeSettings) {
             window.__mockMagicLinkSent = { email, actionCodeSettings };
@@ -113,16 +147,48 @@ exports.test = base.test.extend({
             return url.includes("mockSignInLink=1");
           }
           export async function signInWithEmailLink(auth, email) {
-            _currentUser = { uid: "mock-uid-email", email, displayName: "", getIdToken: async () => "mock-id-token-email" };
+            _currentUser = {
+              uid: "mock-uid-email", email, displayName: "", photoURL: "", emailVerified: true,
+              providerData: [{ providerId: "password" }],
+              reload: async () => {},
+              getIdToken: async () => "mock-id-token-email",
+            };
             _notify();
             return { user: _currentUser };
           }
+          export async function createUserWithEmailAndPassword(auth, email) {
+            _currentUser = {
+              uid: "mock-uid-password", email, displayName: "", photoURL: "", emailVerified: false,
+              providerData: [{ providerId: "password" }],
+              reload: async () => {},
+              getIdToken: async () => "mock-id-token-password",
+            };
+            _notify();
+            return { user: _currentUser };
+          }
+          export async function signInWithEmailAndPassword(auth, email) {
+            _currentUser = {
+              uid: "mock-uid-password", email, displayName: "Email User", photoURL: "", emailVerified: true,
+              providerData: [{ providerId: "password" }],
+              reload: async () => {},
+              getIdToken: async () => "mock-id-token-password",
+            };
+            _notify();
+            return { user: _currentUser };
+          }
+          export async function updateProfile(user, profile) {
+            Object.assign(user, profile || {});
+            _notify();
+          }
+          export async function sendEmailVerification() {}
+          export async function sendPasswordResetEmail() {}
           export function onAuthStateChanged(auth, cb) {
             _listeners.add(cb);
             cb(_currentUser);
             return () => _listeners.delete(cb);
           }
           export async function signOut() { _currentUser = null; _notify(); }
+          export async function deleteUser() { _currentUser = null; _notify(); }
         `,
       }),
     );

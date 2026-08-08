@@ -39,6 +39,7 @@ import { EVT } from "./events.js";
 import {
   placesData,
   openPlaceSheet,
+  openSavedPlacesAtSection,
   fetchMySubmittedPlaces,
   fetchMySubmittedEdits,
   diffSubmissionStatuses,
@@ -368,11 +369,26 @@ function _renderStats() {
     submittedEdits: _submittedEditsCache,
   });
   statsGrid.innerHTML = STAT_DEFS.map(
-    (d) => `<div class="pf-stat-card">
+    (d) => {
+      const jumpTarget = d.key === "pinCount" ? "pins" : d.key === "visitedCount" ? "visited" : "";
+      const inner = `
       <span class="pf-stat-num">${esc(String(stats[d.key] ?? 0))}</span>
-      <span class="pf-stat-label">${esc(d.label)}</span>
-    </div>`,
+      <span class="pf-stat-label">${esc(d.label)}</span>`;
+      return jumpTarget
+        ? `<button class="pf-stat-card pf-stat-card--jump" type="button" data-profile-saved-jump="${jumpTarget}" aria-label="Open ${escA(d.label)} in Saved Places">${inner}</button>`
+        : `<div class="pf-stat-card">${inner}</div>`;
+    },
   ).join("");
+  statsGrid.querySelectorAll("[data-profile-saved-jump]").forEach((btn) =>
+    btn.addEventListener("click", _handleSavedStatJump),
+  );
+}
+
+function _handleSavedStatJump(e) {
+  const section = e.currentTarget?.dataset?.profileSavedJump;
+  if (section !== "pins" && section !== "visited") return;
+  _closeAccountSheet();
+  requestAnimationFrame(() => openSavedPlacesAtSection(section));
 }
 
 // ─── Submitted places / edits (status pill + reject-reason surfacing) ───────

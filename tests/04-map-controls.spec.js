@@ -158,48 +158,38 @@ test.describe("Style Picker", () => {
     expect(stored).toBe("auto");
   });
 
-  // Regression: .btn-google inherited the shared .rv-action-btn CTA's 16px
-  // bold label, reading as oversized next to the small "Use an email link
-  // instead" text link beside it. Height is unchanged (--h-submit, 44px,
-  // already this app's own touch-target-safe CTA height) — only the label
-  // shrinks to Google's own documented 14px spec.
-  test("Google sign-in button uses a 14px label, not the 16px CTA default", async ({ page }) => {
+  test("sign-in provider buttons are icon-only touch targets", async ({ page }) => {
     await page.locator("#menu-pill").click();
-    const btn = page.locator("#menu-google-signin");
-    await expect(btn).toBeVisible({ timeout: 15_000 });
-    const fontSize = await btn.evaluate((el) => getComputedStyle(el).fontSize);
-    expect(fontSize).toBe("14px");
-    const box = await btn.boundingBox();
-    expect(box.height).toBeGreaterThanOrEqual(43);
-    expect(box.height).toBeLessThan(48);
+    const buttons = page.locator("#menu-account-signin-row > button:visible");
+    await expect(buttons).toHaveCount(4, { timeout: 15_000 });
+    await expect(buttons).toHaveText(["", "", "", ""]);
+    for (const box of await buttons.evaluateAll((els) => els.map((el) => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }))) {
+      expect(box.height).toBeGreaterThanOrEqual(43);
+      expect(box.height).toBeLessThan(48);
+    }
   });
 
-  // Account section: Google sign-in + the email option now share one row as
-  // two equal-weight peers — an earlier icon-only-email-button treatment was
-  // tried and explicitly rejected ("these buttons should be similar size and
-  // looking, one option is not better than the other" — see
-  // docs/PREFERENCE_LOG.md), so this asserts near-equal width/height, not
-  // just "same row".
-  test("Google sign-in and the email option are equal-weight peers in one row", async ({ page }) => {
+  test("Google, Microsoft, Facebook, and email are equal-weight peers in one row", async ({ page }) => {
     await page.locator("#menu-pill").click();
-    const googleBtn = page.locator("#menu-google-signin");
-    const emailBtn = page.locator("#menu-email-signin-toggle");
-    await expect(googleBtn).toBeVisible({ timeout: 15_000 });
-    await expect(emailBtn).toBeVisible();
-    await expect(emailBtn).toHaveText("Continue with email");
-    const googleBox = await googleBtn.boundingBox();
-    const emailBox = await emailBtn.boundingBox();
-    // Same row, side by side (not stacked)
-    expect(Math.abs(googleBox.y - emailBox.y)).toBeLessThan(5);
-    expect(emailBox.x).toBeGreaterThanOrEqual(googleBox.x + googleBox.width);
-    // Equal weight: same height (both .rv-action-btn, sub-pixel tolerance),
-    // width within a small tolerance of each other (flex: 1 on both — a
-    // 50/50 split).
-    expect(Math.abs(googleBox.height - emailBox.height)).toBeLessThan(1);
-    expect(Math.abs(googleBox.width - emailBox.width)).toBeLessThan(30);
-    // Email option is still a real actionable control, not decorative text
-    await emailBtn.click();
-    await expect(page.locator("#menu-email-signin-panel")).not.toHaveClass(/hide/);
+    const buttons = page.locator("#menu-account-signin-row > button:visible");
+    await expect(buttons).toHaveCount(4, { timeout: 15_000 });
+    const labels = await buttons.evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
+    expect(labels).toEqual(["Continue with Google", "Continue with Microsoft", "Continue with Facebook", "Continue with email"]);
+    const boxes = await buttons.evaluateAll((els) => els.map((el) => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
+    const first = boxes[0];
+    for (const box of boxes.slice(1)) {
+      expect(Math.abs(first.y - box.y)).toBeLessThan(5);
+      expect(Math.abs(first.height - box.height)).toBeLessThan(1);
+      expect(Math.abs(first.width - box.width)).toBeLessThan(4);
+    }
+    await page.locator("#menu-password-signin-toggle").click();
+    await expect(page.locator("#menu-password-signin-panel")).not.toHaveClass(/hide/);
   });
 });
 

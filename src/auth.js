@@ -42,8 +42,10 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  fetchSignInMethodsForEmail,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  linkWithCredential,
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -60,6 +62,7 @@ const ACCOUNT_STORAGE_KEY = "hf_account"; // instant-hydration cache only — ne
 const MAGIC_LINK_EMAIL_KEY = "hf_magic_link_email";
 const MAGIC_LINK_QUERY_PARAM = "signin"; // marks the return URL so isSignInWithEmailLink has something stable to check
 const MICROSOFT_PROVIDER_ID = "microsoft.com";
+const FACEBOOK_PROVIDER_ID = "facebook.com";
 const PASSWORD_PROVIDER_ID = "password"; // Firebase's providerData[].providerId for email+password accounts (never an OAuth provider's id)
 // The Graph photo call is a network request during a fire-and-forget flow
 // nobody's watching — worth one retry before giving up, since a transient
@@ -82,12 +85,13 @@ const _microsoftProvider = new OAuthProvider("microsoft.com");
 // even though the user already consented to sign in.
 _microsoftProvider.addScope("User.Read");
 // Facebook DOES have a dedicated FacebookAuthProvider class in the Firebase
-// Web SDK (unlike Microsoft/Apple) — same shape as GoogleAuthProvider, no
-// extra scopes requested. Facebook's default Login permission set already
-// includes public_profile + email, and populates photoURL directly on the
-// Firebase user object, so — unlike Microsoft — no separate Graph API photo
-// fetch is needed here.
+// Web SDK (unlike Microsoft/Apple) — same shape as GoogleAuthProvider.
+// Request public_profile explicitly because the avatar fallback below reads
+// Facebook's provider profile UID (the same providerData record Firebase uses
+// for Facebook's name/email) and builds a Graph picture URL from it.
 const _facebookProvider = new FacebookAuthProvider();
+_facebookProvider.addScope("public_profile");
+_facebookProvider.addScope("email");
 // Apple, like Microsoft, has no dedicated Firebase provider class — it's a
 // generic OAuthProvider with the "apple.com" id. Per Apple's own Firebase
 // sign-in docs, request the "email" and "name" scopes explicitly (Apple
@@ -97,6 +101,8 @@ const _facebookProvider = new FacebookAuthProvider();
 const _appleProvider = new OAuthProvider("apple.com");
 _appleProvider.addScope("email");
 _appleProvider.addScope("name");
+
+let _pendingLinkCredential = null;
 
 /**
  * Read the cached account from localStorage (instant UI hydration only —
@@ -110,6 +116,42 @@ export function getCachedAccount() {
   } catch {
     return null;
   }
+}
+
+function _providerPhotoURL(user, providerId) {
+  return user?.providerData?.find((provider) => provider.providerId === providerId)?.photoURL || "";
+}
+
+function _providerProfile(user, providerId) {
+  return user?.providerData?.find((provider) => provider.providerId === providerId) || null;
+}
+
+function _firstProviderPhotoURL(user) {
+  return user?.providerData?.find((provider) => provider.photoURL)?.photoURL || "";
+}
+
+function _facebookGraphPictureURL(facebookUserId) {
+  return facebookUserId
+    ? `https://graph.facebook.com/${encodeURIComponent(facebookUserId)}/picture?type=large&height=500&width=500`
+    : "";
+}
+
+function _facebookPhotoURLFromProfile(profile) {
+  if (!profile) return "";
+  const picture = profile.picture;
+  const pictureURL = typeof picture === "string" ? picture : picture?.data?.url;
+  return pictureURL || _facebookGraphPictureURL(profile.id || profile.uid || "");
+}
+
+function _facebookPhotoURLFromCredential(cred) {
+  return _facebookPhotoURLFromProfile(getAdditionalUserInfo(cred)?.profile);
+}
+
+function _facebookPhotoURLFromProvider(user) {
+  const facebookProfile = _providerProfile(user, FACEBOOK_PROVIDER_ID);
+  if (!facebookProfile) return "";
+  if (facebookProfile.photoURL) return facebookProfile.photoURL;
+  return _facebookGraphPictureURL(facebookProfile.uid || "");
 }
 
 function _cacheAccount(user) {
@@ -130,14 +172,15 @@ function _cacheAccount(user) {
   // accounts are excluded from this preservation on purpose: its photoURL is
   // always authoritative, so if it's ever genuinely empty (e.g. removed),
   // that should actually clear the cached photo rather than keep it stale.
-  const isMicrosoft = user.providerData?.[0]?.providerId === MICROSOFT_PROVIDER_ID;
-  const existing = isMicrosoft ? getCachedAccount() : null;
+  const existing = getCachedAccount();
   const preservedPhoto = existing && existing.uid === user.uid ? existing.photoURL : "";
+  const facebookPhoto = _facebookPhotoURLFromProvider(user);
+  const hasFacebookProvider = user.providerData?.some((provider) => provider.providerId === FACEBOOK_PROVIDER_ID);
   const account = {
     uid: user.uid,
     email: user.email || "",
     displayName: user.displayName || "",
-    photoURL: user.photoURL || preservedPhoto || "",
+    photoURL: facebookPhoto || (hasFacebookProvider ? preservedPhoto : "") || user.photoURL || preservedPhoto || _firstProviderPhotoURL(user) || "",
   };
   try { localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(account)); } catch { /* quota/blocked */ }
   return account;
@@ -145,6 +188,97 @@ function _cacheAccount(user) {
 
 function _emitAuthChanged(account) {
   window.dispatchEvent(new CustomEvent(EVT.AUTH_CHANGED, { detail: { account } }));
+}
+
+function _authErrorPayload(err, providerLabel, extra = {}) {
+  const code = err?.code || "auth_error";
+  const email = err?.customData?.email || err?.email || "";
+  const message = err?.message || "";
+  console.warn(`[auth] ${providerLabel} sign-in failed`, {
+    code,
+    email,
+    message,
+    customData: err?.customData || null,
+  });
+  return { success: false, error: code, errorEmail: email, errorMessage: message, ...extra };
+}
+
+async function _fetchExistingProviderLabels(email) {
+  if (!email) return [];
+  try {
+    const methods = await fetchSignInMethodsForEmail(_auth, email);
+    return methods.map(_providerLabelFromId).filter(Boolean);
+  } catch (err) {
+    console.warn("[auth] Could not fetch existing sign-in methods:", err?.code || err?.message || err);
+    return [];
+  }
+}
+
+function _providerLabelFromId(providerId) {
+  switch (providerId) {
+    case "google.com": return "Google";
+    case "microsoft.com": return "Microsoft";
+    case FACEBOOK_PROVIDER_ID: return "Facebook";
+    case "apple.com": return "Apple";
+    case PASSWORD_PROVIDER_ID: return "email";
+    case "emailLink": return "email link";
+    default: return providerId || "";
+  }
+}
+
+async function _facebookErrorPayload(err) {
+  const code = err?.code || "auth_error";
+  let pendingCredential = null;
+  try {
+    pendingCredential = FacebookAuthProvider.credentialFromError(err);
+  } catch {
+    pendingCredential = null;
+  }
+
+  const email = err?.customData?.email || err?.email || "";
+  const existingProviderLabels = code === "auth/account-exists-with-different-credential"
+    ? await _fetchExistingProviderLabels(email)
+    : [];
+
+  if (pendingCredential && email) {
+    _pendingLinkCredential = {
+      credential: pendingCredential,
+      accessToken: pendingCredential.accessToken || "",
+      email: email.toLowerCase(),
+      providerId: FACEBOOK_PROVIDER_ID,
+      providerLabel: "Facebook",
+    };
+  }
+
+  return _authErrorPayload(err, "Facebook", {
+    existingProviderLabels,
+    hasPendingLinkCredential: !!_pendingLinkCredential,
+  });
+}
+
+async function _linkPendingCredentialIfPossible(user) {
+  if (!_pendingLinkCredential || !user) return null;
+  const pending = _pendingLinkCredential;
+  const userEmail = (user.email || "").toLowerCase();
+  if (!userEmail || userEmail !== pending.email) return null;
+
+  try {
+    const linkResult = await linkWithCredential(user, pending.credential);
+    _pendingLinkCredential = null;
+    const linkedUser = linkResult?.user || user;
+    try { await linkedUser.reload?.(); } catch { /* non-fatal; providerData may already be fresh */ }
+    const linkedPhotoURL = (pending.providerId === FACEBOOK_PROVIDER_ID ? (_facebookPhotoURLFromCredential(linkResult) || _facebookPhotoURLFromProvider(linkedUser)) : _providerPhotoURL(linkedUser, pending.providerId))
+      || await _fetchFacebookPhotoURL(pending.accessToken);
+    if (linkedPhotoURL) _mergeCachedPhoto(linkedPhotoURL);
+    return { providerId: pending.providerId, providerLabel: pending.providerLabel };
+  } catch (err) {
+    // Clear one-shot OAuth credentials after a failed link attempt; Firebase
+    // credentials are short-lived and retrying the stale object is more
+    // confusing than asking the user to start the provider flow again.
+    _pendingLinkCredential = null;
+    console.warn(`[auth] Could not link ${pending.providerLabel} credential:`, err?.code || err?.message || err);
+    return { providerId: pending.providerId, providerLabel: pending.providerLabel, error: err?.code || "auth_error" };
+  }
 }
 
 /**
@@ -160,6 +294,27 @@ function _mergeCachedPhoto(photoURL) {
   const updated = { ...current, photoURL };
   try { localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(updated)); } catch { /* quota/blocked */ }
   _emitAuthChanged(updated);
+}
+
+async function _fetchFacebookPhotoURL(accessToken) {
+  if (!accessToken) return "";
+  try {
+    const res = await fetch(`https://graph.facebook.com/me/picture?type=large&redirect=false&access_token=${encodeURIComponent(accessToken)}`);
+    if (!res.ok) {
+      console.warn(`[auth] Facebook photo fetch failed: Graph API returned HTTP ${res.status}.`);
+      return "";
+    }
+    const data = await res.json();
+    return data?.data?.url || "";
+  } catch (err) {
+    console.warn("[auth] Facebook photo fetch failed:", err?.message || err);
+    return "";
+  }
+}
+
+async function _fetchAndCacheFacebookPhoto(accessToken) {
+  const photoURL = await _fetchFacebookPhotoURL(accessToken);
+  if (photoURL) _mergeCachedPhoto(photoURL);
 }
 
 /**
@@ -265,7 +420,8 @@ export async function completeMagicLinkSignIn() {
     const cred = await signInWithEmailLink(_auth, email, window.location.href);
     try { window.localStorage.removeItem(MAGIC_LINK_EMAIL_KEY); } catch { /* blocked */ }
     _stripMagicLinkParamsFromUrl();
-    return { completed: true, ..._resultFromCredential(cred) };
+    const linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
+    return { completed: true, ..._resultFromCredential(cred), linkedProvider };
   } catch {
     _stripMagicLinkParamsFromUrl();
     return { completed: false };
@@ -313,9 +469,10 @@ export async function initAuth() {
 export async function signInWithGoogle() {
   try {
     const cred = await signInWithPopup(_auth, _googleProvider);
-    return { success: true, ..._resultFromCredential(cred) };
+    const linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
+    return { success: true, ..._resultFromCredential(cred), linkedProvider };
   } catch (err) {
-    return { success: false, error: err?.code || "auth_error" };
+    return _authErrorPayload(err, "Google");
   }
 }
 
@@ -334,9 +491,10 @@ export async function signInWithMicrosoft() {
     // await it, sign-in itself must not wait on (or fail because of) it.
     const accessToken = OAuthProvider.credentialFromResult(cred)?.accessToken;
     _fetchAndCacheMicrosoftPhoto(accessToken);
+    result.linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
     return result;
   } catch (err) {
-    return { success: false, error: err?.code || "auth_error" };
+    return _authErrorPayload(err, "Microsoft");
   }
 }
 
@@ -347,9 +505,18 @@ export async function signInWithMicrosoft() {
 export async function signInWithFacebook() {
   try {
     const cred = await signInWithPopup(_auth, _facebookProvider);
-    return { success: true, ..._resultFromCredential(cred) };
+    const linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
+    const result = { success: true, ..._resultFromCredential(cred), linkedProvider };
+    const profilePhotoURL = _facebookPhotoURLFromCredential(cred);
+    if (profilePhotoURL && !result.account?.photoURL) {
+      _mergeCachedPhoto(profilePhotoURL);
+      result.account = { ...result.account, photoURL: profilePhotoURL };
+    }
+    const accessToken = FacebookAuthProvider.credentialFromResult(cred)?.accessToken;
+    if (!result.account?.photoURL) _fetchAndCacheFacebookPhoto(accessToken);
+    return result;
   } catch (err) {
-    return { success: false, error: err?.code || "auth_error" };
+    return await _facebookErrorPayload(err);
   }
 }
 
@@ -360,9 +527,10 @@ export async function signInWithFacebook() {
 export async function signInWithApple() {
   try {
     const cred = await signInWithPopup(_auth, _appleProvider);
-    return { success: true, ..._resultFromCredential(cred) };
+    const linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
+    return { success: true, ..._resultFromCredential(cred), linkedProvider };
   } catch (err) {
-    return { success: false, error: err?.code || "auth_error" };
+    return _authErrorPayload(err, "Apple");
   }
 }
 
@@ -445,9 +613,10 @@ export async function signUpWithEmailPassword(name, email, password) {
 export async function signInWithEmailPassword(email, password) {
   try {
     const cred = await signInWithEmailAndPassword(_auth, email, password);
-    return { success: true, ..._resultFromCredential(cred) };
+    const linkedProvider = await _linkPendingCredentialIfPossible(cred.user);
+    return { success: true, ..._resultFromCredential(cred), linkedProvider };
   } catch (err) {
-    return { success: false, error: err?.code || "auth_error" };
+    return _authErrorPayload(err, "Email/password");
   }
 }
 

@@ -14,7 +14,7 @@ export const GOOGLE_G_LOGO_SVG = `<svg class="btn-google-icon" viewBox="0 0 18 1
   <path fill="var(--google-g-red)" d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.891 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.6564 3.5795 9 3.5795z"/>
 </svg>`;
 export const GOOGLE_SIGNIN_LABEL = "Google";
-export const GOOGLE_SIGNIN_BTN_HTML = `${GOOGLE_G_LOGO_SVG}<span class="btn-google-label">${GOOGLE_SIGNIN_LABEL}</span>`;
+export const GOOGLE_SIGNIN_BTN_HTML = GOOGLE_G_LOGO_SVG;
 
 // Envelope icon for the "Continue with email" peer button beside it — same
 // path as the Menu sheet's Contact-us row icon (index.html), reused here for
@@ -35,7 +35,7 @@ export const MICROSOFT_LOGO_SVG = `<svg class="btn-microsoft-icon" viewBox="0 0 
   <rect x="11" y="11" width="9" height="9" fill="var(--ms-yellow)"/>
 </svg>`;
 export const MICROSOFT_SIGNIN_LABEL = "Microsoft";
-export const MICROSOFT_SIGNIN_BTN_HTML = `${MICROSOFT_LOGO_SVG}<span class="btn-microsoft-label">${MICROSOFT_SIGNIN_LABEL}</span>`;
+export const MICROSOFT_SIGNIN_BTN_HTML = MICROSOFT_LOGO_SVG;
 
 // Facebook's "f" logomark (Font Awesome's "facebook-f" glyph — the plain
 // standalone "f" mark, not the circled version, since .btn-facebook already
@@ -46,10 +46,10 @@ export const MICROSOFT_SIGNIN_BTN_HTML = `${MICROSOFT_LOGO_SVG}<span class="btn-
 // never be recolored — a single-color wordmark like this is meant to match
 // its button's foreground color by design.
 export const FACEBOOK_LOGO_SVG = `<svg class="btn-facebook-icon" viewBox="0 0 320 512" aria-hidden="true" focusable="false">
-  <path fill="var(--facebook-btn-text)" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/>
+  <path fill="var(--facebook-icon-color, var(--facebook-btn-text))" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/>
 </svg>`;
 export const FACEBOOK_SIGNIN_LABEL = "Facebook";
-export const FACEBOOK_SIGNIN_BTN_HTML = `${FACEBOOK_LOGO_SVG}<span class="btn-facebook-label">${FACEBOOK_SIGNIN_LABEL}</span>`;
+export const FACEBOOK_SIGNIN_BTN_HTML = FACEBOOK_LOGO_SVG;
 
 // Apple's logomark (Simple Icons' "Apple" glyph, monochrome). Per Apple's own
 // Sign in with Apple Human Interface Guidelines, the glyph is never a fixed
@@ -61,10 +61,10 @@ export const APPLE_LOGO_SVG = `<svg class="btn-apple-icon" viewBox="0 0 24 24" a
   <path fill="var(--apple-btn-text)" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.06 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.037-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.16-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702"/>
 </svg>`;
 export const APPLE_SIGNIN_LABEL = "Apple";
-export const APPLE_SIGNIN_BTN_HTML = `${APPLE_LOGO_SVG}<span class="btn-apple-label">${APPLE_SIGNIN_LABEL}</span>`;
+export const APPLE_SIGNIN_BTN_HTML = APPLE_LOGO_SVG;
 
 export const EMAIL_SIGNIN_LABEL = "Email";
-export const EMAIL_SIGNIN_BTN_HTML = `${EMAIL_SIGNIN_ICON_SVG}<span class="btn-email-label">${EMAIL_SIGNIN_LABEL}</span>`;
+export const EMAIL_SIGNIN_BTN_HTML = EMAIL_SIGNIN_ICON_SVG;
 
 // Traditional email + password sign-in/sign-up toggle button — a distinct
 // Firebase Auth mechanism from the passwordless magic-link button above
@@ -76,7 +76,7 @@ export const EMAIL_SIGNIN_BTN_HTML = `${EMAIL_SIGNIN_ICON_SVG}<span class="btn-e
 // visible at a time, so there's no risk of the two labels being confused
 // side by side.
 export const EMAIL_PASSWORD_SIGNIN_LABEL = "Email";
-export const EMAIL_PASSWORD_SIGNIN_BTN_HTML = `${EMAIL_SIGNIN_ICON_SVG}<span class="btn-email-label">${EMAIL_PASSWORD_SIGNIN_LABEL}</span>`;
+export const EMAIL_PASSWORD_SIGNIN_BTN_HTML = EMAIL_SIGNIN_ICON_SVG;
 
 // Show/hide toggle icons for the email + password panel's password field —
 // same stroke-width-2/24x24-viewBox/currentColor convention as every other

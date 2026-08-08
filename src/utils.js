@@ -525,6 +525,69 @@ export function emailPasswordErrorMessage(code, mode) {
   }
 }
 
+export function isPopupCancelError(code) {
+  return code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request";
+}
+
+export function oauthSignInErrorToast(result, providerLabel = "provider") {
+  const code = result?.error || "auth_error";
+  if (isPopupCancelError(code)) return null;
+
+  if (code === "auth/account-exists-with-different-credential") {
+    const methods = Array.isArray(result?.existingProviderLabels) && result.existingProviderLabels.length
+      ? result.existingProviderLabels.join(" or ")
+      : "your existing sign-in method";
+    return {
+      title: "Use existing login",
+      sub: `Already on ${methods}. Sign in there once to connect Facebook.`,
+      inline: "This email already has an account. Use the existing login first.",
+    };
+  }
+
+  switch (code) {
+    case "auth/operation-not-allowed":
+      return {
+        title: `${providerLabel} not enabled`,
+        sub: "Enable it in Firebase Authentication.",
+        inline: `${providerLabel} login is not enabled yet.`,
+      };
+    case "auth/unauthorized-domain":
+      return {
+        title: "Login domain not allowed",
+        sub: "Add this domain in Firebase Authentication.",
+        inline: "This domain is not authorized for login.",
+      };
+    case "auth/invalid-credential":
+    case "auth/internal-error":
+      return {
+        title: `${providerLabel} login failed`,
+        sub: "Check App ID, secret, and redirect URI.",
+        inline: `${providerLabel} login failed. Check the provider setup.`,
+      };
+    case "auth/too-many-requests":
+      return {
+        title: "Too many login attempts",
+        sub: "Wait a moment, then try again.",
+        inline: "Too many attempts. Please try again shortly.",
+      };
+    default:
+      return {
+        title: `${providerLabel} login failed`,
+        sub: code,
+        inline: `${providerLabel} login failed. Please try again.`,
+      };
+  }
+}
+
+export function showLinkedProviderToast(linkedProvider) {
+  if (!linkedProvider) return;
+  if (linkedProvider.error) {
+    showToast(`${linkedProvider.providerLabel} not connected`, "error", "Try that login again.");
+  } else {
+    showToast(`${linkedProvider.providerLabel} connected`, "check", "Use it next time.");
+  }
+}
+
 function _getToastStack() {
   let stack = document.getElementById("toast-stack");
   if (!stack) {
