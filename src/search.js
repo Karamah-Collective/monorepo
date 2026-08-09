@@ -1,4 +1,4 @@
-import { map } from "./map-init.js";
+import { focusMapPoint, map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation, isSavedDataCloudScoped } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
@@ -235,7 +235,7 @@ function _openPinPopup(lng, lat, kind, entry) {
     else if (entry) entry.popup = null;
   });
 
-  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+  focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 600 });
 
   popup.getElement().addEventListener("click", async (ev) => {
     const dirBtn = ev.target.closest(".pp-dir-btn");
@@ -437,7 +437,7 @@ rList.addEventListener("click", (e) => {
     if (place) { openPlaceSheet(place); return; }
   }
   showSearchMarker(lng, lat);
-  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+  focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 600 });
 });
 
 const searchCard = document.getElementById("search-card");

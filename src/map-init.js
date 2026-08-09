@@ -18,6 +18,11 @@ export const map = new maplibregl.Map({
 
 const appRoot = document.getElementById("app");
 const mapHost = document.getElementById("map");
+const FOCUS_PANEL_IDS = ["place-sheet", "places-sheet", "dir-panel", "menu-sheet", "profile-sheet"];
+const FOCUS_MOBILE_MAX_WIDTH = 768;
+const FOCUS_PANEL_MIN_SIZE = 1;
+const FOCUS_WIDE_PANEL_RATIO = 0.8;
+const FOCUS_SHEET_OPENING_STATE = "opening";
 let _syncRAF = 0;
 let _syncTimeout = 0;
 let _contextLost = false;
@@ -102,6 +107,97 @@ export function scheduleMapViewportSync() {
     _syncTimeout = 0;
     syncMapViewportNow();
   }, 250);
+}
+
+function _isVisibleFocusPanel(el) {
+  if (!el || el.hidden) return false;
+  if (
+    el.classList.contains("shut") &&
+    el.dataset.sheetState !== FOCUS_SHEET_OPENING_STATE
+  ) {
+    return false;
+  }
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.width > FOCUS_PANEL_MIN_SIZE &&
+    rect.height > FOCUS_PANEL_MIN_SIZE
+  ) || (
+    el.offsetWidth > FOCUS_PANEL_MIN_SIZE &&
+    el.offsetHeight > FOCUS_PANEL_MIN_SIZE
+  );
+}
+
+function _getMobileBottomSheetPadding(el, viewportHeight) {
+  const rect = el.getBoundingClientRect();
+  const sheetHeight = Math.ceil(Math.max(el.offsetHeight || 0, rect.height || 0));
+  return Math.min(viewportHeight, Math.max(0, sheetHeight));
+}
+
+function _getVisibleFocusPadding() {
+  const viewportWidth = window.innerWidth || appRoot?.clientWidth || 0;
+  const viewportHeight = window.innerHeight || appRoot?.clientHeight || 0;
+  const padding = { top: 0, right: 0, bottom: 0, left: 0 };
+  const isMobile = viewportWidth <= FOCUS_MOBILE_MAX_WIDTH;
+
+  if (!viewportWidth || !viewportHeight) return padding;
+
+  for (const id of FOCUS_PANEL_IDS) {
+    const el = document.getElementById(id);
+    if (!_isVisibleFocusPanel(el)) continue;
+
+    const rect = el.getBoundingClientRect();
+    if (isMobile) {
+      padding.bottom = Math.max(
+        padding.bottom,
+        _getMobileBottomSheetPadding(el, viewportHeight),
+      );
+      continue;
+    }
+
+    if (rect.width >= viewportWidth * FOCUS_WIDE_PANEL_RATIO) {
+      const panelCenterY = rect.top + rect.height / 2;
+      if (panelCenterY >= viewportHeight / 2) {
+        padding.bottom = Math.max(padding.bottom, Math.max(0, viewportHeight - rect.top));
+      } else {
+        padding.top = Math.max(padding.top, Math.max(0, rect.bottom));
+      }
+      continue;
+    }
+
+    const panelCenterX = rect.left + rect.width / 2;
+    if (panelCenterX >= viewportWidth / 2) {
+      padding.right = Math.max(padding.right, Math.max(0, viewportWidth - rect.left));
+    } else {
+      padding.left = Math.max(padding.left, Math.max(0, rect.right));
+    }
+  }
+
+  return padding;
+}
+
+/**
+ * Focus a map point in the center of the currently available map area.
+ * Open sheets reserve their occupied edge of the viewport; when no sheet is
+ * open this also clears any stale MapLibre global padding from previous moves.
+ * @param {maplibregl.LngLatLike} center - Coordinate to focus.
+ * @param {maplibregl.CameraOptions & { method?: "easeTo"|"flyTo"|"jumpTo" }} [options={}] - Camera options plus movement method.
+ * @returns {void}
+ */
+export function focusMapPoint(center, options = {}) {
+  const { method = "easeTo", ...cameraOptions } = options;
+  const view = {
+    ...cameraOptions,
+    center,
+    padding: _getVisibleFocusPadding(),
+  };
+
+  if (method === "jumpTo") {
+    map.jumpTo(view);
+  } else if (method === "flyTo") {
+    map.flyTo(view);
+  } else {
+    map.easeTo(view);
+  }
 }
 
 map.on("load", () => {

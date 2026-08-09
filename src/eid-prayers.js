@@ -3,7 +3,7 @@
 // on the map with special markers and a banner. Data is read from Cloudflare
 // D1 via /api/eid-prayers.
 
-import { map } from "./map-init.js";
+import { focusMapPoint, map } from "./map-init.js";
 import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl, requestLocation } from "./utils.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, placeOriginMarker, reverseGeocode } from "./directions.js";
 
@@ -374,7 +374,7 @@ function showEidPopup(loc) {
   _activeEidPopup = popup;
   popup.on("close", () => { _activeEidPopup = null; });
 
-  map.flyTo({ center: [loc.lng, loc.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 });
+  focusMapPoint([loc.lng, loc.lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 14), duration: 600 });
 }
 
 // ── Navigate to Eid location ────────────────────────────────────────────────

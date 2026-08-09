@@ -148,7 +148,19 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   const canvasTarget = map.getCanvasContainer?.() || map.getCanvas?.();
   if (!mq || !canvasTarget) return;
 
-  const COMPACT_GRACE_MS = 120;
+  const COMPACT_START_DELAY_MS = 120;
+  const COMPACT_RESTORE_GRACE_MS = 5000;
+  const PHONE_CHROME_SELECTOR = [
+    "#tab-bar",
+    "#search-card",
+    "#locate-pill-wrap",
+    "#zoom-pill",
+    "#prayer-snack",
+    "#eid-pill",
+    "#events-pill",
+    "#promos-pill",
+    "#route-snackbar",
+  ].join(",");
   let endTimer = 0;
   let beginTimer = 0;
   let compactActive = false;
@@ -169,13 +181,21 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
       beginTimer = 0;
       collapsePrayerForMapInteraction?.();
       setCompact(true);
-    }, COMPACT_GRACE_MS);
+    }, COMPACT_START_DELAY_MS);
   };
-  const endSoon = (delay = 160) => {
+  const endSoon = (delay = COMPACT_RESTORE_GRACE_MS) => {
     clearTimeout(beginTimer);
     beginTimer = 0;
     clearTimeout(endTimer);
     endTimer = setTimeout(() => setCompact(false), delay);
+  };
+  const restoreForChromeInteraction = (e) => {
+    if (!mq.matches || !e.target?.closest?.(PHONE_CHROME_SELECTOR)) return;
+    clearTimeout(beginTimer);
+    clearTimeout(endTimer);
+    beginTimer = 0;
+    endTimer = 0;
+    setCompact(false);
   };
   const beginFromMapEvent = (e) => {
     if (e?.originalEvent) begin();
@@ -187,6 +207,9 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   canvasTarget.addEventListener("touchstart", begin, { passive: true });
   window.addEventListener("touchend", () => endSoon(), { passive: true });
   window.addEventListener("touchcancel", () => endSoon(), { passive: true });
+  document.addEventListener("pointerdown", restoreForChromeInteraction, { capture: true, passive: true });
+  document.addEventListener("touchstart", restoreForChromeInteraction, { capture: true, passive: true });
+  document.addEventListener("focusin", restoreForChromeInteraction, { capture: true });
 
   map.on("dragstart", beginFromMapEvent);
   map.on("zoomstart", beginFromMapEvent);
@@ -199,7 +222,9 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
 
   mq.addEventListener?.("change", () => {
     clearTimeout(beginTimer);
+    clearTimeout(endTimer);
     beginTimer = 0;
+    endTimer = 0;
     if (!mq.matches) setCompact(false);
   });
 }

@@ -749,10 +749,10 @@ test.describe("Meta Viewport — Zoom Prevention", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11 · Tab Bar — Icon & Label Completeness
+// 11 · Tab Bar — Mobile Icon Navigation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe("Tab Bar — Icon & Label Completeness", () => {
+test.describe("Tab Bar — Mobile Icon Navigation", () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
   });
@@ -766,13 +766,13 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
     }
   });
 
-  test("each tab button has a visible text label", async ({ page }) => {
+  test("each tab button keeps text labels in the DOM but hides them visually", async ({ page }) => {
     for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       // The first span is the label (not the badge span on places-btn)
       await expect(
         page.locator(`#${id} span`).first(),
         `${id} label`,
-      ).toBeVisible();
+      ).toBeHidden();
     }
   });
 

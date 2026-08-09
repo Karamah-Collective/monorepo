@@ -1,4 +1,4 @@
-import { map } from "./map-init.js";
+import { focusMapPoint, map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
 import {
   esc,
@@ -147,7 +147,7 @@ function openHomePopup() {
 
   popup.on("close", () => { _homePopup = null; });
 
-  map.flyTo({ center: [home.lng, home.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+  focusMapPoint([home.lng, home.lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 600 });
 
   popup.getElement().addEventListener("click", async (ev) => {
     const dirBtn = ev.target.closest(".pp-dir-btn");
@@ -215,9 +215,9 @@ export function centerStoredHomeIfAvailable({ instant = false } = {}) {
   };
 
   if (instant) {
-    map.jumpTo({ center: view.center, zoom: view.zoom, bearing: view.bearing, pitch: view.pitch });
+    focusMapPoint(view.center, { method: "jumpTo", zoom: view.zoom, bearing: view.bearing, pitch: view.pitch });
   } else {
-    map.flyTo(view);
+    focusMapPoint(view.center, { ...view, method: "flyTo" });
   }
   return true;
 }
@@ -232,7 +232,7 @@ export function showCurrentLocation() {
     if (loc.active && loc.lat !== null) {
       const bounds = map.getBounds();
       if (!bounds.contains([loc.lng, loc.lat])) {
-        map.flyTo({ center: [loc.lng, loc.lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+        focusMapPoint([loc.lng, loc.lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
         return;
       }
     }
@@ -287,13 +287,13 @@ export function showCurrentLocation() {
     if (firstFix) {
       // Navigation mode owns the camera and applies its own HUD offset.
       if (!isNavMode) {
-        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+        focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
       }
       firstFix = false;
     } else if (dir.routeLayers.length > 0 && !isNavMode) {
       // Regular route preview follows the user only when turn-by-turn nav
       // is not active. Navigation mode handles its own camera behavior.
-      map.easeTo({ center: [lng, lat], duration: 600 });
+      focusMapPoint([lng, lat], { duration: 600 });
     }
   }
 
@@ -308,7 +308,7 @@ export function showCurrentLocation() {
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
     locWatchId = null;
-    map.flyTo({ center: HELSINKI, zoom: 12.2, duration: 600 });
+    focusMapPoint(HELSINKI, { method: "flyTo", zoom: 12.2, duration: 600 });
   });
 }
 
@@ -961,7 +961,7 @@ export function toggleHeatmap() {
         const zoom = map.getZoom();
         const target = Math.min(zoom + 2, 15);
         if (target > zoom) {
-          map.flyTo({ center: e.lngLat, zoom: target, duration: 500 });
+          focusMapPoint(e.lngLat, { method: "flyTo", zoom: target, duration: 500 });
         }
       });
       map.on("mouseenter", "heatmap-layer", () => { map.getCanvas().style.cursor = "pointer"; });
@@ -1040,7 +1040,7 @@ document.getElementById("home-btn").addEventListener("click", () => {
   if (is3DActive) disable3D();
   setActiveTab(null);
   if (centerStoredHomeIfAvailable()) return;
-  map.flyTo({ center: HELSINKI, zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
+  focusMapPoint(HELSINKI, { method: "flyTo", zoom: 12.2, bearing: 0, pitch: 0, duration: 600 });
   showToast("Add home", "home", "Pick an address or pin");
 });
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));

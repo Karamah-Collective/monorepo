@@ -1180,6 +1180,9 @@ export function animateSheetHeight(sheet, changeFn, { force = false } = {}) {
 
 export function initSheetDrag(sheet, closeFn) {
   const isMobile = () => window.innerWidth <= 768;
+  const SHEET_STATE_OPENING = "opening";
+  const SHEET_STATE_OPEN = "open";
+  const SHEET_STATE_CLOSING = "closing";
   let startY = 0, startH = 0, dragging = false;
   let cached = null;                               // snap-mode cache (survives tab switches)
 
@@ -1331,10 +1334,12 @@ export function initSheetDrag(sheet, closeFn) {
         // Desktop/tablet: just reveal — CSS handles height via fit-content
         sheet.classList.remove("shut", "full");
         sheet.style.height = "";
+        sheet.dataset.sheetState = SHEET_STATE_OPEN;
         prevDesktopH = sheet.offsetHeight; // prime so first RO callback can animate immediately
         return;
       }
       sheet.classList.remove("full");
+      sheet.dataset.sheetState = SHEET_STATE_OPENING;
 
       // 1. height:auto + remove .shut so children lay out at natural sizes
       sheet.style.height = "auto";
@@ -1353,6 +1358,7 @@ export function initSheetDrag(sheet, closeFn) {
       openRAF = requestAnimationFrame(() => {
         openRAF = null;
         sheet.classList.remove("shut");
+        sheet.dataset.sheetState = SHEET_STATE_OPEN;
       });
     },
     /** Re-measure after content changes (e.g. results loaded) & re-snap.
@@ -1413,6 +1419,7 @@ export function initSheetDrag(sheet, closeFn) {
      *  — guaranteeing a proper from→to transition on every engine. */
     close() {
       if (openRAF) { cancelAnimationFrame(openRAF); openRAF = null; }
+      sheet.dataset.sheetState = SHEET_STATE_CLOSING;
       dragging = false;
       sheet.classList.remove("full", "dragging");
       sheet.style.removeProperty("transition");
@@ -1427,6 +1434,7 @@ export function initSheetDrag(sheet, closeFn) {
      *  (or immediately for instant force-close). */
     cleanup() {
       sheet.removeAttribute("style");
+      delete sheet.dataset.sheetState;
     }
   };
 }

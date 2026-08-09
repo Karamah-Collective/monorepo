@@ -8829,6 +8829,61 @@ body.dark-mode .sp-chip {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --txt-xs: 11px;
+    --txt-sm: 12px;
+    --txt-base: 13px;
+    --txt-md: 14px;
+    --txt-lg: 15px;
+    --txt-xl: 16px;
+    --txt-2xl: 17px;
+    --txt-3xl: 18px;
+    --txt-4xl: 20px;
+    --txt-display: 22px;
+    --tab-h: var(--h-submit);
+    --phone-mainbar-gap-rest: var(--sp-4);
+    --phone-mainbar-gap-compact: var(--sp-2);
+    --phone-chrome-gap-rest: var(--sp-3);
+    --phone-chrome-gap-compact: var(--sp-1);
+    --phone-zoom-stack-h-rest: calc(var(--btn-icon-size) + var(--btn-icon-size) + var(--sp-0));
+    --phone-zoom-stack-h-compact: calc(var(--btn-icon-size) + var(--btn-icon-size) - var(--sp-6));
+    --phone-search-stack-h-rest: var(--h-submit);
+    --phone-search-stack-h-compact: calc(var(--h-submit) - var(--sp-3));
+    --phone-top-stack-left: var(--sp-7);
+    --phone-top-stack-step-rest: calc(var(--h-submit) + var(--sp-3));
+    --phone-top-stack-step-compact: calc(var(--h-submit) - var(--sp-2));
+    --phone-top-stack-gap-rest: var(--sp-3);
+    --phone-top-stack-gap-compact: var(--sp-0);
+    --phone-prayer-expanded-w-rest: min(80vw, 210px);
+    --phone-prayer-expanded-w-compact: min(66vw, 172px);
+    --phone-top-stack-step: var(--phone-top-stack-step-rest);
+    --phone-top-stack-gap: var(--phone-top-stack-gap-rest);
+    --phone-prayer-expanded-w: var(--phone-prayer-expanded-w-rest);
+    --phone-mainbar-scale: var(--scale-phone-mainbar-compact);
+    --phone-chrome-scale: var(--scale-phone-chrome-compact);
+    --phone-mainbar-gap: var(--phone-mainbar-gap-rest);
+    --phone-chrome-gap: var(--phone-chrome-gap-rest);
+    --phone-zoom-stack-h: var(--phone-zoom-stack-h-rest);
+    --phone-search-stack-h: var(--phone-search-stack-h-rest);
+    --phone-zoom-bottom: calc(var(--tab-h) + var(--safe-b) + var(--phone-mainbar-gap));
+    --phone-search-bottom: calc(var(--phone-zoom-bottom) + var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
+    --phone-locate-bottom: calc(var(--phone-search-bottom) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
+    --phone-bar-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-6));
+  }
+
+  body.map-interacting {
+    --phone-mainbar-gap: var(--phone-mainbar-gap-compact);
+    --phone-chrome-gap: var(--phone-chrome-gap-compact);
+    --phone-zoom-stack-h: var(--phone-zoom-stack-h-compact);
+    --phone-search-stack-h: var(--phone-search-stack-h-compact);
+    --phone-zoom-bottom: calc(var(--tab-h) + var(--safe-b) + var(--phone-mainbar-gap));
+    --phone-search-bottom: calc(var(--phone-zoom-bottom) + var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
+    --phone-locate-bottom: calc(var(--phone-search-bottom) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
+    --phone-top-stack-step: var(--phone-top-stack-step-compact);
+    --phone-top-stack-gap: var(--phone-top-stack-gap-compact);
+    --phone-prayer-expanded-w: var(--phone-prayer-expanded-w-compact);
+  }
+
   #search-card:not(.collapsed) {
     width: min(94vw, 360px);
   }
@@ -8863,12 +8918,17 @@ body.dark-mode .sp-chip {
   }
 
   #tab-bar {
+    --tab-h: var(--h-submit);
     height: var(--tab-h);
     bottom: calc(var(--map-edge) + var(--safe-b));
     transform-origin: bottom center;
   }
   .tab {
+    gap: 0;
     font-size: var(--txt-xs);
+  }
+  .tab > span:not(.badge) {
+    display: none;
   }
   .tab svg {
     width: 20px;
@@ -8879,6 +8939,25 @@ body.dark-mode .sp-chip {
   #locate-pill-wrap,
   #zoom-pill {
     transform-origin: bottom right;
+  }
+  #zoom-pill {
+    bottom: var(--phone-zoom-bottom);
+  }
+  #search-card {
+    bottom: var(--phone-search-bottom);
+  }
+  #locate-pill-wrap {
+    bottom: var(--phone-locate-bottom);
+  }
+  .maplibregl-ctrl-bottom-left {
+    bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-3)) !important;
+  }
+  #route-snackbar,
+  .share-toast,
+  #toast-stack,
+  #geo-notice,
+  #dev-notice {
+    bottom: var(--phone-bar-bottom);
   }
 
   #prayer-snack {
@@ -9140,6 +9219,76 @@ body.dark-mode .sp-chip {
   .rv-verify-desc,
   .rv-text-label,
   .rv-field-label {
+    font-size: var(--txt-base);
+  }
+
+  #search-input,
+  #pl-search-input,
+  .dir-field input,
+  .dir-field-wrap > input,
+  .sg-label input,
+  .sg-label select,
+  .sg-label textarea,
+  .sg-hours-input,
+  .rv-input,
+  .rv-text-input,
+  .rv-otp-digit,
+  .rv-select,
+  #event-form input[type="date"],
+  #event-form input[type="time"],
+  #event-form select,
+  .ev-mosque-filter {
+    font-size: var(--txt-base);
+  }
+
+  #tf-toggle,
+  #sort-toggle,
+  .tf-chip,
+  .pf-label,
+  .sg-label > span,
+  .rv-form-subtitle,
+  .rv-verify-desc,
+  .rv-text-label,
+  .rv-field-label,
+  .ev-seg-bar .ev-seg-btn,
+  .ev-day-ring .ev-day-btn,
+  .ev-mtog,
+  .ev-ord-row .ev-ord-btn {
+    font-size: var(--txt-sm);
+  }
+
+  .t-item-title,
+  .r-name,
+  .pl-name,
+  .ds-name,
+  .ev-overlay-title {
+    font-size: var(--txt-sm);
+    letter-spacing: var(--ls-normal);
+  }
+
+  .t-item-sub,
+  .r-addr,
+  .pl-addr,
+  .ds-addr,
+  .ev-overlay-mosque,
+  .ev-overlay-organizer,
+  .ev-overlay-meta,
+  .ev-overlay-desc {
+    font-size: var(--txt-xs);
+  }
+
+  .sheet-head h2,
+  .suggest-head h3,
+  #events-card .suggest-head h3,
+  #eid-card .suggest-head h3,
+  #promos-card .suggest-head h3 {
+    font-size: var(--txt-lg);
+    letter-spacing: var(--ls-normal);
+  }
+
+  #dir-go,
+  .rv-form-title,
+  .rv-verify-title {
     font-size: var(--txt-base);
   }
 
@@ -10492,7 +10641,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
 @media (max-width: 768px) {
   #tab-bar,
-  #search-card,
   #locate-pill-wrap,
   #zoom-pill,
   #prayer-snack,
@@ -10500,13 +10648,55 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #events-pill,
   #promos-pill {
     transition:
-      left 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      left var(--t-phone-chrome-slide),
+      bottom var(--t-phone-chrome-compact),
       background var(--t-fast),
-      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+      transform var(--t-phone-chrome-compact);
+  }
+
+  #search-card {
+    transition:
+      width var(--t-spring),
+      border-radius var(--t-spring),
+      box-shadow var(--t-spring),
+      bottom var(--t-phone-chrome-compact),
+      transform var(--t-phone-chrome-compact);
+  }
+
+  #eid-pill,
+  #events-pill,
+  #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step));
+  }
+
+  #prayer-snack:not(.collapsed) ~ #eid-pill,
+  #prayer-snack:not(.collapsed) ~ #events-pill,
+  #prayer-snack:not(.collapsed) ~ #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap));
+  }
+
+  #eid-pill:not(.hide) ~ #events-pill,
+  #eid-pill:not(.hide) ~ #promos-pill,
+  #events-pill:not(.hide) ~ #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
+  }
+
+  #eid-pill:not(.hide) ~ #events-pill:not(.hide) ~ #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
+  }
+
+  #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #events-pill,
+  #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #promos-pill,
+  #prayer-snack:not(.collapsed) ~ #events-pill:not(.hide) ~ #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step));
+  }
+
+  #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #events-pill:not(.hide) ~ #promos-pill {
+    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
   }
 
   body.map-interacting #tab-bar {
-    transform: translateX(-50%) scale(0.84);
+    transform: translateX(-50%) scale(var(--phone-mainbar-scale));
   }
 
   body.map-interacting #search-card,
@@ -10516,6 +10706,10 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.map-interacting #eid-pill,
   body.map-interacting #events-pill,
   body.map-interacting #promos-pill {
-    transform: scale(0.82);
+    transform: scale(var(--phone-chrome-scale));
+  }
+
+  .eid-banner {
+    bottom: var(--phone-bar-bottom);
   }
 }

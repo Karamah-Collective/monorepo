@@ -1,4 +1,4 @@
-import { map, scheduleMapViewportSync } from "./map-init.js";
+import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
 import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
@@ -1271,7 +1271,7 @@ function _setupClusterLayers(geojson) {
     const clusterId = features[0].properties.cluster_id;
     map.getSource("places-cluster").getClusterExpansionZoom(clusterId, (err, zoom) => {
       if (err) return;
-      map.flyTo({ center: features[0].geometry.coordinates, zoom: Math.max(zoom + 0.5, CLUSTER_ZOOM), duration: 500 });
+      focusMapPoint(features[0].geometry.coordinates, { method: "flyTo", zoom: Math.max(zoom + 0.5, CLUSTER_ZOOM), duration: 500 });
     });
   };
   map.on("click", "places-cluster-circle", _clusterClickHandler);
@@ -1893,19 +1893,13 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   placeSheetScrim.classList.remove("hide");
   placeSheetSnap.open();
 
-  // Center the map on the place. On mobile the sheet is a bottom panel that
-  // can cover the pin, so offset via bottom padding to keep it in the
-  // visible area above the sheet. On desktop the sheet is a right-side
-  // panel (see .sheet's @media (min-width: 769px) rule in styles.css) but
-  // there's enough width to spare — keep the pin dead center of the map
-  // itself rather than re-centering the leftover visible strip.
-  const isMobile = window.innerWidth <= 768;
-  const panelH = isMobile ? placeSheetEl.getBoundingClientRect().height : 0;
-  map.easeTo({
-    center: [place.lng, place.lat],
-    zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
-    duration: 500,
-    padding: { top: 0, right: 0, bottom: panelH, left: 0 },
+  // Center the pin inside the map area left after the currently open sheet.
+  // The helper also clears stale MapLibre padding when no sheet is open.
+  requestAnimationFrame(() => {
+    focusMapPoint([place.lng, place.lat], {
+      zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
+      duration: 500,
+    });
   });
 }
 
@@ -1993,7 +1987,7 @@ export function checkShareUrl() {
   if (pinToken) {
     const cp = decodeCompactPin(pinToken);
     if (cp && !isNaN(cp.lat) && !isNaN(cp.lng) && isInsideFinland(cp.lat, cp.lng)) {
-      map.flyTo({ center: [cp.lng, cp.lat], zoom: cp.zoom, speed: 1.4 });
+      focusMapPoint([cp.lng, cp.lat], { method: "flyTo", zoom: cp.zoom, speed: 1.4 });
       map.once("moveend", () => {
         const eventName = cp.isStop ? "hf:open-stop" : "hf:show-search-marker";
         window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: cp.lng, lat: cp.lat, openPopup: true } }));
@@ -2009,7 +2003,7 @@ export function checkShareUrl() {
     const place = placesData.find((p) => String(p.id) === qPlaceId);
     if (place) {
       if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); openPlaceSheet(place); }
-      else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
+      else { focusMapPoint([place.lng, place.lat], { method: "flyTo", zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
     }
     history.replaceState(null, "", location.pathname);
     return;
@@ -2023,7 +2017,7 @@ export function checkShareUrl() {
     const z = parseFloat(params.get("z")) || 16;
     const isStop = params.get("type") === "stop";
     if (!isNaN(la) && !isNaN(lo) && isInsideFinland(la, lo)) {
-      map.flyTo({ center: [lo, la], zoom: z, speed: 1.4 });
+      focusMapPoint([lo, la], { method: "flyTo", zoom: z, speed: 1.4 });
       map.once("moveend", () => {
         const eventName = isStop ? "hf:open-stop" : "hf:show-search-marker";
         window.dispatchEvent(new CustomEvent(eventName, { detail: { lng: lo, lat: la, openPopup: true } }));
@@ -2053,7 +2047,7 @@ export function checkShareUrl() {
     }
     if (!place) return;
     if (mapView) { map.jumpTo({ center: [mapView.lng, mapView.lat], zoom: mapView.zoom }); openPlaceSheet(place); }
-    else { map.flyTo({ center: [place.lng, place.lat], zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
+    else { focusMapPoint([place.lng, place.lat], { method: "flyTo", zoom: 16, speed: 1.4 }); map.once("moveend", () => openPlaceSheet(place)); }
     // Clear hash so the popup isn't re-opened on refresh
     history.replaceState(null, "", location.pathname + location.search);
   }
@@ -4031,7 +4025,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
     if (pin) {
       closePlacesSheet();
       window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
-      map.flyTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+      focusMapPoint([pin.lng, pin.lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 600 });
     }
     return;
   }

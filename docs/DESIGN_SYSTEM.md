@@ -146,6 +146,8 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 | `--txt-4xl` | `30px` |
 | `--txt-display` | `36px` |
 
+**Phone typography (2026-08-09):** at `max-width: 768px`, the phone text scale compresses app-wide (`--txt-xs: 11px`, `--txt-sm: 12px`, `--txt-base: 13px`, `--txt-lg: 15px`). Form controls and search/dropdown inputs use normal body-sized text (`--txt-base`) rather than the older oversized `--txt-lg`/`--txt-xl` phone overrides. Supporting labels/chips/segments use `--txt-sm`, list titles use `--txt-sm`, list subtitles/meta use `--txt-xs`, and sheet/form headings use `--txt-lg`. The user prefers the extra map/content clarity over preserving a 16px input floor.
+
 #### Weights
 
 Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive/titles) → **bold** (headings/CTAs). Semibold is for emphasis within a group (labels, badges).
@@ -210,6 +212,15 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--ease-expo` | `cubic-bezier(.16,1,.3,1)` | Sheets, panels — aggressive deceleration |
 | `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
 | `--stagger-unit` | `30ms` | Per-item delay for staggered list entry animations |
+| `--t-phone-chrome-slide` | `.3s cubic-bezier(.32,.72,0,1)` | Phone floating-chrome positional shifts |
+| `--t-phone-chrome-compact` | `.18s cubic-bezier(.22,1,.36,1)` | Phone map-interaction shrink/spacing compacting |
+
+### Scale Tokens
+
+| Token | Value | Use |
+|---|---|---|
+| `--scale-phone-mainbar-compact` | `.84` | Phone mainbar scale while the map canvas is being manipulated |
+| `--scale-phone-chrome-compact` | `.82` | Phone floating-control scale while the map canvas is being manipulated |
 
 ### Component Sizing
 
@@ -636,10 +647,12 @@ Inline text action. Looks like a hyperlink inside a sentence. No border or backg
 
 Bottom / side navigation tab item.
 
-**Layout:** `flex-direction: column`, icon + label  
+**Layout:** `flex-direction: column`, icon + label on desktop/side navigation; icon-only visual treatment on mobile while keeping the label span in the DOM
 **Active (`.active-tab`):** accent colour + pill indicator bar below icon (mobile) or left edge (desktop)  
 **Special states:** `.tracking` — pulsing accent animation, `.route-active` — static accent  
 **Used by:** `#home-btn`, `#dir-btn`, `#places-btn`, `#locate-btn`
+
+**Mobile (2026-08-09):** visible tab labels are hidden at `max-width: 768px` and `--tab-h` resolves to `--h-submit` so the mainbar consumes the minimum touch-safe height while preserving each button's `aria-label` and DOM text. Phone-only chrome position variables (`--phone-zoom-bottom`, `--phone-search-bottom`, `--phone-locate-bottom`, `--phone-bar-bottom`) derive from that mainbar height so adjacent controls tighten with it.
 
 > The `.tab` selector (JS state class) is kept alongside `.btn-tab` in the HTML. Tab-specific state overrides (`active-tab`, `tracking`) are scoped to `.tab.*` in `styles.css` because they involve animation keyframes and responsive repositioning of the indicator bar.
 
@@ -757,6 +770,8 @@ A collapsible pill that animates from icon-wide (44 px, `.collapsed` class prese
 **Collapsed:** `--r-lg` radius, `--shadow-md`  
 **Expanded:** `--r-xl` radius, `--shadow-lg`  
 **Toggle:** add/remove `.collapsed` class in JS
+
+**Mobile chrome note (2026-08-09):** phone-only map-interaction rules may add a transform transition for compacting floating controls, but must preserve `pill-expand`'s `width`, `border-radius`, and `box-shadow` transitions on expandable controls such as `#search-card`. Otherwise the search pill snaps open on phone while desktop remains smooth.
 
 ### `pill-expand-icon`
 
@@ -1066,6 +1081,14 @@ The tag filter toggle uses `.btn-chip` but JS adds `.open` class instead of `.ac
 ### `.tab` vs `.btn-tab`
 
 HTML elements have **both** classes. `.btn-tab` provides the base template; `.tab` is retained as the JS selector for state management (`active-tab`, `tracking`, `route-active`) and is where animation keyframes are scoped.
+
+### Map Point Focusing
+
+Use `focusMapPoint()` from `src/map-init.js` for ordinary "show this point" camera moves (place detail, home, current location, dropped/search pins, clusters, Eid popups). It calculates MapLibre padding from the currently open sheet/panel so the focused pin lands in the center of the available map area, and it sends zero padding when no panel is open to clear stale global MapLibre padding from previous sheet-aware moves. On phone, bottom sheets reserve their actual measured height even while the opening transform is still animating, so camera padding is based on available map space rather than the sheet's transient visual position.
+
+### Phone Map-Interaction Chrome
+
+On phone, map-canvas gestures add `body.map-interacting` after a short intent delay and keep the compact chrome state for five seconds after the gesture ends. Pressing or focusing any visible app chrome (`#tab-bar`, search, zoom/location, prayer/Eid/events/promos, route snackbar) clears the grace timer immediately and restores full-size controls because the user has switched from map manipulation back to UI interaction. The compact state changes both scale and spacing variables for the right-side zoom/search/location stack; do not only scale controls in place, because that makes the visual gaps feel larger. Search/location should stay visually sticky to the zoom pill with even perceived gaps while shrinking. When changing nested CSS variables, redefine the final position variables (`--phone-search-bottom`, `--phone-locate-bottom`, etc.) in the compact state too; root-defined derived custom properties otherwise keep their already-computed resting values.
 
 ### `#snackbar-close` (route snackbar close button)
 
