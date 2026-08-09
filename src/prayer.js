@@ -223,6 +223,10 @@ function dismissPrayerSnack() {
   el.classList.add("collapsed");
 }
 
+export function collapsePrayerForMapInteraction() {
+  dismissPrayerSnack();
+}
+
 function startPrayerWatcher() {
   if (prayerWatchInterval) clearInterval(prayerWatchInterval);
   prayerWatchInterval = setInterval(() => {

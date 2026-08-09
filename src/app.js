@@ -143,6 +143,67 @@ document.addEventListener(
 window.addEventListener("offline", showOfflineBanner);
 window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });
 
+function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
+  const mq = window.matchMedia?.("(max-width: 768px)");
+  const canvasTarget = map.getCanvasContainer?.() || map.getCanvas?.();
+  if (!mq || !canvasTarget) return;
+
+  const COMPACT_GRACE_MS = 120;
+  let endTimer = 0;
+  let beginTimer = 0;
+  let compactActive = false;
+  const setCompact = (active) => {
+    if (!mq.matches) {
+      document.body.classList.remove("map-interacting");
+      compactActive = false;
+      return;
+    }
+    compactActive = active;
+    document.body.classList.toggle("map-interacting", active);
+  };
+  const begin = () => {
+    if (!mq.matches) return;
+    clearTimeout(endTimer);
+    if (compactActive || beginTimer) return;
+    beginTimer = setTimeout(() => {
+      beginTimer = 0;
+      collapsePrayerForMapInteraction?.();
+      setCompact(true);
+    }, COMPACT_GRACE_MS);
+  };
+  const endSoon = (delay = 160) => {
+    clearTimeout(beginTimer);
+    beginTimer = 0;
+    clearTimeout(endTimer);
+    endTimer = setTimeout(() => setCompact(false), delay);
+  };
+  const beginFromMapEvent = (e) => {
+    if (e?.originalEvent) begin();
+  };
+
+  canvasTarget.addEventListener("pointerdown", begin, { passive: true });
+  window.addEventListener("pointerup", () => endSoon(), { passive: true });
+  window.addEventListener("pointercancel", () => endSoon(), { passive: true });
+  canvasTarget.addEventListener("touchstart", begin, { passive: true });
+  window.addEventListener("touchend", () => endSoon(), { passive: true });
+  window.addEventListener("touchcancel", () => endSoon(), { passive: true });
+
+  map.on("dragstart", beginFromMapEvent);
+  map.on("zoomstart", beginFromMapEvent);
+  map.on("rotatestart", beginFromMapEvent);
+  map.on("pitchstart", beginFromMapEvent);
+  map.on("dragend", () => endSoon());
+  map.on("zoomend", () => endSoon());
+  map.on("rotateend", () => endSoon());
+  map.on("pitchend", () => endSoon());
+
+  mq.addEventListener?.("change", () => {
+    clearTimeout(beginTimer);
+    beginTimer = 0;
+    if (!mq.matches) setCompact(false);
+  });
+}
+
 map.on("load", async () => {
   preloadSatelliteSource();
   syncHomeMarker();
@@ -188,7 +249,7 @@ map.on("load", async () => {
   // Lazy-load non-critical modules in parallel after first paint
   const [
     { loadTransitCache },
-    { initPrayerTimes },
+    { initPrayerTimes, collapsePrayerForMapInteraction },
     { initStyleEditor },
     _contact, // side-effect import — attaches event listeners
     { initEidPrayers },
@@ -209,6 +270,7 @@ map.on("load", async () => {
   ]);
 
   loadTransitCache();
+  initPhoneMapChromeCompact(collapsePrayerForMapInteraction);
   initPrayerTimes();
   initStyleEditor();
   initEidPrayers();
@@ -257,12 +319,11 @@ map.on("load", async () => {
   privacyOverlay.addEventListener("click", (e) => {
     if (e.target === privacyOverlay) privacyOverlay.classList.add("hide");
   });
-  document.getElementById("privacy-link").addEventListener("click", (e) => {
+  document.getElementById("privacy-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     privacyOverlay.classList.remove("hide");
   });
-  // Same overlay, reachable from the Menu sheet's Support row too, not just
-  // the footer link — see index.html's #menu-privacy-pill.
+  // Same overlay, reachable from the Menu sheet's Support row too.
   document.getElementById("menu-privacy-pill").addEventListener("click", () => {
     privacyOverlay.classList.remove("hide");
   });

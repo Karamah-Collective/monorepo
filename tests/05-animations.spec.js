@@ -78,7 +78,7 @@ test.describe("Tab Bar Active State", () => {
   });
 
   test("no tab is active initially", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       await expect(page.locator(`#${id}`)).not.toHaveClass(/active-tab/);
     }
   });

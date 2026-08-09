@@ -28,20 +28,20 @@ test.describe("Core DOM Structure", () => {
   // ─── Tab Bar ────────────────────────────────────────────────────────────────
   test("tab bar exists with all navigation buttons", async ({ page }) => {
     await expect(page.locator("#tab-bar")).toBeVisible();
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       await expect(page.locator(`#${id}`)).toBeVisible();
     }
   });
 
   test("each tab has an aria-label", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       const label = await page.locator(`#${id}`).getAttribute("aria-label");
       expect(label).toBeTruthy();
     }
   });
 
   test("each tab contains an SVG icon and label text", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       await expect(page.locator(`#${id} svg`)).toBeVisible();
       await expect(page.locator(`#${id} span`).first()).toBeVisible();
     }

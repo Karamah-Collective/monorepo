@@ -234,14 +234,14 @@ test.describe("Touch Target Sizes (≥44px per Apple HIG)", () => {
   });
 
   test("all tab bar buttons have height ≥44px", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box.height, `#${id} height`).toBeGreaterThanOrEqual(44);
     }
   });
 
   test("all tab bar buttons have width ≥44px", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box.width, `#${id} width`).toBeGreaterThanOrEqual(44);
     }
@@ -758,7 +758,7 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
   });
 
   test("each tab button has a visible SVG icon", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       await expect(
         page.locator(`#${id} svg`).first(),
         `${id} svg`,
@@ -767,7 +767,7 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
   });
 
   test("each tab button has a visible text label", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       // The first span is the label (not the badge span on places-btn)
       await expect(
         page.locator(`#${id} span`).first(),
@@ -777,7 +777,7 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
   });
 
   test("tab labels are not empty strings", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "locate-btn"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
       const text = await page
         .locator(`#${id} span`)
         .first()
@@ -789,7 +789,7 @@ test.describe("Tab Bar — Icon & Label Completeness", () => {
   test("tab buttons do not overlap each other horizontally", async ({
     page,
   }) => {
-    const ids = ["home-btn", "dir-btn", "places-btn", "locate-btn"];
+    const ids = ["home-btn", "dir-btn", "places-btn", "menu-pill"];
     const boxes = await Promise.all(
       ids.map((id) => page.locator(`#${id}`).boundingBox()),
     );
