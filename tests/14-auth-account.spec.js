@@ -101,6 +101,50 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
   });
 });
 
+test.describe("Menu Account section — Facebook avatar", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("ignores Facebook's tokenless Graph picture URL and caches the fresh signed-in photo", async ({ page }) => {
+    await page.route("https://graph.facebook.com/me/picture**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            is_silhouette: false,
+            url: "https://example.com/facebook-real-profile.jpg",
+          },
+        }),
+      }),
+    );
+    await page.evaluate(() => {
+      window.__mockOAuthUser = {
+        uid: "mock-uid-facebook",
+        email: "facebook@example.com",
+        displayName: "Facebook User",
+        photoURL: "",
+        emailVerified: true,
+        providerData: [{
+          providerId: "facebook.com",
+          photoURL: "https://graph.facebook.com/123456789/picture?type=large&height=500&width=500",
+        }],
+        reload: async () => {},
+        getIdToken: async () => "mock-id-token-facebook",
+      };
+    });
+
+    await openMenuAndWaitForAccount(page);
+    await page.click("#menu-facebook-signin");
+
+    await expect.poll(
+      () => page.evaluate(() => JSON.parse(localStorage.getItem("hf_account") || "null")?.photoURL || ""),
+      { timeout: 10_000 },
+    ).toBe("https://example.com/facebook-real-profile.jpg");
+  });
+});
+
 test.describe("Menu Account section — Your reviews list", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/reviews", (route) => {

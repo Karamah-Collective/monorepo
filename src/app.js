@@ -149,7 +149,7 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   if (!mq || !canvasTarget) return;
 
   const COMPACT_START_DELAY_MS = 120;
-  const COMPACT_RESTORE_GRACE_MS = 5000;
+  const COMPACT_RESTORE_GRACE_MS = 3000;
   const PHONE_CHROME_SELECTOR = [
     "#tab-bar",
     "#search-card",

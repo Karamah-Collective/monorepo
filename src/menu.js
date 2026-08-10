@@ -650,15 +650,31 @@ function _buildSignedOutHTML() {
 // is a new, minimal icon rather than a repurposed one).
 const _PROFILE_CHEVRON_SVG = `<svg class="menu-profile-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
 
+function _accountAvatarHTML(photoURL, initial) {
+  return photoURL
+    ? `<span class="menu-account-avatar menu-account-avatar--photo" data-avatar-fallback="${escA(initial)}"><img src="${escA(photoURL)}" alt="" referrerpolicy="no-referrer"></span>`
+    : `<div class="menu-account-avatar">${esc(initial)}</div>`;
+}
+
+function _wireAccountAvatarFallback(root) {
+  root.querySelectorAll(".menu-account-avatar--photo[data-avatar-fallback] img").forEach((img) => {
+    img.addEventListener("error", () => {
+      const avatar = img.parentElement;
+      if (!avatar) return;
+      avatar.textContent = avatar.dataset.avatarFallback || "?";
+      avatar.classList.remove("menu-account-avatar--photo");
+      delete avatar.dataset.avatarFallback;
+    }, { once: true });
+  });
+}
+
 function _buildSignedInHTML(account) {
   const label = account.displayName || account.email || "Signed in";
   const initial = (account.displayName || account.email || "?").trim().charAt(0).toUpperCase();
   // Google supplies photoURL automatically; Microsoft sign-in never does
   // (see the note on _cacheAccount() in src/auth.js) — falls back to the
   // initial-letter avatar for Microsoft and magic-link accounts alike.
-  const avatarHTML = account.photoURL
-    ? `<img class="menu-account-avatar" src="${escA(account.photoURL)}" alt="" referrerpolicy="no-referrer">`
-    : `<div class="menu-account-avatar">${esc(initial)}</div>`;
+  const avatarHTML = _accountAvatarHTML(account.photoURL, initial);
   // The full identity card, contribution stats, "Your reviews"/submitted
   // places/edits, and erase/export actions all live in the Profile pane
   // (src/profile.js) now — this row is just the doorway to it.
@@ -969,6 +985,8 @@ function _wirePasswordSignIn() {
 }
 
 function _wireSignedInView() {
+  _wireAccountAvatarFallback(document.getElementById("menu-profile-link"));
+
   // Tap the whole row: navigates to the Profile pane via a slide, not a
   // sheet close/open (see _goToProfilePane() above).
   document.getElementById("menu-profile-link").addEventListener("click", () => {

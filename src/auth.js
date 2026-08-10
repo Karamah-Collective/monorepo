@@ -86,9 +86,9 @@ const _microsoftProvider = new OAuthProvider("microsoft.com");
 _microsoftProvider.addScope("User.Read");
 // Facebook DOES have a dedicated FacebookAuthProvider class in the Firebase
 // Web SDK (unlike Microsoft/Apple) — same shape as GoogleAuthProvider.
-// Request public_profile explicitly because the avatar fallback below reads
-// Facebook's provider profile UID (the same providerData record Firebase uses
-// for Facebook's name/email) and builds a Graph picture URL from it.
+// Request public_profile explicitly so the interactive sign-in result can
+// include a real profile-picture URL or let us fetch one with the fresh
+// OAuth access token.
 const _facebookProvider = new FacebookAuthProvider();
 _facebookProvider.addScope("public_profile");
 _facebookProvider.addScope("email");
@@ -130,17 +130,23 @@ function _firstProviderPhotoURL(user) {
   return user?.providerData?.find((provider) => provider.photoURL)?.photoURL || "";
 }
 
-function _facebookGraphPictureURL(facebookUserId) {
-  return facebookUserId
-    ? `https://graph.facebook.com/${encodeURIComponent(facebookUserId)}/picture?type=large&height=500&width=500`
-    : "";
+function _isTokenlessFacebookGraphPictureURL(photoURL) {
+  try {
+    const url = new URL(photoURL);
+    return url.hostname === "graph.facebook.com"
+      && url.pathname.endsWith("/picture")
+      && !url.searchParams.has("access_token");
+  } catch {
+    return false;
+  }
 }
 
 function _facebookPhotoURLFromProfile(profile) {
   if (!profile) return "";
   const picture = profile.picture;
+  if (picture?.data?.is_silhouette) return "";
   const pictureURL = typeof picture === "string" ? picture : picture?.data?.url;
-  return pictureURL || _facebookGraphPictureURL(profile.id || profile.uid || "");
+  return pictureURL || "";
 }
 
 function _facebookPhotoURLFromCredential(cred) {
@@ -150,8 +156,8 @@ function _facebookPhotoURLFromCredential(cred) {
 function _facebookPhotoURLFromProvider(user) {
   const facebookProfile = _providerProfile(user, FACEBOOK_PROVIDER_ID);
   if (!facebookProfile) return "";
-  if (facebookProfile.photoURL) return facebookProfile.photoURL;
-  return _facebookGraphPictureURL(facebookProfile.uid || "");
+  if (!facebookProfile.photoURL || _isTokenlessFacebookGraphPictureURL(facebookProfile.photoURL)) return "";
+  return facebookProfile.photoURL;
 }
 
 function _cacheAccount(user) {
@@ -176,11 +182,15 @@ function _cacheAccount(user) {
   const preservedPhoto = existing && existing.uid === user.uid ? existing.photoURL : "";
   const facebookPhoto = _facebookPhotoURLFromProvider(user);
   const hasFacebookProvider = user.providerData?.some((provider) => provider.providerId === FACEBOOK_PROVIDER_ID);
+  const safePreservedPhoto = hasFacebookProvider && _isTokenlessFacebookGraphPictureURL(preservedPhoto) ? "" : preservedPhoto;
+  const safeUserPhoto = hasFacebookProvider && _isTokenlessFacebookGraphPictureURL(user.photoURL) ? "" : user.photoURL;
+  const firstProviderPhoto = _firstProviderPhotoURL(user);
+  const safeFirstProviderPhoto = hasFacebookProvider && _isTokenlessFacebookGraphPictureURL(firstProviderPhoto) ? "" : firstProviderPhoto;
   const account = {
     uid: user.uid,
     email: user.email || "",
     displayName: user.displayName || "",
-    photoURL: facebookPhoto || (hasFacebookProvider ? preservedPhoto : "") || user.photoURL || preservedPhoto || _firstProviderPhotoURL(user) || "",
+    photoURL: facebookPhoto || (hasFacebookProvider ? safePreservedPhoto : "") || safeUserPhoto || safePreservedPhoto || safeFirstProviderPhoto || "",
   };
   try { localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(account)); } catch { /* quota/blocked */ }
   return account;
@@ -299,12 +309,13 @@ function _mergeCachedPhoto(photoURL) {
 async function _fetchFacebookPhotoURL(accessToken) {
   if (!accessToken) return "";
   try {
-    const res = await fetch(`https://graph.facebook.com/me/picture?type=large&redirect=false&access_token=${encodeURIComponent(accessToken)}`);
+    const res = await fetch(`https://graph.facebook.com/me/picture?type=large&height=500&width=500&redirect=false&access_token=${encodeURIComponent(accessToken)}`);
     if (!res.ok) {
       console.warn(`[auth] Facebook photo fetch failed: Graph API returned HTTP ${res.status}.`);
       return "";
     }
     const data = await res.json();
+    if (data?.data?.is_silhouette) return "";
     return data?.data?.url || "";
   } catch (err) {
     console.warn("[auth] Facebook photo fetch failed:", err?.message || err);

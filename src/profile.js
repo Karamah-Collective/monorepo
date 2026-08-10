@@ -263,6 +263,24 @@ function _approvedCount(list) {
   return list.filter((item) => item.status === "live").length;
 }
 
+function _accountAvatarHTML(photoURL, initial) {
+  return photoURL
+    ? `<span class="menu-account-avatar pf-card-avatar menu-account-avatar--photo" data-avatar-fallback="${escA(initial)}"><img src="${escA(photoURL)}" alt="" referrerpolicy="no-referrer"></span>`
+    : `<div class="menu-account-avatar pf-card-avatar">${esc(initial)}</div>`;
+}
+
+function _wireAccountAvatarFallback(root) {
+  root.querySelectorAll(".menu-account-avatar--photo[data-avatar-fallback] img").forEach((img) => {
+    img.addEventListener("error", () => {
+      const avatar = img.parentElement;
+      if (!avatar) return;
+      avatar.textContent = avatar.dataset.avatarFallback || "?";
+      avatar.classList.remove("menu-account-avatar--photo");
+      delete avatar.dataset.avatarFallback;
+    }, { once: true });
+  });
+}
+
 function _renderCard() {
   if (!_account) return;
   const label = _account.displayName || _account.email || "Signed in";
@@ -270,9 +288,7 @@ function _renderCard() {
   // Google supplies photoURL automatically; Microsoft sign-in never does
   // (see the note on _cacheAccount() in src/auth.js) — falls back to the
   // initial-letter avatar for Microsoft and magic-link accounts alike.
-  const avatarHTML = _account.photoURL
-    ? `<img class="menu-account-avatar pf-card-avatar" src="${escA(_account.photoURL)}" alt="" referrerpolicy="no-referrer">`
-    : `<div class="menu-account-avatar pf-card-avatar">${esc(initial)}</div>`;
+  const avatarHTML = _accountAvatarHTML(_account.photoURL, initial);
   const memberSince = formatMemberSince(_accountMetaCache.firstSeenAt);
 
   // Compact "flair" pill — the single highest badge across all 4 categories
@@ -329,6 +345,7 @@ function _renderCard() {
     </button>
   </div>`;
 
+  _wireAccountAvatarFallback(cardBody);
   document.getElementById("profile-signout").addEventListener("click", _handleSignOut);
 }
 

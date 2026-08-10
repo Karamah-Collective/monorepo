@@ -217,7 +217,7 @@
   --t-slow: 0.4s ease;
   --t-x-slow: 0.5s ease;
   --t-phone-chrome-slide: 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  --t-phone-chrome-compact: 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  --t-phone-chrome-compact: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
