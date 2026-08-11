@@ -1310,21 +1310,14 @@
   flex-shrink: 0;
 }
 
-/* #style-panel now holds two labeled sub-groups (Theme: Light/Dark/Auto —
-   Overlay: Satellite/Heatmap) side by side in one row instead of one flat
-   row of 4 thumbnails with a stray divider between the 2nd and 3rd item.
-   Each group is only as wide as its own content (3 vs 2 options) and the
-   groups sit left-aligned with a clear divider between them — any leftover
-   space after Overlay is now expected/normal (two meaningfully-labeled
-   groups sized to their own content), not the earlier bug (4 unlabeled
-   thumbnails arbitrarily not filling the row for no apparent reason). */
+/* Compact grouped map-view controls. Each row has two 3-item groups, with a
+   divider between the paired sections. */
 #style-panel {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: nowrap;
-  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  padding: var(--sp-3);
   gap: var(--sp-4);
-  white-space: nowrap;
 }
 .style-group {
   display: flex;
@@ -1332,17 +1325,19 @@
   gap: var(--sp-2);
   min-width: 0;
 }
-/* Divider between the two groups — reuses --border like every other divider
-   in this app, replacing the old standalone .style-divider flex child. The
-   parent's own `gap` already provides breathing room before the line; this
-   padding adds breathing room after it, before the group's own content. */
 .style-group + .style-group {
+  border-left: 0;
+  padding-left: 0;
+}
+.style-group:nth-child(2),
+.style-group:nth-child(4) {
   border-left: 1px solid var(--border);
   padding-left: var(--sp-3);
 }
 .style-group-row {
-  display: flex;
-  gap: var(--sp-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-1h);
 }
 
 .style-opt {
@@ -1353,9 +1348,10 @@
   background: none;
   border: 2px solid transparent;
   border-radius: var(--r-sm);
-  padding: 4px 6px;
+  padding: var(--sp-1) var(--sp-1h);
   cursor: pointer;
   transition: border-color var(--t-fast);
+  min-width: 0;
 }
 @media (hover: hover) {
   .style-opt:hover {
@@ -1369,17 +1365,35 @@
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   color: var(--text-2);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .style-thumb {
-  width: 44px;
-  height: 44px;
+  width: calc(var(--icon-md) - var(--sp-1));
+  height: calc(var(--icon-md) - var(--sp-1));
   border-radius: var(--r-inner);
 }
 .thumb-light {
   background: url("../../data/thumbs/default.png") center/cover no-repeat;
 }
 .thumb-satellite {
+  position: relative;
+  overflow: hidden;
   background: url("../../data/thumbs/satellite.jpg") center/cover no-repeat;
+}
+.thumb-hybrid {
+  position: relative;
+  overflow: hidden;
+  background: url("../../data/thumbs/satellite.jpg") center/cover no-repeat;
+}
+.thumb-hybrid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(35deg, transparent 0 40%, color-mix(in srgb, var(--surface) 86%, transparent) 40% 47%, transparent 47%),
+    linear-gradient(135deg, transparent 0 48%, color-mix(in srgb, var(--accent) 72%, transparent) 48% 54%, transparent 54%);
 }
 
 .thumb-heatmap {
@@ -1405,6 +1419,128 @@
       transparent            22%
     ),
     url("../../data/thumbs/default.png") center/cover no-repeat;
+}
+.thumb-detail-clean,
+.thumb-detail-standard,
+.thumb-detail-detailed {
+  position: relative;
+  overflow: hidden;
+  background: url("../../data/thumbs/default.png") center/cover no-repeat;
+}
+.thumb-markers-default,
+.thumb-markers-compact,
+.thumb-markers-bold {
+  position: relative;
+  overflow: hidden;
+  background: url("../../data/thumbs/default.png") center/cover no-repeat;
+  filter: none;
+}
+.thumb-detail-clean::before,
+.thumb-detail-standard::before,
+.thumb-detail-detailed::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(35deg, transparent 0 45%, color-mix(in srgb, var(--text-2) 34%, transparent) 45% 50%, transparent 50%),
+    linear-gradient(135deg, transparent 0 58%, color-mix(in srgb, var(--accent) 30%, transparent) 58% 62%, transparent 62%);
+}
+.thumb-detail-clean::after,
+.thumb-detail-standard::after,
+.thumb-detail-detailed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 67% 34%, color-mix(in srgb, var(--accent) 72%, transparent) 0 var(--sp-1), transparent var(--sp-1h)),
+    radial-gradient(circle at 38% 67%, color-mix(in srgb, var(--review) 68%, transparent) 0 var(--sp-1), transparent var(--sp-1h));
+}
+.thumb-detail-clean::after {
+  opacity: 0;
+}
+.thumb-detail-detailed {
+  background:
+    linear-gradient(90deg, transparent 0 21%, color-mix(in srgb, var(--border) 76%, transparent) 21% 24%, transparent 24% 49%, color-mix(in srgb, var(--border) 76%, transparent) 49% 52%, transparent 52% 74%, color-mix(in srgb, var(--border) 76%, transparent) 74% 77%, transparent 77%),
+    url("../../data/thumbs/default.png") center/cover no-repeat;
+}
+.thumb-detail-detailed::before {
+  background:
+    linear-gradient(35deg, transparent 0 35%, color-mix(in srgb, var(--text-2) 46%, transparent) 35% 40%, transparent 40% 60%, color-mix(in srgb, var(--accent) 42%, transparent) 60% 64%, transparent 64%),
+    linear-gradient(135deg, transparent 0 44%, color-mix(in srgb, var(--review) 48%, transparent) 44% 48%, transparent 48%);
+}
+.thumb-detail-detailed::after {
+  background:
+    radial-gradient(circle at 31% 34%, color-mix(in srgb, var(--danger) 78%, transparent) 0 var(--sp-1), var(--surface) var(--sp-1) var(--sp-1h), transparent var(--sp-1h)),
+    radial-gradient(circle at 69% 42%, color-mix(in srgb, var(--hsl-bus) 74%, transparent) 0 var(--sp-1), var(--surface) var(--sp-1) var(--sp-1h), transparent var(--sp-1h)),
+    radial-gradient(circle at 47% 72%, color-mix(in srgb, var(--review) 76%, transparent) 0 var(--sp-1), var(--surface) var(--sp-1) var(--sp-1h), transparent var(--sp-1h));
+}
+.style-group:nth-child(4) .style-opt {
+  padding-inline: var(--sp-0);
+}
+.thumb-markers-default::before,
+.thumb-markers-compact::before,
+.thumb-markers-compact::after,
+.thumb-markers-bold::after {
+  content: "";
+  position: absolute;
+  width: var(--mk-preview-size, var(--sp-10));
+  height: var(--mk-preview-size, var(--sp-10));
+  border: var(--puck-border);
+  border-radius: 50% 50% 50% var(--sp-1);
+  background: var(--mk-fill, var(--accent));
+  transform: translate(-50%, -50%) rotate(-45deg);
+  box-shadow: 0 var(--sp-0) var(--sp-2) color-mix(in srgb, var(--text) 24%, transparent);
+}
+.thumb-markers-default::before {
+  left: 50%;
+  top: 49%;
+  --mk-preview-size: var(--sp-8);
+  --mk-fill: var(--success);
+}
+.thumb-markers-default::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 73%;
+  width: var(--sp-8);
+  height: var(--sp-1);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+  transform: translate(-50%, -50%);
+}
+.thumb-markers-compact::before {
+  left: 39%;
+  top: 58%;
+  --mk-preview-size: var(--sp-7);
+  --mk-fill: var(--accent);
+  z-index: 1;
+}
+.thumb-markers-compact::after {
+  left: 61%;
+  top: 43%;
+  --mk-preview-size: var(--sp-6);
+  --mk-fill: var(--gold);
+  z-index: 2;
+}
+.thumb-markers-bold::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--sp-10);
+  height: var(--sp-10);
+  border-radius: 50% 50% 50% var(--sp-1);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow:
+    0 0 0 var(--sp-1) color-mix(in srgb, var(--accent) 22%, transparent),
+    0 0 var(--sp-4) color-mix(in srgb, var(--accent) 32%, transparent);
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.thumb-markers-bold::after {
+  left: 50%;
+  top: 50%;
+  --mk-preview-size: var(--sp-9);
+  --mk-fill: var(--accent);
 }
 .thumb-dark {
   background: url("../../data/thumbs/default.png") center/cover no-repeat;
@@ -1456,6 +1592,32 @@ body.dark-mode .thumb-heatmap {
   filter: invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04);
 }
 
+.place-popup-wrap.traffic-popup-wrap .maplibregl-popup-content {
+  min-width: 230px;
+}
+.traffic-pop {
+  min-width: 230px;
+}
+.traffic-pop-hdr {
+  padding-right: 0;
+}
+.traffic-pop-icon {
+  color: var(--accent);
+}
+.traffic-pop-icon svg {
+  display: block;
+}
+.traffic-pop-badge {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.traffic-pop-body {
+  color: var(--text-2);
+  font-size: var(--txt-sm);
+  line-height: var(--lh-normal);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-light);
+}
 /* ─── Dark Mode: CSS filter on MapLibre canvas (not during satellite) ─── */
 /* The --mse-dark-filter variable is set by map-style-editor.js once loaded.  */
 /* Before the editor loads, fall back to the original invert-based preset.    */
@@ -3978,6 +4140,27 @@ button.pf-stat-card:focus-visible {
   background: var(--place-c, var(--accent));
   position: relative;
   transition: transform var(--t-fast);
+}
+body.marker-style-compact .place-mk,
+body.marker-style-compact .custom-mk {
+  width: calc(var(--icon-md) * 0.78);
+  height: calc(var(--icon-md) * 0.78);
+}
+body.marker-style-compact .place-mk svg,
+body.marker-style-compact .custom-mk svg {
+  width: 42%;
+  height: 42%;
+}
+body.marker-style-bold .place-mk,
+body.marker-style-bold .custom-mk {
+  box-shadow:
+    0 0 0 var(--sp-1) color-mix(in srgb, var(--place-c, var(--accent)) 28%, transparent),
+    var(--shadow-md);
+}
+body.marker-style-bold .custom-mk {
+  box-shadow:
+    0 0 0 var(--sp-1) color-mix(in srgb, var(--accent) 28%, transparent),
+    var(--shadow-md);
 }
 .place-mk-tip {
   display: none;

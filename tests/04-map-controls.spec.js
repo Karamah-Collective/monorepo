@@ -90,10 +90,19 @@ test.describe("Style Picker", () => {
     // Toggle satellite on
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
+    await expect(page.locator('.style-opt[data-style="satellite"]')).toHaveClass(/active/);
     // Toggle satellite off
     await page.locator('.style-opt[data-style="satellite"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
+  });
+
+  test("selecting hybrid marks only the hybrid overlay active", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    await page.locator('.style-opt[data-style="hybrid"]').click();
+    await page.waitForTimeout(500);
+    await expect(page.locator('.style-opt[data-style="hybrid"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
   });
 
@@ -123,13 +132,9 @@ test.describe("Style Picker", () => {
     expect(sheetBox.x + sheetBox.width - (rowBox.x + rowBox.width)).toBeGreaterThan(4);
   });
 
-  // Regression: #style-panel's 4 style thumbnails used to bunch to the left
-  // (default flex-start), leaving a large dead gap before the sheet's right
-  // edge. It's now reorganized into two labeled groups (Theme / Overlay)
-  // that sit side by side in the same row, not wrapped onto separate lines —
-  // any leftover space after the groups is now expected (two meaningfully
-  // grouped/labeled controls sized to their own content), not the old bug.
-  test("Map View's Theme and Overlay groups sit side by side in one row", async ({ page }) => {
+  // Regression: #style-panel should keep grouped map controls compact without
+  // horizontal overflow as Overlay grows beyond the original two choices.
+  test("Map View groups stay compact without horizontal overflow", async ({ page }) => {
     await page.locator("#menu-pill").click();
     await expect(page.locator("#menu-google-signin, #menu-signout")).toBeVisible({ timeout: 15_000 });
     const themeGroup = page.locator(".style-group", { hasText: "Theme" });

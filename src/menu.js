@@ -58,6 +58,7 @@
  */
 import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride, animateElementHeight, crossFadeSwap, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast, showToast } from "./utils.js";
 import { EVT } from "./events.js";
+import { setActiveTab } from "./map-controls.js";
 import { loadProfileContent } from "./profile.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
@@ -113,6 +114,7 @@ export function openMenuSheet() {
   menuSheet.hidden = false;
   _setActivePane("menu", { instant: true });
   menuScrim.classList.remove("hide");
+  setActiveTab("menu-pill");
   menuSnap.open();
   return wasShut;
 }
@@ -127,6 +129,9 @@ export function closeMenuSheet() {
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSnap.close();
   menuScrim.classList.add("hide");
+  if (document.getElementById("menu-pill")?.classList.contains("active-tab")) {
+    setActiveTab(null);
+  }
   menuSheet._hideTimeout = setTimeout(() => {
     menuSheet.hidden = true;
     menuSnap.cleanup();

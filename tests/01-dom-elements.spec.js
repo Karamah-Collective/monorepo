@@ -81,21 +81,23 @@ test.describe("Core DOM Structure", () => {
   });
 
   // ─── Menu / Map Style ──────────────────────────────────────────────────────
-  // Map View is grouped into two labeled sub-sections in the same row: Theme
-  // (Light/Dark/Auto, 3 options) and Overlay (Satellite/Heatmap, 2 options).
-  test("menu pill exists with a map style panel inside, grouped into Theme + Overlay", async ({ page }) => {
+  // Map View is grouped into labeled sub-sections: Theme, Overlay, Detail, and Markers.
+  test("menu pill exists with a grouped map style panel", async ({ page }) => {
     await expect(page.locator("#menu-pill")).toBeVisible();
     await expect(page.locator("#style-panel")).toBeAttached();
     const opts = page.locator(".style-opt");
-    await expect(opts).toHaveCount(5);
+    await expect(opts).toHaveCount(12);
     const groups = page.locator(".style-group");
-    await expect(groups).toHaveCount(2);
-    await expect(page.locator(".style-group-label")).toHaveText(["Theme", "Overlay"]);
+    await expect(groups).toHaveCount(4);
+    await expect(page.locator(".style-group-label")).toHaveText(["Theme", "Overlay", "Detail", "Markers"]);
   });
 
   test("default style option is active", async ({ page }) => {
     await expect(page.locator('.style-opt[data-style="light"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="satellite"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="hybrid"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="detail-standard"]')).toHaveClass(/active/);
+    await expect(page.locator('.style-opt[data-style="markers-default"]')).toHaveClass(/active/);
     await expect(page.locator('.style-opt[data-style="auto"]')).not.toHaveClass(/active/);
   });
 

@@ -17,6 +17,7 @@ import {
 } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
+import { setTrafficDetailOverlay, refreshTrafficDetailOverlayLayers } from "./traffic-overlay.js";
 
 let locMarker = null;
 let locWatchId = null;
@@ -46,6 +47,9 @@ const SAT_TILES = ["https://server.arcgisonline.com/ArcGIS/rest/services/World_I
 const SAT_ATTRIBUTION = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics';
 export let isHeatmapActive = false;
 export let is3DActive = false;
+export let isHybridSatelliteActive = false;
+export let mapDetailMode = "standard";
+export let markerVisualMode = "default";
 
 const VECTOR_BASE_IDS = [
   "background", "landcover_grass", "landcover_wood", "landcover_farmland",
@@ -65,6 +69,68 @@ const LABEL_IDS = [
   "label_place_village", "label_place_town", "label_place_city", "label_country",
 ];
 const origLabelPaint = {};
+const HYBRID_VECTOR_IDS = [
+  "tunnel_path", "tunnel_minor", "tunnel_major",
+  "road_path", "road_service", "road_secondary_casing", "road_secondary",
+  "road_primary_casing", "road_primary", "road_trunk_casing", "road_trunk",
+  "road_motorway_casing", "road_motorway", "rail",
+  "bridge_minor_casing", "bridge_minor", "bridge_major_casing", "bridge_major",
+  "admin_sub", "admin_country",
+];
+const MAP_DETAIL_MODES = new Set(["clean", "standard", "detailed"]);
+const MARKER_VISUAL_MODES = new Set(["default", "compact", "bold"]);
+const DETAIL_LAYER_IDS = [
+  "road_path", "road_service", "road_service_casing",
+  "tunnel_path", "tunnel_minor",
+  "building_shadow", "building_outline",
+  "road_crossing_base", "road_crossing_stripes", "oneway_arrows",
+  "label_park", "label_poi", "label_place_village", "label_place_town",
+];
+const DETAIL_HIDDEN_BY_MODE = {
+  clean: new Set(DETAIL_LAYER_IDS),
+  standard: new Set(),
+  detailed: new Set(),
+};
+const DETAIL_PAINT_LAYER_PROPS = {
+  road_path: ["line-opacity"],
+  road_service: ["line-opacity"],
+  road_secondary: ["line-opacity"],
+  road_primary: ["line-opacity"],
+  road_trunk: ["line-opacity"],
+  road_motorway: ["line-opacity"],
+  bridge_minor: ["line-opacity"],
+  bridge_major: ["line-opacity"],
+  road_crossing_base: ["line-opacity"],
+  road_crossing_stripes: ["line-opacity"],
+  oneway_arrows: ["text-opacity"],
+  building: ["fill-opacity"],
+  building_outline: ["line-opacity"],
+  building_shadow: ["fill-opacity"],
+  label_poi: ["text-halo-width"],
+  label_park: ["text-halo-width"],
+};
+const DETAIL_PAINT_PRESETS = {
+  detailed: {
+    road_path: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0.25, 15, 1] },
+    road_service: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.28, 18, 0.72] },
+    road_secondary: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 9.5, 0.24, 18, 0.64] },
+    road_primary: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 8.5, 0.28, 18, 0.68] },
+    road_trunk: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 7.5, 0.28, 18, 0.72] },
+    road_motorway: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 7.5, 0.28, 18, 0.74] },
+    bridge_minor: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.18, 18, 0.48] },
+    bridge_major: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0.18, 18, 0.58] },
+    road_crossing_base: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0.25, 15, 1] },
+    road_crossing_stripes: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0.25, 15, 0.95] },
+    oneway_arrows: { "text-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.2, 16, 1] },
+    building: { "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0.2, 16, 0.95] },
+    building_outline: { "line-opacity": ["interpolate", ["linear"], ["zoom"], 15.5, 0.22, 17, 0.9] },
+    building_shadow: { "fill-opacity": ["interpolate", ["linear"], ["zoom"], 16, 0, 18, 0.26] },
+    label_poi: { "text-halo-width": 1.45 },
+    label_park: { "text-halo-width": 1.35 },
+  },
+};
+const _detailPaintSnapshots = {};
+let _trafficDetailModeEnabled = false;
 
 /* ── Heatmap scoring ── */
 const TYPE_BASE = { mosque: 10, prayer_room: 7, shop: 5, restaurant: 4, cemetery: 3 };
@@ -752,6 +818,100 @@ export function setTheme(mode) {
   } catch (_) {}
 })();
 
+(function restoreMapVisualPreferences() {
+  try {
+    const savedDetail = localStorage.getItem("map-detail-mode");
+    if (MAP_DETAIL_MODES.has(savedDetail)) mapDetailMode = savedDetail;
+    const savedMarkers = localStorage.getItem("marker-visual-mode");
+    if (MARKER_VISUAL_MODES.has(savedMarkers)) markerVisualMode = savedMarkers;
+  } catch (_) {}
+  _applyMarkerVisualClass();
+})();
+
+function _applyMarkerVisualClass() {
+  document.body.classList.toggle("marker-style-compact", markerVisualMode === "compact");
+  document.body.classList.toggle("marker-style-bold", markerVisualMode === "bold");
+}
+
+function _applyMapDetail() {
+  _syncTrafficDetailForMode();
+  if (isSatelliteActive && !isHybridSatelliteActive) return;
+  _snapshotDetailPaint();
+  _restoreDetailPaint();
+  const hidden = DETAIL_HIDDEN_BY_MODE[mapDetailMode] || DETAIL_HIDDEN_BY_MODE.standard;
+  DETAIL_LAYER_IDS.forEach((id) => {
+    if (!map.getLayer(id)) return;
+    map.setLayoutProperty(id, "visibility", hidden.has(id) ? "none" : "visible");
+  });
+  _applyDetailPaintPreset(mapDetailMode);
+}
+
+function _syncTrafficDetailForMode() {
+  const enabled = mapDetailMode === "detailed";
+  const changed = enabled !== _trafficDetailModeEnabled;
+  _trafficDetailModeEnabled = enabled;
+  setTrafficDetailOverlay(enabled);
+  if (changed && enabled && map.getZoom() < 15) {
+    showToast("Zoom in for traffic details", "traffic", "Signals, crossings, stops, and calming appear at street level.");
+  }
+}
+
+function _snapshotDetailPaint() {
+  Object.entries(DETAIL_PAINT_LAYER_PROPS).forEach(([id, props]) => {
+    if (!map.getLayer(id) || _detailPaintSnapshots[id]) return;
+    _detailPaintSnapshots[id] = {};
+    props.forEach((prop) => {
+      _detailPaintSnapshots[id][prop] = map.getPaintProperty(id, prop);
+    });
+  });
+}
+
+function _restoreDetailPaint() {
+  Object.entries(_detailPaintSnapshots).forEach(([id, props]) => {
+    if (!map.getLayer(id)) return;
+    Object.entries(props).forEach(([prop, value]) => {
+      map.setPaintProperty(id, prop, value);
+    });
+  });
+}
+
+function _applyDetailPaintPreset(mode) {
+  const preset = DETAIL_PAINT_PRESETS[mode];
+  if (!preset) return;
+  Object.entries(preset).forEach(([id, props]) => {
+    if (!map.getLayer(id)) return;
+    Object.entries(props).forEach(([prop, value]) => {
+      map.setPaintProperty(id, prop, value);
+    });
+  });
+}
+
+/**
+ * Applies the map-detail preset to vector layers.
+ * @param {"clean"|"standard"|"detailed"} mode - Detail preset to apply.
+ * @returns {void}
+ */
+export function setMapDetailMode(mode) {
+  if (!MAP_DETAIL_MODES.has(mode)) return;
+  mapDetailMode = mode;
+  try { localStorage.setItem("map-detail-mode", mode); } catch (_) {}
+  _applyMapDetail();
+  _syncStyleButtons();
+}
+
+/**
+ * Applies the marker visual preset to map markers.
+ * @param {"default"|"compact"|"bold"} mode - Marker visual preset to apply.
+ * @returns {void}
+ */
+export function setMarkerVisualMode(mode) {
+  if (!MARKER_VISUAL_MODES.has(mode)) return;
+  markerVisualMode = mode;
+  try { localStorage.setItem("marker-visual-mode", mode); } catch (_) {}
+  _applyMarkerVisualClass();
+  _syncStyleButtons();
+}
+
 // Pre-register the satellite raster source so tiles start caching early.
 // Called from map "load" — the source exists but no layer renders until toggled.
 export function preloadSatelliteSource() {
@@ -768,8 +928,21 @@ export function preloadSatelliteSource() {
 
 // ── Satellite toggle ──────────────────────────────────────────────
 export function toggleSatellite() {
+  _setSatelliteMode(isSatelliteActive && !isHybridSatelliteActive ? "off" : "satellite");
+}
+
+/**
+ * Toggles satellite imagery with vector roads and labels restored above it.
+ * @returns {void}
+ */
+export function toggleHybridSatellite() {
+  _setSatelliteMode(isSatelliteActive && isHybridSatelliteActive ? "off" : "hybrid");
+}
+
+function _setSatelliteMode(mode) {
   if (!origLabelPaint.label_road) _snapshotLabels();
-  isSatelliteActive = !isSatelliteActive;
+  isSatelliteActive = mode !== "off";
+  isHybridSatelliteActive = mode === "hybrid";
   document.getElementById("map").classList.toggle("satellite-active", isSatelliteActive);
 
   if (isSatelliteActive) {
@@ -780,6 +953,11 @@ export function toggleSatellite() {
     VECTOR_BASE_IDS.forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
     });
+    if (isHybridSatelliteActive) {
+      HYBRID_VECTOR_IDS.forEach((id) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+      });
+    }
 
     // Ensure source exists (normally pre-registered on load)
     preloadSatelliteSource();
@@ -791,6 +969,11 @@ export function toggleSatellite() {
       );
     } else {
       map.setLayoutProperty("style-raster", "visibility", "visible");
+    }
+    if (isHybridSatelliteActive) {
+      HYBRID_VECTOR_IDS.forEach((id) => {
+        if (map.getLayer(id) && map.getLayer("label_road")) map.moveLayer(id, "label_road");
+      });
     }
     // Force MapLibre to request tiles immediately
     map.triggerRepaint();
@@ -833,11 +1016,15 @@ export function toggleSatellite() {
       map.moveLayer("label_water", "label_place_city");
     }
 
-    // Only show city + country labels in satellite mode (same as vector outside Finland)
-    ["label_road", "label_park", "label_poi", "label_place_village", "label_place_town"].forEach(id => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+    const visibleSatelliteLabels = isHybridSatelliteActive
+      ? LABEL_IDS
+      : ["label_place_city", "label_country"];
+    LABEL_IDS.forEach(id => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, visibleSatelliteLabels.includes(id) ? "visible" : "none");
+      }
     });
-    ["label_place_city", "label_country"].forEach(id => {
+    visibleSatelliteLabels.forEach(id => {
       if (map.getLayer(id)) {
         map.setLayoutProperty(id, "visibility", "visible");
         map.setPaintProperty(id, "text-color", "#ffffff");
@@ -848,6 +1035,8 @@ export function toggleSatellite() {
     if (isHeatmapActive && map.getLayer("heatmap-layer")) {
       map.moveLayer("heatmap-layer", "label_road");
     }
+    _applyMapDetail();
+    refreshTrafficDetailOverlayLayers();
     map.setMaxPitch(0);
     map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
   } else {
@@ -903,7 +1092,9 @@ export function toggleSatellite() {
         map.setPaintProperty(id, "text-halo-width", o.haloW);
       }
     });
+    _applyMapDetail();
     map.setMaxPitch(85);
+    refreshTrafficDetailOverlayLayers();
   }
 
   updateMarkerVisibility();
@@ -989,6 +1180,7 @@ export function toggleHeatmap() {
     }
   }
 
+  refreshTrafficDetailOverlayLayers();
   updateMarkerVisibility();
   _syncStyleButtons();
 }
@@ -1009,12 +1201,22 @@ function _syncStyleButtons() {
     if (s === "light" || s === "dark" || s === "auto") {
       el.classList.toggle("active", s === themeMode);
     } else if (s === "satellite") {
-      el.classList.toggle("active", isSatelliteActive);
+      el.classList.toggle("active", isSatelliteActive && !isHybridSatelliteActive);
+    } else if (s === "hybrid") {
+      el.classList.toggle("active", isSatelliteActive && isHybridSatelliteActive);
     } else if (s === "heatmap") {
       el.classList.toggle("active", isHeatmapActive);
+    } else if (s?.startsWith("detail-")) {
+      el.classList.toggle("active", s === `detail-${mapDetailMode}`);
+    } else if (s?.startsWith("markers-")) {
+      el.classList.toggle("active", s === `markers-${markerVisualMode}`);
     }
   });
-  const isNonDefault = isSatelliteActive || isHeatmapActive;
+  const isNonDefault =
+    isSatelliteActive ||
+    isHeatmapActive ||
+    mapDetailMode !== "standard" ||
+    markerVisualMode !== "default";
   document.getElementById("menu-pill")?.classList.toggle("active", isNonDefault);
 }
 
@@ -1029,14 +1231,23 @@ document.querySelectorAll(".style-opt").forEach((btn) => {
     const s = btn.dataset.style;
     if (s === "light" || s === "dark" || s === "auto") setTheme(s);
     else if (s === "satellite") toggleSatellite();
+    else if (s === "hybrid") toggleHybridSatellite();
     else if (s === "heatmap") toggleHeatmap();
+    else if (s?.startsWith("detail-")) setMapDetailMode(s.replace("detail-", ""));
+    else if (s?.startsWith("markers-")) setMarkerVisualMode(s.replace("markers-", ""));
   });
+});
+
+map.on("load", () => {
+  _applyMapDetail();
+  _syncStyleButtons();
 });
 
 // Home / zoom / locate buttons
 document.getElementById("home-btn").addEventListener("click", () => {
-  if (isSatelliteActive) toggleSatellite();
+  if (isSatelliteActive) _setSatelliteMode("off");
   if (isHeatmapActive) toggleHeatmap();
+  if (mapDetailMode !== "standard") setMapDetailMode("standard");
   if (is3DActive) disable3D();
   setActiveTab(null);
   if (centerStoredHomeIfAvailable()) return;
