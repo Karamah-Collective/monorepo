@@ -18,6 +18,7 @@ import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { allowedOrigin, truncate, sha256, json, helsinkiTimestamp } from "../_shared.js";
 import { isDuplicateInPlaces, isDuplicateInNew, isInsideFinlandBounds, namesMatch } from "../_gas-compat.js";
 import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
+import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const MIN_SCORE = 0.5;
@@ -152,6 +153,7 @@ async function handleNewSubmission(env, data, emailHash) {
 
   const userWebsite = (data.website || "").toString().trim();
   const userPhone = (data.phone || "").toString().trim();
+  const appLinksJson = serializeAppLinksForQueue(parseAppLinksInput(data.app_links));
 
   let googleName = "", googleAddress = "", lat = null, lng = null, placeId = "", website = userWebsite, phone = userPhone, enrichedAt = "", storedOpeningHours = openingHours;
   let googleReview = "", googleRating = null, googleRatingCount = null, googleInfo = {};
@@ -180,12 +182,12 @@ async function handleNewSubmission(env, data, emailHash) {
   }
 
   await db.prepare(
-    `INSERT INTO new_places (timestamp, name, type, address, tags, maps_link, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status, reject_reason, opening_hours, google_review, google_rating, google_rating_count, phone, email_hash, app_place_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?,?,'')`
+    `INSERT INTO new_places (timestamp, name, type, address, tags, maps_link, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status, reject_reason, opening_hours, google_review, google_rating, google_rating_count, phone, email_hash, app_place_id, app_links)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?,?,'',?)`
   ).bind(
     ts, data.name || "", data.type || "", data.address || "", tags, mapsLink, data.notes || "", (data.score != null ? Number(data.score).toFixed(2) : ""),
     googleName, googleAddress, lat, lng, placeId, website, enrichedAt,
-    storedOpeningHours, googleReview, googleRating, googleRatingCount, phone, emailHash || ""
+    storedOpeningHours, googleReview, googleRating, googleRatingCount, phone, emailHash || "", appLinksJson
   ).run();
 
   return { success: true };
@@ -194,12 +196,13 @@ async function handleNewSubmission(env, data, emailHash) {
 // ── Edit submission (Code.gs formType:'edit', doPost:160-180) ────────────
 async function handleEditSubmission(env, data, emailHash) {
   const db = env.DB;
+  const appLinksJson = serializeAppLinksForQueue(parseAppLinksInput(data.app_links));
   if (data.newCuisines && data.newCuisines.length) await addNewCuisineTags(db, data.newCuisines);
   await db.prepare(
-    "INSERT INTO edits (timestamp, place_id, name, type, address, tags, maps_link, notes, score, changes_summary, status, reject_reason, opening_hours, website, phone, email_hash) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?)"
+    "INSERT INTO edits (timestamp, place_id, name, type, address, tags, maps_link, notes, score, changes_summary, status, reject_reason, opening_hours, website, phone, email_hash, app_links) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?)"
   ).bind(
     helsinkiTimestamp(), data.placeId || "", data.name || "", data.type || "", data.address || "", (data.tags || "").toString(), data.gmaps || "", data.notes || "",
-    (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "", (data.openingHours || "").toString().trim(), data.website || "", data.phone || "", emailHash || ""
+    (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "", (data.openingHours || "").toString().trim(), data.website || "", data.phone || "", emailHash || "", appLinksJson
   ).run();
   return { success: true };
 }
@@ -297,6 +300,9 @@ export async function onRequestPost(context) {
   }
   if (formData.email) formData.email = truncate(formData.email, 254);
   if (formData.phone) formData.phone = truncate(formData.phone, 30);
+  if (formData.app_links != null) {
+    formData.app_links = parseAppLinksInput(formData.app_links);
+  }
 
   let captcha;
   try {

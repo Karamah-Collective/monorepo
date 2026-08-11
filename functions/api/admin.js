@@ -37,6 +37,7 @@
 import { json, helsinkiTimestamp, truncate } from "../_shared.js";
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { normaliseAddress, parseTagString, isSponsorActiveForDate, extractCityFromAddress, generateId } from "../_gas-compat.js";
+import { upsertPlaceAppLinks } from "../_app-links.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.maps.karamahcollective.com",
@@ -349,6 +350,7 @@ async function approveNew(db, rowId) {
     await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash, google_review, google_rating, google_rating_count) VALUES (?,'','','',?,'yes','',?,?,?)")
       .bind(newId, new Date().toISOString(), row.google_review, row.google_rating, row.google_rating_count).run();
   }
+  await upsertPlaceAppLinks(db, newId, row.app_links);
   return { success: true };
 }
 
@@ -381,6 +383,7 @@ async function approveEdit(db, rowId) {
     if (sets.length) statements.push(db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id = ?`).bind(...binds, row.place_id));
   }
   await db.batch(statements);
+  if (place) await upsertPlaceAppLinks(db, row.place_id, row.app_links);
   return { success: true };
 }
 
