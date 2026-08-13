@@ -248,18 +248,16 @@ function buildContactEmail(data) {
   const email = (data.email || "").toString().trim();
   const phone = (data.phone || "").toString().trim();
   const message = (data.message || "").toString().trim();
-  const submittedAt = helsinkiTimestamp();
-
-  const textContent = [
-    message,
-    "",
+  const signature = [
+    "---",
     `From: ${name}`,
     `Email: ${email}`,
-    `Phone: ${phone || "Not provided"}`,
-    `Received: ${submittedAt}`,
-  ].join("\n");
+  ];
+  if (phone) signature.push(`Phone: ${phone}`);
 
-  return { name, email, subject: `Karamah Maps contact: ${name || "New message"}`, textContent };
+  const textContent = [message, "", ...signature].join("\n");
+
+  return { name, email, subject: `Halal Finder contact: ${name || "New message"}`, textContent };
 }
 
 async function sendContactEmail(env, data) {
@@ -270,7 +268,7 @@ async function sendContactEmail(env, data) {
   }
   if (apiKey.startsWith(BREVO_SMTP_PASSWORD_PREFIX)) {
     console.error("Brevo contact email failed: BREVO_API_KEY contains an SMTP password, not an HTTP API key");
-    return { error: "Email service needs a Brevo API key, not the SMTP password." };
+    return { error: "Email service is not configured correctly yet." };
   }
 
   const email = buildContactEmail(data);
@@ -282,7 +280,7 @@ async function sendContactEmail(env, data) {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      sender: { name: "Karamah Maps", email: CONTACT_FROM_EMAIL },
+      sender: { name: "Halal Finder", email: CONTACT_FROM_EMAIL },
       to: [{ email: CONTACT_TO_EMAIL, name: "Karamah Collective" }],
       replyTo: { email: email.email, name: email.name || email.email },
       subject: email.subject,

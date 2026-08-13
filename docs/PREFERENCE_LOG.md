@@ -3888,3 +3888,15 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Pattern to follow:** emails that are likely to be replied to externally should be written as client-safe quoted text, not internal admin dashboards. Put the human message first, keep metadata short, and avoid table-heavy HTML, source labels the team already understands, or operational fields that look strange in an email thread.
 
 **Provider note:** user asked whether Gmail SMTP/API should replace Brevo because of free-tier limits. Reviewed the tradeoff and kept Brevo HTTP API for now: Gmail is also limited, SMTP/app-password auth is a poor fit for Cloudflare Pages Functions, and Gmail API would add OAuth/token handling for little benefit on a contact-form alert.
+
+---
+
+## 2026-08-13 - Contact email brand, privacy, and provider-neutral errors
+
+**Production wording correction:** after reviewing commit `51d2ca5`, the user flagged that setup/provider details must not be exposed to form submitters. Browser-facing contact errors now stay provider-neutral; Brevo-specific diagnosis remains only in server logs.
+
+**Brand correction:** contact alert sender and subject now use Halal Finder, not Karamah Maps.
+
+**Reply-safe email shape:** contact alert bodies keep the submitter's message first, then a simple `---` signature with From, Email, and Phone only when a phone number was provided. Removed the received timestamp because the inbox already records delivery time.
+
+**Privacy policy:** the contact-form privacy language now says contact details and message content are used only to respond, are sent by email through Brevo, and that Brevo handles email delivery/SMTP processing under its own privacy policy. It also clarifies that new contact messages are not stored in D1.
