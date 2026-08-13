@@ -3876,3 +3876,15 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Deploy note:** user updated the Cloudflare Brevo API key before requesting this deploy. Forced cache version moved `20260813` to `20260813-2`.
 
 **Testing:** `node --check functions/api/submit.js` and `node --check src/app.js` passed before commit. No Playwright run for this small backend diagnostics deploy.
+
+---
+
+## 2026-08-13 - Contact email reply-thread cleanup
+
+**Live test result:** Brevo delivery worked, but replying from Gmail quoted the original contact alert as an admin-looking HTML table headed "New contact form submission" with metadata and reCAPTCHA score. The user flagged that this looks bad if the quoted thread remains visible to a person/client.
+
+**Fix:** contact alerts now use a plain-text Brevo body with the submitter's message first, followed only by name, email, phone, and received timestamp. Removed the visible reCAPTCHA score from the email body entirely. The backend still validates reCAPTCHA before sending, but reply threads no longer expose that internal moderation detail.
+
+**Pattern to follow:** emails that are likely to be replied to externally should be written as client-safe quoted text, not internal admin dashboards. Put the human message first, keep metadata short, and avoid table-heavy HTML, source labels the team already understands, or operational fields that look strange in an email thread.
+
+**Provider note:** user asked whether Gmail SMTP/API should replace Brevo because of free-tier limits. Reviewed the tradeoff and kept Brevo HTTP API for now: Gmail is also limited, SMTP/app-password auth is a poor fit for Cloudflare Pages Functions, and Gmail API would add OAuth/token handling for little benefit on a contact-form alert.

@@ -243,41 +243,23 @@ async function handleEidSubmission(env, data) {
 }
 
 // ── Contact email helpers ────────────────────────────────────────────────
-function escapeHtml(value) {
-  return (value || "").toString().replace(/[&<>"']/g, (ch) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[ch]));
-}
-
 function buildContactEmail(data) {
   const name = (data.name || "").toString().trim();
   const email = (data.email || "").toString().trim();
   const phone = (data.phone || "").toString().trim();
   const message = (data.message || "").toString().trim();
-  const score = data.score != null ? Number(data.score).toFixed(2) : "";
   const submittedAt = helsinkiTimestamp();
 
-  const htmlContent = `<!doctype html>
-<html>
-  <body style="font-family: Arial, sans-serif; color: #1f2933; line-height: 1.5;">
-    <h2 style="margin: 0 0 16px;">New contact form submission</h2>
-    <table style="border-collapse: collapse; margin-bottom: 18px;">
-      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Name</td><td>${escapeHtml(name)}</td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Email</td><td><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Phone</td><td>${escapeHtml(phone || "Not provided")}</td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Submitted</td><td>${escapeHtml(submittedAt)}</td></tr>
-      ${score ? `<tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">reCAPTCHA score</td><td>${escapeHtml(score)}</td></tr>` : ""}
-    </table>
-    <div style="font-weight: 700; margin-bottom: 6px;">Message</div>
-    <div style="white-space: pre-wrap; border-left: 3px solid #19a56f; padding-left: 12px;">${escapeHtml(message)}</div>
-  </body>
-</html>`;
+  const textContent = [
+    message,
+    "",
+    `From: ${name}`,
+    `Email: ${email}`,
+    `Phone: ${phone || "Not provided"}`,
+    `Received: ${submittedAt}`,
+  ].join("\n");
 
-  return { name, email, subject: `New contact message from ${name || "Karamah Maps"}`, htmlContent };
+  return { name, email, subject: `Karamah Maps contact: ${name || "New message"}`, textContent };
 }
 
 async function sendContactEmail(env, data) {
@@ -304,7 +286,7 @@ async function sendContactEmail(env, data) {
       to: [{ email: CONTACT_TO_EMAIL, name: "Karamah Collective" }],
       replyTo: { email: email.email, name: email.name || email.email },
       subject: email.subject,
-      htmlContent: email.htmlContent,
+      textContent: email.textContent,
     }),
   });
 
