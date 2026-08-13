@@ -16,7 +16,7 @@
  */
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { allowedOrigin, truncate, sha256, json, helsinkiTimestamp } from "../_shared.js";
-import { isDuplicateInPlaces, isDuplicateInNew, isInsideFinlandBounds, namesMatch } from "../_gas-compat.js";
+import { isDuplicateInPlaces, isDuplicateInNew, namesMatch } from "../_gas-compat.js";
 import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 
@@ -142,10 +142,6 @@ async function handleNewSubmission(env, data, emailHash) {
     "INSERT INTO draft (timestamp, name, type, address, tags, maps_link, notes, score, opening_hours, email_hash) VALUES (?,?,?,?,?,?,?,?,?,?)"
   ).bind(ts, data.name || "", data.type || "", data.address || "", tags, mapsLink, data.notes || "", (data.score != null ? Number(data.score).toFixed(2) : ""), openingHours, emailHash || "").run();
 
-  if (hasPin && !isInsideFinlandBounds(pinLat, pinLng)) {
-    return { error: "Location must be inside Finland" };
-  }
-
   // 2. Deduplicate: only add to New if not already present.
   const isDupe = (await isDuplicateInPlaces(db, { submittedName, submittedType, pinLat, pinLng })) ||
     (await isDuplicateInNew(db, { mapsLink, submittedName, submittedType, pinLat, pinLng }));
@@ -167,7 +163,8 @@ async function handleNewSubmission(env, data, emailHash) {
     enrichedAt = `pin:${ts}`;
   } else if (mapsLink) {
     const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: submittedName, userAddress: data.address || "", website: userWebsite, phone: userPhone, rich: true });
-    if (enriched.hasData && !enriched.outsideFinland) {
+    // Accept worldwide enrichment (Rihla + global map submissions).
+    if (enriched.hasData) {
       googleName = enriched.googleName; googleAddress = enriched.googleAddress;
       lat = enriched.lat; lng = enriched.lng; placeId = enriched.placeId;
       website = enriched.website; phone = enriched.phone;
@@ -175,10 +172,6 @@ async function handleNewSubmission(env, data, emailHash) {
       if (enriched.openingHours && !storedOpeningHours) storedOpeningHours = enriched.openingHours;
       googleReview = enriched.googleReview; googleRating = enriched.googleRating; googleRatingCount = enriched.googleRatingCount; googleInfo = enriched.googleInfo;
     }
-    // If enrichment found nothing (or the resolved location is outside
-    // Finland), the row is still inserted below with enriched_at='' so a
-    // later retry (Code.gs relied on its 1-min trigger; here the same
-    // background sweep in a later submission's waitUntil can pick it up).
   }
 
   await db.prepare(
@@ -215,7 +208,6 @@ async function handleEidSubmission(env, data) {
   const pinLat = data.pinLat != null ? parseFloat(data.pinLat) : null;
   const pinLng = data.pinLng != null ? parseFloat(data.pinLng) : null;
   const hasPin = pinLat != null && !isNaN(pinLat) && pinLng != null && !isNaN(pinLng);
-  if (hasPin && !isInsideFinlandBounds(pinLat, pinLng)) return { error: "Location must be inside Finland" };
 
   let googleName = "", googleAddress = "", lat = null, lng = null, placeId = "", website = "", enrichedAt = "";
   if (hasPin) {
@@ -227,7 +219,7 @@ async function handleEidSubmission(env, data) {
     enrichedAt = `pin:${ts}`;
   } else if (mapsLink) {
     const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: data.name || "", userAddress: data.address || "", website: "", phone: "", rich: false });
-    if (enriched.hasData && !enriched.outsideFinland) {
+    if (enriched.hasData) {
       googleName = enriched.googleName; googleAddress = enriched.googleAddress;
       lat = enriched.lat; lng = enriched.lng; placeId = enriched.placeId; website = enriched.website;
       enrichedAt = ts;

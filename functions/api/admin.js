@@ -38,6 +38,7 @@ import { json, helsinkiTimestamp, truncate } from "../_shared.js";
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { normaliseAddress, parseTagString, isSponsorActiveForDate, extractCityFromAddress, generateId } from "../_gas-compat.js";
 import { upsertPlaceAppLinks } from "../_app-links.js";
+import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.maps.karamahcollective.com",
@@ -318,17 +319,56 @@ export async function onRequestGet(context) {
 // ── POST (write) actions ───────────────────────────────────────────────────
 
 // Code.gs:2382 copyNewRowToPlaces, folded into one atomic batch.
-async function approveNew(db, rowId) {
+async function approveNew(db, rowId, env) {
   const row = await db.prepare("SELECT * FROM new_places WHERE id = ?").bind(rowId).first();
   if (!row) return { error: "Row not found (may already be processed)" };
 
   const name = row.google_name || row.name || "";
   const type = (row.type || "").toString().trim().toLowerCase();
-  const address = normaliseAddress(row.google_address || row.address || "");
-  const lat = row.lat, lng = row.lng;
+  let address = normaliseAddress(row.google_address || row.address || "");
+  let lat = row.lat;
+  let lng = row.lng;
+
+  // Recover coordinates for worldwide submissions that were queued without a pin
+  // (or whose Finland-only enrichment previously skipped lat/lng).
+  if ((lat == null || lng == null) && env) {
+    const mapsLink = (row.maps_link || "").toString().trim();
+    if (mapsLink) {
+      try {
+        const enriched = await enrichFromMapsLink(env, {
+          mapsUrl: mapsLink,
+          userName: row.name || "",
+          userAddress: row.address || "",
+          website: row.website || "",
+          phone: row.phone || "",
+          rich: false,
+        });
+        if (enriched.hasData && enriched.lat != null && enriched.lng != null) {
+          lat = enriched.lat;
+          lng = enriched.lng;
+          if (enriched.googleAddress) address = normaliseAddress(enriched.googleAddress);
+        }
+      } catch { /* best-effort */ }
+    }
+    if ((lat == null || lng == null) && (row.name || row.address)) {
+      try {
+        const geo = await forwardGeocode([row.name, row.address].filter(Boolean).join(", "), env);
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+          if (!address && geo.address) address = normaliseAddress(geo.address);
+        }
+      } catch { /* best-effort */ }
+    }
+    if (lat != null && lng != null) {
+      await db.prepare("UPDATE new_places SET lat = ?, lng = ?, google_address = COALESCE(NULLIF(?, ''), google_address) WHERE id = ?")
+        .bind(lat, lng, address || "", rowId).run();
+    }
+  }
+
   if (!name || lat == null || lng == null) {
     await db.prepare("UPDATE new_places SET status = 'yes' WHERE id = ?").bind(rowId).run();
-    return { success: true };
+    return { success: true, warning: "Approved without map coordinates — place was not added to the live map." };
   }
 
   const tags = parseTagString((row.tags || "").toString().trim());
@@ -339,7 +379,7 @@ async function approveNew(db, rowId) {
 
   const newId = await generateId(db, "places", 6);
   const statements = [
-    db.prepare("UPDATE new_places SET status = 'yes', app_place_id = ? WHERE id = ?").bind(newId, rowId),
+    db.prepare("UPDATE new_places SET status = 'yes', app_place_id = ?, lat = ?, lng = ? WHERE id = ?").bind(newId, lat, lng, rowId),
     db.prepare(
       "INSERT INTO places (id, name, type, address, lat, lng, tags, notes, opening_hours, website, phone, google_info, google_info_enriched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
     ).bind(newId, name, type, address, lat, lng, JSON.stringify(tags), row.notes || "", row.opening_hours || "", row.website || "", row.phone || "", Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : "", Object.keys(googleInfo).length ? helsinkiTimestamp() : ""),
@@ -351,7 +391,7 @@ async function approveNew(db, rowId) {
       .bind(newId, new Date().toISOString(), row.google_review, row.google_rating, row.google_rating_count).run();
   }
   await upsertPlaceAppLinks(db, newId, row.app_links);
-  return { success: true };
+  return { success: true, placeId: newId };
 }
 
 async function rejectNew(db, rowId, reason) {
@@ -513,7 +553,7 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
-  "approve-new": (db, data) => approveNew(db, data.rowId),
+  "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
   "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),
   "approve-edit": (db, data) => approveEdit(db, data.rowId),
   "reject-edit": (db, data) => rejectEdit(db, data.rowId, data.reason || ""),
@@ -554,7 +594,7 @@ export async function onRequestPost(context) {
 
   let result;
   try {
-    result = await handler(env.DB, data);
+    result = await handler(env.DB, data, env);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }

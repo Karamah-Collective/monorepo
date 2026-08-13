@@ -307,19 +307,32 @@ export async function reverseGeocode(lat, lng, env) {
 }
 
 /**
+ * Forward-geocode a free-text query worldwide (US + Finland + elsewhere).
+ * Falls back to the legacy Finland-bounded Nominatim search only when the
+ * global query returns nothing — keeps Helsinki enrichment working when the
+ * query is ambiguous.
+ *
  * @param {string} query
- * @param {object} env - needs env.NOMINATIM_VB (Finland-ish bounding box)
+ * @param {object} env - optional env.NOMINATIM_VB (Finland-ish bounding box)
  * @returns {Promise<{lat: number, lng: number, address: string}|null>}
  */
 export async function forwardGeocode(query, env) {
   if (!query) return null;
-  const vb = env.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=fi&viewbox=${vb}&bounded=1`;
-    const res = await fetch(url, { headers: { "Accept-Language": "en", "User-Agent": NOMINATIM_USER_AGENT } });
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) return null;
-    const r = data[0];
+    const globalUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+    const globalRes = await fetch(globalUrl, { headers: { "Accept-Language": "en", "User-Agent": NOMINATIM_USER_AGENT } });
+    const globalData = await globalRes.json();
+    if (Array.isArray(globalData) && globalData.length) {
+      const r = globalData[0];
+      return { lat: parseFloat(r.lat), lng: parseFloat(r.lon), address: r.display_name || "" };
+    }
+
+    const vb = env.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
+    const fiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=fi&viewbox=${vb}&bounded=1`;
+    const fiRes = await fetch(fiUrl, { headers: { "Accept-Language": "en", "User-Agent": NOMINATIM_USER_AGENT } });
+    const fiData = await fiRes.json();
+    if (!Array.isArray(fiData) || !fiData.length) return null;
+    const r = fiData[0];
     return { lat: parseFloat(r.lat), lng: parseFloat(r.lon), address: r.display_name || "" };
   } catch {
     return null;

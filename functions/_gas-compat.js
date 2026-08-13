@@ -212,7 +212,11 @@ export async function isDuplicateInPlaces(db, { submittedName, submittedType, pi
 
 // Code.gs:415
 export async function isDuplicateInNew(db, { mapsLink, submittedName, submittedType, pinLat, pinLng }) {
-  const { results } = await db.prepare("SELECT name, type, maps_link, google_name, lat, lng FROM new_places").all();
+  // Only pending queue rows block a retry. Approved/rejected rows must not
+  // permanently lock out a resubmit (e.g. approved without map coordinates).
+  const { results } = await db.prepare(
+    "SELECT name, type, maps_link, google_name, lat, lng FROM new_places WHERE status = 'pending'"
+  ).all();
   const normLink = normaliseMapsLink(mapsLink);
   const hasPin = pinLat != null && !isNaN(pinLat) && pinLng != null && !isNaN(pinLng);
   const type = (submittedType || "").toString().trim().toLowerCase();
