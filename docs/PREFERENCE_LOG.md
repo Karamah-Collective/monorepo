@@ -3900,3 +3900,11 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Reply-safe email shape:** contact alert bodies keep the submitter's message first, then a simple `---` signature with From, Email, and Phone only when a phone number was provided. Removed the received timestamp because the inbox already records delivery time.
 
 **Privacy policy:** the contact-form privacy language now says contact details and message content are used only to respond, are sent by email through Brevo, and that Brevo handles email delivery/SMTP processing under its own privacy policy. It also clarifies that new contact messages are not stored in D1.
+
+---
+
+## 2026-08-13 - Contact reCAPTCHA suspicious-score email marker
+
+**Spam handling decision:** contact submissions below reCAPTCHA score `0.5` stay blocked with a generic verification failure message. Scores from `0.5` up to `<0.7` still send because false positives are possible, but the internal email signature includes `reCAPTCHA score: 0.62 (Possible spam)` style metadata and the server logs a warning. Scores `>=0.7` send normally with no score shown in the email.
+
+**UX/security pattern:** do not expose score-specific spam reasoning to the submitter. Keep the browser message generic, and put spam hints only in the private team email/logs.

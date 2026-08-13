@@ -28,6 +28,7 @@ const DEV_CONTACT_TOKEN = "dev-local-contact";
 const BREVO_SMTP_PASSWORD_PREFIX = ["x", "smtpsib-"].join("");
 const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const MIN_SCORE = 0.5;
+const CONTACT_SUSPICIOUS_SCORE = 0.7;
 const MAX_FIELD_LEN = 500;
 const MAX_NOTES_LEN = 2000;
 const MAX_BODY_SIZE = 8192;
@@ -254,6 +255,10 @@ function buildContactEmail(data) {
     `Email: ${email}`,
   ];
   if (phone) signature.push(`Phone: ${phone}`);
+  const score = Number(data.score);
+  if (Number.isFinite(score) && score >= MIN_SCORE && score < CONTACT_SUSPICIOUS_SCORE) {
+    signature.push(`reCAPTCHA score: ${score.toFixed(2)} (Possible spam)`);
+  }
 
   const textContent = [message, "", ...signature].join("\n");
 
@@ -272,6 +277,10 @@ async function sendContactEmail(env, data) {
   }
 
   const email = buildContactEmail(data);
+  const score = Number(data.score);
+  if (Number.isFinite(score) && score >= MIN_SCORE && score < CONTACT_SUSPICIOUS_SCORE) {
+    console.warn(`Contact submission flagged by reCAPTCHA score: ${score.toFixed(2)}`);
+  }
   const res = await fetch(BREVO_SEND_EMAIL_URL, {
     method: "POST",
     headers: {
@@ -392,7 +401,7 @@ export async function onRequestPost(context) {
     }
   }
   if (!captcha.success) return json({ error: "Verification failed. Please try again." }, 403, responseHeaders);
-  if (captcha.score < MIN_SCORE) return json({ error: "Submission blocked. Please try again later." }, 403, responseHeaders);
+  if (captcha.score < MIN_SCORE) return json({ error: "We couldn't verify this submission. Please try again." }, 403, responseHeaders);
 
   const data = { ...formData, score: captcha.score };
 
