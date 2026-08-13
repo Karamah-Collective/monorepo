@@ -1,10 +1,27 @@
 import { RECAPTCHA_SITE_KEY } from "./config.js";
 import { showToast, loadRecaptcha } from "./utils.js";
 
+const DEV_CONTACT_TOKEN = "dev-local-contact";
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
 const overlay = document.getElementById("contact-overlay");
 const form = document.getElementById("contact-form");
 const submitBtn = document.getElementById("ct-submit");
 
+function isLocalDevHost() {
+  return LOCAL_DEV_HOSTS.has(window.location.hostname);
+}
+
+async function getContactRecaptchaToken() {
+  if (isLocalDevHost()) return DEV_CONTACT_TOKEN;
+
+  await loadRecaptcha(RECAPTCHA_SITE_KEY);
+  return new Promise((resolve) =>
+    grecaptcha.ready(() =>
+      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "contact" }).then(resolve),
+    ),
+  );
+}
 
 // Open / close
 document.getElementById("contact-pill").addEventListener("click", () => {
@@ -43,12 +60,7 @@ form.addEventListener("submit", async (e) => {
   const message = document.getElementById("ct-message").value.trim();
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() =>
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "contact" }).then(resolve),
-      ),
-    );
+    const token = await getContactRecaptchaToken();
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

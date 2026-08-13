@@ -621,7 +621,13 @@ TRANSITOUS_URL = https://api.transitous.org/api/v5/plan
 DT_API_KEY = YOUR_ACTUAL_KEY_HERE
 NOMINATIM_REV = https://nominatim.openstreetmap.org/reverse
 NOMINATIM_VB = 24.0,60.8,25.8,59.8
+BREVO_API_KEY = YOUR_BREVO_TRANSACTIONAL_API_KEY
 ```
+
+For local Cloudflare Pages Function testing, copy `.dev.vars.example` to
+`.dev.vars`. The contact form can be tested on localhost without a reCAPTCHA
+secret by setting `DEV_SKIP_RECAPTCHA=true`; production ignores this unless the
+flag is explicitly set and the request is from a localhost origin.
 
 ---
 

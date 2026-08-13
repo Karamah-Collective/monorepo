@@ -21,6 +21,11 @@ import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
+const BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
+const CONTACT_TO_EMAIL = "maps@karamahcollective.com";
+const CONTACT_FROM_EMAIL = "maps@karamahcollective.com";
+const DEV_CONTACT_TOKEN = "dev-local-contact";
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const MIN_SCORE = 0.5;
 const MAX_FIELD_LEN = 500;
 const MAX_NOTES_LEN = 2000;
@@ -236,13 +241,95 @@ async function handleEidSubmission(env, data) {
   return { success: true };
 }
 
+// ── Contact email helpers ────────────────────────────────────────────────
+function escapeHtml(value) {
+  return (value || "").toString().replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[ch]));
+}
+
+function buildContactEmail(data) {
+  const name = (data.name || "").toString().trim();
+  const email = (data.email || "").toString().trim();
+  const phone = (data.phone || "").toString().trim();
+  const message = (data.message || "").toString().trim();
+  const score = data.score != null ? Number(data.score).toFixed(2) : "";
+  const submittedAt = helsinkiTimestamp();
+
+  const htmlContent = `<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #1f2933; line-height: 1.5;">
+    <h2 style="margin: 0 0 16px;">New contact form submission</h2>
+    <table style="border-collapse: collapse; margin-bottom: 18px;">
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Name</td><td>${escapeHtml(name)}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Email</td><td><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Phone</td><td>${escapeHtml(phone || "Not provided")}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">Submitted</td><td>${escapeHtml(submittedAt)}</td></tr>
+      ${score ? `<tr><td style="padding: 4px 12px 4px 0; font-weight: 700;">reCAPTCHA score</td><td>${escapeHtml(score)}</td></tr>` : ""}
+    </table>
+    <div style="font-weight: 700; margin-bottom: 6px;">Message</div>
+    <div style="white-space: pre-wrap; border-left: 3px solid #19a56f; padding-left: 12px;">${escapeHtml(message)}</div>
+  </body>
+</html>`;
+
+  return { name, email, subject: `New contact message from ${name || "Karamah Maps"}`, htmlContent };
+}
+
+async function sendContactEmail(env, data) {
+  const apiKey = (env.BREVO_API_KEY || "").toString().trim();
+  if (!apiKey) return { error: "Email service is not configured" };
+
+  const email = buildContactEmail(data);
+  const res = await fetch(BREVO_SEND_EMAIL_URL, {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: "Karamah Maps", email: CONTACT_FROM_EMAIL },
+      to: [{ email: CONTACT_TO_EMAIL, name: "Karamah Collective" }],
+      replyTo: { email: email.email, name: email.name || email.email },
+      subject: email.subject,
+      htmlContent: email.htmlContent,
+    }),
+  });
+
+  if (res.ok) return { success: true };
+
+  let error = "Email service rejected the message";
+  try {
+    const details = await res.json();
+    if (details && details.message) error = details.message;
+  } catch { /* keep generic error */ }
+  console.error("Brevo contact email failed:", error);
+  return { error };
+}
+
+function isLocalDevRequest(request, env) {
+  if ((env.DEV_SKIP_RECAPTCHA || "").toString() !== "true") return false;
+
+  const requestUrl = new URL(request.url);
+  if (!LOCAL_DEV_HOSTS.has(requestUrl.hostname)) return false;
+
+  const origin = request.headers.get("Origin") || "";
+  if (!origin) return true;
+  try {
+    return LOCAL_DEV_HOSTS.has(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 // ── Main handler ─────────────────────────────────────────────────────────
 export async function onRequestPost(context) {
   const { request, env } = context;
   const responseHeaders = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
-
-  if (!env.RECAPTCHA_SECRET) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
-  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
 
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
   if (contentLength > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, responseHeaders);
@@ -255,6 +342,10 @@ export async function onRequestPost(context) {
   try { body = JSON.parse(rawText); } catch { return json({ error: "Invalid JSON body" }, 400, responseHeaders); }
 
   const { token, formType, action, idToken, ...formData } = body;
+
+  if (action || formType !== "contact") {
+    if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
+  }
 
   if (action) return await handleSubmitAction(action, formType, body, responseHeaders, env);
 
@@ -297,15 +388,20 @@ export async function onRequestPost(context) {
   }
 
   let captcha;
-  try {
-    const verifyRes = await fetch(RECAPTCHA_VERIFY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
-    });
-    captcha = await verifyRes.json();
-  } catch {
-    return json({ error: "Verification unavailable. Please try again." }, 502, responseHeaders);
+  if (formType === "contact" && token === DEV_CONTACT_TOKEN && isLocalDevRequest(request, env)) {
+    captcha = { success: true, score: 1 };
+  } else {
+    if (!env.RECAPTCHA_SECRET) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
+    try {
+      const verifyRes = await fetch(RECAPTCHA_VERIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
+      });
+      captcha = await verifyRes.json();
+    } catch {
+      return json({ error: "Verification unavailable. Please try again." }, 502, responseHeaders);
+    }
   }
   if (!captcha.success) return json({ error: "Verification failed. Please try again." }, 403, responseHeaders);
   if (captcha.score < MIN_SCORE) return json({ error: "Submission blocked. Please try again later." }, 403, responseHeaders);
@@ -335,9 +431,7 @@ export async function onRequestPost(context) {
     } else if (formType === "edit") {
       result = await handleEditSubmission(env, data, emailHash);
     } else if (formType === "contact") {
-      await env.DB.prepare("INSERT INTO contacts (timestamp, name, email, phone, message, score, replied) VALUES (?,?,?,?,?,?,'')")
-        .bind(helsinkiTimestamp(), data.name || "", data.email || "", data.phone || "", data.message || "", (data.score != null ? Number(data.score).toFixed(2) : "")).run();
-      result = { success: true };
+      result = await sendContactEmail(env, data);
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO events (id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, status, reject_reason, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?)")
@@ -355,7 +449,8 @@ export async function onRequestPost(context) {
       return json({ success: false, error: "Submission could not be processed. Please try again." }, 200, responseHeaders);
     }
     return json({ success: true }, 200, responseHeaders);
-  } catch {
+  } catch (err) {
+    console.error("Submit handler error:", err);
     return json({ success: false, error: "Submission failed. Please try again later." }, 200, responseHeaders);
   }
 }

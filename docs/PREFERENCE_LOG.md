@@ -3848,3 +3848,19 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 - Traffic detail fetches now use a memory + `localStorage` cache keyed by coarse viewport bbox (`hf_traffic_detail:*`, superseded later from 24-hour/24-key to 5-year/160-key snapped-area caching). Already-seen areas render instantly from cache and avoid repeat Overpass calls; first-time areas can still wait on Overpass.
 
 **Testing:** no Playwright/browser tests per explicit user instruction. Static checks only.
+
+---
+
+## 2026-08-13 - Contact email alerts via Brevo + localhost contact testing + phone prayer-pill speed
+
+**Contact form delivery decision:** contact submissions now send an email alert to `maps@karamahcollective.com` through Brevo's HTTP transactional email API from `functions/api/submit.js`, instead of inserting new rows into the D1 `contacts` table. This keeps the current `/api/submit` route, server-side validation, and frontend contact UX intact while avoiding database retention for new contact messages. `replyTo` is set to the submitter's email so the team can reply directly from the inbox. The Brevo credential is read from `BREVO_API_KEY`; no real key was committed.
+
+**Local testing decision:** because Cloudflare Pages secrets are not present in ordinary localhost runs, the contact form now has a localhost-only reCAPTCHA bypass for local Wrangler testing. `src/contact.js` sends the fixed `dev-local-contact` token only when `window.location.hostname` is localhost/loopback. `functions/api/submit.js` accepts that token only if `DEV_SKIP_RECAPTCHA=true` and both the request URL and `Origin` are localhost/loopback. This lets `npx wrangler pages dev .` test contact email locally with `.dev.vars`, without weakening production.
+
+**Local setup pattern:** `.dev.vars.example` documents the local-only variables: `DEV_SKIP_RECAPTCHA=true`, `BREVO_API_KEY=...`, and optional `RECAPTCHA_SECRET` for non-contact form testing. `.dev.vars` is already gitignored. Brevo SMTP passwords are not the same as Brevo HTTP API keys; use an API key from Brevo's SMTP & API -> API Keys area.
+
+**Phone prayer-pill bug root cause:** the `@media (max-width: 768px)` floating-chrome transition group included `#prayer-snack` but only transitioned `left`, `bottom`, `background`, and `transform`. That mobile rule overrode the shared `.pill-expand` transition from `design-tokens.css`, dropping `width`, `border-radius`, and `box-shadow`. Desktop still felt right because it kept the original `.pill-expand` transition; phone width snapped almost instantly. Fixed by adding a phone-specific `#prayer-snack` transition that restores those shared properties while keeping the phone chrome position/scale transitions.
+
+**Testing:** `node --check src/contact.js` and `node --check functions/api/submit.js` passed. `git diff --check` passed for the touched files. A mocked local `onRequestPost()` contact submission with `DEV_SKIP_RECAPTCHA=true` and no `RECAPTCHA_SECRET` returned success and made only the expected Brevo API call. Secret scan confirmed the user-provided Brevo SMTP/password string was not written to the repo.
+
+**Files modified:** `functions/api/submit.js`, `src/contact.js`, `src/styles/styles.css`, `.dev.vars.example`, `README.md`, `docs/SECRETS_SETUP.md`, `index.html`, `docs/PREFERENCE_LOG.md`. Existing unrelated dirty file preserved: `src/app.js` still has `initGpsSim()` enabled from before this task.

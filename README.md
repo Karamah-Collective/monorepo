@@ -621,8 +621,13 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 |----------|-------------|
 | `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for protected form writes) |
 | `ADMIN_SECRET` | Shared secret for the D1-backed admin API |
+| `BREVO_API_KEY` | Brevo transactional email API key for contact-form alerts |
+| `DEV_SKIP_RECAPTCHA` | Local-only flag for testing the contact form on localhost |
 
 Set these in the Cloudflare Pages dashboard under Settings → Environment Variables.
+For local contact-form testing, copy `.dev.vars.example` to `.dev.vars`, set
+`DEV_SKIP_RECAPTCHA=true`, and add a real `BREVO_API_KEY`. Wrangler loads
+`.dev.vars` for `npx wrangler pages dev .`; the file is gitignored.
 
 ---
 
@@ -637,7 +642,7 @@ Set these in the Cloudflare Pages dashboard under Settings → Environment Varia
 | `GET /api/reviews?placeId=` | GET | Fetches reviews for a place |
 | `POST /api/reviews` | POST | Submit, check, delete, and list account reviews |
 | `GET /api/eid-prayers` | GET | Fetches Eid prayer locations from D1 |
-| `POST /api/submit` | POST | Place suggestion, place edit, contact form |
+| `POST /api/submit` | POST | Place suggestion, place edit, contact email, event submissions |
 | `GET /api/wishes` | GET | Lists feature wishes |
 | `POST /api/wishes` | POST | Vote on or submit a wish |
 | `GET /api/geo` | GET | IP-based geolocation fallback |
@@ -650,8 +655,10 @@ All functions share common patterns:
 ### Cloudflare D1
 
 D1 is bound to the Pages Functions as `DB` and stores places, tags, reviews,
-wishes, contacts, Eid prayers, submitted edits, account sync rows, and admin
-metadata. The legacy Apps Script/Google Sheets backend is retired.
+wishes, legacy contacts, Eid prayers, submitted edits, account sync rows, and
+admin metadata. New contact-form submissions are sent by email through Brevo
+instead of being stored in D1. The legacy Apps Script/Google Sheets backend is
+retired.
 
 ---
 
@@ -879,6 +886,7 @@ HF_TOKEN_KEY
 RECAPTCHA_SITE_KEY
 RECAPTCHA_SECRET
 ADMIN_SECRET
+BREVO_API_KEY
 ```
 
 ### Deployment Checklist

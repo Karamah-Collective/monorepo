@@ -10856,6 +10856,17 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
       transform var(--t-phone-chrome-compact);
   }
 
+  #prayer-snack {
+    transition:
+      width var(--t-spring),
+      border-radius var(--t-spring),
+      box-shadow var(--t-spring),
+      left var(--t-phone-chrome-slide),
+      bottom var(--t-phone-chrome-compact),
+      background var(--t-fast),
+      transform var(--t-phone-chrome-compact);
+  }
+
   #eid-pill,
   #events-pill,
   #promos-pill {

@@ -1,0 +1,13 @@
+# Copy this file to .dev.vars for local Cloudflare Pages Function testing.
+# .dev.vars is gitignored. Never commit real secrets.
+
+# Allows localhost contact-form submissions to skip browser/server reCAPTCHA
+# while testing with `npx wrangler pages dev .`.
+DEV_SKIP_RECAPTCHA=true
+
+# Contact form email alerts. Use a Brevo API key from SMTP & API -> API Keys.
+# The SMTP password is not enough for the HTTP API.
+BREVO_API_KEY=YOUR_BREVO_API_KEY
+
+# Optional for local testing of non-contact submissions that still use reCAPTCHA.
+RECAPTCHA_SECRET=YOUR_RECAPTCHA_SECRET
