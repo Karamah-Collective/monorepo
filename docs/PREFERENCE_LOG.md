@@ -3864,3 +3864,15 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Testing:** `node --check src/contact.js` and `node --check functions/api/submit.js` passed. `git diff --check` passed for the touched files. A mocked local `onRequestPost()` contact submission with `DEV_SKIP_RECAPTCHA=true` and no `RECAPTCHA_SECRET` returned success and made only the expected Brevo API call. Secret scan confirmed the user-provided Brevo SMTP/password string was not written to the repo.
 
 **Files modified:** `functions/api/submit.js`, `src/contact.js`, `src/styles/styles.css`, `.dev.vars.example`, `README.md`, `docs/SECRETS_SETUP.md`, `index.html`, `docs/PREFERENCE_LOG.md`. Existing unrelated dirty file preserved: `src/app.js` still has `initGpsSim()` enabled from before this task.
+
+---
+
+## 2026-08-13 - Brevo contact-form diagnostics deploy
+
+**Live test result:** after the first Brevo contact-form deployment, the user tested production and saw the generic frontend error "Submission could not be processed. Please try again." That proved the request reached `/api/submit` and passed the form/reCAPTCHA path, but `sendContactEmail()` returned an error.
+
+**Fix:** `functions/api/submit.js` now returns safe, specific contact-form setup errors instead of collapsing every Brevo failure into the generic submission error. Missing `BREVO_API_KEY` returns "Email service is not configured yet." A value starting with Brevo's SMTP-password prefix returns "Email service needs a Brevo API key, not the SMTP password." Other Brevo rejections are still logged server-side with Brevo's message but shown to users as the generic "Email service could not send the message yet." This keeps internal details out of the UI while making the common setup mistake obvious.
+
+**Deploy note:** user updated the Cloudflare Brevo API key before requesting this deploy. Forced cache version moved `20260813` to `20260813-2`.
+
+**Testing:** `node --check functions/api/submit.js` and `node --check src/app.js` passed before commit. No Playwright run for this small backend diagnostics deploy.

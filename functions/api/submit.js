@@ -25,6 +25,7 @@ const BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
 const CONTACT_TO_EMAIL = "maps@karamahcollective.com";
 const CONTACT_FROM_EMAIL = "maps@karamahcollective.com";
 const DEV_CONTACT_TOKEN = "dev-local-contact";
+const BREVO_SMTP_PASSWORD_PREFIX = ["x", "smtpsib-"].join("");
 const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const MIN_SCORE = 0.5;
 const MAX_FIELD_LEN = 500;
@@ -281,7 +282,14 @@ function buildContactEmail(data) {
 
 async function sendContactEmail(env, data) {
   const apiKey = (env.BREVO_API_KEY || "").toString().trim();
-  if (!apiKey) return { error: "Email service is not configured" };
+  if (!apiKey) {
+    console.error("Brevo contact email failed: missing BREVO_API_KEY");
+    return { error: "Email service is not configured yet." };
+  }
+  if (apiKey.startsWith(BREVO_SMTP_PASSWORD_PREFIX)) {
+    console.error("Brevo contact email failed: BREVO_API_KEY contains an SMTP password, not an HTTP API key");
+    return { error: "Email service needs a Brevo API key, not the SMTP password." };
+  }
 
   const email = buildContactEmail(data);
   const res = await fetch(BREVO_SEND_EMAIL_URL, {
@@ -308,7 +316,7 @@ async function sendContactEmail(env, data) {
     if (details && details.message) error = details.message;
   } catch { /* keep generic error */ }
   console.error("Brevo contact email failed:", error);
-  return { error };
+  return { error: "Email service could not send the message yet." };
 }
 
 function isLocalDevRequest(request, env) {
@@ -446,7 +454,7 @@ export async function onRequestPost(context) {
     }
 
     if (!result || result.error) {
-      return json({ success: false, error: "Submission could not be processed. Please try again." }, 200, responseHeaders);
+      return json({ success: false, error: result?.error || "Submission could not be processed. Please try again." }, 200, responseHeaders);
     }
     return json({ success: true }, 200, responseHeaders);
   } catch (err) {
