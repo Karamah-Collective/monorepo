@@ -1,0 +1,25 @@
+name: Weekly analytics report
+
+on:
+  schedule:
+    # GitHub cron is UTC. This runs Saturday morning in Finland:
+    # 09:00 during summer time (EEST), 08:00 during winter time (EET).
+    - cron: "0 6 * * SAT"
+  workflow_dispatch:
+
+jobs:
+  send-weekly-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Pages report endpoint
+        env:
+          REPORT_SECRET: ${{ secrets.REPORT_SECRET }}
+          REPORT_URL: ${{ vars.REPORT_URL }}
+        run: |
+          set -euo pipefail
+          url="${REPORT_URL:-https://maps.karamahcollective.com/api/weekly-report}"
+          curl --fail-with-body --show-error --silent \
+            --request POST "$url" \
+            --header "Authorization: Bearer ${REPORT_SECRET}" \
+            --header "Content-Type: application/json" \
+            --data '{}'

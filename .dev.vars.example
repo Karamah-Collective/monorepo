@@ -9,5 +9,14 @@ DEV_SKIP_RECAPTCHA=true
 # The SMTP password is not enough for the HTTP API.
 BREVO_API_KEY=YOUR_BREVO_API_KEY
 
+# Weekly analytics report endpoint. REPORT_SECRET is an arbitrary long random
+# value shared with the GitHub Actions secret of the same name.
+REPORT_SECRET=YOUR_LONG_RANDOM_REPORT_SECRET
+CLOUDFLARE_ZONE_ID=YOUR_CLOUDFLARE_ZONE_ID
+CLOUDFLARE_ANALYTICS_TOKEN=YOUR_CLOUDFLARE_ANALYTICS_API_TOKEN
+SITE_HOSTNAME=maps.karamahcollective.com
+REPORT_FROM=analytics@karamahcollective.com
+REPORT_TO=home@karamahcollective.com
+
 # Optional for local testing of non-contact submissions that still use reCAPTCHA.
 RECAPTCHA_SECRET=YOUR_RECAPTCHA_SECRET
