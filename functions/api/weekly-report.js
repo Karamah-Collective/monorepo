@@ -188,7 +188,64 @@ function averageCommunityMetrics(metrics, divisor) {
   return out;
 }
 
-async function runCloudflareQuery(env, window) {
+/** Cloudflare httpRequestsAdaptiveGroups allows at most 24h per query. */
+function splitWindowIntoDays(window) {
+  const chunks = [];
+  let cursor = new Date(window.since);
+  const end = new Date(window.until);
+  while (cursor < end) {
+    const next = new Date(Math.min(cursor.getTime() + DAY_MS, end.getTime()));
+    chunks.push({
+      since: new Date(cursor),
+      until: next,
+      sinceIso: cursor.toISOString(),
+      untilIso: next.toISOString(),
+    });
+    cursor = next;
+  }
+  return chunks;
+}
+
+function mergeCloudflareAnalyticsResults(results) {
+  const okResults = results.filter((result) => result.ok);
+  if (!okResults.length) {
+    return results.find((result) => !result.ok) || { ok: false, warning: "Cloudflare analytics query returned no data." };
+  }
+
+  const countryMap = new Map();
+  let visits = 0;
+  let requests = 0;
+  let bytes = 0;
+
+  for (const result of okResults) {
+    visits += result.visits;
+    requests += result.requests;
+    bytes += result.bytes;
+    for (const country of result.topCountries) {
+      const existing = countryMap.get(country.name) || { name: country.name, visits: 0, requests: 0 };
+      existing.visits += country.visits;
+      existing.requests += country.requests;
+      countryMap.set(country.name, existing);
+    }
+  }
+
+  const failed = results.length - okResults.length;
+  const topCountries = [...countryMap.values()]
+    .sort((a, b) => b.visits - a.visits || b.requests - a.requests)
+    .slice(0, 8);
+
+  return {
+    ok: true,
+    hostname: okResults[0].hostname,
+    visits,
+    requests,
+    bytes,
+    topCountries,
+    ...(failed ? { partial: true, warning: `Cloudflare analytics is partial: ${failed} of ${results.length} daily queries failed.` } : {}),
+  };
+}
+
+async function runCloudflareQueryChunk(env, window) {
   const zoneTag = clean(env.CLOUDFLARE_ZONE_ID);
   const token = clean(env.CLOUDFLARE_ANALYTICS_TOKEN);
   const hostname = clean(env.SITE_HOSTNAME) || DEFAULT_HOSTNAME;
@@ -268,6 +325,12 @@ async function runCloudflareQuery(env, window) {
       visits: number(row.sum?.visits),
     })),
   };
+}
+
+async function runCloudflareQuery(env, window) {
+  const chunks = splitWindowIntoDays(window);
+  const results = await Promise.all(chunks.map((chunk) => runCloudflareQueryChunk(env, chunk)));
+  return mergeCloudflareAnalyticsResults(results);
 }
 
 function linesForItems(items, labelKey) {
@@ -507,6 +570,7 @@ function buildEmail(report) {
     ? [
       `- Hostname: ${currentAnalytics.hostname}`,
       `- Visits: ${fmtNumber(visits)} (${signedPct(visits, previousVisits)} vs last week, ${signedPct(visits, baselineVisits)} vs 4-week avg)`,
+      ...(currentAnalytics.warning ? [`- Note: ${currentAnalytics.warning}`] : []),
       "",
       "Top countries",
       ...linesForItems(currentAnalytics.topCountries, "name"),
@@ -584,6 +648,7 @@ function buildEmail(report) {
             ${insightBand("Country pulse", htmlInlineBars(currentAnalytics.topCountries, "name"))}
             ${insightBand("Contribution breakdown", htmlInlineBars(contributionBreakdown(current), "label", "count"))}
             <div style="border-radius:12px;background:#f1f5ee;padding:8px 10px;color:#536170;font-size:11px;line-height:1.35;margin-bottom:8px;">Contribution rate: <strong style="color:#172119;">${escapeHtml(contributionRate)}</strong> this week, ${escapeHtml(baselineContributionRate)} baseline.</div>
+            ${currentAnalytics.warning ? `<div style="border-radius:12px;padding:10px 12px;background:#fff8df;color:#5f4b12;font-size:12px;margin-bottom:8px;">${escapeHtml(currentAnalytics.warning)}</div>` : ""}
           ` : `
             <div style="border-radius:20px;padding:12px 14px;background:#fff8df;color:#5f4b12;font-size:12px;margin-bottom:12px;">${escapeHtml(currentAnalytics.warning)}</div>
           `}
