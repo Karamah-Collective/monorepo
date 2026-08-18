@@ -3908,3 +3908,41 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Spam handling decision:** contact submissions below reCAPTCHA score `0.5` stay blocked with a generic verification failure message. Scores from `0.5` up to `<0.7` still send because false positives are possible, but the internal email signature includes `reCAPTCHA score: 0.62 (Possible spam)` style metadata and the server logs a warning. Scores `>=0.7` send normally with no score shown in the email.
 
 **UX/security pattern:** do not expose score-specific spam reasoning to the submitter. Keep the browser message generic, and put spam hints only in the private team email/logs.
+
+---
+
+## 2026-08-18 - Weekly analytics email preview: modern clean redesign direction
+
+**User correction:** the first redesigned weekly-report prototype was visually different but felt old rather than modern. The serif headline, parchment-like palette, ornamental rings, and editorial/heritage styling were explicitly rejected.
+
+**Preference:** weekly analytics and similar operational reports should use the project's Premium Utility direction: Plus Jakarta Sans, cool neutral surfaces, one restrained teal accent, crisp dividers, flat data modules, very subtle depth, compact spacing, and a strong modern product-analytics hierarchy. Keep mockup copy short so the layout and data story are easy to judge.
+
+**Pattern to avoid:** do not use serif display type, warm paper colors, ornamental geometry, vintage editorial styling, or dark heritage mastheads for analytics reports. Different is not enough; the result must read as current product UI.
+
+**Pattern to follow:** lead with one concise weekly insight and one primary metric, then use a divided KPI strip, baseline comparison tracks, two compact analytic detail panels, and a clearly separated action queue. Prefer borders and grouping over repeated floating cards.
+
+**Session note:** completely replaced `docs/weekly-report-email-preview.html` with the new modern demo. The production generator in `functions/api/weekly-report.js` remains unchanged until design approval. No Playwright or browser automation was run, following the standing manual-testing preference. Static `git diff --check` passed before final cleanup.
+
+---
+
+## 2026-08-18 - Weekly report metric correction and preview panel alignment
+
+**Analytics root cause:** the weekly report used `sum.visits` from multiple daily `httpRequestsAdaptiveGroups` queries. Cloudflare documents `visits` as referrer-based visit sessions, not unique visitors. Adding independent daily results also recounts returning visitors and explains why the email exceeded the Cloudflare dashboard.
+
+**Fix:** `functions/api/weekly-report.js` now queries `uniq.uniques` for one full current window and one full previous window, filtered to the exact `maps.karamahcollective.com` hostname, `requestSource: eyeball`, GET requests, and Cloudflare IP classes `noRecord`/`allowlist` so known search-engine, scanner, and monitoring classifications are excluded. The four-week baseline uses four weekly unique queries and averages them; it is never summed across daily chunks. If Cloudflare returns requests without a unique value, the report withholds the metric instead of falling back to the inaccurate visit count.
+
+**Terminology:** the email now says `Unique visitors`/`Visitors` rather than `Visits` for the Cloudflare metric. Country rows also use unique values.
+
+**Preview alignment:** `docs/weekly-report-email-preview.html` now uses flex-stretched data panels so Audience geography and Contribution mix share the same internal height and footer baseline. The audience distribution strip is 7px thick as a visual anchor, but no artificial spacer is used.
+
+**Verification:** `node --check functions/api/weekly-report.js` and `git diff --check` passed. No Playwright/browser automation was run per the standing manual-testing preference. Cloudflare's official docs were consulted for `visits` semantics, `uniq.uniques`, filter operators, and adaptive query limits.
+
+---
+
+## 2026-08-18 - Weekly report copy should stay non-prescriptive
+
+**User preference:** the analytics report should avoid decisive interpretations such as "Growth accelerated" or "Review throughput did not." Readers should interpret the result from the displayed values, deltas, and baselines.
+
+**Preview change:** replaced the editorial hero headline and narrative summary with neutral "Weekly performance" framing, explicit comparison context, and a factual "Review queue" label. The production email remains unchanged until the preview design is approved.
+
+**Production approval:** the approved neutral, number-led design is now applied to the inline production email template in `functions/api/weekly-report.js`. Production email copy should continue to present current values, prior-week deltas, four-week baselines, and queue counts without a generated conclusion or interpretation.
