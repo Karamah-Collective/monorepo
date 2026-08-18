@@ -3946,3 +3946,33 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 **Preview change:** replaced the editorial hero headline and narrative summary with neutral "Weekly performance" framing, explicit comparison context, and a factual "Review queue" label. The production email remains unchanged until the preview design is approved.
 
 **Production approval:** the approved neutral, number-led design is now applied to the inline production email template in `functions/api/weekly-report.js`. Production email copy should continue to present current values, prior-week deltas, four-week baselines, and queue counts without a generated conclusion or interpretation.
+
+---
+
+## 2026-08-18 - Weekly analytics must fail closed and support live dry runs
+
+**Production incident:** the deployed report displayed `n/a` because the Cloudflare GraphQL filter included the unsupported `clientRequestHTTPMethod` argument. Cloudflare rejected every analytics query, but the endpoint still built and sent an email from the failed results.
+
+**Fix pattern:** use only verified GraphQL filter fields, and abort the report before email generation whenever current, previous, or baseline analytics is unavailable. Manual `workflow_dispatch` runs are dry-run-only and print real hosted analytics without sending email; scheduled runs keep the normal send behavior.
+
+---
+
+## 2026-08-18 - Weekly analytics uses the dashboard-matching RUM source
+
+**Root cause correction:** the zone HTTP adaptive dataset cannot provide the
+dashboard's human/unique visitor metric. Its `uniq` field and the attempted bot
+and host filters were rejected by the live GraphQL schema, which is why the
+deployed email showed `n/a` after the fail-closed guard was added.
+
+**Fix:** `functions/api/weekly-report.js` now queries the account-level
+`rumPageloadEventsAdaptiveGroups` dataset with the exact
+`maps.karamahcollective.com` host and `bot: 0`. Human visitors are read from
+`sum.visits`; country rows use the same metric. Localhost traffic and bot
+traffic are therefore excluded at the Cloudflare query boundary. The four-week
+baseline still averages four complete weekly windows rather than summing them.
+
+**Live verification:** a local dry run returned HTTP 200 with `success: true`,
+`sent: false`, and **55 human visitors**, matching the Cloudflare dashboard.
+The response included country data (FI 42, US 10, SE 2, BD 1), and instrumentation
+confirmed exactly six GraphQL calls, all using the exact host, `bot: 0`, and the
+RUM dataset.

@@ -18,8 +18,12 @@ jobs:
         run: |
           set -euo pipefail
           url="${REPORT_URL:-https://maps.karamahcollective.com/api/weekly-report}"
+          payload='{}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            payload='{"dryRun":true}'
+          fi
           curl --fail-with-body --show-error --silent \
             --request POST "$url" \
             --header "Authorization: Bearer ${REPORT_SECRET}" \
             --header "Content-Type: application/json" \
-            --data '{}'
+            --data "$payload"

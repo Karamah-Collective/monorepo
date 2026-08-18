@@ -10,7 +10,7 @@
  *   BREVO_API_KEY
  *   REPORT_SECRET
  *   CLOUDFLARE_ANALYTICS_TOKEN
- *   CLOUDFLARE_ZONE_ID
+ *   CLOUDFLARE_ACCOUNT_ID
  *
  * Optional environment variables:
  *   REPORT_FROM                  defaults to analytics@karamahcollective.com
@@ -211,7 +211,7 @@ function averageCloudflareAnalyticsResults(results) {
   if (failed) {
     return {
       ok: false,
-      warning: `Cloudflare analytics baseline is unavailable: ${failed} of ${results.length} weekly unique-visitor queries failed.`,
+      warning: `Cloudflare analytics baseline is unavailable: ${failed} of ${results.length} weekly visitor queries failed.`,
     };
   }
 
@@ -227,34 +227,31 @@ function averageCloudflareAnalyticsResults(results) {
 }
 
 async function runCloudflareQueryWindow(env, window) {
-  const zoneTag = clean(env.CLOUDFLARE_ZONE_ID);
+  const accountTag = clean(env.CLOUDFLARE_ACCOUNT_ID);
   const token = clean(env.CLOUDFLARE_ANALYTICS_TOKEN);
   const hostname = DEFAULT_HOSTNAME;
 
-  if (!zoneTag || !token) {
-    return { ok: false, warning: "Cloudflare analytics is not configured: missing CLOUDFLARE_ZONE_ID or CLOUDFLARE_ANALYTICS_TOKEN." };
+  if (!accountTag || !token) {
+    return { ok: false, warning: "Cloudflare analytics is not configured: missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_ANALYTICS_TOKEN." };
   }
 
   const query = `
-    query WeeklyMapsAnalytics($zoneTag: string, $filter: filter) {
+    query WeeklyMapsAnalytics($accountTag: string, $filter: filter) {
       viewer {
-        zones(filter: { zoneTag: $zoneTag }) {
-          totals: httpRequestsAdaptiveGroups(limit: 1, filter: $filter) {
+        accounts(filter: { accountTag: $accountTag }) {
+          totals: rumPageloadEventsAdaptiveGroups(limit: 1, filter: $filter) {
             count
-            uniq {
-              uniques
-            }
             sum {
-              edgeResponseBytes
+              visits
             }
           }
-          countries: httpRequestsAdaptiveGroups(limit: 100, filter: $filter) {
+          countries: rumPageloadEventsAdaptiveGroups(limit: 100, orderBy: [sum_visits_DESC], filter: $filter) {
             count
-            uniq {
-              uniques
+            sum {
+              visits
             }
             dimensions {
-              clientCountryName
+              countryName
             }
           }
         }
@@ -272,17 +269,12 @@ async function runCloudflareQueryWindow(env, window) {
     body: JSON.stringify({
       query,
       variables: {
-        zoneTag,
+        accountTag,
         filter: {
           datetime_geq: window.sinceIso,
           datetime_lt: window.untilIso,
-          clientRequestHTTPHost: hostname,
-          requestSource: "eyeball",
-          clientRequestHTTPMethod: "GET",
-          // BotScore is only exposed to Bot Management customers. These
-          // built-in IP classes exclude Cloudflare-known search engines,
-          // scanners, and monitoring services on plans without that field.
-          clientIPClass_in: ["noRecord", "allowlist"],
+          requestHost: hostname,
+          bot: 0,
         },
       },
     }),
@@ -294,15 +286,15 @@ async function runCloudflareQueryWindow(env, window) {
     return { ok: false, warning: `Cloudflare analytics query failed: ${message}` };
   }
 
-  const zone = payload.data?.viewer?.zones?.[0];
-  if (!zone) return { ok: false, warning: "Cloudflare analytics query returned no zone data." };
+  const account = payload.data?.viewer?.accounts?.[0];
+  if (!account) return { ok: false, warning: "Cloudflare analytics query returned no account data." };
 
-  const totals = zone.totals?.[0] || {};
-  const uniqueVisitors = number(totals.uniq?.uniques);
+  const totals = account.totals?.[0] || {};
+  const uniqueVisitors = number(totals.sum?.visits);
   if (!uniqueVisitors && number(totals.count)) {
     return {
       ok: false,
-      warning: "Cloudflare returned requests but no unique visitor value for this window; the report was withheld rather than falling back to visit counts.",
+      warning: "Cloudflare returned page-load events but no human visitor value for this window; the report was withheld rather than falling back to event counts.",
     };
   }
 
@@ -312,11 +304,11 @@ async function runCloudflareQueryWindow(env, window) {
     requests: number(totals.count),
     visits: uniqueVisitors,
     uniqueVisitors,
-    bytes: number(totals.sum?.edgeResponseBytes),
-    topCountries: (zone.countries || []).map((row) => ({
-      name: row.dimensions?.clientCountryName || "Unknown",
+    bytes: 0,
+    topCountries: (account.countries || []).map((row) => ({
+      name: row.dimensions?.countryName || "Unknown",
       requests: number(row.count),
-      visits: number(row.uniq?.uniques),
+      visits: number(row.sum?.visits),
     })).sort((a, b) => b.visits - a.visits || b.requests - a.requests).slice(0, 8),
   };
 }
@@ -328,6 +320,15 @@ async function runCloudflareQuery(env, window) {
     return averageCloudflareAnalyticsResults(results);
   }
   return runCloudflareQueryWindow(env, window);
+}
+
+function assertAnalyticsReady(analytics) {
+  const failed = Object.entries(analytics)
+    .filter(([, result]) => !result?.ok)
+    .map(([period, result]) => `${period}: ${result?.warning || "no data"}`);
+  if (failed.length) {
+    throw new Error(`Weekly report not sent because Cloudflare analytics failed: ${failed.join(" | ")}`);
+  }
 }
 
 function linesForItems(items, labelKey) {
@@ -766,6 +767,7 @@ export async function onRequestPost(context) {
         baseline: baselineAnalytics,
       },
     };
+    assertAnalyticsReady(report.analytics);
     const email = buildEmail(report);
 
     if (!body.dryRun) await sendBrevoEmail(env, email);
