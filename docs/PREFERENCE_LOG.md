@@ -3976,3 +3976,16 @@ baseline still averages four complete weekly windows rather than summing them.
 The response included country data (FI 42, US 10, SE 2, BD 1), and instrumentation
 confirmed exactly six GraphQL calls, all using the exact host, `bot: 0`, and the
 RUM dataset.
+
+---
+
+## 2026-08-18 - Manual weekly report runs send by default
+
+**Delivery diagnosis:** GitHub Actions reported success without an email because
+every `workflow_dispatch` run hard-coded `{"dryRun":true}`. The endpoint behaved
+correctly and returned `sent: false`; Brevo was deliberately never called.
+
+**Workflow behavior:** manual runs now expose a `dry_run` checkbox that defaults
+to `false`. A normal "Run workflow" action sends the report, while checking
+`dry_run` keeps the existing analytics-only validation path. Scheduled Saturday
+runs continue sending normally.

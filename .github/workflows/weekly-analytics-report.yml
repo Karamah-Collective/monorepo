@@ -6,6 +6,12 @@ on:
     # 09:00 during summer time (EEST), 08:00 during winter time (EET).
     - cron: "0 6 * * SAT"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Validate analytics without sending email"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   send-weekly-report:
@@ -19,7 +25,7 @@ jobs:
           set -euo pipefail
           url="${REPORT_URL:-https://maps.karamahcollective.com/api/weekly-report}"
           payload='{}'
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
             payload='{"dryRun":true}'
           fi
           curl --fail-with-body --show-error --silent \
