@@ -471,13 +471,18 @@ function pendingActions(community) {
 }
 
 function contributionBreakdown(community) {
-  return [
-    { label: "Reviews", count: community.reviews },
-    { label: "Place edits", count: community.submittedEdits },
-    { label: "New places", count: community.submittedPlaces },
-    { label: "Events", count: community.events + community.eventEdits },
-    { label: "Eid locations", count: community.eidSubmissions },
+  const rows = [
+    { baseLabel: "Reviews", count: community.reviews },
+    { baseLabel: "Place edits", count: community.submittedEdits },
+    { baseLabel: "New places", count: community.submittedPlaces },
+    { baseLabel: "Events", count: community.events + community.eventEdits },
+    { baseLabel: "Eid locations", count: community.eidSubmissions },
   ];
+  const total = rows.reduce((sum, row) => sum + number(row.count), 0);
+  return rows.map((row) => ({
+    ...row,
+    label: total ? `${row.baseLabel} - ${formatDecimal((number(row.count) / total) * 100)}%` : row.baseLabel,
+  }));
 }
 
 function heroMetric(label, value, change, color, bg) {
@@ -494,21 +499,29 @@ function heroMetric(label, value, change, color, bg) {
 
 function pendingSection(community, approved, pending) {
   return `
-    <div style="margin-top:8px;background:#f7f9f8;border:1px solid #e4e9e6;padding:10px 11px;">
+    <div style="margin-top:8px;background:#fff5e5;border:1px solid #efd9bb;border-radius:14px;overflow:hidden;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td>
-            <div style="font-size:12px;font-weight:700;color:#101714;">Review queue</div>
-            <div style="font-size:9px;color:#53605a;margin-top:2px;">Approvals this week: ${fmtNumber(approved)}. Pending items: ${fmtNumber(pending)}.</div>
+          <td style="width:28%;padding:10px 11px;border-right:1px solid #ead3b1;">
+            <div style="font-size:9px;color:#8a6738;font-weight:600;">Review queue</div>
+            <div style="margin-top:2px;font-size:12px;font-weight:700;color:#4a3217;">${fmtNumber(pending)} pending items</div>
           </td>
-          <td style="text-align:right;font-size:18px;font-weight:700;color:#101714;">${fmtNumber(pending)}</td>
-        </tr>
-      </table>
-      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
-        <tr>
-          <td style="width:33.33%;padding-right:5px;"><div style="background:#ffffff;padding:6px 8px;"><span style="font-size:9px;color:#89928d;font-weight:700;">Places</span><span style="float:right;font-size:12px;color:#101714;font-weight:700;">${fmtNumber(community.pendingNewPlaces)}</span></div></td>
-          <td style="width:33.33%;padding-right:5px;"><div style="background:#ffffff;padding:6px 8px;"><span style="font-size:9px;color:#89928d;font-weight:700;">Edits</span><span style="float:right;font-size:12px;color:#101714;font-weight:700;">${fmtNumber(community.pendingPlaceEdits)}</span></div></td>
-          <td style="width:33.33%;"><div style="background:#ffffff;padding:6px 8px;"><span style="font-size:9px;color:#89928d;font-weight:700;">Reviews</span><span style="float:right;font-size:12px;color:#101714;font-weight:700;">${fmtNumber(community.pendingReviews)}</span></div></td>
+          <td style="width:18%;padding:10px 11px;border-right:1px solid #ead3b1;">
+            <div style="font-size:9px;color:#8a6738;font-weight:600;">Place edits</div>
+            <div style="margin-top:2px;font-size:18px;font-weight:700;color:#4a3217;">${fmtNumber(community.pendingPlaceEdits)}</div>
+          </td>
+          <td style="width:18%;padding:10px 11px;border-right:1px solid #ead3b1;">
+            <div style="font-size:9px;color:#8a6738;font-weight:600;">New places</div>
+            <div style="margin-top:2px;font-size:18px;font-weight:700;color:#4a3217;">${fmtNumber(community.pendingNewPlaces)}</div>
+          </td>
+          <td style="width:18%;padding:10px 11px;border-right:1px solid #ead3b1;">
+            <div style="font-size:9px;color:#8a6738;font-weight:600;">Reviews</div>
+            <div style="margin-top:2px;font-size:18px;font-weight:700;color:#4a3217;">${fmtNumber(community.pendingReviews)}</div>
+          </td>
+          <td style="width:18%;padding:10px 11px;">
+            <div style="font-size:9px;color:#8a6738;font-weight:600;">Processed this week</div>
+            <div style="margin-top:2px;font-size:11px;font-weight:700;color:#4a3217;white-space:nowrap;">${fmtNumber(approved)} approvals</div>
+          </td>
         </tr>
       </table>
     </div>
@@ -647,10 +660,10 @@ function buildEmail(report) {
         <div style="padding:18px 18px 6px;">
           <table style="width:100%;border-collapse:collapse;">
             <tr>
-              ${heroMetric("Visitors", currentAnalytics.ok ? fmtNumber(visits) : "n/a", `${signedPct(visits, previousVisits)} vs last`, trendColor(visits, previousVisits), "#f7f9f8")}
-              ${heroMetric("Users", fmtNumber(current.newUsers), `${signedPct(current.newUsers, previous.newUsers)} vs last`, trendColor(current.newUsers, previous.newUsers), "#f7f9f8")}
-              ${heroMetric("Contrib.", fmtNumber(actions), `${signedPct(actions, previousActions)} vs last`, trendColor(actions, previousActions), "#f7f9f8")}
-              ${heroMetric("Pending", fmtNumber(pending), "Current total", "#a86616", "#f7f9f8")}
+              ${heroMetric("New users", fmtNumber(current.newUsers), `${signedPct(current.newUsers, previous.newUsers)} vs last`, trendColor(current.newUsers, previous.newUsers), "#f7f9f8")}
+              ${heroMetric("Contributions", fmtNumber(actions), `${signedPct(actions, previousActions)} vs last`, trendColor(actions, previousActions), "#f7f9f8")}
+              ${heroMetric("Approvals", fmtNumber(approved), `${signedPct(approved, previousApproved)} vs last`, trendColor(approved, previousApproved), "#f7f9f8")}
+              ${heroMetric("Pending review", fmtNumber(pending), "Current total", "#a86616", "#f7f9f8")}
             </tr>
           </table>
 

@@ -63,6 +63,11 @@ const collapsedCityGroups = new Set();
 let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
 
+const SAVED_BOOKMARKED_GROUP = "__saved_bookmarked__";
+const SAVED_VISITED_GROUP = "__saved_visited__";
+const RECENT_GROUP = "__recent__";
+const GROUP_KEY_SEPARATOR = "::";
+
 
 const placeSheetEl = document.getElementById("place-sheet");
 const placeSheetTitle = document.getElementById("place-sheet-title");
@@ -2108,9 +2113,9 @@ function _scrollPlacesListToElement(targetEl) {
 export function openSavedPlacesAtSection(section) {
   const target = section === "visited" ? "visited" : "pins";
   if (target === "visited") {
-    collapsedCityGroups.delete("__visited__");
+    collapsedCityGroups.delete(SAVED_VISITED_GROUP);
   } else {
-    collapsedCityGroups.clear();
+    collapsedCityGroups.delete(SAVED_BOOKMARKED_GROUP);
   }
   _setPlacesTypeFilter("saved");
   openPlacesSheet();
@@ -2120,7 +2125,7 @@ export function openSavedPlacesAtSection(section) {
     placesSnap.softRemeasure();
     requestAnimationFrame(() => {
       const selector = target === "visited"
-        ? '[data-city-group="__visited__"]'
+        ? `[data-city-group="${SAVED_VISITED_GROUP}"]`
         : "[data-custom-pin-id]";
       _scrollPlacesListToElement(document.querySelector(selector));
     });
@@ -2799,7 +2804,19 @@ function renderPlacesList() {
   // places and saved pins under one city header — a saved pin has no .city
   // field of its own, so its city is derived from its reverse-geocoded
   // display name via the same extractCityFromAddress() real places use.
-  const buildGroupedPlacesHTML = (entries) => {
+  _lastGroupedData = new Map();
+  const sectionCityKey = (sectionKey, city) => `${sectionKey}${GROUP_KEY_SEPARATOR}${city}`;
+  const groupHeaderHTML = (key, label, count, collapsed, extraClass = "") =>
+    `<li class="pl-section-hdr pl-city-hdr${extraClass ? ` ${extraClass}` : ""}${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(key)}"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(label)}</span></button><span class="pl-city-count">${count}</span></li>`;
+  const groupBodyHTML = (key, innerHTML, collapsed, lazy = false, extraListClass = "") =>
+    `<li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(key)}"${lazy ? ' data-lazy="1"' : ""}><div class="pl-city-group-inner"><ul class="pl-city-group-list${extraListClass ? ` ${extraListClass}` : ""}">${innerHTML}</ul></div></li>`;
+  const buildSectionHTML = (key, title, count, innerHTML) => {
+    if (!count) return "";
+    const collapsed = collapsedCityGroups.has(key);
+    return groupHeaderHTML(key, title, count, collapsed, "pl-saved-section-hdr")
+      + groupBodyHTML(key, innerHTML, collapsed, false, "pl-city-group-list--section");
+  };
+  const buildGroupedPlacesHTML = (entries, sectionKey = "") => {
     const groups = new Map();
     entries.forEach((entry) => {
       const city = entry.place ? getPlaceCity(entry.place) : entry.city;
@@ -2807,61 +2824,67 @@ function renderPlacesList() {
       groups.get(city).push(entry);
     });
 
-    _lastGroupedData = groups;
     let animationIndex = 0;
     return [...groups.entries()].map(([city, group]) => {
-      const collapsed = collapsedCityGroups.has(city);
+      const key = sectionKey ? sectionCityKey(sectionKey, city) : city;
+      const collapsed = collapsedCityGroups.has(key);
+      _lastGroupedData.set(key, group);
       const cards = collapsed
         ? ""
         : group.map((entry) => entry.place
           ? _buildCard(entry.place, animationIndex++)
           : _buildPinCardHTML(entry.pin, animationIndex++)).join("");
       if (collapsed) animationIndex += group.length;
-      return `<li class="pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}" data-city-group="${escA(city)}"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">${esc(city)}</span></button><span class="pl-city-count">${group.length}</span></li><li class="pl-city-group-body${collapsed ? " shut" : ""}" data-city-group-body="${escA(city)}"${collapsed ? ' data-lazy="1"' : ''}><div class="pl-city-group-inner"><ul class="pl-city-group-list">${cards}</ul></div></li>`;
+      return groupHeaderHTML(key, city, group.length, collapsed)
+        + groupBodyHTML(key, cards, collapsed, collapsed);
     }).join("");
   };
 
-  let regularHTML, pinHTML;
-  if (activeSortField === "default") {
-    const placeEntries = sorted.map((place) => ({ place }));
-    const pinEntries = customPins.map((pin) => ({
-      city: String(extractCityFromAddress(pin.name) || "Other places").trim(),
-      pin,
-    }));
-    regularHTML = buildGroupedPlacesHTML([...placeEntries, ...pinEntries]);
-    pinHTML = "";
-  } else {
-    regularHTML = sorted.map((p, i) => _buildCard(p, i)).join("");
-    pinHTML = customPins.map((pin, pi) => _buildPinCardHTML(pin, sorted.length + pi)).join("");
-  }
+  const placeEntries = sorted.map((place) => ({ place }));
+  const pinEntries = customPins.map((pin) => ({
+    city: String(extractCityFromAddress(pin.name) || "Other places").trim(),
+    pin,
+  }));
+  const shouldGroupMainPlaces = activeTypeFilter === "saved" || activeSortField === "default";
+  const regularHTML = shouldGroupMainPlaces
+    ? buildGroupedPlacesHTML(
+      [...placeEntries, ...pinEntries],
+      activeTypeFilter === "saved" ? SAVED_BOOKMARKED_GROUP : "",
+    )
+    : sorted.map((p, i) => _buildCard(p, i)).join("");
+  const pinHTML = shouldGroupMainPlaces
+    ? ""
+    : customPins.map((pin, pi) => _buildPinCardHTML(pin, sorted.length + pi)).join("");
 
   // Recently viewed section (skip on saved tab and when searching)
   let recentHtml = "";
   if (activeTypeFilter !== "saved" && !q && recentIds.length) {
     const recentPlaces = recentIds.map((id) => filtered.find((p) => p.id === id)).filter(Boolean);
     if (recentPlaces.length) {
-      const recentCollapsed = collapsedCityGroups.has("__recent__");
+      const recentCollapsed = collapsedCityGroups.has(RECENT_GROUP);
       const recentCards = recentPlaces.map((p, i) => _buildCard(p, i)).join("");
       const mainHdr = (regularHTML || pinHTML)
         ? `<li class="pl-section-hdr pl-section-hdr--main">All places</li>`
         : "";
-      recentHtml = `<li class="pl-section-hdr pl-city-hdr${recentCollapsed ? " is-collapsed" : ""}" data-city-group="__recent__"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">Recently viewed</span></button><span class="pl-city-count">${recentPlaces.length}</span></li><li class="pl-city-group-body${recentCollapsed ? " shut" : ""}" data-city-group-body="__recent__"><div class="pl-city-group-inner"><ul class="pl-city-group-list">${recentCards}</ul></div></li>${mainHdr}`;
+      recentHtml = groupHeaderHTML(RECENT_GROUP, "Recently viewed", recentPlaces.length, recentCollapsed)
+        + groupBodyHTML(RECENT_GROUP, recentCards, recentCollapsed)
+        + mainHdr;
     }
   }
 
-  // "Places you've visited" — its own collapsible section on the Saved tab,
-  // same sentinel-key collapse mechanism the Recently-viewed section above
-  // already uses ("__recent__" → "__visited__"), separate from the
-  // favourites/pins already shown above it since visited and favourited are
-  // independent states.
+  // Saved tab sections collapse as a whole. Their city groups remain nested
+  // inside and can be collapsed independently.
+  const bookmarkedHTML = activeTypeFilter === "saved"
+    ? buildSectionHTML(SAVED_BOOKMARKED_GROUP, "Bookmarked places", sorted.length + customPins.length, regularHTML + pinHTML)
+    : regularHTML + pinHTML;
+
   let visitedHTML = "";
   if (visitedPlacesList.length) {
-    const visitedCollapsed = collapsedCityGroups.has("__visited__");
-    const visitedCards = visitedPlacesList.map((p, i) => _buildCard(p, sorted.length + customPins.length + i)).join("");
-    visitedHTML = `<li class="pl-section-hdr pl-city-hdr${visitedCollapsed ? " is-collapsed" : ""}" data-city-group="__visited__"><button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">Places you've visited</span></button><span class="pl-city-count">${visitedPlacesList.length}</span></li><li class="pl-city-group-body${visitedCollapsed ? " shut" : ""}" data-city-group-body="__visited__"><div class="pl-city-group-inner"><ul class="pl-city-group-list">${visitedCards}</ul></div></li>`;
+    const visitedGroups = buildGroupedPlacesHTML(visitedPlacesList.map((place) => ({ place })), SAVED_VISITED_GROUP);
+    visitedHTML = buildSectionHTML(SAVED_VISITED_GROUP, "Places you've visited", visitedPlacesList.length, visitedGroups);
   }
 
-  list.innerHTML = recentHtml + regularHTML + pinHTML + visitedHTML;
+  list.innerHTML = recentHtml + bookmarkedHTML + visitedHTML;
 
   // Render sponsored carousel at the top of the places list
   _renderSponsorCarousel(filtered);

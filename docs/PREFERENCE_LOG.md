@@ -3989,3 +3989,54 @@ correctly and returned `sent: false`; Brevo was deliberately never called.
 to `false`. A normal "Run workflow" action sends the report, while checking
 `dry_run` keeps the existing analytics-only validation path. Scheduled Saturday
 runs continue sending normally.
+
+---
+
+## 2026-08-23 - Tablet side-control rail and weekly report preview alignment
+
+**Tablet control fix:** for the `769px-1199px` tablet layout, the right-side
+tab bar now shifts slightly above center using existing size/spacing tokens so
+the locate, search, and zoom controls can remain on the same right rail beneath
+it. Do not fix this class of overlap by moving the floating controls left of
+the sidebar; that breaks the visual alignment. Keep the shared centerline and
+solve the collision vertically.
+
+**Cache discipline:** stylesheet cache-bust in `index.html` and `sw.js`
+`VERSION` were synced to `20260823-1` with the CSS change.
+
+**Weekly email note:** `docs/weekly-report-email-preview.html` no longer says
+production is unchanged, and `functions/api/weekly-report.js` was brought closer
+to the approved preview structure: KPI strip order, contribution percentages,
+and the queue band now match the visual reference more closely.
+
+**Verification:** `node --check functions/api/weekly-report.js` and
+`git diff --check` passed. A Playwright viewport check at `1150x610` confirmed
+no overlap between `#tab-bar` and `#locate-pill-wrap`, `#search-card`, or
+`#zoom-pill`; centers measured at x=1102/1103/1102/1102 respectively.
+
+---
+
+## 2026-08-23 - Saved window collapsible sections and city grouping
+
+**Saved-tab structure:** `Bookmarked places` and `Places you've visited` are
+now both top-level collapsible sections in the Saved window. Each section also
+groups its entries by city using the existing `.pl-city-hdr` /
+`.pl-city-group-body` collapse pattern.
+
+**Visual hierarchy correction:** saved-window parent sections must keep the
+app's no-fill sheet/list language. Do not style `Bookmarked places` or
+`Places you've visited` as filled cards or boxed rows; distinguish them from
+city groups with typography, spacing, and a light divider instead.
+
+**Collapse-key pattern:** city collapse keys in the Saved tab are scoped by
+section (`__saved_bookmarked__::City`, `__saved_visited__::City`) so collapsing
+Helsinki under Bookmarked does not also collapse Helsinki under Visited. Keep
+that scoped-key pattern for any future nested Saved-window groups.
+
+**Implementation note:** bookmarked places still include both favorited
+directory places and saved custom pins; custom pins derive their city from the
+saved pin label/address and fall back to `Other places`.
+
+**Verification:** `node --check src/places.js` and `git diff --check` passed.
+No Playwright/browser test was run, matching the standing manual-testing
+preference.

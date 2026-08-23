@@ -2089,6 +2089,10 @@ body.dark-mode .sp-tip {
 
 /* ─── Tablet: search expands leftward to leave room for the menu pill's column ─── */
 @media (min-width: 769px) and (max-width: 1199px) {
+  #tab-bar {
+    top: calc(50% - var(--btn-icon-size) - var(--sp-11));
+  }
+
   #search-card:not(.collapsed) {
     width: min(50vw, 360px);
   }
@@ -3646,6 +3650,34 @@ button.pf-stat-card:focus-visible {
 #places-list li.pl-city-hdr:active {
   background: var(--surface);
 }
+#places-list li.pl-saved-section-hdr {
+  position: static;
+  margin-top: var(--sp-4);
+  padding: var(--sp-5) var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-light);
+  background: none;
+  color: var(--text);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-normal);
+  text-transform: none;
+}
+#places-list li.pl-saved-section-hdr:first-child {
+  margin-top: 0;
+}
+@media (hover: hover) {
+  #places-list li.pl-saved-section-hdr:hover,
+  #places-list li.pl-saved-section-hdr:active {
+    background: none;
+  }
+}
+#places-list li.pl-saved-section-hdr .pl-city-name {
+  color: var(--text);
+}
+#places-list li.pl-saved-section-hdr .pl-city-count {
+  background: none;
+  color: var(--text-3);
+}
 .pl-city-toggle {
   display: flex;
   align-items: center;
@@ -3734,6 +3766,10 @@ button.pf-stat-card:focus-visible {
   margin: 0;
   padding: 0 0 0 var(--sp-7);
   border-left: 2px solid var(--border);
+}
+.pl-city-group-list--section {
+  padding-left: 0;
+  border-left: none;
 }
 #places-list .pl-city-group-list li {
   animation: none;
