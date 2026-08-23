@@ -390,7 +390,7 @@ function audienceShareBar(items, total) {
   const values = [...topItems.map((item) => number(item.visits)), Math.max(safeTotal - topTotal, 0)];
   return values.map((value, index) => {
     const width = Math.max(value ? 2 : 0, Math.min(100, (value / safeTotal) * 100));
-    return `<span style="display:block;width:${width}%;height:7px;background:${colors[index]};"></span>`;
+    return `<td width="${width}%" style="height:7px;background:${colors[index]};font-size:0;line-height:0;">&nbsp;</td>`;
   }).join("");
 }
 
@@ -441,7 +441,7 @@ function insightBand(title, subtitle, total, totalLabel, rowsHtml, footerLabel, 
           </td>
         </tr>
       </table>
-      ${barHtml ? `<div style="display:flex;height:7px;margin:0 0 5px;overflow:hidden;border-radius:999px;background:#e4e9e6;">${barHtml}</div>` : ""}
+      ${barHtml ? `<table role="presentation" style="width:100%;height:7px;margin:0 0 5px;border-collapse:collapse;background:#e4e9e6;border-radius:999px;overflow:hidden;"><tr>${barHtml}</tr></table>` : ""}
       <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
       <table style="width:100%;border-collapse:collapse;margin-top:5px;border-top:1px solid #e4e9e6;">
         <tr>
@@ -487,11 +487,11 @@ function contributionBreakdown(community) {
 
 function heroMetric(label, value, change, color, bg) {
   return `
-    <td style="width:25%;padding:0 3px;">
-      <div style="background:${bg};border:1px solid #e4e9e6;padding:9px 10px;">
+    <td style="width:25%;padding:0;border-right:1px solid #e4e9e6;background:${bg};vertical-align:top;">
+      <div style="padding:10px 11px;">
         <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#89928d;font-weight:700;white-space:nowrap;">${escapeHtml(label)}</div>
-        <div style="font-size:20px;line-height:1.05;font-weight:700;color:#101714;margin-top:4px;">${escapeHtml(value)}</div>
-        <div style="font-size:9px;line-height:1.2;color:${color};font-weight:700;margin-top:4px;">${escapeHtml(change)}</div>
+        <div style="font-size:22px;line-height:1.05;font-weight:700;color:#101714;margin-top:5px;">${escapeHtml(value)}</div>
+        <div style="font-size:9px;line-height:1.2;color:${color};font-weight:700;margin-top:5px;">${escapeHtml(change)}</div>
       </div>
     </td>
   `;
@@ -547,8 +547,13 @@ function buildEmail(report) {
   const previousApproved = approvedActions(previous);
   const averageApproved = approvedActions(baselineAvg);
   const pending = pendingActions(current);
-  const contributionRate = currentAnalytics.ok && visits > 0 ? `${formatDecimal((actions / visits) * 100)}%` : "n/a";
-  const baselineContributionRate = currentAnalytics.ok && baselineVisits > 0 ? `${formatDecimal((averageActions / baselineVisits) * 100)}%` : "n/a";
+  const contributionRateValue = currentAnalytics.ok && visits > 0 ? (actions / visits) * 100 : null;
+  const baselineContributionRateValue = currentAnalytics.ok && baselineVisits > 0 ? (averageActions / baselineVisits) * 100 : null;
+  const contributionRate = contributionRateValue !== null ? `${formatDecimal(contributionRateValue)}%` : "n/a";
+  const baselineContributionRate = baselineContributionRateValue !== null ? `${formatDecimal(baselineContributionRateValue)}%` : "n/a";
+  const contributionDelta = contributionRateValue !== null && baselineContributionRateValue !== null
+    ? `${contributionRateValue - baselineContributionRateValue >= 0 ? "+" : ""}${formatDecimal(contributionRateValue - baselineContributionRateValue)}pp`
+    : "n/a";
 
   const analyticsLines = currentAnalytics.ok
     ? [
@@ -609,12 +614,12 @@ function buildEmail(report) {
     : `<div style="background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;color:#53605a;font-size:10px;">${escapeHtml(currentAnalytics.warning)}</div>`;
   const contributionPanel = insightBand(
     "Contribution mix",
-    "Community actions",
+    `${fmtNumber(actions)} community actions`,
     escapeHtml(contributionRate),
     "visitor -> action",
     htmlInlineBars(contributionBreakdown(current), "label", "count"),
-    "Baseline conversion",
-    escapeHtml(baselineContributionRate),
+    `Baseline conversion ${baselineContributionRate}`,
+    contributionDelta,
   );
 
   const htmlContent = `
@@ -625,7 +630,7 @@ function buildEmail(report) {
             <tr>
               <td style="vertical-align:middle;">
                 <table style="border-collapse:collapse;"><tr>
-                  <td style="width:32px;height:32px;text-align:center;vertical-align:middle;background:#08705b;color:#ffffff;font-size:15px;font-weight:700;">H</td>
+                  <td style="width:32px;height:32px;text-align:center;vertical-align:middle;background:#08705b;color:#ffffff;font-size:15px;font-weight:700;border-radius:10px;">H</td>
                   <td style="padding-left:9px;">
                     <div style="font-size:15px;line-height:1.15;color:#101714;font-weight:700;">Halal Finder</div>
                     <div style="margin-top:2px;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#89928d;font-weight:700;">Weekly analytics</div>
@@ -658,18 +663,20 @@ function buildEmail(report) {
         </div>
 
         <div style="padding:18px 18px 6px;">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr>
-              ${heroMetric("New users", fmtNumber(current.newUsers), `${signedPct(current.newUsers, previous.newUsers)} vs last`, trendColor(current.newUsers, previous.newUsers), "#f7f9f8")}
-              ${heroMetric("Contributions", fmtNumber(actions), `${signedPct(actions, previousActions)} vs last`, trendColor(actions, previousActions), "#f7f9f8")}
-              ${heroMetric("Approvals", fmtNumber(approved), `${signedPct(approved, previousApproved)} vs last`, trendColor(approved, previousApproved), "#f7f9f8")}
-              ${heroMetric("Pending review", fmtNumber(pending), "Current total", "#a86616", "#f7f9f8")}
-            </tr>
-          </table>
+          <div style="border:1px solid #e4e9e6;border-radius:14px;overflow:hidden;background:#f7f9f8;">
+            <table style="width:100%;border-collapse:collapse;">
+              <tr>
+                ${heroMetric("New users", fmtNumber(current.newUsers), `${signedPct(current.newUsers, previous.newUsers)} vs last`, trendColor(current.newUsers, previous.newUsers), "#f7f9f8")}
+                ${heroMetric("Contributions", fmtNumber(actions), `${signedPct(actions, previousActions)} vs last`, trendColor(actions, previousActions), "#f7f9f8")}
+                ${heroMetric("Approvals", fmtNumber(approved), `${signedPct(approved, previousApproved)} vs last`, trendColor(approved, previousApproved), "#f7f9f8")}
+                ${heroMetric("Pending review", fmtNumber(pending), "Current total", "#a86616", "#f7f9f8")}
+              </tr>
+            </table>
+          </div>
 
           <div style="margin-top:12px;border-bottom:1px solid #d6ddd9;padding-bottom:7px;">
             <span style="font-size:11px;color:#101714;font-weight:700;">Performance against the four-week average</span>
-            <span style="float:right;font-size:9px;color:#89928d;">Current&nbsp;&nbsp; Average</span>
+            <span style="float:right;font-size:9px;color:#89928d;">Marker shows baseline</span>
           </div>
           <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${comparisonHtml}</table>
 
@@ -684,7 +691,12 @@ function buildEmail(report) {
 
           ${currentAnalytics.warning ? `<div style="margin-top:8px;padding:9px 10px;background:#fff8df;color:#5f4b12;font-size:10px;line-height:1.35;">${escapeHtml(currentAnalytics.warning)}</div>` : ""}
 
-          <p style="margin:10px 2px 2px;color:#89928d;font-size:9px;line-height:1.4;">Localhost traffic is excluded by querying only ${escapeHtml(currentAnalytics.hostname || DEFAULT_HOSTNAME)}. The four-week average uses the four complete weeks before this reporting window.</p>
+          <table style="width:100%;border-collapse:collapse;margin:10px 2px 2px;">
+            <tr>
+              <td style="color:#89928d;font-size:9px;line-height:1.4;">Localhost traffic is excluded. The baseline uses the four complete weeks before this reporting window.</td>
+              <td style="width:150px;text-align:right;color:#101714;font-size:9px;font-weight:700;white-space:nowrap;">Halal Finder Analytics</td>
+            </tr>
+          </table>
         </div>
       </div>
     </div>

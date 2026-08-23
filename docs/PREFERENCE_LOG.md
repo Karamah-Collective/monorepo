@@ -4040,3 +4040,24 @@ saved pin label/address and fall back to `Other places`.
 **Verification:** `node --check src/places.js` and `git diff --check` passed.
 No Playwright/browser test was run, matching the standing manual-testing
 preference.
+
+---
+
+## 2026-08-23 - Weekly email production parity and saved visited map pins
+
+**Weekly email production fix:** the Cloudflare Function email HTML now matches
+the approved preview more closely in the template GitHub Actions actually sends.
+The KPI strip is a single bordered table strip, the audience share bar no longer
+depends on flex rendering, the contribution panel shows community-action count
+and baseline conversion delta, the benchmark label matches the preview, and the
+footer uses the approved "Localhost traffic is excluded..." copy plus "Halal
+Finder Analytics."
+
+**Saved map marker fix:** the Saved tab's map marker rebuild now treats saved
+directory places as bookmarked OR visited. The saved list can still keep
+Bookmarked and Places you've visited as separate hierarchy sections, but the map
+pins now cover both sections instead of only favourite/bookmarked places.
+
+**Verification:** `node --check functions/api/weekly-report.js` and
+`node --check src/places.js` passed. No Playwright/browser test was run,
+matching the standing manual-testing preference.

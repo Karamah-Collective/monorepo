@@ -463,6 +463,10 @@ function saveVisitedPlaces() {
 export function isVisited(id) { return visitedPlaces.has(id); }
 /** All currently-visited place IDs (local or cloud, whichever is active). */
 export function getVisitedIds() { return [...visitedPlaces]; }
+
+function _isSavedDirectoryPlace(place) {
+  return isFavourite(place.id) || isVisited(place.id);
+}
 /**
  * Set (not toggle) a place's visited state directly, without firing
  * EVT.VISITED_TOGGLED — used by src/account-sync.js only, to roll a visit's
@@ -1314,7 +1318,7 @@ export function addPlaceMarkers() {
     activeTypeFilter === "all"
       ? placesData
       : activeTypeFilter === "saved"
-        ? placesData.filter((p) => isFavourite(p.id))
+        ? placesData.filter(_isSavedDirectoryPlace)
         : activeTypeFilter === "religious"
           ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
           : placesData.filter((p) => p.type === activeTypeFilter);
