@@ -7,6 +7,12 @@
   touch-action: manipulation;
 }
 
+@media (min-width: 769px) and (pointer: coarse) {
+  #app {
+    bottom: calc(var(--safe-b) * -1);
+  }
+}
+
 /* ─── Stagger-in list containers ─── */
 #results-list,
 #dir-itins,
@@ -107,6 +113,11 @@
   min-width: 100vw;
   min-height: 100vh;
   min-height: 100dvh;
+}
+@media (min-width: 769px) and (pointer: coarse) {
+  #map {
+    min-height: calc(100dvh + var(--safe-b));
+  }
 }
 #map .maplibregl-canvas-container,
 #map .maplibregl-canvas {
@@ -2271,26 +2282,37 @@ body.dark-mode .sp-tip {
     display: flex;
     width: calc(100% - 32px);
   }
-  /* #place-sheet keeps its flex column + pinned-footer layout even at tablet
-     width (an ID-selector override of the generic .sheet rule two rules up) —
-     the action row must stay outside the scrolling body here too, otherwise
-     collapsing the whole sheet into one scroll container would let it scroll
-     out of reach just like the mobile bug this layout exists to fix. */
+  /* Tablet place details use the same natural single-scroll sheet model as
+     the other tablet sheets. Keeping the mobile pinned-action flex column here
+     can collapse #place-sheet-body on iPad Safari, leaving only title/actions. */
   #place-sheet {
-    display: flex;
-    overflow: hidden;
-    max-height: calc(100dvh - 48px) !important;
-  }
-  #place-sheet .sheet-head,
-  #place-sheet-actions {
-    flex: 0 0 auto;
+    display: block;
+    overflow-y: auto;
   }
   #place-sheet-body {
-    flex: 0 1 auto;
-    min-height: 0;
-    max-height: calc(100dvh - 190px);
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+  #place-sheet-actions {
+    flex: none;
+    padding-bottom: var(--sp-6);
+  }
+}
+
+@media (min-width: 769px) and (pointer: coarse) {
+  #place-sheet {
+    display: block;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+  }
+  #place-sheet-body {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+  #place-sheet-actions {
+    flex: none;
+    padding-bottom: var(--sp-6);
   }
 }
 
@@ -4851,6 +4873,11 @@ body.marker-style-bold .custom-mk {
   padding-left: var(--sp-8);
   padding-right: var(--sp-8);
   padding-bottom: calc(var(--sp-6) + var(--safe-b));
+}
+@media (min-width: 769px) {
+  #place-sheet-actions {
+    padding-bottom: var(--sp-6);
+  }
 }
 .pp-home-btn.active {
   background: var(--accent-soft);

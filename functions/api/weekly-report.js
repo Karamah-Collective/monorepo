@@ -429,7 +429,7 @@ function comparisonRows(rows) {
 function insightBand(title, subtitle, total, totalLabel, rowsHtml, footerLabel, footerValue, barHtml = "") {
   return `
     <div style="height:170px;background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;box-sizing:border-box;">
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;height:100%;border-collapse:collapse;">
         <tr>
           <td style="vertical-align:top;padding:1px 10px 7px 0;">
             <div style="font-size:12px;line-height:1.25;color:#101714;font-weight:700;">${escapeHtml(title)}</div>
@@ -440,14 +440,17 @@ function insightBand(title, subtitle, total, totalLabel, rowsHtml, footerLabel, 
             <div style="margin-top:2px;font-size:8px;color:#89928d;">${escapeHtml(totalLabel)}</div>
           </td>
         </tr>
-      </table>
-      ${barHtml ? `<table role="presentation" style="width:100%;height:7px;margin:0 0 5px;border-collapse:collapse;background:#e4e9e6;border-radius:999px;overflow:hidden;"><tr>${barHtml}</tr></table>` : ""}
-      <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
-      <table style="width:100%;border-collapse:collapse;margin-top:5px;border-top:1px solid #e4e9e6;">
-        <tr>
-          <td style="padding-top:6px;color:#89928d;font-size:9px;">${escapeHtml(footerLabel)}</td>
-          <td style="padding-top:6px;text-align:right;color:#08705b;font-size:9px;font-weight:700;">${escapeHtml(footerValue)}</td>
-        </tr>
+        ${barHtml ? `<tr><td colspan="2" style="padding:0 0 5px;"><table role="presentation" style="width:100%;height:7px;border-collapse:collapse;background:#e4e9e6;border-radius:999px;overflow:hidden;"><tr>${barHtml}</tr></table></td></tr>` : ""}
+        <tr><td colspan="2" style="padding:0;vertical-align:top;"><table style="width:100%;border-collapse:collapse;">${rowsHtml}</table></td></tr>
+        <tr><td colspan="2" style="height:100%;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td colspan="2" style="padding:6px 0 0;border-top:1px solid #e4e9e6;vertical-align:bottom;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr>
+              <td style="color:#89928d;font-size:9px;">${escapeHtml(footerLabel)}</td>
+              <td style="text-align:right;color:#08705b;font-size:9px;font-weight:700;">${escapeHtml(footerValue)}</td>
+            </tr>
+          </table>
+        </td></tr>
       </table>
     </div>
   `;

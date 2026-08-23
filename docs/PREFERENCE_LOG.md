@@ -4104,3 +4104,40 @@ while the header and action row are fixed-size flex items.
 `node --check src/places.js`, and `git diff --check` passed. No
 Playwright/browser test was run, matching the standing manual-testing
 preference.
+
+---
+
+## 2026-08-23 - Tablet place-sheet correction and email footer anchoring
+
+**Tablet place-sheet correction:** the previous fix kept the mobile-style
+pinned action row on tablet and tried to resize the body inside that flex
+column. User confirmed the body still disappeared. The corrected tablet pattern
+is simpler: non-phone tablet place details use the same natural block/single
+scroll model as other tablet sheets, so the body cannot collapse away while the
+actions remain visible. The same rule is also applied to coarse-pointer
+non-phone devices because larger iPads can report widths outside the older
+tablet max-width range.
+
+**Weekly email footer anchoring:** equal card height alone is not enough; the
+panel footer must be structurally pushed down. Audience/Contribution panels now
+use a full-height inner table with a spacer row, keeping "Top 3 share" and
+"Baseline conversion" aligned to the card bottom in email clients.
+
+**Verification:** `node --check functions/api/weekly-report.js`,
+`node --check src/places.js`, and `git diff --check` passed. No
+Playwright/browser test was run, matching the standing manual-testing
+preference.
+
+**Tablet chin correction:** after the content-collapse fix, the tablet place
+sheet inherited the mobile action-row bottom padding
+`calc(var(--sp-6) + var(--safe-b))`, creating an oversized white chin on iPad.
+Tablet/coarse-pointer place sheets should override `#place-sheet-actions` back
+to `var(--sp-6)` bottom padding; keep the safe-area padding only for phone
+bottom sheets.
+
+**Edge on iPad Pro follow-up:** user confirmed the chin persisted on Edge on
+iPad Pro 11. Treat this as both a side-sheet padding issue and a viewport
+safe-area paint issue: non-phone widths always strip `#place-sheet-actions`
+back to `var(--sp-6)`, and coarse-pointer tablet viewports extend `#app`/`#map`
+through the bottom safe area so the map paints behind the iPad home-indicator
+region instead of exposing a white body strip.
