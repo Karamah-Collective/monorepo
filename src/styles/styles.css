@@ -2279,9 +2279,18 @@ body.dark-mode .sp-tip {
   #place-sheet {
     display: flex;
     overflow: hidden;
+    max-height: calc(100dvh - 48px) !important;
+  }
+  #place-sheet .sheet-head,
+  #place-sheet-actions {
+    flex: 0 0 auto;
   }
   #place-sheet-body {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100dvh - 190px);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

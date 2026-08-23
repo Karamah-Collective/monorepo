@@ -4081,3 +4081,26 @@ rounded email shell; the area outside the shell should be transparent.
 **Verification:** `node --check functions/api/weekly-report.js` passed. No
 Playwright/browser test was run, matching the standing manual-testing
 preference.
+
+---
+
+## 2026-08-23 - Weekly email panel polish and tablet place-sheet body fix
+
+**Weekly email polish:** the "Performance against the four-week average" divider
+should read as a distinct section boundary, not a faint list label. Production
+email now uses a stronger neutral band with an accent bottom rule. Audience
+geography and Contribution mix cards are forced to the same email-safe height so
+their rounded panels align even when one has fewer rows.
+
+**Tablet place-sheet bug:** on tablet widths, the generic sheet rule changes
+sheets to block layout, while `#place-sheet` is intentionally forced back to a
+flex column to keep the action row pinned. The body was still using the shared
+`flex: 1` behavior against an auto/fit-content parent, which can collapse the
+scroll body on iPad Safari and leave only the title/actions visible. Tablet
+`#place-sheet-body` now uses natural flex sizing with a viewport max-height,
+while the header and action row are fixed-size flex items.
+
+**Verification:** `node --check functions/api/weekly-report.js`,
+`node --check src/places.js`, and `git diff --check` passed. No
+Playwright/browser test was run, matching the standing manual-testing
+preference.

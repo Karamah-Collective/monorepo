@@ -428,7 +428,7 @@ function comparisonRows(rows) {
 
 function insightBand(title, subtitle, total, totalLabel, rowsHtml, footerLabel, footerValue, barHtml = "") {
   return `
-    <div style="background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;">
+    <div style="height:170px;background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;box-sizing:border-box;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <td style="vertical-align:top;padding:1px 10px 7px 0;">
@@ -679,8 +679,8 @@ function buildEmail(report) {
             </table>
           </div>
 
-          <div style="margin-top:12px;border-bottom:1px solid #d6ddd9;padding-bottom:7px;">
-            <span style="font-size:11px;color:#101714;font-weight:700;">Performance against the four-week average</span>
+          <div style="margin-top:14px;padding:8px 10px;border-top:1px solid #d6ddd9;border-bottom:2px solid #08705b;background:#f7f9f8;">
+            <span style="font-size:11px;color:#101714;font-weight:800;">Performance against the four-week average</span>
             <span style="float:right;font-size:9px;color:#89928d;">Marker shows baseline</span>
           </div>
           <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">${comparisonHtml}</table>
