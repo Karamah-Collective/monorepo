@@ -362,10 +362,10 @@ function formatDecimal(value, digits = 1) {
   return Number.isFinite(n) ? n.toFixed(digits) : "0.0";
 }
 
-function htmlInlineBars(items, labelKey, valueKey = "visits") {
+function htmlInlineBars(items, labelKey, valueKey = "visits", limit = 5) {
   if (!items?.length) return `<span style="color:#7a8695;font-size:12px;">No data</span>`;
   const max = Math.max(...items.map((item) => number(item[valueKey])), 1);
-  return items.slice(0, 5).map((item) => {
+  return items.slice(0, limit).map((item) => {
     const value = number(item[valueKey]);
     const width = Math.max(5, Math.round((value / max) * 100));
     return `
@@ -410,13 +410,13 @@ function comparisonRows(rows) {
     const max = Math.max(currentValue, averageValue, 1);
     const currentWidth = hasCurrent ? Math.max(currentValue ? 4 : 0, Math.min(100, (currentValue / max) * 100)) : 0;
     const averagePosition = hasAverage ? Math.max(0, Math.min(100, (averageValue / max) * 100)) : 0;
+    const markerStart = Math.max(0, averagePosition - 0.3);
+    const markerEnd = Math.min(100, averagePosition + 0.3);
     return `
       <tr>
         <td style="width:92px;padding:6px 8px 6px 0;color:#53605a;font-size:10px;font-weight:600;">${escapeHtml(label)}</td>
         <td style="padding:6px 10px 6px 0;">
-          <div style="position:relative;height:6px;background:#e4e9e6;border-radius:999px;">
-            <div style="height:6px;width:${currentWidth}%;background:#08705b;border-radius:999px;"></div>
-            <span style="position:absolute;top:50%;left:${averagePosition}%;width:2px;height:12px;background:#89928d;border-radius:999px;transform:translate(-50%,-50%);"></span>
+          <div style="height:12px;border-radius:999px;background:linear-gradient(90deg, transparent 0%, transparent ${markerStart}%, #89928d ${markerStart}%, #89928d ${markerEnd}%, transparent ${markerEnd}%, transparent 100%),linear-gradient(90deg, #08705b 0%, #08705b ${currentWidth}%, #e4e9e6 ${currentWidth}%, #e4e9e6 100%);">
           </div>
         </td>
         <td style="width:60px;padding:6px 8px 6px 0;text-align:right;color:#101714;font-size:10px;font-weight:700;">${hasCurrent ? fmtNumber(currentValue) : "n/a"}</td>
@@ -476,7 +476,6 @@ function contributionBreakdown(community) {
     { baseLabel: "Place edits", count: community.submittedEdits },
     { baseLabel: "New places", count: community.submittedPlaces },
     { baseLabel: "Events", count: community.events + community.eventEdits },
-    { baseLabel: "Eid locations", count: community.eidSubmissions },
   ];
   const total = rows.reduce((sum, row) => sum + number(row.count), 0);
   return rows.map((row) => ({
@@ -543,12 +542,15 @@ function buildEmail(report) {
   const actions = communityActions(current);
   const previousActions = communityActions(previous);
   const averageActions = communityActions(baselineAvg);
+  const contributionItems = contributionBreakdown(current);
+  const contributionPanelActions = contributionItems.reduce((sum, row) => sum + number(row.count), 0);
+  const baselineContributionPanelActions = contributionBreakdown(baselineAvg).reduce((sum, row) => sum + number(row.count), 0);
   const approved = approvedActions(current);
   const previousApproved = approvedActions(previous);
   const averageApproved = approvedActions(baselineAvg);
   const pending = pendingActions(current);
-  const contributionRateValue = currentAnalytics.ok && visits > 0 ? (actions / visits) * 100 : null;
-  const baselineContributionRateValue = currentAnalytics.ok && baselineVisits > 0 ? (averageActions / baselineVisits) * 100 : null;
+  const contributionRateValue = currentAnalytics.ok && visits > 0 ? (contributionPanelActions / visits) * 100 : null;
+  const baselineContributionRateValue = currentAnalytics.ok && baselineVisits > 0 ? (baselineContributionPanelActions / baselineVisits) * 100 : null;
   const contributionRate = contributionRateValue !== null ? `${formatDecimal(contributionRateValue)}%` : "n/a";
   const baselineContributionRate = baselineContributionRateValue !== null ? `${formatDecimal(baselineContributionRateValue)}%` : "n/a";
   const contributionDelta = contributionRateValue !== null && baselineContributionRateValue !== null
@@ -606,7 +608,7 @@ function buildEmail(report) {
       "Top countries by unique visitors",
       fmtNumber(visits),
       "unique visitors",
-      htmlInlineBars(currentAnalytics.topCountries, "name"),
+      htmlInlineBars(currentAnalytics.topCountries, "name", "visits", 3),
       "Top 3 share",
       topItemsShare(currentAnalytics.topCountries, visits),
       audienceShareBar(currentAnalytics.topCountries, visits),
@@ -614,16 +616,19 @@ function buildEmail(report) {
     : `<div style="background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;color:#53605a;font-size:10px;">${escapeHtml(currentAnalytics.warning)}</div>`;
   const contributionPanel = insightBand(
     "Contribution mix",
-    `${fmtNumber(actions)} community actions`,
+    `${fmtNumber(contributionPanelActions)} community actions`,
     escapeHtml(contributionRate),
     "visitor -> action",
-    htmlInlineBars(contributionBreakdown(current), "label", "count"),
+    htmlInlineBars(contributionItems, "label", "count", 4),
     `Baseline conversion ${baselineContributionRate}`,
     contributionDelta,
   );
 
   const htmlContent = `
-    <div style="font-family:'Plus Jakarta Sans','Aptos','Segoe UI',Arial,sans-serif;max-width:680px;margin:0 auto;padding:12px;background:#f1f4f2;color:#101714;">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    </style>
+    <div style="font-family:'Plus Jakarta Sans','Aptos','Segoe UI',Arial,sans-serif;max-width:680px;margin:0 auto;padding:0;background:transparent;color:#101714;">
       <div style="background:#ffffff;border:1px solid #d6ddd9;border-radius:20px;overflow:hidden;">
         <div style="padding:16px 18px;border-bottom:1px solid #e4e9e6;">
           <table style="width:100%;border-collapse:collapse;">

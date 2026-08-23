@@ -4061,3 +4061,23 @@ pins now cover both sections instead of only favourite/bookmarked places.
 **Verification:** `node --check functions/api/weekly-report.js` and
 `node --check src/places.js` passed. No Playwright/browser test was run,
 matching the standing manual-testing preference.
+
+---
+
+## 2026-08-23 - Weekly email rendering follow-up
+
+**Production email corrections:** the benchmark average marker no longer relies
+on absolute positioning or transforms, because those were dropped by the mail
+client and made the average line disappear. The marker is now part of the inline
+track background. The audience geography card is capped to the top 3 countries,
+and the contribution mix card follows the demo by stopping at Events instead of
+including Eid locations.
+
+**Email visual preference:** production weekly-report emails should try to load
+Plus Jakarta Sans explicitly, while retaining safe system fallbacks for clients
+that strip webfont imports. Avoid an extra filled/padded wrapper outside the
+rounded email shell; the area outside the shell should be transparent.
+
+**Verification:** `node --check functions/api/weekly-report.js` passed. No
+Playwright/browser test was run, matching the standing manual-testing
+preference.
