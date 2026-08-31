@@ -970,7 +970,10 @@ function _buildCard(p, i) {
       ? `<span class="pl-closed-chip">Closed</span>`
       : "";
   const ratingChip = _buildRatingChip(p.id);
-  const metaHTML = `${openBadge}${ratingChip}`;
+  const tagBadge = `<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>`;
+  const desktopMetaHTML = `${openBadge}${ratingChip}${tagBadge}${distBadge}${boycottBadge}${sponsorBadge}`;
+  const compactNameHTML = `${tagBadge}${distBadge}`;
+  const compactAddrHTML = `${openBadge}${ratingChip}`;
   const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
   const evCount = placeEvents.length;
   const isFeatured = !!activeSponsor(p);
@@ -995,12 +998,12 @@ function _buildCard(p, i) {
   // Dot gets data-ev-count for event badge rendering via CSS ::after
   const dotAttrs = evCount ? ` data-ev-count="${evCount}" role="button" tabindex="0" aria-label="${evCount} event${evCount > 1 ? "s" : ""}, tap to expand" aria-expanded="false"` : "";
 
-  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}${metaHTML ? ' pl-card--has-meta' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name"><span class="pl-title">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}</span><span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>${distBadge}${boycottBadge}${sponsorBadge}</span>
-    <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}</span>
-    <div class="pl-meta${metaHTML ? "" : " hide"}">
-      ${metaHTML}
+    <span class="pl-name"><span class="pl-title">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}</span><span class="pl-name-chips">${compactNameHTML}</span></span>
+    <span class="pl-addr"><span class="pl-addr-text">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}</span><span class="pl-addr-chips">${compactAddrHTML}</span></span>
+    <div class="pl-meta">
+      ${desktopMetaHTML}
     </div>
     <div class="pl-acts">
       <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">

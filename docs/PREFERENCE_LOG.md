@@ -4259,3 +4259,11 @@ floating far to the right.
 first-line metadata cluster, not at the end of the address. Compact phone cards
 now render `.pl-dist` as a neutral chip beside `.pl-tags-summary`, with balanced
 vertical padding and row gap so cards feel dense but not cramped.
+
+**2026-08-31 seventh follow-up:** fixed the deployed phone card regression
+caused by moving chips into the name row globally. Desktop Places cards are back
+to the three-line structure (name, address, metadata chips), with distance in
+the metadata row as a chip. Phone cards keep a two-line layout: tag and distance
+chips sit beside the name, while open status and rating sit beside the address;
+the desktop metadata row is hidden on phone. `#places-list-focus` remains
+phone-only. Cache version synced to `20260831-15`.

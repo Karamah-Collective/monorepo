@@ -901,15 +901,13 @@ both be active in the same filter state.
 
 `docs/place-card-compact-designs.html` is the current standalone concept board
 for evaluating tighter two-line place-card layouts before replacing the
-production card markup. The live list-focus card has already adopted the most
-important spacing save: `.pl-tags-summary` sits beside the place name, while
-`.pl-title` owns text truncation. List-focus cards use a true two-row grid by
-default; only `.pl-card--has-meta` cards add the third metadata row.
-The same compact card geometry is used by normal phone Places cards so list
-mode and the standard Places window stay visually unified. `.pl-title` must not
-grow to fill the full name row; the tag chip should sit directly beside the
-place name. Distance (`.pl-dist`) is also a first-line chip in that cluster,
-not appended to the address line.
+production card markup. Phone cards now keep `.pl-tags-summary` and distance
+(`.pl-dist`) in `.pl-name-chips` beside the truncated `.pl-title`, while open
+status and rating sit in `.pl-addr-chips` beside the address. Phone cards use a
+true two-row grid by default and hide the desktop metadata row so status/rating
+chips cannot create a broken third row. Desktop cards keep the classic
+three-row structure: name, address, then all chips on the `.pl-meta` row,
+including the distance chip. The list-focus toggle is phone-only.
 
 At the 769–1199px tablet breakpoint, the generic `.sheet, #places-sheet { display: block; overflow-y: auto }` single-scroll-container override (used so `fit-content` sizing works naturally for most sheets) is itself overridden back to `display: flex` for `#place-sheet` specifically, so the pinned footer survives at that width too — only `#place-sheet-body` keeps its own `overflow-y: auto`.
 

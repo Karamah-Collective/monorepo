@@ -3878,12 +3878,24 @@ button.pf-stat-card:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.pl-name-chips {
+  display: none;
+}
 
 .pl-addr {
   grid-area: addr;
   align-self: start;
   font-size: var(--pl-row2);
   min-width: 0;
+}
+.pl-addr-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-addr-chips {
+  display: none;
 }
 .pl-dist {
   display: inline-flex;
@@ -9441,7 +9453,7 @@ body.dark-mode .sp-chip {
   #places-list li:not(.pl-section-hdr):not(.pl-city-group-body),
   #places-empty {
     column-gap: var(--sp-3);
-    row-gap: var(--sp-0h);
+    row-gap: var(--sp-1);
     grid-template:
       "icon name acts" auto
       "icon addr acts" auto
@@ -9449,28 +9461,50 @@ body.dark-mode .sp-chip {
     align-items: center;
     padding: var(--sp-2h) var(--sp-2) var(--sp-2h) var(--sp-4);
   }
-  #places-list li.pl-card--has-meta {
-    grid-template:
-      "icon name acts" auto
-      "icon addr acts" auto
-      "icon meta acts" auto
-      / auto 1fr auto;
-  }
   .pl-name {
     align-self: end;
+    gap: var(--sp-1);
   }
   .pl-title {
     flex: 0 1 auto;
   }
+  .pl-name-chips {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    flex: 0 0 auto;
+    min-width: 0;
+  }
   .pl-addr {
     align-self: start;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
     line-height: var(--lh-tight);
+  }
+  .pl-addr-chips {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    flex: 0 0 auto;
+    min-width: 0;
   }
   .pl-dot {
     align-self: center;
   }
   .pl-tags-summary {
     flex-shrink: 0;
+    line-height: var(--lh-tight);
+    padding: var(--sp-0) var(--sp-1h);
+  }
+  .pl-name-chips .pl-dist,
+  .pl-addr-chips .pl-rating-chip,
+  .pl-addr-chips .pl-open-chip,
+  .pl-addr-chips .pl-closed-chip,
+  .pl-name-chips .pl-boycott-chip,
+  .pl-name-chips .pl-sponsor-chip {
+    line-height: var(--lh-tight);
+    padding: var(--sp-0) var(--sp-1h);
   }
   .pl-acts {
     align-self: center;
@@ -9492,9 +9526,8 @@ body.dark-mode .sp-chip {
     width: var(--sp-6);
     height: var(--sp-6);
   }
-  .pl-meta {
-    gap: var(--sp-1h);
-    padding-top: var(--sp-1);
+  .pl-card:not([data-custom-pin-id]) > .pl-meta {
+    display: none;
   }
   #places-sheet.places-list-focus #places-filters {
     display: block;
@@ -9555,6 +9588,7 @@ body.dark-mode .sp-chip {
   #places-sheet.places-list-focus #places-list li:not(.pl-section-hdr):not(.pl-city-group-body),
   #places-sheet.places-list-focus #places-empty {
     column-gap: var(--sp-1h);
+    row-gap: var(--sp-1);
     padding-left: var(--sp-3);
     padding-right: var(--sp-1);
   }
@@ -9564,14 +9598,11 @@ body.dark-mode .sp-chip {
   #places-sheet.places-list-focus .pl-acts {
     margin-right: calc(-1 * var(--sp-1h));
   }
-  #places-sheet.places-list-focus .pl-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-1);
-    padding-top: var(--sp-0h);
-    min-width: 0;
+  #places-sheet.places-list-focus .pl-card:not([data-custom-pin-id]) > .pl-meta {
+    display: none;
   }
   #places-sheet.places-list-focus .pl-tags-summary,
+  #places-sheet.places-list-focus .pl-dist,
   #places-sheet.places-list-focus .pl-rating-chip,
   #places-sheet.places-list-focus .pl-open-chip,
   #places-sheet.places-list-focus .pl-closed-chip,
