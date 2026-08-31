@@ -47,10 +47,19 @@ const _CONTACT_PHONE_ICON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24"
 
 /** Place types grouped under the "Religious" tab (everything except mosques). */
 const RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"]);
+const LIST_FOCUS_TYPE_OPTIONS = [
+  { id: "all", label: "All" },
+  { id: "mosque", label: "Mosques" },
+  { id: "religious", label: "Spaces" },
+  { id: "restaurant", label: "Food" },
+  { id: "shop", label: "Shops" },
+  { id: "saved", label: "Saved" },
+];
 let activeSortField = "default"; // "default" | "name" | "distance" | "date"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
+let _listFocusTypeFilters = new Set();
 
 /** Animate open overlay windows whose natural height changes. */
 function _animateWindowCardHeight(sourceEl, changeFn) {
@@ -210,6 +219,7 @@ function getFilterBarTags(type) {
 }
 
 const SORT_FIELD_LABELS = { default: "Most Relevant", name: "Name", distance: "Distance", date: "Date", rating: "Rating" };
+const PLACES_REFINE_SCROLL_DELTA = 6;
 
 function extractCityFromAddress(address) {
   const raw = String(address || "").trim();
@@ -225,6 +235,27 @@ function extractCityFromAddress(address) {
 
 function getPlaceCity(place) {
   return String(place.city || extractCityFromAddress(place.address) || "Other places").trim();
+}
+
+function _matchesTypeScope(place, type) {
+  if (type === "all") return true;
+  if (type === "saved") return _isSavedDirectoryPlace(place);
+  if (type === "religious") return RELIGIOUS_TYPES.has(place.type);
+  return place.type === type;
+}
+
+function _isPlacesListFocusActive() {
+  return placesSheet?.classList.contains("places-list-focus");
+}
+
+function _filterPlacesForCurrentType({ markers = false } = {}) {
+  if (_isPlacesListFocusActive() && activeTypeFilter !== "saved" && _listFocusTypeFilters.size) {
+    return placesData.filter((place) => [..._listFocusTypeFilters].some((type) => _matchesTypeScope(place, type)));
+  }
+  if (activeTypeFilter === "all") return placesData;
+  if (activeTypeFilter === "saved") return placesData.filter(markers ? _isSavedDirectoryPlace : (p) => isFavourite(p.id));
+  if (activeTypeFilter === "religious") return placesData.filter((p) => RELIGIOUS_TYPES.has(p.type));
+  return placesData.filter((p) => p.type === activeTypeFilter);
 }
 
 // Fixed priority so cities always appear in a sensible geographic order
@@ -938,6 +969,8 @@ function _buildCard(p, i) {
     : openStatus === false
       ? `<span class="pl-closed-chip">Closed</span>`
       : "";
+  const ratingChip = _buildRatingChip(p.id);
+  const metaHTML = `${openBadge}${ratingChip}`;
   const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
   const evCount = placeEvents.length;
   const isFeatured = !!activeSponsor(p);
@@ -962,12 +995,12 @@ function _buildCard(p, i) {
   // Dot gets data-ev-count for event badge rendering via CSS ::after
   const dotAttrs = evCount ? ` data-ev-count="${evCount}" role="button" tabindex="0" aria-label="${evCount} event${evCount > 1 ? "s" : ""}, tap to expand" aria-expanded="false"` : "";
 
-  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}${metaHTML ? ' pl-card--has-meta' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
-    <span class="pl-name">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}${boycottBadge}${sponsorBadge}</span>
-    <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}${distBadge}</span>
-    <div class="pl-meta">
-      ${openBadge}${_buildRatingChip(p.id)}<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>
+    <span class="pl-name"><span class="pl-title">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}</span><span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>${distBadge}${boycottBadge}${sponsorBadge}</span>
+    <span class="pl-addr">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}</span>
+    <div class="pl-meta${metaHTML ? "" : " hide"}">
+      ${metaHTML}
     </div>
     <div class="pl-acts">
       <button class="pl-dir-btn" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${escA(p.name)}" aria-label="Directions to ${escA(p.name)}" title="Directions">
@@ -1314,14 +1347,7 @@ export function addPlaceMarkers() {
   savedPinMarkers.forEach((m) => m.remove());
   savedPinMarkers = [];
 
-  let filtered =
-    activeTypeFilter === "all"
-      ? placesData
-      : activeTypeFilter === "saved"
-        ? placesData.filter(_isSavedDirectoryPlace)
-        : activeTypeFilter === "religious"
-          ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
-          : placesData.filter((p) => p.type === activeTypeFilter);
+  let filtered = _filterPlacesForCurrentType({ markers: true });
 
   if (activeTagFilters.size) {
     filtered = filtered.filter((p) =>
@@ -2073,6 +2099,7 @@ const scrim = document.getElementById("scrim");
 
 export function openPlacesSheet() {
   if (placesSheet._hideTimeout) { clearTimeout(placesSheet._hideTimeout); placesSheet._hideTimeout = null; }
+  _setPlacesListFocus(false, { snap: false });
   const dirPanel = document.getElementById("dir-panel");
   if (dirPanel._animCleanup) { clearTimeout(dirPanel._animCleanup); dirPanel._animCleanup = null; }
   dirPanel.classList.add("shut");
@@ -2091,6 +2118,7 @@ export function openPlacesSheet() {
 
 function _setPlacesTypeFilter(type) {
   activeTypeFilter = type;
+  _listFocusTypeFilters = new Set();
   document.querySelectorAll("#places-type-chips .pf-chip").forEach((chip) =>
     chip.classList.toggle("active", chip.dataset.type === type),
   );
@@ -2224,6 +2252,7 @@ document.getElementById("places-type-chips").addEventListener("click", (e) => {
   document.querySelectorAll(".pf-chip").forEach((c) => c.classList.remove("active"));
   chip.classList.add("active");
   activeTypeFilter = chip.dataset.type;
+  _listFocusTypeFilters = new Set();
   activeTagFilters.clear();
   // Update search placeholder if search is open, re-run filter with same query
   if (_tfRow.classList.contains("pl-searching")) {
@@ -2243,6 +2272,7 @@ const sortToggle = document.getElementById("sort-toggle");
 const sortDropdown = document.getElementById("sort-dropdown");
 const sortLabel = document.getElementById("sort-label");
 const placesClearBtn = document.getElementById("places-clear-filters");
+const placesListFocusBtn = document.getElementById("places-list-focus");
 
 // ── Inline places search ─────────────────────────────────────────────────────
 const _tfRow = document.getElementById("tf-row");
@@ -2250,6 +2280,7 @@ const _plSearchWrap = document.getElementById("pl-search-wrap");
 const _plSearchInput = document.getElementById("pl-search-input");
 const _plSearchIcnBtn = document.getElementById("pl-search-icn-btn");
 let _plSearchDebounce = 0;
+let _placesRefineLastScrollTop = 0;
 
 const _SEARCH_PLACEHOLDERS = {
   all: "Search places\u2026",
@@ -2260,7 +2291,75 @@ const _SEARCH_PLACEHOLDERS = {
   saved: "Search saved\u2026",
 };
 
+function _isPhonePlacesViewport() {
+  return window.matchMedia?.("(max-width: 768px)")?.matches || window.innerWidth <= 768;
+}
+
+function _setPlacesListFocus(active, { snap = true } = {}) {
+  const next = Boolean(active && _isPhonePlacesViewport());
+  if (next && activeTypeFilter !== "all" && activeTypeFilter !== "saved" && !_listFocusTypeFilters.size) {
+    _listFocusTypeFilters.add(activeTypeFilter);
+  }
+  placesSheet.classList.toggle("places-list-focus", next);
+  _setPlacesRefineCollapsed(false);
+  _placesRefineLastScrollTop = document.getElementById("places-scroll")?.scrollTop || 0;
+  placesListFocusBtn?.classList.toggle("active", next);
+  placesListFocusBtn?.setAttribute("aria-pressed", next ? "true" : "false");
+  placesListFocusBtn?.setAttribute("aria-label", next ? "Show filters" : "Focus list");
+  placesListFocusBtn?.setAttribute("title", next ? "Show filters" : "Focus list");
+  renderTagFilterBar();
+  updateClearButton();
+  if (next) {
+    closeSortDropdown();
+    _plSearchInput.blur();
+    if (!placesSheet.classList.contains("shut")) {
+      placesSheet.classList.add("full");
+      placesSheet.style.height = "";
+      placesSnap.softRemeasure();
+      scheduleMapViewportSync();
+    }
+    return;
+  }
+  placesSheet.classList.remove("full");
+  if (snap && !placesSheet.classList.contains("shut")) {
+    placesSnap.remeasure();
+    scheduleMapViewportSync();
+  }
+}
+
+function _setPlacesRefineCollapsed(collapsed) {
+  if (!placesSheet?.classList.contains("places-list-focus")) collapsed = false;
+  const next = Boolean(collapsed);
+  const changed = placesSheet && placesSheet.classList.contains("places-refine-collapsed") !== next;
+  placesSheet?.classList.toggle("places-refine-collapsed", next);
+  if (changed) requestAnimationFrame(() => placesSnap.softRemeasure());
+}
+
+function _isPlacesRefineInteractionOpen() {
+  return _plSearchWrap.classList.contains("open") || !sortDropdown.classList.contains("shut");
+}
+
+function _syncPlacesRefineForScroll() {
+  const scrollEl = document.getElementById("places-scroll");
+  if (!scrollEl) return;
+  hideTagTip();
+  if (!placesSheet.classList.contains("places-list-focus")) {
+    _placesRefineLastScrollTop = scrollEl.scrollTop;
+    _setPlacesRefineCollapsed(false);
+    return;
+  }
+  const currentTop = scrollEl.scrollTop;
+  const delta = currentTop - _placesRefineLastScrollTop;
+  if (delta > PLACES_REFINE_SCROLL_DELTA && currentTop > PLACES_REFINE_SCROLL_DELTA && !_isPlacesRefineInteractionOpen()) {
+    _setPlacesRefineCollapsed(true);
+  } else if (delta < -PLACES_REFINE_SCROLL_DELTA) {
+    _setPlacesRefineCollapsed(false);
+  }
+  _placesRefineLastScrollTop = currentTop;
+}
+
 function _openPlaceSearch() {
+  _setPlacesRefineCollapsed(false);
   _tfRow.classList.add("pl-searching");
   _plSearchWrap.classList.add("open");
   _plSearchInput.placeholder = _SEARCH_PLACEHOLDERS[activeTypeFilter] || _SEARCH_PLACEHOLDERS.all;
@@ -2324,12 +2423,13 @@ _plSearchInput.addEventListener("keydown", (e) => {
 });
 
 function updateClearButton() {
-  const dirty = activeTypeFilter !== "all" || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery || _openNowFilter || _ratedFilter;
+  const dirty = activeTypeFilter !== "all" || _listFocusTypeFilters.size > 0 || activeTagFilters.size > 0 || activeSortField !== "default" || placeSearchQuery || _openNowFilter || _ratedFilter;
   placesClearBtn.classList.toggle("hide", !dirty);
 }
 
 placesClearBtn.addEventListener("click", () => {
   activeTypeFilter = "all";
+  _listFocusTypeFilters = new Set();
   document.querySelectorAll(".pf-chip").forEach((c) => c.classList.toggle("active", c.dataset.type === "all"));
   activeTagFilters.clear();
   activeSortField = "default";
@@ -2346,6 +2446,17 @@ placesClearBtn.addEventListener("click", () => {
   _crossFadePlacesList();
   placesSnap.softRemeasure();
   updateClearButton();
+});
+
+placesListFocusBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  _setPlacesListFocus(!placesSheet.classList.contains("places-list-focus"));
+});
+
+window.addEventListener("resize", () => {
+  if (!_isPhonePlacesViewport() && placesSheet.classList.contains("places-list-focus")) {
+    _setPlacesListFocus(false);
+  }
 });
 
 function updateSortButton() {
@@ -2370,6 +2481,7 @@ function closeSortDropdown() {
 
 sortToggle.addEventListener("click", (e) => {
   e.stopPropagation();
+  _setPlacesRefineCollapsed(false);
   if (_plSearchWrap.classList.contains("open")) {
     _closePlaceSearch();
     _plSearchInput.blur();
@@ -2434,41 +2546,83 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".pl-tags-summary") && !e.target.closest(".pl-tag-tip")) hideTagTip();
 });
 
+function _buildListFocusTypeFiltersHTML() {
+  if (!_isPlacesListFocusActive()) return "";
+  const selected = _listFocusTypeFilters;
+  const allActive = activeTypeFilter !== "saved" && selected.size === 0;
+  const buttons = LIST_FOCUS_TYPE_OPTIONS.map((type) => {
+    const active = type.id === "all"
+      ? allActive
+      : type.id === "saved"
+        ? activeTypeFilter === "saved"
+        : activeTypeFilter !== "saved" && selected.has(type.id);
+    return `<button class="tf-chip tf-type-chip${active ? " active" : ""}" data-list-type="${escA(type.id)}">${esc(type.label)}</button>`;
+  }).join("");
+  return `<div class="tf-type-panel"><div class="tf-panel-label">Show</div><div class="tf-type-row">${buttons}</div></div>`;
+}
+
+function _getListFocusTagTypes() {
+  if (!_isPlacesListFocusActive() || activeTypeFilter === "saved") return [activeTypeFilter];
+  const selected = _listFocusTypeFilters.size
+    ? [..._listFocusTypeFilters]
+    : ["mosque", "religious", "restaurant", "shop"];
+  return selected.flatMap((type) => type === "religious" ? [...RELIGIOUS_TYPES] : [type]);
+}
+
+function _getFilterItemsForCurrentType() {
+  if (!_isPlacesListFocusActive()) {
+    if (activeTypeFilter === "all" || activeTypeFilter === "saved") return [];
+    return activeTypeFilter === "religious"
+      ? [...RELIGIOUS_TYPES].flatMap((type) => getFilterBarTags(type))
+      : getFilterBarTags(activeTypeFilter);
+  }
+  if (activeTypeFilter === "saved") return [];
+  const seen = new Set();
+  const items = [];
+  _getListFocusTagTypes().forEach((type) => {
+    getFilterBarTags(type).forEach((item) => {
+      const id = item.group ? `group:${item.parent.id}` : `tag:${item.tag.id}`;
+      if (seen.has(id)) return;
+      seen.add(id);
+      items.push(item);
+    });
+  });
+  return items;
+}
+
 function renderTagFilterBar() {
-  const typePlaces =
-    activeTypeFilter === "all" ? placesData
-      : activeTypeFilter === "religious" ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
-        : placesData.filter((p) => p.type === activeTypeFilter);
+  const typePlaces = _filterPlacesForCurrentType({ markers: activeTypeFilter === "saved" });
   const count = typePlaces.length;
-  const items = (activeTypeFilter !== "all" && activeTypeFilter !== "saved")
-    ? (activeTypeFilter === "religious"
-      ? [...RELIGIOUS_TYPES].flatMap((t) => getFilterBarTags(t))
-      : getFilterBarTags(activeTypeFilter))
-    : [];
+  const items = _getFilterItemsForCurrentType();
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
   // Filter: show when tags exist OR places have hours data (Open Now chip) OR ratings exist
   const hasHoursData = typePlaces.some((p) => p.hours);
   const hasRatingData = typePlaces.some((p) => getPlaceRating(p.id) !== null);
-  const showFilter = (totalTags > 0 || hasHoursData || hasRatingData) && count > 0;
+  const showFilter = _isPlacesListFocusActive() || ((totalTags > 0 || hasHoursData || hasRatingData) && count > 0);
   tfToggle.classList.toggle("hide", !showFilter);
   if (!showFilter) {
     tfToggle.classList.remove("open");
     tfChips.classList.add("shut");
   } else {
     updateTagCount();
-    let html = "<div class=\"tf-chips-inner\">";
+    let html = "<div class=\"tf-chips-inner\">" + _buildListFocusTypeFiltersHTML();
     // Open Now chip — always first in the filter panel
     html += `<button class="tf-chip tf-open-now-chip${_openNowFilter ? " active" : ""}" data-action="open-now">Open Now</button>`;
     html += `<button class="tf-chip tf-rated-chip${_ratedFilter ? " active" : ""}" data-action="rated">Rated</button>`;
     for (const it of items) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
-          html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(it.parent.label)}<span class="tf-group-count${activeCount ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
-          html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}><div class="tf-group-inner">`;
-          html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
-          html += `</div>`;
-          html += `</div>`;
+        const isExclusive = EXCLUSIVE_GROUPS.has(it.parent.id);
+        const activeLabel = isExclusive
+          ? it.children.find(c => activeTagFilters.has(c.id))?.label || ""
+          : "";
+        const groupLabel = activeLabel ? `${it.parent.label}: ${activeLabel}` : it.parent.label;
+        html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}${isExclusive ? " tf-group-toggle--select" : ""}" data-group="${it.parent.id}">${esc(groupLabel)}<span class="tf-group-count${activeCount && !isExclusive ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+        html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}><div class="tf-group-inner">`;
+        html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
+        html += `</div>`;
+        html += `</div>`;
       } else {
         html += `<button class="tf-chip${activeTagFilters.has(it.tag.id) ? " active" : ""}" data-tag="${it.tag.id}">${esc(it.tag.label)}</button>`;
       }
@@ -2484,7 +2638,10 @@ function renderTagFilterBar() {
 }
 
 function updateTagCount() {
-  const totalActive = activeTagFilters.size + (_openNowFilter ? 1 : 0) + (_ratedFilter ? 1 : 0);
+  const listTypeCount = _isPlacesListFocusActive()
+    ? (activeTypeFilter === "saved" ? 1 : _listFocusTypeFilters.size)
+    : 0;
+  const totalActive = activeTagFilters.size + (_openNowFilter ? 1 : 0) + (_ratedFilter ? 1 : 0) + listTypeCount;
   if (totalActive) {
     const countText = String(totalActive);
     tfCount.textContent = countText;
@@ -2562,6 +2719,33 @@ tfToggle.addEventListener("click", () => {
 });
 
 document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
+  const typeChip = e.target.closest("[data-list-type]");
+  if (typeChip) {
+    const type = typeChip.dataset.listType;
+    activeTagFilters.clear();
+    if (type === "all") {
+      activeTypeFilter = "all";
+      _listFocusTypeFilters = new Set();
+    } else if (type === "saved") {
+      activeTypeFilter = "saved";
+      _listFocusTypeFilters = new Set();
+    } else {
+      if (activeTypeFilter === "saved") _listFocusTypeFilters = new Set();
+      activeTypeFilter = "all";
+      if (_listFocusTypeFilters.has(type)) _listFocusTypeFilters.delete(type);
+      else _listFocusTypeFilters.add(type);
+    }
+    document.querySelectorAll("#places-type-chips .pf-chip").forEach((chip) =>
+      chip.classList.toggle("active", chip.dataset.type === activeTypeFilter),
+    );
+    renderTagFilterBar();
+    addPlaceMarkers();
+    document.getElementById("places-scroll").scrollTop = 0;
+    _crossFadePlacesList();
+    placesSnap.softRemeasure();
+    updateClearButton();
+    return;
+  }
   // Open Now chip
   const openNowChip = e.target.closest(".tf-open-now-chip");
   if (openNowChip) {
@@ -2585,6 +2769,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   // Expand/collapse a subtag group
   const groupBtn = e.target.closest(".tf-group-toggle");
   if (groupBtn) {
+    _setPlacesRefineCollapsed(false);
     const gid = groupBtn.dataset.group;
     const panel = tfChips.querySelector(`.tf-group-chips[data-group-for="${gid}"]`);
     if (panel) {
@@ -2636,14 +2821,24 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
   if (!chip) return;
   const tagId = chip.dataset.tag;
   const groupPanel = chip.closest(".tf-group-chips");
-  // Exclusive group: deselect siblings before toggling
-  if (groupPanel?.hasAttribute("data-exclusive") && !activeTagFilters.has(tagId)) {
+  const isExclusiveGroup = groupPanel?.hasAttribute("data-exclusive");
+  const wasActive = activeTagFilters.has(tagId);
+  if (isExclusiveGroup) {
     groupPanel.querySelectorAll(".tf-chip.active").forEach(c => {
-      if (c !== chip) { activeTagFilters.delete(c.dataset.tag); c.classList.remove("active"); }
+      activeTagFilters.delete(c.dataset.tag);
+      c.classList.remove("active");
     });
+    if (!wasActive) {
+      activeTagFilters.add(tagId);
+      chip.classList.add("active");
+    }
+  } else if (activeTagFilters.has(tagId)) {
+    activeTagFilters.delete(tagId);
+    chip.classList.remove("active");
+  } else {
+    activeTagFilters.add(tagId);
+    chip.classList.add("active");
   }
-  if (activeTagFilters.has(tagId)) { activeTagFilters.delete(tagId); chip.classList.remove("active"); }
-  else { activeTagFilters.add(tagId); chip.classList.add("active"); }
   // Update group count badge
   if (groupPanel) {
     const gid = groupPanel.dataset.groupFor;
@@ -2655,6 +2850,7 @@ document.getElementById("tag-filter-chips").addEventListener("click", (e) => {
       toggle.classList.toggle("has-active", cnt > 0);
     }
   }
+  if (isExclusiveGroup) renderTagFilterBar();
   updateTagCount();
   addPlaceMarkers();
   document.getElementById("places-scroll").scrollTop = 0;
@@ -2679,6 +2875,10 @@ let _crossFadeTimer = 0;
 function _crossFadePlacesList() {
   const scroll = document.getElementById("places-scroll");
   if (window.innerWidth <= 768 || placesSheet.classList.contains("shut")) {
+    if (_isPlacesListFocusActive()) {
+      renderPlacesList();
+      return;
+    }
     animateSheetHeight(placesSheet, () => renderPlacesList());
     return;
   }
@@ -2703,14 +2903,7 @@ function renderPlacesList() {
     return;
   }
 
-  let filtered =
-    activeTypeFilter === "all"
-      ? placesData
-      : activeTypeFilter === "saved"
-        ? placesData.filter((p) => isFavourite(p.id))
-        : activeTypeFilter === "religious"
-          ? placesData.filter((p) => RELIGIOUS_TYPES.has(p.type))
-          : placesData.filter((p) => p.type === activeTypeFilter);
+  let filtered = _filterPlacesForCurrentType();
 
   if (activeTagFilters.size) {
     filtered = filtered.filter((p) =>
@@ -2748,11 +2941,10 @@ function renderPlacesList() {
       (pin.name || "").toLowerCase().includes(q) || (pin.id || "").toLowerCase().includes(q),
     );
   }
-  // "Places you've visited" — a separate section from the favourites/pins
-  // above, since a place can be visited without being favourited (or vice
-  // versa). Manual, unverified marks (see EVT.VISITED_TOGGLED's doc comment
-  // in events.js) — not the same list as a future location-verified
-  // visitor timeline.
+  // "Visited" is a separate section from the favourites/pins above, since a
+  // place can be visited without being favourited (or vice versa). Manual,
+  // unverified marks (see EVT.VISITED_TOGGLED's doc comment in events.js) are
+  // not the same list as a future location-verified visitor timeline.
   let visitedPlacesList = activeTypeFilter === "saved"
     ? getVisitedIds().map((id) => placesData.find((p) => p.id === id)).filter(Boolean)
     : [];
@@ -2879,13 +3071,13 @@ function renderPlacesList() {
   // Saved tab sections collapse as a whole. Their city groups remain nested
   // inside and can be collapsed independently.
   const bookmarkedHTML = activeTypeFilter === "saved"
-    ? buildSectionHTML(SAVED_BOOKMARKED_GROUP, "Bookmarked places", sorted.length + customPins.length, regularHTML + pinHTML)
+    ? buildSectionHTML(SAVED_BOOKMARKED_GROUP, "Bookmarks", sorted.length + customPins.length, regularHTML + pinHTML)
     : regularHTML + pinHTML;
 
   let visitedHTML = "";
   if (visitedPlacesList.length) {
     const visitedGroups = buildGroupedPlacesHTML(visitedPlacesList.map((place) => ({ place })), SAVED_VISITED_GROUP);
-    visitedHTML = buildSectionHTML(SAVED_VISITED_GROUP, "Places you've visited", visitedPlacesList.length, visitedGroups);
+    visitedHTML = buildSectionHTML(SAVED_VISITED_GROUP, "Visited", visitedPlacesList.length, visitedGroups);
   }
 
   list.innerHTML = recentHtml + bookmarkedHTML + visitedHTML;
@@ -3923,7 +4115,7 @@ if (_hasHover) {
     if (el && el === tagTipTarget) hideTagTip();
   }, true);
 }
-document.getElementById("places-scroll").addEventListener("scroll", hideTagTip, { passive: true });
+document.getElementById("places-scroll").addEventListener("scroll", _syncPlacesRefineForScroll, { passive: true });
 
 document.getElementById("places-list").addEventListener("click", (e) => {
   const cityToggle = e.target.closest(".pl-city-toggle");

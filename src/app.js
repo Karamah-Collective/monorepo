@@ -143,26 +143,34 @@ document.addEventListener(
 window.addEventListener("offline", showOfflineBanner);
 window.addEventListener("online", () => { hideOfflineBanner(); showToast("Back online", "check"); });
 
+function _wrapChromeZone(id, elementIds) {
+  if (document.getElementById(id)) return;
+  const elements = elementIds.map((elementId) => document.getElementById(elementId)).filter(Boolean);
+  if (!elements.length) return;
+  const zone = document.createElement("div");
+  zone.id = id;
+  zone.className = "phone-chrome-zone";
+  elements[0].before(zone);
+  elements.forEach((el) => zone.appendChild(el));
+}
+
 function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   const mq = window.matchMedia?.("(max-width: 768px)");
   const canvasTarget = map.getCanvasContainer?.() || map.getCanvas?.();
   if (!mq || !canvasTarget) return;
 
-  const COMPACT_START_DELAY_MS = 120;
+  _wrapChromeZone("phone-chrome-top-zone", ["prayer-snack", "eid-pill", "events-pill", "promos-pill"]);
+  _wrapChromeZone("phone-chrome-right-zone", ["locate-pill-wrap", "search-card", "zoom-pill"]);
+  _wrapChromeZone("phone-chrome-bottom-zone", ["tab-bar"]);
+
   const COMPACT_RESTORE_GRACE_MS = 3000;
   const PHONE_CHROME_SELECTOR = [
-    "#tab-bar",
-    "#search-card",
-    "#locate-pill-wrap",
-    "#zoom-pill",
-    "#prayer-snack",
-    "#eid-pill",
-    "#events-pill",
-    "#promos-pill",
+    "#phone-chrome-top-zone",
+    "#phone-chrome-right-zone",
+    "#phone-chrome-bottom-zone",
     "#route-snackbar",
   ].join(",");
   let endTimer = 0;
-  let beginTimer = 0;
   let compactActive = false;
   const setCompact = (active) => {
     if (!mq.matches) {
@@ -176,24 +184,17 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   const begin = () => {
     if (!mq.matches) return;
     clearTimeout(endTimer);
-    if (compactActive || beginTimer) return;
-    beginTimer = setTimeout(() => {
-      beginTimer = 0;
-      collapsePrayerForMapInteraction?.();
-      setCompact(true);
-    }, COMPACT_START_DELAY_MS);
+    if (compactActive) return;
+    collapsePrayerForMapInteraction?.();
+    setCompact(true);
   };
   const endSoon = (delay = COMPACT_RESTORE_GRACE_MS) => {
-    clearTimeout(beginTimer);
-    beginTimer = 0;
     clearTimeout(endTimer);
     endTimer = setTimeout(() => setCompact(false), delay);
   };
   const restoreForChromeInteraction = (e) => {
     if (!mq.matches || !e.target?.closest?.(PHONE_CHROME_SELECTOR)) return;
-    clearTimeout(beginTimer);
     clearTimeout(endTimer);
-    beginTimer = 0;
     endTimer = 0;
     setCompact(false);
   };
@@ -221,9 +222,7 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   map.on("pitchend", () => endSoon());
 
   mq.addEventListener?.("change", () => {
-    clearTimeout(beginTimer);
     clearTimeout(endTimer);
-    beginTimer = 0;
     endTimer = 0;
     if (!mq.matches) setCompact(false);
   });

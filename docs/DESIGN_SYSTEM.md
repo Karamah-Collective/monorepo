@@ -83,14 +83,20 @@ All transit tokens have brighter dark-mode overrides in `styles.css` for contras
 
 | Token | Value | Usage |
 |---|---|---|
+| `--canvas` | `#f7f7f5` | App/page/map fallback background behind primary UI surfaces |
 | `--surface` | `#ffffff` | Primary card / sheet background |
-| `--surface-2` | `#f5f5f5` | Secondary fill, disabled backgrounds, segment bar bg |
-| `--surface-3` | `#e0e0e0` | Stronger fill, hover border colour |
+| `--surface-2` | `#f2f2f0` | Secondary fill, disabled backgrounds, segment bar bg |
+| `--surface-3` | `#e4e4e1` | Stronger fill, hover border colour |
 | `--text` | `#111111` | Primary body text |
 | `--text-2` | `#525252` | Secondary / subdued text |
 | `--text-3` | `#8c8c8c` | Placeholder / muted / icon default |
 | `--border` | `#e2e2e2` | Default border |
 | `--border-light` | `#efefef` | Separator / divider lines |
+
+Dark mode mirrors the same compact hierarchy in `styles.css`: `--canvas`
+`#090a0a`, `--surface` `#111312`, `--surface-2` `#1a1d1c`, and
+`--surface-3` `#272b29`. Keep future neutral fills on this ladder instead of
+adding one-off blacks/whites.
 
 ### Border radii
 
@@ -213,7 +219,9 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--ease-spring-pop` | `cubic-bezier(.34,1.56,.64,1)` | Tool pills — bouncy overshoot enter |
 | `--stagger-unit` | `30ms` | Per-item delay for staggered list entry animations |
 | `--t-phone-chrome-slide` | `.3s cubic-bezier(.32,.72,0,1)` | Phone floating-chrome positional shifts |
-| `--t-phone-chrome-compact` | `.18s cubic-bezier(.22,1,.36,1)` | Phone map-interaction shrink/spacing compacting |
+| `--t-phone-chrome-compact` | `.42s cubic-bezier(.16,1,.3,1)` | Phone map-interaction visual scaling |
+| `--t-phone-refine-bar` | `.52s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar reveal |
+| `--t-phone-refine-bar-collapse` | `.38s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar tuck |
 
 ### Scale Tokens
 
@@ -222,6 +230,12 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--scale-phone-mainbar-compact` | `.84` | Phone mainbar scale while the map canvas is being manipulated |
 | `--scale-phone-chrome-compact` | `.82` | Phone floating-control scale while the map canvas is being manipulated |
 
+Phone map-interaction scaling is applied to runtime-created zone wrappers
+(`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,
+`#phone-chrome-bottom-zone`), not to individual floating pills. Keep that zone
+pattern so top-left actions, the right rail, and the bottom nav preserve their
+internal alignment while shrinking proportionally.
+
 ### Component Sizing
 
 | Token | Value | Use |
@@ -229,6 +243,7 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--h-submit` | `44px` | Submit/CTA button height |
 | `--h-field` | `46px` | Direction / date input row height |
 | `--h-search` | `48px` | Search box height |
+| `--places-refine-max-h` | `360px` | Upper bound for animating the phone Places refine bar open/closed |
 
 **Correction (2026-08-02):** this table previously listed a `--h-input: 44px` token ("Minimum touch-friendly height for form inputs") and `--h-submit: 48px`/`--h-field: 42px` — none of which matched `design-tokens.css`. `--h-input` was never actually defined anywhere in the stylesheet (any `var(--h-input)` reference silently resolved to the browser's initial `height` value, `auto`), and `--h-submit`/`--h-field`'s real values are `44px`/`46px`, not `48px`/`42px`. Found the hard way: a `.btn-google` height override referencing the phantom `--h-input` silently collapsed that button to ~20px, caught by an automated Playwright bounding-box assertion, not by visual review (see `docs/PREFERENCE_LOG.md`'s 2026-08-02 entry for the full incident). Corrected the table to match the actual CSS and added the previously-undocumented `--h-search`. If you need a 44px "safe minimum touch target" height for a new form control that isn't literally a submit button, `--h-submit` is the closest existing 44px token — introduce a new dedicated token rather than reintroducing a bare `--h-input` name with an assumed value.
 
@@ -857,6 +872,45 @@ When a sheet's content region can grow tall enough to push a fixed action row ou
 
 This is distinct from the `.pp-actions` template's *other* use inside `.pp-inner` for the (non-sheet, still-a-floating-popup) dropped-pin/current-location/home popups in `search.js`/`map-controls.js` — those are small, fixed-content popups with no scroll region at all, so `.pp-actions` there stays a normal last child with no pinned-footer treatment. `#place-sheet-actions`'s ID-selector rule in `styles.css` adds the horizontal padding it needs (since it's no longer inside `.pp-inner`, which normally supplies that for free) without touching the shared `.pp-actions` class rule those popups still rely on.
 
+### Phone Places list-focus mode
+
+`#places-list-focus` is an icon-only header toggle shown on phone only. It
+reuses the existing `.sheet.full` snap state on `#places-sheet` and adds the
+`.places-list-focus` class so the same Places sheet becomes a list-first view:
+the large type-tab row is hidden, search/sort/filter remain in a compact refine
+strip, and place cards use a tight grid that still shows name, address,
+status/rating/tag metadata, and action buttons. While scrolling down in
+list-focus mode, the `.places-refine-collapsed` state tucks the refine strip
+away; upward scrolling or direct refine control interaction reveals it again.
+Do not auto-reveal the bar on an idle timer. Keep this as a state
+of the existing Places sheet rather than opening a second list window; that
+avoids duplicating filters, scroll restoration, saved-section collapse state,
+and map marker synchronization.
+
+Normal phone Places mode should also stay denser than desktop: smaller type-chip
+icons, tighter filter-row padding, and compact place-card spacing. The goal is
+more visible places without lowering tap targets below the established tokenized
+minimums.
+
+In list-focus mode, the Filter drawer starts with a compact `Show` category row.
+`All` and `Saved` are exclusive, while `Mosques`, `Spaces`, `Food`, and `Shops`
+can be combined. This is intentionally stronger than the regular top tabs,
+which stay single-select outside list-focus mode. Halal Status is an exclusive
+dropdown-style group like Cuisine: `Fully Halal` and `Partially Halal` cannot
+both be active in the same filter state.
+
+`docs/place-card-compact-designs.html` is the current standalone concept board
+for evaluating tighter two-line place-card layouts before replacing the
+production card markup. The live list-focus card has already adopted the most
+important spacing save: `.pl-tags-summary` sits beside the place name, while
+`.pl-title` owns text truncation. List-focus cards use a true two-row grid by
+default; only `.pl-card--has-meta` cards add the third metadata row.
+The same compact card geometry is used by normal phone Places cards so list
+mode and the standard Places window stay visually unified. `.pl-title` must not
+grow to fill the full name row; the tag chip should sit directly beside the
+place name. Distance (`.pl-dist`) is also a first-line chip in that cluster,
+not appended to the address line.
+
 At the 769–1199px tablet breakpoint, the generic `.sheet, #places-sheet { display: block; overflow-y: auto }` single-scroll-container override (used so `fit-content` sizing works naturally for most sheets) is itself overridden back to `display: flex` for `#place-sheet` specifically, so the pinned footer survives at that width too — only `#place-sheet-body` keeps its own `overflow-y: auto`.
 
 ---
@@ -1088,7 +1142,7 @@ Use `focusMapPoint()` from `src/map-init.js` for ordinary "show this point" came
 
 ### Phone Map-Interaction Chrome
 
-On phone, map-canvas gestures add `body.map-interacting` after a short intent delay and keep the compact chrome state for five seconds after the gesture ends. Pressing or focusing any visible app chrome (`#tab-bar`, search, zoom/location, prayer/Eid/events/promos, route snackbar) clears the grace timer immediately and restores full-size controls because the user has switched from map manipulation back to UI interaction. The compact state changes both scale and spacing variables for the right-side zoom/search/location stack; do not only scale controls in place, because that makes the visual gaps feel larger. Search/location should stay visually sticky to the zoom pill with even perceived gaps while shrinking. When changing nested CSS variables, redefine the final position variables (`--phone-search-bottom`, `--phone-locate-bottom`, etc.) in the compact state too; root-defined derived custom properties otherwise keep their already-computed resting values.
+On phone, map-canvas gestures immediately add `body.map-interacting` and keep the compact chrome state for three seconds after the gesture ends. Pressing or focusing visible app chrome clears the grace timer immediately and restores full-size controls because the user has switched from map manipulation back to UI interaction. The compact state scales three runtime-created zone wrappers (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`, `#phone-chrome-bottom-zone`) rather than individual pills. Do not change right-rail or top-left spacing variables in the compact state; the zone transform shrinks each cluster proportionally while preserving internal alignment.
 
 ### `#snackbar-close` (route snackbar close button)
 

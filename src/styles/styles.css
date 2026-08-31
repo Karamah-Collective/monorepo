@@ -7,6 +7,10 @@
   touch-action: manipulation;
 }
 
+.phone-chrome-zone {
+  display: contents;
+}
+
 @media (min-width: 769px) and (pointer: coarse) {
   #app {
     bottom: calc(var(--safe-b) * -1);
@@ -105,7 +109,7 @@
   position: absolute;
   inset: 0;
   z-index: var(--z-map);
-  background: #ffffff;
+  background: var(--canvas);
   /* Floor: prevent transient layout glitches from ever shrinking this element
      below the viewport. MapLibre's resize() reads clientWidth/clientHeight;
      without this floor, a mid-transition measurement can permanently shrink
@@ -1660,14 +1664,15 @@ body.theme-transition .maplibregl-canvas {
 /* ─── Dark Mode: override design tokens for all UI ─── */
 html.dark-mode,
 body.dark-mode {
-  --surface:      #000000;
-  --surface-2:    #1a1a1a;
-  --surface-3:    #2e2e2e;
-  --text:         #f0f0f0;
-  --text-2:       #b8b8b8;
-  --text-3:       #808080;
-  --border:       #333333;
-  --border-light: #282828;
+  --canvas:       #090a0a;
+  --surface:      #111312;
+  --surface-2:    #1a1d1c;
+  --surface-3:    #272b29;
+  --text:         #f4f5f3;
+  --text-2:       #bec4c0;
+  --text-3:       #858d89;
+  --border:       #313735;
+  --border-light: #252a28;
   --accent:       #0e8a6f;
   --accent-soft:  rgba(14, 138, 111, 0.35);
   --accent-muted: #4a9a88;
@@ -1726,7 +1731,7 @@ body.dark-mode {
 
 /* Map background behind tiles */
 body.dark-mode #map {
-  background: #000000;
+  background: var(--canvas);
 }
 
 /* Attribution & scale bar */
@@ -2335,6 +2340,14 @@ body.dark-mode .sp-tip {
   font-size: var(--txt-base);
   font-weight: var(--fw-medium);
   color: var(--text-3);
+}
+#places-list-focus {
+  display: none;
+}
+#places-list-focus.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 #places-filters {
@@ -3568,8 +3581,35 @@ button.pf-stat-card:focus-visible {
 .tf-chips-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  padding: 6px 16px 8px;
+  gap: var(--sp-1h);
+  padding: var(--sp-2) var(--sp-7) var(--sp-3);
+}
+.tf-type-panel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-light);
+}
+.tf-panel-label {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+}
+.tf-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1h);
+}
+.tf-group-toggle--select {
+  background: var(--surface-2);
+}
+.tf-group-toggle--select.has-active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 #places-scroll {
@@ -3764,7 +3804,7 @@ button.pf-stat-card:focus-visible {
   border-radius: 0;
   cursor: default;
   animation: none;
-  transition: margin var(--t-spring);
+  transition: margin var(--t-collapse);
 }
 @media (hover: hover) {
   #places-list li.pl-city-group-body:hover,
@@ -3781,7 +3821,7 @@ button.pf-stat-card:focus-visible {
   display: grid;
   grid-template-rows: 1fr;
   overflow: hidden;
-  transition: grid-template-rows var(--t-spring), opacity var(--t-fast);
+  transition: grid-template-rows var(--t-collapse), opacity var(--t-fast);
   opacity: 1;
 }
 .pl-city-group-body.shut .pl-city-group-inner {
@@ -3825,8 +3865,18 @@ button.pf-stat-card:focus-visible {
 .pl-name {
   grid-area: name;
   align-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
   font-size: var(--pl-row1);
   min-width: 0;
+  overflow: hidden;
+}
+.pl-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pl-addr {
@@ -3836,11 +3886,16 @@ button.pf-stat-card:focus-visible {
   min-width: 0;
 }
 .pl-dist {
-  display: inline-block;
-  margin-left: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: var(--sp-0) var(--sp-1h);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
   font-size: var(--txt-xs);
   font-weight: var(--fw-medium);
   color: var(--text-3);
+  line-height: var(--lh-tight);
   white-space: nowrap;
 }
 .pl-meta {
@@ -8334,7 +8389,7 @@ body.nav-mode #locate-pill-wrap {
   position: relative;
   width: calc(100% - var(--sp-9) * 2);
   max-width: 360px;
-  background: #ffffff;
+  background: var(--surface);
   border-radius: var(--r-2xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
@@ -8548,10 +8603,9 @@ body.nav-mode #locate-pill-wrap {
   font-weight: var(--fw-semibold);
 }
 
-/* ── Dark mode — pitch black ── */
 body.dark-mode #qibla-card {
-  background: #000000;
-  box-shadow: none;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
 }
 body.dark-mode #qibla-ring {
@@ -9107,20 +9161,13 @@ body.dark-mode .sp-chip {
     --txt-display: 22px;
     --tab-h: var(--h-submit);
     --phone-mainbar-gap-rest: var(--sp-4);
-    --phone-mainbar-gap-compact: var(--sp-2);
     --phone-chrome-gap-rest: var(--sp-3);
-    --phone-chrome-gap-compact: var(--sp-1);
     --phone-zoom-stack-h-rest: calc(var(--btn-icon-size) + var(--btn-icon-size) + var(--sp-0));
-    --phone-zoom-stack-h-compact: calc(var(--btn-icon-size) + var(--btn-icon-size) - var(--sp-6));
     --phone-search-stack-h-rest: var(--h-submit);
-    --phone-search-stack-h-compact: calc(var(--h-submit) - var(--sp-3));
     --phone-top-stack-left: var(--sp-7);
     --phone-top-stack-step-rest: calc(var(--h-submit) + var(--sp-3));
-    --phone-top-stack-step-compact: calc(var(--h-submit) - var(--sp-2));
     --phone-top-stack-gap-rest: var(--sp-3);
-    --phone-top-stack-gap-compact: var(--sp-0);
     --phone-prayer-expanded-w-rest: min(80vw, 210px);
-    --phone-prayer-expanded-w-compact: min(66vw, 172px);
     --phone-top-stack-step: var(--phone-top-stack-step-rest);
     --phone-top-stack-gap: var(--phone-top-stack-gap-rest);
     --phone-prayer-expanded-w: var(--phone-prayer-expanded-w-rest);
@@ -9134,19 +9181,6 @@ body.dark-mode .sp-chip {
     --phone-search-bottom: calc(var(--phone-zoom-bottom) + var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
     --phone-locate-bottom: calc(var(--phone-search-bottom) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
     --phone-bar-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-6));
-  }
-
-  body.map-interacting {
-    --phone-mainbar-gap: var(--phone-mainbar-gap-compact);
-    --phone-chrome-gap: var(--phone-chrome-gap-compact);
-    --phone-zoom-stack-h: var(--phone-zoom-stack-h-compact);
-    --phone-search-stack-h: var(--phone-search-stack-h-compact);
-    --phone-zoom-bottom: calc(var(--tab-h) + var(--safe-b) + var(--phone-mainbar-gap));
-    --phone-search-bottom: calc(var(--phone-zoom-bottom) + var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
-    --phone-locate-bottom: calc(var(--phone-search-bottom) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
-    --phone-top-stack-step: var(--phone-top-stack-step-compact);
-    --phone-top-stack-gap: var(--phone-top-stack-gap-compact);
-    --phone-prayer-expanded-w: var(--phone-prayer-expanded-w-compact);
   }
 
   #search-card:not(.collapsed) {
@@ -9182,11 +9216,50 @@ body.dark-mode .sp-chip {
     margin-top: 1px;
   }
 
+  #phone-chrome-top-zone,
+  #phone-chrome-right-zone,
+  #phone-chrome-bottom-zone {
+    position: absolute;
+    z-index: var(--z-bar);
+    display: block;
+    overflow: visible;
+    will-change: transform;
+    transform: scale(1);
+    transition: transform var(--t-phone-chrome-compact);
+  }
+
+  #phone-chrome-top-zone {
+    top: calc(var(--safe-t) + var(--sp-6));
+    left: var(--sp-7);
+    width: min(94vw, calc(var(--phone-prayer-expanded-w) + var(--phone-top-stack-step) + var(--phone-top-stack-step) + var(--phone-top-stack-step)));
+    height: var(--h-submit);
+    transform-origin: top left;
+    z-index: var(--z-prayer);
+  }
+
+  #phone-chrome-right-zone {
+    right: var(--map-edge);
+    bottom: var(--phone-zoom-bottom);
+    width: var(--btn-icon-size);
+    height: calc(var(--phone-locate-bottom) - var(--phone-zoom-bottom) + var(--btn-icon-size));
+    transform-origin: bottom right;
+    z-index: var(--z-ctrl-mid);
+  }
+
+  #phone-chrome-bottom-zone {
+    left: 50%;
+    bottom: calc(var(--map-edge) + var(--safe-b));
+    transform: translateX(-50%) scale(1);
+    transform-origin: bottom center;
+  }
+
   #tab-bar {
     --tab-h: var(--h-submit);
+    position: relative;
+    left: auto;
+    bottom: auto;
     height: var(--tab-h);
-    bottom: calc(var(--map-edge) + var(--safe-b));
-    transform-origin: bottom center;
+    transform: none;
   }
   .tab {
     gap: 0;
@@ -9203,16 +9276,18 @@ body.dark-mode .sp-chip {
   #search-card,
   #locate-pill-wrap,
   #zoom-pill {
+    right: 0;
+    transform: none;
     transform-origin: bottom right;
   }
   #zoom-pill {
-    bottom: var(--phone-zoom-bottom);
+    bottom: 0;
   }
   #search-card {
-    bottom: var(--phone-search-bottom);
+    bottom: calc(var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
   }
   #locate-pill-wrap {
-    bottom: var(--phone-locate-bottom);
+    bottom: calc(var(--phone-zoom-stack-h) + var(--phone-chrome-gap) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
   }
   .maplibregl-ctrl-bottom-left {
     bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-3)) !important;
@@ -9226,12 +9301,15 @@ body.dark-mode .sp-chip {
   }
 
   #prayer-snack {
+    top: 0;
+    left: 0;
     transform-origin: top left;
   }
 
   #eid-pill,
   #events-pill,
   #promos-pill {
+    top: 0;
     transform-origin: top left;
   }
 
@@ -9310,9 +9388,38 @@ body.dark-mode .sp-chip {
     width: 14px;
     height: 14px;
   }
+  #places-list-focus {
+    display: flex;
+  }
   .sheet-x {
     width: 36px;
     height: 36px;
+  }
+
+  #places-filters {
+    padding: var(--sp-3) var(--sp-5) var(--sp-1);
+  }
+  #places-type-chips {
+    gap: var(--sp-0);
+  }
+  .pf-chip {
+    min-width: var(--h-field);
+    gap: var(--sp-0);
+    padding: var(--sp-1) var(--sp-0) var(--sp-0);
+  }
+  .pf-icon {
+    width: var(--sp-11);
+    height: var(--sp-11);
+  }
+  .pf-icon svg {
+    width: var(--sp-7);
+    height: var(--sp-7);
+  }
+  #tf-row {
+    padding: var(--sp-1) 0 0;
+  }
+  .pl-search-icn {
+    right: 0;
   }
 
   #tf-toggle,
@@ -9327,9 +9434,155 @@ body.dark-mode .sp-chip {
     min-height: 36px;
   }
 
-  #places-list li,
+  #places-list {
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-5) calc(var(--sp-5) + var(--safe-b));
+  }
+  #places-list li:not(.pl-section-hdr):not(.pl-city-group-body),
   #places-empty {
-    padding: 12px;
+    column-gap: var(--sp-3);
+    row-gap: var(--sp-0h);
+    grid-template:
+      "icon name acts" auto
+      "icon addr acts" auto
+      / auto 1fr auto;
+    align-items: center;
+    padding: var(--sp-2h) var(--sp-2) var(--sp-2h) var(--sp-4);
+  }
+  #places-list li.pl-card--has-meta {
+    grid-template:
+      "icon name acts" auto
+      "icon addr acts" auto
+      "icon meta acts" auto
+      / auto 1fr auto;
+  }
+  .pl-name {
+    align-self: end;
+  }
+  .pl-title {
+    flex: 0 1 auto;
+  }
+  .pl-addr {
+    align-self: start;
+    line-height: var(--lh-tight);
+  }
+  .pl-dot {
+    align-self: center;
+  }
+  .pl-tags-summary {
+    flex-shrink: 0;
+  }
+  .pl-acts {
+    align-self: center;
+    justify-self: end;
+    margin-right: calc(-1 * var(--sp-1));
+  }
+  .pl-acts > button {
+    min-width: var(--sp-11);
+    min-height: var(--sp-11);
+  }
+  #places-list li.pl-city-group-body {
+    padding: 0;
+  }
+  .pl-dot {
+    width: var(--sp-9);
+    height: var(--sp-9);
+  }
+  .pl-dot svg {
+    width: var(--sp-6);
+    height: var(--sp-6);
+  }
+  .pl-meta {
+    gap: var(--sp-1h);
+    padding-top: var(--sp-1);
+  }
+  #places-sheet.places-list-focus #places-filters {
+    display: block;
+    padding: var(--sp-2) var(--sp-5);
+    max-height: var(--places-refine-max-h);
+    overflow: hidden;
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      max-height var(--t-phone-refine-bar),
+      padding var(--t-phone-refine-bar),
+      opacity var(--t-fast),
+      transform var(--t-phone-refine-bar);
+    will-change: max-height, opacity, transform;
+  }
+  #places-sheet.places-list-focus.places-refine-collapsed #places-filters {
+    transition:
+      max-height var(--t-phone-refine-bar-collapse),
+      padding var(--t-phone-refine-bar-collapse),
+      opacity var(--t-fast),
+      transform var(--t-phone-refine-bar-collapse);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--sp-2)));
+    pointer-events: none;
+  }
+  #places-sheet.places-list-focus #places-type-chips {
+    display: none;
+  }
+  #places-sheet.places-list-focus #tf-row {
+    padding: 0;
+  }
+  #places-sheet.places-list-focus #tf-toggle,
+  #places-sheet.places-list-focus #sort-toggle {
+    min-height: var(--sp-11);
+    padding: var(--sp-1h) var(--sp-3) var(--sp-1h) var(--sp-2h);
+  }
+  #places-sheet.places-list-focus .pl-search-wrap {
+    height: var(--sp-11);
+  }
+  #places-sheet.places-list-focus .pl-search-icn {
+    height: var(--sp-11);
+  }
+  #places-sheet.places-list-focus .tf-chips-inner {
+    gap: var(--sp-1h);
+    padding: var(--sp-2) 0 var(--sp-1);
+  }
+  #places-sheet.places-list-focus #places-scroll {
+    flex: 1;
+    min-height: 0;
+  }
+  #places-sheet.places-list-focus #places-list {
+    gap: var(--sp-1h);
+    padding-top: var(--sp-1);
+  }
+  #places-sheet.places-list-focus #places-list li:not(.pl-section-hdr):not(.pl-city-group-body),
+  #places-sheet.places-list-focus #places-empty {
+    column-gap: var(--sp-1h);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-1);
+  }
+  #places-sheet.places-list-focus .pl-name {
+    gap: var(--sp-1);
+  }
+  #places-sheet.places-list-focus .pl-acts {
+    margin-right: calc(-1 * var(--sp-1h));
+  }
+  #places-sheet.places-list-focus .pl-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+    padding-top: var(--sp-0h);
+    min-width: 0;
+  }
+  #places-sheet.places-list-focus .pl-tags-summary,
+  #places-sheet.places-list-focus .pl-rating-chip,
+  #places-sheet.places-list-focus .pl-open-chip,
+  #places-sheet.places-list-focus .pl-closed-chip,
+  #places-sheet.places-list-focus .pl-boycott-chip,
+  #places-sheet.places-list-focus .pl-sponsor-chip {
+    line-height: var(--lh-tight);
+    padding: var(--sp-0) var(--sp-1h);
+  }
+  #places-sheet.places-list-focus #places-list li.pl-section-hdr {
+    padding-top: var(--sp-2);
+    padding-bottom: var(--sp-1);
   }
   #places-empty {
     margin: 8px 12px 12px;
@@ -10905,7 +11158,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 }
 
 @media (max-width: 768px) {
-  #tab-bar,
   #locate-pill-wrap,
   #zoom-pill,
   #prayer-snack,
@@ -10915,8 +11167,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     transition:
       left var(--t-phone-chrome-slide),
       bottom var(--t-phone-chrome-compact),
-      background var(--t-fast),
-      transform var(--t-phone-chrome-compact);
+      background var(--t-fast);
+  }
+
+  #tab-bar {
+    transition:
+      left var(--t-phone-chrome-slide),
+      bottom var(--t-phone-chrome-compact),
+      background var(--t-fast);
   }
 
   #search-card {
@@ -10924,65 +11182,62 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
       width var(--t-spring),
       border-radius var(--t-spring),
       box-shadow var(--t-spring),
-      bottom var(--t-phone-chrome-compact),
-      transform var(--t-phone-chrome-compact);
+      bottom var(--t-phone-chrome-compact);
   }
 
   #prayer-snack {
+    top: 0;
+    left: 0;
+    transform-origin: left top;
     transition:
       width var(--t-spring),
       border-radius var(--t-spring),
       box-shadow var(--t-spring),
       left var(--t-phone-chrome-slide),
       bottom var(--t-phone-chrome-compact),
-      background var(--t-fast),
-      transform var(--t-phone-chrome-compact);
+      background var(--t-fast);
   }
 
   #eid-pill,
   #events-pill,
   #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step));
+    top: 0;
+    left: var(--phone-top-stack-step);
   }
 
   #prayer-snack:not(.collapsed) ~ #eid-pill,
   #prayer-snack:not(.collapsed) ~ #events-pill,
   #prayer-snack:not(.collapsed) ~ #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap));
+    left: calc(var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap));
   }
 
   #eid-pill:not(.hide) ~ #events-pill,
   #eid-pill:not(.hide) ~ #promos-pill,
   #events-pill:not(.hide) ~ #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
+    left: calc(var(--phone-top-stack-step) + var(--phone-top-stack-step));
   }
 
   #eid-pill:not(.hide) ~ #events-pill:not(.hide) ~ #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-top-stack-step) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
+    left: calc(var(--phone-top-stack-step) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
   }
 
   #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #events-pill,
   #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #promos-pill,
   #prayer-snack:not(.collapsed) ~ #events-pill:not(.hide) ~ #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step));
+    left: calc(var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step));
   }
 
   #prayer-snack:not(.collapsed) ~ #eid-pill:not(.hide) ~ #events-pill:not(.hide) ~ #promos-pill {
-    left: calc(var(--phone-top-stack-left) + var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
+    left: calc(var(--phone-prayer-expanded-w) + var(--phone-top-stack-gap) + var(--phone-top-stack-step) + var(--phone-top-stack-step));
   }
 
-  body.map-interacting #tab-bar {
-    transform: translateX(-50%) scale(var(--phone-mainbar-scale));
-  }
-
-  body.map-interacting #search-card,
-  body.map-interacting #locate-pill-wrap,
-  body.map-interacting #zoom-pill,
-  body.map-interacting #prayer-snack,
-  body.map-interacting #eid-pill,
-  body.map-interacting #events-pill,
-  body.map-interacting #promos-pill {
+  body.map-interacting #phone-chrome-top-zone,
+  body.map-interacting #phone-chrome-right-zone {
     transform: scale(var(--phone-chrome-scale));
+  }
+
+  body.map-interacting #phone-chrome-bottom-zone {
+    transform: translateX(-50%) scale(var(--phone-mainbar-scale));
   }
 
   .eid-banner {

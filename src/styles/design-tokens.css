@@ -125,9 +125,10 @@
   --walk: #52525b;
   --funicular: #71717a;
 
+  --canvas: #f7f7f5;
   --surface: #ffffff;
-  --surface-2: #f5f5f5;
-  --surface-3: #e0e0e0;
+  --surface-2: #f2f2f0;
+  --surface-3: #e4e4e1;
 
   --text: #111111;
   --text-2: #525252;
@@ -217,7 +218,9 @@
   --t-slow: 0.4s ease;
   --t-x-slow: 0.5s ease;
   --t-phone-chrome-slide: 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  --t-phone-chrome-compact: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-phone-chrome-compact: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-phone-refine-bar: 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-phone-refine-bar-collapse: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -283,6 +286,7 @@
   --h-field: 46px; /* direction / date input row       */
   --h-submit: 44px; /* form submit button               */
   --h-search: 48px; /* search box                       */
+  --places-refine-max-h: 360px;
 
   /* — puck shape system — */
   --puck-r: 50% 50% 50% 8px;     /* asymmetric puck border-radius       */
@@ -361,7 +365,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--canvas);
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
@@ -371,7 +375,7 @@ body {
 }
 html.dark-mode,
 html.dark-mode body {
-  background: #000000;
+  background: var(--canvas);
   --cemetery: #94a3b8;
 }
 
@@ -2418,8 +2422,8 @@ html.reduce-motion *::after {
 
 /* ─── Navigation HUD dark mode ──────────────────────────────────────────────── */
 html.dark-mode #nav-hud {
-  background: #000000;
-  border-color: #1c1c1e;
+  background: var(--surface);
+  border-color: var(--border);
 }
 html.dark-mode .nav-maneuver-icon {
   background: var(--accent);
@@ -2429,23 +2433,23 @@ html.dark-mode .nav-chip-dist {
   color: #5ac8ad;
 }
 html.dark-mode .nav-chip-eta {
-  background: #2c2c2e;
-  color: #adadad;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 html.dark-mode .nav-chip-turn {
   background: rgba(255, 159, 10, 0.15);
   color: #ffb340;
 }
 html.dark-mode .nav-ctrl-btn {
-  background: #2c2c2e;
-  color: #adadad;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 html.dark-mode .nav-ctrl-btn:hover {
-  background: #3a3a3c;
-  color: #ffffff;
+  background: var(--surface-3);
+  color: var(--text);
 }
 html.dark-mode .nav-progress-bar {
-  background: #2c2c2e;
+  background: var(--surface-2);
 }
 
 /* ─── Navigation Speedometer ────────────────────────────────────────────────── */
@@ -2479,8 +2483,8 @@ html.dark-mode .nav-progress-bar {
   margin-top: 1px;
 }
 html.dark-mode .nav-speed {
-  background: #000000;
-  border-color: #1c1c1e;
+  background: var(--surface);
+  border-color: var(--border);
 }
 
 /* ─── Navigation Recenter / Overview Button ─────────────────────────────────── */
@@ -2511,8 +2515,8 @@ html.dark-mode .nav-speed {
 }
 html.dark-mode .nav-recenter,
 html.dark-mode .nav-overview {
-  background: #000000;
-  border-color: #1c1c1e;
+  background: var(--surface);
+  border-color: var(--border);
   color: var(--accent);
 }
 

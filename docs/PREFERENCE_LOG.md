@@ -4141,3 +4141,121 @@ safe-area paint issue: non-phone widths always strip `#place-sheet-actions`
 back to `var(--sp-6)`, and coarse-pointer tablet viewports extend `#app`/`#map`
 through the bottom safe area so the map paints behind the iPad home-indicator
 region instead of exposing a white body strip.
+
+---
+
+## 2026-08-31 - Neutral hierarchy ladder for light/dark modes
+
+**User preference:** the app should stay predominantly black/white by mode, but
+pure white on pure white and pure black on pure black should not flatten the UI.
+Use only a small neutral ladder, not many gray shades.
+
+**Decision:** added a shared `--canvas` token and tuned the existing three
+surface tiers. Light mode uses canvas `#f7f7f5`, primary surface `#ffffff`,
+secondary fill `#f2f2f0`, and stronger fill `#e4e4e1`. Dark mode mirrors that
+with canvas `#090a0a`, surface `#111312`, secondary `#1a1d1c`, and stronger
+fill `#272b29`. Future UI should use this compact ladder instead of literal
+`#000000`/`#ffffff` for app chrome, sheets, panels, HUD controls, and map
+fallback backgrounds. Fixed third-party brand buttons and white marker borders
+remain intentional exceptions.
+
+**Session note:** tokenized the app/body/map canvas, Navigation HUD dark-mode
+surfaces, and Qibla overlay card background so the hierarchy is uniform across
+global chrome, sheets, and specialized overlays. Synced the stylesheet cache
+version in `index.html` and `sw.js` to `20260831-1`. No Playwright/browser tests
+were run, matching the standing manual-testing preference.
+
+---
+
+## 2026-08-31 - Saved labels and phone chrome animation polish
+
+**Saved window labels:** renamed `Bookmarked places` to `Bookmarks` and
+`Places you've visited` to `Visited` to keep top-level saved sections short and
+scannable.
+
+**Saved collapse pattern:** top-level Saved sections intentionally keep their
+body content mounted while shut, matching the brisk city-group collapse rather
+than using a separate lazy-fill path. Keep Saved parent sections visually quiet,
+but make their animation mechanics match the city headers and bookmarks section.
+
+**Phone chrome motion:** map-interaction compacting is highly visible and must
+feel smooth. Removed the delayed compact-start timer so the transition starts
+with the real map interaction, lengthened `--t-phone-chrome-compact` to `0.42s`
+with the existing expo easing, and wrapped the visible controls into three
+runtime-created phone zones: top-left quick actions, right rail, and bottom nav.
+Compact mode scales each zone wrapper, not each individual pill, so internal
+spacing shrinks proportionally and the controls keep their alignment as a group.
+
+**Session note:** touched `src/places.js`, `src/app.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`,
+`docs/DESIGN_SYSTEM.md`, `index.html`, `sw.js`, and this log. Synced cache
+version to `20260831-5`. No Playwright/browser tests were run, matching the
+standing manual-testing preference.
+
+**Follow-up top-zone correction:** after grouping the phone chrome, later
+default Eid/events/promos placement rules were still winning over the earlier
+phone wrapper-local `top: 0`. The final phone media block now resets the
+top-left controls to wrapper-local coordinates there too, so prayer and quick
+action buttons align in both resting and compact states.
+
+---
+
+## 2026-08-31 - Phone Places sheet list density
+
+**User problem:** the phone Places sheet showed too few places at once,
+especially on smaller devices, making browsing frustrating even when dragged
+tall.
+
+**Decision:** use a hybrid rather than a separate duplicate window. The normal
+phone Places sheet is denser by default, and the header now has an icon-only
+`#places-list-focus` toggle beside the add button. On phone, focus mode reuses
+the existing `.sheet.full` snap state and hides the type/filter/search band so
+the same sheet becomes a list-first view. It keeps the current filters/search
+results intact, resets on sheet close, and avoids duplicating list rendering,
+scroll state, collapse state, or map-marker synchronization.
+
+**Session note:** touched `index.html`, `src/places.js`,
+`src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, `sw.js`, and this log.
+Synced cache version to `20260831-7`. No Playwright/browser tests were run,
+matching the standing manual-testing preference.
+
+**Follow-up refinement:** the user liked the "no bullshit full list" direction
+but rejected losing too much card information and losing controls in list mode.
+List-focus cards now keep name, address, status/rating/tag metadata, and action
+buttons in a compact aligned grid. Search, Sort, and Filter stay available in a
+small refine strip, and the Filter drawer adds a `Show` row where regular
+categories can be combined (`Mosques` + `Food`, etc.); `All` and `Saved` remain
+exclusive.
+
+**2026-08-31 second follow-up:** the next card direction should fit maximum
+useful information into two text lines, not three. Added
+`docs/place-card-compact-designs.html` as a standalone concept board with
+multiple compact card patterns for manual selection before changing production
+markup. In list-focus mode, the refine strip now smoothly tucks away while
+scrolling down and returns on upward scroll or direct refine control interaction.
+Halal Status in the list filter drawer is treated as an exclusive dropdown-style
+group; `Fully Halal` and `Partially Halal` cannot be active together.
+
+**2026-08-31 third follow-up:** user preferred moving the tag chip beside the
+place name to save the lower row. Production list-focus cards now wrap the name
+text in `.pl-title`, put `.pl-tags-summary` in `.pl-name`, hide empty metadata
+rows, and nudge the action column right to give the title/address more room.
+Refine-strip vertical padding is balanced, reveal timing is slower than collapse,
+and the delayed idle auto-expand was removed because it felt weird.
+
+**2026-08-31 fourth follow-up:** the list-focus row must not look top-aligned
+or carry unused vertical whitespace. Cards now default to a true two-row grid,
+center the icon/actions against the text block, use `.pl-card--has-meta` only
+when open/rating metadata exists, and keep the action controls compact/right
+biased so the left text area has more usable room.
+
+**2026-08-31 fifth follow-up:** user prefers the compact list-window card design
+over the standard phone Places card design. Normal phone Places cards now use
+the same compact two-row geometry as list-focus, and `.pl-title` no longer
+flex-grows, so the tag chip sits immediately beside the place name instead of
+floating far to the right.
+
+**2026-08-31 sixth follow-up:** distance belongs beside the tag chip in the
+first-line metadata cluster, not at the end of the address. Compact phone cards
+now render `.pl-dist` as a neutral chip beside `.pl-tags-summary`, with balanced
+vertical padding and row gap so cards feel dense but not cramped.
