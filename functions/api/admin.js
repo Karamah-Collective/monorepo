@@ -181,8 +181,8 @@ async function getPendingEdits(db) {
 async function getAdminPlaces(db) {
   const { results } = await db.prepare("SELECT * FROM places ORDER BY name").all();
   return results.filter((r) => r.name).map((r) => ({
-    id: r.id, name: r.name, type: (r.type || "").toLowerCase(), address: r.address, city: extractCityFromAddress(r.address),
-    lat: r.lat ?? "", lng: r.lng ?? "", tags: r.tags, notes: r.notes, boycott: !!r.boycott,
+    id: r.id, name: r.name, type: (r.type || "").toLowerCase(), address: normaliseAddress(r.address), city: extractCityFromAddress(r.address),
+    lat: r.lat ?? "", lng: r.lng ?? "", tags: r.tags, notes: r.notes, boycott: !!r.boycott, disabled: !!r.disabled,
     sponsorTier: (r.sponsor_tier || "").toLowerCase(), sponsorPromo: r.sponsor_promo, sponsorPromoText: r.sponsor_promo_text,
     sponsorStartDate: r.sponsor_start_date, sponsorEndDate: r.sponsor_end_date,
   }));
@@ -463,6 +463,12 @@ async function updateBoycott(db, placeId, boycott) {
   return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
 }
 
+async function updatePlaceDisabled(db, placeId, disabled) {
+  if (!placeId) return { error: "Missing placeId" };
+  const { meta } = await db.prepare("UPDATE places SET disabled = ? WHERE id = ?").bind(disabled === "Yes" || disabled === true ? 1 : 0, placeId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
+}
+
 const VALID_SPONSOR_TIERS = ["", "basic", "featured", "spotlight"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -558,6 +564,7 @@ const POST_ACTIONS = {
   "approve-edit": (db, data) => approveEdit(db, data.rowId),
   "reject-edit": (db, data) => rejectEdit(db, data.rowId, data.reason || ""),
   "update-boycott": (db, data) => updateBoycott(db, data.placeId, data.boycott),
+  "update-place-disabled": (db, data) => updatePlaceDisabled(db, data.placeId, data.disabled),
   "update-sponsor": (db, data) => updateSponsor(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),

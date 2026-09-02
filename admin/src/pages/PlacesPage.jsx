@@ -3,7 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import DataTable from "../components/DataTable.jsx";
 import ToggleCell from "../components/ToggleCell.jsx";
 import SponsorEditor from "../components/SponsorEditor.jsx";
-import { useAdminPlaces, useUpdateBoycott, useUpdateSponsor } from "../api/queries.js";
+import { useAdminPlaces, useUpdateBoycott, useUpdatePlaceDisabled, useUpdateSponsor } from "../api/queries.js";
 import { useToast } from "../components/Toast.jsx";
 import { TYPE_OPTIONS } from "../constants.js";
 
@@ -12,6 +12,7 @@ const columnHelper = createColumnHelper();
 export default function PlacesPage() {
   const { data, isLoading, error } = useAdminPlaces();
   const updateBoycott = useUpdateBoycott();
+  const updateDisabled = useUpdatePlaceDisabled();
   const updateSponsor = useUpdateSponsor();
   const showToast = useToast();
 
@@ -45,6 +46,34 @@ export default function PlacesPage() {
           />
         ),
       }),
+      columnHelper.accessor((row) => (row.disabled ? "Disabled" : "Visible"), {
+        id: "mapVisibility",
+        header: "Map",
+        meta: {
+          filterVariant: "select",
+          options: [
+            { value: "Visible", label: "Visible" },
+            { value: "Disabled", label: "Disabled" },
+          ],
+        },
+        filterFn: "equalsString",
+        cell: (info) => (
+          <ToggleCell
+            checked={!info.row.original.disabled}
+            disabled={updateDisabled.isPending}
+            label={info.row.original.disabled ? "Disabled" : "Visible"}
+            onChange={(visible) =>
+              updateDisabled.mutate(
+                { placeId: info.row.original.id, disabled: !visible },
+                {
+                  onSuccess: () => showToast(visible ? "Place enabled on map" : "Place disabled on map"),
+                  onError: (e) => showToast(e.message, "error"),
+                }
+              )
+            }
+          />
+        ),
+      }),
       columnHelper.display({
         id: "sponsor",
         header: "Sponsor",
@@ -62,7 +91,7 @@ export default function PlacesPage() {
         ),
       }),
     ],
-    [updateBoycott, updateSponsor, showToast]
+    [updateBoycott, updateDisabled, updateSponsor, showToast]
   );
 
   return (

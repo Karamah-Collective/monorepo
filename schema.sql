@@ -107,6 +107,7 @@ CREATE TABLE places (
   tags                    TEXT NOT NULL DEFAULT '{}', -- JSON object: tagId -> bool
   notes                   TEXT NOT NULL DEFAULT '',
   boycott                 INTEGER NOT NULL DEFAULT 0, -- 0/1
+  disabled                INTEGER NOT NULL DEFAULT 0, -- 0/1; kept in admin/database, hidden from public map
   sponsor_tier            TEXT NOT NULL DEFAULT '',
   sponsor_promo           TEXT NOT NULL DEFAULT '',
   sponsor_promo_text      TEXT NOT NULL DEFAULT '',

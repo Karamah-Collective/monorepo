@@ -75,18 +75,63 @@ export function normaliseAddress(address) {
       parts[i] = segment.replace(new RegExp(cityPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), SWEDISH_TO_FINNISH[key]);
     }
   }
-  return parts.join(",").trim();
+  a = parts.join(",").trim();
+
+  const compact = compactNominatimAddress(a);
+  return compact || a;
 }
 
 // Code.gs:697
 export function extractCityFromAddress(address) {
   const raw = (address || "").toString().trim();
   if (!raw) return "";
-  const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+  const normalized = normaliseAddress(raw);
+  const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
   if (!parts.length) return "";
-  let tail = parts[parts.length - 1];
-  if (/^finland$/i.test(tail) && parts.length > 1) tail = parts[parts.length - 2];
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const cityPart = parts[i].replace(/^\d{5}\s+/, "").trim();
+    if (FINNISH_CITY_RE.test(cityPart)) return cityPart;
+  }
+  let tail = "";
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    if (/^(finland|suomi|mainland finland)$/i.test(part)) continue;
+    if (/^\d{5}$/.test(part)) continue;
+    if (FINNISH_ADDRESS_NOISE_RE.test(part)) continue;
+    tail = part;
+    break;
+  }
+  if (!tail) return "";
   return tail.replace(/^\d{5}\s+/, "").trim();
+}
+
+const FINNISH_ADDRESS_NOISE_RE = /^(?:mainland finland|uusimaa|central major district|helsinki sub-region|espoo sub-region|vantaa sub-region|turku sub-region)$/i;
+const FINNISH_CITY_RE = /^(?:helsinki|espoo|vantaa|kauniainen|turku|tampere|oulu|porvoo|loviisa|kerava|tuusula|kirkkonummi|sipoo|jarvenpaa|järvenpää|hyvinkaa|hyvinkää)$/i;
+const FINNISH_STREET_RE = /(?:katu|tie|kuja|polku|raitti|rinne|ranta|kaari|kaarre|aukio|tori|bulevardi|puistotie|väylä|vayla|gränden|gatan|vägen|vagen|gränd|grand|street|road|avenue|lane|drive|way|place)$/i;
+
+function compactNominatimAddress(address) {
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 5) return "";
+
+  const postal = parts.find((p) => /^\d{5}$/.test(p));
+  const city = parts.find((p) => FINNISH_CITY_RE.test(p.replace(/^\d{5}\s+/, "")));
+  if (!postal || !city) return "";
+
+  const streetIdx = parts.findIndex((p) => FINNISH_STREET_RE.test(p));
+  if (streetIdx === -1) return "";
+
+  const houseIdx = streetIdx > 0 && /^\d+[A-Za-zÅÄÖåäö]?(?:[-–]\d+[A-Za-zÅÄÖåäö]?)?$/.test(parts[streetIdx - 1])
+    ? streetIdx - 1
+    : -1;
+  const street = parts[streetIdx];
+  const house = houseIdx !== -1 ? parts[houseIdx] : "";
+  const line1 = house ? `${street} ${house}` : street;
+  const cleanCity = city.replace(/^\d{5}\s+/, "").trim();
+
+  if (!line1 || !cleanCity) return "";
+  return [line1, `${postal} ${cleanCity}`]
+    .filter((part) => part && !FINNISH_ADDRESS_NOISE_RE.test(part))
+    .join(", ");
 }
 
 // Code.gs:2990

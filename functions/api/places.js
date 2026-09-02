@@ -13,7 +13,7 @@
  * ?action=events  → [...] events array
  */
 import { allowedOrigin, json } from "../_shared.js";
-import { buildLabelToIdMap, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
+import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
@@ -25,9 +25,11 @@ async function getPlaces(db) {
   const places = [];
 
   for (const row of results) {
+    if (row.disabled) continue;
+
     const name = (row.name || "").toString().trim();
     const type = (row.type || "").toString().trim().toLowerCase();
-    const address = (row.address || "").toString().trim();
+    const address = normaliseAddress(row.address || "");
     const lat = row.lat;
     const lng = row.lng;
     if (!name || lat == null || lng == null || isNaN(lat) || isNaN(lng)) continue;

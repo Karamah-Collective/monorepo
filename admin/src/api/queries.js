@@ -36,6 +36,7 @@ export const useRejectNew = () => useAdminMutation("reject-new", ["pending-new",
 export const useApproveEdit = () => useAdminMutation("approve-edit", ["pending-edits", "admin-places", "admin-stats"]);
 export const useRejectEdit = () => useAdminMutation("reject-edit", ["pending-edits", "admin-stats"]);
 export const useUpdateBoycott = () => useAdminMutation("update-boycott", ["admin-places"]);
+export const useUpdatePlaceDisabled = () => useAdminMutation("update-place-disabled", ["admin-places", "admin-stats"]);
 export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
 export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
 export const useUpdateWishApproved = () => useAdminMutation("update-wish-approved", ["admin-wishes", "admin-stats"]);
