@@ -225,7 +225,7 @@ function extractCityFromAddress(address) {
   const raw = String(address || "").trim();
   if (!raw) return "";
 
-  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  const parts = raw.split(/[,،，]/).map((part) => part.trim()).filter(Boolean);
   if (!parts.length) return "";
 
   let tail = parts[parts.length - 1];

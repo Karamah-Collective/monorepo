@@ -65,6 +65,7 @@ export const SWEDISH_TO_FINNISH = {
 export function normaliseAddress(address) {
   if (!address) return "";
   let a = address.toString().trim();
+  a = a.replace(/\s*[،，]\s*/g, ", ");
   a = a.replace(/,\s*(Finland|Suomi)\s*$/i, "");
   const parts = a.split(",");
   for (let i = 0; i < parts.length; i++) {
@@ -110,7 +111,7 @@ const FINNISH_CITY_RE = /^(?:helsinki|espoo|vantaa|kauniainen|turku|tampere|oulu
 const FINNISH_STREET_RE = /(?:katu|tie|kuja|polku|raitti|rinne|ranta|kaari|kaarre|aukio|tori|bulevardi|puistotie|väylä|vayla|gränden|gatan|vägen|vagen|gränd|grand|street|road|avenue|lane|drive|way|place)$/i;
 
 function compactNominatimAddress(address) {
-  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  const parts = address.split(/[,،，]/).map((p) => p.trim()).filter(Boolean);
   if (parts.length < 5) return "";
 
   const postal = parts.find((p) => /^\d{5}$/.test(p));
