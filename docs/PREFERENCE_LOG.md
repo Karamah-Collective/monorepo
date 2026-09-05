@@ -4267,3 +4267,148 @@ the metadata row as a chip. Phone cards keep a two-line layout: tag and distance
 chips sit beside the name, while open status and rating sit beside the address;
 the desktop metadata row is hidden on phone. `#places-list-focus` remains
 phone-only. Cache version synced to `20260831-15`.
+
+---
+
+## 2026-09-04 - Welcome screen concept board
+
+**User request:** before wiring production startup behavior, create a standalone
+HTML chooser for an animated welcome screen that stays until the places database
+refresh completes or roughly one second, and that adapts across desktop, tablet,
+phone, and Light/Dark/Auto theme behavior.
+
+**Decision:** added `docs/welcome-screen-designs.html` with eight distinct
+motion directions: centered trust card, route reveal, data scanner, compass
+pulse, live list hydration, tile mosaic, nearby orbit, and app-shell preview.
+The board imports the project design tokens, previews desktop/tablet/phone
+frames for each concept, includes a System/Light/Dark theme switcher, and uses
+CSS-only transform/opacity-oriented motion suitable for a later lightweight
+vanilla implementation.
+
+**Pattern to follow:** the eventual production welcome screen should use the
+existing Auto theme model: follow system color scheme by default, but inherit an
+explicit map Light/Dark theme when the user has chosen one. It should appear
+over the already available cached map and dismiss after both minimum dwell and
+data refresh completion conditions are satisfied.
+
+**Verification:** `git diff --check` passed, with only the pre-existing
+line-ending warning on dirty `src/app.js`. No Playwright/browser tests were run,
+matching the standing manual-testing preference.
+
+**Follow-up correction:** user rejected the first concept board because it was
+not scrollable, felt too generic/AI-sloppy, and did not feel creatively tied to
+maps or locations. Root cause of the scroll bug: `design-tokens.css` sets
+`html, body { overflow: hidden; }`, while the first concept page only overrode
+`body`; standalone design boards must explicitly restore `html` scrolling too.
+The board was rebuilt around seven location-native concepts: cartographic
+aperture, route trace, tile refresh quilt, coordinate lock, place constellation,
+bearing compass, and cache-to-live split. Future welcome-screen directions
+should use actual cartographic metaphors and app-specific loading behavior, not
+generic centered loader cards.
+
+**Second follow-up:** user preferred concepts B (route trace) and E (place
+constellation), asked to combine them, and clarified the product name is
+**Halal Finder**. The concept board now focuses only on B+E hybrids: animated
+routes drawing over a map texture while halal/location pins wake up along or
+around the path. The welcome title should be randomized from a broad set of
+short map/location phrases on each load, with small title-style variations, so
+the startup moment feels less repetitive.
+
+**Third follow-up:** user provided `LOGO - halal finder.svg` as the official
+Halal Finder brand asset and wants the loading screen to animate the actual SVG
+logo rather than a recreated placeholder. The concept board now uses the real
+logo in every variation, with restrained brand motion: logo settle/breathe,
+subtle rings, light sweep, route drawing, and place pins waking around it. Keep
+the logo recognizable and calm; the map/location motion should support the
+brand, not overpower it.
+
+**Fourth follow-up:** user rejected the route/pin surroundings around the logo.
+For the welcome/loading screen, use a clean logo-only treatment: animate the
+provided SVG itself, with no map panels, routes, pins, constellation effects,
+or decorative loading scenery. Motion should be proper, quiet, and beautiful,
+letting the Halal Finder logo be the entire visual focus.
+
+**Fifth follow-up:** user provided `kc_logo_big.inline.svg` as the preferred
+motion reference. For Halal Finder loading concepts, adapt that same restrained
+inline-SVG language: stroke traces drawing first, the final fill settling after,
+slow inherited ink/color drift, a tiny breath, and faint depth/whisper duplicate
+layers. Keep the result clean and logo-only.
+
+**Production choice:** user selected **Draw then fill** for the real app welcome
+screen. Production should show only the official Halal Finder SVG logo, centered
+on a clean theme-aware canvas, with SVG stroke traces drawing before the final
+fill settles. No supporting copy, map decoration, route lines, pins, spinner, or
+surrounding UI. The screen should stay up for the initial places data readiness
+and a one-second minimum dwell, then fade away. Theme mode now defaults to Auto
+when no explicit preference is saved, while saved Light/Dark choices override
+the system theme.
+
+**Timing correction:** user noticed the map appeared before the draw/fill logo
+animation completed. The welcome screen must wait for both initial places data
+readiness and a full logo animation cycle before revealing the map; if data
+finishes during a later loop, dismiss only at the end of that current cycle so
+the logo is never cut off mid-draw.
+
+**Loop correction:** user clarified that the draw/fill animation must not play
+twice by default. Start on an empty welcome canvas, run the SVG draw/fill once,
+then reveal the map if background loading is finished. Only start another full
+draw/fill cycle when loading is still pending after the previous cycle ends.
+
+**Smoothness correction:** user rejected the brief skeleton/outline flash before
+the logo animation. The welcome screen must begin as an empty canvas, inject the
+inline SVG invisibly, measure each trace path's real length, and only then start
+the draw/fill class so the whole logo draws from nothing. Once the full draw/fill
+cycle, including the wordmark delay, is complete, reveal the map immediately if
+loading is already done; do not add an artificial hold.
+
+**Snappy one-shot correction:** user decided the splash does not need to repeat
+or wait for the database refresh, because cached data makes the map usable
+anyway. The production welcome screen now runs the official logo draw/fill
+animation exactly once, starts independently of `loadPlacesData()`, removes the
+overlay immediately at the end of that pass with no fade-out or extra stagger,
+and lets the background refresh continue as fire-and-forget work. Keep future
+startup motion fast and confidence-building rather than using loading loops.
+
+**Live-map sneak-peek refinement:** user liked the one-shot logo animation but
+wanted the real startup map visible underneath it, blurred and heavily
+vignetted, with a related paint/fill reveal so the user gets a glimpse of the
+preset map view without losing focus on the logo. The map reveal is purely
+decorative and intentionally longer than the logo pass; the app still removes
+the welcome overlay as soon as the logo animation finishes, so the map paint
+effect never gates the main view.
+
+**Map-sketch correction:** user rejected the circular/soft paint reveal because
+it did not match the logo animation closely enough and left the map too hidden.
+The welcome background should keep the real map visible through a lighter blur,
+then layer a responsive SVG street/block sketch above it using the same
+stroke-dash draw and delayed fill language as the logo. Avoid circular wipes for
+this startup treatment.
+
+**Actual-map correction:** user clarified that "draw and paint the map" means
+the app must use the actual MapLibre-rendered map geometry, not a decorative or
+hand-authored SVG approximation. The welcome sketch now queries the current
+viewport's rendered road, water, park, landuse, and building layers, projects
+those real features into screen-space SVG paths, and animates those paths with
+the same stroke-dash draw/fill method as the logo. If rendered map features are
+not ready before the logo finishes, the app still reveals immediately because
+startup speed remains the priority.
+
+**Final loading-screen simplification:** user decided to remove the entire map
+draw/background concept after seeing the iterations. The production welcome
+screen should return to the clean logo-only loader: centered official SVG,
+draw-then-fill animation, theme-aware canvas, one run, and no map preview,
+feature extraction, decorative streets, blur/vignette layer, or background
+sketch.
+
+**Logo-to-map handoff correction:** user liked the logo-only loader but found
+the instant removal abrupt and still noticed a tiny wait before the map opened.
+The loader should no longer use a fixed timeout to guess when the logo is done;
+it should remove the overlay on the logo animation's real `animationend` event.
+To keep the reveal smooth without delaying interaction, animate the app/map
+underneath with a short non-blocking opacity/blur/scale reveal after the overlay
+is removed.
+
+**Deploy note:** production deploy prepared for the logo-only welcome screen,
+Auto theme default, animationend handoff, and cache version `20260905-10`.
+Dev-only GPS simulator disabled for remote branches per the deploy prompt; it
+should be restored locally after promotion.

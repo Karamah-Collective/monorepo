@@ -45,6 +45,7 @@ All tokens are CSS custom properties on `:root`.
 | `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |\n| `--on-accent` | `#fff` | Text/icons on any accent or coloured background |
 | `--gold` | `#b89030` | Sponsor / Eid highlight, partially-halal chip |
 | `--gold-soft` | `#fdf6e8` | Gold tint surface |
+| `--logo-word` | `#352359` | Official Halal Finder wordmark colour; dark mode adapts it against the dark canvas |
 | `--sponsor` | `var(--gold)` | Alias — sponsor badge/chip colour |
 | `--sponsor-soft` | `var(--gold-soft)` | Alias — sponsor badge/chip background |
 | `--success` | `#1FA86A` | Green — mosques, confirmed features |
@@ -222,6 +223,8 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-phone-chrome-compact` | `.42s cubic-bezier(.16,1,.3,1)` | Phone map-interaction visual scaling |
 | `--t-phone-refine-bar` | `.52s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar reveal |
 | `--t-phone-refine-bar-collapse` | `.38s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar tuck |
+| `--t-welcome-logo-draw` | `1.8s cubic-bezier(.65,0,.35,1)` | Welcome screen one-shot logo stroke-draw/fill pass |
+| `--t-welcome-app-reveal` | `.32s cubic-bezier(.16,1,.3,1)` | Non-blocking app reveal after the welcome logo finishes |
 
 ### Scale Tokens
 
@@ -229,6 +232,22 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 |---|---|---|
 | `--scale-phone-mainbar-compact` | `.84` | Phone mainbar scale while the map canvas is being manipulated |
 | `--scale-phone-chrome-compact` | `.82` | Phone floating-control scale while the map canvas is being manipulated |
+| `--welcome-logo-vw` | `58vw` | Desktop welcome logo viewport-relative width |
+| `--welcome-logo-max-w` | `430px` | Desktop welcome logo maximum width |
+| `--welcome-logo-tablet-vw` | `76vw` | Tablet/phone welcome logo viewport-relative width |
+| `--welcome-logo-tablet-max-w` | `360px` | Tablet/phone welcome logo maximum width |
+| `--welcome-logo-phone-vw` | `82vw` | Narrow-phone welcome logo viewport-relative width |
+| `--welcome-logo-phone-max-w` | `320px` | Narrow-phone welcome logo maximum width |
+| `--welcome-logo-start-scale` | `.992` | Opening scale for the welcome logo draw animation |
+| `--welcome-logo-end-scale` | `.998` | Resting scale for the welcome logo draw animation loop |
+| `--welcome-logo-trace-length` | `2000` | SVG dash length used by the welcome logo trace paths |
+| `--welcome-logo-trace-opacity` | `.72` | Opacity for the drawn trace paths before final fill settles |
+| `--welcome-logo-fill-rest-opacity` | `.92` | Resting fill opacity at the end of each draw/fill loop |
+| `--welcome-logo-trace-gold-w` | `5` | SVG stroke width for the welcome logo's gold emblem trace |
+| `--welcome-logo-trace-word-w` | `1.45` | SVG stroke width for the welcome logo's wordmark trace |
+| `--welcome-app-reveal-start-opacity` | `.72` | Starting opacity for the app reveal after the welcome overlay is removed |
+| `--welcome-app-reveal-start-blur` | `3px` | Starting blur for the app reveal after the welcome overlay is removed |
+| `--welcome-app-reveal-start-scale` | `1.006` | Starting scale for the app reveal after the welcome overlay is removed |
 
 Phone map-interaction scaling is applied to runtime-created zone wrappers
 (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,

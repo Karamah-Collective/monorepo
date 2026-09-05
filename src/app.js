@@ -20,20 +20,132 @@ if ("serviceWorker" in navigator) {
 import { map } from "./map-init.js";
 import {
   checkGeoNotice,
-  showEarlyDevNotice,
-  showLoadingToast,
-  hideLoadingToast,
   showOfflineBanner,
   hideOfflineBanner,
   showToast,
+  isReduceMotionActive,
 } from "./utils.js";
 import { preloadSatelliteSource, centerStoredHomeIfAvailable, syncHomeMarker } from "./map-controls.js";
 import "./directions.js";
 import "./navigation.js"; // registers nav hooks with directions.js
-import { loadPlacesData, placesLoaded } from "./places.js";
+import { loadPlacesData } from "./places.js";
 import "./search.js";
 import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
+
+const WELCOME_LOGO_URL = "/LOGO%20-%20halal%20finder.svg";
+const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
+const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
+
+function _addWelcomeLogoTrace(path, className) {
+  const trace = path.cloneNode(false);
+  trace.removeAttribute("fill");
+  trace.removeAttribute("fill-opacity");
+  trace.classList.add("welcome-logo-trace", className);
+  path.before(trace);
+  path.classList.add("welcome-logo-final");
+}
+
+function _prepareWelcomeLogo(svg) {
+  if (!svg) return null;
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+  svg.setAttribute("aria-label", "Halal Finder");
+  svg.setAttribute("role", "img");
+  svg.classList.add("welcome-logo");
+
+  const art = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  art.classList.add("welcome-logo-art");
+  [...svg.children]
+    .filter((child) => child.tagName.toLowerCase() !== "defs")
+    .forEach((child) => art.appendChild(child));
+  svg.appendChild(art);
+
+  const goldPath = svg.querySelector('path[fill="#b19761"]');
+  const wordGroups = svg.querySelectorAll('g[fill="#352359"]');
+
+  if (goldPath) {
+    goldPath.classList.add("welcome-logo-gold");
+    _addWelcomeLogoTrace(goldPath, "welcome-logo-trace-gold");
+  }
+
+  wordGroups.forEach((group) => {
+    group.classList.add("welcome-logo-word");
+    group.querySelectorAll("path").forEach((path) => {
+      _addWelcomeLogoTrace(path, "welcome-logo-trace-word");
+    });
+  });
+
+  return svg;
+}
+
+function _primeWelcomeLogoTraceLengths(logo) {
+  logo.querySelectorAll(".welcome-logo-trace").forEach((trace) => {
+    try {
+      const length = Math.ceil(trace.getTotalLength());
+      trace.style.setProperty("--welcome-logo-path-length", length);
+    } catch (_) {}
+  });
+}
+
+async function _loadWelcomeLogo() {
+  const stage = document.getElementById("welcome-logo-stage");
+  if (!stage) return false;
+  const response = await fetch(WELCOME_LOGO_URL);
+  if (!response.ok) return false;
+  const template = document.createElement("template");
+  template.innerHTML = (await response.text()).trim();
+  const logo = _prepareWelcomeLogo(template.content.querySelector("svg"));
+  if (!logo) return false;
+  stage.replaceChildren(logo);
+  _primeWelcomeLogoTraceLengths(logo);
+  return true;
+}
+
+function _waitForWelcomeLogoEnd() {
+  const logoArt = document.querySelector(".welcome-logo .welcome-logo-art");
+  if (!logoArt) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = (event) => {
+      if (event.target !== logoArt || event.animationName !== WELCOME_LOGO_END_ANIMATION) return;
+      logoArt.removeEventListener("animationend", done);
+      resolve();
+    };
+    logoArt.addEventListener("animationend", done);
+  });
+}
+
+async function _runWelcomeLogoCycle() {
+  const welcome = document.getElementById("welcome-screen");
+  if (!welcome || welcome.hidden) return;
+  if (isReduceMotionActive()) {
+    welcome.classList.add("is-running");
+    return;
+  }
+  welcome.classList.remove("is-running");
+  void welcome.offsetWidth;
+  const logoEnd = _waitForWelcomeLogoEnd();
+  welcome.classList.add("is-running");
+  await logoEnd;
+}
+
+async function _runWelcomeOnce() {
+  const hasAnimatedLogo = await _loadWelcomeLogo().catch(() => false);
+  if (hasAnimatedLogo) {
+    await _runWelcomeLogoCycle();
+  }
+  _hideWelcomeScreen();
+}
+
+function _hideWelcomeScreen() {
+  const welcome = document.getElementById("welcome-screen");
+  if (!welcome || welcome.hidden) return;
+  document.body.classList.add(WELCOME_APP_REVEAL_CLASS);
+  welcome.hidden = true;
+  welcome.remove();
+}
+
+void _runWelcomeOnce();
 
 function hasIncomingSharedState() {
   const params = new URLSearchParams(location.search);
@@ -268,7 +380,7 @@ map.on("load", async () => {
   map.moveLayer("bridge_major",        "label_road");
   map.moveLayer("admin_country",       "label_road");
 
-  const loadPromise = loadPlacesData();
+  void loadPlacesData();
 
   // Lazy-load non-critical modules in parallel after first paint
   const [
@@ -325,11 +437,6 @@ map.on("load", async () => {
       const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
         // showEarlyDevNotice(); // disabled
-        // Show loading toast only after tutorial/intro finishes, if places still loading
-        if (!placesLoaded) {
-          showLoadingToast("Loading places…", "Fetching latest data");
-          loadPromise.then(() => hideLoadingToast());
-        }
       });
     },
     800,

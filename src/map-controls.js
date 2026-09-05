@@ -37,7 +37,7 @@ const HOME_VIEW_ZOOM = 14.2;
 const HOME_MARKER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
 
 export let currentTheme = "light";     // "light" | "dark" — the actually-applied visual theme
-export let themeMode = "light";        // "light" | "dark" | "auto" — the user's selected Theme option
+export let themeMode = "auto";        // "light" | "dark" | "auto" — the user's selected Theme option
 let _systemThemeMQ = null;             // matchMedia("(prefers-color-scheme: dark)"), created lazily
 export let isSatelliteActive = false;
 
@@ -804,17 +804,16 @@ export function setTheme(mode) {
 (function restoreSavedTheme() {
   try {
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "auto") {
-      themeMode = saved;
-      const mq = _getSystemThemeMQ();
-      const isDark = saved === "auto" ? mq.matches : true;
-      if (saved === "auto") mq.addEventListener("change", _onSystemThemeChange);
-      currentTheme = isDark ? "dark" : "light";
-      document.documentElement.classList.toggle("dark-mode", isDark);
-      document.body.classList.toggle("dark-mode", isDark);
-      document.getElementById("map")?.classList.toggle("dark-mode", isDark);
-      _syncStyleButtons();
-    }
+    const restoredMode = saved === "light" || saved === "dark" || saved === "auto" ? saved : "auto";
+    themeMode = restoredMode;
+    const mq = _getSystemThemeMQ();
+    const isDark = restoredMode === "auto" ? mq.matches : restoredMode === "dark";
+    if (restoredMode === "auto") mq.addEventListener("change", _onSystemThemeChange);
+    currentTheme = isDark ? "dark" : "light";
+    document.documentElement.classList.toggle("dark-mode", isDark);
+    document.body.classList.toggle("dark-mode", isDark);
+    document.getElementById("map")?.classList.toggle("dark-mode", isDark);
+    _syncStyleButtons();
   } catch (_) {}
 })();
 

@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20260902-2'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
+const VERSION = '20260905-10'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
 const CACHE_TILES  = `hf-tiles-${VERSION}`;
@@ -71,6 +71,7 @@ const SHELL_ASSETS = [
   '/src/styles/design-tokens.css',
   '/src/styles/fonts/PlusJakartaSans-Variable-Latin.woff2',
   '/src/styles/fonts/PlusJakartaSans-Variable-LatinExt.woff2',
+  '/LOGO%20-%20halal%20finder.svg',
   '/data/places.json',
   '/data/tags.json',
   '/data/eid-prayers.json',

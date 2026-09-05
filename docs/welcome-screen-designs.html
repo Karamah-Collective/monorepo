@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Halal Finder Logo Loading Variations</title>
+  <link rel="stylesheet" href="../src/styles/design-tokens.css" />
+  <style>
+    html,
+    body {
+      min-height: 100%;
+      overflow: auto;
+    }
+
+    body {
+      --hf-word: #352359;
+      --hf-word-soft: color-mix(in srgb, var(--hf-word) 72%, var(--accent) 28%);
+      --hf-stage: var(--surface);
+      --hf-stage-border: color-mix(in srgb, var(--border) 82%, transparent);
+
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font-sans);
+      transition:
+        background var(--t-med) var(--ease-standard),
+        color var(--t-med) var(--ease-standard);
+    }
+
+    body[data-theme-mode="dark"] {
+      --canvas: #090a0a;
+      --surface: #111312;
+      --surface-2: #1a1d1c;
+      --surface-3: #272b29;
+      --text: #f6f7f6;
+      --text-2: #c5cbc8;
+      --text-3: #8f9894;
+      --border: #303633;
+      --border-light: #222724;
+      --hf-word: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
+      color-scheme: dark;
+    }
+
+    body[data-theme-mode="light"] {
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme-mode="light"]) {
+        --canvas: #090a0a;
+        --surface: #111312;
+        --surface-2: #1a1d1c;
+        --surface-3: #272b29;
+        --text: #f6f7f6;
+        --text-2: #c5cbc8;
+        --text-3: #8f9894;
+        --border: #303633;
+        --border-light: #222724;
+        --hf-word: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
+        color-scheme: dark;
+      }
+    }
+
+    .page {
+      width: min(1120px, calc(100% - var(--space-6)));
+      margin: 0 auto;
+      padding: var(--space-7) 0 var(--space-8);
+    }
+
+    .mast {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding-bottom: var(--space-5);
+    }
+
+    .eyebrow {
+      margin: 0 0 var(--space-2);
+      color: var(--text-3);
+      font-size: var(--txt-xs);
+      font-weight: var(--fw-semibold);
+      letter-spacing: var(--ls-caps);
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(var(--txt-3xl), 4vw, var(--txt-display));
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      flex: 0 0 auto;
+      gap: var(--space-1);
+      padding: var(--space-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      background: var(--surface);
+    }
+
+    .theme-toggle button {
+      min-width: var(--touch-target);
+      min-height: var(--touch-target);
+      padding: 0 var(--space-3);
+      border: 0;
+      border-radius: var(--r-pill);
+      background: transparent;
+      color: var(--text-2);
+      font: inherit;
+      font-size: var(--txt-sm);
+      font-weight: var(--fw-semibold);
+      cursor: pointer;
+    }
+
+    .theme-toggle button[aria-pressed="true"] {
+      background: var(--text);
+      color: var(--surface);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+
+    .variant {
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .stage {
+      position: relative;
+      display: grid;
+      min-height: clamp(280px, 38vw, 430px);
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid var(--hf-stage-border);
+      border-radius: var(--r-xl);
+      background: var(--hf-stage);
+    }
+
+    .stage svg,
+    .stage img {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: min(72%, 430px);
+      height: auto;
+      overflow: visible;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .hf-logo {
+      color: var(--hf-word);
+    }
+
+    .hf-logo .gold,
+    .hf-logo .word,
+    .hf-logo .trace,
+    .hf-logo .logo-art,
+    .hf-logo .hf-depth,
+    .hf-logo .hf-whisper {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .hf-logo .gold {
+      fill: var(--gold);
+    }
+
+    .hf-logo .word {
+      fill: var(--hf-word);
+    }
+
+    .hf-logo .trace {
+      fill: none;
+      opacity: 0;
+      stroke-dasharray: 2000;
+      stroke-dashoffset: 2000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .hf-logo .trace-gold {
+      stroke: var(--gold);
+      stroke-width: 5;
+    }
+
+    .hf-logo .trace-word {
+      stroke: var(--hf-word);
+      stroke-width: 1.45;
+    }
+
+    .hf-logo .hf-depth,
+    .hf-logo .hf-whisper {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .hf-logo .hf-depth {
+      transform: translateY(var(--space-1));
+      mix-blend-mode: multiply;
+    }
+
+    .hf-logo .hf-depth .gold,
+    .hf-logo .hf-depth .word {
+      fill: currentColor;
+    }
+
+    .hf-logo .hf-whisper {
+      mix-blend-mode: soft-light;
+    }
+
+    .meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+      color: var(--text-2);
+      font-size: var(--txt-sm);
+    }
+
+    .meta strong {
+      color: var(--text);
+      font-weight: var(--fw-bold);
+    }
+
+    .meta span {
+      color: var(--text-3);
+    }
+
+    .v-kc-draw .trace {
+      opacity: 0.72;
+      animation: hfDraw 2600ms cubic-bezier(.65, 0, .35, 1) infinite;
+    }
+
+    .v-kc-draw .final {
+      animation: hfFillSettle 2600ms ease-out infinite;
+    }
+
+    .v-kc-draw .trace-word,
+    .v-kc-draw .word .final {
+      animation-delay: 280ms;
+    }
+
+    .v-kc-whisper .logo-art {
+      animation: hfBreathe 8200ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-whisper .hf-depth {
+      opacity: 0.18;
+    }
+
+    .v-kc-whisper .hf-whisper {
+      animation: hfWhisper 7800ms ease-in-out infinite;
+    }
+
+    .v-kc-ink .hf-logo {
+      animation: hfInkDrift 20000ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-ink .gold {
+      fill: currentColor;
+    }
+
+    .v-kc-ink .word {
+      fill: color-mix(in srgb, currentColor 70%, var(--hf-word) 30%);
+    }
+
+    .v-kc-ink .logo-art {
+      animation: hfBreathe 20000ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-word .gold.final {
+      animation: hfMarkFirst 3600ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-word .word .final {
+      animation: hfWordAfter 3600ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-hold .logo-art {
+      animation: hfBreathe 12000ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    .v-kc-hold .gold {
+      animation: hfGoldQuiet 12000ms ease-in-out infinite;
+    }
+
+    .v-kc-hold .word {
+      animation: hfWordQuiet 12000ms ease-in-out infinite;
+    }
+
+    .v-kc-bloom .trace {
+      opacity: 0.5;
+      animation: hfDraw 3400ms cubic-bezier(.65, 0, .35, 1) infinite;
+    }
+
+    .v-kc-bloom .final {
+      animation: hfFillSettle 3400ms ease-out infinite;
+    }
+
+    .v-kc-bloom .logo-art {
+      animation: hfBloomScale 3400ms cubic-bezier(.45, 0, .2, 1) infinite;
+    }
+
+    @keyframes hfDraw {
+      0% {
+        stroke-dashoffset: 2000;
+      }
+      58%,
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes hfFillSettle {
+      0%,
+      34% {
+        fill-opacity: 0;
+      }
+      58%,
+      82% {
+        fill-opacity: 1;
+      }
+      100% {
+        fill-opacity: 0.92;
+      }
+    }
+
+    @keyframes hfBreathe {
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+      45% {
+        transform: translateY(calc(var(--space-1) * -1)) scale(1.012);
+      }
+      55% {
+        transform: translateY(calc(var(--space-1) * -0.5)) scale(1.008);
+      }
+    }
+
+    @keyframes hfWhisper {
+      0%,
+      100% {
+        opacity: 0.06;
+      }
+      45% {
+        opacity: 0.14;
+      }
+      65% {
+        opacity: 0.1;
+      }
+    }
+
+    @keyframes hfInkDrift {
+      0%,
+      100% {
+        color: var(--accent);
+      }
+      22% {
+        color: color-mix(in srgb, var(--accent) 88%, var(--gold) 12%);
+      }
+      48% {
+        color: color-mix(in srgb, var(--accent) 78%, var(--gold) 22%);
+      }
+      78% {
+        color: color-mix(in srgb, var(--accent) 92%, var(--hf-word) 8%);
+      }
+    }
+
+    @keyframes hfMarkFirst {
+      0% {
+        opacity: 0;
+        transform: translateY(calc(var(--space-4) * -1));
+      }
+      24%,
+      82% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      100% {
+        opacity: 0.92;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes hfWordAfter {
+      0%,
+      20% {
+        opacity: 0;
+        transform: translateY(var(--space-3));
+      }
+      42%,
+      82% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      100% {
+        opacity: 0.92;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes hfGoldQuiet {
+      0%,
+      100% {
+        opacity: 0.94;
+      }
+      45% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes hfWordQuiet {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      45% {
+        opacity: 0.9;
+      }
+    }
+
+    @keyframes hfBloomScale {
+      0% {
+        transform: scale(0.992);
+      }
+      52%,
+      82% {
+        transform: scale(1);
+      }
+      100% {
+        transform: scale(0.998);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page {
+        width: min(100% - var(--space-4), 680px);
+        padding-top: var(--space-5);
+      }
+
+      .mast {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: 300px;
+      }
+
+      .stage svg {
+        width: min(78%, 360px);
+      }
+    }
+
+    @media (max-width: 380px) {
+      .page {
+        width: min(100% - var(--space-3), 360px);
+      }
+
+      .stage {
+        min-height: 260px;
+      }
+
+      .meta {
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 1ms !important;
+      }
+
+      .hf-logo .trace {
+        opacity: 0;
+      }
+
+      .hf-logo .final {
+        fill-opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="mast">
+      <div>
+        <p class="eyebrow">Halal Finder loading screen</p>
+        <h1>KC-inspired logo-only SVG motion.</h1>
+      </div>
+      <div class="theme-toggle" aria-label="Theme preview">
+        <button type="button" data-theme="system" aria-pressed="true">System</button>
+        <button type="button" data-theme="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </header>
+
+    <section class="grid" aria-label="Logo loading animation options">
+      <article class="variant">
+        <div class="stage v-kc-draw" data-logo-stage></div>
+        <div class="meta"><strong>A. Draw then fill</strong><span>closest to KC stroke style</span></div>
+      </article>
+
+      <article class="variant">
+        <div class="stage v-kc-whisper" data-logo-stage></div>
+        <div class="meta"><strong>B. Depth whisper</strong><span>soft duplicate and tiny breath</span></div>
+      </article>
+
+      <article class="variant">
+        <div class="stage v-kc-ink" data-logo-stage></div>
+        <div class="meta"><strong>C. Ink drift</strong><span>slow inherited color movement</span></div>
+      </article>
+
+      <article class="variant">
+        <div class="stage v-kc-word" data-logo-stage></div>
+        <div class="meta"><strong>D. Mark then word</strong><span>logo lockup assembles quietly</span></div>
+      </article>
+
+      <article class="variant">
+        <div class="stage v-kc-hold" data-logo-stage></div>
+        <div class="meta"><strong>E. Long breath</strong><span>most refined continuous loop</span></div>
+      </article>
+
+      <article class="variant">
+        <div class="stage v-kc-bloom" data-logo-stage></div>
+        <div class="meta"><strong>F. Stroke bloom</strong><span>drawn edge with settled fill</span></div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const LOGO_URL = "../LOGO%20-%20halal%20finder.svg";
+    const themeButtons = [...document.querySelectorAll("[data-theme]")];
+
+    function setTheme(mode) {
+      document.body.dataset.themeMode = mode;
+      themeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.theme === mode));
+      });
+    }
+
+    function addTrace(path, className) {
+      const trace = path.cloneNode(false);
+      trace.removeAttribute("fill");
+      trace.removeAttribute("fill-opacity");
+      trace.classList.add("trace", className);
+      path.before(trace);
+      path.classList.add("final");
+    }
+
+    function prepareLogo(svg) {
+      svg.removeAttribute("width");
+      svg.removeAttribute("height");
+      svg.setAttribute("aria-label", "Halal Finder");
+      svg.setAttribute("role", "img");
+      svg.classList.add("hf-logo");
+
+      const art = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      art.classList.add("logo-art");
+      const movable = [...svg.children].filter((child) => child.tagName.toLowerCase() !== "defs");
+      movable.forEach((child) => art.appendChild(child));
+      svg.appendChild(art);
+
+      const goldPath = svg.querySelector('path[fill="#b19761"]');
+      const wordGroups = svg.querySelectorAll('g[fill="#352359"]');
+
+      if (goldPath) {
+        goldPath.classList.add("gold");
+        addTrace(goldPath, "trace-gold");
+      }
+
+      wordGroups.forEach((group) => {
+        group.classList.add("word");
+        group.querySelectorAll("path").forEach((path) => addTrace(path, "trace-word"));
+      });
+
+      const depth = art.cloneNode(true);
+      depth.classList.remove("logo-art");
+      depth.classList.add("hf-depth");
+
+      const whisper = art.cloneNode(true);
+      whisper.classList.remove("logo-art");
+      whisper.classList.add("hf-whisper");
+
+      svg.append(depth, whisper);
+      return svg;
+    }
+
+    async function loadLogos() {
+      const response = await fetch(LOGO_URL);
+      const logoText = await response.text();
+      const template = document.createElement("template");
+      template.innerHTML = logoText.trim();
+      const sourceLogo = prepareLogo(template.content.querySelector("svg"));
+
+      document.querySelectorAll("[data-logo-stage]").forEach((stage) => {
+        stage.appendChild(sourceLogo.cloneNode(true));
+      });
+    }
+
+    themeButtons.forEach((button) => {
+      button.addEventListener("click", () => setTheme(button.dataset.theme));
+    });
+
+    setTheme("system");
+    loadLogos().catch(() => {
+      document.querySelectorAll("[data-logo-stage]").forEach((stage) => {
+        const img = document.createElement("img");
+        img.src = LOGO_URL;
+        img.alt = "Halal Finder";
+        stage.appendChild(img);
+      });
+    });
+  </script>
+</body>
+</html>
