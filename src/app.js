@@ -36,6 +36,7 @@ import { initMenuAccount, initMenuPreferences } from "./menu.js";
 const WELCOME_LOGO_URL = "/LOGO%20-%20halal%20finder.svg";
 const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
 const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
+const WELCOME_REVEAL_SETTLE_MS = 180;
 
 function _addWelcomeLogoTrace(path, className) {
   const trace = path.cloneNode(false);
@@ -141,11 +142,23 @@ function _hideWelcomeScreen() {
   const welcome = document.getElementById("welcome-screen");
   if (!welcome || welcome.hidden) return;
   document.body.classList.add(WELCOME_APP_REVEAL_CLASS);
+  document.getElementById("app")?.addEventListener("animationend", () => {
+    document.body.classList.remove(WELCOME_APP_REVEAL_CLASS);
+  }, { once: true });
   welcome.hidden = true;
   welcome.remove();
 }
 
-void _runWelcomeOnce();
+function _afterWelcomeIdle() {
+  return new Promise((resolve) => {
+    const schedule = window.requestIdleCallback
+      ? (callback) => window.requestIdleCallback(callback, { timeout: WELCOME_REVEAL_SETTLE_MS })
+      : (callback) => setTimeout(callback, WELCOME_REVEAL_SETTLE_MS);
+    requestAnimationFrame(() => schedule(resolve));
+  });
+}
+
+const welcomeReady = _runWelcomeOnce();
 
 function hasIncomingSharedState() {
   const params = new URLSearchParams(location.search);
@@ -380,7 +393,9 @@ map.on("load", async () => {
   map.moveLayer("bridge_major",        "label_road");
   map.moveLayer("admin_country",       "label_road");
 
+  await welcomeReady;
   void loadPlacesData();
+  await _afterWelcomeIdle();
 
   // Lazy-load non-critical modules in parallel after first paint
   const [

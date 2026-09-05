@@ -222,8 +222,8 @@
   --t-phone-chrome-compact: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar: 0.52s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar-collapse: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-  --t-welcome-logo-draw: 1.8s cubic-bezier(0.65, 0, 0.35, 1);
-  --t-welcome-app-reveal: 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-welcome-logo-draw: 1.55s cubic-bezier(0.65, 0, 0.35, 1);
+  --t-welcome-app-reveal: 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -246,9 +246,8 @@
   --welcome-logo-fill-rest-opacity: 0.92;
   --welcome-logo-trace-gold-w: 5;
   --welcome-logo-trace-word-w: 1.45;
-  --welcome-app-reveal-start-opacity: 0.72;
-  --welcome-app-reveal-start-blur: 3px;
-  --welcome-app-reveal-start-scale: 1.006;
+  --welcome-app-reveal-start-opacity: 0.88;
+  --welcome-app-reveal-start-scale: 1.002;
 
   /* card inner spacing — uniform across all card types */
   --card-pad: var(--sp-7);

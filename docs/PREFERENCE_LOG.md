@@ -4412,3 +4412,9 @@ is removed.
 Auto theme default, animationend handoff, and cache version `20260905-10`.
 Dev-only GPS simulator disabled for remote branches per the deploy prompt; it
 should be restored locally after promotion.
+
+**Production smoothness correction:** production startup felt jittery/sticky,
+so the welcome logo pass should own the startup frame budget. Defer places data
+and non-critical lazy module initialization until after the logo has finished
+and the map has been revealed, avoid full-app `filter: blur()` during handoff,
+and keep reveal motion transform/opacity-only with temporary `will-change`.
