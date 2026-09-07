@@ -38,6 +38,11 @@ import { json, helsinkiTimestamp, truncate } from "../_shared.js";
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { normaliseAddress, parseTagString, isSponsorActiveForDate, extractCityFromAddress, generateId } from "../_gas-compat.js";
 import { upsertPlaceAppLinks } from "../_app-links.js";
+import {
+  deleteSocialVideo,
+  listAllSocialVideos,
+  upsertSocialVideo,
+} from "../_place-videos.js";
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
@@ -66,7 +71,7 @@ async function authenticateAdmin(request, env) {
 
 // ── Audit log ────────────────────────────────────────────────────────────
 
-const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "rowIndex"];
+const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "rowIndex", "videoId", "id"];
 function extractTargetId(data) {
   for (const f of TARGET_ID_FIELDS) {
     if (data[f] !== undefined && data[f] !== null && data[f] !== "") return String(data[f]);
@@ -294,6 +299,7 @@ const GET_ACTIONS = {
   "admin-events": (db) => getAdminEvents(db),
   "admin-eid-prayers": (db) => getAdminEidPrayers(db),
   "admin-log": (db, url) => getAdminLog(db, url),
+  "admin-social-videos": (db) => listAllSocialVideos(db),
 };
 
 export async function onRequestGet(context) {
@@ -577,6 +583,8 @@ const POST_ACTIONS = {
   "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no"),
   "approve-eid": (db, data) => approveEid(db, data.rowId),
   "reject-eid": (db, data) => rejectEid(db, data.rowId),
+  "upsert-social-video": (db, data) => upsertSocialVideo(db, data.video || data),
+  "delete-social-video": (db, data) => deleteSocialVideo(db, data.videoId || data.id),
 };
 
 export async function onRequestPost(context) {
