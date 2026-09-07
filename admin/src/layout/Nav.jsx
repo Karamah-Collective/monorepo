@@ -13,6 +13,7 @@ const LINKS = [
   { to: "/reviews", label: "Reviews", icon: "star" },
   { to: "/wishes", label: "Wishes", icon: "heart" },
   { to: "/contacts", label: "Contacts", icon: "mail" },
+  { to: "/social-videos", label: "Social Videos", icon: "play" },
   { to: "/log", label: "Activity Log", icon: "list" },
 ];
 

@@ -86,6 +86,12 @@ export const Icons = {
       <path d="M9 8V6a3 3 0 016 0v2" />
     </>
   ),
+  play: icon(
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M10 9.5l5 2.5-5 2.5z" />
+    </>
+  ),
 };
 
 export const CloseIcon = ({ size = 20 }) => (

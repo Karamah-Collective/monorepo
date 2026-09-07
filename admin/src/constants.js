@@ -30,6 +30,12 @@ export const CONTACT_REPLIED_OPTIONS = [
   { value: "yes", label: "Replied" },
 ];
 
+export const PLATFORM_OPTIONS = [
+  { value: "YouTube", label: "YouTube" },
+  { value: "TikTok", label: "TikTok" },
+  { value: "Instagram", label: "Instagram" },
+];
+
 export function labelFor(options, value) {
   return options.find((o) => o.value === value)?.label ?? value;
 }

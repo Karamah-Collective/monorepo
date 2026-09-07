@@ -15,6 +15,8 @@ export const useAdminReviews = () => useQuery({ queryKey: ["admin-reviews"], que
 export const usePendingEid = () => useQuery({ queryKey: ["pending-eid"], queryFn: () => apiGet("pending-eid") });
 export const useAdminEidPrayers = () => useQuery({ queryKey: ["admin-eid-prayers"], queryFn: () => apiGet("admin-eid-prayers") });
 export const useAdminLog = () => useQuery({ queryKey: ["admin-log"], queryFn: () => apiGet("admin-log", { limit: 200 }) });
+export const useAdminSocialVideos = () =>
+  useQuery({ queryKey: ["admin-social-videos"], queryFn: () => apiGet("admin-social-videos") });
 
 // ── Mutations — every one invalidates the queries it can affect, so a
 // pending row disappearing / stats changing shows up immediately without
@@ -49,3 +51,5 @@ export const useApproveReview = () => useAdminMutation("approve-review", ["admin
 export const useRejectReview = () => useAdminMutation("reject-review", ["admin-reviews"]);
 export const useApproveEid = () => useAdminMutation("approve-eid", ["pending-eid", "admin-eid-prayers", "admin-stats"]);
 export const useRejectEid = () => useAdminMutation("reject-eid", ["pending-eid", "admin-stats"]);
+export const useUpsertSocialVideo = () => useAdminMutation("upsert-social-video", ["admin-social-videos"]);
+export const useDeleteSocialVideo = () => useAdminMutation("delete-social-video", ["admin-social-videos"]);

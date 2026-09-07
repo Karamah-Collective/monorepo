@@ -123,6 +123,67 @@
   letter-spacing: -0.01em;
 }
 
+.pp-page-lead {
+  margin: -10px 0 20px;
+  max-width: 52rem;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.pp-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pp-panel-title {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pp-social-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.pp-field select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.pp-field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: none;
+}
+
+.pp-field-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.pp-social-form-actions {
+  margin-top: 8px;
+}
+
+.pp-btn-inline {
+  width: auto;
+  min-width: 160px;
+}
+
 .pp-auth-screen {
   display: flex;
   align-items: center;
@@ -475,5 +536,9 @@
   .pp-stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
+  }
+
+  .pp-social-grid {
+    grid-template-columns: 1fr;
   }
 }

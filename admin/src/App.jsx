@@ -14,6 +14,7 @@ import EidPage from "./pages/EidPage.jsx";
 import ReviewsPage from "./pages/ReviewsPage.jsx";
 import WishesPage from "./pages/WishesPage.jsx";
 import ContactsPage from "./pages/ContactsPage.jsx";
+import SocialVideosPage from "./pages/SocialVideosPage.jsx";
 import LogPage from "./pages/LogPage.jsx";
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/reviews" element={<ReviewsPage />} />
             <Route path="/wishes" element={<WishesPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/social-videos" element={<SocialVideosPage />} />
             <Route path="/log" element={<LogPage />} />
           </Route>
         </Route>
