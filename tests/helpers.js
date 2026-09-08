@@ -48,20 +48,6 @@ exports.test = base.test.extend({
         }),
       }),
     );
-    await page.route("**/ipwho.is/**", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ country_code: "FI" }),
-      }),
-    );
-    await page.route("**/ipapi.co/**", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ country_code: "FI" }),
-      }),
-    );
     await page.route("**/api/geo", (route) =>
       route.fulfill({
         status: 200,

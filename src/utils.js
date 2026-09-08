@@ -20,6 +20,7 @@ let _currentLocationState = { active: false, lat: null, lng: null, accuracy: nul
 let _cloudScoped = false; // true only while a signed-in cloud session is active
 let _cloudPins = [];
 let _cloudHome = null;
+let _visitorGeoPromise = null;
 // True only for the (usually brief, but real — a GAS cold-start round-trip
 // can be hundreds of ms) window between EVT.AUTH_CHANGED firing and
 // enterCloudScope() actually landing. Without this gate, a pin/home mutation
@@ -770,31 +771,21 @@ export function showGeoNotice() {
 }
 
 export async function checkGeoNotice() {
-  // Primary: /api/geo reads Cloudflare's CF-IPCountry header — built-in, no
-  // rate limits, works with VPNs (returns VPN server's country).
-  // Fallback: ipwho.is → ipapi.co for local dev where the Pages Function isn't available.
-  try {
-    const res = await fetch("/api/geo", { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const { country } = await res.json();
-      if (country && country !== "FI" && country !== "XX") { showGeoNotice(); return; }
-      if (country && country === "FI") return; // confirmed Finland, skip fallbacks
-    }
-  } catch {}
-  // Fallback for local dev (no Pages Function)
-  try {
-    const res = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(4000) });
-    const data = await res.json();
-    if (data.country_code && data.country_code !== "FI") showGeoNotice();
-    return;
-  } catch {}
-  try {
-    const res = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(4000) });
-    const data = await res.json();
-    if (data.country_code && data.country_code !== "FI") showGeoNotice();
-  } catch {}
+  const { country } = await getVisitorGeo();
+  if (country && country !== "FI" && country !== "XX") showGeoNotice();
 }
 
+/**
+ * Fetches coarse Cloudflare IP geolocation for this visitor.
+ * @returns {Promise<object>} Visitor country/city metadata, or an empty object.
+ */
+export async function getVisitorGeo() {
+  if (_visitorGeoPromise) return _visitorGeoPromise;
+  _visitorGeoPromise = fetch("/api/geo", { signal: AbortSignal.timeout(4000) })
+    .then((res) => (res.ok ? res.json() : {}))
+    .catch(() => ({}));
+  return _visitorGeoPromise;
+}
 // --- Badge achievement notice (shown when a signed-in user crosses a new
 // badge tier/level — see account-profile.js's computeBadges()/
 // diffBadgeLevelUps(), checked on app load by account-sync.js's

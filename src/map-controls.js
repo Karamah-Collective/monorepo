@@ -2,6 +2,7 @@ import { focusMapPoint, map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
 import {
   esc,
+  getVisitorGeo,
   showToast,
   showLoadingToast,
   hideLoadingToast,
@@ -34,7 +35,30 @@ navigator.permissions?.query({ name: "geolocation" })
   .catch(() => {});
 
 const HOME_VIEW_ZOOM = 14.2;
+const CITY_VIEW_ZOOM = 12.2;
 const HOME_MARKER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-4a3 3 0 0 1 6 0v4"/></svg>';
+const CITY_START_VIEWS = Object.freeze({
+  helsinki: [24.9384, 60.1699],
+  helsingfors: [24.9384, 60.1699],
+  espoo: [24.6559, 60.2055],
+  esbo: [24.6559, 60.2055],
+  vantaa: [25.0378, 60.2934],
+  vanda: [25.0378, 60.2934],
+  kauniainen: [24.7276, 60.2124],
+  grankulla: [24.7276, 60.2124],
+  turku: [22.2666, 60.4518],
+  abo: [22.2666, 60.4518],
+  tampere: [23.7610, 61.4978],
+  oulu: [25.4651, 65.0121],
+  lahti: [25.6615, 60.9827],
+  kuopio: [27.6782, 62.8924],
+  jyvaskyla: [25.7473, 62.2426],
+  joensuu: [29.7636, 62.6010],
+  vaasa: [21.6158, 63.0951],
+  vasa: [21.6158, 63.0951],
+  pori: [21.7974, 61.4851],
+  lappeenranta: [28.1887, 61.0587],
+});
 
 export let currentTheme = "light";     // "light" | "dark" — the actually-applied visual theme
 export let themeMode = "auto";        // "light" | "dark" | "auto" — the user's selected Theme option
@@ -275,6 +299,43 @@ export function centerStoredHomeIfAvailable({ instant = false } = {}) {
   const view = {
     center: [home.lng, home.lat],
     zoom: HOME_VIEW_ZOOM,
+    bearing: 0,
+    pitch: 0,
+    duration: 600,
+  };
+
+  if (instant) {
+    focusMapPoint(view.center, { method: "jumpTo", zoom: view.zoom, bearing: view.bearing, pitch: view.pitch });
+  } else {
+    focusMapPoint(view.center, { ...view, method: "flyTo" });
+  }
+  return true;
+}
+
+function _normalizeCityKey(city) {
+  return String(city || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Centers the first map view on the visitor's Cloudflare IP city when known.
+ * @param {{ instant?: boolean, canApply?: () => boolean }} [options={}] - Whether to jump instead of animate, plus an optional freshness guard.
+ * @returns {Promise<boolean>} True when a recognized Finnish city was applied.
+ */
+export async function centerVisitorCityIfAvailable({ instant = false, canApply = null } = {}) {
+  const geo = await getVisitorGeo();
+  if (geo?.country !== "FI") return false;
+  if (canApply && !canApply()) return false;
+
+  const center = CITY_START_VIEWS[_normalizeCityKey(geo.city)];
+  if (!center) return false;
+
+  const view = {
+    center,
+    zoom: CITY_VIEW_ZOOM,
     bearing: 0,
     pitch: 0,
     duration: 600,

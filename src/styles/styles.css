@@ -165,6 +165,17 @@ body.welcome-revealing #app {
   pointer-events: auto;
   overflow: hidden;
   isolation: isolate;
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+#welcome-screen.is-closing {
+  pointer-events: none;
+  animation: welcomeOverlayExit var(--t-welcome-overlay-exit) both;
+}
+
+#welcome-screen.is-closing .welcome-logo-stage {
+  animation: welcomeLogoExit var(--t-welcome-overlay-exit) both;
 }
 
 #welcome-screen[hidden] {
@@ -293,6 +304,26 @@ body.welcome-revealing #app {
   }
 }
 
+@keyframes welcomeOverlayExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes welcomeLogoExit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+
 body.dark-mode #welcome-screen {
   background: var(--canvas);
 }
@@ -338,6 +369,11 @@ html.reduce-motion #welcome-screen.is-running .welcome-logo {
 }
 
 html.reduce-motion body.welcome-revealing #app {
+  animation: none !important;
+}
+
+html.reduce-motion #welcome-screen.is-closing,
+html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
   animation: none !important;
 }
 

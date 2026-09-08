@@ -25,7 +25,12 @@ import {
   showToast,
   isReduceMotionActive,
 } from "./utils.js";
-import { preloadSatelliteSource, centerStoredHomeIfAvailable, syncHomeMarker } from "./map-controls.js";
+import {
+  preloadSatelliteSource,
+  centerStoredHomeIfAvailable,
+  centerVisitorCityIfAvailable,
+  syncHomeMarker,
+} from "./map-controls.js";
 import "./directions.js";
 import "./navigation.js"; // registers nav hooks with directions.js
 import { loadPlacesData } from "./places.js";
@@ -37,6 +42,14 @@ const WELCOME_LOGO_URL = "/LOGO%20-%20halal%20finder.svg";
 const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
 const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
 const WELCOME_REVEAL_SETTLE_MS = 180;
+const WELCOME_OVERLAY_EXIT_MS = 420;
+const WELCOME_DATA_WARM_DELAY_MS = 80;
+const SOFT_CITY_START_BUDGET_MS = 900;
+
+let _resolveWelcomeAnimationDone;
+const _welcomeAnimationDone = new Promise((resolve) => {
+  _resolveWelcomeAnimationDone = resolve;
+});
 
 function _addWelcomeLogoTrace(path, className) {
   const trace = path.cloneNode(false);
@@ -135,18 +148,39 @@ async function _runWelcomeOnce() {
   if (hasAnimatedLogo) {
     await _runWelcomeLogoCycle();
   }
-  _hideWelcomeScreen();
+  _resolveWelcomeAnimationDone?.();
+  await _hideWelcomeScreen();
 }
 
 function _hideWelcomeScreen() {
   const welcome = document.getElementById("welcome-screen");
-  if (!welcome || welcome.hidden) return;
+  if (!welcome || welcome.hidden) return Promise.resolve();
   document.body.classList.add(WELCOME_APP_REVEAL_CLASS);
   document.getElementById("app")?.addEventListener("animationend", () => {
     document.body.classList.remove(WELCOME_APP_REVEAL_CLASS);
   }, { once: true });
-  welcome.hidden = true;
-  welcome.remove();
+  if (isReduceMotionActive()) {
+    document.body.classList.remove(WELCOME_APP_REVEAL_CLASS);
+    welcome.hidden = true;
+    welcome.remove();
+    return Promise.resolve();
+  }
+  welcome.setAttribute("aria-hidden", "true");
+  welcome.classList.add("is-closing");
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (event) => {
+      if (event && (event.target !== welcome || event.animationName !== "welcomeOverlayExit")) return;
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      welcome.hidden = true;
+      welcome.remove();
+      resolve();
+    };
+    const timer = setTimeout(finish, WELCOME_OVERLAY_EXIT_MS);
+    welcome.addEventListener("animationend", finish, { once: true });
+  });
 }
 
 function _afterWelcomeIdle() {
@@ -159,6 +193,74 @@ function _afterWelcomeIdle() {
 }
 
 const welcomeReady = _runWelcomeOnce();
+
+function _warmStartupData() {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      Promise.allSettled([
+        fetch("/api/places?action=all"),
+        fetch("data/places.json"),
+        fetch("data/tags.json"),
+      ]).then(resolve);
+    }, WELCOME_DATA_WARM_DELAY_MS);
+  });
+}
+
+function _withSoftTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+  ]);
+}
+
+async function _loadStartupModules() {
+  const [
+    { loadTransitCache },
+    { initPrayerTimes, collapsePrayerForMapInteraction },
+    { initStyleEditor },
+    _contact, // side-effect import - attaches event listeners
+    { initEidPrayers },
+    { initGpsSim },
+    { initWishlist, preloadWishes },
+    { initTrafficOverlay },
+    { initProfile },
+  ] = await Promise.all([
+    import("./transit-stops.js"),
+    import("./prayer.js"),
+    import("./map-style-editor.js"),
+    import("./contact.js"),
+    import("./eid-prayers.js"),
+    import("./gps-sim.js"),
+    import("./wishlist.js"),
+    import("./traffic-overlay.js"),
+    import("./profile.js"),
+  ]);
+
+  loadTransitCache();
+  initPhoneMapChromeCompact(collapsePrayerForMapInteraction);
+  initPrayerTimes();
+  initStyleEditor();
+  initEidPrayers();
+  initWishlist();
+  preloadWishes();
+  // initGpsSim(); // DEV-ONLY - comment out before deploying, restore after
+  initTrafficOverlay();
+  checkGeoNotice();
+  // Account sign-in (Firebase) - non-critical, so it's wired here rather than
+  // eagerly, same as the other lazy-loaded modules above.
+  initMenuAccount();
+  // Preferences section (prayer method/madhab, reduce-motion) - prayer.js is
+  // already loaded by the Promise.all above, so this dynamic import just
+  // resolves to the cached module instead of loading it a second time.
+  initMenuPreferences();
+  // Profile pane content (contribution-profile plan Phase 4, merged into
+  // src/menu.js's single account sheet 2026-08-03) - src/menu.js already
+  // statically imports loadProfileContent from profile.js (same "small,
+  // non-CDN core module" pattern as its places.js import), so by the time
+  // this dynamic import resolves it's almost certainly already cached; this
+  // call is what actually wires up its own listeners/state.
+  initProfile();
+}
 
 function hasIncomingSharedState() {
   const params = new URLSearchParams(location.search);
@@ -356,7 +458,16 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
 map.on("load", async () => {
   preloadSatelliteSource();
   syncHomeMarker();
-  if (!hasIncomingSharedState()) centerStoredHomeIfAvailable({ instant: true });
+  const hasSharedState = hasIncomingSharedState();
+  if (!hasSharedState && !centerStoredHomeIfAvailable({ instant: true })) {
+    void _withSoftTimeout(
+      centerVisitorCityIfAvailable({
+        instant: true,
+        canApply: () => !!document.getElementById("welcome-screen"),
+      }),
+      SOFT_CITY_START_BUDGET_MS,
+    );
+  }
 
   // Mask everything outside Finland — placed just below the first label layer.
   // Water and bridges are then promoted above the mask so seas/lakes/bridges stay visible,
@@ -393,57 +504,18 @@ map.on("load", async () => {
   map.moveLayer("bridge_major",        "label_road");
   map.moveLayer("admin_country",       "label_road");
 
+  void _warmStartupData();
+  const appLoadingReady = _welcomeAnimationDone.then(() =>
+    Promise.all([
+      loadPlacesData(),
+      _loadStartupModules(),
+    ]),
+  );
+
   await welcomeReady;
-  void loadPlacesData();
   await _afterWelcomeIdle();
+  await appLoadingReady;
 
-  // Lazy-load non-critical modules in parallel after first paint
-  const [
-    { loadTransitCache },
-    { initPrayerTimes, collapsePrayerForMapInteraction },
-    { initStyleEditor },
-    _contact, // side-effect import — attaches event listeners
-    { initEidPrayers },
-    { initGpsSim },
-    { initWishlist, preloadWishes },
-    { initTrafficOverlay },
-    { initProfile },
-  ] = await Promise.all([
-    import("./transit-stops.js"),
-    import("./prayer.js"),
-    import("./map-style-editor.js"),
-    import("./contact.js"),
-    import("./eid-prayers.js"),
-    import("./gps-sim.js"),
-    import("./wishlist.js"),
-    import("./traffic-overlay.js"),
-    import("./profile.js"),
-  ]);
-
-  loadTransitCache();
-  initPhoneMapChromeCompact(collapsePrayerForMapInteraction);
-  initPrayerTimes();
-  initStyleEditor();
-  initEidPrayers();
-  initWishlist();
-  preloadWishes();
-  // initGpsSim(); // DEV-ONLY — comment out before deploying, restore after
-  initTrafficOverlay();
-  checkGeoNotice();
-  // Account sign-in (Firebase) — non-critical, so it's wired here rather than
-  // eagerly, same as the other lazy-loaded modules above.
-  initMenuAccount();
-  // Preferences section (prayer method/madhab, reduce-motion) — prayer.js is
-  // already loaded by the Promise.all above, so this dynamic import just
-  // resolves to the cached module instead of loading it a second time.
-  initMenuPreferences();
-  // Profile pane content (contribution-profile plan Phase 4, merged into
-  // src/menu.js's single account sheet 2026-08-03) — src/menu.js already
-  // statically imports loadProfileContent from profile.js (same "small,
-  // non-CDN core module" pattern as its places.js import), so by the time
-  // this dynamic import resolves it's almost certainly already cached; this
-  // call is what actually wires up its own listeners/state.
-  initProfile();
   // Show first-run tutorial after a short delay so the UI has settled
   // Early-dev notice shows after tutorial finishes (or immediately for returning users)
   // NOTE: Disabled — keep code for future re-enable

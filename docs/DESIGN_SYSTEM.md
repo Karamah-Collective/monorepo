@@ -223,8 +223,9 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-phone-chrome-compact` | `.42s cubic-bezier(.16,1,.3,1)` | Phone map-interaction visual scaling |
 | `--t-phone-refine-bar` | `.52s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar reveal |
 | `--t-phone-refine-bar-collapse` | `.38s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar tuck |
-| `--t-welcome-logo-draw` | `1.8s cubic-bezier(.65,0,.35,1)` | Welcome screen one-shot logo stroke-draw/fill pass |
-| `--t-welcome-app-reveal` | `.32s cubic-bezier(.16,1,.3,1)` | Non-blocking app reveal after the welcome logo finishes |
+| `--t-welcome-logo-draw` | `1.55s cubic-bezier(.65,0,.35,1)` | Welcome screen one-shot logo stroke-draw/fill pass |
+| `--t-welcome-app-reveal` | `.24s cubic-bezier(.16,1,.3,1)` | Non-blocking app reveal while the welcome overlay fades out |
+| `--t-welcome-overlay-exit` | `.42s cubic-bezier(.16,1,.3,1)` | Welcome overlay fade-out during the logo-to-map handoff |
 
 ### Scale Tokens
 
@@ -245,9 +246,8 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--welcome-logo-fill-rest-opacity` | `.92` | Resting fill opacity at the end of each draw/fill loop |
 | `--welcome-logo-trace-gold-w` | `5` | SVG stroke width for the welcome logo's gold emblem trace |
 | `--welcome-logo-trace-word-w` | `1.45` | SVG stroke width for the welcome logo's wordmark trace |
-| `--welcome-app-reveal-start-opacity` | `.72` | Starting opacity for the app reveal after the welcome overlay is removed |
-| `--welcome-app-reveal-start-blur` | `3px` | Starting blur for the app reveal after the welcome overlay is removed |
-| `--welcome-app-reveal-start-scale` | `1.006` | Starting scale for the app reveal after the welcome overlay is removed |
+| `--welcome-app-reveal-start-opacity` | `.92` | Starting opacity for the app reveal while the welcome overlay fades out |
+| `--welcome-app-reveal-start-scale` | `1` | Starting scale for the app reveal; kept neutral so MapLibre dimensions do not shift |
 
 Phone map-interaction scaling is applied to runtime-created zone wrappers
 (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,

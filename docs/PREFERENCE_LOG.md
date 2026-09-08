@@ -4418,3 +4418,24 @@ so the welcome logo pass should own the startup frame budget. Defer places data
 and non-critical lazy module initialization until after the logo has finished
 and the map has been revealed, avoid full-app `filter: blur()` during handoff,
 and keep reveal motion transform/opacity-only with temporary `will-change`.
+
+**2026-09-08 overlay-loading correction:** user clarified the startup should
+feel like a loading overlay while the underlying app is preparing, but rejected
+any jitter in the logo animation or abrupt jump to the map. Startup now warms
+places/static data requests under the logo, defers CPU-heavy marker rendering
+and lazy module initialization until the logo animation has finished, and begins
+that work during the overlay handoff. The welcome overlay fade listens only for
+its own `welcomeOverlayExit` animation so bubbled SVG path `animationend` events
+cannot remove it early. Keep future welcome handoffs event-scoped and
+compositor-only; never let data/module initialization compete with the logo
+stroke draw.
+
+**2026-09-08 Cloudflare IP-city soft start:** user wants first map view to use
+a coarse, non-authoritative city hint when no shared link and no saved home are
+present. Cloudflare Managed Transform "Add visitor location headers" is now the
+source of country/city/lat/lon via `/api/geo`; the old local-dev third-party IP
+fallbacks (`ipwho.is`, `ipapi.co`) were removed. Startup applies only
+recognized Finnish city names from an allowlist and only while the welcome
+overlay is still mounted, so a slow IP response never moves the map after the
+main view is visible. This signal is not stored as home and is disclosed in the
+privacy copy.

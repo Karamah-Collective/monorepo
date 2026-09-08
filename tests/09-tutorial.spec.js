@@ -25,9 +25,6 @@ test.describe("Tutorial — First Run", () => {
         }),
       }),
     );
-    await page.route("**/ipwho.is/**", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: '{"country_code":"FI"}' }),
-    );
     await page.route("**/api/geo", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: '{"country":"FI"}' }),
     );
@@ -136,7 +133,6 @@ test.describe("Tutorial — Full Walkthrough", () => {
         }),
       }),
     );
-    await page.route("**/ipwho.is/**", r => r.fulfill({ status: 200, contentType: "application/json", body: '{"country_code":"FI"}' }));
     await page.route("**/api/geo", r => r.fulfill({ status: 200, contentType: "application/json", body: '{"country":"FI"}' }));
     await page.route("**/google.com/recaptcha/**", r => r.abort());
     await page.route("**/gstatic.com/recaptcha/**", r => r.abort());
