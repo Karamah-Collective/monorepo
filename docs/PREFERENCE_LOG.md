@@ -4439,3 +4439,34 @@ recognized Finnish city names from an allowlist and only while the welcome
 overlay is still mounted, so a slow IP response never moves the map after the
 main view is visible. This signal is not stored as home and is disclosed in the
 privacy copy.
+
+---
+
+## 2026-09-09 - Google Maps share-link enrichment repair
+
+**Bug:** link-only new-place submissions from both desktop and iOS Google Maps
+could appear blank in the admin Pending New table. The Worker parser only
+handled `ChIJ` place IDs, while the tested desktop link resolved to
+`!1s0x...:0x...` and the tested iOS link resolved to `ftid=0x...:0x...`. Both
+formats encode the Google CID as the second hex segment.
+
+**Fix pattern:** treat `?cid=`, `?ftid=0xHEX:0xHEX`, percent-encoded
+`ftid=0xHEX%3A0xHEX`, and desktop `!1s0xHEX:0xHEX` as equivalent CID sources,
+convert the second hex segment with `BigInt`, and pass `cid:<decimal>` into
+Places Details. Reinforced the D1 Worker parser into a fallback ladder:
+normalize unicode escapes/HTML entities/percent encoding, unwrap nested
+`url=`/`q=` Google redirect links, accept country-specific Google Maps hosts,
+parse `ll`/`center`/`@lat,lng`/`!2d,!3d`/`!3d,!4d` coordinate formats, read
+`place_id`/`query_place_id`/`destination_place_id`, then recover via Places
+text search if a parsed ID returns no Details result. The two user-provided
+links now normalize to the same CID: `cid:13657295920769993597`.
+
+**Admin display:** Pending New now falls back from submitted `name`/`address`
+to `google_name`/`google_address`, so a user who submits only a Google Maps
+link can still show an enriched place name and address in the queue.
+
+**Session note:** touched `functions/_google-maps.js`, `functions/api/admin.js`,
+and the ignored local Apps Script copy `scripts/apps-script/Code.gs` for parity.
+Static checks passed for the tracked Worker/admin files and targeted parser
+samples; no Playwright/browser tests were run, matching the standing
+manual-testing preference.

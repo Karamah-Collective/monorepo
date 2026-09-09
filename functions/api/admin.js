@@ -160,7 +160,7 @@ async function getAdminStats(db) {
 async function getPendingNew(db) {
   const { results } = await db.prepare("SELECT * FROM new_places WHERE status = 'pending' ORDER BY id").all();
   return results.map((r) => ({
-    rowId: String(r.id), timestamp: r.timestamp, name: r.name, type: r.type, address: r.address, tags: r.tags,
+    rowId: String(r.id), timestamp: r.timestamp, name: r.name || r.google_name, type: r.type, address: r.address || r.google_address, tags: r.tags,
     gmaps: r.maps_link, notes: r.notes, score: r.score, googleName: r.google_name, googleAddress: r.google_address,
     lat: r.lat ?? "", lng: r.lng ?? "", placeId: r.place_id, website: r.website, enrichedAt: r.enriched_at, openingHours: r.opening_hours,
   }));
@@ -329,7 +329,7 @@ async function approveNew(db, rowId, env) {
   const row = await db.prepare("SELECT * FROM new_places WHERE id = ?").bind(rowId).first();
   if (!row) return { error: "Row not found (may already be processed)" };
 
-  const name = row.google_name || row.name || "";
+  let name = row.google_name || row.name || "";
   const type = (row.type || "").toString().trim().toLowerCase();
   let address = normaliseAddress(row.google_address || row.address || "");
   let lat = row.lat;
@@ -350,9 +350,12 @@ async function approveNew(db, rowId, env) {
           rich: false,
         });
         if (enriched.hasData && enriched.lat != null && enriched.lng != null) {
+          if (!name && enriched.googleName) name = enriched.googleName;
           lat = enriched.lat;
           lng = enriched.lng;
           if (enriched.googleAddress) address = normaliseAddress(enriched.googleAddress);
+          if (enriched.website && !row.website) row.website = enriched.website;
+          if (enriched.phone && !row.phone) row.phone = enriched.phone;
         }
       } catch { /* best-effort */ }
     }
@@ -367,8 +370,8 @@ async function approveNew(db, rowId, env) {
       } catch { /* best-effort */ }
     }
     if (lat != null && lng != null) {
-      await db.prepare("UPDATE new_places SET lat = ?, lng = ?, google_address = COALESCE(NULLIF(?, ''), google_address) WHERE id = ?")
-        .bind(lat, lng, address || "", rowId).run();
+      await db.prepare("UPDATE new_places SET lat = ?, lng = ?, google_name = COALESCE(NULLIF(?, ''), google_name), google_address = COALESCE(NULLIF(?, ''), google_address), website = COALESCE(NULLIF(?, ''), website), phone = COALESCE(NULLIF(?, ''), phone) WHERE id = ?")
+        .bind(lat, lng, name || "", address || "", row.website || "", row.phone || "", rowId).run();
     }
   }
 

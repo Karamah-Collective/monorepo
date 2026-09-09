@@ -13,6 +13,9 @@
 import { normaliseAddress, isInsideFinlandBounds } from "./_gas-compat.js";
 
 const NOMINATIM_USER_AGENT = "HalalFinderHelsinki/1.0 (+https://maps.karamahcollective.com)";
+const GOOGLE_MAPS_HOST_RE = /^(?:www\.)?(?:google\.[a-z.]+|maps\.google\.[a-z.]+)$/i;
+const GOOGLE_MAPS_URL_RE = /https?:\/\/(?:(?:www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)(?:\\u[0-9a-fA-F]{4}|[^"'\s<>\\])*/i;
+const COORD_RE = "(-?\\d+(?:\\.\\d+)?)";
 const PLACE_DETAILS_FIELDS = [
   "name", "formatted_address", "geometry", "website", "opening_hours", "rating", "user_ratings_total", "reviews",
   "formatted_phone_number", "international_phone_number", "url", "business_status", "price_level",
@@ -35,6 +38,90 @@ function normaliseUrl(url) {
   return url;
 }
 
+function _decodeUnicodeEscapes(value) {
+  return (value || "").replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+function _decodeHtmlEntities(value) {
+  return (value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function _safeDecodeURIComponent(value) {
+  let out = (value || "").toString();
+  for (let i = 0; i < 2; i++) {
+    if (out.indexOf("%") === -1) break;
+    try {
+      const decoded = decodeURIComponent(out);
+      if (decoded === out) break;
+      out = decoded;
+    } catch {
+      break;
+    }
+  }
+  return out;
+}
+
+function _normaliseMapsText(value) {
+  return _decodeHtmlEntities(_safeDecodeURIComponent(_decodeUnicodeEscapes((value || "").toString()))).trim();
+}
+
+function _extractEmbeddedMapsUrl(text) {
+  const match = (text || "").match(GOOGLE_MAPS_URL_RE);
+  return match ? _normaliseMapsText(match[0]) : "";
+}
+
+function _isGoogleMapsUrl(value) {
+  try {
+    const u = new URL(value);
+    const host = u.hostname.toLowerCase();
+    return GOOGLE_MAPS_HOST_RE.test(host) && (u.pathname.indexOf("/maps") !== -1 || host.startsWith("maps.google."));
+  } catch {
+    return false;
+  }
+}
+
+function _getUrlParam(url, name) {
+  try {
+    return new URL(url).searchParams.get(name) || "";
+  } catch {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = url.match(new RegExp(`[?&]${escapedName}=([^&#]+)`, "i"));
+    return match ? _normaliseMapsText(match[1].replace(/\+/g, " ")) : "";
+  }
+}
+
+function _setCoords(result, lat, lng) {
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (!isNaN(latNum) && !isNaN(lngNum)) {
+    result.lat = latNum;
+    result.lng = lngNum;
+  }
+}
+
+function _setCidFromHex(result, hex) {
+  if (result.placeId || !hex) return;
+  result.placeId = `cid:${BigInt(`0x${hex}`).toString()}`;
+}
+
+function _applyTextQuery(result, rawValue) {
+  const raw = _normaliseMapsText((rawValue || "").replace(/\+/g, " "));
+  if (!raw || /^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(raw)) return;
+  if (raw.indexOf(",") !== -1) {
+    const parts = raw.split(",");
+    result.name = result.name || parts[0].trim();
+    result.address = result.address || parts.slice(1).join(",").trim();
+    return;
+  }
+  result.name = result.name || raw;
+}
+
 /**
  * Follows redirects to resolve a short/app Maps link to a full
  * google.com/maps URL. Simpler than Code.gs's manual hop-by-hop fallback:
@@ -47,31 +134,22 @@ function normaliseUrl(url) {
 export async function resolveUrl(url) {
   if (!url) return url;
   url = normaliseUrl(url);
-  if (url.indexOf("google.com/maps") !== -1 || url.indexOf("maps.google.com") !== -1) return url;
+  if (_isGoogleMapsUrl(url)) return _normaliseMapsText(url);
 
   try {
     const res = await fetch(url, {
       redirect: "follow",
       headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148" },
     });
-    if (res.url && (res.url.indexOf("google.com/maps") !== -1 || res.url.indexOf("maps.google.com") !== -1)) {
-      return res.url;
+    if (res.url && _isGoogleMapsUrl(res.url)) {
+      return _normaliseMapsText(res.url);
     }
     // Same body-scrape fallback as Code.gs's resolveUrl — the Maps URL is
     // sometimes embedded in a <script> JSON blob rather than exposed via a
     // clean redirect chain.
     const bodyText = await res.text();
-    const bodyMatch = bodyText.match(/https?:\/\/(?:www\.)?google\.com\/maps(?:\\u[0-9a-fA-F]{4}|[^"'\s<>\\])*/i);
-    if (bodyMatch) {
-      let extracted = bodyMatch[0];
-      extracted = extracted.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-      if (extracted.indexOf("%") !== -1) {
-        try { extracted = decodeURIComponent(extracted); } catch { /* leave as-is */ }
-      }
-      const junkIdx = extracted.search(/&amp;/i);
-      if (junkIdx !== -1) extracted = extracted.substring(0, junkIdx);
-      return extracted;
-    }
+    const extracted = _extractEmbeddedMapsUrl(bodyText);
+    if (extracted) return extracted;
     return res.url || url;
   } catch {
     return url;
@@ -88,56 +166,71 @@ export async function resolveUrl(url) {
 export function parseMapsUrl(url) {
   const result = { name: "", address: "", lat: null, lng: null, placeId: "" };
   if (!url) return result;
+  url = _normaliseMapsText(url);
 
-  const d3 = url.match(/!3d(-?\d+\.\d+)/);
-  const d4 = url.match(/!4d(-?\d+\.\d+)/);
+  if (!_isGoogleMapsUrl(url)) {
+    const embedded = _extractEmbeddedMapsUrl(url);
+    if (embedded) url = embedded;
+  }
+
+  const wrappedUrl = _getUrlParam(url, "url") || _getUrlParam(url, "q");
+  if (wrappedUrl && /^https?:\/\//i.test(wrappedUrl) && _isGoogleMapsUrl(wrappedUrl)) {
+    const wrappedParsed = parseMapsUrl(wrappedUrl);
+    Object.assign(result, wrappedParsed);
+    if (result.placeId || result.name || result.address || result.lat != null) return result;
+  }
+
+  const d3 = url.match(new RegExp(`!3d${COORD_RE}`, "i"));
+  const d4 = url.match(new RegExp(`!4d${COORD_RE}`, "i"));
   if (d3 && d4) {
-    result.lat = parseFloat(d3[1]);
-    result.lng = parseFloat(d4[1]);
+    _setCoords(result, d3[1], d4[1]);
   }
   if (result.lat === null) {
-    const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (atMatch) { result.lat = parseFloat(atMatch[1]); result.lng = parseFloat(atMatch[2]); }
+    const d2d3 = url.match(new RegExp(`!2d${COORD_RE}!3d${COORD_RE}`, "i"));
+    if (d2d3) _setCoords(result, d2d3[2], d2d3[1]);
   }
   if (result.lat === null) {
-    const qCoord = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (qCoord) { result.lat = parseFloat(qCoord[1]); result.lng = parseFloat(qCoord[2]); }
+    const atMatch = url.match(new RegExp(`@${COORD_RE},${COORD_RE}`, "i"));
+    if (atMatch) _setCoords(result, atMatch[1], atMatch[2]);
+  }
+  if (result.lat === null) {
+    const qCoord = (_getUrlParam(url, "q") || "").match(new RegExp(`^${COORD_RE}\\s*,\\s*${COORD_RE}$`, "i"));
+    if (qCoord) _setCoords(result, qCoord[1], qCoord[2]);
+  }
+  if (result.lat === null) {
+    const llCoord = (_getUrlParam(url, "ll") || _getUrlParam(url, "center")).match(new RegExp(`^${COORD_RE}\\s*,\\s*${COORD_RE}$`, "i"));
+    if (llCoord) _setCoords(result, llCoord[1], llCoord[2]);
   }
 
   const nameMatch = url.match(/\/maps\/place\/([^/@?]+)/);
   if (nameMatch) {
-    try { result.name = decodeURIComponent(nameMatch[1].replace(/\+/g, " ")); }
-    catch { result.name = nameMatch[1].replace(/\+/g, " "); }
+    result.name = _normaliseMapsText(nameMatch[1].replace(/\+/g, " "));
   }
 
   if (!result.name) {
-    const qText = url.match(/[?&]q=([^&]+)/);
-    if (qText) {
-      let raw = "";
-      try { raw = decodeURIComponent(qText[1].replace(/\+/g, " ")).trim(); } catch { raw = qText[1]; }
-      if (!/^-?\d+\.\d+\s*,\s*-?\d+\.\d+$/.test(raw)) {
-        if (raw.indexOf(",") !== -1) {
-          const parts = raw.split(",");
-          result.name = parts[0].trim();
-          result.address = parts.slice(1).join(",").trim();
-        } else {
-          result.name = raw;
-        }
-      }
-    }
+    _applyTextQuery(result, _getUrlParam(url, "q") || _getUrlParam(url, "query") || _getUrlParam(url, "destination"));
+  }
+
+  const cid = _getUrlParam(url, "cid");
+  if (cid && /^\d+$/.test(cid)) result.placeId = `cid:${cid}`;
+
+  if (!result.placeId) {
+    const ftidMatch = (_getUrlParam(url, "ftid") || "").match(/^0x[0-9a-f]+:0x([0-9a-f]+)$/i);
+    if (ftidMatch) _setCidFromHex(result, ftidMatch[1]);
   }
 
   if (!result.placeId) {
-    const pidParam = url.match(/[?&]place_id=(ChIJ[^&]+)/);
-    if (pidParam) {
-      try { result.placeId = decodeURIComponent(pidParam[1]); } catch { result.placeId = pidParam[1]; }
-    }
+    const hexCidData = url.match(/!1s0x[0-9a-f]+:0x([0-9a-f]+)/i) || url.match(/0x[0-9a-f]+:0x([0-9a-f]+)/i);
+    if (hexCidData) _setCidFromHex(result, hexCidData[1]);
+  }
+
+  if (!result.placeId) {
+    const pidParam = _getUrlParam(url, "place_id") || _getUrlParam(url, "query_place_id") || _getUrlParam(url, "destination_place_id");
+    if (pidParam && /^ChIJ/i.test(pidParam)) result.placeId = pidParam;
   }
   if (!result.placeId) {
     const pidData = url.match(/!1s(ChIJ[^!&]+)/);
-    if (pidData) {
-      try { result.placeId = decodeURIComponent(pidData[1]); } catch { result.placeId = pidData[1]; }
-    }
+    if (pidData) result.placeId = _normaliseMapsText(pidData[1]);
   }
 
   return result;
@@ -372,8 +465,10 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
     out.placeId = parsed.placeId || "";
   }
 
+  let detailsFound = false;
   if (out.placeId) {
     const details = await getPlaceDetails(apiKey, out.placeId);
+    detailsFound = Object.keys(details).length > 0;
     if (details.name) out.googleName = details.name;
     if (details.formatted_address) out.googleAddress = details.formatted_address;
     if (details.geometry && details.geometry.location) {
@@ -424,17 +519,19 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
     }
   }
 
-  if (rich && !out.placeId) {
+  if (rich && (!out.placeId || !detailsFound)) {
     const queryParts = [out.googleName, out.googleAddress].filter(Boolean);
     if (!queryParts.length) [userName, userAddress].filter(Boolean).forEach((v) => queryParts.push(v));
+    let textFallbackFoundPlaceId = false;
     const found = await findPlaceIdFromText(apiKey, queryParts.join(", "), out.lat, out.lng);
     if (found) {
+      textFallbackFoundPlaceId = !!found.placeId && found.placeId !== out.placeId;
       out.placeId = found.placeId || out.placeId;
       if (!out.googleName && found.name) out.googleName = found.name;
     }
     // If a placeId only surfaced via this text-search fallback, fetch
     // Details once more so hours/reviews/rating aren't left empty.
-    if (out.placeId && !rich_.openingHours && !rich_.googleReview && rich_.googleRating === null) {
+    if (out.placeId && textFallbackFoundPlaceId && !rich_.openingHours && !rich_.googleReview && rich_.googleRating === null) {
       const detailsFb = await getPlaceDetails(apiKey, out.placeId);
       if (detailsFb.name && !out.googleName) out.googleName = detailsFb.name;
       if (detailsFb.formatted_address && !out.googleAddress) out.googleAddress = detailsFb.formatted_address;
