@@ -4511,3 +4511,16 @@ and the ignored local Apps Script copy `scripts/apps-script/Code.gs` for parity.
 Static checks passed for the tracked Worker/admin files and targeted parser
 samples; no Playwright/browser tests were run, matching the standing
 manual-testing preference.
+
+---
+
+## 2026-09-09 - Admin refresh preserves user map tags
+
+**Bug:** the admin "Refresh" action refetched Google data but also reparsed and
+rewrote the `places.tags` payload. That could remove or alter classifications
+added through the map app, including halal status, cuisine, and alcohol fields.
+
+**Fix pattern:** keep refresh scoped to Google-owned fields only. The refresh
+path still updates Google-derived identity/contact/detail fields such as
+name, address, coordinates, opening hours, website, phone, Google metadata, and
+Google review shadows, but it no longer parses, serializes, or writes `tags`.

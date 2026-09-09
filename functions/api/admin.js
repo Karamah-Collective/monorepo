@@ -535,9 +535,7 @@ async function refreshPlaceInfo(db, placeId, env) {
   if (!enriched.hasData) return { error: "Could not refresh this Google Maps link" };
   if (!enriched.detailsFound) return { error: "Google Place Details could not verify this Maps link" };
 
-  const tags = parseTagString((place.tags || "").toString().trim());
   const googleInfo = enriched.googleInfo || {};
-  if (googleInfo.servesAlcohol && !tags.hasOwnProperty("no_alcohol")) tags.no_alcohol = false;
   delete googleInfo.servesAlcohol;
 
   const name = enriched.googleName || place.name || "";
@@ -548,12 +546,12 @@ async function refreshPlaceInfo(db, placeId, env) {
 
   await db.prepare(
     `UPDATE places
-     SET name = ?, address = ?, lat = ?, lng = ?, tags = ?,
+     SET name = ?, address = ?, lat = ?, lng = ?,
          opening_hours = ?, website = ?, phone = ?,
          google_info = ?, google_info_enriched_at = ?
      WHERE id = ?`
   ).bind(
-    name, address, lat, lng, JSON.stringify(tags),
+    name, address, lat, lng,
     enriched.openingHours || place.opening_hours || "",
     enriched.website || place.website || "",
     enriched.phone || place.phone || "",
