@@ -342,17 +342,7 @@ async function approveNew(db, rowId, env) {
   let googleRatingCount = row.google_rating_count ?? null;
   let googleInfoRaw = row.google_info || "";
   const mapsLink = (row.maps_link || "").toString().trim();
-  let richGoogleDataFound = hasRichGoogleData({
-    openingHours,
-    googleReview,
-    googleRating,
-    googleRatingCount,
-    website,
-    phone,
-    googleInfo: (() => {
-      try { return googleInfoRaw ? JSON.parse(googleInfoRaw) : {}; } catch { return {}; }
-    })(),
-  });
+  let googleDetailsFound = !!(openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw);
 
   // Approval is the last chance to repair a link-only submission before it
   // becomes live. Fetch rich Details again so bad parsed path names (for
@@ -381,7 +371,7 @@ async function approveNew(db, rowId, env) {
           if (enriched.googleRating != null) googleRating = enriched.googleRating;
           if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
           if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
-          richGoogleDataFound = hasRichGoogleData(enriched);
+          googleDetailsFound = !!enriched.detailsFound;
         }
       } catch { /* best-effort */ }
     }
@@ -411,8 +401,8 @@ async function approveNew(db, rowId, env) {
     }
   }
 
-  if (mapsLink && !richGoogleDataFound) {
-    return { error: "Google details did not return hours, reviews, website, or phone; place was not approved" };
+  if (mapsLink && !googleDetailsFound) {
+    return { error: "Google Place Details could not verify this Maps link; place was not approved" };
   }
 
   if (!name || lat == null || lng == null) {
@@ -518,21 +508,6 @@ async function updatePlaceDisabled(db, placeId, disabled) {
   return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
 }
 
-function hasRichGoogleData(enriched) {
-  return !!(
-    enriched &&
-    (
-      enriched.openingHours ||
-      enriched.googleReview ||
-      enriched.googleRating != null ||
-      enriched.googleRatingCount != null ||
-      enriched.website ||
-      enriched.phone ||
-      (enriched.googleInfo && Object.keys(enriched.googleInfo).length)
-    )
-  );
-}
-
 async function refreshPlaceInfo(db, placeId, env) {
   if (!placeId) return { error: "Missing placeId" };
   const place = await db.prepare("SELECT * FROM places WHERE id = ?").bind(placeId).first();
@@ -558,7 +533,7 @@ async function refreshPlaceInfo(db, placeId, env) {
     rich: true,
   });
   if (!enriched.hasData) return { error: "Could not refresh this Google Maps link" };
-  if (!hasRichGoogleData(enriched)) return { error: "Google details did not return hours, reviews, website, or phone for this link" };
+  if (!enriched.detailsFound) return { error: "Google Place Details could not verify this Maps link" };
 
   const tags = parseTagString((place.tags || "").toString().trim());
   const googleInfo = enriched.googleInfo || {};

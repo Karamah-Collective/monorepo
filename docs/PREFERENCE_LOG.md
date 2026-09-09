@@ -4473,6 +4473,14 @@ links and `ftid`/`cid` links: both produced name/address/coords plus hours,
 reviews/rating, website, phone, and `google_info` after the Nearby fallback.
 No Playwright tests were run, matching the standing manual-testing preference.
 
+**2026-09-09 sparse Google Details approval correction:** user correctly pointed
+out that requiring hours/reviews/website/phone would reject legitimate Google
+Places listings whose profile simply lacks those optional fields. Adjusted the
+admin guard to require `detailsFound` (a successful Google Place Details result)
+instead of requiring optional rich fields. Sparse-but-real Details can now
+approve; actual Details failure still blocks Maps-link approvals so coordinate-
+only/geocoded fallbacks do not silently become live rows.
+
 ---
 
 ## 2026-09-09 - Google Maps share-link enrichment repair
