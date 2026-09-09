@@ -169,7 +169,7 @@ async function handleNewSubmission(env, data, emailHash) {
     lat = pinLat; lng = pinLng;
     enrichedAt = `pin:${ts}`;
   } else if (mapsLink) {
-    const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: submittedName, userAddress: data.address || "", website: userWebsite, phone: userPhone, rich: true });
+    const enriched = await enrichFromMapsLink(env, { mapsUrl: mapsLink, userName: submittedName, userAddress: data.address || "", userType: data.type || "", website: userWebsite, phone: userPhone, rich: true });
     // Accept worldwide enrichment (Rihla + global map submissions).
     if (enriched.hasData) {
       googleName = enriched.googleName; googleAddress = enriched.googleAddress;

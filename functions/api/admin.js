@@ -341,18 +341,30 @@ async function approveNew(db, rowId, env) {
   let googleRating = row.google_rating ?? null;
   let googleRatingCount = row.google_rating_count ?? null;
   let googleInfoRaw = row.google_info || "";
+  const mapsLink = (row.maps_link || "").toString().trim();
+  let richGoogleDataFound = hasRichGoogleData({
+    openingHours,
+    googleReview,
+    googleRating,
+    googleRatingCount,
+    website,
+    phone,
+    googleInfo: (() => {
+      try { return googleInfoRaw ? JSON.parse(googleInfoRaw) : {}; } catch { return {}; }
+    })(),
+  });
 
   // Approval is the last chance to repair a link-only submission before it
   // becomes live. Fetch rich Details again so bad parsed path names (for
   // example /maps/place/data=... share blobs) cannot outrank Google truth.
   if (env) {
-    const mapsLink = (row.maps_link || "").toString().trim();
     if (mapsLink) {
       try {
         const enriched = await enrichFromMapsLink(env, {
           mapsUrl: mapsLink,
           userName: row.name || "",
           userAddress: row.address || "",
+          userType: type,
           website,
           phone,
           rich: true,
@@ -369,6 +381,7 @@ async function approveNew(db, rowId, env) {
           if (enriched.googleRating != null) googleRating = enriched.googleRating;
           if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
           if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
+          richGoogleDataFound = hasRichGoogleData(enriched);
         }
       } catch { /* best-effort */ }
     }
@@ -396,6 +409,10 @@ async function approveNew(db, rowId, env) {
          WHERE id = ?`
       ).bind(lat, lng, name || "", address || "", website || "", phone || "", openingHours || "", googleReview || "", googleRating, googleRatingCount, googleInfoRaw || "", rowId).run();
     }
+  }
+
+  if (mapsLink && !richGoogleDataFound) {
+    return { error: "Google details did not return hours, reviews, website, or phone; place was not approved" };
   }
 
   if (!name || lat == null || lng == null) {
@@ -501,6 +518,21 @@ async function updatePlaceDisabled(db, placeId, disabled) {
   return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
 }
 
+function hasRichGoogleData(enriched) {
+  return !!(
+    enriched &&
+    (
+      enriched.openingHours ||
+      enriched.googleReview ||
+      enriched.googleRating != null ||
+      enriched.googleRatingCount != null ||
+      enriched.website ||
+      enriched.phone ||
+      (enriched.googleInfo && Object.keys(enriched.googleInfo).length)
+    )
+  );
+}
+
 async function refreshPlaceInfo(db, placeId, env) {
   if (!placeId) return { error: "Missing placeId" };
   const place = await db.prepare("SELECT * FROM places WHERE id = ?").bind(placeId).first();
@@ -520,11 +552,13 @@ async function refreshPlaceInfo(db, placeId, env) {
     mapsUrl,
     userName: (source && source.name) || place.name || "",
     userAddress: (source && source.address) || place.address || "",
+    userType: place.type || "",
     website: place.website || "",
     phone: place.phone || "",
     rich: true,
   });
   if (!enriched.hasData) return { error: "Could not refresh this Google Maps link" };
+  if (!hasRichGoogleData(enriched)) return { error: "Google details did not return hours, reviews, website, or phone for this link" };
 
   const tags = parseTagString((place.tags || "").toString().trim());
   const googleInfo = enriched.googleInfo || {};

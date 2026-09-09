@@ -4457,6 +4457,22 @@ references, events/event edits, app links, and social videos. No Playwright
 tests were run; Worker syntax checks, parser samples, `git diff --check`, and
 the admin Vite production build passed.
 
+**2026-09-09 rich Google Details fallback correction:** the first approval fix
+still allowed the same failure mode when a share link exposed only coordinates
+or a `cid:`/`ftid` token that did not produce full Google Place Details. Root
+cause: the code treated `cid:` as a Details-ready ID and, after that failed,
+Text Search could be too weak if the URL path was `/maps/place/data=...` and
+only an address/coordinate remained. Fix pattern: for rich new-place approval
+and refresh, pass the Halal Finder place type into enrichment, use Google
+Nearby Search around the resolved coordinates as a final way to get a real
+`place_id`, then fetch Place Details again. Admin approval/refresh now fails
+loudly instead of adding/updating a Maps-link place when no rich Google fields
+come back, so bad approvals stay pending rather than becoming bare live rows.
+Verification used mocked end-to-end samples for both `data=...` coordinate-only
+links and `ftid`/`cid` links: both produced name/address/coords plus hours,
+reviews/rating, website, phone, and `google_info` after the Nearby fallback.
+No Playwright tests were run, matching the standing manual-testing preference.
+
 ---
 
 ## 2026-09-09 - Google Maps share-link enrichment repair

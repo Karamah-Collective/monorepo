@@ -22,6 +22,12 @@ const PLACE_DETAILS_FIELDS = [
   "wheelchair_accessible_entrance", "dine_in", "takeout", "delivery", "reservable", "curbside_pickup",
   "serves_vegetarian_food", "serves_beer", "serves_wine", "editorial_summary",
 ].join(",");
+const NEARBY_RADIUS_METERS = 80;
+const NEARBY_TYPE_BY_PLACE_TYPE = {
+  mosque: "mosque",
+  restaurant: "restaurant",
+  shop: "store",
+};
 
 // ── URL helpers (Code.gs:2754, 2768) ──────────────────────────────────────
 
@@ -128,6 +134,24 @@ function _isUsablePlaceName(value) {
   if (/^(?:data=|0x[0-9a-f]+(?::0x[0-9a-f]+)?|ChIJ)/i.test(text)) return false;
   if (/^[A-Za-z0-9_-]{32,}$/.test(text)) return false;
   return /[\p{L}\p{N}]/u.test(text);
+}
+
+function _normaliseUserSearchText(value) {
+  const text = _normaliseMapsText((value || "").toString().replace(/\+/g, " "));
+  return _isUsablePlaceName(text) ? text : "";
+}
+
+function _distanceMeters(aLat, aLng, bLat, bLng) {
+  const earthRadiusMeters = 6371000;
+  const toRad = (degrees) => degrees * Math.PI / 180;
+  const lat1 = toRad(Number(aLat));
+  const lat2 = toRad(Number(bLat));
+  const deltaLat = toRad(Number(bLat) - Number(aLat));
+  const deltaLng = toRad(Number(bLng) - Number(aLng));
+  const sinLat = Math.sin(deltaLat / 2);
+  const sinLng = Math.sin(deltaLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 /**
@@ -281,6 +305,52 @@ export async function findPlaceIdFromText(apiKey, query, lat, lng) {
     const data = await res.json();
     if (data.status !== "OK" || !data.candidates || !data.candidates.length) return null;
     return { placeId: data.candidates[0].place_id || "", name: data.candidates[0].name || "" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Find the nearest likely business place around resolved Maps coordinates.
+ * This repairs share links that expose only lat/lng or a cid-like token that
+ * the Details endpoint will not accept as a proper place_id.
+ * @param {string} apiKey - MAPS_API_KEY
+ * @param {number|null} lat
+ * @param {number|null} lng
+ * @param {string} placeType - Halal Finder place type
+ * @param {string} userName - Submitted/display name, if usable
+ * @returns {Promise<{placeId: string, name: string}|null>}
+ */
+export async function findNearbyPlaceId(apiKey, lat, lng, placeType, userName) {
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (!apiKey || isNaN(latNum) || isNaN(lngNum)) return null;
+
+  const params = new URLSearchParams({
+    location: `${latNum},${lngNum}`,
+    radius: String(NEARBY_RADIUS_METERS),
+    key: apiKey,
+  });
+  const googleType = NEARBY_TYPE_BY_PLACE_TYPE[(placeType || "").toString().trim().toLowerCase()];
+  if (googleType) params.set("type", googleType);
+  const keyword = _normaliseUserSearchText(userName);
+  if (keyword) params.set("keyword", keyword);
+
+  try {
+    const res = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`);
+    const data = await res.json();
+    if (data.status !== "OK" || !Array.isArray(data.results) || !data.results.length) return null;
+    const ranked = data.results
+      .filter((item) => item && item.place_id)
+      .map((item) => ({
+        placeId: item.place_id || "",
+        name: item.name || "",
+        distance: item.geometry && item.geometry.location
+          ? _distanceMeters(latNum, lngNum, item.geometry.location.lat, item.geometry.location.lng)
+          : Number.POSITIVE_INFINITY,
+      }))
+      .sort((a, b) => a.distance - b.distance);
+    return ranked[0] || null;
   } catch {
     return null;
   }
@@ -456,13 +526,14 @@ export async function forwardGeocode(query, env) {
  * (Eid submissions) only ever needed name/address/coords/website in Code.gs.
  *
  * @param {object} env - needs MAPS_API_KEY, NOMINATIM_REV, NOMINATIM_VB
- * @param {{mapsUrl: string, userName: string, userAddress: string, website: string, phone: string, rich: boolean}} input
+ * @param {{mapsUrl: string, userName: string, userAddress: string, userType?: string, website: string, phone: string, rich: boolean}} input
  * @returns {Promise<object>} enrichment fields — same shape whether or not any data was found (caller checks hasData)
  */
-export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, website, phone, rich }) {
+export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, userType, website, phone, rich }) {
   const apiKey = env.MAPS_API_KEY;
   const out = { googleName: "", googleAddress: "", lat: null, lng: null, placeId: "", website: website || "", phone: phone || "" };
   const rich_ = { openingHours: "", googleReview: "", googleRating: null, googleRatingCount: null, googleInfo: {} };
+  const cleanUserName = _normaliseUserSearchText(userName);
 
   if (mapsUrl) {
     const resolved = await resolveUrl(mapsUrl);
@@ -518,19 +589,19 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
     }
   }
 
-  if (out.lat == null && out.lng == null && !out.placeId && (userName || userAddress)) {
-    const geoFb = await forwardGeocode([userName, userAddress].filter(Boolean).join(", "), env);
+  if (out.lat == null && out.lng == null && !out.placeId && (cleanUserName || userAddress)) {
+    const geoFb = await forwardGeocode([cleanUserName, userAddress].filter(Boolean).join(", "), env);
     if (geoFb) {
       out.lat = geoFb.lat;
       out.lng = geoFb.lng;
       if (!out.googleAddress) out.googleAddress = geoFb.address;
-      if (!out.googleName) out.googleName = userName;
+      if (!out.googleName) out.googleName = cleanUserName;
     }
   }
 
   if (rich && (!out.placeId || !detailsFound)) {
     const queryParts = [out.googleName, out.googleAddress].filter(Boolean);
-    if (!queryParts.length) [userName, userAddress].filter(Boolean).forEach((v) => queryParts.push(v));
+    if (!queryParts.length) [cleanUserName, userAddress].filter(Boolean).forEach((v) => queryParts.push(v));
     let textFallbackFoundPlaceId = false;
     const found = await findPlaceIdFromText(apiKey, queryParts.join(", "), out.lat, out.lng);
     if (found) {
@@ -538,10 +609,19 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
       out.placeId = found.placeId || out.placeId;
       if (!out.googleName && found.name) out.googleName = found.name;
     }
+    if (!textFallbackFoundPlaceId && out.lat != null && out.lng != null) {
+      const nearby = await findNearbyPlaceId(apiKey, out.lat, out.lng, userType || "", cleanUserName || out.googleName || "");
+      if (nearby && nearby.placeId && nearby.placeId !== out.placeId) {
+        textFallbackFoundPlaceId = true;
+        out.placeId = nearby.placeId;
+        if (!out.googleName && nearby.name) out.googleName = nearby.name;
+      }
+    }
     // If a placeId only surfaced via this text-search fallback, fetch
     // Details once more so hours/reviews/rating aren't left empty.
     if (out.placeId && textFallbackFoundPlaceId && !rich_.openingHours && !rich_.googleReview && rich_.googleRating === null) {
       const detailsFb = await getPlaceDetails(apiKey, out.placeId);
+      if (Object.keys(detailsFb).length > 0) detailsFound = true;
       if (detailsFb.name) out.googleName = detailsFb.name;
       if (detailsFb.formatted_address) out.googleAddress = detailsFb.formatted_address;
       if (detailsFb.geometry && detailsFb.geometry.location) {
@@ -572,5 +652,5 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
   out.googleAddress = normaliseAddress(out.googleAddress);
   out.outsideFinland = out.lat != null && out.lng != null && !isInsideFinlandBounds(out.lat, out.lng);
 
-  return { ...out, ...rich_, hasData };
+  return { ...out, ...rich_, hasData, detailsFound };
 }
