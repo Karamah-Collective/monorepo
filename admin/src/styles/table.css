@@ -246,6 +246,29 @@
   color: #fff;
 }
 
+.pp-btn-refresh {
+  background: var(--bg-inset);
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.pp-btn-refresh:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pp-btn-delete {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid transparent;
+}
+
+.pp-btn-delete:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
 .pp-reason-popover {
   position: absolute;
   z-index: 70;

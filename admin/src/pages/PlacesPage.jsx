@@ -3,7 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import DataTable from "../components/DataTable.jsx";
 import ToggleCell from "../components/ToggleCell.jsx";
 import SponsorEditor from "../components/SponsorEditor.jsx";
-import { useAdminPlaces, useUpdateBoycott, useUpdatePlaceDisabled, useUpdateSponsor } from "../api/queries.js";
+import { useAdminPlaces, useDeletePlace, useRefreshPlaceInfo, useUpdateBoycott, useUpdatePlaceDisabled, useUpdateSponsor } from "../api/queries.js";
 import { useToast } from "../components/Toast.jsx";
 import { TYPE_OPTIONS } from "../constants.js";
 
@@ -14,6 +14,8 @@ export default function PlacesPage() {
   const updateBoycott = useUpdateBoycott();
   const updateDisabled = useUpdatePlaceDisabled();
   const updateSponsor = useUpdateSponsor();
+  const refreshPlace = useRefreshPlaceInfo();
+  const deletePlace = useDeletePlace();
   const showToast = useToast();
 
   const columns = useMemo(
@@ -90,8 +92,50 @@ export default function PlacesPage() {
           />
         ),
       }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: (info) => {
+          const place = info.row.original;
+          return (
+            <div className="pp-action-cell">
+              <button
+                className="pp-btn pp-btn-refresh"
+                disabled={refreshPlace.isPending || deletePlace.isPending}
+                onClick={() =>
+                  refreshPlace.mutate(
+                    { placeId: place.id },
+                    {
+                      onSuccess: () => showToast("Place info refreshed"),
+                      onError: (e) => showToast(e.message, "error"),
+                    }
+                  )
+                }
+              >
+                {refreshPlace.isPending ? "..." : "Refresh"}
+              </button>
+              <button
+                className="pp-btn pp-btn-delete"
+                disabled={refreshPlace.isPending || deletePlace.isPending}
+                onClick={() => {
+                  if (!window.confirm(`Remove "${place.name}" from the database? This also removes its reviews, saved references, events, app links, and social videos.`)) return;
+                  deletePlace.mutate(
+                    { placeId: place.id },
+                    {
+                      onSuccess: () => showToast("Place removed from database"),
+                      onError: (e) => showToast(e.message, "error"),
+                    }
+                  );
+                }}
+              >
+                {deletePlace.isPending ? "..." : "Remove"}
+              </button>
+            </div>
+          );
+        },
+      }),
     ],
-    [updateBoycott, updateDisabled, updateSponsor, showToast]
+    [deletePlace, refreshPlace, updateBoycott, updateDisabled, updateSponsor, showToast]
   );
 
   return (

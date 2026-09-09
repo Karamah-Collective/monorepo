@@ -122,6 +122,14 @@ function _applyTextQuery(result, rawValue) {
   result.name = result.name || raw;
 }
 
+function _isUsablePlaceName(value) {
+  const text = (value || "").toString().trim();
+  if (!text) return false;
+  if (/^(?:data=|0x[0-9a-f]+(?::0x[0-9a-f]+)?|ChIJ)/i.test(text)) return false;
+  if (/^[A-Za-z0-9_-]{32,}$/.test(text)) return false;
+  return /[\p{L}\p{N}]/u.test(text);
+}
+
 /**
  * Follows redirects to resolve a short/app Maps link to a full
  * google.com/maps URL. Simpler than Code.gs's manual hop-by-hop fallback:
@@ -204,7 +212,8 @@ export function parseMapsUrl(url) {
 
   const nameMatch = url.match(/\/maps\/place\/([^/@?]+)/);
   if (nameMatch) {
-    result.name = _normaliseMapsText(nameMatch[1].replace(/\+/g, " "));
+    const pathName = _normaliseMapsText(nameMatch[1].replace(/\+/g, " "));
+    if (_isUsablePlaceName(pathName)) result.name = pathName;
   }
 
   if (!result.name) {
@@ -533,8 +542,8 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
     // Details once more so hours/reviews/rating aren't left empty.
     if (out.placeId && textFallbackFoundPlaceId && !rich_.openingHours && !rich_.googleReview && rich_.googleRating === null) {
       const detailsFb = await getPlaceDetails(apiKey, out.placeId);
-      if (detailsFb.name && !out.googleName) out.googleName = detailsFb.name;
-      if (detailsFb.formatted_address && !out.googleAddress) out.googleAddress = detailsFb.formatted_address;
+      if (detailsFb.name) out.googleName = detailsFb.name;
+      if (detailsFb.formatted_address) out.googleAddress = detailsFb.formatted_address;
       if (detailsFb.geometry && detailsFb.geometry.location) {
         out.lat = detailsFb.geometry.location.lat;
         out.lng = detailsFb.geometry.location.lng;

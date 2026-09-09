@@ -334,10 +334,18 @@ async function approveNew(db, rowId, env) {
   let address = normaliseAddress(row.google_address || row.address || "");
   let lat = row.lat;
   let lng = row.lng;
+  let website = row.website || "";
+  let phone = row.phone || "";
+  let openingHours = row.opening_hours || "";
+  let googleReview = row.google_review || "";
+  let googleRating = row.google_rating ?? null;
+  let googleRatingCount = row.google_rating_count ?? null;
+  let googleInfoRaw = row.google_info || "";
 
-  // Recover coordinates for worldwide submissions that were queued without a pin
-  // (or whose Finland-only enrichment previously skipped lat/lng).
-  if ((lat == null || lng == null) && env) {
+  // Approval is the last chance to repair a link-only submission before it
+  // becomes live. Fetch rich Details again so bad parsed path names (for
+  // example /maps/place/data=... share blobs) cannot outrank Google truth.
+  if (env) {
     const mapsLink = (row.maps_link || "").toString().trim();
     if (mapsLink) {
       try {
@@ -345,17 +353,22 @@ async function approveNew(db, rowId, env) {
           mapsUrl: mapsLink,
           userName: row.name || "",
           userAddress: row.address || "",
-          website: row.website || "",
-          phone: row.phone || "",
-          rich: false,
+          website,
+          phone,
+          rich: true,
         });
-        if (enriched.hasData && enriched.lat != null && enriched.lng != null) {
-          if (!name && enriched.googleName) name = enriched.googleName;
-          lat = enriched.lat;
-          lng = enriched.lng;
+        if (enriched.hasData) {
+          if (enriched.googleName) name = enriched.googleName;
           if (enriched.googleAddress) address = normaliseAddress(enriched.googleAddress);
-          if (enriched.website && !row.website) row.website = enriched.website;
-          if (enriched.phone && !row.phone) row.phone = enriched.phone;
+          if (enriched.lat != null) lat = enriched.lat;
+          if (enriched.lng != null) lng = enriched.lng;
+          if (enriched.website) website = enriched.website;
+          if (enriched.phone) phone = enriched.phone;
+          if (enriched.openingHours) openingHours = enriched.openingHours;
+          if (enriched.googleReview) googleReview = enriched.googleReview;
+          if (enriched.googleRating != null) googleRating = enriched.googleRating;
+          if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
+          if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
         }
       } catch { /* best-effort */ }
     }
@@ -370,8 +383,18 @@ async function approveNew(db, rowId, env) {
       } catch { /* best-effort */ }
     }
     if (lat != null && lng != null) {
-      await db.prepare("UPDATE new_places SET lat = ?, lng = ?, google_name = COALESCE(NULLIF(?, ''), google_name), google_address = COALESCE(NULLIF(?, ''), google_address), website = COALESCE(NULLIF(?, ''), website), phone = COALESCE(NULLIF(?, ''), phone) WHERE id = ?")
-        .bind(lat, lng, name || "", address || "", row.website || "", row.phone || "", rowId).run();
+      await db.prepare(
+        `UPDATE new_places
+         SET lat = ?, lng = ?, google_name = COALESCE(NULLIF(?, ''), google_name),
+             google_address = COALESCE(NULLIF(?, ''), google_address),
+             website = COALESCE(NULLIF(?, ''), website), phone = COALESCE(NULLIF(?, ''), phone),
+             opening_hours = COALESCE(NULLIF(?, ''), opening_hours),
+             google_review = COALESCE(NULLIF(?, ''), google_review),
+             google_rating = COALESCE(?, google_rating),
+             google_rating_count = COALESCE(?, google_rating_count),
+             google_info = COALESCE(NULLIF(?, ''), google_info)
+         WHERE id = ?`
+      ).bind(lat, lng, name || "", address || "", website || "", phone || "", openingHours || "", googleReview || "", googleRating, googleRatingCount, googleInfoRaw || "", rowId).run();
     }
   }
 
@@ -382,7 +405,7 @@ async function approveNew(db, rowId, env) {
 
   const tags = parseTagString((row.tags || "").toString().trim());
   let googleInfo = {};
-  try { googleInfo = row.google_info ? JSON.parse(row.google_info) : {}; } catch { googleInfo = {}; }
+  try { googleInfo = googleInfoRaw ? JSON.parse(googleInfoRaw) : {}; } catch { googleInfo = {}; }
   if (googleInfo.servesAlcohol && !tags.hasOwnProperty("no_alcohol")) tags.no_alcohol = false;
   delete googleInfo.servesAlcohol;
 
@@ -391,13 +414,13 @@ async function approveNew(db, rowId, env) {
     db.prepare("UPDATE new_places SET status = 'yes', app_place_id = ?, lat = ?, lng = ? WHERE id = ?").bind(newId, lat, lng, rowId),
     db.prepare(
       "INSERT INTO places (id, name, type, address, lat, lng, tags, notes, opening_hours, website, phone, google_info, google_info_enriched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    ).bind(newId, name, type, address, lat, lng, JSON.stringify(tags), row.notes || "", row.opening_hours || "", row.website || "", row.phone || "", Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : "", Object.keys(googleInfo).length ? helsinkiTimestamp() : ""),
+    ).bind(newId, name, type, address, lat, lng, JSON.stringify(tags), row.notes || "", openingHours || "", website || "", phone || "", Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : "", Object.keys(googleInfo).length ? helsinkiTimestamp() : ""),
   ];
   await db.batch(statements);
 
-  if (row.google_review) {
+  if (googleReview) {
     await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash, google_review, google_rating, google_rating_count) VALUES (?,'','','',?,'yes','',?,?,?)")
-      .bind(newId, new Date().toISOString(), row.google_review, row.google_rating, row.google_rating_count).run();
+      .bind(newId, new Date().toISOString(), googleReview, googleRating, googleRatingCount).run();
   }
   await upsertPlaceAppLinks(db, newId, row.app_links);
   return { success: true, placeId: newId };
@@ -476,6 +499,97 @@ async function updatePlaceDisabled(db, placeId, disabled) {
   if (!placeId) return { error: "Missing placeId" };
   const { meta } = await db.prepare("UPDATE places SET disabled = ? WHERE id = ?").bind(disabled === "Yes" || disabled === true ? 1 : 0, placeId).run();
   return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
+}
+
+async function refreshPlaceInfo(db, placeId, env) {
+  if (!placeId) return { error: "Missing placeId" };
+  const place = await db.prepare("SELECT * FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  const source = await db.prepare(
+    "SELECT maps_link, name, address FROM new_places WHERE app_place_id = ? AND maps_link != '' ORDER BY id DESC LIMIT 1"
+  ).bind(placeId).first();
+
+  let mapsUrl = (source && source.maps_link) || "";
+  if (!mapsUrl && place.google_info) {
+    try { mapsUrl = JSON.parse(place.google_info).mapsUrl || ""; } catch { mapsUrl = ""; }
+  }
+  if (!mapsUrl) return { error: "No Google Maps link found for this place" };
+
+  const enriched = await enrichFromMapsLink(env, {
+    mapsUrl,
+    userName: (source && source.name) || place.name || "",
+    userAddress: (source && source.address) || place.address || "",
+    website: place.website || "",
+    phone: place.phone || "",
+    rich: true,
+  });
+  if (!enriched.hasData) return { error: "Could not refresh this Google Maps link" };
+
+  const tags = parseTagString((place.tags || "").toString().trim());
+  const googleInfo = enriched.googleInfo || {};
+  if (googleInfo.servesAlcohol && !tags.hasOwnProperty("no_alcohol")) tags.no_alcohol = false;
+  delete googleInfo.servesAlcohol;
+
+  const name = enriched.googleName || place.name || "";
+  const address = normaliseAddress(enriched.googleAddress || place.address || "");
+  const lat = enriched.lat != null ? enriched.lat : place.lat;
+  const lng = enriched.lng != null ? enriched.lng : place.lng;
+  const googleInfoRaw = Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : place.google_info || "";
+
+  await db.prepare(
+    `UPDATE places
+     SET name = ?, address = ?, lat = ?, lng = ?, tags = ?,
+         opening_hours = ?, website = ?, phone = ?,
+         google_info = ?, google_info_enriched_at = ?
+     WHERE id = ?`
+  ).bind(
+    name, address, lat, lng, JSON.stringify(tags),
+    enriched.openingHours || place.opening_hours || "",
+    enriched.website || place.website || "",
+    enriched.phone || place.phone || "",
+    googleInfoRaw,
+    googleInfoRaw ? helsinkiTimestamp() : place.google_info_enriched_at || "",
+    placeId
+  ).run();
+
+  if (enriched.googleReview || enriched.googleRating != null || enriched.googleRatingCount != null) {
+    await db.prepare(
+      `INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash, google_review, google_rating, google_rating_count)
+       VALUES (?,'','','',?,'yes','',?,?,?)
+       ON CONFLICT(place_id, email_hash) DO UPDATE SET
+         timestamp = excluded.timestamp,
+         status = 'yes',
+         google_review = excluded.google_review,
+         google_rating = excluded.google_rating,
+         google_rating_count = excluded.google_rating_count`
+    ).bind(
+      placeId,
+      new Date().toISOString(),
+      enriched.googleReview || "",
+      enriched.googleRating ?? null,
+      enriched.googleRatingCount ?? null
+    ).run();
+  }
+
+  return { success: true };
+}
+
+async function deletePlace(db, placeId) {
+  if (!placeId) return { error: "Missing placeId" };
+  const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  await db.batch([
+    db.prepare("DELETE FROM reviews WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM saved_places WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM events WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM event_edits WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM place_app_links WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM place_social_videos WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM places WHERE id = ?").bind(placeId),
+  ]);
+  return { success: true };
 }
 
 const VALID_SPONSOR_TIERS = ["", "basic", "featured", "spotlight"];
@@ -574,6 +688,8 @@ const POST_ACTIONS = {
   "reject-edit": (db, data) => rejectEdit(db, data.rowId, data.reason || ""),
   "update-boycott": (db, data) => updateBoycott(db, data.placeId, data.boycott),
   "update-place-disabled": (db, data) => updatePlaceDisabled(db, data.placeId, data.disabled),
+  "refresh-place-info": (db, data, env) => refreshPlaceInfo(db, data.placeId, env),
+  "delete-place": (db, data) => deletePlace(db, data.placeId),
   "update-sponsor": (db, data) => updateSponsor(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),

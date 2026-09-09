@@ -4440,6 +4440,23 @@ overlay is still mounted, so a slow IP response never moves the map after the
 main view is visible. This signal is not stored as home and is disclosed in the
 privacy copy.
 
+**2026-09-09 approved-place enrichment correction:** user reported that two
+Google Maps link-only submissions were approved with correct coordinates but
+garbage names and without opening hours/tags/rating data. Root cause: admin
+approval only retried coordinate recovery (`rich:false`) and preserved any
+non-empty submitted/parsed name, so percent-encoded or `/maps/place/data=...`
+share-token path names could outrank Google Places Details. Fix pattern:
+approval now always performs a rich Maps-link refresh before inserting into
+`places`, lets Google Details replace parsed/submitted junk, writes recovered
+hours/reviews/rating/phone/website/google_info into both the queue row and the
+live row, and the parser rejects long opaque path tokens as display names. The
+Places admin table now has a non-destructive `Refresh` action to repair already
+approved rows from their original submission link, plus a confirmed `Remove`
+action that deletes a live place and its directly attached reviews, saved-place
+references, events/event edits, app links, and social videos. No Playwright
+tests were run; Worker syntax checks, parser samples, `git diff --check`, and
+the admin Vite production build passed.
+
 ---
 
 ## 2026-09-09 - Google Maps share-link enrichment repair
