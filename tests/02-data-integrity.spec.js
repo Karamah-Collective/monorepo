@@ -42,10 +42,35 @@ test.describe("Places Data Integrity", () => {
 
   test("all place types are valid", async ({ page }) => {
     const data = await page.evaluate(() => fetch("data/places.json").then((r) => r.json()));
-    const validTypes = ["mosque", "prayer_room", "restaurant", "shop", "cemetery"];
+    const validTypes = ["mosque", "space", "restaurant", "service", "prayer_room", "shop", "cemetery"];
     for (const place of data) {
       expect(validTypes).toContain(place.type);
     }
+  });
+
+  test("food, services, and spaces have exactly one required subtype tag", async ({ page }) => {
+    const data = await page.evaluate(() => fetch("data/places.json").then((r) => r.json()));
+    for (const place of data) {
+      const tags = place.tags || {};
+      if (place.type === "restaurant") {
+        const restaurantTypes = Object.keys(tags).filter((tag) => tag.startsWith("restaurant_type_") && tags[tag] === true);
+        expect(restaurantTypes).toHaveLength(1);
+      }
+      if (place.type === "service" || place.type === "shop") {
+        const serviceTypes = Object.keys(tags).filter((tag) => tag.startsWith("service_type_") && tags[tag] === true);
+        expect(serviceTypes).toHaveLength(1);
+      }
+      if (["space", "mosque", "prayer_room", "cemetery"].includes(place.type)) {
+        const spaceTypes = Object.keys(tags).filter((tag) => tag.startsWith("space_type_") && tags[tag] === true);
+        expect(spaceTypes).toHaveLength(1);
+      }
+    }
+  });
+
+  test("static mosque rows are migrated to spaces with mosque subtype", async ({ page }) => {
+    const data = await page.evaluate(() => fetch("data/places.json").then((r) => r.json()));
+    expect(data.filter((place) => place.type === "mosque")).toHaveLength(0);
+    expect(data.filter((place) => place.type === "space" && place.tags?.space_type_mosque === true).length).toBeGreaterThan(0);
   });
 
   test("all coordinates are within Finland bounds", async ({ page }) => {
@@ -85,9 +110,12 @@ test.describe("Tags Data Integrity", () => {
   test("tags.json loads and has all place types", async ({ page }) => {
     const data = await page.evaluate(() => fetch("data/tags.json").then((r) => r.json()));
     expect(data).toHaveProperty("mosque");
-    expect(data).toHaveProperty("prayer_room");
+    expect(data).toHaveProperty("space");
     expect(data).toHaveProperty("restaurant");
-    expect(data).toHaveProperty("shop");
+    expect(data).toHaveProperty("restaurant_restaurant_type");
+    expect(data).toHaveProperty("service");
+    expect(data).toHaveProperty("service_service_type");
+    expect(data).toHaveProperty("space_space_type");
   });
 
   test("each tag has id and label", async ({ page }) => {

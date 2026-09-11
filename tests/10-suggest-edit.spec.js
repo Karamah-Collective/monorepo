@@ -57,16 +57,16 @@ test.describe("Suggest Place Overlay", () => {
   test("selecting type reveals tag chips", async ({ page }) => {
     await page.locator("#suggest-place-btn").click();
     await page.waitForTimeout(300);
-    await page.locator("#sg-type").selectOption("mosque");
+    await page.locator("#sg-type").selectOption("space");
     await page.waitForTimeout(200);
-    const chips = await page.locator("#sg-tags .sg-tag").count();
+    const chips = await page.locator("#sg-type-tags .sg-subtag").count();
     expect(chips).toBeGreaterThan(0);
   });
 
   test("tag chips cycle through neutral → yes → no states", async ({ page }) => {
     await page.locator("#suggest-place-btn").click();
     await page.waitForTimeout(300);
-    await page.locator("#sg-type").selectOption("mosque");
+    await page.locator("#sg-type").selectOption("space");
     await page.waitForTimeout(200);
     const chip = page.locator("#sg-tags .sg-tag").first();
     // Initial state: neutral
@@ -131,9 +131,8 @@ test.describe("Edit Overlay", () => {
   test("edit type select has all options", async ({ page }) => {
     const options = page.locator("#ed-type option");
     const texts = await options.allTextContents();
-    expect(texts).toContain("Mosque");
-    expect(texts).toContain("Prayer Room");
-    expect(texts).toContain("Restaurant");
-    expect(texts).toContain("Shop");
+    expect(texts).toContain("Spaces");
+    expect(texts).toContain("Food");
+    expect(texts).toContain("Services");
   });
 });

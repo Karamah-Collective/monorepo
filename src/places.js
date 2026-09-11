@@ -13,6 +13,103 @@ export let tagsData = {};
 export let eventsData = [];
 export let placesLoaded = false;
 
+const CORE_TAG_DEFAULTS = {
+  restaurant: [
+    { id: "restaurant_type", label: "Food Type" },
+    { id: "no_alcohol", label: "No Alcohol" },
+    { id: "halal_status", label: "Halal Status" },
+    { id: "cuisine", label: "Cuisine" },
+  ],
+  restaurant_restaurant_type: [
+    { id: "restaurant_type_restaurant", label: "Restaurant" },
+    { id: "restaurant_type_cafe", label: "Cafe" },
+    { id: "restaurant_type_bakery", label: "Bakery" },
+    { id: "restaurant_type_dessert", label: "Dessert" },
+    { id: "restaurant_type_food_truck", label: "Food Truck" },
+    { id: "restaurant_type_catering", label: "Catering" },
+    { id: "restaurant_type_takeaway", label: "Takeaway" },
+    { id: "restaurant_type_buffet", label: "Buffet" },
+  ],
+  service: [
+    { id: "service_type", label: "Service Type" },
+    { id: "halal_meat", label: "Halal Meat" },
+    { id: "halal_butchery", label: "Butchery" },
+    { id: "halal_groceries", label: "Groceries" },
+    { id: "asian_products", label: "Asian" },
+    { id: "african_products", label: "African" },
+    { id: "arab_products", label: "Arab" },
+    { id: "halal_certified", label: "Certified" },
+    { id: "muslim_owned", label: "Muslim-owned" },
+  ],
+  service_service_type: [
+    { id: "service_type_grocery", label: "Grocery" },
+    { id: "service_type_butchery", label: "Butchery" },
+    { id: "service_type_bookshop", label: "Bookshop" },
+    { id: "service_type_salon", label: "Salon" },
+    { id: "service_type_clothing", label: "Clothing" },
+    { id: "service_type_islamic_goods", label: "Islamic Goods" },
+    { id: "service_type_education", label: "Education" },
+    { id: "service_type_community_service", label: "Community Service" },
+    { id: "service_type_charity", label: "Charity" },
+  ],
+  space: [
+    { id: "space_type", label: "Space Type" },
+    { id: "daily_prayers", label: "Daily Prayers" },
+    { id: "jummah", label: "Jummah" },
+    { id: "taraweeh", label: "Taraweeh" },
+    { id: "eid_prayer", label: "Eid Prayer" },
+    { id: "janaza", label: "Janaza" },
+    { id: "quran_classes", label: "Quran Classes" },
+    { id: "wudu", label: "Wudu" },
+    { id: "female_prayer", label: "Sisters Section" },
+    { id: "female_wudu", label: "Sisters Wudu" },
+    { id: "quran_available", label: "Quran Available" },
+  ],
+  space_space_type: [
+    { id: "space_type_mosque", label: "Mosque" },
+    { id: "space_type_prayer_place", label: "Prayer Place" },
+    { id: "space_type_eid_prayer_place", label: "Eid Prayer Place" },
+    { id: "space_type_cemetery", label: "Cemetery" },
+    { id: "space_type_community_hall", label: "Community Hall" },
+    { id: "space_type_event_space", label: "Event Space" },
+    { id: "space_type_classroom", label: "Classroom" },
+    { id: "space_type_wudu_facility", label: "Wudu Facility" },
+    { id: "space_type_sisters_space", label: "Sisters Space" },
+  ],
+};
+
+function _ensureCoreTagDefaults() {
+  for (const [key, defaults] of Object.entries(CORE_TAG_DEFAULTS)) {
+    const existing = Array.isArray(tagsData[key]) ? tagsData[key] : [];
+    const seen = new Set(existing.map((tag) => tag.id));
+    tagsData[key] = [
+      ...existing,
+      ...defaults.filter((tag) => !seen.has(tag.id)),
+    ];
+  }
+}
+
+function _hasTagPrefix(tags, prefix) {
+  return Object.keys(tags || {}).some((id) => id.startsWith(prefix) && tags[id] === true);
+}
+
+function _normalizePlaceCategoryTags() {
+  placesData.forEach((place) => {
+    place.tags = place.tags && typeof place.tags === "object" && !Array.isArray(place.tags) ? place.tags : {};
+    if (SERVICE_TYPES.has(place.type) && !_hasTagPrefix(place.tags, "service_type_")) {
+      place.tags.service_type_grocery = true;
+    }
+    if (place.type === "restaurant" && !_hasTagPrefix(place.tags, "restaurant_type_")) {
+      place.tags.restaurant_type_restaurant = true;
+    }
+    if (SPACE_TYPES.has(place.type) && !_hasTagPrefix(place.tags, "space_type_")) {
+      if (place.type === "mosque") place.tags.space_type_mosque = true;
+      else if (place.type === "cemetery") place.tags.space_type_cemetery = true;
+      else place.tags.space_type_prayer_place = true;
+    }
+  });
+}
+
 /** Returns place.sponsor if sponsorship is active today, otherwise null. */
 export function activeSponsor(place) {
   if (!place.sponsor || place.boycott) return null;
@@ -28,6 +125,7 @@ let eventOnlyMarkers = [];
 // Sort subtag arrays (e.g. cuisine) alphabetically by label.
 // Called after every tagsData assignment so all consumers get sorted data.
 function sortSubtags() {
+  _ensureCoreTagDefaults();
   for (const key in tagsData) {
     if (key.indexOf("_") !== -1 && Array.isArray(tagsData[key])) {
       tagsData[key].sort((a, b) => a.label.localeCompare(b.label));
@@ -45,14 +143,14 @@ const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="no
 // .pp-contact row's tel: link icon.
 const _CONTACT_PHONE_ICON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
 
-/** Place types grouped under the "Religious" tab (everything except mosques). */
-const RELIGIOUS_TYPES = new Set(["prayer_room", "cemetery"]);
+/** Backward-compatible type groups while live data migrates to service/space. */
+const SERVICE_TYPES = new Set(["service", "shop"]);
+const SPACE_TYPES = new Set(["space", "mosque", "prayer_room", "cemetery"]);
 const LIST_FOCUS_TYPE_OPTIONS = [
   { id: "all", label: "All" },
-  { id: "mosque", label: "Mosques" },
-  { id: "religious", label: "Spaces" },
+  { id: "space", label: "Spaces" },
   { id: "restaurant", label: "Food" },
-  { id: "shop", label: "Shops" },
+  { id: "service", label: "Services" },
   { id: "saved", label: "Saved" },
 ];
 let activeSortField = "default"; // "default" | "name" | "distance" | "date"
@@ -76,6 +174,28 @@ const SAVED_BOOKMARKED_GROUP = "__saved_bookmarked__";
 const SAVED_VISITED_GROUP = "__saved_visited__";
 const RECENT_GROUP = "__recent__";
 const GROUP_KEY_SEPARATOR = "::";
+
+function _canonicalPlaceType(type) {
+  if (SERVICE_TYPES.has(type)) return "service";
+  if (SPACE_TYPES.has(type)) return "space";
+  return type;
+}
+
+function _formPlaceType(type) {
+  return _canonicalPlaceType(type || "");
+}
+
+function _placeCssColor(type, fallback) {
+  return {
+    mosque: "var(--success)",
+    prayer_room: "var(--hsl-ferry)",
+    space: "var(--hsl-ferry)",
+    restaurant: "var(--hsl-trunk)",
+    shop: "var(--hsl-rail)",
+    service: "var(--hsl-rail)",
+    cemetery: "var(--cemetery)",
+  }[type] || fallback;
+}
 
 
 const placeSheetEl = document.getElementById("place-sheet");
@@ -186,14 +306,48 @@ function _buildPlaceInfoChipsHTML(place) {
 
 // Expandable tag groups where only one child may be selected at a time (radio behaviour).
 const EXCLUSIVE_GROUPS = new Set(["halal_status"]);
+const REQUIRED_TYPE_GROUPS = { restaurant: "restaurant_type", service: "service_type", space: "space_type" };
+const CUSTOM_TAG_GROUP_PREFIX = { cuisine: "cuisine", restaurant_type: "restaurant_type", service_type: "service_type", space_type: "space_type" };
+const TYPE_GROUP_LABELS = { restaurant_type: "Food", service_type: "Services", space_type: "Spaces" };
+const EID_SPACE_TYPE_TAG = "space_type_eid_prayer_place";
+const FOOD_OPTIONAL_TAGS = ["no_alcohol", "halal_status", "cuisine"];
+const OPTIONAL_TAGS_BY_TYPE_TAG = {
+  restaurant_type_restaurant: FOOD_OPTIONAL_TAGS,
+  restaurant_type_cafe: FOOD_OPTIONAL_TAGS,
+  restaurant_type_bakery: FOOD_OPTIONAL_TAGS,
+  restaurant_type_dessert: FOOD_OPTIONAL_TAGS,
+  restaurant_type_food_truck: FOOD_OPTIONAL_TAGS,
+  restaurant_type_catering: FOOD_OPTIONAL_TAGS,
+  restaurant_type_takeaway: FOOD_OPTIONAL_TAGS,
+  restaurant_type_buffet: FOOD_OPTIONAL_TAGS,
+  service_type_grocery: ["halal_meat", "halal_groceries", "asian_products", "african_products", "arab_products", "halal_certified", "muslim_owned"],
+  service_type_butchery: ["halal_meat", "halal_butchery", "halal_certified", "muslim_owned"],
+  service_type_bookshop: ["muslim_owned", "halal_certified"],
+  service_type_salon: ["muslim_owned"],
+  service_type_clothing: ["muslim_owned"],
+  service_type_islamic_goods: ["muslim_owned", "halal_certified"],
+  service_type_education: ["muslim_owned"],
+  service_type_community_service: ["muslim_owned"],
+  service_type_charity: ["muslim_owned"],
+  space_type_mosque: ["daily_prayers", "jummah", "taraweeh", "eid_prayer", "janaza", "quran_classes", "wudu", "female_prayer", "female_wudu", "quran_available"],
+  space_type_prayer_place: ["daily_prayers", "jummah", "taraweeh", "wudu", "female_prayer", "female_wudu", "quran_available"],
+  space_type_eid_prayer_place: [],
+  space_type_cemetery: ["janaza"],
+  space_type_community_hall: ["quran_classes", "wudu", "female_prayer", "female_wudu", "quran_available"],
+  space_type_event_space: ["quran_classes", "wudu", "female_prayer", "female_wudu"],
+  space_type_classroom: ["quran_classes", "female_prayer", "quran_available"],
+  space_type_wudu_facility: ["wudu", "female_wudu"],
+  space_type_sisters_space: ["female_prayer", "female_wudu", "quran_available"],
+};
 
 // Returns all displayable tags for a type, replacing expandable parent tags with their subtags.
 // Convention: if tagsData[type + "_" + tag.id] exists, tag is expandable.
 function getDisplayTags(type) {
-  const base = tagsData[type] || [];
+  const tagType = _canonicalPlaceType(type);
+  const base = tagsData[tagType] || [];
   const result = [];
   for (const tag of base) {
-    const subKey = `${type}_${tag.id}`;
+    const subKey = `${tagType}_${tag.id}`;
     if (tagsData[subKey]) {
       result.push(...(tagsData[subKey] || []));
     } else {
@@ -203,12 +357,42 @@ function getDisplayTags(type) {
   return result;
 }
 
+function _getTypeGroupKey(type) {
+  const tagType = _canonicalPlaceType(type);
+  const groupId = REQUIRED_TYPE_GROUPS[tagType];
+  return groupId ? `${tagType}_${groupId}` : "";
+}
+
+function _getTypeTag(place) {
+  const groupKey = _getTypeGroupKey(place.type);
+  if (!groupKey) return null;
+  return (tagsData[groupKey] || []).find((tag) => place.tags?.[tag.id] === true) || null;
+}
+
+function _isTypeTagForPlace(tagId, type) {
+  const groupKey = _getTypeGroupKey(type);
+  return Boolean(groupKey && (tagsData[groupKey] || []).some((tag) => tag.id === tagId));
+}
+
+function _placeSpecificTypeLabel(place) {
+  const typeTag = _getTypeTag(place);
+  if (typeTag?.label) return typeTag.label;
+  const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG[_canonicalPlaceType(place.type)] || PLACE_CONFIG.mosque;
+  return cfg.label || place.type;
+}
+
+function _isMosquePlace(place) {
+  return place?.type === "mosque" || place?.tags?.space_type_mosque === true;
+}
+
+
 // Returns structured tags for the filter bar — expandable parents stay as groups.
 function getFilterBarTags(type) {
-  const base = tagsData[type] || [];
+  const tagType = _canonicalPlaceType(type);
+  const base = tagsData[tagType] || [];
   const items = [];
   for (const tag of base) {
-    const subKey = `${type}_${tag.id}`;
+    const subKey = `${tagType}_${tag.id}`;
     if (tagsData[subKey]) {
       items.push({ group: true, parent: tag, children: tagsData[subKey] || [] });
     } else {
@@ -240,7 +424,8 @@ function getPlaceCity(place) {
 function _matchesTypeScope(place, type) {
   if (type === "all") return true;
   if (type === "saved") return _isSavedDirectoryPlace(place);
-  if (type === "religious") return RELIGIOUS_TYPES.has(place.type);
+  if (type === "service") return SERVICE_TYPES.has(place.type);
+  if (type === "space") return SPACE_TYPES.has(place.type);
   return place.type === type;
 }
 
@@ -254,7 +439,8 @@ function _filterPlacesForCurrentType({ markers = false } = {}) {
   }
   if (activeTypeFilter === "all") return placesData;
   if (activeTypeFilter === "saved") return placesData.filter(markers ? _isSavedDirectoryPlace : (p) => isFavourite(p.id));
-  if (activeTypeFilter === "religious") return placesData.filter((p) => RELIGIOUS_TYPES.has(p.type));
+  if (activeTypeFilter === "service") return placesData.filter((p) => SERVICE_TYPES.has(p.type));
+  if (activeTypeFilter === "space") return placesData.filter((p) => SPACE_TYPES.has(p.type));
   return placesData.filter((p) => p.type === activeTypeFilter);
 }
 
@@ -947,9 +1133,10 @@ function _buildRatingChip(placeId) {
 
 function _buildCard(p, i) {
   const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
+  const cssColor = _placeCssColor(p.type, cfg.color);
+  const specificTypeLabel = _placeSpecificTypeLabel(p);
   const typeTags = getDisplayTags(p.type);
-  const posTags = typeTags.filter((t) => p.tags?.[t.id] === true);
+  const posTags = typeTags.filter((t) => p.tags?.[t.id] === true && !_isTypeTagForPlace(t.id, p.type));
   const posCount = posTags.length;
   const tagSummary = posCount ? `${posCount} tag${posCount > 1 ? "s" : ""}` : "0 tags";
   const tagNames = posTags.map((t) => t.label);
@@ -970,7 +1157,7 @@ function _buildCard(p, i) {
       ? `<span class="pl-closed-chip">Closed</span>`
       : "";
   const ratingChip = _buildRatingChip(p.id);
-  const tagBadge = `<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(cfg.label)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>`;
+  const tagBadge = `<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(specificTypeLabel)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>`;
   const desktopMetaHTML = `${openBadge}${ratingChip}${tagBadge}${distBadge}${boycottBadge}${sponsorBadge}`;
   const compactNameHTML = `${tagBadge}${distBadge}`;
   const compactAddrHTML = `${openBadge}${ratingChip}`;
@@ -1094,6 +1281,7 @@ export async function loadPlacesData() {
     if (cached) {
       placesData = stripSponsorFields(normalizePlacesData(cached.places));
       tagsData = cached.tags || {};
+      _normalizePlaceCategoryTags();
       sortSubtags();
       placesLoaded = true;
       hideLoadingToast();
@@ -1119,6 +1307,7 @@ export async function loadPlacesData() {
           }
           placesData = normalizePlacesData(data.places);
           tagsData = data.tags || {};
+          _normalizePlaceCategoryTags();
           sortSubtags();
           addPlaceMarkers();
           renderPlacesList();
@@ -1138,6 +1327,7 @@ export async function loadPlacesData() {
       if (pRes.ok && tRes.ok) {
         placesData = stripSponsorFields(normalizePlacesData(await pRes.json()));
         tagsData = await tRes.json();
+        _normalizePlaceCategoryTags();
         sortSubtags();
         console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);
       }
@@ -1168,6 +1358,7 @@ export async function loadPlacesData() {
         }
         placesData = normalizePlacesData(data.places);
         tagsData = data.tags || {};
+        _normalizePlaceCategoryTags();
         sortSubtags();
         addPlaceMarkers();  // Full refresh removes old + adds new
         renderPlacesList();
@@ -1299,8 +1490,10 @@ function _setupClusterLayers(geojson) {
       "circle-color": ["match", ["get", "type"],
         "mosque",      "#1FA86A",
         "prayer_room", "#00B9E4",
+        "space",       "#00B9E4",
         "restaurant",  "#FF6319",
         "shop",        getThemeRailShopPurple(),
+        "service",     getThemeRailShopPurple(),
         "#08705B",
       ],
       "circle-radius": 7,
@@ -1583,7 +1776,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   }
   trackRecentlyViewed(place.id);
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
-  const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[place.type] || cfg.color;
+  const cssColor = _placeCssColor(place.type, cfg.color);
+  const specificTypeLabel = _placeSpecificTypeLabel(place);
   const typeTags = getDisplayTags(place.type);
 
   const root = document.createElement("div");
@@ -1598,7 +1792,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   hdr.className = "pp-hdr";
   hdr.innerHTML =
     `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
-    `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${cfg.label}</span>` +
+    `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${esc(specificTypeLabel)}</span>` +
     (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
 
@@ -1665,7 +1859,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
 
   // Tags (plain text labels, no icons) + Google-sourced info chips (price, accessibility, service options)
   const tagChips = typeTags
-    .filter((tag) => place.tags?.[tag.id] !== undefined)
+    .filter((tag) => place.tags?.[tag.id] !== undefined && !_isTypeTagForPlace(tag.id, place.type))
     .map((tag) => {
       const val = place.tags[tag.id];
       const cls = val === true
@@ -2288,9 +2482,9 @@ let _placesRefineLastScrollTop = 0;
 const _SEARCH_PLACEHOLDERS = {
   all: "Search places\u2026",
   mosque: "Search mosques\u2026",
-  religious: "Search spaces\u2026",
-  restaurant: "Search restaurants\u2026",
-  shop: "Search shops\u2026",
+  space: "Search spaces\u2026",
+  restaurant: "Search food\u2026",
+  service: "Search services\u2026",
   saved: "Search saved\u2026",
 };
 
@@ -2568,15 +2762,19 @@ function _getListFocusTagTypes() {
   if (!_isPlacesListFocusActive() || activeTypeFilter === "saved") return [activeTypeFilter];
   const selected = _listFocusTypeFilters.size
     ? [..._listFocusTypeFilters]
-    : ["mosque", "religious", "restaurant", "shop"];
-  return selected.flatMap((type) => type === "religious" ? [...RELIGIOUS_TYPES] : [type]);
+    : ["space", "restaurant", "service"];
+  return selected.flatMap((type) => {
+    if (type === "space") return ["space", "mosque", "prayer_room", "cemetery"];
+    if (type === "service") return ["service", "shop"];
+    return [type];
+  });
 }
 
 function _getFilterItemsForCurrentType() {
   if (!_isPlacesListFocusActive()) {
     if (activeTypeFilter === "all" || activeTypeFilter === "saved") return [];
-    return activeTypeFilter === "religious"
-      ? [...RELIGIOUS_TYPES].flatMap((type) => getFilterBarTags(type))
+    return activeTypeFilter === "space"
+      ? getFilterBarTags("space")
       : getFilterBarTags(activeTypeFilter);
   }
   if (activeTypeFilter === "saved") return [];
@@ -2597,6 +2795,9 @@ function renderTagFilterBar() {
   const typePlaces = _filterPlacesForCurrentType({ markers: activeTypeFilter === "saved" });
   const count = typePlaces.length;
   const items = _getFilterItemsForCurrentType();
+  const optionalItems = items.filter((it) => !(it.group && Object.values(REQUIRED_TYPE_GROUPS).includes(it.parent.id)));
+  const typeGroupItems = items.filter((it) => it.group && Object.values(REQUIRED_TYPE_GROUPS).includes(it.parent.id));
+  const orderedItems = [...optionalItems, ...typeGroupItems];
   const totalTags = items.reduce((n, it) => n + (it.group ? it.children.length : 1), 0);
 
   // Filter: show when tags exist OR places have hours data (Open Now chip) OR ratings exist
@@ -2613,7 +2814,7 @@ function renderTagFilterBar() {
     // Open Now chip — always first in the filter panel
     html += `<button class="tf-chip tf-open-now-chip${_openNowFilter ? " active" : ""}" data-action="open-now">Open Now</button>`;
     html += `<button class="tf-chip tf-rated-chip${_ratedFilter ? " active" : ""}" data-action="rated">Rated</button>`;
-    for (const it of items) {
+    for (const it of orderedItems) {
       if (it.group) {
         const activeCount = it.children.filter(c => activeTagFilters.has(c.id)).length;
         const isExclusive = EXCLUSIVE_GROUPS.has(it.parent.id);
@@ -2621,7 +2822,7 @@ function renderTagFilterBar() {
           ? it.children.find(c => activeTagFilters.has(c.id))?.label || ""
           : "";
         const groupLabel = activeLabel ? `${it.parent.label}: ${activeLabel}` : it.parent.label;
-        html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}${isExclusive ? " tf-group-toggle--select" : ""}" data-group="${it.parent.id}">${esc(groupLabel)}<span class="tf-group-count${activeCount && !isExclusive ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+        html += `<button class="tf-chip tf-group-toggle${activeCount ? " has-active" : ""}" data-group="${it.parent.id}">${esc(groupLabel)}<span class="tf-group-count${activeCount && !isExclusive ? "" : " hide"}">${activeCount}</span><svg class="tf-group-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>`;
         html += `<div class="tf-group-chips shut" data-group-for="${it.parent.id}"${EXCLUSIVE_GROUPS.has(it.parent.id) ? " data-exclusive" : ""}><div class="tf-group-inner">`;
         html += it.children.map(c => `<button class="tf-chip${activeTagFilters.has(c.id) ? " active" : ""}" data-tag="${c.id}">${esc(c.label)}</button>`).join("");
         html += `</div>`;
@@ -3353,7 +3554,7 @@ export function renderPromosPill() {
   _promosPill.classList.remove("hide");
   _promosList.innerHTML = promos.map(p => {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
+    const cssColor = _placeCssColor(p.type, cfg.color);
     return `<button class="promo-item" data-promo-code="${escA(p.sponsor.cta)}" data-promo-text="${escA(p.sponsor.text || "")}">
       <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span>
       <span class="promo-name">${esc(p.name)}</span>
@@ -3411,7 +3612,7 @@ function _renderSponsorCarousel(filteredPlaces) {
 
   const cards = sponsored.map(p => {
     const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" }[p.type] || cfg.color;
+    const cssColor = _placeCssColor(p.type, cfg.color);
     return `<button class="sponsor-card" data-place-id="${p.id}"><span class="sponsor-card-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span><div class="sponsor-card-body"><span class="sponsor-card-name">${esc(p.name)}</span><span class="sponsor-card-addr">${esc(p.address)}</span></div></button>`;
   }).join("");
 
@@ -3880,7 +4081,7 @@ export function openEventOverlay(preselectedPlaceId, editEvent, presetLocation) 
   overlay.querySelector('.ev-schedule-chips .ev-sched-chip[data-value="oneTime"]')?.classList.add("active");
 
   // Location combo: an event's venue can be any place in the directory (not
-  // just mosques) — a restaurant or shop can host an event too.
+  // just mosques) — a restaurant or service can host an event too.
   _resetLocationCombo();
   const linkedPlaceId = editEvent ? (editEvent.placeId || "") : (preselectedPlaceId || "");
   const linkedPlace = linkedPlaceId ? placesData.find((p) => p.id === linkedPlaceId) : null;
@@ -4272,30 +4473,145 @@ document.getElementById("suggest-overlay").addEventListener("click", (e) => {
 });
 
 const sgTypeSelect = document.getElementById("sg-type");
+const sgTypeTagsContainer = document.getElementById("sg-type-tags");
 const sgTagsContainer = document.getElementById("sg-tags");
 
-function renderSuggestTags() {
-  const type = sgTypeSelect.value;
-  const tagsSection = document.getElementById("sg-tags-section");
-  if (!type) { tagsSection.style.display = "none"; sgTagsContainer.innerHTML = ""; return; }
-  tagsSection.style.display = "";
-  const tags = tagsData[type] || [];
-  sgTagsContainer.innerHTML = tags
+function _requiredTypeGroup(type) {
+  return REQUIRED_TYPE_GROUPS[_canonicalPlaceType(type)] || "";
+}
+
+function _requiredTypeLabel(type) {
+  const groupId = _requiredTypeGroup(type);
+  const tagType = _canonicalPlaceType(type);
+  return (tagsData[tagType] || []).find((t) => t.id === groupId)?.label || "";
+}
+
+function _selectedRequiredTypeCount(type, root) {
+  const groupId = _requiredTypeGroup(type);
+  if (!groupId) return true;
+  return root.querySelectorAll(`.sg-subtag.active[data-tag^="${CSS.escape(groupId)}_"]`).length;
+}
+
+function _hasExactlyOneRequiredTypeTag(type, root) {
+  const groupId = _requiredTypeGroup(type);
+  if (!groupId) return true;
+  return _selectedRequiredTypeCount(type, root) === 1;
+}
+
+function _customTagId(parentId, label) {
+  const prefix = CUSTOM_TAG_GROUP_PREFIX[parentId];
+  if (!prefix) return "";
+  return `${prefix}_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`;
+}
+
+function _customTagPlaceholder(parentId) {
+  if (parentId === "cuisine") return "Add cuisine\u2026";
+  if (parentId === "restaurant_type") return "Add food type\u2026";
+  if (parentId === "service_type") return "Add service type\u2026";
+  if (parentId === "space_type") return "Add space type\u2026";
+  return "Add tag\u2026";
+}
+
+function _normaliseTypeLabel(label) {
+  return String(label || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+}
+
+function _findTypeLabelConflict(parentId, label) {
+  if (!TYPE_GROUP_LABELS[parentId]) return null;
+  const targetLabel = _normaliseTypeLabel(label);
+  if (!targetLabel) return null;
+  for (const [groupId, categoryLabel] of Object.entries(TYPE_GROUP_LABELS)) {
+    if (groupId === parentId) continue;
+    const key = `${Object.entries(REQUIRED_TYPE_GROUPS).find(([, id]) => id === groupId)?.[0]}_${groupId}`;
+    const match = (tagsData[key] || []).find((tag) => _normaliseTypeLabel(tag.label) === targetLabel);
+    if (match) return { label: match.label, category: categoryLabel };
+  }
+  return null;
+}
+
+function _collectCustomTags(root) {
+  if (!root) return [];
+  return [...root.querySelectorAll('.sg-subtag.active[data-custom="true"]')]
+    .map((btn) => ({ type: btn.dataset.tagGroup || "", id: btn.dataset.tag || "", label: btn.dataset.label || "" }))
+    .filter((t) => t.type && t.id && t.label);
+}
+
+function _buildCustomTagAddRow(type, parentId) {
+  if (!CUSTOM_TAG_GROUP_PREFIX[parentId]) return "";
+  return `<div class="sg-cuisine-add-row" data-tag-group="${escA(`${_canonicalPlaceType(type)}_${parentId}`)}"><input type="text" class="sg-cuisine-input" placeholder="${escA(_customTagPlaceholder(parentId))}" maxlength="40" /><button type="button" class="sg-cuisine-add-btn">Add</button></div>`;
+}
+
+function _buildTypeTagsHTML(type, existingTags = {}) {
+  const groupId = _requiredTypeGroup(type);
+  if (!groupId) return "";
+  const tagType = _canonicalPlaceType(type);
+  const subtags = tagsData[`${tagType}_${groupId}`] || [];
+  const subChips = subtags.map((s) => {
+    const isActive = existingTags?.[s.id] === true;
+    return `<button type="button" class="sg-subtag${isActive ? " active" : ""}" data-tag="${s.id}">${esc(s.label)}</button>`;
+  }).join("");
+  const addRow = _buildCustomTagAddRow(type, groupId);
+  return (
+    `<div class="sg-subtags" data-parent="${groupId}" data-exclusive>` +
+    `<div class="sg-subtags-inner">` +
+    `<div class="sg-subtag-chips">${subChips}</div>` +
+    addRow +
+    `</div>` +
+    `</div>`
+  );
+}
+
+function _tagDefById(type, id) {
+  const tagType = _canonicalPlaceType(type);
+  return (tagsData[tagType] || []).find((tag) => tag.id === id) || null;
+}
+
+function _selectedTypeTagId(root) {
+  return root?.querySelector(".sg-subtag.active")?.dataset.tag || "";
+}
+
+function _selectedTypeTagFromTags(type, tags = {}) {
+  const groupId = _requiredTypeGroup(type);
+  if (!groupId) return "";
+  return Object.keys(tags || {}).find((tag) => tag.startsWith(`${groupId}_`) && tags[tag] === true) || "";
+}
+
+function _optionalTagDefsForSelectedType(type, selectedTypeTagId) {
+  const tagType = _canonicalPlaceType(type);
+  const requiredGroup = _requiredTypeGroup(tagType);
+  const fallbackIds = (tagsData[tagType] || []).map((tag) => tag.id).filter((id) => id !== requiredGroup);
+  const ids = OPTIONAL_TAGS_BY_TYPE_TAG[selectedTypeTagId] || fallbackIds;
+  const tagDefs = ids
+    .map((id) => _tagDefById(tagType, id))
+    .filter(Boolean);
+  if (tagDefs.length || !selectedTypeTagId) return tagDefs;
+  return fallbackIds
+    .map((id) => _tagDefById(tagType, id))
+    .filter(Boolean);
+}
+
+function _buildOptionalTagsHTML(type, existingTags = {}, selectedTypeTagId = "") {
+  const tagType = _canonicalPlaceType(type);
+  const tags = _optionalTagDefsForSelectedType(type, selectedTypeTagId);
+  return tags
     .map((t) => {
-      const subKey = `${type}_${t.id}`;
+      const subKey = `${tagType}_${t.id}`;
       const subtags = tagsData[subKey];
       if (subtags) {
         const isExclusive = EXCLUSIVE_GROUPS.has(t.id);
-        const subChips = subtags.map((s) =>
-          `<button type="button" class="sg-subtag" data-tag="${s.id}">${esc(s.label)}</button>`
-        ).join("");
-        const addRow = t.id === "cuisine" ? `<div class="sg-cuisine-add-row"><input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" /><button type="button" class="sg-cuisine-add-btn">Add</button></div>` : "";
+        const hasAny = subtags.some((s) => existingTags?.[s.id] === true);
+        const shouldOpen = hasAny || isExclusive;
+        const subChips = subtags.map((s) => {
+          const isActive = existingTags?.[s.id] === true;
+          return `<button type="button" class="sg-subtag${isActive ? " active" : ""}" data-tag="${s.id}">${esc(s.label)}</button>`;
+        }).join("");
+        const addRow = _buildCustomTagAddRow(tagType, t.id);
         return (
-          `<button type="button" class="sg-tag sg-tag-expand" data-expand="${t.id}">` +
+          `<button type="button" class="sg-tag sg-tag-expand${shouldOpen ? " open" : ""}" data-expand="${t.id}">` +
           `<span class="sg-tag-label">${esc(t.label)}</span>` +
           `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
           `</button>` +
-          `<div class="sg-subtags shut" data-parent="${t.id}"${isExclusive ? " data-exclusive" : ""}>` +
+          `<div class="sg-subtags${shouldOpen ? "" : " shut"}" data-parent="${t.id}"${isExclusive ? " data-exclusive" : ""}>` +
           `<div class="sg-subtags-inner">` +
           `<div class="sg-subtag-chips">${subChips}</div>` +
           addRow +
@@ -4303,26 +4619,70 @@ function renderSuggestTags() {
           `</div>`
         );
       }
-      // Regular tri-state tag
+      const existingVal = existingTags?.[t.id];
+      const state = existingVal === true ? "yes" : existingVal === false ? "no" : "neutral";
       const posLabel = TAG_POS_LABELS[t.id] || t.label;
       const negLabel = TAG_NEG_LABELS[t.id] || t.negLabel || t.label;
+      const displayLabel = state === "no" ? negLabel : posLabel;
       return (
-        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="neutral" data-pos-label="${esc(posLabel)}" data-neg-label="${esc(negLabel)}">` +
+        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}" data-pos-label="${esc(posLabel)}" data-neg-label="${esc(negLabel)}">` +
         `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
         `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
-        `<span class="sg-tag-label">${esc(posLabel)}</span></button>`
+        `<span class="sg-tag-label">${esc(displayLabel)}</span></button>`
       );
     }).join("");
+}
+
+function renderSuggestTags() {
+  const type = _canonicalPlaceType(sgTypeSelect.value);
+  const typeTagsSection = document.getElementById("sg-type-tags-section");
+  const tagsSection = document.getElementById("sg-tags-section");
+  if (!type) {
+    typeTagsSection.classList.add("hide");
+    tagsSection.style.display = "none";
+    sgTypeTagsContainer.innerHTML = "";
+    sgTagsContainer.innerHTML = "";
+    return;
+  }
+  const hasRequiredType = Boolean(_requiredTypeGroup(type));
+  typeTagsSection.classList.toggle("hide", !hasRequiredType);
+  sgTypeTagsContainer.innerHTML = hasRequiredType ? _buildTypeTagsHTML(type) : "";
+  tagsSection.style.display = "none";
+  sgTagsContainer.innerHTML = "";
+}
+
+function _renderSuggestOptionalTags() {
+  const type = _canonicalPlaceType(sgTypeSelect.value);
+  const selectedTypeTagId = _selectedTypeTagId(sgTypeTagsContainer);
+  const tagsSection = document.getElementById("sg-tags-section");
+  const html = type && selectedTypeTagId && selectedTypeTagId !== EID_SPACE_TYPE_TAG
+    ? _buildOptionalTagsHTML(type, {}, selectedTypeTagId)
+    : "";
+  sgTagsContainer.innerHTML = html;
+  tagsSection.style.display = html ? "" : "none";
+}
+
+function _isSuggestEidType() {
+  return _canonicalPlaceType(sgTypeSelect.value) === "space" && _selectedTypeTagId(sgTypeTagsContainer) === EID_SPACE_TYPE_TAG;
+}
+
+function _syncSuggestSpecialFields() {
+  const isEid = _isSuggestEidType();
+  const eidFields = document.getElementById("sg-eid-fields");
+  const wasHidden = eidFields.classList.contains("hide");
+  eidFields.classList.toggle("hide", !isEid);
+  document.getElementById("sg-hours-section").classList.toggle("hide", isEid);
+  if (isEid) document.getElementById("sg-tags-section").style.display = "none";
+  if (isEid && wasHidden) {
+    requestAnimationFrame(() => eidFields.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  }
+  if (isEid) _populateEidOrgDropdown();
 }
 
 sgTypeSelect.addEventListener("change", () => {
   renderSuggestTags();
   sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
-  const isEid = sgTypeSelect.value === "eid_prayer";
-  document.getElementById("sg-eid-fields").classList.toggle("hide", !isEid);
-  document.getElementById("sg-hours-section").classList.toggle("hide", isEid);
-  document.getElementById("sg-tags-section").style.display = isEid ? "none" : "";
-  if (isEid) _populateEidOrgDropdown();
+  _syncSuggestSpecialFields();
 });
 sgTypeSelect.classList.toggle("placeholder", !sgTypeSelect.value);
 renderSuggestTags();
@@ -4332,7 +4692,7 @@ let _eidSelectedOrgs = [];
 
 function _populateEidOrgDropdown() {
   const select = document.getElementById("sg-eid-org-select");
-  const mosques = placesData.filter((p) => p.type === "mosque" || p.type === "prayer_room");
+  const mosques = placesData.filter(_isMosquePlace);
   select.innerHTML = `<option value="" disabled selected>Select a mosque…</option>` +
     mosques.map((m) => `<option value="${escA(m.id)}">${esc(m.name)}</option>`).join("");
 }
@@ -4374,6 +4734,66 @@ document.getElementById("sg-eid-org-chips").addEventListener("click", (e) => {
   _renderEidOrgChips();
 });
 
+function _handleTypeTagContainerClick(e, container, typeSelect) {
+  const subtag = e.target.closest(".sg-subtag");
+  if (subtag) {
+    container.querySelectorAll(".sg-subtag.active").forEach((btn) => btn.classList.remove("active"));
+    subtag.classList.add("active");
+    return true;
+  }
+  const addBtn = e.target.closest(".sg-cuisine-add-btn");
+  if (!addBtn) return false;
+  const row = addBtn.closest(".sg-cuisine-add-row");
+  const input = row.querySelector(".sg-cuisine-input");
+  const label = input.value.trim();
+  if (!label) return true;
+  const parentId = addBtn.closest(".sg-subtags")?.dataset.parent || "";
+  const conflict = _findTypeLabelConflict(parentId, label);
+  if (conflict) {
+    showToast("Type already exists", "error", `${conflict.label} is already a ${conflict.category} type.`);
+    return true;
+  }
+  const id = _customTagId(parentId, label);
+  if (!id) return true;
+  const chips = addBtn.closest(".sg-subtags").querySelector(".sg-subtag-chips");
+  const labelLower = label.toLowerCase();
+  const existing = [...chips.querySelectorAll(".sg-subtag")].find(
+    (c) => c.dataset.tag === id || c.textContent.trim().toLowerCase() === labelLower
+  );
+  container.querySelectorAll(".sg-subtag.active").forEach((btn) => btn.classList.remove("active"));
+  if (existing) {
+    existing.classList.add("active");
+    input.value = "";
+    return true;
+  }
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "sg-subtag active";
+  chip.dataset.tag = id;
+  chip.dataset.custom = "true";
+  chip.dataset.label = label;
+  chip.dataset.tagGroup = row.dataset.tagGroup || `${_canonicalPlaceType(typeSelect.value)}_${parentId}`;
+  chip.textContent = label;
+  chips.appendChild(chip);
+  input.value = "";
+  return true;
+}
+
+sgTypeTagsContainer.addEventListener("click", (e) => {
+  if (_handleTypeTagContainerClick(e, sgTypeTagsContainer, sgTypeSelect)) {
+    _renderSuggestOptionalTags();
+    _syncSuggestSpecialFields();
+  }
+});
+
+sgTypeTagsContainer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("sg-cuisine-input")) {
+    e.preventDefault();
+    const addBtn = e.target.closest(".sg-cuisine-add-row").querySelector(".sg-cuisine-add-btn");
+    if (addBtn) addBtn.click();
+  }
+});
+
 sgTagsContainer.addEventListener("click", (e) => {
   // Expand/collapse group (accordion: only one open at a time)
   const expandBtn = e.target.closest(".sg-tag-expand");
@@ -4406,15 +4826,21 @@ sgTagsContainer.addEventListener("click", (e) => {
     subtag.classList.toggle("active");
     return;
   }
-  // Add custom cuisine
+  // Add custom grouped tag (cuisine, service type, space type)
   const addBtn = e.target.closest(".sg-cuisine-add-btn");
   if (addBtn) {
     const row = addBtn.closest(".sg-cuisine-add-row");
     const input = row.querySelector(".sg-cuisine-input");
     const label = input.value.trim();
     if (!label) return;
-    const id = "cuisine_" + label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-    if (!id || id === "cuisine_") return;
+    const parentId = addBtn.closest(".sg-subtags")?.dataset.parent || "";
+    const conflict = _findTypeLabelConflict(parentId, label);
+    if (conflict) {
+      showToast("Type already exists", "error", `${conflict.label} is already a ${conflict.category} type.`);
+      return;
+    }
+    const id = _customTagId(parentId, label);
+    if (!id) return;
     const chips = addBtn.closest(".sg-subtags").querySelector(".sg-subtag-chips");
     // Check by ID
     if (chips.querySelector(`[data-tag="${id}"]`)) {
@@ -4438,6 +4864,7 @@ sgTagsContainer.addEventListener("click", (e) => {
     chip.dataset.tag = id;
     chip.dataset.custom = "true";
     chip.dataset.label = label;
+    chip.dataset.tagGroup = row.dataset.tagGroup || `${_canonicalPlaceType(sgTypeSelect.value)}_${parentId}`;
     chip.textContent = label;
     chips.appendChild(chip);
     input.value = "";
@@ -4504,7 +4931,7 @@ suggestForm.addEventListener("submit", async (e) => {
   }
 
   // Eid-specific: date is required
-  if (sgTypeSelect.value === "eid_prayer") {
+  if (_isSuggestEidType()) {
     const eidDateEl = document.getElementById("sg-eid-date");
     if (!eidDateEl.value.trim()) {
       eidDateEl.classList.add("invalid");
@@ -4525,6 +4952,14 @@ suggestForm.addEventListener("submit", async (e) => {
   const phone = document.getElementById("sg-phone").value.trim();
   const notes = document.getElementById("sg-notes").value.trim();
 
+  if (!_hasExactlyOneRequiredTypeTag(type, sgTypeTagsContainer)) {
+    showToast(`${_requiredTypeLabel(type) || "Type"} required`, "error", "Choose exactly one type.");
+    document.getElementById("sg-type-tags-req")?.classList.remove("hide");
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+    return;
+  }
+
   const yesTags = [], noTags = [];
   sgTagsContainer.querySelectorAll(".sg-tag:not(.sg-tag-expand)").forEach((btn) => {
     const tagId = btn.dataset.tag;
@@ -4532,26 +4967,28 @@ suggestForm.addEventListener("submit", async (e) => {
     else if (btn.dataset.state === "no") noTags.push(tagId);
   });
   // Collect selected cuisine subtags
+  sgTypeTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
+    yesTags.push(btn.dataset.tag);
+  });
   sgTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
     yesTags.push(btn.dataset.tag);
   });
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
-  // Collect any user-added custom cuisines to persist to Tags sheet
-  const newCuisines = [];
-  sgTagsContainer.querySelectorAll('.sg-subtag.active[data-custom="true"]').forEach((btn) => {
-    newCuisines.push({ id: btn.dataset.tag, label: btn.dataset.label });
-  });
+  // Collect any user-added custom grouped tags to persist to Tags lookup.
+  const newCustomTags = [..._collectCustomTags(sgTypeTagsContainer), ..._collectCustomTags(sgTagsContainer)];
+  const newCuisines = newCustomTags.filter((t) => t.type === "restaurant_cuisine").map(({ id, label }) => ({ id, label }));
 
   // Build payload — include pin lat/lng when available
-  const isEidType = type === "eid_prayer";
+  const isEidType = _isSuggestEidType();
   const sgHoursContainer = document.getElementById("sg-hours-container");
   const openingHours = isEidType ? null : _collectHoursFromForm(sgHoursContainer, "sg");
-  const payload = { token: null, formType: isEidType ? "eid" : "new", name, type, address, tags: tagsStr, gmaps, notes };
+  const payload = { token: null, formType: isEidType ? "eid" : "new", name, type: isEidType ? "eid_prayer" : type, address, tags: tagsStr, gmaps, notes };
   if (website) payload.website = website;
   if (phone) payload.phone = phone;
   if (openingHours) payload.openingHours = openingHours;
   if (newCuisines.length) payload.newCuisines = newCuisines;
+  if (newCustomTags.length) payload.newCustomTags = newCustomTags;
   if (pinLat && pinLng) {
     payload.pinLat = parseFloat(pinLat);
     payload.pinLng = parseFloat(pinLng);
@@ -4612,7 +5049,8 @@ suggestForm.addEventListener("submit", async (e) => {
       renderSuggestTags();
       document.getElementById("sg-eid-fields").classList.add("hide");
       document.getElementById("sg-hours-section").classList.remove("hide");
-      document.getElementById("sg-tags-section").style.display = "";
+      document.getElementById("sg-type-tags-section").classList.add("hide");
+      document.getElementById("sg-tags-section").style.display = "none";
       _eidSelectedOrgs = [];
       _renderEidOrgChips();
       document.getElementById("suggest-overlay").classList.add("hide");
@@ -4630,48 +5068,17 @@ suggestForm.addEventListener("submit", async (e) => {
 });
 
 const edTypeSelect = document.getElementById("ed-type");
+const edTypeTagsContainer = document.getElementById("ed-type-tags");
 const edTagsContainer = document.getElementById("ed-tags");
 
 function renderEditTags(type, existingTags) {
-  const tags = tagsData[type] || [];
-  edTagsContainer.innerHTML = tags
-    .map((t) => {
-      const subKey = `${type}_${t.id}`;
-      const subtags = tagsData[subKey];
-      if (subtags) {
-        const isExclusive = EXCLUSIVE_GROUPS.has(t.id);
-        const hasAny = subtags.some((s) => existingTags?.[s.id] === true);
-        const subChips = subtags.map((s) => {
-          const isActive = existingTags?.[s.id] === true;
-          return `<button type="button" class="sg-subtag${isActive ? " active" : ""}" data-tag="${s.id}">${esc(s.label)}</button>`;
-        }).join("");
-        const addRow = t.id === "cuisine" ? `<div class="sg-cuisine-add-row"><input type="text" class="sg-cuisine-input" placeholder="Add cuisine…" maxlength="40" /><button type="button" class="sg-cuisine-add-btn">Add</button></div>` : "";
-        return (
-          `<button type="button" class="sg-tag sg-tag-expand${hasAny ? " open" : ""}" data-expand="${t.id}">` +
-          `<span class="sg-tag-label">${esc(t.label)}</span>` +
-          `<svg class="sg-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>` +
-          `</button>` +
-          `<div class="sg-subtags${hasAny ? "" : " shut"}" data-parent="${t.id}"${isExclusive ? " data-exclusive" : ""}>` +
-          `<div class="sg-subtags-inner">` +
-          `<div class="sg-subtag-chips">${subChips}</div>` +
-          addRow +
-          `</div>` +
-          `</div>`
-        );
-      }
-      // Regular tri-state tag
-      const existingVal = existingTags?.[t.id];
-      const state = existingVal === true ? "yes" : existingVal === false ? "no" : "neutral";
-      const posLabel = TAG_POS_LABELS[t.id] || t.label;
-      const negLabel = TAG_NEG_LABELS[t.id] || t.negLabel || t.label;
-      const displayLabel = state === "no" ? negLabel : posLabel;
-      return (
-        `<button type="button" class="sg-tag" data-tag="${t.id}" data-state="${state}" data-pos-label="${esc(posLabel)}" data-neg-label="${esc(negLabel)}">` +
-        `<svg class="sg-tag-icon sg-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>` +
-        `<svg class="sg-tag-icon sg-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>` +
-        `<span class="sg-tag-label">${esc(displayLabel)}</span></button>`
-      );
-    }).join("");
+  type = _canonicalPlaceType(type);
+  const hasRequiredType = Boolean(_requiredTypeGroup(type));
+  document.getElementById("ed-type-tags-section")?.classList.toggle("hide", !hasRequiredType);
+  edTypeTagsContainer.innerHTML = hasRequiredType ? _buildTypeTagsHTML(type, existingTags) : "";
+  const selectedTypeTagId = _selectedTypeTagFromTags(type, existingTags) || _selectedTypeTagId(edTypeTagsContainer);
+  edTagsContainer.innerHTML = selectedTypeTagId ? _buildOptionalTagsHTML(type, existingTags, selectedTypeTagId) : "";
+  document.getElementById("ed-tags-section").style.display = selectedTypeTagId ? "" : "none";
 }
 
 function openEditOverlay(place) {
@@ -4682,13 +5089,30 @@ function openEditOverlay(place) {
   document.getElementById("ed-website").value = place.website || "";
   document.getElementById("ed-phone").value = place.phone || "";
   document.getElementById("ed-notes").value = place.notes || "";
-  edTypeSelect.value = place.type || "mosque";
-  renderEditTags(place.type, place.tags || {});
+  edTypeSelect.value = _formPlaceType(place.type) || "space";
+  renderEditTags(edTypeSelect.value, place.tags || {});
   _renderHoursForm(document.getElementById("ed-hours-container"), "ed", place.hours || null);
   document.getElementById("edit-overlay").classList.remove("hide");
 }
 
 edTypeSelect.addEventListener("change", () => renderEditTags(edTypeSelect.value, {}));
+
+edTypeTagsContainer.addEventListener("click", (e) => {
+  if (_handleTypeTagContainerClick(e, edTypeTagsContainer, edTypeSelect)) {
+    const type = _canonicalPlaceType(edTypeSelect.value);
+    const selectedTypeTagId = _selectedTypeTagId(edTypeTagsContainer);
+    edTagsContainer.innerHTML = selectedTypeTagId ? _buildOptionalTagsHTML(type, {}, selectedTypeTagId) : "";
+    document.getElementById("ed-tags-section").style.display = selectedTypeTagId ? "" : "none";
+  }
+});
+
+edTypeTagsContainer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("sg-cuisine-input")) {
+    e.preventDefault();
+    const addBtn = e.target.closest(".sg-cuisine-add-row").querySelector(".sg-cuisine-add-btn");
+    if (addBtn) addBtn.click();
+  }
+});
 
 edTagsContainer.addEventListener("click", (e) => {
   // Expand/collapse group (accordion: only one open at a time)
@@ -4722,15 +5146,21 @@ edTagsContainer.addEventListener("click", (e) => {
     subtag.classList.toggle("active");
     return;
   }
-  // Add custom cuisine
+  // Add custom grouped tag (cuisine, service type, space type)
   const addBtn = e.target.closest(".sg-cuisine-add-btn");
   if (addBtn) {
     const row = addBtn.closest(".sg-cuisine-add-row");
     const input = row.querySelector(".sg-cuisine-input");
     const label = input.value.trim();
     if (!label) return;
-    const id = "cuisine_" + label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-    if (!id || id === "cuisine_") return;
+    const parentId = addBtn.closest(".sg-subtags")?.dataset.parent || "";
+    const conflict = _findTypeLabelConflict(parentId, label);
+    if (conflict) {
+      showToast("Type already exists", "error", `${conflict.label} is already a ${conflict.category} type.`);
+      return;
+    }
+    const id = _customTagId(parentId, label);
+    if (!id) return;
     const chips = addBtn.closest(".sg-subtags").querySelector(".sg-subtag-chips");
     // Check by ID
     if (chips.querySelector(`[data-tag="${id}"]`)) {
@@ -4754,6 +5184,7 @@ edTagsContainer.addEventListener("click", (e) => {
     chip.dataset.tag = id;
     chip.dataset.custom = "true";
     chip.dataset.label = label;
+    chip.dataset.tagGroup = row.dataset.tagGroup || `${_canonicalPlaceType(edTypeSelect.value)}_${parentId}`;
     chip.textContent = label;
     chips.appendChild(chip);
     input.value = "";
@@ -4812,6 +5243,14 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const notes = document.getElementById("ed-notes").value.trim();
   const gmaps = document.getElementById("ed-gmaps").value.trim();
 
+  if (!_hasExactlyOneRequiredTypeTag(type, edTypeTagsContainer)) {
+    showToast(`${_requiredTypeLabel(type) || "Type"} required`, "error", "Choose exactly one type.");
+    document.getElementById("ed-type-tags-req")?.classList.remove("hide");
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = btnOriginal;
+    return;
+  }
+
   const yesTags = [], noTags = [];
   edTagsContainer.querySelectorAll(".sg-tag:not(.sg-tag-expand)").forEach((btn) => {
     const tagId = btn.dataset.tag;
@@ -4819,21 +5258,23 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     else if (btn.dataset.state === "no") noTags.push(tagId);
   });
   // Collect selected cuisine subtags
+  edTypeTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
+    yesTags.push(btn.dataset.tag);
+  });
   edTagsContainer.querySelectorAll(".sg-subtag.active").forEach((btn) => {
     yesTags.push(btn.dataset.tag);
   });
   const tagsStr = [...yesTags, ...noTags.map(t => "!" + t)].join(",");
 
-  // Collect any user-added custom cuisines to persist to Tags sheet
-  const newCuisines = [];
-  edTagsContainer.querySelectorAll('.sg-subtag.active[data-custom="true"]').forEach((btn) => {
-    newCuisines.push({ id: btn.dataset.tag, label: btn.dataset.label });
-  });
+  // Collect any user-added custom grouped tags to persist to Tags lookup.
+  const newCustomTags = [..._collectCustomTags(edTypeTagsContainer), ..._collectCustomTags(edTagsContainer)];
+  const newCuisines = newCustomTags.filter((t) => t.type === "restaurant_cuisine").map(({ id, label }) => ({ id, label }));
 
   const orig = _editOriginalPlace || {};
+  const origType = _canonicalPlaceType(orig.type || "");
   const diffs = [];
   if (name && name !== orig.name) diffs.push(`Name: "${orig.name || ""}" → "${name}"`);
-  if (type !== orig.type) {
+  if (type !== origType) {
     const oL = PLACE_CONFIG[orig.type]?.label || orig.type;
     const nL = PLACE_CONFIG[type]?.label || type;
     diffs.push(`Type: ${oL} → ${nL}`);
@@ -4847,7 +5288,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     else if (orig.notes && !notes) diffs.push("Notes removed");
     else if (notes) diffs.push(`Notes: "${orig.notes}" → "${notes}"`);
   }
-  if (type === orig.type) {
+  if (type === origType) {
     const tagDiffs = [];
     // Check regular tags
     (tagsData[type] || []).forEach((t) => {
@@ -4884,7 +5325,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     const token = await new Promise((resolve) =>
       grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
     );
-    const editPayload = { token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined };
+    const editPayload = { token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined, newCustomTags: newCustomTags.length ? newCustomTags : undefined };
     if (website) editPayload.website = website;
     if (phone) editPayload.phone = phone;
     if (editOpeningHours) editPayload.openingHours = editOpeningHours;

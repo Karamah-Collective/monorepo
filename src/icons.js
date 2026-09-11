@@ -140,7 +140,12 @@ export const PLACE_CONFIG = {
     icon: '<path d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"/>',
   },
   prayer_room: {
-    label: "Prayer Room",
+    label: "Space",
+    color: "#00B9E4",
+    icon: '<path d="M12 4a2 2 0 100 4 2 2 0 000-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+  },
+  space: {
+    label: "Space",
     color: "#00B9E4",
     icon: '<path d="M12 4a2 2 0 100 4 2 2 0 000-4zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
   },
@@ -150,12 +155,17 @@ export const PLACE_CONFIG = {
     icon: '<path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>',
   },
   shop: {
-    label: "Shop",
+    label: "Service",
+    color: PURPLE_LIGHT,
+    icon: '<path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/>',
+  },
+  service: {
+    label: "Service",
     color: PURPLE_LIGHT,
     icon: '<path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/>',
   },
   cemetery: {
-    label: "Cemetery",
+    label: "Space",
     color: "#475569",
     icon: '<path fill-rule="evenodd" d="M5 21V8a7 7 0 0 1 14 0v13H5zM9 5.5a3 3 0 1 0 6 0 3 3 0 0 0-6 0zM9.5 7.2a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z"/>',
   },
@@ -242,7 +252,7 @@ export function modeIcon(m, size = 14) {
 }
 
 // Build the HTML for a place marker pin on the map
-const _PLACE_CSS_COLOR = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", cemetery: "var(--cemetery)" };
+const _PLACE_CSS_COLOR = { mosque: "var(--success)", prayer_room: "var(--hsl-ferry)", space: "var(--hsl-ferry)", restaurant: "var(--hsl-trunk)", shop: "var(--hsl-rail)", service: "var(--hsl-rail)", cemetery: "var(--cemetery)" };
 export function makePlaceMarkerHTML(type) {
   const cfg = PLACE_CONFIG[type] || PLACE_CONFIG.mosque;
   const cssColor = _PLACE_CSS_COLOR[type] || cfg.color;

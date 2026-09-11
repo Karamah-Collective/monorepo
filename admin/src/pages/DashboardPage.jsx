@@ -13,10 +13,9 @@ const TILES = [
 ];
 
 const TYPE_TILES = [
-  { key: "mosque", label: "Mosque", icon: "building", color: "accent", to: "/places" },
-  { key: "restaurant", label: "Restaurant", icon: "utensils", color: "info", to: "/places" },
-  { key: "shop", label: "Shop", icon: "bag", color: "warning", to: "/places" },
-  { key: "prayer_room", label: "Prayer Room", icon: "moon", color: "violet", to: "/places" },
+  { key: "space", label: "Spaces", icon: "building", color: "accent", to: "/places" },
+  { key: "restaurant", label: "Food", icon: "utensils", color: "info", to: "/places" },
+  { key: "service", label: "Services", icon: "bag", color: "warning", to: "/places" },
 ];
 
 export default function DashboardPage() {

@@ -157,7 +157,7 @@ const _detailPaintSnapshots = {};
 let _trafficDetailModeEnabled = false;
 
 /* ── Heatmap scoring ── */
-const TYPE_BASE = { mosque: 10, prayer_room: 7, shop: 5, restaurant: 4, cemetery: 3 };
+const TYPE_BASE = { mosque: 10, prayer_room: 7, space: 7, shop: 5, service: 5, restaurant: 4, cemetery: 3 };
 const TAG_SCORE = {
   daily_prayers: 5, jummah: 3, taraweeh: 1, eid_prayer: 1,
   janaza: 0.5, quran_classes: 1, female_prayer: 2, female_wudu: 1,
@@ -165,6 +165,7 @@ const TAG_SCORE = {
   fully_halal: 3, partially_halal: 1, no_alcohol: 1.5,
   halal_meat: 3, halal_butchery: 2, halal_groceries: 2,
   asian_products: 0.5, african_products: 0.5, arab_products: 0.5, halal_certified: 2,
+  service_type_grocery: 2, service_type_butchery: 2, space_type_mosque: 3, space_type_prayer_place: 2, space_type_cemetery: 1,
 };
 
 function buildHeatmapGeoJSON() {

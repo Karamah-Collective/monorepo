@@ -324,7 +324,7 @@ function findNearestMosque() {
   requestLocation().then(
     async (pos) => {
       const userLat = pos.coords.latitude, userLng = pos.coords.longitude;
-      let mosques = placesData.filter((p) => p.type === "mosque");
+      let mosques = placesData.filter((p) => p.type === "mosque" || p.tags?.space_type_mosque === true);
       if (activeTagFilters.size) mosques = mosques.filter((p) => [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true));
       if (mosques.length === 0) {
         alert(activeTagFilters.size ? "No mosques match the active filters." : "No mosques found in the database.");

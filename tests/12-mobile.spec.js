@@ -905,7 +905,7 @@ test.describe("Filter Chips — Tap Targets & Activation", () => {
   test("all type filter chips are visible", async ({ page }) => {
     const chips = page.locator(".pf-chip");
     const count = await chips.count();
-    expect(count).toBeGreaterThanOrEqual(5); // all, mosque, prayer_room, restaurant, shop, saved
+    expect(count).toBeGreaterThanOrEqual(5); // all, space, restaurant, service, saved
     for (let i = 0; i < count; i++) {
       await expect(chips.nth(i)).toBeVisible();
     }

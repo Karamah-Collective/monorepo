@@ -25,7 +25,7 @@ const ALL_STEPS = [
   {
     target: null,
     title: "Assalamu Alaikum!",
-    body: "Discover mosques, prayer rooms, halal restaurants &amp; shops across Helsinki.<br>Let\u2019s take a quick tour of the key features",
+    body: "Discover mosques, spaces, halal food &amp; services across Helsinki.<br>Let\u2019s take a quick tour of the key features",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
     phoneOrder: 0,
   },
@@ -39,7 +39,7 @@ const ALL_STEPS = [
   {
     target: "#places-btn",
     title: "Places",
-    body: "Browse mosques, prayer rooms, halal restaurants &amp; shops \u2014 filter by category and save favourites",
+    body: "Browse mosques, spaces, halal food &amp; services \u2014 filter by category and save favourites",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
     phoneOrder: 2,
   },

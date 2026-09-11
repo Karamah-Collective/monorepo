@@ -2,7 +2,7 @@
   {
     "id": "8k2rzi",
     "name": "Bangladesh Islamic Cultural Center (BICC)",
-    "type": "mosque",
+    "type": "space",
     "address": "Malminkaari 9 A, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.250280726774456,
@@ -12,7 +12,8 @@
       "jummah": true,
       "female_prayer": true,
       "female_wudu": true,
-      "quran_classes": true
+      "quran_classes": true,
+      "space_type_mosque": true
     },
     "notes": "Updated female_wudu to true based on external mosque listings.",
     "hours": {
@@ -30,7 +31,7 @@
   {
     "id": "cxjnht",
     "name": "Suomen Islamilainen Yhdyskunta",
-    "type": "mosque",
+    "type": "space",
     "address": "Lönnrotinkatu 22, 00180 Helsinki",
     "city": "Helsinki",
     "lat": 60.16466031795139,
@@ -41,7 +42,8 @@
       "taraweeh": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "Rabita central mosque.",
     "hours": {
@@ -61,7 +63,7 @@
   {
     "id": "0v9lwu",
     "name": "Yalla Malmi",
-    "type": "shop",
+    "type": "service",
     "address": "Hietakummuntie 19, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.249997451764266,
@@ -71,7 +73,8 @@
       "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -96,7 +99,8 @@
     "lng": 24.932,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "KFC branch in Kamppi centre.",
     "boycott": true,
@@ -128,7 +132,8 @@
     "lng": 25.0826,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Inside Itis shopping centre.",
     "boycott": true,
@@ -161,7 +166,8 @@
     "lng": 24.9295,
     "tags": {
       "no_alcohol": true,
-      "fully_halal": true
+      "fully_halal": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Mall of Tripla branch",
     "boycott": true,
@@ -193,7 +199,8 @@
     "lng": 24.8114,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Sello mall branch in Espoo.",
     "boycott": true,
@@ -226,7 +233,8 @@
     "lng": 24.9315,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Located in Kamppi centre.",
     "boycott": true,
@@ -259,7 +267,8 @@
     "lng": 24.9383,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "City-centre Burger King near Forum.",
     "boycott": true,
@@ -288,7 +297,8 @@
     "lng": 25.0819,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Inside Itis area.",
     "boycott": true,
@@ -321,7 +331,8 @@
     "lng": 24.9302,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Mall of Tripla branch.",
     "boycott": true,
@@ -354,7 +365,8 @@
     "lng": 24.9768,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Redi shopping centre.",
     "boycott": true,
@@ -386,7 +398,8 @@
     "lng": 25.0425,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Burger King in Jumbo shopping centre.",
     "boycott": true,
@@ -411,7 +424,7 @@
   {
     "id": "lf5l20",
     "name": "Alanya Market Itäkeskus",
-    "type": "shop",
+    "type": "service",
     "address": "Itäkatu 1-7, 00930 Helsinki",
     "city": "Helsinki",
     "lat": 60.21411495366169,
@@ -421,7 +434,8 @@
       "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address.",
     "hours": {
@@ -441,7 +455,7 @@
   {
     "id": "8uaffs",
     "name": "Bangladesh Kendrio Masjid",
-    "type": "mosque",
+    "type": "space",
     "address": "Pulttitie 9, 00880 Helsinki",
     "city": "Helsinki",
     "lat": 60.2104776,
@@ -453,7 +467,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "3rd Floor",
     "mapsUrl": "https://maps.google.com/?cid=8247950681412544410"
@@ -461,7 +476,7 @@
   {
     "id": "kv7blx",
     "name": "Beno Itäkeskus",
-    "type": "shop",
+    "type": "service",
     "address": "Kastelholmantie 2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.213836148425315,
@@ -471,7 +486,8 @@
       "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "Beno's main Helsinki branch near Itis metro.",
     "hours": {
@@ -490,7 +506,7 @@
   {
     "id": "9mr44x",
     "name": "Yalla Columbus",
-    "type": "shop",
+    "type": "service",
     "address": "Vuotie 45, Kauppakeskus Columbus, 00980 Helsinki",
     "city": "Helsinki",
     "lat": 60.2073,
@@ -500,7 +516,8 @@
       "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "Yalla branch in Columbus mall, Vuosaari – fresh butcher counter and ethnic groceries. Phone: 041 3122479.",
     "hours": {
@@ -519,7 +536,7 @@
   {
     "id": "pa61kp",
     "name": "Espoo Muslim Center",
-    "type": "mosque",
+    "type": "space",
     "address": "Kuunkehrä 2A, 02210 Espoo",
     "city": "Espoo",
     "lat": 60.1709733,
@@ -531,7 +548,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -551,7 +569,7 @@
   {
     "id": "1m0auf",
     "name": "Albanian Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Asemakuja 3, 02770 Espoo",
     "city": "Espoo",
     "lat": 60.2052773,
@@ -559,7 +577,8 @@
     "tags": {
       "jummah": true,
       "taraweeh": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "phone": "050 3627718",
@@ -576,7 +595,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_arab": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "All meat, including pepperoni and salami--but has pork pizza, hence partially halal",
     "hours": {
@@ -606,7 +626,8 @@
     "lat": 60.1693055,
     "lng": 24.9382082,
     "tags": {
-      "partially_halal": true
+      "partially_halal": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "All chicken halal since it is imported from Thailand. Inside the Forum foodcourt",
     "hours": {
@@ -638,7 +659,8 @@
     "tags": {
       "fully_halal": true,
       "no_alcohol": true,
-      "cuisine_uyghur": true
+      "cuisine_uyghur": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Everything halal, beef and all",
     "hours": {
@@ -670,7 +692,8 @@
     "lng": 24.9764137,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Korean BBQ place. halal beef, chicken and also seafood. Outside of Redi",
     "hours": {
@@ -695,7 +718,7 @@
   {
     "id": "tsatr6",
     "name": "Masjid Al-Huda (Helsinki Islamic Center)",
-    "type": "mosque",
+    "type": "space",
     "address": "Veturitori 2, 00520 Helsinki",
     "city": "Helsinki",
     "lat": 60.1997356,
@@ -708,7 +731,8 @@
       "janaza": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -728,7 +752,7 @@
   {
     "id": "4vxx5n",
     "name": "Taqwa Cultural Centre",
-    "type": "mosque",
+    "type": "space",
     "address": "Läkkisepänkuja 3, 02650 Espoo",
     "city": "Espoo",
     "lat": 60.2203206,
@@ -737,7 +761,8 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "female_prayer": false
+      "female_prayer": false,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -756,7 +781,7 @@
   {
     "id": "j74tjs",
     "name": "Olari Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kuunkehrä 4 A, 02210 Espoo",
     "city": "Espoo",
     "lat": 60.1734588,
@@ -766,7 +791,8 @@
       "taraweeh": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://www.facebook.com/olarimasjid/",
@@ -775,7 +801,7 @@
   {
     "id": "oq2wi2",
     "name": "Kilo Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kutojantie 3, 02630 Espoo",
     "city": "Espoo",
     "lat": 60.2098915,
@@ -783,7 +809,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "I don't knwo much of the details tbh , no sisters side for jummah",
     "hours": {
@@ -810,7 +837,8 @@
     "lng": 24.7373375,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Has alcohol to drink/order, everything else is fully halal food wise. Malaysian buffet.",
     "hours": {
@@ -843,7 +871,8 @@
     "lng": 24.7373375,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "It is on the bus terminal floor of Iso Omena, only selected fried chicken are halal, please ask the counter",
     "hours": {
@@ -876,7 +905,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -905,7 +935,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -938,7 +969,8 @@
     "tags": {
       "fully_halal": true,
       "no_alcohol": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -971,7 +1003,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1002,7 +1035,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1027,7 +1061,7 @@
   {
     "id": "j13ysd",
     "name": "Al-Aqsa Market",
-    "type": "shop",
+    "type": "service",
     "address": "Kauppakaarre 1, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.2509391,
@@ -1038,7 +1072,8 @@
       "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1057,7 +1092,7 @@
   {
     "id": "f54kwd",
     "name": "Al-Fateh Market Malmi (Afro & Asian and Caribbean Super Market)",
-    "type": "shop",
+    "type": "service",
     "address": "Kirkonkyläntie 3, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.2515864,
@@ -1066,7 +1101,8 @@
       "halal_meat": true,
       "halal_groceries": true,
       "asian_products": true,
-      "african_products": true
+      "african_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1084,7 +1120,7 @@
   {
     "id": "11mlq9",
     "name": "Bangla Bazaar Oy",
-    "type": "shop",
+    "type": "service",
     "address": "Kirkonkyläntie 9, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.2525787,
@@ -1092,7 +1128,8 @@
     "tags": {
       "halal_meat": true,
       "halal_groceries": true,
-      "asian_products": true
+      "asian_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1110,7 +1147,7 @@
   {
     "id": "7dn24u",
     "name": "Al Madina Market",
-    "type": "shop",
+    "type": "service",
     "address": "Malmin kauppatie 18, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.2517475,
@@ -1119,7 +1156,8 @@
       "halal_meat": true,
       "halal_butchery": true,
       "halal_groceries": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1148,7 +1186,8 @@
     "tags": {
       "fully_halal": true,
       "no_alcohol": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1181,7 +1220,8 @@
     "lng": 25.0094426,
     "tags": {
       "no_alcohol": true,
-      "fully_halal": true
+      "fully_halal": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "As many other Chitr Chickens also this one has changed to Dust & Fry. In the future it's better to re-check if the meat is halal of not.",
     "hours": {
@@ -1213,7 +1253,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_bangladeshi": true,
-      "cuisine_indian": true
+      "cuisine_indian": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Nondon is closed. Now in the same location there is a new Yemeni restaurant Yamanoon. Most likely it's halal but it is always better to confirm.",
     "hours": {
@@ -1234,13 +1275,14 @@
   {
     "id": "lxtmd9",
     "name": "Kaisa-talo Prayer Space",
-    "type": "prayer_room",
+    "type": "space",
     "address": "Vuorikatu 7, 00100 Helsinki",
     "city": "Helsinki",
     "lat": 60.1713071,
     "lng": 24.9477437,
     "tags": {
-      "quran_available": true
+      "quran_available": true,
+      "space_type_prayer_place": true
     },
     "notes": "Prayer space on 2nd floor of the Kaisa-talo (Helsinki University). Has prayer mats, hijab outfits and Qur'an. Wudu bathrooms are not available but bathrooms with sprinkler on every floor",
     "hours": {
@@ -1268,7 +1310,8 @@
     "lng": 25.0046472,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1292,7 +1335,7 @@
   {
     "id": "trjf07",
     "name": "Yalla Koivukylä",
-    "type": "shop",
+    "type": "service",
     "address": "Koivukylän puistotie 1, 01360 Vantaa",
     "city": "Vantaa",
     "lat": 60.3232247,
@@ -1303,7 +1346,8 @@
       "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1323,7 +1367,7 @@
   {
     "id": "f30ugd",
     "name": "Yalla Tikkurila",
-    "type": "shop",
+    "type": "service",
     "address": "Peltolantie 5 B, 01300 Vantaa",
     "city": "Vantaa",
     "lat": 60.293788,
@@ -1334,7 +1378,8 @@
       "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1353,14 +1398,15 @@
   {
     "id": "q65nwj",
     "name": "Nari Market",
-    "type": "shop",
+    "type": "service",
     "address": "Kastelholmantie 2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.214061,
     "lng": 25.0821358,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true
+      "halal_groceries": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1386,7 +1432,8 @@
     "lng": 25.0804478,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1413,7 +1460,8 @@
     "lng": 25.0805482,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1443,7 +1491,8 @@
     "lng": 25.0803867,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1471,7 +1520,8 @@
     "lng": 25.0811504,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1506,7 +1556,8 @@
     "lng": 25.080333,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1537,7 +1588,8 @@
     "lng": 25.0802765,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "phone": "046 6597897",
@@ -1553,7 +1605,8 @@
     "lng": 25.0802479,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1581,7 +1634,8 @@
     "lng": 25.0805643,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1608,7 +1662,8 @@
     "lng": 25.0809249,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1637,7 +1692,8 @@
     "lng": 25.0805643,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1664,7 +1720,8 @@
     "lng": 25.0807602,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=9505342791670112633",
@@ -1680,7 +1737,8 @@
     "lng": 25.081248,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1700,7 +1758,7 @@
   {
     "id": "b3oiuf",
     "name": "Balkh Market",
-    "type": "shop",
+    "type": "service",
     "address": "Kastelholmantie 2 A2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.2132114,
@@ -1708,7 +1766,8 @@
     "tags": {
       "halal_meat": true,
       "halal_butchery": true,
-      "halal_groceries": true
+      "halal_groceries": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -1726,14 +1785,15 @@
   {
     "id": "uks2ox",
     "name": "Halal Liha",
-    "type": "shop",
+    "type": "service",
     "address": "Kastelholmantie 2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.2132907,
     "lng": 25.0803733,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true
+      "halal_butchery": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=1041204205650331764"
@@ -1748,7 +1808,8 @@
     "lng": 25.0814656,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": true
+      "no_alcohol": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1768,12 +1829,14 @@
   {
     "id": "1kx1m2",
     "name": "Souriana سوريانا‭",
-    "type": "shop",
+    "type": "service",
     "address": "Kastelholmantie 2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.2132624,
     "lng": 25.0808042,
-    "tags": {},
+    "tags": {
+      "service_type_grocery": true
+    },
     "notes": "",
     "hours": {
       "sun": "11:00-20:00",
@@ -1791,7 +1854,7 @@
   {
     "id": "vtdidd",
     "name": "Masjid Abu-Bakar",
-    "type": "mosque",
+    "type": "space",
     "address": "Maatullinaukio 2, 00750 Helsinki",
     "city": "Helsinki",
     "lat": 60.27489158087033,
@@ -1799,7 +1862,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://www.facebook.com/hikmahnuoret/",
@@ -1809,7 +1873,7 @@
   {
     "id": "tibuac",
     "name": "Ilm Academy",
-    "type": "mosque",
+    "type": "space",
     "address": "Leiviskätie 4 K LH, 00440 Helsinki",
     "city": "Helsinki",
     "lat": 60.231107,
@@ -1821,7 +1885,8 @@
       "female_prayer": true,
       "female_wudu": true,
       "daily_prayers": false,
-      "eid_prayer": false
+      "eid_prayer": false,
+      "space_type_mosque": true
     },
     "notes": "It's a madrasah",
     "website": "https://www.rauhapiiri.fi/",
@@ -1832,7 +1897,7 @@
   {
     "id": "d5tlw7",
     "name": "Darul Aman Masjid and Islamic Center",
-    "type": "mosque",
+    "type": "space",
     "address": "Tallinnanaukio 4, 00930 Helsinki",
     "city": "Helsinki",
     "lat": 60.2106767,
@@ -1844,7 +1909,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://damic.fi/",
@@ -1854,7 +1920,7 @@
   {
     "id": "1ktepz",
     "name": "Muslim Forum of Finland",
-    "type": "prayer_room",
+    "type": "space",
     "address": "Leiviskätie 4 K LH, 00440 Helsinki",
     "city": "Helsinki",
     "lat": 60.231146331767974,
@@ -1863,7 +1929,8 @@
       "wudu": true,
       "female_prayer": true,
       "female_wudu": true,
-      "quran_available": true
+      "quran_available": true,
+      "space_type_prayer_place": true
     },
     "notes": "",
     "website": "http://www.rabita.fi/",
@@ -1881,7 +1948,8 @@
     "lng": 24.6561164,
     "tags": {
       "fully_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -1905,7 +1973,7 @@
   {
     "id": "f5gz4k",
     "name": "Espoo Asian Market (Espoon keskus)",
-    "type": "shop",
+    "type": "service",
     "address": "Kirkkojärventie 1, 02770 Espoo",
     "city": "Espoo",
     "lat": 60.2048645,
@@ -1914,7 +1982,8 @@
       "halal_meat": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "Alternative name: Medina Halal Shop",
     "hours": {
@@ -1943,7 +2012,8 @@
     "lng": 24.6561164,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Inside Entresse Shopping mall. The lamb is halal, please check on the counter.",
     "hours": {
@@ -1977,7 +2047,8 @@
     "lng": 24.75414809276856,
     "tags": {
       "fully_halal": true,
-      "cuisine_pakistani": true
+      "cuisine_pakistani": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Pakistani cuisine",
     "hours": {
@@ -2001,13 +2072,14 @@
   {
     "id": "cmn32z",
     "name": "K Market Tapuli",
-    "type": "shop",
+    "type": "service",
     "address": "Maatullinaukio 1, 00750 Helsinki",
     "city": "Helsinki",
     "lat": 60.274989,
     "lng": 25.034577,
     "tags": {
-      "halal_meat": true
+      "halal_meat": true,
+      "service_type_grocery": true
     },
     "notes": "Has fridges with halal frozen meat, sausages etc.",
     "hours": {
@@ -2028,7 +2100,7 @@
   {
     "id": "rnmk12",
     "name": "Yalla Myyrmäki",
-    "type": "shop",
+    "type": "service",
     "address": "Liesitori 1, 01600 Vantaa",
     "city": "Vantaa",
     "lat": 60.26277069135821,
@@ -2039,7 +2111,8 @@
       "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
-      "arab_products": true
+      "arab_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -2058,12 +2131,14 @@
   {
     "id": "ld8pqr",
     "name": "Aalto University Undergraduate Centre",
-    "type": "prayer_room",
+    "type": "space",
     "address": "Otakaari 1, 02150 Espoo",
     "city": "Espoo",
     "lat": 60.1859838,
     "lng": 24.8271078,
-    "tags": {},
+    "tags": {
+      "space_type_prayer_place": true
+    },
     "notes": "Room M135, silent room--needs access card",
     "hours": {
       "sun": null,
@@ -2082,12 +2157,14 @@
   {
     "id": "83cdtk",
     "name": "Chemicum Building",
-    "type": "prayer_room",
+    "type": "space",
     "address": "University of Helsinki, A.I. Virtasen aukio 1, 00560 Helsinki",
     "city": "Helsinki",
     "lat": 60.20568340000001,
     "lng": 24.9635073,
-    "tags": {},
+    "tags": {
+      "space_type_prayer_place": true
+    },
     "notes": "Room B145",
     "hours": {
       "sun": null,
@@ -2106,13 +2183,14 @@
   {
     "id": "vp0tml",
     "name": "University of Helsinki, Viikki Campus",
-    "type": "prayer_room",
+    "type": "space",
     "address": "Latokartanonkaari 3, 00790 Helsinki",
     "city": "Helsinki",
     "lat": 60.227962,
     "lng": 25.014806,
     "tags": {
-      "quran_available": true
+      "quran_available": true,
+      "space_type_prayer_place": true
     },
     "notes": "Second floor of building E, bathroom on ground floor for wudu",
     "website": "https://www.helsinki.fi/fi/tutustu-meihin/tama-helsingin-yliopisto/kampukset/viikin-kampus",
@@ -2123,12 +2201,14 @@
   {
     "id": "372bxr",
     "name": "Meilahti Tower Hospital",
-    "type": "prayer_room",
+    "type": "space",
     "address": "Haartmaninkatu 4, 00290 Helsinki",
     "city": "Helsinki",
     "lat": 60.188577,
     "lng": 24.905782,
-    "tags": {},
+    "tags": {
+      "space_type_prayer_place": true
+    },
     "notes": "There's a room on floor P of the Meilahti Tower Hospital. The room is located in conjunction with the Leiko facilities. You can ask for guidance from the info desk on the third floor.",
     "hours": {
       "mon": "00:00-23:59",
@@ -2147,7 +2227,7 @@
   {
     "id": "yoqkv8",
     "name": "Ashtin Moskeija",
-    "type": "mosque",
+    "type": "space",
     "address": "Hakapellonkatu 2, 20540 Turku",
     "city": "Turku",
     "lat": 60.4593307,
@@ -2158,7 +2238,8 @@
       "taraweeh": true,
       "eid_prayer": true,
       "quran_classes": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2185,7 +2266,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_japanese": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Authentic Japanese restaurant of à la carte. All chicken halal, Serves alcohol--the people are helpful and aware of halal/haram.",
     "hours": {
@@ -2218,7 +2300,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_chinese": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Chicken, beef is halal. Does have alcohol to order and also one item in pork. The kitchen is careful with cross-contamination.",
     "hours": {
@@ -2243,14 +2326,15 @@
   {
     "id": "5x7lmi",
     "name": "K-Supermarket Suuris",
-    "type": "shop",
+    "type": "service",
     "address": "Kynäkatu 6, 02250 Espoo",
     "city": "Espoo",
     "lat": 60.1863986,
     "lng": 24.7465642,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true
+      "halal_groceries": true,
+      "service_type_grocery": true
     },
     "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy.",
     "hours": {
@@ -2272,7 +2356,7 @@
   {
     "id": "qo8fs0",
     "name": "Al-Fatih Moskeija (Al-Fatih Mosque)",
-    "type": "mosque",
+    "type": "space",
     "address": "Tammitie 5, 20540 Turku",
     "city": "Turku",
     "lat": 60.45618509999999,
@@ -2280,7 +2364,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "Daily iftari available during ramadan.",
     "hours": {
@@ -2298,7 +2383,7 @@
   {
     "id": "trkq3z",
     "name": "Masjid Al-Furqan, Turku",
-    "type": "mosque",
+    "type": "space",
     "address": "Pormestarinkatu 5, 20750 Turku",
     "city": "Turku",
     "lat": 60.4325269,
@@ -2306,7 +2391,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "Above the restaurent palma",
     "hours": {
@@ -2325,7 +2411,7 @@
   {
     "id": "0t3ogz",
     "name": "Masjid Al-Madina",
-    "type": "mosque",
+    "type": "space",
     "address": "Katteluksenkatu 6, 20610 Turku",
     "city": "Turku",
     "lat": 60.4452648,
@@ -2334,7 +2420,8 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://www.vsiy.fi/",
@@ -2344,7 +2431,7 @@
   {
     "id": "93v21q",
     "name": "Turun Islamilainen Yhdyskunta (montana)",
-    "type": "mosque",
+    "type": "space",
     "address": "Yliopistonkatu 7, 20100 Turku",
     "city": "Turku",
     "lat": 60.4546855,
@@ -2357,7 +2444,8 @@
       "janaza": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "Entrance to the mosque from the courtyard through Tanssitiettari Eri's door, Yliopistonkatu 7, 20100 Turku",
     "hours": {
@@ -2375,7 +2463,7 @@
   {
     "id": "8s3a3j",
     "name": "Beno Oy",
-    "type": "shop",
+    "type": "service",
     "address": "Varissuon Tornikartio, Jössenpolku a4, 20610 Turku",
     "city": "Turku",
     "lat": 60.4437039,
@@ -2387,7 +2475,8 @@
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "halal_certified": true
+      "halal_certified": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -2406,7 +2495,7 @@
   {
     "id": "0h13qo",
     "name": "Golan Shop",
-    "type": "shop",
+    "type": "service",
     "address": "Varissuon Tornikartio, Littoistentie 81, 20610 Turku",
     "city": "Turku",
     "lat": 60.4433206,
@@ -2418,7 +2507,8 @@
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "halal_certified": true
+      "halal_certified": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -2435,7 +2525,7 @@
   {
     "id": "uj177l",
     "name": "Al-Nuur Mosque (Islamic Community of Espoo)",
-    "type": "mosque",
+    "type": "space",
     "address": "Kirstinharju 1 b, 02760 Espoo",
     "city": "Espoo",
     "lat": 60.2013389,
@@ -2446,7 +2536,8 @@
       "taraweeh": true,
       "eid_prayer": true,
       "quran_classes": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2465,7 +2556,7 @@
   {
     "id": "i0mxzn",
     "name": "Masjid Abu Bakr Al-Siddique",
-    "type": "mosque",
+    "type": "space",
     "address": "Sepetlahdentie 8, 02230 Espoo",
     "city": "Espoo",
     "lat": 60.1524348,
@@ -2477,7 +2568,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://mawaqit.net/en/m/abubakar-sadiq-espoo-02230-finland",
@@ -2487,7 +2579,7 @@
   {
     "id": "2ivnxo",
     "name": "Bukhara Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kirvuntie 22, 02140 Espoo",
     "city": "Espoo",
     "lat": 60.2039881,
@@ -2496,7 +2588,8 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "quran_classes": true
+      "quran_classes": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "https://www.lansivayla.fi/paikalliset/9532903",
@@ -2506,7 +2599,7 @@
   {
     "id": "r1ckxd",
     "name": "Masjid Al-Ikhlas",
-    "type": "mosque",
+    "type": "space",
     "address": "Harakantie 20 L3, 02650 Espoo",
     "city": "Espoo",
     "lat": 60.2211232,
@@ -2518,7 +2611,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "Khutbah in both English and Arabic",
     "mapsUrl": "https://maps.google.com/?cid=10997055533427375842"
@@ -2526,7 +2620,7 @@
   {
     "id": "onu9dw",
     "name": "Daar Ul Muntaha Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kuparitie 1, 00440 Helsinki",
     "city": "Helsinki",
     "lat": 60.2307131,
@@ -2537,7 +2631,8 @@
       "taraweeh": true,
       "eid_prayer": true,
       "quran_classes": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=15057108167475571840",
@@ -2546,7 +2641,7 @@
   {
     "id": "butyl8",
     "name": "Iqra mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kontulankaari 1, 00940 Helsinki",
     "city": "Helsinki",
     "lat": 60.2368541,
@@ -2554,7 +2649,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2572,7 +2668,7 @@
   {
     "id": "t2ul0o",
     "name": "Dar Al Salam Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Ostostie 4, 00940 Helsinki",
     "city": "Helsinki",
     "lat": 60.2367005,
@@ -2580,7 +2676,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=6736739975724145572"
@@ -2596,7 +2693,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_arab": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2631,7 +2729,8 @@
       "cuisine_arab": true,
       "cuisine_pizza": true,
       "cuisine_fast_food": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2667,7 +2766,8 @@
       "fully_halal": true,
       "cuisine_arab": true,
       "cuisine_pizza": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2696,7 +2796,8 @@
     "lng": 25.0827562,
     "tags": {
       "fully_halal": true,
-      "cuisine_arab": true
+      "cuisine_arab": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2728,7 +2829,8 @@
     "lng": 25.0841213,
     "tags": {
       "fully_halal": true,
-      "cuisine_arab": true
+      "cuisine_arab": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2756,7 +2858,8 @@
     "lng": 25.0835932,
     "tags": {
       "fully_halal": true,
-      "cuisine_turkish": true
+      "cuisine_turkish": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2789,7 +2892,8 @@
     "lng": 25.0825267,
     "tags": {
       "fully_halal": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -2813,7 +2917,7 @@
   {
     "id": "qxmkuj",
     "name": "Al-Iman Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Munkkiniemen puistotie 4 a A, 00330 Helsinki",
     "city": "Helsinki",
     "lat": 60.1965707,
@@ -2821,7 +2925,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2840,7 +2945,7 @@
   {
     "id": "tc4qvi",
     "name": "Al-Taqwa Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Sitratie 7, 00420 Helsinki",
     "city": "Helsinki",
     "lat": 60.2395933,
@@ -2849,7 +2954,8 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "quran_classes": true
+      "quran_classes": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2866,7 +2972,7 @@
   {
     "id": "l3517t",
     "name": "Ummah Moskeija",
-    "type": "mosque",
+    "type": "space",
     "address": "Hernepellonkuja 6, 00560 Helsinki",
     "city": "Helsinki",
     "lat": 60.2232459,
@@ -2878,7 +2984,8 @@
       "janaza": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2906,8 +3013,7 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_cafe": true,
-      "cuisine_pastries": true
+      "restaurant_type_cafe": true
     },
     "notes": "",
     "hours": {
@@ -2931,7 +3037,7 @@
   {
     "id": "u9uzjc",
     "name": "Masjid Sunnah - Helsinki مسجد السنة هلسنكي‭",
-    "type": "mosque",
+    "type": "space",
     "address": "Ylä-Malmin tori 6b, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.2525271,
@@ -2939,7 +3045,8 @@
     "tags": {
       "daily_prayers": true,
       "jummah": true,
-      "taraweeh": true
+      "taraweeh": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -2964,9 +3071,9 @@
     "lng": 24.9159709,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_sushi": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "Sushi and chicken are halal. Serves alcohol.",
     "hours": {
@@ -2998,7 +3105,8 @@
       "no_alcohol": true,
       "fully_halal": true,
       "cuisine_uzbek": true,
-      "cuisine_central_asia": true
+      "cuisine_central_asia": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Qazan Ravintola, Halal restaurant in Helsinki",
     "hours": {
@@ -3023,7 +3131,7 @@
   {
     "id": "s3bdjv",
     "name": "Myyrmäen Moskeija مسجد مورمكي‭",
-    "type": "mosque",
+    "type": "space",
     "address": "Ojahaanrinne 4k, 01600 Vantaa",
     "city": "Vantaa",
     "lat": 60.26400959999999,
@@ -3033,7 +3141,8 @@
       "jummah": true,
       "taraweeh": true,
       "eid_prayer": true,
-      "quran_classes": true
+      "quran_classes": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -3062,7 +3171,8 @@
       "fully_halal": true,
       "cuisine_mediterranean": true,
       "cuisine_middle_eastern": true,
-      "cuisine_palestinian": true
+      "cuisine_palestinian": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3086,7 +3196,7 @@
   {
     "id": "43jqf3",
     "name": "Meri-Rastilan moskeija",
-    "type": "mosque",
+    "type": "space",
     "address": "Meri-Rastila, 00980 Helsinki",
     "city": "Helsinki",
     "lat": 60.20379299999999,
@@ -3098,7 +3208,8 @@
       "eid_prayer": true,
       "quran_classes": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "Enter from parking area as the mosque has its own doors located between a pizzeria and a hairsalon. The mosque is in the second floor.",
     "mapsUrl": "https://maps.google.com/?cid=10142652171784495036"
@@ -3113,7 +3224,8 @@
     "lng": 24.9390951,
     "tags": {
       "cuisine_steak": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "https://woolshed.eu/menu/\n\n\"Our rump & ribeye steaks\nNew Zealand origin, Hereford/Angus from prime steers. Aged for 50-60 days, 100% grassfed, antibiotic, hormone and GMO free, 100% halal.\"",
     "hours": {
@@ -3147,7 +3259,8 @@
       "no_alcohol": true,
       "fully_halal": true,
       "cuisine_fried_chicken": true,
-      "cuisine_korean": true
+      "cuisine_korean": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "phone": "050 5486066",
@@ -3165,9 +3278,9 @@
     "lng": 24.9355066,
     "tags": {
       "fully_halal": true,
-      "cuisine_buffet": true,
       "cuisine_sushi": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "Fully halal sushi buffet. Serves alcohol.",
     "hours": {
@@ -3199,9 +3312,9 @@
     "lng": 24.9414105,
     "tags": {
       "fully_halal": true,
-      "cuisine_buffet": true,
       "cuisine_sushi": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "Fully halal. Serves alcohol.",
     "hours": {
@@ -3234,9 +3347,9 @@
     "lng": 24.4399644,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_sushi": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "Sushi and chicken are halal. Serves alcohol.",
     "hours": {
@@ -3269,7 +3382,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_thai": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Chicken imported from Thailand (halal)",
     "hours": {
@@ -3303,7 +3417,7 @@
     "tags": {
       "fully_halal": true,
       "cuisine_turkish": true,
-      "cuisine_buffet": true
+      "restaurant_type_buffet": true
     },
     "notes": "Inside Iso Omena, foodcourt",
     "hours": {
@@ -3333,9 +3447,9 @@
     "lng": 24.939169,
     "tags": {
       "fully_halal": true,
-      "cuisine_buffet": true,
       "cuisine_turkish": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -3368,7 +3482,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_vietnamese": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "The chicken supply is halal (at the moment), but please confirm on the counter before ordering.",
     "hours": {
@@ -3403,7 +3518,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_malaysian": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Chicken is halal.",
     "hours": {
@@ -3436,7 +3552,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_japanese": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "The chicken and beef is halal, please check with the staff just in case.",
     "hours": {
@@ -3468,7 +3585,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_middle_eastern": true,
-      "cuisine_syrian": true
+      "cuisine_syrian": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3503,7 +3621,8 @@
       "fully_halal": true,
       "cuisine_indian": true,
       "cuisine_sri_lankan": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Please check on the counter for full halal verification.",
     "hours": {
@@ -3535,7 +3654,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_indian": true,
-      "cuisine_nepalese": true
+      "cuisine_nepalese": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Please check on the counter for full halal verification.",
     "hours": {
@@ -3567,8 +3687,7 @@
     "lng": 24.9418203,
     "tags": {
       "partially_halal": true,
-      "cuisine_cafe": true,
-      "cuisine_pastries": true
+      "restaurant_type_cafe": true
     },
     "notes": "Some items are labeled halal, please check on the counter",
     "hours": {
@@ -3598,7 +3717,8 @@
       "no_alcohol": true,
       "fully_halal": true,
       "cuisine_middle_eastern": true,
-      "cuisine_yemeni": true
+      "cuisine_yemeni": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3631,7 +3751,8 @@
     "lng": 24.983638,
     "tags": {
       "fully_halal": true,
-      "cuisine_indian": true
+      "cuisine_indian": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3665,7 +3786,8 @@
     "tags": {
       "fully_halal": true,
       "cuisine_uyghur": true,
-      "cuisine_central_asia": true
+      "cuisine_central_asia": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3689,7 +3811,7 @@
   {
     "id": "72pehq",
     "name": "Alshifa koivukylän moskeija, Rautkallionkatu 3, 01360 Vantaa",
-    "type": "mosque",
+    "type": "space",
     "address": "Rautkallionkatu 3, 01360 Vantaa",
     "city": "Vantaa",
     "lat": 60.3230465,
@@ -3699,7 +3821,8 @@
       "jummah": true,
       "taraweeh": true,
       "female_prayer": true,
-      "female_wudu": true
+      "female_wudu": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -3728,7 +3851,8 @@
       "fully_halal": true,
       "cuisine_arab": true,
       "cuisine_middle_eastern": true,
-      "cuisine_tunisian": true
+      "cuisine_tunisian": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3761,9 +3885,9 @@
     "lng": 24.7390115,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_chinese": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -3787,12 +3911,14 @@
   {
     "id": "ee19wp",
     "name": "Honkanummi cemetery",
-    "type": "cemetery",
+    "type": "space",
     "address": "Vanha Porvoontie 225, 01380 Vantaa",
     "city": "Vantaa",
     "lat": 60.2908477,
     "lng": 25.0867716,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "hours": {
       "sun": "06:00-22:00",
@@ -3811,12 +3937,14 @@
   {
     "id": "ljw5l9",
     "name": "Kellonummi Cemetery",
-    "type": "cemetery",
+    "type": "space",
     "address": "Kellonummentie 15, 02740 Espoo",
     "city": "Espoo",
     "lat": 60.2382255,
     "lng": 24.6391141,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "hours": {
       "sun": "00:00-23:59",
@@ -3835,12 +3963,14 @@
   {
     "id": "oxh7uk",
     "name": "Ruskeasannan hautausmaa",
-    "type": "cemetery",
+    "type": "space",
     "address": "Ruskeasannantie 5, 01390 Vantaa",
     "city": "Vantaa",
     "lat": 60.316787,
     "lng": 24.9933122,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "website": "https://www.vantaanseurakunnat.fi/hautausmaat/ruskeasannan-hautausmaa",
     "phone": "09 83061",
@@ -3850,12 +3980,14 @@
   {
     "id": "mfj9pf",
     "name": "Rajakummun Hautausmaa",
-    "type": "cemetery",
+    "type": "space",
     "address": "Rajapolku, 02400 Kirkkonummi",
     "city": "Kirkkonummi",
     "lat": 60.1258821,
     "lng": 24.4327794,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "website": "https://www.kirkkonummenseurakunnat.fi/hautausmaat/rajakummun-hautausmaa",
     "mapsUrl": "https://maps.google.com/?cid=16095040597553310569",
@@ -3864,12 +3996,14 @@
   {
     "id": "gsyyri",
     "name": "Kärsämäki cemetery (Turku)",
-    "type": "cemetery",
+    "type": "space",
     "address": "Tolpontie 2, 20360 Turku",
     "city": "Turku",
     "lat": 60.4925933,
     "lng": 22.276864,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "hours": {
       "sun": "07:00-21:00",
@@ -3888,12 +4022,14 @@
   {
     "id": "94w0gd",
     "name": "Turku Cemetery",
-    "type": "cemetery",
+    "type": "space",
     "address": "Skarppakullantie 16, 20720 Turku",
     "city": "Turku",
     "lat": 60.4317779,
     "lng": 22.3079672,
-    "tags": {},
+    "tags": {
+      "space_type_cemetery": true
+    },
     "notes": "Muslim section available.",
     "hours": {
       "sun": "07:00-21:00",
@@ -3918,7 +4054,8 @@
     "lng": 24.9454601,
     "tags": {
       "partially_halal": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Only chicken  items are halal.",
     "hours": {
@@ -3953,7 +4090,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_bangladeshi": true
+      "cuisine_bangladeshi": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -3978,7 +4116,7 @@
   {
     "id": "g1l3nr",
     "name": "Masjid Al-Rahman",
-    "type": "mosque",
+    "type": "space",
     "address": "Liesikuja 7a, 01600 Vantaa",
     "city": "Vantaa",
     "lat": 60.2626377,
@@ -3988,7 +4126,8 @@
       "jummah": true,
       "taraweeh": true,
       "quran_classes": true,
-      "female_prayer": true
+      "female_prayer": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=11508178269760927144",
@@ -4005,7 +4144,8 @@
     "tags": {
       "partially_halal": true,
       "cuisine_singaporean": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -4033,7 +4173,8 @@
     "lng": 25.0369127,
     "tags": {
       "cuisine_mexican": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Confirmed via instagram.",
     "hours": {
@@ -4062,7 +4203,8 @@
     "lat": 60.1482247,
     "lng": 24.6557644,
     "tags": {
-      "cuisine_mexican": true
+      "cuisine_mexican": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Multiple branches. Same owner as the amigos in tikkurila. Confirmed via instagram.",
     "hours": {
@@ -4087,7 +4229,7 @@
   {
     "id": "pey53u",
     "name": "Helsingin Islam Seurakunta",
-    "type": "mosque",
+    "type": "space",
     "address": "Hämeentie 37, 00500 Helsinki",
     "city": "Helsinki",
     "lat": 60.1887962,
@@ -4096,7 +4238,8 @@
       "daily_prayers": true,
       "jummah": true,
       "taraweeh": true,
-      "quran_classes": true
+      "quran_classes": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -4122,10 +4265,10 @@
     "lng": 25.0457713,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
       "cuisine_sushi": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_buffet": true
     },
     "notes": "The chicken items are Halal",
     "hours": {
@@ -4151,12 +4294,14 @@
   {
     "id": "rcbxc6",
     "name": "Nova markit, Isomyyri kauppakeskus, 01600 Vantaa",
-    "type": "shop",
+    "type": "service",
     "address": "Isomyyri kauppakeskus, 01600 Vantaa",
     "city": "Vantaa",
     "lat": 60.2627081,
     "lng": 24.854062,
-    "tags": {},
+    "tags": {
+      "service_type_grocery": true
+    },
     "notes": "Isomyyri shopping center, ground floor",
     "hours": {
       "sun": "10:00-18:00",
@@ -4175,12 +4320,14 @@
   {
     "id": "8qjhd5",
     "name": "Dituria Albanian Islamic Center",
-    "type": "mosque",
+    "type": "space",
     "address": "Pulttitie 14, 00880 Helsinki",
     "city": "Helsinki",
     "lat": 60.2110461,
     "lng": 25.0501729,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "phone": "040 5492146",
     "mapsUrl": "https://maps.google.com/?cid=14366033004932397769"
@@ -4188,12 +4335,14 @@
   {
     "id": "s51qiw",
     "name": "Hidaya Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Latokartanontie 3, 00700 Helsinki",
     "city": "Helsinki",
     "lat": 60.24890179999999,
     "lng": 25.0089011,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "12:00-02:10",
@@ -4211,12 +4360,14 @@
   {
     "id": "eht0iz",
     "name": "Diyanet Islamic Community of Finland",
-    "type": "mosque",
+    "type": "space",
     "address": "Kilpakuja 1, 01280 Vantaa",
     "city": "Vantaa",
     "lat": 60.242456,
     "lng": 25.1118974,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "10:00-22:00",
@@ -4234,24 +4385,28 @@
   {
     "id": "op2vb3",
     "name": "Bosnian Islamic Community of Finland",
-    "type": "mosque",
+    "type": "space",
     "address": "Rintinpolku 7e, 00940 Helsinki",
     "city": "Helsinki",
     "lat": 60.23044819999999,
     "lng": 25.0922228,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=10919293126085836785"
   },
   {
     "id": "qykn23",
     "name": "Moskeija Mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kurjenkellonkuja 1, 00940 Helsinki",
     "city": "Helsinki",
     "lat": 60.2295471,
     "lng": 25.073515,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "00:00-23:59",
@@ -4267,12 +4422,14 @@
   {
     "id": "dsnc5z",
     "name": "Kurkimäki mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Kurjenkellonkuja 1, 00940 Helsinki",
     "city": "Helsinki",
     "lat": 60.2296926,
     "lng": 25.0730427,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "00:00-23:59",
@@ -4288,12 +4445,14 @@
   {
     "id": "6bgjr1",
     "name": "Masjid ahlusunna waljamaa'at مسجد أهل السنّة والجماعة",
-    "type": "mosque",
+    "type": "space",
     "address": "Vuorenpeikontie 5, 00820 Helsinki",
     "city": "Helsinki",
     "lat": 60.20105149999999,
     "lng": 25.0559675,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "05:00-22:00",
@@ -4311,12 +4470,14 @@
   {
     "id": "21vodd",
     "name": "Madina Moskeija / Masjid",
-    "type": "mosque",
+    "type": "space",
     "address": "Turunlinnantie 14 B, 00930 Helsinki",
     "city": "Helsinki",
     "lat": 60.2106764,
     "lng": 25.0786672,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "website": "https://www.facebook.com/share/WMCp7z3zsVoVNFFw/",
     "phone": "045 2013246",
@@ -4326,12 +4487,14 @@
   {
     "id": "drop5g",
     "name": "Islamic Rahma Center in Finland",
-    "type": "mosque",
+    "type": "space",
     "address": "Kastelholmantie 2, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.2130849,
     "lng": 25.0800553,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "00:00-23:59",
@@ -4348,12 +4511,14 @@
   {
     "id": "gasko9",
     "name": "Andalus Islamic Center",
-    "type": "mosque",
+    "type": "space",
     "address": "Kastelholmantie, 00900 Helsinki",
     "city": "Helsinki",
     "lat": 60.2141653,
     "lng": 25.0809507,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "website": "http://andalus.fi/yhteystiedot/",
     "phone": "040 9694434",
@@ -4362,12 +4527,14 @@
   {
     "id": "4fhwnv",
     "name": "Kivenlahden moskeija",
-    "type": "mosque",
+    "type": "space",
     "address": "Merivalkama 2, 02320 Espoo",
     "city": "Espoo",
     "lat": 60.1544832,
     "lng": 24.63547,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=13782644752072679069",
     "wheelchairAccessible": true
@@ -4375,24 +4542,28 @@
   {
     "id": "00chb3",
     "name": "Järvenpää mosque",
-    "type": "mosque",
+    "type": "space",
     "address": "Pöytäalhonkuja 4b, 04410 Järvenpää",
     "city": "Järvenpää",
     "lat": 60.4752816,
     "lng": 25.1000611,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=9333172210770941048"
   },
   {
     "id": "5eiayd",
     "name": "Resalat Islamic Community",
-    "type": "mosque",
+    "type": "space",
     "address": "Kaunispääntie 5, 00970 Helsinki",
     "city": "Helsinki",
     "lat": 60.2335914,
     "lng": 25.126522,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "10:00-17:00",
@@ -4411,12 +4582,14 @@
   {
     "id": "np6sfu",
     "name": "Träskända moské",
-    "type": "mosque",
+    "type": "space",
     "address": "Keskitalontie 3, 04430 Järvenpää",
     "city": "Järvenpää",
     "lat": 60.4726683,
     "lng": 25.1010635,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "website": "https://tatar.fi/",
     "mapsUrl": "https://maps.google.com/?cid=14988831371460787433"
@@ -4424,36 +4597,42 @@
   {
     "id": "ade1es",
     "name": "Masjid Omar",
-    "type": "mosque",
+    "type": "space",
     "address": "Meri-Rastilan tie 2 B, 00980 Helsinki",
     "city": "Helsinki",
     "lat": 60.20392870000001,
     "lng": 25.1188082,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=10142652171784495036"
   },
   {
     "id": "91oxis",
     "name": "Korso kulttuurikeskus Ry مسجد كورسو",
-    "type": "mosque",
+    "type": "space",
     "address": "Merikotkantie 1, 01450 Vantaa",
     "city": "Vantaa",
     "lat": 60.3508937,
     "lng": 25.0760731,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=16983748796310621279"
   },
   {
     "id": "ynoxha",
     "name": "Tikkurilan moskeija",
-    "type": "mosque",
+    "type": "space",
     "address": "Talvikkitie 18، 01300 Vantaa",
     "city": "Talvikkitie 18، 01300 Vantaa",
     "lat": 60.2890606,
     "lng": 25.0297216,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "phone": "044 9368184",
     "mapsUrl": "https://maps.google.com/?cid=1631189121075242590"
@@ -4461,12 +4640,14 @@
   {
     "id": "fgcar2",
     "name": "Myyrmäen Moskeija مسجد مورمكي",
-    "type": "mosque",
+    "type": "space",
     "address": "Ojahaanrinne 4k, 01600 Vantaa",
     "city": "Vantaa",
     "lat": 60.26400959999999,
     "lng": 24.8557993,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "11:30-20:00",
@@ -4484,12 +4665,14 @@
   {
     "id": "9szw5c",
     "name": "Dar-ul-Tauheed",
-    "type": "mosque",
+    "type": "space",
     "address": "Sinikalliontie 10, 02630 Espoo",
     "city": "Espoo",
     "lat": 60.2037413,
     "lng": 24.7642179,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=10677517398879941672"
   },
@@ -4503,7 +4686,8 @@
     "lng": 24.890841332013878,
     "tags": {
       "partially_halal": true,
-      "cuisine_korean": true
+      "cuisine_korean": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "The halal options are marked.",
     "hours": {
@@ -4540,7 +4724,8 @@
       "cuisine_fried_chicken": true,
       "cuisine_italian": true,
       "cuisine_mexican": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "There are enough free parking",
     "hours": {
@@ -4575,7 +4760,8 @@
       "partially_halal": true,
       "cuisine_middle_eastern": true,
       "cuisine_pizza": true,
-      "no_alcohol": false
+      "no_alcohol": false,
+      "restaurant_type_restaurant": true
     },
     "notes": "Chicken and Kebab are confirmed Halal",
     "hours": {
@@ -4604,7 +4790,8 @@
     "lng": 24.9646827,
     "tags": {
       "partially_halal": true,
-      "cuisine_japanese": true
+      "cuisine_japanese": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -4626,14 +4813,15 @@
   {
     "id": "bu20bb",
     "name": "Hervanta Islamic Center",
-    "type": "mosque",
+    "type": "space",
     "address": "Opiskelijankatu 5, 33720 Tampere",
     "city": "Tampere",
     "lat": 61.4525892,
     "lng": 23.8451519,
     "tags": {
       "daily_prayers": true,
-      "jummah": true
+      "jummah": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "hours": {
@@ -4653,14 +4841,15 @@
   {
     "id": "9xdwol",
     "name": "Keskustan moskeija (Tampereen islamin yhdyskunta)",
-    "type": "mosque",
+    "type": "space",
     "address": "Yliopistonkatu 58, 33100 Tampere",
     "city": "Tampere",
     "lat": 61.4952011,
     "lng": 23.7794514,
     "tags": {
       "daily_prayers": true,
-      "jummah": true
+      "jummah": true,
+      "space_type_mosque": true
     },
     "notes": "",
     "website": "http://www.islamtampere.com/",
@@ -4670,12 +4859,14 @@
   {
     "id": "ahxxu8",
     "name": "ZamZam Masjid",
-    "type": "mosque",
+    "type": "space",
     "address": "Koulukatu 12 a1, 33200 Tampere",
     "city": "Tampere",
     "lat": 61.4944843,
     "lng": 23.7473805,
-    "tags": {},
+    "tags": {
+      "space_type_mosque": true
+    },
     "notes": "",
     "hours": {
       "sun": "00:00-23:59",
@@ -4700,7 +4891,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_fast_food": true
+      "cuisine_fast_food": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -4731,9 +4923,9 @@
     "lng": 24.938689,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_teppanyaki": true
+      "cuisine_teppanyaki": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -4762,9 +4954,9 @@
     "lng": 24.9806008,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_teppanyaki": true
+      "cuisine_teppanyaki": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -4795,9 +4987,9 @@
     "lng": 25.0829472,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_teppanyaki": true
+      "cuisine_teppanyaki": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -4826,9 +5018,9 @@
     "lng": 24.8046281,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_teppanyaki": true
+      "cuisine_teppanyaki": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -4859,9 +5051,9 @@
     "lng": 23.7669431,
     "tags": {
       "partially_halal": true,
-      "cuisine_buffet": true,
       "cuisine_japanese": true,
-      "cuisine_teppanyaki": true
+      "cuisine_teppanyaki": true,
+      "restaurant_type_buffet": true
     },
     "notes": "",
     "hours": {
@@ -4892,7 +5084,8 @@
     "lng": 23.7684039,
     "tags": {
       "fully_halal": true,
-      "cuisine_burger": true
+      "cuisine_burger": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "Owner is Muslim, please check meat source on the counter",
     "hours": {
@@ -4924,7 +5117,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_bangladeshi": true
+      "cuisine_bangladeshi": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -4948,7 +5142,7 @@
   {
     "id": "onqe1j",
     "name": "Tikkurilan Ruokakauppa",
-    "type": "shop",
+    "type": "service",
     "address": "Asematie 1c, 01300 Vantaa",
     "city": "Vantaa",
     "lat": 60.2924629,
@@ -4956,7 +5150,8 @@
     "tags": {
       "halal_meat": true,
       "halal_butchery": true,
-      "halal_groceries": true
+      "halal_groceries": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -4983,7 +5178,8 @@
       "no_alcohol": true,
       "fully_halal": true,
       "cuisine_arab": true,
-      "cuisine_pizza": true
+      "cuisine_pizza": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -5005,13 +5201,14 @@
   {
     "id": "079ch6",
     "name": "Atusa Market",
-    "type": "shop",
+    "type": "service",
     "address": "Asematie 4, 01300 Vantaa",
     "city": "Vantaa",
     "lat": 60.29278279999999,
     "lng": 25.0412505,
     "tags": {
-      "asian_products": true
+      "asian_products": true,
+      "service_type_grocery": true
     },
     "notes": "",
     "hours": {
@@ -5038,7 +5235,8 @@
     "lng": 24.9452285,
     "tags": {
       "fully_halal": true,
-      "cuisine_d_ner": true
+      "cuisine_d_ner": true,
+      "restaurant_type_restaurant": true
     },
     "notes": "",
     "hours": {
@@ -5068,8 +5266,8 @@
     "tags": {
       "no_alcohol": true,
       "fully_halal": true,
-      "cuisine_cafe": true,
-      "cuisine_middle_eastern": true
+      "cuisine_middle_eastern": true,
+      "restaurant_type_cafe": true
     },
     "notes": "",
     "hours": {

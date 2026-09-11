@@ -36,6 +36,22 @@ const MAX_ID_TOKEN_LEN = 2048;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUBMIT_ACTIONS = ["my-submitted-places", "my-submitted-edits"];
 const PROXIMITY_THRESHOLD = 0.0005; // ~50m, matches Code.gs
+const REQUIRED_TYPE_TAG_PREFIX = {
+  restaurant: "restaurant_type_",
+  service: "service_type_",
+  shop: "service_type_",
+  space: "space_type_",
+  mosque: "space_type_",
+  prayer_room: "space_type_",
+  cemetery: "space_type_",
+};
+const CUSTOM_TAG_GROUPS = new Set(["restaurant_cuisine", "restaurant_restaurant_type", "service_service_type", "space_space_type"]);
+const TYPE_TAG_GROUPS = new Set(["restaurant_restaurant_type", "service_service_type", "space_space_type"]);
+const TYPE_GROUP_LABELS = {
+  restaurant_restaurant_type: "Food",
+  service_service_type: "Services",
+  space_space_type: "Spaces",
+};
 
 async function resolveFirebaseIdentity(idToken) {
   const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
@@ -58,6 +74,44 @@ async function addNewCuisineTags(db, newCuisines) {
     if (label.length > 40) label = label.substring(0, 40);
     await db.prepare("INSERT INTO tags (type, tag_id, label) VALUES ('restaurant_cuisine', ?, ?) ON CONFLICT(type, tag_id) DO NOTHING").bind(id, label).run();
   }
+}
+
+function normaliseTypeLabel(label) {
+  return (label || "").toString().trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+}
+
+async function addNewCustomTags(db, newTags) {
+  if (!Array.isArray(newTags) || !newTags.length) return null;
+  for (const tag of newTags) {
+    const type = (tag && tag.type || "").toString().trim().toLowerCase();
+    const id = (tag && tag.id || "").toString().trim();
+    let label = (tag && tag.label || "").toString().trim();
+    if (!CUSTOM_TAG_GROUPS.has(type) || !id || !label) continue;
+    if (!/^[a-z0-9_]+$/.test(id)) continue;
+    if (type === "restaurant_cuisine" && !id.startsWith("cuisine_")) continue;
+    if (type === "restaurant_restaurant_type" && !id.startsWith("restaurant_type_")) continue;
+    if (type === "service_service_type" && !id.startsWith("service_type_")) continue;
+    if (type === "space_space_type" && !id.startsWith("space_type_")) continue;
+    if (label.length > 40) label = label.substring(0, 40);
+    if (TYPE_TAG_GROUPS.has(type)) {
+      const existing = await db.prepare(
+        `SELECT type, label FROM tags
+         WHERE type IN ('restaurant_restaurant_type','service_service_type','space_space_type')
+           AND type != ?`
+      ).bind(type).all();
+      const cleanLabel = normaliseTypeLabel(label);
+      const conflict = existing.results.find((row) => normaliseTypeLabel(row.label) === cleanLabel);
+      if (conflict) return `${conflict.label} is already a ${TYPE_GROUP_LABELS[conflict.type] || "different category"} type.`;
+    }
+    await db.prepare("INSERT INTO tags (type, tag_id, label) VALUES (?, ?, ?) ON CONFLICT(type, tag_id) DO NOTHING").bind(type, id, label).run();
+  }
+  return null;
+}
+
+function hasRequiredTypeTag(type, tags) {
+  const prefix = REQUIRED_TYPE_TAG_PREFIX[(type || "").toString().trim().toLowerCase()];
+  if (!prefix) return true;
+  return tags.split(",").map((t) => t.trim()).filter((tag) => tag.startsWith(prefix) && !tag.startsWith("!")).length === 1;
 }
 
 // Code.gs:3811 — best-effort fuzzy Places lookup (name match OR name+type+proximity).
@@ -142,7 +196,12 @@ async function handleNewSubmission(env, data, emailHash) {
   const hasPin = pinLat != null && !isNaN(pinLat) && pinLng != null && !isNaN(pinLng);
   const openingHours = (data.openingHours || "").toString().trim();
 
+  if (!hasRequiredTypeTag(submittedType, tags)) return { error: "Choose exactly one type tag." };
   if (data.newCuisines && data.newCuisines.length) await addNewCuisineTags(db, data.newCuisines);
+  if (data.newCustomTags && data.newCustomTags.length) {
+    const customTagError = await addNewCustomTags(db, data.newCustomTags);
+    if (customTagError) return { error: customTagError };
+  }
 
   // 1. Always archive to Draft.
   await db.prepare(
@@ -197,11 +256,18 @@ async function handleNewSubmission(env, data, emailHash) {
 async function handleEditSubmission(env, data, emailHash) {
   const db = env.DB;
   const appLinksJson = serializeAppLinksForQueue(parseAppLinksInput(data.app_links));
+  const tags = (data.tags || "").toString();
+  const type = (data.type || "").toString();
+  if (!hasRequiredTypeTag(type, tags)) return { error: "Choose exactly one type tag." };
   if (data.newCuisines && data.newCuisines.length) await addNewCuisineTags(db, data.newCuisines);
+  if (data.newCustomTags && data.newCustomTags.length) {
+    const customTagError = await addNewCustomTags(db, data.newCustomTags);
+    if (customTagError) return { error: customTagError };
+  }
   await db.prepare(
     "INSERT INTO edits (timestamp, place_id, name, type, address, tags, maps_link, notes, score, changes_summary, status, reject_reason, opening_hours, website, phone, email_hash, app_links) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?)"
   ).bind(
-    helsinkiTimestamp(), data.placeId || "", data.name || "", data.type || "", data.address || "", (data.tags || "").toString(), data.gmaps || "", data.notes || "",
+    helsinkiTimestamp(), data.placeId || "", data.name || "", type, data.address || "", tags, data.gmaps || "", data.notes || "",
     (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "", (data.openingHours || "").toString().trim(), data.website || "", data.phone || "", emailHash || "", appLinksJson
   ).run();
   return { success: true };

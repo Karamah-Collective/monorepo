@@ -542,8 +542,10 @@ const DIR_LOCAL_SUGGEST_LIMIT = 4;
 const _dirLocalTypeCls = {
   mosque: { type: "place_of_worship", cls: "amenity" },
   prayer_room: { type: "place_of_worship", cls: "amenity" },
+  space: { type: "place_of_worship", cls: "amenity" },
   restaurant: { type: "restaurant", cls: "amenity" },
   shop: { type: "shop", cls: "shop" },
+  service: { type: "shop", cls: "shop" },
   cemetery: { type: "cemetery", cls: "amenity" },
 };
 
@@ -2462,7 +2464,7 @@ function showDirError(msg) { setGoLoading(false); dirLoad.classList.add("hide");
 
 // --- Nearest mosque from origin ---
 export function findNearestMosqueFromOrigin(originLat, originLng) {
-  let mosques = placesData.filter((p) => p.type === "mosque");
+  let mosques = placesData.filter((p) => p.type === "mosque" || p.tags?.space_type_mosque === true);
   if (activeTagFilters.size) {
     mosques = mosques.filter((p) => [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true));
   }
@@ -2488,7 +2490,7 @@ export function findNearestMosqueFromOrigin(originLat, originLng) {
 
 export async function autoSetNearestMosque(originLat, originLng) {
   if (!findingNearestMosque) return;
-  let mosques = placesData.filter((p) => p.type === "mosque");
+  let mosques = placesData.filter((p) => p.type === "mosque" || p.tags?.space_type_mosque === true);
   if (activeTagFilters.size) {
     mosques = mosques.filter((p) => [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true));
   }

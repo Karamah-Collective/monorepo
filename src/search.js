@@ -28,8 +28,10 @@ const _popupSearchSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="n
 const _localTypeCls = {
   mosque:      { type: "place_of_worship", cls: "amenity" },
   prayer_room: { type: "place_of_worship", cls: "amenity" },
+  space:       { type: "place_of_worship", cls: "amenity" },
   restaurant:  { type: "restaurant",       cls: "amenity" },
   shop:        { type: "shop",             cls: "shop"    },
+  service:     { type: "shop",             cls: "shop"    },
   cemetery:    { type: "cemetery",          cls: "amenity" },
 };
 

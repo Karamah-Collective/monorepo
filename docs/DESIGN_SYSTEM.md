@@ -356,7 +356,7 @@ All animations and transitions are suppressed when the user has enabled "Reduce 
 
 ### Overlay height transitions
 
-Dynamic window-style overlays use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps and event/Eid-style overlay windows whose card height is natural. Do not use it on static-height forms such as suggest, edit, contact, or wish form cards.
+Dynamic window-style overlays use `animateElementHeight()` from `src/utils.js` around content-mode swaps. The helper pins the current card height, runs the DOM change, measures the natural height, then animates `height` with `--t-spring`. Use this for reviews verification/rating swaps and event/Eid-style overlay windows whose card height is natural. Do not use it on static-height form cards such as suggest, edit, contact, or wish; if a section inside one of those fixed cards needs to reveal, animate only that inner section so the outer card size remains stable.
 
 `src/menu.js`'s Account section (`_animateMenuPanelHeight()`) is a second consumer of the same shared helper, scoped to `.menu-account-panel` — the toggle open/close of `#menu-email-signin-panel` (and its swap to the "check your email" message) animates the same way as reviews.js's `_animateReviewCardHeight()`/`.rv-overlay-card`. `.menu-account-panel` needs its own `transition: height var(--t-spring)` in `styles.css` for this to work — `animateElementHeight()` relies on the target element's own CSS transition, it doesn't set one inline. `#menu-email-signin-panel` also carries a `border-top`/`padding-top` divider (the same convention as `.pp-reviews`) so the expanded panel reads as attached to the sign-in row above it rather than a disconnected stack.
 
@@ -912,7 +912,7 @@ more visible places without lowering tap targets below the established tokenized
 minimums.
 
 In list-focus mode, the Filter drawer starts with a compact `Show` category row.
-`All` and `Saved` are exclusive, while `Mosques`, `Spaces`, `Food`, and `Shops`
+`All` and `Saved` are exclusive, while `Spaces`, `Food`, and `Services`
 can be combined. This is intentionally stronger than the regular top tabs,
 which stay single-select outside list-focus mode. Halal Status is an exclusive
 dropdown-style group like Cuisine: `Fully Halal` and `Partially Halal` cannot

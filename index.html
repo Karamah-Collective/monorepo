@@ -9,12 +9,12 @@
     <meta name="theme-color" content="#1A73B8" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Halal Finder Helsinki</title>
-    <meta name="description" content="Find halal food, shops, and prayer spaces across Finland." />
+    <meta name="description" content="Find halal food, services, and prayer spaces across Finland." />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Halal Finder Helsinki" />
-    <meta property="og:description" content="Find halal food, shops, and prayer spaces across Finland." />
+    <meta property="og:description" content="Find halal food, services, and prayer spaces across Finland." />
     <meta property="og:image" content="https://maps.karamahcollective.com/data/halal-finder-preview.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -22,7 +22,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Halal Finder Helsinki" />
-    <meta name="twitter:description" content="Find halal food, shops, and prayer spaces across Finland." />
+    <meta name="twitter:description" content="Find halal food, services, and prayer spaces across Finland." />
     <meta name="twitter:image" content="https://maps.karamahcollective.com/data/halal-finder-preview.png" />
     <link rel="icon" type="image/png" href="/data/icons/favicon.png" sizes="512x512" />
     <link rel="manifest" href="/manifest.json" />
@@ -42,7 +42,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20260909-5" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260912-8" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -770,22 +770,7 @@
               </span>
               <span class="pf-label">All</span>
             </button>
-            <button class="pf-chip" data-type="mosque">
-              <span class="pf-icon" style="--pf-c: var(--success)">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M12 2L8 8H4v12h16V8h-4L12 2zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"
-                  />
-                </svg>
-              </span>
-              <span class="pf-label">Mosques</span>
-            </button>
-            <button class="pf-chip" data-type="religious">
+            <button class="pf-chip" data-type="space">
               <span class="pf-icon" style="--pf-c: var(--hsl-ferry)">
                 <svg
                   width="16"
@@ -815,7 +800,7 @@
               </span>
               <span class="pf-label">Food</span>
             </button>
-            <button class="pf-chip" data-type="shop">
+            <button class="pf-chip" data-type="service">
               <span class="pf-icon" style="--pf-c: var(--hsl-rail)">
                 <svg
                   width="16"
@@ -828,7 +813,7 @@
                   />
                 </svg>
               </span>
-              <span class="pf-label">Shops</span>
+              <span class="pf-label">Services</span>
             </button>
             <button class="pf-chip" data-type="saved">
               <span class="pf-icon" style="--pf-c: #f59e0b">
@@ -1309,17 +1294,19 @@
               />
             </label>
             <label class="sg-label"
-              ><span>Type <span class="sg-req">*</span></span>
+              ><span>Category <span class="sg-req">*</span></span>
               <select id="sg-type" required>
-                <option value="" disabled selected>Select a type…</option>
-                <option value="mosque">Mosque</option>
-                <option value="prayer_room">Prayer Room</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="shop">Shop</option>
-                <option value="cemetery">Cemetery</option>
-                <option value="eid_prayer">Eid Prayer Place</option>
+                <option value="" disabled selected>Select a category…</option>
+                <option value="space">Spaces</option>
+                <option value="restaurant">Food</option>
+                <option value="service">Services</option>
               </select>
             </label>
+            <div id="sg-type-tags-section" class="sg-label hide">
+              <span>Type <span id="sg-type-tags-req" class="sg-req">*</span></span>
+              <div id="sg-type-tags" class="sg-tags"></div>
+              <span class="sg-hint">choose one</span>
+            </div>
             <div id="sg-eid-fields" class="sg-eid-fields hide">
               <label class="sg-label"
                 ><span>Organizer(s)</span>
@@ -1587,16 +1574,19 @@
               />
             </label>
             <label class="sg-label"
-              >Type
+              >Category
               <select id="ed-type">
-                <option value="mosque">Mosque</option>
-                <option value="prayer_room">Prayer Room</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="shop">Shop</option>
-                <option value="cemetery">Cemetery</option>
+                <option value="space">Spaces</option>
+                <option value="restaurant">Food</option>
+                <option value="service">Services</option>
               </select>
             </label>
-            <div class="sg-label">
+            <div id="ed-type-tags-section" class="sg-label hide">
+              <span>Type <span id="ed-type-tags-req" class="sg-req">*</span></span>
+              <div id="ed-type-tags" class="sg-tags"></div>
+              <span class="sg-hint">choose one</span>
+            </div>
+            <div id="ed-tags-section" class="sg-label">
               <span>Tags</span>
               <div id="ed-tags" class="sg-tags"></div>
               <span class="sg-hint"
@@ -1814,7 +1804,7 @@
       </div>
 
       <!-- ─── Events Button + Overlay ─── -->
-      <button id="events-pill" class="btn-icon-card hide" aria-label="Mosque events">
+      <button id="events-pill" class="btn-icon-card hide" aria-label="Events">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>

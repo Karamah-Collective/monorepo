@@ -1,8 +1,7 @@
 export const TYPE_OPTIONS = [
-  { value: "mosque", label: "Mosque" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "shop", label: "Shop" },
-  { value: "prayer_room", label: "Prayer Room" },
+  { value: "space", label: "Spaces" },
+  { value: "restaurant", label: "Food" },
+  { value: "service", label: "Services" },
 ];
 
 export const SPONSOR_TIER_OPTIONS = [

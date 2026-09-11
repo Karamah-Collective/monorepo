@@ -4524,3 +4524,137 @@ added through the map app, including halal status, cuisine, and alcohol fields.
 path still updates Google-derived identity/contact/detail fields such as
 name, address, coordinates, opening hours, website, phone, Google metadata, and
 Google review shadows, but it no longer parses, serializes, or writes `tags`.
+
+---
+
+## 2026-09-11 - Services and Spaces taxonomy expansion
+
+**Decision:** the old Shops tab is now **Services**, covering halal-compatible
+or Muslim-owned public places such as groceries, butcheries, cafes, bookshops,
+salons, clothing shops, education, community service, and charity. Mixed-use
+service places are allowed to select multiple mandatory service-type tags
+because combinations like grocery + butchery or bookstore + cafe are useful for
+search and filtering.
+
+**Decision:** prayer rooms and cemeteries now roll up into **Spaces**. Spaces
+use the same expandable tag pattern, with a mandatory `Space Type` group.
+Multiple space-type tags are allowed for consistency and future mixed-use
+places such as prayer place + community hall.
+
+**Pattern to follow:** keep broad top-level tabs simple (`Mosques`, `Spaces`,
+`Food`, `Services`) and put the precise kind of thing into required expandable
+type-tag groups. Keep legacy `shop`, `prayer_room`, and `cemetery` compatibility
+in client code until live data is fully migrated.
+
+**Session note:** added `docs/SERVICES_AND_SPACES_TAG_PLAN.md`; migrated static
+`data/places.json` rows from `shop` to `service` and from
+`prayer_room`/`cemetery` to `space`; seeded `service_service_type` and
+`space_space_type` defaults; updated Places filters, add/edit forms, local
+search/directions maps, heatmap scoring, metadata/tutorial copy, tests, and
+`/api/submit` validation/custom-tag persistence. Cache version synced to
+`20260911-1`. No Playwright/browser tests were run, matching the standing
+manual-testing preference; targeted `node --check` syntax passes and JSON
+sanity checks passed.
+
+**Revision note:** user changed the target model before the next implementation
+pass: Service/Space type tags should be mandatory single-select rather than
+multi-select, visually separated from optional tags, Mosque should become a
+Space type, and place detail badges should show the specific subtype (Mosque,
+Grocery, Bookshop, Cemetery, etc.) instead of the high-level Spaces/Services
+label. Type-specific icons are planned but intentionally not implemented yet;
+default Services icon remains the shop icon and default Spaces icon remains the
+prayer-room icon until that design pass happens. Updated
+`docs/SERVICES_AND_SPACES_TAG_PLAN.md` only; no app code changes in this
+revision pass.
+
+**Implementation follow-up:** implemented the revised single-type model. The
+Places high-level chips now use Spaces/Food/Services without a separate Mosques
+tab; add/edit forms show a required, single-select Type section above optional
+Tags; client and `/api/submit` validation both require exactly one
+`service_type_*` or `space_type_*` tag where applicable. Static mosque rows were
+migrated to `type: "space"` with `space_type_mosque`, while legacy `mosque`,
+`shop`, `prayer_room`, and `cemetery` compatibility remains in code for live
+rows. Place detail/card type badges now resolve to the selected subtype label,
+and the temporary Space default icon uses the prayer-room icon until
+subtype-specific icons are designed. Cache version synced to `20260911-2`.
+Verification: targeted `node --check` passes and JSON subtype sanity passed; no
+Playwright/browser tests were run, matching the standing manual-testing
+preference.
+
+**2026-09-12 follow-up:** user clarified that the add/edit dropdown should not
+say singular `Space` while the Places window says `Spaces`; the high-level
+dropdown is now `Category` with `Spaces`, `Food`, and `Services`, leaving the
+separate required chip section as the specific `Type`. `Eid Prayer Place` moved
+under Spaces as `space_type_eid_prayer_place`; selecting it in the add form
+reveals the existing Eid organizer/date/jamaat fields and routes through the
+existing Eid queue rather than creating a normal place submission. Filter drawer
+ordering now renders optional tags before required type groups, so Space Type no
+longer opens ahead of Daily Prayers/Jummah/Wudu-style refinements. Added
+`migrations/0005_services_spaces_taxonomy.sql` to seed D1 tag rows and migrate
+legacy live `shop`/`mosque`/`prayer_room`/`cemetery` rows. Cache version synced
+to `20260912-1`. Verification: targeted `node --check`, JSON subtype sanity,
+and `git diff --check` passed; no Playwright/browser tests were run.
+
+**2026-09-12 food-type follow-up:** Food now follows the same separated,
+mandatory single-type pattern as Services and Spaces via `restaurant_type_*`.
+Default Food types are Restaurant, Cafe, Bakery, Dessert, Food Truck, Catering,
+Takeaway, and Buffet; Cuisine stays optional metadata. Cafe was removed from
+the Services type seed. The Eid-specific add-place fields stay below the Space
+Type selector.
+Custom type creation is category-exclusive on both client and `/api/submit`, so
+a user cannot add an already-known Food type as a Space or Service type, or the
+reverse. Existing static restaurant rows were backfilled with
+`restaurant_type_restaurant`, the D1 migration was extended for live data, and
+the cache version is synced to `20260912-2`. Verification: targeted
+`node --check` passes, JSON food-type sanity passed, and `git diff --check`
+reported only line-ending warnings; no Playwright/browser tests were run.
+
+**2026-09-12 reveal-animation correction:** reveal animations inside fixed
+overlay forms must never resize the outer form/card shell. The Eid Prayer
+Place fields now animate only their own inner measured-height block below Space
+Type; `#suggest-card` keeps its fixed desktop height. Also cleaned up Food
+taxonomy overlap: Buffet and Cafe are Food Type values, not Cuisine values, and
+pastry/bakery-style venue labels should infer Food Type rather than stay as
+Cuisine. Static data moved 13 buffet-tagged food places to Food Type Buffet and
+3 cafe-tagged places to Food Type Cafe, removing the old `cuisine_buffet`,
+`cuisine_cafe`, and `cuisine_pastries` tags. The D1 migration carries the same
+cleanup for live data and was smoke-tested as idempotent against an in-memory
+SQLite schema.
+Cache version synced to `20260912-3`.
+
+**2026-09-12 type-scoped tag correction:** optional add/edit form tags must be
+hidden until the user chooses the mandatory Type chip, then rebuilt from that
+specific Type rather than the broad category. Mosque and Prayer Place no longer
+share one generic Spaces tag set; Cemetery/Eid Prayer Place/etc. get suitable
+sets, and Eid Prayer Place still reveals the dedicated organizer/date/jamaat
+fields instead of normal optional tags. Food's Halal Status remains an
+exclusive Fully Halal / Partially Halal choice group and opens visibly in the
+form. For fixed-height overlay forms, revealing an inner section should also
+scroll that section into view within the form; the outer card must stay fixed.
+Cache version synced to `20260912-4`.
+
+**2026-09-12 direct reveal correction:** the Eid Prayer Place add-form fields
+must use a deterministic direct `hide` toggle inside the fixed-height suggest
+form, followed by scrolling the section into view. The previous inner
+height-collapse approach could leave the required Eid fields invisible even
+though the selected Type was correct. Food optional tags also gained a fallback
+path so Food Type selections always reveal No Alcohol, Halal Status, and
+Cuisine when those base tags exist. Cache version synced to `20260912-5`.
+
+**2026-09-12 live browser correction:** source checks missed two actual runtime
+failures in the add-place form. Food tags failed because `_buildOptionalTagsHTML`
+referenced an undefined `tagType`, throwing after the Type chip became active
+and before optional tags rendered. Eid fields failed because `.sg-eid-fields`
+was a flex child inside the fixed-height suggest form, still had overflow
+clipping from the abandoned height-collapse animation, and flex-shrank to
+`height: 0` even with content present. Verified in Playwright against the local
+app that Food Type Restaurant renders No Alcohol, Halal Status, Fully Halal,
+Partially Halal, and Cuisine; verified Eid Prayer Place renders a visible
+~291px Eid field block and hides normal hours/tags. Cache version synced to
+`20260912-6`.
+
+**2026-09-12 filter group visual consistency:** exclusive filter groups such as
+Halal Status should use the same collapsed dropdown-chip styling as Cuisine and
+Food Type. The group remains single-select internally, but it should not get a
+separate grey select-style background that makes it visually different from
+other expandable filter groups.

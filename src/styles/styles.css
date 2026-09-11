@@ -3847,14 +3847,6 @@ button.pf-stat-card:focus-visible {
   flex-wrap: wrap;
   gap: var(--sp-1h);
 }
-.tf-group-toggle--select {
-  background: var(--surface-2);
-}
-.tf-group-toggle--select.has-active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
 #places-scroll {
   flex: 1;
   min-height: 0;
@@ -5539,6 +5531,10 @@ body.marker-style-bold .custom-mk {
   display: flex;
   flex-direction: column;
   gap: var(--sp-7);
+  flex-shrink: 0;
+  overflow: visible;
+  opacity: 1;
+  transform: translateY(0);
 }
 .sg-eid-org-chips {
   display: flex;

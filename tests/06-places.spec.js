@@ -88,7 +88,7 @@ test.describe("Places — Type Filtering", () => {
 
   test("clicking a type chip filters the list", async ({ page }) => {
     const allCount = await page.locator("#places-list .pl-card").count();
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     const mosqueCount = await page.locator("#places-list .pl-card").count();
     expect(mosqueCount).toBeLessThanOrEqual(allCount);
@@ -113,7 +113,7 @@ test.describe("Places — Type Filtering", () => {
 
   test("switching back to All shows all places", async ({ page }) => {
     const allCount = await page.locator("#places-list .pl-card").count();
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     await page.locator('.pf-chip[data-type="all"]').click();
     await page.waitForTimeout(300);
@@ -122,7 +122,7 @@ test.describe("Places — Type Filtering", () => {
   });
 
   test("each type filter produces corresponding markers on map", async ({ page }) => {
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     const listCount = await page.locator("#places-list .pl-card").count();
     const markerCount = await page.locator(".place-mk-wrap").count();
@@ -138,7 +138,7 @@ test.describe("Places — Tag Filtering", () => {
   });
 
   test("tag filter row appears for typed filter (not All/Saved)", async ({ page }) => {
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     await expect(page.locator("#tf-row")).not.toHaveClass(/hide/);
   });
@@ -148,7 +148,7 @@ test.describe("Places — Tag Filtering", () => {
   });
 
   test("clicking filter toggle reveals tag chips", async ({ page }) => {
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     await page.locator("#tf-toggle").click();
     await page.waitForTimeout(200);
@@ -158,7 +158,7 @@ test.describe("Places — Tag Filtering", () => {
   });
 
   test("clicking a tag chip toggles its active state", async ({ page }) => {
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     await page.locator("#tf-toggle").click();
     await page.waitForTimeout(200);
@@ -171,7 +171,7 @@ test.describe("Places — Tag Filtering", () => {
   });
 
   test("active tag filter count badge updates", async ({ page }) => {
-    await page.locator('.pf-chip[data-type="mosque"]').click();
+    await page.locator('.pf-chip[data-type="space"]').click();
     await page.waitForTimeout(300);
     await page.locator("#tf-toggle").click();
     await page.waitForTimeout(200);

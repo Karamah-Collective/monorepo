@@ -153,7 +153,7 @@ test.describe("Core DOM Structure", () => {
   });
 
   test("place filter chips exist for all types", async ({ page }) => {
-    for (const type of ["all", "mosque", "prayer_room", "restaurant", "shop", "saved"]) {
+    for (const type of ["all", "space", "restaurant", "service", "saved"]) {
       await expect(page.locator(`.pf-chip[data-type="${type}"]`)).toBeAttached();
     }
   });
@@ -215,6 +215,7 @@ test.describe("Suggest Form Structure", () => {
     await expect(page.locator("#sg-name")).toBeAttached();
     await expect(page.locator("#sg-gmaps")).toBeAttached();
     await expect(page.locator("#sg-type")).toBeAttached();
+    await expect(page.locator("#sg-type-tags")).toBeAttached();
     await expect(page.locator("#sg-tags")).toBeAttached();
     await expect(page.locator("#sg-address")).toBeAttached();
     await expect(page.locator("#sg-website")).toBeAttached();
@@ -235,15 +236,15 @@ test.describe("Suggest Form Structure", () => {
   test("sg-type dropdown has all place types", async ({ page }) => {
     const options = page.locator("#sg-type option");
     const texts = await options.allTextContents();
-    expect(texts).toContain("Mosque");
-    expect(texts).toContain("Prayer Room");
-    expect(texts).toContain("Restaurant");
-    expect(texts).toContain("Shop");
+    expect(texts).toContain("Spaces");
+    expect(texts).toContain("Food");
+    expect(texts).toContain("Services");
   });
 
   test("edit form has all required fields", async ({ page }) => {
     await expect(page.locator("#ed-name")).toBeAttached();
     await expect(page.locator("#ed-type")).toBeAttached();
+    await expect(page.locator("#ed-type-tags")).toBeAttached();
     await expect(page.locator("#ed-tags")).toBeAttached();
     await expect(page.locator("#ed-address")).toBeAttached();
     await expect(page.locator("#ed-gmaps")).toBeAttached();

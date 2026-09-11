@@ -145,11 +145,16 @@ async function getAdminStats(db) {
     db.prepare("SELECT COUNT(*) n FROM events WHERE status = 'pending'").first(),
     db.prepare("SELECT COUNT(*) n FROM event_edits WHERE status = 'pending'").first(),
   ]);
-  const byType = { mosque: 0, restaurant: 0, shop: 0, prayer_room: 0 };
+  const byType = { space: 0, restaurant: 0, service: 0 };
   let totalPlaces = 0;
   for (const row of places.results) {
     totalPlaces += row.n;
-    if (byType.hasOwnProperty(row.type)) byType[row.type] = row.n;
+    const type = ["mosque", "prayer_room", "cemetery"].includes(row.type)
+      ? "space"
+      : row.type === "shop"
+        ? "service"
+        : row.type;
+    if (Object.prototype.hasOwnProperty.call(byType, type)) byType[type] += row.n;
   }
   return {
     pendingNew: pendingNew.n, pendingEdits: pendingEdits.n, totalPlaces, unrepliedContacts: unreplied.n,
