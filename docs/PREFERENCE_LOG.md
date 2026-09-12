@@ -4678,3 +4678,16 @@ fallback. Expanded the built-in icon library beyond the seeded defaults and
 mirrored every admin icon key into the public map renderer so saved choices do
 not fall back unexpectedly. Verification: admin production build, targeted JS
 syntax checks, and `git diff --check`; no Playwright/browser tests were run.
+
+**2026-09-12 promo model correction:** promotions are no longer sponsorship
+fields. A place can have multiple active promos through `place_promos`, each
+with optional `code` and optional `description` where at least one is present.
+Sponsorship tier/dates still control Featured placement, while promos can exist
+with no sponsor tier. The public map reads `place.promos`, falls back safely to
+legacy `sponsor_promo`/`sponsor_promo_text`, and ignores accidental boolean
+strings such as `true`/`false` as promo codes. Admin's sponsorship popover now
+edits sponsor fields plus a repeatable promo list, and anchored popovers
+reposition on scroll/resize instead of closing so the dialog does not vanish
+during table movement. Migration added: `migrations/0007_place_promos.sql`.
+Verification: targeted `node --check`, admin production build, and
+`git diff --check`; no Playwright/browser tests were run.

@@ -1289,7 +1289,7 @@ Tooltip shown when tapping the ℹ️ icon on the sponsor badge. Positioned abso
 
 ### Promos Pill (`#promos-snack`)
 
-Pill-expand element beside the Prayer Times pill. Lists all places with active promo codes (`sponsor_promo`). Hidden when no promos exist.
+Pill-expand element beside the Prayer Times pill. Lists all active place promos from `place.promos`; promos are independent of sponsorship and each promo can provide a code, a description, or both. Hidden when no promos exist.
 
 | Class | Purpose |
 |---|---|
@@ -1297,7 +1297,7 @@ Pill-expand element beside the Prayer Times pill. Lists all places with active p
 | `#promos-pill` | Icon button (tag icon, gold colour) |
 | `#promos-header` | Header row with icon + "Promos" text |
 | `#promos-list` | Scrollable list of promo items |
-| `.promo-item` | Single promo row (click to copy code) |
+| `.promo-item` | Single promo row; copies when a code exists, otherwise shows the description |
 | `.promo-item-icon` | Coloured type icon (24px) |
 | `.promo-item-body` | Name + description |
 | `.promo-item-code` | Promo code badge (gold) |

@@ -190,12 +190,35 @@ async function getPendingEdits(db) {
 }
 
 async function getAdminPlaces(db) {
+  const promosByPlace = new Map();
+  try {
+    const { results: promoRows } = await db.prepare(
+      "SELECT place_id, code, description, start_date, end_date FROM place_promos ORDER BY place_id, sort_order, id"
+    ).all();
+    for (const row of promoRows) {
+      const placeId = (row.place_id || "").toString().trim();
+      if (!placeId) continue;
+      if (!promosByPlace.has(placeId)) promosByPlace.set(placeId, []);
+      promosByPlace.get(placeId).push({
+        code: row.code || "",
+        description: row.description || "",
+        startDate: row.start_date || "",
+        endDate: row.end_date || "",
+      });
+    }
+  } catch {
+    // Existing databases may not have the new place_promos table yet. The row
+    // mapper below falls back to legacy sponsor_promo fields until migrated.
+  }
   const { results } = await db.prepare("SELECT * FROM places ORDER BY name").all();
   return results.filter((r) => r.name).map((r) => ({
     id: r.id, name: r.name, type: (r.type || "").toLowerCase(), address: normaliseAddress(r.address), city: extractCityFromAddress(r.address),
     lat: r.lat ?? "", lng: r.lng ?? "", tags: r.tags, notes: r.notes, boycott: !!r.boycott, disabled: !!r.disabled,
     sponsorTier: (r.sponsor_tier || "").toLowerCase(), sponsorPromo: r.sponsor_promo, sponsorPromoText: r.sponsor_promo_text,
     sponsorStartDate: r.sponsor_start_date, sponsorEndDate: r.sponsor_end_date,
+    promos: promosByPlace.has(r.id)
+      ? promosByPlace.get(r.id)
+      : [legacyPromoFromPlaceRow(r)].filter(Boolean),
   }));
 }
 
@@ -611,20 +634,30 @@ async function deletePlace(db, placeId) {
   const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
   if (!place) return { error: `Place not found: ${placeId}` };
 
-  await db.batch([
+  const statements = [
     db.prepare("DELETE FROM reviews WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM saved_places WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM events WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM event_edits WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM place_app_links WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM place_social_videos WHERE place_id = ?").bind(placeId),
-    db.prepare("DELETE FROM places WHERE id = ?").bind(placeId),
-  ]);
+  ];
+  try {
+    await db.prepare("SELECT id FROM place_promos LIMIT 1").first();
+    statements.push(db.prepare("DELETE FROM place_promos WHERE place_id = ?").bind(placeId));
+  } catch {
+    // Database has not run the promo migration yet.
+  }
+  statements.push(db.prepare("DELETE FROM places WHERE id = ?").bind(placeId));
+  await db.batch(statements);
   return { success: true };
 }
 
 const VALID_SPONSOR_TIERS = ["", "basic", "featured", "spotlight"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_PROMOS_PER_PLACE = 12;
+const MAX_PROMO_CODE_LEN = 80;
+const MAX_PROMO_DESC_LEN = 240;
 const TYPE_STYLE_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const TYPE_STYLE_BUILTIN_RE = /^[a-z0-9_-]{1,40}$/;
 const TYPE_STYLE_DATA_ICON_RE = /^data:image\/(?:svg\+xml|png|webp|jpeg|jpg|gif|avif|bmp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]{1,65000}$/;
@@ -644,21 +677,74 @@ async function updateTypeStyle(db, data) {
   return meta.rows_written > 0 ? { success: true } : { error: "Type not found" };
 }
 
+function legacyPromoFromPlaceRow(row) {
+  const code = (row.sponsor_promo || "").toString().trim();
+  const description = (row.sponsor_promo_text || "").toString().trim();
+  const usableCode = ["true", "false"].includes(code.toLowerCase()) ? "" : code;
+  if (!usableCode && !description) return null;
+  return {
+    code: usableCode,
+    description,
+    startDate: row.sponsor_start_date || "",
+    endDate: row.sponsor_end_date || "",
+  };
+}
+
+function normalizePromoRows(rawPromos) {
+  const raw = Array.isArray(rawPromos) ? rawPromos : [];
+  if (raw.length > MAX_PROMOS_PER_PLACE) return { error: `A place can have at most ${MAX_PROMOS_PER_PLACE} promos` };
+
+  const promos = [];
+  for (const row of raw) {
+    const code = (row?.code || "").toString().trim();
+    const description = (row?.description || "").toString().trim();
+    const startDate = (row?.startDate || "").toString().trim();
+    const endDate = (row?.endDate || "").toString().trim();
+    if (!code && !description && !startDate && !endDate) continue;
+    if (!code && !description) return { error: "Each promo needs a code, a description, or both" };
+    if (code.length > MAX_PROMO_CODE_LEN) return { error: "Promo code is too long" };
+    if (description.length > MAX_PROMO_DESC_LEN) return { error: "Promo description is too long" };
+    if (startDate && !DATE_RE.test(startDate)) return { error: "Invalid promo start date format (use YYYY-MM-DD)" };
+    if (endDate && !DATE_RE.test(endDate)) return { error: "Invalid promo end date format (use YYYY-MM-DD)" };
+    promos.push({ code, description, startDate, endDate });
+  }
+  return { promos };
+}
+
 async function updateSponsor(db, data) {
   const placeId = data.placeId;
   if (!placeId) return { error: "Missing placeId" };
   const tier = (data.sponsorTier || "").toString().trim().toLowerCase();
   if (!VALID_SPONSOR_TIERS.includes(tier)) return { error: "Invalid sponsor tier" };
-  const promo = (data.sponsorPromo || "").toString().trim();
-  const promoText = (data.sponsorPromoText || "").toString().trim();
   const startDate = (data.sponsorStartDate || "").toString().trim();
   const endDate = (data.sponsorEndDate || "").toString().trim();
   if (startDate && !DATE_RE.test(startDate)) return { error: "Invalid start date format (use YYYY-MM-DD)" };
   if (endDate && !DATE_RE.test(endDate)) return { error: "Invalid end date format (use YYYY-MM-DD)" };
+  const normalized = normalizePromoRows(data.promos);
+  if (normalized.error) return { error: normalized.error };
 
-  const { meta } = await db.prepare("UPDATE places SET sponsor_tier = ?, sponsor_promo = ?, sponsor_promo_text = ?, sponsor_start_date = ?, sponsor_end_date = ? WHERE id = ?")
-    .bind(tier, promo, promoText, startDate, endDate, placeId).run();
-  return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
+  const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  const firstPromo = normalized.promos[0] || { code: "", description: "" };
+  const statements = [
+    db.prepare("UPDATE places SET sponsor_tier = ?, sponsor_promo = ?, sponsor_promo_text = ?, sponsor_start_date = ?, sponsor_end_date = ? WHERE id = ?")
+      .bind(tier, firstPromo.code, firstPromo.description, startDate, endDate, placeId),
+  ];
+  try {
+    await db.prepare("SELECT id FROM place_promos LIMIT 1").first();
+    statements.push(db.prepare("DELETE FROM place_promos WHERE place_id = ?").bind(placeId));
+    normalized.promos.forEach((promo, index) => {
+      statements.push(
+        db.prepare("INSERT INTO place_promos (place_id, code, description, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?)")
+          .bind(placeId, promo.code, promo.description, promo.startDate, promo.endDate, index)
+      );
+    });
+  } catch {
+    if (normalized.promos.length > 1) return { error: "Promo table missing. Run the place_promos migration before saving multiple promos." };
+  }
+  await db.batch(statements);
+  return { success: true };
 }
 
 async function approveEvent(db, eventId) {

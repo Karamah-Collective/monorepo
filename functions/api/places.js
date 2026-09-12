@@ -18,9 +18,57 @@ import { parseGoogleReviewsField } from "../_google-maps.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 
+function buildLegacyPromo(row) {
+  const code = (row.sponsor_promo || "").toString().trim();
+  const description = (row.sponsor_promo_text || "").toString().trim();
+  const usableCode = ["true", "false"].includes(code.toLowerCase()) ? "" : code;
+  if (!usableCode && !description) return null;
+  if (!isSponsorActiveForDate(row.sponsor_start_date, row.sponsor_end_date)) return null;
+  return {
+    code: usableCode,
+    description,
+    startDate: (row.sponsor_start_date || "").toString().trim(),
+    endDate: (row.sponsor_end_date || "").toString().trim(),
+  };
+}
+
+function activePromoFromRow(row) {
+  const code = (row.code || "").toString().trim();
+  const description = (row.description || "").toString().trim();
+  if (!code && !description) return null;
+  if (!isSponsorActiveForDate(row.start_date, row.end_date)) return null;
+  return {
+    code,
+    description,
+    startDate: (row.start_date || "").toString().trim(),
+    endDate: (row.end_date || "").toString().trim(),
+  };
+}
+
+async function getPromoMap(db) {
+  const promosByPlace = new Map();
+  try {
+    const { results } = await db.prepare(
+      "SELECT place_id, code, description, start_date, end_date FROM place_promos ORDER BY place_id, sort_order, id"
+    ).all();
+    for (const row of results) {
+      const promo = activePromoFromRow(row);
+      if (!promo) continue;
+      const placeId = (row.place_id || "").toString().trim();
+      if (!placeId) continue;
+      if (!promosByPlace.has(placeId)) promosByPlace.set(placeId, []);
+      promosByPlace.get(placeId).push(promo);
+    }
+  } catch {
+    return null;
+  }
+  return promosByPlace;
+}
+
 // Code.gs:608 getPlacesJSON
 async function getPlaces(db) {
   const labelToId = await buildLabelToIdMap(db);
+  const promoMap = await getPromoMap(db);
   const { results } = await db.prepare("SELECT * FROM places").all();
   const places = [];
 
@@ -73,11 +121,13 @@ async function getPlaces(db) {
     const sponsorTier = (row.sponsor_tier || "").toString().trim().toLowerCase();
     if (!row.boycott && sponsorTier && SPONSOR_TIERS.includes(sponsorTier) && isSponsorActiveForDate(row.sponsor_start_date, row.sponsor_end_date)) {
       place.sponsor = { tier: sponsorTier };
-      if (row.sponsor_promo) place.sponsor.cta = row.sponsor_promo;
-      if (row.sponsor_promo_text) place.sponsor.text = row.sponsor_promo_text;
       if (row.sponsor_start_date) place.sponsor.startDate = row.sponsor_start_date;
       if (row.sponsor_end_date) place.sponsor.endDate = row.sponsor_end_date;
     }
+    const promos = promoMap
+      ? (promoMap.get(place.id) || [buildLegacyPromo(row)].filter(Boolean))
+      : [buildLegacyPromo(row)].filter(Boolean);
+    if (promos.length) place.promos = promos;
     places.push(place);
   }
   return places;

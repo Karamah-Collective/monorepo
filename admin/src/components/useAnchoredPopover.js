@@ -5,19 +5,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // a popover to its trigger button's screen position and renders it via a
 // portal (see FloatingPopover) so it always floats above everything,
 // regardless of which scroll container the trigger sits inside.
-export default function useAnchoredPopover() {
+export default function useAnchoredPopover(width = 260) {
   const [open, setOpen] = useState(false);
   const [style, setStyle] = useState(null);
   const triggerRef = useRef(null);
   const popoverRef = useRef(null);
 
-  const openPopover = useCallback(() => {
+  const updatePosition = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) {
-      setStyle({ position: "fixed", top: rect.bottom + 6, left: Math.min(rect.left, window.innerWidth - 260) });
+      setStyle({ position: "fixed", top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) });
     }
+  }, [width]);
+
+  const openPopover = useCallback(() => {
+    updatePosition();
     setOpen(true);
-  }, []);
+  }, [updatePosition]);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -28,7 +32,7 @@ export default function useAnchoredPopover() {
       close();
     }
     function handleScrollOrResize() {
-      close();
+      updatePosition();
     }
     document.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("scroll", handleScrollOrResize, true);
@@ -38,7 +42,7 @@ export default function useAnchoredPopover() {
       window.removeEventListener("scroll", handleScrollOrResize, true);
       window.removeEventListener("resize", handleScrollOrResize);
     };
-  }, [open, close]);
+  }, [open, close, updatePosition]);
 
   return { open, style, triggerRef, popoverRef, openPopover, close };
 }

@@ -78,14 +78,14 @@ export default function PlacesPage() {
       }),
       columnHelper.display({
         id: "sponsor",
-        header: "Sponsor",
+        header: "Sponsor / Promos",
         cell: (info) => (
           <SponsorEditor
             place={info.row.original}
             saving={updateSponsor.isPending}
             onSave={(body) =>
               updateSponsor.mutate(body, {
-                onSuccess: () => showToast("Sponsor details updated"),
+                onSuccess: () => showToast("Sponsorship and promos updated"),
                 onError: (e) => showToast(e.message, "error"),
               })
             }

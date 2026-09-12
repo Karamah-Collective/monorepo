@@ -122,6 +122,19 @@ CREATE TABLE places (
 CREATE INDEX idx_places_type ON places(type);
 CREATE INDEX idx_places_lat_lng ON places(lat, lng); -- dedup bounding-box prefilter
 
+-- 5a. Place promos -- active offer rows, independent of sponsorship.
+CREATE TABLE place_promos (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  place_id    TEXT NOT NULL,
+  code        TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  start_date  TEXT NOT NULL DEFAULT '', -- YYYY-MM-DD
+  end_date    TEXT NOT NULL DEFAULT '', -- YYYY-MM-DD
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY(place_id) REFERENCES places(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_place_promos_place_id ON place_promos(place_id);
+
 -- 6. Tags — type/tag_id/label lookup.
 CREATE TABLE tags (
   id     INTEGER PRIMARY KEY AUTOINCREMENT,

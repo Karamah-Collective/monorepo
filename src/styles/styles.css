@@ -8188,6 +8188,8 @@ body.nav-mode #locate-pill-wrap {
   flex-direction: column;
   align-items: flex-end;
   gap: 1px;
+  max-width: min(36vw, calc(var(--sp-11) * 4 + var(--sp-7)));
+  min-width: 0;
 }
 .promo-code {
   font-size: var(--txt-lg);
@@ -8198,8 +8200,9 @@ body.nav-mode #locate-pill-wrap {
 .promo-text {
   font-size: var(--txt-xs);
   color: var(--text-3);
-  white-space: nowrap;
+  line-height: var(--lh-snug);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* ── Sponsor Carousel (places panel) ─────────────────────────────── */

@@ -118,6 +118,27 @@ export function activeSponsor(place) {
   if (place.sponsor.endDate && today > place.sponsor.endDate) return null;
   return place.sponsor;
 }
+
+function activePromos(place) {
+  if (place.boycott) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  const rawPromos = Array.isArray(place.promos)
+    ? place.promos
+    : (place.sponsor?.cta || place.sponsor?.text ? [{ code: place.sponsor.cta || "", description: place.sponsor.text || "" }] : []);
+  return rawPromos
+    .map((promo) => ({
+      code: (promo.code || promo.cta || "").toString().trim(),
+      description: (promo.description || promo.text || "").toString().trim(),
+      startDate: (promo.startDate || "").toString().trim(),
+      endDate: (promo.endDate || "").toString().trim(),
+    }))
+    .filter((promo) => {
+      if (!promo.code && !promo.description) return false;
+      if (promo.startDate && today < promo.startDate) return false;
+      if (promo.endDate && today > promo.endDate) return false;
+      return true;
+    });
+}
 let placeMarkers = [];
 let savedPinMarkers = [];
 let eventOnlyMarkers = [];
@@ -2147,8 +2168,10 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   });
   iconRow.appendChild(favBtn);
 
-  // Promo copy button — only for sponsors with a CTA (promo code)
-  if (popupSponsor?.cta) {
+  // Promo copy button — shown when this place has at least one copyable code,
+  // independent of whether the place is sponsored.
+  const copyablePromo = activePromos(place).find((promo) => promo.code);
+  if (copyablePromo) {
     const promoBtn = document.createElement("button");
     promoBtn.className = "pp-promo-btn";
     promoBtn.title = "Copy promo";
@@ -2156,9 +2179,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     promoBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
     promoBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyToClipboard(popupSponsor.cta);
-      const sub = popupSponsor.text || null;
-      showToast(popupSponsor.cta, "check", sub);
+      copyToClipboard(copyablePromo.code);
+      showToast(copyablePromo.code, "check", copyablePromo.description || null);
     });
     iconRow.appendChild(promoBtn);
   }
@@ -3596,27 +3618,28 @@ const _promosPill = document.getElementById("promos-pill");
 const _promosOverlay = document.getElementById("promos-overlay");
 const _promosList = document.getElementById("promos-list");
 
-function _getPromoPlaces() {
-  return placesData.filter(p => { const s = activeSponsor(p); return s && s.cta; });
+function _getPromoItems() {
+  return placesData.flatMap((place) => activePromos(place).map((promo) => ({ place, promo })));
 }
 
 export function renderPromosPill() {
-  const promos = _getPromoPlaces();
+  const promos = _getPromoItems();
   if (!promos.length) {
     _promosPill.classList.add("hide");
     return;
   }
   _promosPill.classList.remove("hide");
-  _promosList.innerHTML = promos.map(p => {
-    const visual = _placeVisual(p);
+  _promosList.innerHTML = promos.map(({ place, promo }) => {
+    const visual = _placeVisual(place);
     const cssColor = visual.color;
-    return `<button class="promo-item" data-promo-code="${escA(p.sponsor.cta)}" data-promo-text="${escA(p.sponsor.text || "")}">
+    const codeHTML = promo.code ? `<span class="promo-code">${esc(promo.code)}</span>` : "";
+    const descHTML = promo.description ? `<span class="promo-text">${esc(promo.description)}</span>` : "";
+    return `<button class="promo-item" data-promo-code="${escA(promo.code)}" data-promo-text="${escA(promo.description)}">
       <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${_placeVisualIconHTML(visual)}</svg></span>
-      <span class="promo-name">${esc(p.name)}</span>
-      <span class="promo-addr">${esc(p.address)}</span>
+      <span class="promo-name">${esc(place.name)}</span>
+      <span class="promo-addr">${esc(place.address)}</span>
       <div class="promo-code-wrap">
-        <span class="promo-code">${esc(p.sponsor.cta)}</span>
-        ${p.sponsor.text ? `<span class="promo-text">${esc(p.sponsor.text)}</span>` : ""}
+        ${codeHTML}${descHTML}
       </div>
     </button>`;
   }).join("");
@@ -3640,8 +3663,12 @@ _promosList.addEventListener("click", (e) => {
   e.stopPropagation();
   const code = btn.dataset.promoCode;
   const text = btn.dataset.promoText;
-  copyToClipboard(code);
-  showToast(code, "check", text || null);
+  if (code) {
+    copyToClipboard(code);
+    showToast(code, "check", text || null);
+  } else if (text) {
+    showToast(text, "info", null);
+  }
 });
 
 // ── Sponsored Carousel in places list ───────────────────────────────────────
