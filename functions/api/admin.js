@@ -48,6 +48,7 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.maps.karamahcollective.com",
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
 ];
 function adminAllowedOrigin(request) {
   const origin = request.headers.get("Origin") || "";
@@ -290,6 +291,23 @@ async function getAdminEidPrayers(db) {
   }));
 }
 
+const TYPE_STYLE_GROUPS = new Set(["restaurant_restaurant_type", "service_service_type", "space_space_type"]);
+
+async function getAdminTypeStyles(db) {
+  const { results } = await db.prepare(
+    "SELECT type, tag_id, label, icon, color FROM tags WHERE type IN ('restaurant_restaurant_type','service_service_type','space_space_type') ORDER BY type, label"
+  ).all();
+  return {
+    types: results.map((r) => ({
+      category: r.type,
+      tagId: r.tag_id,
+      label: r.label,
+      icon: r.icon || "",
+      color: r.color || "",
+    })),
+  };
+}
+
 const GET_ACTIONS = {
   "admin-stats": (db) => getAdminStats(db),
   "pending-new": (db) => getPendingNew(db),
@@ -305,6 +323,7 @@ const GET_ACTIONS = {
   "admin-eid-prayers": (db) => getAdminEidPrayers(db),
   "admin-log": (db, url) => getAdminLog(db, url),
   "admin-social-videos": (db) => listAllSocialVideos(db),
+  "admin-type-styles": (db) => getAdminTypeStyles(db),
 };
 
 export async function onRequestGet(context) {
@@ -606,6 +625,24 @@ async function deletePlace(db, placeId) {
 
 const VALID_SPONSOR_TIERS = ["", "basic", "featured", "spotlight"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TYPE_STYLE_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const TYPE_STYLE_BUILTIN_RE = /^[a-z0-9_-]{1,40}$/;
+const TYPE_STYLE_DATA_ICON_RE = /^data:image\/(?:svg\+xml|png|webp|jpeg|jpg|gif|avif|bmp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]{1,65000}$/;
+
+async function updateTypeStyle(db, data) {
+  const category = (data.category || "").toString().trim().toLowerCase();
+  const tagId = (data.tagId || "").toString().trim();
+  const icon = (data.icon || "").toString().trim();
+  const color = (data.color || "").toString().trim();
+  if (!TYPE_STYLE_GROUPS.has(category)) return { error: "Invalid type category" };
+  if (!tagId || tagId.length > 80) return { error: "Invalid type id" };
+  if (icon && !TYPE_STYLE_BUILTIN_RE.test(icon) && !TYPE_STYLE_DATA_ICON_RE.test(icon)) return { error: "Invalid icon" };
+  if (color && !TYPE_STYLE_COLOR_RE.test(color)) return { error: "Invalid color" };
+
+  const { meta } = await db.prepare("UPDATE tags SET icon = ?, color = ? WHERE type = ? AND tag_id = ?")
+    .bind(icon, color, category, tagId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Type not found" };
+}
 
 async function updateSponsor(db, data) {
   const placeId = data.placeId;
@@ -703,6 +740,7 @@ const POST_ACTIONS = {
   "refresh-place-info": (db, data, env) => refreshPlaceInfo(db, data.placeId, env),
   "delete-place": (db, data) => deletePlace(db, data.placeId),
   "update-sponsor": (db, data) => updateSponsor(db, data),
+  "update-type-style": (db, data) => updateTypeStyle(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
   "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),

@@ -4658,3 +4658,23 @@ Halal Status should use the same collapsed dropdown-chip styling as Cuisine and
 Food Type. The group remains single-select internally, but it should not get a
 separate grey select-style background that makes it visually different from
 other expandable filter groups.
+
+**2026-09-12 type icon/style admin:** subtype marker visuals are now resolved
+from the required type tag before falling back to broad category defaults.
+Existing Space subtypes keep their distinct visuals (`space_type_mosque` uses
+the mosque icon/green and `space_type_cemetery` uses the cemetery icon/slate);
+new/unspecified Space types can still fall back to the prayer-place icon.
+Admin gained a Type Styles page with built-in icons, custom icon uploads stored
+as small data URLs, and per-type marker/background color pickers backed by D1
+tag metadata (`tags.icon`, `tags.color`). Verification: targeted JS syntax
+checks, admin production build, and `git diff --check`; no Playwright/browser
+tests were run.
+
+**2026-09-12 type-style UX correction:** user liked the feature but rejected the
+first admin UI as too visually loud and non-intuitive. Type Styles should be a
+quiet editor workflow: category tabs, compact rows, one expandable editor per
+type, a clear preview, and built-in icons as the primary path with upload as
+fallback. Expanded the built-in icon library beyond the seeded defaults and
+mirrored every admin icon key into the public map renderer so saved choices do
+not fall back unexpectedly. Verification: admin production build, targeted JS
+syntax checks, and `git diff --check`; no Playwright/browser tests were run.

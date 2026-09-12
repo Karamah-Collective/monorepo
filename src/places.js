@@ -1,5 +1,5 @@
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
-import { PLACE_CONFIG, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
+import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
@@ -379,6 +379,61 @@ function _placeSpecificTypeLabel(place) {
   if (typeTag?.label) return typeTag.label;
   const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG[_canonicalPlaceType(place.type)] || PLACE_CONFIG.mosque;
   return cfg.label || place.type;
+}
+
+function _typeTagFallbackIcon(tagId, type) {
+  return ({
+    restaurant_type_restaurant: "restaurant",
+    restaurant_type_cafe: "cafe",
+    restaurant_type_bakery: "bakery",
+    restaurant_type_dessert: "dessert",
+    restaurant_type_food_truck: "truck",
+    restaurant_type_catering: "restaurant",
+    restaurant_type_takeaway: "restaurant",
+    restaurant_type_buffet: "restaurant",
+    service_type_grocery: "grocery",
+    service_type_butchery: "butchery",
+    service_type_bookshop: "book",
+    service_type_salon: "salon",
+    service_type_clothing: "clothing",
+    service_type_islamic_goods: "bag",
+    service_type_education: "education",
+    service_type_community_service: "hall",
+    service_type_charity: "charity",
+    space_type_mosque: "mosque",
+    space_type_prayer_place: "prayer",
+    space_type_eid_prayer_place: "moon",
+    space_type_cemetery: "cemetery",
+    space_type_community_hall: "hall",
+    space_type_event_space: "building",
+    space_type_classroom: "classroom",
+    space_type_wudu_facility: "wudu",
+    space_type_sisters_space: "sisters",
+  })[tagId] || (_canonicalPlaceType(type) === "space" ? "prayer" : _canonicalPlaceType(type) === "service" ? "bag" : "restaurant");
+}
+
+function _typeTagFallbackColor(tagId, type) {
+  return ({
+    space_type_mosque: "var(--success)",
+    space_type_cemetery: "var(--cemetery)",
+    space_type_eid_prayer_place: "var(--gold)",
+  })[tagId] || _placeCssColor(type, PLACE_CONFIG[_canonicalPlaceType(type)]?.color || "var(--accent)");
+}
+
+function _placeVisual(place) {
+  const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG[_canonicalPlaceType(place.type)] || PLACE_CONFIG.mosque;
+  const typeTag = _getTypeTag(place);
+  const fallbackIcon = typeTag ? _typeTagFallbackIcon(typeTag.id, place.type) : _typeTagFallbackIcon("", place.type);
+  return {
+    color: typeTag?.color || _typeTagFallbackColor(typeTag?.id || "", place.type) || _placeCssColor(place.type, cfg.color),
+    icon: typeTag?.icon || fallbackIcon,
+    fallbackIcon,
+    legacyIcon: cfg.icon,
+  };
+}
+
+function _placeVisualIconHTML(visual) {
+  return iconContent(visual.icon, visual.fallbackIcon || "pin");
 }
 
 function _isMosquePlace(place) {
@@ -1132,8 +1187,8 @@ function _buildRatingChip(placeId) {
 }
 
 function _buildCard(p, i) {
-  const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-  const cssColor = _placeCssColor(p.type, cfg.color);
+  const visual = _placeVisual(p);
+  const cssColor = visual.color;
   const specificTypeLabel = _placeSpecificTypeLabel(p);
   const typeTags = getDisplayTags(p.type);
   const posTags = typeTags.filter((t) => p.tags?.[t.id] === true && !_isTypeTagForPlace(t.id, p.type));
@@ -1186,7 +1241,7 @@ function _buildCard(p, i) {
   const dotAttrs = evCount ? ` data-ev-count="${evCount}" role="button" tabindex="0" aria-label="${evCount} event${evCount > 1 ? "s" : ""}, tap to expand" aria-expanded="false"` : "";
 
   return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
-    <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${cfg.icon}</svg></span>
+    <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${_placeVisualIconHTML(visual)}</svg></span>
     <span class="pl-name"><span class="pl-title">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}</span><span class="pl-name-chips">${compactNameHTML}</span></span>
     <span class="pl-addr"><span class="pl-addr-text">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}</span><span class="pl-addr-chips">${compactAddrHTML}</span></span>
     <div class="pl-meta">
@@ -1567,7 +1622,7 @@ export function addPlaceMarkers() {
     const el = document.createElement("div");
     el.className = "place-mk-wrap mk-hidden";
     el.dataset.placeId = place.id;
-    el.innerHTML = makePlaceMarkerHTML(place.type);
+    el.innerHTML = makePlaceMarkerHTML(place.type, _placeVisual(place));
     // Sponsor glow on the puck — basic gets gold border, featured gets glow, spotlight gets pulse
     // Higher z-index so sponsored pins render on top when overlapping
     const sp = activeSponsor(place);
@@ -1775,8 +1830,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     _activePlaceSheetReviewsListener = null;
   }
   trackRecentlyViewed(place.id);
-  const cfg = PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque;
-  const cssColor = _placeCssColor(place.type, cfg.color);
+  const visual = _placeVisual(place);
+  const cssColor = visual.color;
   const specificTypeLabel = _placeSpecificTypeLabel(place);
   const typeTags = getDisplayTags(place.type);
 
@@ -1791,7 +1846,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   const hdr = document.createElement("div");
   hdr.className = "pp-hdr";
   hdr.innerHTML =
-    `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${cfg.icon}</svg></span>` +
+    `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${_placeVisualIconHTML(visual)}</svg></span>` +
     `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${esc(specificTypeLabel)}</span>` +
     (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
@@ -3553,10 +3608,10 @@ export function renderPromosPill() {
   }
   _promosPill.classList.remove("hide");
   _promosList.innerHTML = promos.map(p => {
-    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = _placeCssColor(p.type, cfg.color);
+    const visual = _placeVisual(p);
+    const cssColor = visual.color;
     return `<button class="promo-item" data-promo-code="${escA(p.sponsor.cta)}" data-promo-text="${escA(p.sponsor.text || "")}">
-      <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span>
+      <span class="promo-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${_placeVisualIconHTML(visual)}</svg></span>
       <span class="promo-name">${esc(p.name)}</span>
       <span class="promo-addr">${esc(p.address)}</span>
       <div class="promo-code-wrap">
@@ -3611,9 +3666,9 @@ function _renderSponsorCarousel(filteredPlaces) {
   const hdr = `<div class="sponsor-carousel-hdr"><svg class="sponsor-carousel-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><span>Sponsored</span><span class="pl-city-count">${sponsored.length}</span></div>`;
 
   const cards = sponsored.map(p => {
-    const cfg = PLACE_CONFIG[p.type] || PLACE_CONFIG.mosque;
-    const cssColor = _placeCssColor(p.type, cfg.color);
-    return `<button class="sponsor-card" data-place-id="${p.id}"><span class="sponsor-card-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${cfg.icon}</svg></span><div class="sponsor-card-body"><span class="sponsor-card-name">${esc(p.name)}</span><span class="sponsor-card-addr">${esc(p.address)}</span></div></button>`;
+    const visual = _placeVisual(p);
+    const cssColor = visual.color;
+    return `<button class="sponsor-card" data-place-id="${p.id}"><span class="sponsor-card-dot" style="background:${cssColor}"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff">${_placeVisualIconHTML(visual)}</svg></span><div class="sponsor-card-body"><span class="sponsor-card-name">${esc(p.name)}</span><span class="sponsor-card-addr">${esc(p.address)}</span></div></button>`;
   }).join("");
 
   // 5x duplicated for seamless infinite loop — gives plenty of runway

@@ -4,6 +4,13 @@ export const TYPE_OPTIONS = [
   { value: "service", label: "Services" },
 ];
 
+export const TYPE_STYLE_CATEGORY_LABELS = {
+  restaurant_restaurant_type: "Food",
+  service_service_type: "Services",
+  space_space_type: "Spaces",
+};
+
+
 export const SPONSOR_TIER_OPTIONS = [
   { value: "", label: "None" },
   { value: "basic", label: "Basic" },

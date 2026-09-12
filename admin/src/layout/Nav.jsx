@@ -14,6 +14,7 @@ const LINKS = [
   { to: "/wishes", label: "Wishes", icon: "heart" },
   { to: "/contacts", label: "Contacts", icon: "mail" },
   { to: "/social-videos", label: "Social Videos", icon: "play" },
+  { to: "/type-styles", label: "Type Styles", icon: "palette" },
   { to: "/log", label: "Activity Log", icon: "list" },
 ];
 

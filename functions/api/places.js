@@ -93,7 +93,10 @@ async function getTags(db) {
     const label = (row.label || "").toString().trim();
     if (!type || !tagId || !label) continue;
     if (!tags[type]) tags[type] = [];
-    tags[type].push({ id: tagId, label });
+    const tag = { id: tagId, label };
+    if (row.icon) tag.icon = row.icon;
+    if (row.color) tag.color = row.color;
+    tags[type].push(tag);
   }
   return tags;
 }

@@ -92,6 +92,15 @@ export const Icons = {
       <path d="M10 9.5l5 2.5-5 2.5z" />
     </>
   ),
+  palette: icon(
+    <>
+      <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 1.3-3.5 1.5 1.5 0 0 1 1-2.7H17a4 4 0 0 0 4-4A7.8 7.8 0 0 0 12 3z" />
+      <circle cx="7.5" cy="10" r=".8" />
+      <circle cx="10" cy="7" r=".8" />
+      <circle cx="14" cy="7.5" r=".8" />
+      <circle cx="16.5" cy="11" r=".8" />
+    </>
+  ),
 };
 
 export const CloseIcon = ({ size = 20 }) => (

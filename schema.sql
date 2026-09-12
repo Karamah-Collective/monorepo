@@ -128,6 +128,8 @@ CREATE TABLE tags (
   type   TEXT NOT NULL,
   tag_id TEXT NOT NULL,
   label  TEXT NOT NULL,
+  icon   TEXT NOT NULL DEFAULT '',
+  color  TEXT NOT NULL DEFAULT '',
   UNIQUE(type, tag_id)
 );
 CREATE INDEX idx_tags_type ON tags(type);
