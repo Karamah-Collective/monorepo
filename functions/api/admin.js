@@ -44,6 +44,7 @@ import {
   upsertSocialVideo,
 } from "../_place-videos.js";
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
+import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.maps.karamahcollective.com",
@@ -332,6 +333,7 @@ async function getAdminTypeStyles(db) {
 }
 
 const GET_ACTIONS = {
+  "admin-app-settings": (db) => readAdminAppSettings(db),
   "admin-stats": (db) => getAdminStats(db),
   "pending-new": (db) => getPendingNew(db),
   "pending-edits": (db) => getPendingEdits(db),
@@ -351,7 +353,7 @@ const GET_ACTIONS = {
 
 export async function onRequestGet(context) {
   const { env, request } = context;
-  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": adminAllowedOrigin(request) };
+  const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Access-Control-Allow-Origin": adminAllowedOrigin(request) };
   if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   const url = new URL(request.url);
@@ -817,6 +819,7 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
+  "update-app-settings": (db, data) => saveAppSettings(db, data),
   "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
   "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),
   "approve-edit": (db, data) => approveEdit(db, data.rowId),

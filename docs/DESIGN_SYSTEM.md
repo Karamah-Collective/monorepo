@@ -1294,13 +1294,13 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 | Class | Purpose |
 |---|---|
 | `#promos-snack` | Container, uses `.pill-expand` pattern |
-| `#promos-pill` | Icon button (tag icon, gold colour) |
+| `#promos-pill` | Icon button (tag icon, standard neutral colour) |
 | `#promos-header` | Header row with icon + "Promos" text |
 | `#promos-list` | Scrollable list of promo items |
 | `.promo-item` | Single promo row; copies when a code exists, otherwise shows the description |
 | `.promo-item-icon` | Coloured type icon (24px) |
 | `.promo-item-body` | Name + description |
-| `.promo-item-code` | Promo code badge (gold) |
+| `.promo-code` | Promo code text (`--promo`, mapped to the standard teal accent) |
 
 ### Keyframes
 
@@ -1320,3 +1320,44 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 - Traffic detail loading should not wait on one slow Overpass mirror. The client warms the traffic cache in the background at high zoom, races the configured Overpass mirrors in parallel, uses a short Overpass query timeout, and applies a hard client timeout so the detail layer never appears to hang indefinitely.
 - Marker-style menu thumbnails should depict the actual app marker family: the rotated `.place-mk`/`.custom-mk` puck shape, solid body, white puck border, and `rotate(-45deg)`, scaled down enough to breathe inside the tiny menu thumbnail. Because the full-size `--puck-r` tail radius becomes too circular at thumbnail scale, preview pucks use a smaller proportional tail radius so the asymmetric puck point remains visible. Their thumbnail background stays the standard light map thumbnail even in dark mode, matching the other map-style previews instead of inheriting dark UI surface colors. Default is a single pin, Small (`markers-compact`) is a small multi-pin cluster, Bold is an enlarged/glowing pin.
 - Pedestrian-crossing traffic symbols should use zebra-crossing stripes, not a generic walking-person icon, so the map layer reads as real street infrastructure.
+
+## 2026-09-14 - Promo styling and admin app settings
+
+- Promo icons (`#promos-pill`, `.pp-promo-btn`, `.promos-heading-icon`) now use
+  `--text-2`, with `--text` for interactive hover states. Their previous
+  `--sponsor`/gold styling incorrectly implied paid sponsorship. Promo code
+  text uses the new semantic alias `--promo: var(--accent)`; sponsor visuals
+  continue using their existing independent tokens. The promo shortcut border
+  uses `--border` instead of `--gold-soft`.
+- `.app-notice` is the public Menu notice template. It uses existing surface,
+  text, spacing, radius, and line-height tokens, with plain text and an optional
+  HTTPS link. Long words wrap and line breaks are preserved. It is hidden when
+  disabled or empty. Admin-authored content is rendered using DOM text nodes.
+- Admin **App Settings** follows the existing admin form language: quiet
+  separated sections, descriptive checkbox rows, shared `.pp-field` inputs,
+  a plain notice preview, and a persistent save bar. New `--settings-*` tokens
+  in `admin/src/styles/tokens.css` define the reusable editor dimensions and
+  typography; responsive fields stack automatically and the save bar adapts
+  at the established 768px breakpoint. The admin `--accent-bg` token supplies
+  the already-referenced teal tint for promo counts.
+- Reset creates a reviewable draft. Discard, reload, validation feedback,
+  unsaved navigation protection, and revision conflict checks support admins
+  making changes safely. See [App settings setup](APP_SETTINGS.md) for the
+  settings behavior and database migration commands.
+
+## 2026-09-14 - Expanded admin runtime controls
+
+- App Settings now uses shared field metadata for appearance, map behavior,
+  search/list presentation, navigation, category labels, submission controls,
+  and content. The admin page renders booleans as toggle rows, enums as selects,
+  long copy as textareas, and quick map presets as plain inline buttons.
+- Public appearance defaults are applied through `:root[data-accent-palette]`,
+  `:root[data-density]`, and `:root[data-corner-style]`. The palette classes
+  update existing semantic tokens such as `--accent`, `--accent-soft`, and
+  `--promo`; component CSS keeps reading tokens instead of one-off colors.
+- Card metadata visibility uses body classes (`hf-hide-ratings`,
+  `hf-hide-hours`, `hf-hide-tags`) so the list renderer stays stable while
+  admins control whether ratings, open/closed chips, and tag summaries show.
+- Reject popovers reuse App Settings' standard rejection reasons as quick chips
+  while preserving the custom textarea. This keeps the repeated moderation
+  workflow faster without adding a second settings source.

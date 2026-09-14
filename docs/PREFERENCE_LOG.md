@@ -4691,3 +4691,81 @@ reposition on scroll/resize instead of closing so the dialog does not vanish
 during table movement. Migration added: `migrations/0007_place_promos.sql`.
 Verification: targeted `node --check`, admin production build, and
 `git diff --check`; no Playwright/browser tests were run.
+
+## 2026-09-14 - Background startup, neutral promos, and admin app controls
+
+**User preferences:** load the map and its real data behind the welcome screen
+so the map is mostly or fully ready when the animation ends. Promo icons and
+codes must not be gold. Expand practical admin control so routine app changes
+do not require code edits. Supply any required database commands.
+
+**Startup decision:** removed the welcome-animation gate from place rendering
+and post-map-load module initialization. Prefetch the live places API and,
+on first visits, bundled places/tags before map load; reuse those same requests
+instead of warming and fetching twice. First visits use the first valid static
+or live result. Returning visitors parse their saved snapshot only once.
+The welcome animation still runs once and exits independently of network
+completion, with bounded logo-fetch/animation fallback timers. Home/default/IP
+city positioning begins while the overlay is present, with shared-link,
+interaction, and late-IP-response guards. Preserve the runtime-config dependency
+before constructing the shared map so existing load handlers remain aligned.
+
+**Visual decision:** promo icons use standard neutral `--text-2`/`--text`;
+codes use `--promo`, a new alias of the existing teal `--accent`. Gold sponsor
+badges remain an independent sponsorship treatment. Add the flat `.app-notice`
+Menu template using existing design tokens, plain text, and an optional HTTPS
+link. No new visual dependencies.
+
+**Admin decision:** add App Settings with 13 stored fields covering welcome,
+tutorial, automatic city centering, default lat/lng/zoom, promotions, Events
+shortcut, sponsored carousel, and community notice enable/text/link label/URL.
+Shared schema/validation is used by the admin, public app, and Worker. Settings
+live in a singleton D1 row with atomic revision checks to avoid lost edits;
+the existing Firebase admin authorization and audit log handle writes. The
+public endpoint returns only these non-secret fields with no-store headers.
+Fetch settings independently of map construction with a 1.8s budget and a
+last-known-good localStorage fallback. No polling or new runtime dependency.
+Admin drafts have save/discard/reset/reload controls, notice preview, validation,
+and unsaved-navigation protection. Events remain visible at zero by default;
+admins may now explicitly hide the shortcut without removing place events.
+
+**Setup:** added `migrations/0008_app_settings.sql` and the matching new-database
+schema. `docs/APP_SETTINGS.md` documents local, preview, and production commands.
+No database commands, remote changes, or deployment were executed this session.
+Apply the migration to each relevant database before deploying both apps.
+
+**Verification:** targeted JS syntax checks, admin Vite production build, and
+`git diff --check` passed. No Playwright/browser tests were run, honoring the
+standing preference. An initial diff check with a temporary autocrlf override
+misread existing CRLF lines as whitespace changes; rerunning under the repository's
+normal line-ending configuration passed without rewriting files. Cache version
+is synchronized at `20260914-1`, and both new public modules are precached.
+The pre-existing local `initGpsSim()` enablement in `src/app.js` was preserved.
+
+## 2026-09-14 - Expanded admin controls and local admin dev fix
+
+**Admin control decision:** App Settings should remain the central place for
+public app controls. It now covers appearance palettes, default theme, density,
+corner style, map detail/marker presets, zoom limits, overlay availability,
+default list sort, card metadata visibility, search synonyms copy storage,
+empty-state copy, Menu section order, category labels, submission gates,
+required notes/event links, review moderation, standard rejection reasons,
+support/FAQ links, onboarding copy, scheduled notices, and notice translations.
+Keep future routine app behavior controls in this shared settings schema when
+they are public, non-secret, and safe for admins to edit without code.
+
+**Runtime behavior decision:** user-saved visitor preferences take priority over
+admin defaults for theme, map detail, and marker size. Admin overlay toggles
+disable the corresponding Map View buttons and server-side submission toggles
+enforce contribution availability. Moderated reviews must not enter public
+review summaries until approved.
+
+**Local dev decision:** `cd admin; npm run dev` should be self-contained for
+local verification. It now prepares local D1, applies local migrations once,
+seeds bundled places when empty, starts the Pages API on `127.0.0.1:8788`, and
+starts Vite on `localhost:5173` with `/api` proxied locally. Production is not
+touched by this command.
+
+**Verification:** ran local D1 setup, targeted `node --check` passes, admin Vite
+production build, and a Vite proxy request to `/api/app-settings`. No
+Playwright/browser tests were run, honoring the standing preference.

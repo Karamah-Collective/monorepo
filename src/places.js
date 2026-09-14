@@ -1,4 +1,5 @@
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
+import { appSettingsReady, getAppSettings, getExpandedSearchTerms } from "./app-settings.js";
 import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
 import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
@@ -120,7 +121,7 @@ export function activeSponsor(place) {
 }
 
 function activePromos(place) {
-  if (place.boycott) return [];
+  if (place.boycott || !getAppSettings().promosEnabled) return [];
   const today = new Date().toISOString().slice(0, 10);
   const rawPromos = Array.isArray(place.promos)
     ? place.promos
@@ -169,12 +170,12 @@ const SERVICE_TYPES = new Set(["service", "shop"]);
 const SPACE_TYPES = new Set(["space", "mosque", "prayer_room", "cemetery"]);
 const LIST_FOCUS_TYPE_OPTIONS = [
   { id: "all", label: "All" },
-  { id: "space", label: "Spaces" },
-  { id: "restaurant", label: "Food" },
-  { id: "service", label: "Services" },
+  { id: "space", label: () => getAppSettings().spaceLabel },
+  { id: "restaurant", label: () => getAppSettings().foodLabel },
+  { id: "service", label: () => getAppSettings().serviceLabel },
   { id: "saved", label: "Saved" },
 ];
-let activeSortField = "default"; // "default" | "name" | "distance" | "date"
+let activeSortField = getAppSettings().defaultSort; // "default" | "name" | "distance" | "date" | "rating"
 let activeSortDir = "asc";       // "asc" | "desc"
 let userSortLat = null;
 let userSortLng = null;
@@ -187,6 +188,11 @@ function _animateWindowCardHeight(sourceEl, changeFn) {
   animateElementHeight(card, changeFn, { skip: overlay?.classList.contains("hide") });
 }
 let placeSearchQuery = "";       // inline places-panel search text
+
+function _matchesSearchText(text, termGroups) {
+  const hay = String(text || "").toLowerCase();
+  return termGroups.every((group) => group.some((term) => hay.includes(term)));
+}
 const collapsedCityGroups = new Set();
 let _lastGroupedData = new Map();
 let _editOriginalPlace = null;
@@ -329,7 +335,13 @@ function _buildPlaceInfoChipsHTML(place) {
 const EXCLUSIVE_GROUPS = new Set(["halal_status"]);
 const REQUIRED_TYPE_GROUPS = { restaurant: "restaurant_type", service: "service_type", space: "space_type" };
 const CUSTOM_TAG_GROUP_PREFIX = { cuisine: "cuisine", restaurant_type: "restaurant_type", service_type: "service_type", space_type: "space_type" };
-const TYPE_GROUP_LABELS = { restaurant_type: "Food", service_type: "Services", space_type: "Spaces" };
+function _typeGroupLabel(groupId) {
+  return ({
+    restaurant_type: getAppSettings().foodLabel,
+    service_type: getAppSettings().serviceLabel,
+    space_type: getAppSettings().spaceLabel,
+  })[groupId] || "";
+}
 const EID_SPACE_TYPE_TAG = "space_type_eid_prayer_place";
 const FOOD_OPTIONAL_TAGS = ["no_alcohol", "halal_status", "cuisine"];
 const OPTIONAL_TAGS_BY_TYPE_TAG = {
@@ -1337,7 +1349,6 @@ async function fetchFresh() {
     if (res.ok) {
       const data = await res.json();
       if (data.places?.length) {
-        console.log(`[Places] Fetched ${data.places.length} places from ${url}`);
         return data;
       }
     }
@@ -1347,13 +1358,47 @@ async function fetchFresh() {
   return null;
 }
 
+let _freshStartupData = null;
+let _staticStartupData = null;
+let _cachedStartupData = null;
+let _initialStartupData = null;
 
+function _usableStartupData(data, live) {
+  if (!Array.isArray(data?.places)) throw new Error("Startup data unavailable");
+  return { ...data, live };
+}
+
+/** Start and reuse startup requests before the map is ready to render markers.
+ * @returns {void}
+ */
+export function preloadPlacesData() {
+  if (_freshStartupData) return;
+  _freshStartupData = fetchFresh();
+  _cachedStartupData = readCache();
+  if (!_cachedStartupData) {
+    _staticStartupData = Promise.all([fetch("data/places.json"), fetch("data/tags.json")])
+      .then(async ([places, tags]) => places.ok && tags.ok
+        ? { places: await places.json(), tags: await tags.json() }
+        : null)
+      .catch(() => null);
+    // A slow static download must not hold up an already-ready live response.
+    _initialStartupData = Promise.any([
+      _staticStartupData.then((data) => _usableStartupData(data, false)),
+      _freshStartupData.then((data) => _usableStartupData(data, true)),
+    ]).catch(() => null);
+  }
+}
+
+/** Render startup places from the local cache or prefetched data, then refresh.
+ * @returns {Promise<void>}
+ */
 export async function loadPlacesData() {
+  preloadPlacesData();
   try {
     placesLoaded = false;
 
     // 1. Instant load from localStorage cache (returning visitors)
-    const cached = readCache();
+    const cached = _cachedStartupData;
     if (cached) {
       placesData = stripSponsorFields(normalizePlacesData(cached.places));
       tagsData = cached.tags || {};
@@ -1366,10 +1411,10 @@ export async function loadPlacesData() {
       updatePlacesBadge();
       checkShareUrl();
       renderEventsPill();
-      console.log(`[Places] Instant load: ${placesData.length} places from cache`);
+      renderPromosPill();
 
       // 2. Background refresh — update only if data changed
-      fetchFresh().then(data => {
+      _freshStartupData.then(data => {
         if (!data) return;
         const oldCount = placesData.length;
         const newCount = data.places.length;
@@ -1377,10 +1422,6 @@ export async function loadPlacesData() {
         const dataChanged = JSON.stringify(data.places) !== JSON.stringify(placesData);
         
         if (countChanged || dataChanged) {
-          console.log(`[Places] Background update: ${newCount} places (was ${oldCount})`);
-          if (countChanged) {
-            console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
-          }
           placesData = normalizePlacesData(data.places);
           tagsData = data.tags || {};
           _normalizePlaceCategoryTags();
@@ -1397,15 +1438,15 @@ export async function loadPlacesData() {
       return;
     }
 
-    // 3. First visit — load bundled static JSON instantly (served from CF CDN edge)
+    // 3. First visit: use whichever valid prefetched source arrives first.
     try {
-      const [pRes, tRes] = await Promise.all([fetch('data/places.json'), fetch('data/tags.json')]);
-      if (pRes.ok && tRes.ok) {
-        placesData = stripSponsorFields(normalizePlacesData(await pRes.json()));
-        tagsData = await tRes.json();
+      const initial = await _initialStartupData;
+      if (initial) {
+        placesData = normalizePlacesData(initial.places);
+        if (!initial.live) stripSponsorFields(placesData);
+        tagsData = initial.tags;
         _normalizePlaceCategoryTags();
         sortSubtags();
-        console.log(`[Places] First-visit instant load: ${placesData.length} places from static JSON`);
       }
     } catch { /* static files missing — fall through */ }
 
@@ -1420,7 +1461,7 @@ export async function loadPlacesData() {
 
 
     // 4. Background refresh from API — update cache + UI if data changed
-    fetchFresh().then(data => {
+    _freshStartupData.then(data => {
       if (!data) return;
       const oldCount = placesData.length;
       const newCount = data.places.length;
@@ -1428,10 +1469,6 @@ export async function loadPlacesData() {
       const dataChanged = JSON.stringify(data.places) !== JSON.stringify(placesData);
       
       if (countChanged || dataChanged) {
-        console.log(`[Places] Background update: ${newCount} places (was ${oldCount})`);
-        if (countChanged) {
-          console.log(`[Places] → ${newCount > oldCount ? "added" : "removed"} ${Math.abs(newCount - oldCount)} place(s)`);
-        }
         placesData = normalizePlacesData(data.places);
         tagsData = data.tags || {};
         _normalizePlaceCategoryTags();
@@ -2830,7 +2867,8 @@ function _buildListFocusTypeFiltersHTML() {
       : type.id === "saved"
         ? activeTypeFilter === "saved"
         : activeTypeFilter !== "saved" && selected.has(type.id);
-    return `<button class="tf-chip tf-type-chip${active ? " active" : ""}" data-list-type="${escA(type.id)}">${esc(type.label)}</button>`;
+    const label = typeof type.label === "function" ? type.label() : type.label;
+    return `<button class="tf-chip tf-type-chip${active ? " active" : ""}" data-list-type="${escA(type.id)}">${esc(label)}</button>`;
   }).join("");
   return `<div class="tf-type-panel"><div class="tf-panel-label">Show</div><div class="tf-type-row">${buttons}</div></div>`;
 }
@@ -3207,11 +3245,10 @@ function renderPlacesList() {
 
   // Inline search filter
   const q = placeSearchQuery.trim().toLowerCase();
+  const termGroups = getExpandedSearchTerms(q);
   if (q) {
     filtered = filtered.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const addr = (p.address || "").toLowerCase();
-      return name.includes(q) || addr.includes(q);
+      return _matchesSearchText(`${p.name || ""} ${p.address || ""} ${p.type || ""}`, termGroups);
     });
   }
 
@@ -3219,7 +3256,7 @@ function renderPlacesList() {
   let customPins = activeTypeFilter === "saved" ? getSavedPins() : [];
   if (q && customPins.length) {
     customPins = customPins.filter((pin) =>
-      (pin.name || "").toLowerCase().includes(q) || (pin.id || "").toLowerCase().includes(q),
+      _matchesSearchText(`${pin.name || ""} ${pin.id || ""}`, termGroups),
     );
   }
   // "Visited" is a separate section from the favourites/pins above, since a
@@ -3231,7 +3268,7 @@ function renderPlacesList() {
     : [];
   if (q && visitedPlacesList.length) {
     visitedPlacesList = visitedPlacesList.filter((p) =>
-      (p.name || "").toLowerCase().includes(q) || (p.address || "").toLowerCase().includes(q),
+      _matchesSearchText(`${p.name || ""} ${p.address || ""} ${p.type || ""}`, termGroups),
     );
   }
   const totalCount = sorted.length + customPins.length + visitedPlacesList.length;
@@ -3267,7 +3304,7 @@ function renderPlacesList() {
           <div class="empty-ping"></div>
         </div>
         <div class="empty-text">
-          <span class="empty-title">No places found</span>
+          <span class="empty-title">${esc(getAppSettings().emptyPlacesText || "No places found")}</span>
           <span class="empty-sub">Try other filters · <button id="suggest-place-btn-empty" class="empty-suggest btn-inline">Suggest one</button></span>
         </div>`;
     }
@@ -3380,9 +3417,8 @@ let _evActiveFilter = "upcoming";
 let _evNearbySort = false;
 
 export function renderEventsPill() {
-  // Always visible (even with zero events) so users can discover and submit
-  // the first event rather than the button only appearing once one exists.
-  _eventsPill.classList.remove("hide");
+  // Visible even with zero events unless admins explicitly hide the shortcut.
+  _eventsPill.classList.toggle("hide", !getAppSettings().eventsShortcutEnabled);
 
   // Count upcoming events for badge
   const today = _todayMidnight();
@@ -3618,6 +3654,14 @@ const _promosPill = document.getElementById("promos-pill");
 const _promosOverlay = document.getElementById("promos-overlay");
 const _promosList = document.getElementById("promos-list");
 
+void appSettingsReady.then(() => {
+  document.body.classList.toggle("promos-disabled", !getAppSettings().promosEnabled);
+  renderEventsPill();
+  if (!placesLoaded) return;
+  renderPromosPill();
+  renderPlacesList();
+});
+
 function _getPromoItems() {
   return placesData.flatMap((place) => activePromos(place).map((promo) => ({ place, promo })));
 }
@@ -3626,6 +3670,8 @@ export function renderPromosPill() {
   const promos = _getPromoItems();
   if (!promos.length) {
     _promosPill.classList.add("hide");
+    _promosOverlay.classList.add("hide");
+    _promosList.replaceChildren();
     return;
   }
   _promosPill.classList.remove("hide");
@@ -3682,6 +3728,7 @@ function _renderSponsorCarousel(filteredPlaces) {
   const old = scroll.querySelector(".sponsor-carousel");
   if (old) old.remove();
   _clearCarouselAuto();
+  if (!getAppSettings().sponsorCarouselEnabled) return;
 
   const sponsored = filteredPlaces.filter(p => activeSponsor(p));
   if (!sponsored.length) return;
@@ -4599,14 +4646,14 @@ function _normaliseTypeLabel(label) {
 }
 
 function _findTypeLabelConflict(parentId, label) {
-  if (!TYPE_GROUP_LABELS[parentId]) return null;
+  if (!_typeGroupLabel(parentId)) return null;
   const targetLabel = _normaliseTypeLabel(label);
   if (!targetLabel) return null;
-  for (const [groupId, categoryLabel] of Object.entries(TYPE_GROUP_LABELS)) {
+  for (const groupId of Object.values(REQUIRED_TYPE_GROUPS)) {
     if (groupId === parentId) continue;
     const key = `${Object.entries(REQUIRED_TYPE_GROUPS).find(([, id]) => id === groupId)?.[0]}_${groupId}`;
     const match = (tagsData[key] || []).find((tag) => _normaliseTypeLabel(tag.label) === targetLabel);
-    if (match) return { label: match.label, category: categoryLabel };
+    if (match) return { label: match.label, category: _typeGroupLabel(groupId) };
   }
   return null;
 }

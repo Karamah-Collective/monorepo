@@ -1,5 +1,6 @@
 import ReasonPrompt from "./ReasonPrompt.jsx";
 import useAnchoredPopover from "./useAnchoredPopover.js";
+import { useAdminAppSettings } from "../api/queries.js";
 
 // Approve fires immediately (no confirmation — approvals are the common,
 // low-risk path). Reject opens a one-field floating reason prompt first,
@@ -7,6 +8,12 @@ import useAnchoredPopover from "./useAnchoredPopover.js";
 // scroll region (see useAnchoredPopover).
 export default function ActionCell({ onApprove, onReject, approving, rejecting }) {
   const { open, style, triggerRef, popoverRef, openPopover, close } = useAnchoredPopover();
+  const settingsQuery = useAdminAppSettings();
+  const reasons = (settingsQuery.data?.settings?.rejectionReasons || "")
+    .split("\n")
+    .map((reason) => reason.trim())
+    .filter(Boolean)
+    .slice(0, 8);
 
   return (
     <div className="pp-action-cell">
@@ -20,6 +27,7 @@ export default function ActionCell({ onApprove, onReject, approving, rejecting }
         <ReasonPrompt
           style={style}
           popoverRef={popoverRef}
+          reasons={reasons}
           onCancel={close}
           onSubmit={(reason) => {
             close();

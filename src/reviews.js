@@ -403,6 +403,7 @@ function _removeLocalReviewEntry(placeId) {
 }
 
 function _updateLocalReview(placeId, rating, text, status) {
+  if (status !== "yes" && status !== "updated") return;
   const existing = _reviewsMap.get(placeId) || { avg: 0, count: 0, items: [] };
 
   if (status === "updated") {
@@ -1537,6 +1538,8 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     if (result.success) {
       if (result.status === "updated") {
         showToast("Review updated", "check");
+      } else if (result.status === "pending") {
+        showToast("Review submitted", "check", "Will appear after moderation");
       } else if (!result.status) {
         showToast("Review submitted", "check", "Will appear after moderation");
       } else {

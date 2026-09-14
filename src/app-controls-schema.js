@@ -1,0 +1,61 @@
+// Additional runtime controls. Metadata also drives the admin's form labels.
+const toggle = (label, group, value = true, hint = "") => ({ type: "boolean", default: value, label, group, hint });
+const text = (label, group, value = "", maxLength = 300, hint = "") => ({ type: "string", default: value, maxLength, label, group, hint });
+const choice = (label, group, value, options, hint = "") => ({ ...text(label, group, value, 80, hint), options });
+const number = (label, group, value, min, max, hint = "") => ({ type: "number", default: value, min, max, label, group, hint });
+
+export const APP_CONTROL_FIELDS = {
+  accentPalette: choice("Accent palette", "Appearance", "teal", ["teal", "blue", "indigo", "rose", "slate"], "Curated palettes include matching light and dark colors."),
+  defaultTheme: choice("Default theme", "Appearance", "auto", ["auto", "light", "dark"], "Visitors' saved theme choices take priority."),
+  density: choice("Interface spacing", "Appearance", "comfortable", ["comfortable", "compact"]),
+  cornerStyle: choice("Surface corners", "Appearance", "rounded", ["rounded", "soft"]),
+  defaultDetailMode: choice("Default map detail", "Map behavior", "standard", ["clean", "standard", "detailed"]),
+  defaultMarkerMode: choice("Default marker size", "Map behavior", "default", ["default", "compact", "bold"]),
+  minZoom: number("Minimum zoom", "Map behavior", 2.5, 2.5, 18),
+  maxZoom: number("Maximum zoom", "Map behavior", 19, 3, 19),
+  clusterZoom: number("Show individual markers from zoom", "Map behavior", 10, 5, 15, "Below this level nearby places are grouped."),
+  satelliteEnabled: toggle("Satellite overlay", "Map behavior"),
+  hybridEnabled: toggle("Hybrid overlay", "Map behavior"),
+  heatmapEnabled: toggle("Heatmap overlay", "Map behavior"),
+  trafficEnabled: toggle("Street traffic details", "Map behavior"),
+  defaultSort: choice("Default place order", "Search & discovery", "default", ["default", "name", "distance", "rating"]),
+  showRatings: toggle("Ratings on place cards", "Search & discovery"),
+  showHours: toggle("Opening hours on place cards", "Search & discovery"),
+  showTags: toggle("Tags on place cards", "Search & discovery"),
+  searchSynonyms: text("Search synonyms", "Search & discovery", "", 2000, "One equivalent pair per line, for example masjid=mosque. Both directions are matched."),
+  emptyPlacesText: text("Empty directory message", "Search & discovery", "No places found", 120),
+  discoverEnabled: toggle("Discover shortcut", "Navigation"),
+  wishesEnabled: toggle("Wishes shortcut", "Navigation"),
+  reviewsEnabled: toggle("Reviews in place details", "Navigation"),
+  menuOrder: text("Menu section order", "Navigation", "account,map,preferences,support", 100, "Use account, map, preferences, support once each, separated by commas."),
+  spaceLabel: text("Spaces label", "Categories", "Spaces", 30),
+  foodLabel: text("Food label", "Categories", "Food", 30),
+  serviceLabel: text("Services label", "Categories", "Services", 30),
+  placeSubmissionsEnabled: toggle("New place submissions", "Submissions"),
+  editSubmissionsEnabled: toggle("Place edit submissions", "Submissions"),
+  eventSubmissionsEnabled: toggle("Event submissions and edits", "Submissions"),
+  eidSubmissionsEnabled: toggle("Eid prayer submissions", "Submissions"),
+  wishSubmissionsEnabled: toggle("New wish submissions", "Submissions"),
+  reviewSubmissionsEnabled: toggle("Review submissions", "Submissions"),
+  requireSubmissionNotes: toggle("Require notes for new places", "Submissions", false),
+  requireEventUrl: toggle("Require an event link", "Submissions", false),
+  moderateReviews: toggle("Approve community reviews before publication", "Submissions", false, "New and edited reviews wait for approval. Existing approved reviews stay visible."),
+  submissionPauseMessage: text("Paused submissions message", "Submissions", "Submissions are temporarily paused. Please try again later.", 200),
+  rejectionReasons: text("Standard rejection reasons", "Submissions", "Duplicate listing\nInformation could not be verified\nOutside our directory scope", 1500, "One reason per line. Admins can still write a custom reason."),
+  reportReasons: text("Place correction reasons", "Submissions", "Incorrect details\nTemporarily closed\nPermanently closed\nOther", 1000, "Shown in the place correction form, one reason per line."),
+  supportUrl: text("Support website", "Content", "", 500, "Optional full HTTPS address."),
+  faqUrl: text("Help / FAQ website", "Content", "", 500, "Optional full HTTPS address."),
+  onboardingTitle: text("Tutorial welcome title", "Content", "Assalamu Alaikum!", 80),
+  onboardingText: text("Tutorial welcome message", "Content", "Discover spaces, halal food and services near you. Let's take a quick tour.", 400),
+  noticeStartAt: text("Notice starts", "Content", "", 30, "Optional local date/time."),
+  noticeEndAt: text("Notice ends", "Content", "", 30, "Optional local date/time."),
+  noticeTextFi: text("Notice message in Finnish", "Content", "", 300),
+  noticeTextAr: text("Notice message in Arabic", "Content", "", 300),
+  noticeLanguage: choice("Notice language", "Content", "auto", ["auto", "en", "fi", "ar"], "Auto follows the browser language; missing translations use the main message."),
+};
+
+export const MAP_PRESETS = {
+  Simple: { defaultDetailMode: "clean", defaultMarkerMode: "compact", clusterZoom: 11 },
+  Balanced: { defaultDetailMode: "standard", defaultMarkerMode: "default", clusterZoom: 10 },
+  Detailed: { defaultDetailMode: "detailed", defaultMarkerMode: "bold", clusterZoom: 9 },
+};

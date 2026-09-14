@@ -101,6 +101,12 @@ export const Icons = {
       <circle cx="16.5" cy="11" r=".8" />
     </>
   ),
+  settings: icon(
+    <>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+      <circle cx="8" cy="6" r="2" /><circle cx="16" cy="12" r="2" /><circle cx="10" cy="18" r="2" />
+    </>
+  ),
 };
 
 export const CloseIcon = ({ size = 20 }) => (

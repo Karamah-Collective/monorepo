@@ -15,6 +15,7 @@ const LINKS = [
   { to: "/contacts", label: "Contacts", icon: "mail" },
   { to: "/social-videos", label: "Social Videos", icon: "play" },
   { to: "/type-styles", label: "Type Styles", icon: "palette" },
+  { to: "/app-settings", label: "App Settings", icon: "settings" },
   { to: "/log", label: "Activity Log", icon: "list" },
 ];
 

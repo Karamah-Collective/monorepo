@@ -19,6 +19,7 @@ import {
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
 import { setTrafficDetailOverlay, refreshTrafficDetailOverlayLayers } from "./traffic-overlay.js";
+import { getAppSettings } from "./app-settings.js";
 
 let locMarker = null;
 let locWatchId = null;
@@ -866,7 +867,8 @@ export function setTheme(mode) {
 (function restoreSavedTheme() {
   try {
     const saved = localStorage.getItem("theme");
-    const restoredMode = saved === "light" || saved === "dark" || saved === "auto" ? saved : "auto";
+    const defaultTheme = getAppSettings().defaultTheme;
+    const restoredMode = saved === "light" || saved === "dark" || saved === "auto" ? saved : defaultTheme;
     themeMode = restoredMode;
     const mq = _getSystemThemeMQ();
     const isDark = restoredMode === "auto" ? mq.matches : restoredMode === "dark";
@@ -883,8 +885,10 @@ export function setTheme(mode) {
   try {
     const savedDetail = localStorage.getItem("map-detail-mode");
     if (MAP_DETAIL_MODES.has(savedDetail)) mapDetailMode = savedDetail;
+    else mapDetailMode = getAppSettings().defaultDetailMode;
     const savedMarkers = localStorage.getItem("marker-visual-mode");
     if (MARKER_VISUAL_MODES.has(savedMarkers)) markerVisualMode = savedMarkers;
+    else markerVisualMode = getAppSettings().defaultMarkerMode;
   } catch (_) {}
   _applyMarkerVisualClass();
 })();
@@ -908,7 +912,7 @@ function _applyMapDetail() {
 }
 
 function _syncTrafficDetailForMode() {
-  const enabled = mapDetailMode === "detailed";
+  const enabled = getAppSettings().trafficEnabled && mapDetailMode === "detailed";
   const changed = enabled !== _trafficDetailModeEnabled;
   _trafficDetailModeEnabled = enabled;
   setTrafficDetailOverlay(enabled);
@@ -989,6 +993,7 @@ export function preloadSatelliteSource() {
 
 // ── Satellite toggle ──────────────────────────────────────────────
 export function toggleSatellite() {
+  if (!getAppSettings().satelliteEnabled) return;
   _setSatelliteMode(isSatelliteActive && !isHybridSatelliteActive ? "off" : "satellite");
 }
 
@@ -997,6 +1002,7 @@ export function toggleSatellite() {
  * @returns {void}
  */
 export function toggleHybridSatellite() {
+  if (!getAppSettings().hybridEnabled) return;
   _setSatelliteMode(isSatelliteActive && isHybridSatelliteActive ? "off" : "hybrid");
 }
 
@@ -1167,6 +1173,7 @@ const HEATMAP_FADE_MS = 350;
 let _heatmapFadeTimer = 0;
 
 export function toggleHeatmap() {
+  if (!getAppSettings().heatmapEnabled) return;
   isHeatmapActive = !isHeatmapActive;
   clearTimeout(_heatmapFadeTimer);
 
@@ -1257,8 +1264,15 @@ function _snapshotLabels() {
 }
 
 function _syncStyleButtons() {
+  const settings = getAppSettings();
   document.querySelectorAll(".style-opt").forEach((el) => {
     const s = el.dataset.style;
+    const disabled =
+      (s === "satellite" && !settings.satelliteEnabled) ||
+      (s === "hybrid" && !settings.hybridEnabled) ||
+      (s === "heatmap" && !settings.heatmapEnabled);
+    el.disabled = disabled;
+    el.classList.toggle("disabled", disabled);
     if (s === "light" || s === "dark" || s === "auto") {
       el.classList.toggle("active", s === themeMode);
     } else if (s === "satellite") {

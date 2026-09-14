@@ -9,6 +9,7 @@
  *   DB                – D1 database binding
  */
 import { allowedOrigin, truncate, json, helsinkiTimestamp } from "../_shared.js";
+import { readAppSettings } from "../_app-settings.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const MIN_SCORE = 0.5;
@@ -71,6 +72,9 @@ export async function onRequestPost(context) {
   const db = env.DB;
 
   if (action === "add") {
+    let settings = null;
+    try { settings = (await readAppSettings(db)).settings; } catch { settings = null; }
+    if (settings && !settings.wishSubmissionsEnabled) return json({ error: settings.submissionPauseMessage || "Submissions are temporarily paused." }, 403, headers);
     const title = truncate((body.title || "").trim(), MAX_TITLE_LEN);
     const description = truncate((body.description || "").trim(), MAX_DESC_LEN);
     const name = truncate((body.name || "").trim(), MAX_NAME_LEN);

@@ -33,7 +33,8 @@ import {
 } from "./map-controls.js";
 import "./directions.js";
 import "./navigation.js"; // registers nav hooks with directions.js
-import { loadPlacesData } from "./places.js";
+import { loadPlacesData, preloadPlacesData } from "./places.js";
+import { appSettingsReady, renderAppNotice } from "./app-settings.js";
 import "./search.js";
 import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
@@ -43,13 +44,9 @@ const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
 const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
 const WELCOME_REVEAL_SETTLE_MS = 180;
 const WELCOME_OVERLAY_EXIT_MS = 420;
-const WELCOME_DATA_WARM_DELAY_MS = 80;
 const SOFT_CITY_START_BUDGET_MS = 900;
-
-let _resolveWelcomeAnimationDone;
-const _welcomeAnimationDone = new Promise((resolve) => {
-  _resolveWelcomeAnimationDone = resolve;
-});
+const WELCOME_LOGO_TIMEOUT_MS = 8000;
+const TUTORIAL_DELAY_MS = 800;
 
 function _addWelcomeLogoTrace(path, className) {
   const trace = path.cloneNode(false);
@@ -121,10 +118,12 @@ function _waitForWelcomeLogoEnd() {
   if (!logoArt) return Promise.resolve();
   return new Promise((resolve) => {
     const done = (event) => {
-      if (event.target !== logoArt || event.animationName !== WELCOME_LOGO_END_ANIMATION) return;
+      if (event && (event.target !== logoArt || event.animationName !== WELCOME_LOGO_END_ANIMATION)) return;
+      clearTimeout(timer);
       logoArt.removeEventListener("animationend", done);
       resolve();
     };
+    const timer = setTimeout(() => done(), WELCOME_LOGO_TIMEOUT_MS);
     logoArt.addEventListener("animationend", done);
   });
 }
@@ -144,11 +143,11 @@ async function _runWelcomeLogoCycle() {
 }
 
 async function _runWelcomeOnce() {
-  const hasAnimatedLogo = await _loadWelcomeLogo().catch(() => false);
-  if (hasAnimatedLogo) {
+  const logoReady = _withSoftTimeout(_loadWelcomeLogo().catch(() => false), WELCOME_LOGO_TIMEOUT_MS);
+  const settings = await appSettingsReady;
+  if (settings.welcomeEnabled && await logoReady) {
     await _runWelcomeLogoCycle();
   }
-  _resolveWelcomeAnimationDone?.();
   await _hideWelcomeScreen();
 }
 
@@ -192,25 +191,38 @@ function _afterWelcomeIdle() {
   });
 }
 
+// Fetch real startup data while tiles and the welcome animation are loading.
+preloadPlacesData();
 const welcomeReady = _runWelcomeOnce();
-
-function _warmStartupData() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      Promise.allSettled([
-        fetch("/api/places?action=all"),
-        fetch("data/places.json"),
-        fetch("data/tags.json"),
-      ]).then(resolve);
-    }, WELCOME_DATA_WARM_DELAY_MS);
-  });
-}
+void _prepareStartupView();
 
 function _withSoftTimeout(promise, timeoutMs) {
-  return Promise.race([
-    promise,
-    new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs)),
-  ]);
+  let timer;
+  return Promise.race([promise, new Promise((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  })]).finally(() => clearTimeout(timer));
+}
+
+async function _prepareStartupView() {
+  let interacted = false;
+  const onMove = (event) => { if (event.originalEvent) interacted = true; };
+  map.on("movestart", onMove);
+  try {
+    const settings = await appSettingsReady;
+    renderAppNotice();
+    if (interacted || hasIncomingSharedState() || centerStoredHomeIfAvailable({ instant: true })) return;
+    map.jumpTo({ center: [settings.defaultLng, settings.defaultLat], zoom: settings.defaultZoom });
+    if (settings.autoCityEnabled) {
+      let withinBudget = true;
+      await _withSoftTimeout(centerVisitorCityIfAvailable({
+        instant: true,
+        canApply: () => withinBudget && !interacted && !!document.getElementById("welcome-screen"),
+      }), SOFT_CITY_START_BUDGET_MS);
+      withinBudget = false;
+    }
+  } catch {
+    console.warn("Startup centering unavailable; keeping the current map view.");
+  } finally { map.off("movestart", onMove); }
 }
 
 async function _loadStartupModules() {
@@ -458,16 +470,6 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
 map.on("load", async () => {
   preloadSatelliteSource();
   syncHomeMarker();
-  const hasSharedState = hasIncomingSharedState();
-  if (!hasSharedState && !centerStoredHomeIfAvailable({ instant: true })) {
-    void _withSoftTimeout(
-      centerVisitorCityIfAvailable({
-        instant: true,
-        canApply: () => !!document.getElementById("welcome-screen"),
-      }),
-      SOFT_CITY_START_BUDGET_MS,
-    );
-  }
 
   // Mask everything outside Finland — placed just below the first label layer.
   // Water and bridges are then promoted above the mask so seas/lakes/bridges stay visible,
@@ -504,29 +506,28 @@ map.on("load", async () => {
   map.moveLayer("bridge_major",        "label_road");
   map.moveLayer("admin_country",       "label_road");
 
-  void _warmStartupData();
-  const appLoadingReady = _welcomeAnimationDone.then(() =>
-    Promise.all([
-      loadPlacesData(),
-      _loadStartupModules(),
-    ]),
-  );
+  const appLoadingReady = Promise.allSettled([
+    loadPlacesData(),
+    _loadStartupModules(),
+  ]);
 
   await welcomeReady;
   await _afterWelcomeIdle();
-  await appLoadingReady;
+  const startupResults = await appLoadingReady;
+  if (startupResults.some((result) => result.status === "rejected")) {
+    console.warn("Some optional app features could not be initialized.");
+  }
 
-  // Show first-run tutorial after a short delay so the UI has settled
-  // Early-dev notice shows after tutorial finishes (or immediately for returning users)
-  // NOTE: Disabled — keep code for future re-enable
-  setTimeout(
+  // Admins can pause onboarding; the tutorial still honors its first-run flag.
+  const settings = await appSettingsReady;
+  if (settings.tutorialEnabled) setTimeout(
     async () => {
       const { initTutorial } = await import("./tutorial.js");
       initTutorial(() => {
         // showEarlyDevNotice(); // disabled
       });
     },
-    800,
+    TUTORIAL_DELAY_MS,
   );
 
   // Privacy overlay wiring

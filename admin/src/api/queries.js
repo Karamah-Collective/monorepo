@@ -18,6 +18,7 @@ export const useAdminLog = () => useQuery({ queryKey: ["admin-log"], queryFn: ()
 export const useAdminSocialVideos = () =>
   useQuery({ queryKey: ["admin-social-videos"], queryFn: () => apiGet("admin-social-videos") });
 export const useAdminTypeStyles = () => useQuery({ queryKey: ["admin-type-styles"], queryFn: () => apiGet("admin-type-styles") });
+export const useAdminAppSettings = () => useQuery({ queryKey: ["admin-app-settings"], queryFn: () => apiGet("admin-app-settings") });
 
 // ── Mutations — every one invalidates the queries it can affect, so a
 // pending row disappearing / stats changing shows up immediately without
@@ -57,3 +58,4 @@ export const useRejectEid = () => useAdminMutation("reject-eid", ["pending-eid",
 export const useUpsertSocialVideo = () => useAdminMutation("upsert-social-video", ["admin-social-videos"]);
 export const useDeleteSocialVideo = () => useAdminMutation("delete-social-video", ["admin-social-videos"]);
 export const useUpdateTypeStyle = () => useAdminMutation("update-type-style", ["admin-type-styles"]);
+export const useUpdateAppSettings = () => useAdminMutation("update-app-settings", ["admin-app-settings"]);

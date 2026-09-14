@@ -17,6 +17,7 @@ import ContactsPage from "./pages/ContactsPage.jsx";
 import SocialVideosPage from "./pages/SocialVideosPage.jsx";
 import LogPage from "./pages/LogPage.jsx";
 import TypeStylesPage from "./pages/TypeStylesPage.jsx";
+import AppSettingsPage from "./pages/AppSettingsPage.jsx";
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/social-videos" element={<SocialVideosPage />} />
             <Route path="/type-styles" element={<TypeStylesPage />} />
+            <Route path="/app-settings" element={<AppSettingsPage />} />
             <Route path="/log" element={<LogPage />} />
           </Route>
         </Route>

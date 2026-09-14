@@ -318,3 +318,11 @@ CREATE TABLE audit_log (
 );
 CREATE INDEX idx_audit_log_action ON audit_log(action);
 CREATE INDEX idx_audit_log_actor_uid ON audit_log(actor_uid);
+-- Public runtime controls managed by the authenticated admin panel.
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  settings TEXT NOT NULL DEFAULT '{}',
+  revision INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT ''
+);
+INSERT OR IGNORE INTO app_settings (id) VALUES (1);

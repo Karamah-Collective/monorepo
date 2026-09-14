@@ -15,6 +15,7 @@
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
+import { readAppSettings } from "../_app-settings.js";
 
 const MAX_BODY_SIZE = 4096;
 const MAX_TEXT_LEN = 500;
@@ -60,7 +61,7 @@ export async function onRequestGet(context) {
       const placeId = row.place_id;
       const rating = Number(row.rating);
       const status = (row.status || "").toString().trim().toLowerCase();
-      if (status !== "no" && rating >= 1 && rating <= 5) {
+      if (status === "yes" && rating >= 1 && rating <= 5) {
         const g = ensure(placeId);
         g.total++;
         g.sum += rating;
@@ -137,6 +138,9 @@ export async function onRequestPost(context) {
 
   // ── submit: create or update the caller's review for a place ──
   if (action === "submit") {
+    let settings = null;
+    try { settings = (await readAppSettings(db)).settings; } catch { settings = null; }
+    if (settings && !settings.reviewSubmissionsEnabled) return json({ error: "reviews_paused" }, 403, headers);
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
     if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
 
@@ -164,22 +168,24 @@ export async function onRequestPost(context) {
       // Rating/timestamp always update; text/status only touched when new
       // text was actually provided — same "editing rating alone keeps your
       // existing text" behavior Code.gs had.
+      const status = settings?.moderateReviews ? "pending" : "yes";
       if (text) {
-        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, text = ?, status = 'yes' WHERE id = ?").bind(rating, now, text, existing.id).run();
+        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, text = ?, status = ? WHERE id = ?").bind(rating, now, text, status, existing.id).run();
       } else {
-        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ? WHERE id = ?").bind(rating, now, existing.id).run();
+        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, status = ? WHERE id = ?").bind(rating, now, status, existing.id).run();
       }
-      return json({ success: true, status: "updated" }, 200, headers);
+      return json({ success: true, status }, 200, headers);
     }
 
-    await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash) VALUES (?,?,?,'',?,'yes',?)")
-      .bind(placeId, rating, text, now, identity.emailHash).run();
+    const status = settings?.moderateReviews ? "pending" : "yes";
+    await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash) VALUES (?,?,?,'',?,?,?)")
+      .bind(placeId, rating, text, now, status, identity.emailHash).run();
     // Lifetime counter for the Reviewer badge — only on a genuinely new row,
     // never on the update branch above, so editing can't double-count.
     await db.prepare("INSERT INTO account_meta (email_hash, lifetime_review_count) VALUES (?, 1) ON CONFLICT(email_hash) DO UPDATE SET lifetime_review_count = lifetime_review_count + 1")
       .bind(identity.emailHash).run();
 
-    return json({ success: true, status: "yes" }, 200, headers);
+    return json({ success: true, status }, 200, headers);
   }
 
   // ── delete: remove the caller's own review for a place ──

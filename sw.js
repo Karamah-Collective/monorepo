@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20260912-10'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
+const VERSION = '20260914-4'; // ← update to today's date (YYYYMMDD) on every deploy — same value as ?v= in index.html
 
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
@@ -42,6 +42,9 @@ const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/src/app.js',
+  '/src/app-settings.js',
+  '/src/app-settings-schema.js',
+  '/src/app-controls-schema.js',
   '/src/config.js',
   '/src/map-init.js',
   '/src/map-style.js',

@@ -291,6 +291,18 @@
   resize: vertical;
 }
 
+.pp-reason-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pp-reason-presets .pp-btn {
+  min-height: 32px;
+  font-size: 12px;
+}
+
 .pp-reason-popover-actions {
   display: flex;
   justify-content: flex-end;

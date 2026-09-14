@@ -192,7 +192,7 @@ async function getReviewsSummary(db) {
     const placeId = row.place_id;
     const rating = Number(row.rating);
     const status = (row.status || "").toString().trim().toLowerCase();
-    if (status !== "no" && rating >= 1 && rating <= 5) {
+    if (status === "yes" && rating >= 1 && rating <= 5) {
       const g = ensure(placeId);
       g.total++;
       g.sum += rating;

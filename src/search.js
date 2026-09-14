@@ -4,6 +4,7 @@ import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPi
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, openPlaceSheet, activeSponsor, openEventOverlay } from "./places.js";
+import { getExpandedSearchTerms } from "./app-settings.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -37,12 +38,12 @@ const _localTypeCls = {
 
 function _localPlaceSearch(q) {
   if (!placesData || !placesData.length) return [];
-  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
   const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const termGroups = getExpandedSearchTerms(q).map((group) => group.map(normalize));
   const matched = placesData
     .filter(p => {
       const hay = normalize(`${p.name} ${p.address} ${p.type}`);
-      return terms.every(t => hay.includes(normalize(t)));
+      return termGroups.every((group) => group.some((term) => hay.includes(term)));
     });
   // Boost: sponsored (non-boycott, active dates) places sort first, then alphabetical
   matched.sort((a, b) => {

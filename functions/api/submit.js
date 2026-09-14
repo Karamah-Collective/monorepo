@@ -19,6 +19,7 @@ import { allowedOrigin, truncate, sha256, json, helsinkiTimestamp } from "../_sh
 import { isDuplicateInPlaces, isDuplicateInNew, namesMatch } from "../_gas-compat.js";
 import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
+import { readAppSettings } from "../_app-settings.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
@@ -417,6 +418,20 @@ export async function onRequestPost(context) {
     return json({ error: "Invalid form type" }, 400, responseHeaders);
   }
 
+  let appSettings = null;
+  if (formType !== "contact") {
+    try { appSettings = (await readAppSettings(env.DB)).settings; } catch { appSettings = null; }
+    const pausedMessage = appSettings?.submissionPauseMessage || "Submissions are temporarily paused. Please try again later.";
+    const enabledByType = {
+      new: appSettings?.placeSubmissionsEnabled,
+      edit: appSettings?.editSubmissionsEnabled,
+      event: appSettings?.eventSubmissionsEnabled,
+      "event-edit": appSettings?.eventSubmissionsEnabled,
+      eid: appSettings?.eidSubmissionsEnabled,
+    };
+    if (appSettings && enabledByType[formType] === false) return json({ success: false, error: pausedMessage }, 200, responseHeaders);
+  }
+
   if (formData.name) formData.name = truncate(formData.name, MAX_FIELD_LEN);
   if (formData.address) formData.address = truncate(formData.address, MAX_FIELD_LEN);
   if (formData.gmaps) formData.gmaps = truncate(formData.gmaps, MAX_FIELD_LEN);
@@ -448,6 +463,12 @@ export async function onRequestPost(context) {
   if (formData.phone) formData.phone = truncate(formData.phone, 30);
   if (formData.app_links != null) {
     formData.app_links = parseAppLinksInput(formData.app_links);
+  }
+  if (appSettings?.requireSubmissionNotes && ["new", "edit"].includes(formType) && !String(formData.notes || formData.changesSummary || "").trim()) {
+    return json({ success: false, error: "Please add notes for this submission." }, 200, responseHeaders);
+  }
+  if (appSettings?.requireEventUrl && ["event", "event-edit"].includes(formType) && !String(formData.url || "").trim()) {
+    return json({ success: false, error: "Please add an event link." }, 200, responseHeaders);
   }
 
   let captcha;

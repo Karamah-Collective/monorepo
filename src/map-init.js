@@ -1,17 +1,22 @@
-import { HELSINKI } from "./config.js";
 import { HSL_STYLE } from "./map-style.js";
+import { getAppSettings } from "./app-settings.js";
+
+// Preserve runtime-config initialization before dependent map load handlers run.
+import "./config.js";
+
+const _initialSettings = getAppSettings();
 
 // Single MapLibre instance shared across all modules
 export const map = new maplibregl.Map({
   container: "map",
   style: HSL_STYLE,
-  center: HELSINKI,
+  center: [_initialSettings.defaultLng, _initialSettings.defaultLat],
   // Wider default framing to include Greater Helsinki.
-  zoom: 12.2,
+  zoom: _initialSettings.defaultZoom,
   // Max zoom-out: lets user zoom until the 100 km scale bar is at its smallest.
   // Decrease to allow more zoom-out, increase to restrict.
-  minZoom: 2.5,
-  maxZoom: 19,
+  minZoom: _initialSettings.minZoom,
+  maxZoom: _initialSettings.maxZoom,
   attributionControl: true,
   doubleClickZoom: false,
 });

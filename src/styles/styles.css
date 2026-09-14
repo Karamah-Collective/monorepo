@@ -7,6 +7,13 @@
   touch-action: manipulation;
 }
 
+body.hf-hide-ratings .pl-rating-chip,
+body.hf-hide-ratings .pp-reviews { display: none !important; }
+body.hf-hide-hours .pl-open-chip,
+body.hf-hide-hours .pl-closed-chip,
+body.hf-hide-hours .pp-hours { display: none !important; }
+body.hf-hide-tags .pl-tags-summary { display: none !important; }
+
 body.welcome-revealing #app {
   will-change: opacity, transform;
   animation: welcomeAppReveal var(--t-welcome-app-reveal) both;
@@ -4729,7 +4736,7 @@ body.marker-style-bold .custom-mk {
   border: none;
   padding: 2px;
   cursor: pointer;
-  color: var(--sponsor);
+  color: var(--text-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4739,7 +4746,7 @@ body.marker-style-bold .custom-mk {
 }
 @media (hover: hover) {
   .pp-promo-btn:hover {
-    color: color-mix(in srgb, var(--sponsor) 70%, var(--text));
+    color: var(--text);
   }
   .pp-fav-btn:hover {
     color: var(--gold);
@@ -7659,14 +7666,14 @@ body.nav-mode #locate-pill-wrap {
   z-index: var(--z-prayer);
   top: calc(var(--safe-t) + 14px);
   left: calc(16px + 44px + 8px);
-  color: var(--sponsor);
-  border-color: var(--gold-soft);
+  color: var(--text-2);
+  border-color: var(--border);
   transition:
     left 0.3s cubic-bezier(0.32, 0.72, 0, 1),
     background var(--t-fast);
 }
 @media (hover: hover) {
-  #promos-pill:hover { color: color-mix(in srgb, var(--sponsor) 70%, var(--text)); }
+  #promos-pill:hover { color: var(--text); }
 }
 /* Shift right when prayer pill is expanded */
 #prayer-snack:not(.collapsed) ~ #promos-pill {
@@ -8118,7 +8125,7 @@ body.nav-mode #locate-pill-wrap {
   gap: 8px;
 }
 .promos-heading-icon {
-  color: var(--sponsor);
+  color: var(--text-2);
   flex-shrink: 0;
 }
 #promos-list {
@@ -8194,7 +8201,7 @@ body.nav-mode #locate-pill-wrap {
 .promo-code {
   font-size: var(--txt-lg);
   font-weight: var(--fw-bold);
-  color: var(--sponsor);
+  color: var(--promo);
   white-space: nowrap;
 }
 .promo-text {
