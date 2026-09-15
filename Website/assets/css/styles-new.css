@@ -1066,6 +1066,10 @@ select.is-invalid {
   align-items: stretch;
 }
 
+.kc-grid-team[hidden] {
+  display: none !important;
+}
+
 @media (min-width: 640px) {
   .kc-grid-team { grid-template-columns: repeat(2, 1fr); }
 }

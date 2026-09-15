@@ -47,18 +47,6 @@ const CITY_START_VIEWS = Object.freeze({
   vanda: [25.0378, 60.2934],
   kauniainen: [24.7276, 60.2124],
   grankulla: [24.7276, 60.2124],
-  turku: [22.2666, 60.4518],
-  abo: [22.2666, 60.4518],
-  tampere: [23.7610, 61.4978],
-  oulu: [25.4651, 65.0121],
-  lahti: [25.6615, 60.9827],
-  kuopio: [27.6782, 62.8924],
-  jyvaskyla: [25.7473, 62.2426],
-  joensuu: [29.7636, 62.6010],
-  vaasa: [21.6158, 63.0951],
-  vasa: [21.6158, 63.0951],
-  pori: [21.7974, 61.4851],
-  lappeenranta: [28.1887, 61.0587],
 });
 
 export let currentTheme = "light";     // "light" | "dark" — the actually-applied visual theme
@@ -324,6 +312,11 @@ function _normalizeCityKey(city) {
 
 /**
  * Centers the first map view on the visitor's Cloudflare IP city when known.
+ *
+ * Carrier networks often route mobile traffic through a different Finnish city,
+ * so automatic startup centering is intentionally limited to the Helsinki metro
+ * area. Other Finnish cities keep the admin-authored default map view instead
+ * of surprising visitors with a far-away first camera.
  * @param {{ instant?: boolean, canApply?: () => boolean }} [options={}] - Whether to jump instead of animate, plus an optional freshness guard.
  * @returns {Promise<boolean>} True when a recognized Finnish city was applied.
  */

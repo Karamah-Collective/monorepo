@@ -27,6 +27,8 @@ test('published copy is literal, hidden sections leave navigation, and signup ca
   await expect(page.locator('input[name="updates"]')).toBeHidden();
   await expect(page.locator('[data-site-notice]')).toHaveText('Community gathering this Sunday');
   await expect(page).toHaveTitle('Karamah · Together');
+  await expect(page.locator('[data-team-loader]')).toBeHidden();
+  await expect(page.locator('[data-team-list]')).toBeVisible();
   await expect(page.locator('.kc-team-description')).toHaveText('Community organizer');
 });
 
