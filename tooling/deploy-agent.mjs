@@ -77,7 +77,7 @@ const DEPLOY_FILES = [
   "shared",
 ];
 
-const SECRET_OR_LOCAL = /(^|[\\/])(\.env|\.dev\.vars|config\.local\.js|node_modules|dist|\.wrangler|test-results|playwright-report)([\\/]|$)/;
+const SECRET_OR_LOCAL = /(^|[\\/])(\.env|\.dev\.vars|config\.local\.js|node_modules|dist|\.wrangler|test-results|playwright-report)([\\/]|$)|\.(bak|backup|tmp|temp)$/i;
 
 function git(args, options = {}) {
   const output = execFileSync("git", args, {
