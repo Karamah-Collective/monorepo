@@ -1,0 +1,10 @@
+name = "maps"
+compatibility_date = "2026-08-04"
+
+# Local development configuration only. No pages_build_output_dir: deployed
+# Pages bindings stay managed in the Cloudflare dashboard. Keep Production and
+# Preview bound to their existing separate D1 databases. See ../DEPLOYMENT.md.
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"

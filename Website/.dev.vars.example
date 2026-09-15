@@ -1,0 +1,9 @@
+# Copy to Website/.dev.vars for local API development. Never commit credentials.
+GOOGLE_SHEET_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+WEBSITE_ADMIN_KEY=
+WEBSITE_FORM_KEY=
+RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+BREVO_API_KEY=
+# Optional: exact trusted HTTPS Admin preview origins, comma-separated.
+ADMIN_ALLOWED_ORIGINS=

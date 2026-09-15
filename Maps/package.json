@@ -1,0 +1,41 @@
+{
+  "name": "maps",
+  "version": "1.0.0",
+  "description": "An interactive map application for discovering halal-friendly locations across Helsinki, including mosques, prayer rooms, restaurants, and shops. Built with MapLibre GL and modern web technologies for fast, responsive performance on desktop and mobile devices.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "scripts": {
+    "update": "node scripts/update-all.js",
+    "update:full": "node scripts/update-all.js --all",
+    "update:force": "node scripts/update-all.js --force",
+    "update:version": "node scripts/update-all.js --version",
+    "update:places": "node scripts/update-all.js --places",
+    "update:transit": "node scripts/update-all.js --transit",
+    "update-all": "node scripts/update-all.js --all",
+    "test": "npx playwright test --config tests/playwright.config.js",
+    "test:headed": "npx playwright test --config tests/playwright.config.js --headed",
+    "test:ui": "npx playwright test --config tests/playwright.config.js --ui",
+    "test:desktop": "npx playwright test --config tests/playwright.config.js --project=\"Desktop Chrome\"",
+    "test:mobile": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\"",
+    "test:android": "npx playwright test --config tests/playwright.config.js --project=\"Galaxy S24\"",
+    "test:iphone": "npx playwright test --config tests/playwright.config.js --project=\"iPhone 15 Pro\"",
+    "test:phones": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\"",
+    "build": "node scripts/build.mjs",
+    "dev": "node ../tooling/dev.mjs maps"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moontasirsoumik/halal-finder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/moontasirsoumik/halal-finder/issues"
+  },
+  "homepage": "https://github.com/moontasirsoumik/halal-finder#readme",
+  "private": true
+}

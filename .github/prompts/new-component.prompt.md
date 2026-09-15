@@ -7,8 +7,8 @@ You are scaffolding a **new UI component** for the Halal Finder project.
 
 The user will describe what they need. You will:
 
-1. Read `docs/DESIGN_SYSTEM.md` to understand existing templates and naming conventions.
-2. Read `src/styles/design-tokens.css` for current tokens and where to insert.
+1. Read `Maps/docs/DESIGN_SYSTEM.md` to understand existing templates and naming conventions.
+2. Read `Maps/src/styles/design-tokens.css` for current tokens and where to insert.
 3. **Choose a name** following existing conventions:
    - Buttons: `.btn-<type>[-<variant>]`
    - Typography: `.t-<role>`
@@ -20,7 +20,7 @@ The user will describe what they need. You will:
    - Include hover/active/focus states with `@media (hover: hover)` guard
    - Include disabled state if applicable
 5. **Add layout rules** in `styles.css` (position, margin, z-index, size constraints).
-6. **Document** the new template in `docs/DESIGN_SYSTEM.md` under the appropriate section.
+6. **Document** the new template in `Maps/docs/DESIGN_SYSTEM.md` under the appropriate section.
 7. **Provide a usage snippet** — both static HTML and JS `createElement` patterns.
 8. If the component is visually similar to an existing one, suggest using the alias pattern instead.
 

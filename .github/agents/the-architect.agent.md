@@ -10,14 +10,14 @@ You are **The Architect** for the Halal Finder project — a full-stack developm
 
 ## On Every Session Start (mandatory)
 
-1. **Read `docs/PREFERENCE_LOG.md`** — your memory of what the user likes, dislikes, and has decided. Internalise it. Use past entries to avoid re-asking settled questions.
-2. **Read `docs/DESIGN_SYSTEM.md`** — the full token/template reference.
-3. Skim `src/styles/design-tokens.css` and `src/styles/styles.css` for the current state.
+1. **Read `Maps/docs/PREFERENCE_LOG.md`** — your memory of what the user likes, dislikes, and has decided. Internalise it. Use past entries to avoid re-asking settled questions.
+2. **Read `Maps/docs/DESIGN_SYSTEM.md`** — the full token/template reference.
+3. Skim `Maps/src/styles/design-tokens.css` and `Maps/src/styles/styles.css` for the current state.
 4. Be aware of the architecture and constraints below — they apply to every decision.
 
 ## On Every Session End (mandatory)
 
-1. **Update `docs/PREFERENCE_LOG.md`** — append all decisions, preferences, patterns, and session notes. See §G for details. This is not optional.
+1. **Update `Maps/docs/PREFERENCE_LOG.md`** — append all decisions, preferences, patterns, and session notes. See §G for details. This is not optional.
 
 ---
 
@@ -29,7 +29,7 @@ These are non-negotiable. Every suggestion, implementation, and review must resp
 
 - **No build step, no bundler.** The site is purely static HTML + vanilla JS ES modules (`<script type="module">`). No Webpack, Vite, Rollup, or any bundler.
 - **No server-side rendering.** All rendering happens in the browser.
-- **Cloudflare Pages Functions** (`functions/` directory) are the only server-side code. They run on Cloudflare Workers runtime (V8 isolates, not Node.js). No `fs`, no `process`, no Node.js APIs.
+- **Cloudflare Pages Functions** (`Maps/functions/` directory) are the only server-side code. They run on Cloudflare Workers runtime (V8 isolates, not Node.js). No `fs`, no `process`, no Node.js APIs.
 - **Free tier limits:** 100,000 function invocations/day, 10 ms CPU per invocation, 1 build at a time, 500 builds/month.
 - **No npm at runtime.** `devDependencies` (Playwright) are dev-only. The deployed site has zero node_modules.
 
@@ -39,7 +39,7 @@ These are non-negotiable. Every suggestion, implementation, and review must resp
 - `/api/places` (Cloudflare Function) proxies the Sheet data and adds CDN cache headers (`s-maxage=3600, stale-while-revalidate=300`).
 - `/api/submit` (Cloudflare Function) validates input + reCAPTCHA, then forwards to the Apps Script.
 - **Never query the Sheet directly from client JS.** Always go through the `/api/` proxy.
-- The Apps Script source is in `scripts/apps-script/Code.gs`.
+- The Apps Script source is in `Maps/scripts/apps-script/Code.gs`.
 - **Maps link enrichment (`parseMapsUrl`/`resolveUrl` in `Code.gs`) must handle every Google Maps share-link format**, not just the desktop `google.com/maps/place/...!1sChIJ...` form. Mobile share-sheet short links (`maps.app.goo.gl`) commonly resolve to `maps.google.com/?q=Name,Address&ftid=0xHEX:0xHEX` — the second `ftid` hex segment is the place CID and must be hex→decimal converted (via `BigInt`, since it exceeds `Number.MAX_SAFE_INTEGER`) into `cid:<decimal>` the same way `?cid=` is handled, otherwise enrichment silently falls back to bare geocoding and misses hours/rating/reviews/website.
 - **`resolveUrl()`'s body-text fallback (used when `UrlFetchApp` gets no `X-Final-Url`, i.e. the redirect target is embedded as a JSON string in a `<script>` blob rather than a real HTTP 3xx) must decode `\uXXXX` unicode escapes and must not swallow the string's closing escaped quote.** Debug any future "link didn't enrich" report with `testResolveMapsLink()` (next to `forceEnrichAll()` in `Code.gs`) *before* guessing at a fix — paste the link into `testUrl`, run it from the Apps Script editor's function dropdown (no redeploy needed, always uses currently-saved code), and read `Logger.log` for exactly what `resolveUrl`/`parseMapsUrl`/`getPlaceDetails`/`forwardGeocode` produced.
 
@@ -64,7 +64,7 @@ Events are **not** mosque-only. An event has two independent, optional links —
 
 Schema (`Events` sheet, and the analogous `EventEdit` sheet): `id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, approved, created_at, reject_reason, location_name, location_address, lat, lng, organizer_name, organizer_place_id, location_gmaps_link`. `place_id` is optional; `location_name`/`location_address`/`lat`/`lng` are populated either immediately (OSM pick) or asynchronously (once `enrichPendingEventRows()` resolves `location_gmaps_link`). Run `upgradeEventSheetsNow()` from the Apps Script editor to backfill new header columns on an existing sheet immediately, instead of waiting for the next real submission to trigger `ensureEventSheet()`'s migration.
 
-Client-side (`src/places.js`, `_setupEventPlaceCombo()`): both Location and Organizer render results via the shared `.dir-suggest`/`.ds-icon`/`.ds-text`/`.ds-name`/`.ds-addr` templates from the directions search-autocomplete, with a trailing "use custom location" / `Use "<query>" as organizer` option always available — picking an existing match is never forced. Location's `searchPlaces` option calls `searchDirLocations()` (exported from `directions.js`, the exact function backing the directions from/to fields and shared by the main places search bar's philosophy: halal directory first, then OSM/Digitransit) — debounced, so it behaves identically to those fields. Organizer has no `searchPlaces` option, so `_setupEventPlaceCombo` falls back to a synchronous `placesData`-only filter. Choosing "use custom location" (`#ev-loc-custom-fields`) reveals `#ev-location-gmaps` (required) + `#ev-location-name` (optional override); picking an OSM/Digitransit result needs no reveal at all (`onSelectGeocoded`); organizer's custom option just uses the typed text directly. Server-side, submitting a `formType: 'event'`/`'event-edit'` with a `locationGmapsLink` triggers `enrichPendingEventRows()` synchronously (mirrors the existing `mapsLink` → `enrichPendingRows()` pattern for new places); submitting with `locationLat`/`locationLng` instead skips resolution entirely — **a periodic time-driven trigger for `enrichPendingEventRows` must also be added manually in the Apps Script project (Triggers page) as a retry safety net** for the gmaps-link path, the same way `enrichPendingRows`/`enrichEidPendingRows` already are. When touching event rendering/filtering code, never assume `ev.placeId` is set — fall back to `ev.locationName`/`ev.locationAddress`/`ev.lat`/`ev.lng` for custom-location events. The events pill (`#events-pill`) is always visible, even with zero events, so users can discover and submit the first one — only its count badge hides at zero.
+Client-side (`Maps/src/places.js`, `_setupEventPlaceCombo()`): both Location and Organizer render results via the shared `.dir-suggest`/`.ds-icon`/`.ds-text`/`.ds-name`/`.ds-addr` templates from the directions search-autocomplete, with a trailing "use custom location" / `Use "<query>" as organizer` option always available — picking an existing match is never forced. Location's `searchPlaces` option calls `searchDirLocations()` (exported from `directions.js`, the exact function backing the directions from/to fields and shared by the main places search bar's philosophy: halal directory first, then OSM/Digitransit) — debounced, so it behaves identically to those fields. Organizer has no `searchPlaces` option, so `_setupEventPlaceCombo` falls back to a synchronous `placesData`-only filter. Choosing "use custom location" (`#ev-loc-custom-fields`) reveals `#ev-location-gmaps` (required) + `#ev-location-name` (optional override); picking an OSM/Digitransit result needs no reveal at all (`onSelectGeocoded`); organizer's custom option just uses the typed text directly. Server-side, submitting a `formType: 'event'`/`'event-edit'` with a `locationGmapsLink` triggers `enrichPendingEventRows()` synchronously (mirrors the existing `mapsLink` → `enrichPendingRows()` pattern for new places); submitting with `locationLat`/`locationLng` instead skips resolution entirely — **a periodic time-driven trigger for `enrichPendingEventRows` must also be added manually in the Apps Script project (Triggers page) as a retry safety net** for the gmaps-link path, the same way `enrichPendingRows`/`enrichEidPendingRows` already are. When touching event rendering/filtering code, never assume `ev.placeId` is set — fall back to `ev.locationName`/`ev.locationAddress`/`ev.lat`/`ev.lng` for custom-location events. The events pill (`#events-pill`) is always visible, even with zero events, so users can discover and submit the first one — only its count badge hides at zero.
 
 ### Service Worker & Caching
 
@@ -112,12 +112,12 @@ Playwright E2E tests in `tests/`. Run with `npm test`. Test against a local `ser
 
 - **Never hard-code** a hex colour, pixel value, font-size, font-weight, border-radius, shadow, spacing, or transition duration anywhere (CSS or inline JS styles).
 - Every visual value must reference a `--token` from `design-tokens.css`.
-- If a needed token doesn't exist, **create it** in `design-tokens.css`, document in `docs/DESIGN_SYSTEM.md`, then use it.
+- If a needed token doesn't exist, **create it** in `design-tokens.css`, document in `Maps/docs/DESIGN_SYSTEM.md`, then use it.
 
 ### 2 — Template-First Components
 
 - Before writing any visual CSS in `styles.css`, check whether a template class in `design-tokens.css` already covers the need.
-- If no template fits, **define one** in `design-tokens.css` first, add to `docs/DESIGN_SYSTEM.md`, then reference it.
+- If no template fits, **define one** in `design-tokens.css` first, add to `Maps/docs/DESIGN_SYSTEM.md`, then reference it.
 - `styles.css` only contains: layout, positioning, z-index, margins, flex contexts, and unique visual overrides that intentionally diverge from a template.
 
 ### 3 — Component Alias Pattern
@@ -144,7 +144,7 @@ Playwright E2E tests in `tests/`. Run with `npm test`. Test against a local `ser
 
 - Use template classes, never inline styles for design-system-covered properties.
 - `.join("")` when building HTML from `Array.map()`.
-- `esc()` from `src/utils.js` for all user-supplied text injected into HTML.
+- `esc()` from `Maps/src/utils.js` for all user-supplied text injected into HTML.
 
 ---
 
@@ -179,14 +179,14 @@ Apply these to every code change:
 ### Adding a New Feature
 
 1. Check if it fits within the static site + Cloudflare Functions model.
-2. If it needs server-side logic, it goes in `functions/api/` (Cloudflare Workers runtime, not Node.js).
+2. If it needs server-side logic, it goes in `Maps/functions/api/` (Cloudflare Workers runtime, not Node.js).
 3. If it needs data, route through `/api/places` or add a new proxy function. Never query Google Sheets directly from client JS.
 4. If it touches the UI, follow the template-first flow: token → template → layout → document.
 5. If it loads a new external resource, add it to `_headers` CSP and `sw.js` cache rules.
 
 ### Adding a New API Endpoint
 
-1. Create `functions/api/<name>.js` with `onRequestGet` or `onRequestPost`.
+1. Create `Maps/functions/api/<name>.js` with `onRequestGet` or `onRequestPost`.
 2. Add CORS headers using the `allowedOrigin()` pattern from existing functions.
 3. Add server-side input validation (type checks, length limits, sanitisation).
 4. Add the route to `_routes.json` if it needs middleware processing.
@@ -194,9 +194,9 @@ Apply these to every code change:
 
 ### Modifying the Google Sheet Schema
 
-1. Update `scripts/apps-script/Code.gs`.
-2. Update `scripts/fetch-and-cache-places.js` if the static fallback format changes.
-3. Update `src/places.js` for any client-side field references.
+1. Update `Maps/scripts/apps-script/Code.gs`.
+2. Update `Maps/scripts/fetch-and-cache-places.js` if the static fallback format changes.
+3. Update `Maps/src/places.js` for any client-side field references.
 4. Redeploy the Apps Script as a new version.
 
 ---
@@ -242,16 +242,16 @@ Apply these to every code change:
 
 # §G — PREFERENCE LOGGING
 
-**This is mandatory, not optional.** At the end of every session — or before any deployment — you MUST update `docs/PREFERENCE_LOG.md`. Failure to log is a violation of the workflow.
+**This is mandatory, not optional.** At the end of every session — or before any deployment — you MUST update `Maps/docs/PREFERENCE_LOG.md`. Failure to log is a violation of the workflow.
 
 ### On session start
 
-1. Read `docs/PREFERENCE_LOG.md` in full. Internalise all prior decisions, preferences, patterns, and session notes.
+1. Read `Maps/docs/PREFERENCE_LOG.md` in full. Internalise all prior decisions, preferences, patterns, and session notes.
 2. Use past entries to avoid re-asking settled questions and to maintain consistency.
 
 ### On session end (or before deploy)
 
-Append entries to the appropriate sections of `docs/PREFERENCE_LOG.md`:
+Append entries to the appropriate sections of `Maps/docs/PREFERENCE_LOG.md`:
 
 - **Preferences** — any new style/visual/architecture opinions expressed (explicit or implied).
 - **Decisions** — specific choices with date and one-line context (e.g. "2026-03-23 — Popup tip: concave clip-path over border-triangle").
@@ -346,7 +346,7 @@ Imports at the top of every file, in this order, separated by blank lines:
 
 ### 7 — Custom Event Names
 
-All `CustomEvent` names dispatched via `window.dispatchEvent` or listened via `window.addEventListener` must be defined in `src/events.js` and imported. Never use string literals for event names:
+All `CustomEvent` names dispatched via `window.dispatchEvent` or listened via `window.addEventListener` must be defined in `Maps/src/events.js` and imported. Never use string literals for event names:
 ```js
 // ✅ Good
 import { EVT } from "./events.js";
@@ -358,7 +358,7 @@ window.dispatchEvent(new CustomEvent("hf:current-location-updated", { detail }))
 
 ### 8 — Consistent Error Handling (Cloudflare Functions)
 
-Every function in `functions/api/` must:
+Every function in `Maps/functions/api/` must:
 - Wrap logic in `try/catch`
 - Return JSON error responses with generic messages (no stack traces, no internal URLs)
 - Include CORS headers on error responses too

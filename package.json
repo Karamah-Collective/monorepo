@@ -1,47 +1,36 @@
 {
-  "name": "maps",
+  "name": "karamah-monorepo",
+  "private": true,
   "version": "1.0.0",
-  "description": "An interactive map application for discovering halal-friendly locations across Helsinki, including mosques, prayer rooms, restaurants, and shops. Built with MapLibre GL and modern web technologies for fast, responsive performance on desktop and mobile devices.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "lib": "lib"
-  },
+  "workspaces": [
+    "Maps",
+    "Website",
+    "Admin"
+  ],
   "scripts": {
-    "update": "node scripts/update-all.js",
-    "update:full": "node scripts/update-all.js --all",
-    "update:force": "node scripts/update-all.js --force",
-    "update:version": "node scripts/update-all.js --version",
-    "update:places": "node scripts/update-all.js --places",
-    "update:transit": "node scripts/update-all.js --transit",
-    "update-all": "node scripts/update-all.js --all",
-    "test": "npx playwright test --config tests/playwright.config.js",
-    "test:headed": "npx playwright test --config tests/playwright.config.js --headed",
-    "test:ui": "npx playwright test --config tests/playwright.config.js --ui",
-    "test:desktop": "npx playwright test --config tests/playwright.config.js --project=\"Desktop Chrome\"",
-    "test:mobile": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\"",
-    "test:android": "npx playwright test --config tests/playwright.config.js --project=\"Galaxy S24\"",
-    "test:iphone": "npx playwright test --config tests/playwright.config.js --project=\"iPhone 15 Pro\"",
-    "test:phones": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\""
+    "dev": "node tooling/dev.mjs",
+    "dev:maps": "node tooling/dev.mjs maps",
+    "dev:website": "node tooling/dev.mjs website",
+    "dev:admin": "node tooling/dev.mjs admin",
+    "setup:website": "node tooling/setup-website-env.mjs",
+    "deploy:agent": "node tooling/deploy-agent.mjs",
+    "build": "npm run build --workspaces --if-present",
+    "build:maps": "npm run build --workspace Maps",
+    "build:website": "npm run build --workspace Website",
+    "build:admin": "npm run build --workspace Admin",
+    "test:admin": "playwright test --config Admin/tests/playwright.config.js",
+    "test:maps": "playwright test --config Maps/tests/playwright.config.js",
+    "test:maps:smoke": "playwright test --config Maps/tests/playwright.config.js Maps/tests/01-dom-elements.spec.js -g \"app container and map canvas exist|map canvas has non-zero dimensions|tab bar exists\" --project \"Desktop Chrome\"",
+    "test:website": "node --test Website/tests/*.test.mjs",
+    "test:website:ui": "playwright test --config Website/tests/playwright.config.js",
+    "check": "node tooling/check-layout.mjs",
+    "update": "npm run update --workspace Maps",
+    "update:force": "npm run update:force --workspace Maps"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/moontasirsoumik/halal-finder.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/moontasirsoumik/halal-finder/issues"
-  },
-  "homepage": "https://github.com/moontasirsoumik/halal-finder#readme",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "serve": "^14.2.5",
     "wrangler": "^4.131.2",
     "xlsx": "^0.18.5"
-  },
-  "dependencies": {
-    "halal-finder-admin": "file:admin"
   }
 }

@@ -1,0 +1,5 @@
+[data-admin-hidden="true"], .kc-site-notice[hidden], [data-site-contact-intro][hidden], .kc-checkbox-label[hidden] { display: none !important; }
+.kc-site-notice { position: relative; margin: 92px 16px 0; padding: 14px 22px; text-align: center; background: #e7f0e5; color: #284533; border: 1px solid #c8d8c3; border-radius: 12px; font-size: 14px; line-height: 1.7; }
+.kc-team-description, .kc-team-location { font-size: 13px; line-height: 1.6; margin: 8px 0 0; opacity: .8; white-space: pre-line; }
+[data-site-contact-intro] { white-space: pre-line; }
+@media(max-width:767px) { .kc-site-notice { margin-top: 80px; font-size: 12px; } }

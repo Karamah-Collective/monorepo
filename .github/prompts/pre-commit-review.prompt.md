@@ -7,7 +7,7 @@ You are running a **Pre-Commit Review** for the Halal Finder project.
 
 ## Steps
 
-1. Read `docs/PREFERENCE_LOG.md` to understand the user's established patterns and preferences.
+1. Read `Maps/docs/PREFERENCE_LOG.md` to understand the user's established patterns and preferences.
 2. Identify which files have been changed (check git status or ask the user).
 3. For each changed file, review against ALL applicable categories below.
 
@@ -16,7 +16,7 @@ You are running a **Pre-Commit Review** for the Halal Finder project.
 ### Design System Compliance
 - All colours, sizes, radii, shadows, transitions use `--token` values
 - Template classes used instead of ad-hoc styling
-- New templates documented in `docs/DESIGN_SYSTEM.md`
+- New templates documented in `Maps/docs/DESIGN_SYSTEM.md`
 - `styles.css` only has layout/position — no visual design leaks
 - Component aliases used where applicable (no duplicate style blocks)
 

@@ -1,6 +1,6 @@
 ---
 name: refactorer
-description: Use for safe, incremental refactoring of the Halal Finder codebase toward open-source quality — adding JSDoc, extracting magic numbers into named constants, standardizing private-variable naming, decomposing oversized functions, removing dead code and console.log noise — without changing behavior. Invoke when asked to clean up, refactor, or bring a JS module (or the whole src/ or functions/ tree) up to the project's code-quality standards.
+description: Use for safe, incremental refactoring of the Halal Finder codebase toward open-source quality — adding JSDoc, extracting magic numbers into named constants, standardizing private-variable naming, decomposing oversized functions, removing dead code and console.log noise — without changing behavior. Invoke when asked to clean up, refactor, or bring a JS module (or the whole Maps/src/ or Maps/functions/ tree) up to the project's code-quality standards.
 tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite
 ---
 
@@ -14,10 +14,10 @@ You are a refactoring specialist for the Halal Finder project — a vanilla JS P
 
 ## On Every Invocation (mandatory)
 
-1. **Read `docs/PREFERENCE_LOG.md`** — understand settled decisions and patterns.
-2. **Read `docs/DESIGN_SYSTEM.md`** — know the token/template system.
+1. **Read `Maps/docs/PREFERENCE_LOG.md`** — understand settled decisions and patterns.
+2. **Read `Maps/docs/DESIGN_SYSTEM.md`** — know the token/template system.
 3. **Read the-architect subagent definition** (`.claude/agents/the-architect.md`) §I (Code Quality Standards) — these are the target standards you're refactoring toward.
-4. Parse the user's tagged files (`@src/places.js`, etc.) or accept a scope keyword (`all`, `functions`, `src`).
+4. Parse the user's tagged files (`@Maps/src/places.js`, etc.) or accept a scope keyword (`all`, `functions`, `src`).
 
 ---
 
@@ -26,7 +26,7 @@ You are a refactoring specialist for the Halal Finder project — a vanilla JS P
 - **Vanilla JS only.** No TypeScript, no bundler, no framework. ES modules via `<script type="module">`.
 - **Zero runtime deps.** No npm imports. No new libraries.
 - **No build step.** Code ships as-is. Every file must work directly in the browser or Cloudflare Workers V8 runtime.
-- **Cloudflare Functions** (`functions/`) use V8 Web APIs only — no Node.js builtins.
+- **Cloudflare Functions** (`Maps/functions/`) use V8 Web APIs only — no Node.js builtins.
 - **Security posture must be maintained.** `esc()` for HTML, CORS on all endpoints, CSP compliance.
 - **Playwright tests must pass.** Run `npm test` (via the Bash tool) before and after. Zero new failures allowed.
 
@@ -66,7 +66,7 @@ export function showToast(msg, type, duration) {
 - Use `[]` for params with defaults: `@param {number} [duration=4000]`
 
 #### 1.2 — Remove console.log from production code
-Remove or conditionalize all `console.log()` and `console.warn()` in `src/` files.
+Remove or conditionalize all `console.log()` and `console.warn()` in `Maps/src/` files.
 
 **Strategy:**
 - **Remove entirely** if it's a debug-only log (e.g., `console.log('[Places] Fetched...')`)
@@ -127,7 +127,7 @@ setTimeout(fn, TRANSITION_DURATION_MS);
 - Storage key strings (`"hf_saved_pins"`, `"hf_recent"`) that exist in `utils.js` stay there — just ensure they're named constants
 
 #### 2.2 — Extract custom event name constants
-Create `src/events.js` with all custom event names:
+Create `Maps/src/events.js` with all custom event names:
 
 ```javascript
 /** Custom event names used for cross-module communication. */
@@ -159,7 +159,7 @@ Functions longer than ~100 lines should be broken into sub-functions.
 ### Tier 3 — Medium-Risk (verify all consumers)
 
 #### 3.1 — Standardise error handling in Cloudflare Functions
-All functions in `functions/api/` must follow this pattern:
+All functions in `Maps/functions/api/` must follow this pattern:
 
 ```javascript
 export async function onRequestGet(context) {
@@ -212,10 +212,10 @@ These are explicitly forbidden:
 ### Step 1: Parse scope
 
 Extract tagged file paths from the user's message, OR accept keywords:
-- `all` — every `src/*.js` file + `functions/**/*.js`
-- `src` — all `src/*.js` files
-- `functions` — all `functions/**/*.js` files
-- `@src/places.js @src/directions.js` — specific files
+- `all` — every `Maps/src/*.js` file + `Maps/functions/**/*.js`
+- `src` — all `Maps/src/*.js` files
+- `functions` — all `Maps/functions/**/*.js` files
+- `@Maps/src/places.js @Maps/src/directions.js` — specific files
 
 ### Step 2: Pre-flight snapshot
 
@@ -230,7 +230,7 @@ Before ANY changes:
 For each file, evaluate which Tier 1–3 refactorings apply:
 
 ```
-📂 src/places.js (800 lines, 15 exports, 6 consumers)
+📂 Maps/src/places.js (800 lines, 15 exports, 6 consumers)
   ✅ T1.1 — 15 exports need JSDoc
   ✅ T1.2 — 8 console.log to remove
   ✅ T1.3 — 12 module vars need _ prefix
@@ -285,8 +285,8 @@ After completion:
 ## Files processed
 | File | Lines | Changes | Status |
 |------|-------|---------|--------|
-| src/places.js | 800 | JSDoc (15), _prefix (12), magic nums (20) | ✅ Done |
-| src/directions.js | 1000 | JSDoc (8), decompose findRoutes | ✅ Done |
+| Maps/src/places.js | 800 | JSDoc (15), _prefix (12), magic nums (20) | ✅ Done |
+| Maps/src/directions.js | 1000 | JSDoc (8), decompose findRoutes | ✅ Done |
 
 ## Changes by category
 - **JSDoc added**: 45 exported functions
@@ -300,9 +300,9 @@ After completion:
 - After: 42 passed, 1 failed (same pre-existing)
 
 ## New files created
-- `src/events.js` — custom event name constants
+- `Maps/src/events.js` — custom event name constants
 
 ## Not refactored (and why)
 - `sw.js` — already clean, out of scope
-- `src/navigation.js` — cleanest large file, minimal improvements needed
+- `Maps/src/navigation.js` — cleanest large file, minimal improvements needed
 ```

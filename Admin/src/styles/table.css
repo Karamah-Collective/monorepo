@@ -1,0 +1,226 @@
+.pp-table-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pp-table-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.table-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fafbf9;
+  min-width: 190px;
+  width: 270px;
+  color: var(--text-faint);
+}
+.table-search-wrap:focus-within {
+  border-color: var(--accent);
+}
+.pp-table-search {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 0;
+  font-size: 11px;
+  background: transparent;
+}
+.pp-table-count {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+  white-space: nowrap;
+}
+.table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+}
+.table-toolbar-actions .pp-btn[aria-pressed="true"] {
+  background: var(--accent-bg);
+  border-color: #bcd6c7;
+  color: var(--accent);
+}
+.pp-table-scroll {
+  overflow: auto;
+  max-height: max(320px, calc(100dvh - 290px));
+  scrollbar-gutter: stable;
+}
+.pp-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 12px;
+}
+.pp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0 14px;
+  background: #f7f9f5;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.pp-th-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  text-align: left;
+  width: 100%;
+}
+.pp-th-sorted {
+  color: var(--accent) !important;
+}
+.pp-th-label:disabled {
+  opacity: 1;
+}
+.pp-table td {
+  padding: 14px;
+  border-bottom: 1px solid #edf0eb;
+  vertical-align: middle;
+  line-height: 1.65;
+  max-width: 360px;
+  min-width: 95px;
+  overflow-wrap: anywhere;
+}
+.pp-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.pp-table tbody tr {
+  transition: background 130ms ease;
+}
+.pp-table tbody tr:hover {
+  background: #f8faf6;
+}
+.table-is-compact .pp-table td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 11px;
+}
+.pp-table td:first-child {
+  font-weight: 500;
+}
+.pp-col-filter {
+  width: 100%;
+  min-width: 80px;
+  padding: 5px 7px;
+  margin-bottom: 9px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+}
+.pp-table-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.pagination-controls > span {
+  font: 10px var(--font-mono);
+}
+.pp-table-pagination label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pp-table-pagination select {
+  border: 1px solid var(--border);
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.pp-table-pagination .icon-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+}
+.table-empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.table-empty-content > svg {
+  color: #83967b;
+}
+.table-empty-content strong {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 14px;
+}
+.table-empty-content p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+.pp-table .pp-btn {
+  min-height: 29px;
+  font-size: 10px;
+  padding: 5px 9px;
+}
+.pp-table .pp-empty-state {
+  padding: 0;
+}
+.pp-table td a {
+  text-underline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .pp-table-toolbar {
+    padding: 12px;
+    gap: 9px;
+  }
+  .table-search-wrap {
+    width: 100%;
+  }
+  .pp-table-pagination {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .pagination-controls {
+    gap: 7px;
+  }
+  .pp-table-pagination > .pagination-summary {
+    display: none;
+  }
+  .pp-table-scroll {
+    max-height: 65dvh;
+  }
+}

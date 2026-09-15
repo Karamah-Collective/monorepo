@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aurora Background</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        background: #ffffff; /* do not change */
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .aurora-container {
+        position: fixed;
+        inset: 0;
+        background-color: #ffffff; /* do not change */
+        z-index: 1;
+        overflow: hidden;
+      }
+
+      /* ---- Aurora group + shimmer field ---- */
+      .aurora-wrap {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        transform: translateZ(0);
+        will-change: transform, filter;
+      }
+
+      /* Moving shimmer field (no tint) */
+      .aurora-wrap::before {
+        content: "";
+        position: absolute;
+        inset: -25%;
+        background: radial-gradient(
+            circle at 18% 35%,
+            rgba(255, 255, 255, 0.22) 0%,
+            rgba(255, 255, 255, 0.05) 38%,
+            transparent 62%
+          ),
+          radial-gradient(
+            circle at 78% 40%,
+            rgba(255, 255, 255, 0.18) 0%,
+            rgba(255, 255, 255, 0.04) 42%,
+            transparent 68%
+          ),
+          radial-gradient(
+            circle at 48% 68%,
+            rgba(255, 255, 255, 0.16) 0%,
+            rgba(255, 255, 255, 0.03) 46%,
+            transparent 72%
+          );
+        filter: blur(18px);
+        opacity: 0.85;
+        mix-blend-mode: overlay;
+        animation: shimmerField 7.5s ease-in-out infinite;
+        transform: translate3d(0, 0, 0);
+        pointer-events: none;
+      }
+
+      .aurora {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        mix-blend-mode: darken;
+        will-change: transform, opacity, filter;
+      }
+
+      /* Slightly subtler overall intensity (keeps your colors, just reduces impact) */
+      .aurora,
+      .aurora-glow {
+        opacity: 0.72;
+      }
+
+      .aurora-left {
+        position: absolute;
+        left: -40%;
+        top: 20%;
+        width: 100%;
+        height: 60%;
+        background: radial-gradient(
+          ellipse 1400px 500px at 20% 50%,
+          rgba(0, 255, 220, 0.85) 0%,
+          rgba(0, 240, 210, 0.7) 10%,
+          rgba(0, 220, 200, 0.55) 20%,
+          rgba(0, 200, 180, 0.4) 30%,
+          rgba(0, 180, 160, 0.25) 40%,
+          rgba(0, 150, 140, 0.1) 55%,
+          transparent 75%
+        );
+        filter: blur(110px);
+        animation: waveLeft 28s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerLeft 10.5s ease-in-out infinite,
+          curtainLeft 8.5s ease-in-out infinite;
+        transform-origin: 30% 50%;
+        mix-blend-mode: darken;
+      }
+
+      .aurora-center {
+        position: absolute;
+        left: 0%;
+        top: 15%;
+        width: 100%;
+        height: 70%;
+        background: radial-gradient(
+          ellipse 1500px 600px at 50% 50%,
+          rgba(200, 100, 240, 0.8) 0%,
+          rgba(180, 80, 220, 0.65) 12%,
+          rgba(160, 60, 200, 0.5) 25%,
+          rgba(140, 40, 180, 0.35) 40%,
+          rgba(120, 20, 160, 0.2) 55%,
+          rgba(100, 10, 140, 0.08) 70%,
+          transparent 85%
+        );
+        filter: blur(130px);
+        animation: waveCenter 32s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerCenter 12s ease-in-out infinite 0.5s,
+          curtainCenter 9.2s ease-in-out infinite;
+        transform-origin: 50% 50%;
+        mix-blend-mode: darken;
+      }
+
+      .aurora-right {
+        position: absolute;
+        right: -35%;
+        top: 25%;
+        width: 95%;
+        height: 55%;
+        background: radial-gradient(
+          ellipse 1300px 500px at 80% 50%,
+          rgba(255, 100, 180, 0.8) 0%,
+          rgba(245, 90, 170, 0.68) 12%,
+          rgba(230, 80, 160, 0.55) 24%,
+          rgba(210, 60, 140, 0.4) 38%,
+          rgba(190, 40, 120, 0.25) 52%,
+          rgba(170, 20, 100, 0.1) 68%,
+          transparent 85%
+        );
+        filter: blur(120px);
+        animation: waveRight 30s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerRight 11s ease-in-out infinite 1s,
+          curtainRight 8.8s ease-in-out infinite;
+        transform-origin: 80% 50%;
+        mix-blend-mode: darken;
+      }
+
+      .aurora-accent-1 {
+        position: absolute;
+        left: -10%;
+        top: 25%;
+        width: 60%;
+        height: 50%;
+        background: radial-gradient(
+          ellipse 950px 450px at 28% 50%,
+          rgba(0, 255, 230, 0.65) 0%,
+          rgba(0, 230, 210, 0.45) 20%,
+          rgba(0, 200, 190, 0.25) 40%,
+          transparent 65%
+        );
+        filter: blur(95px);
+        animation: waveAccent1 24s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerAccent 10s ease-in-out infinite 0.3s,
+          curtainAccent 7.8s ease-in-out infinite;
+        mix-blend-mode: darken;
+        transform-origin: 35% 50%;
+        opacity: 0.62;
+      }
+
+      .aurora-accent-2 {
+        position: absolute;
+        right: -15%;
+        top: 30%;
+        width: 70%;
+        height: 50%;
+        background: radial-gradient(
+          ellipse 1000px 450px at 72% 50%,
+          rgba(255, 120, 200, 0.65) 0%,
+          rgba(240, 100, 185, 0.45) 20%,
+          rgba(220, 80, 170, 0.25) 40%,
+          transparent 65%
+        );
+        filter: blur(100px);
+        animation: waveAccent2 26s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerAccent 10.5s ease-in-out infinite 0.8s,
+          curtainAccent 8.1s ease-in-out infinite;
+        mix-blend-mode: darken;
+        transform-origin: 75% 50%;
+        opacity: 0.62;
+      }
+
+      .aurora-accent-3 {
+        position: absolute;
+        left: 20%;
+        top: 20%;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(
+          ellipse 900px 500px at 48% 50%,
+          rgba(180, 100, 240, 0.55) 0%,
+          rgba(160, 80, 220, 0.35) 28%,
+          rgba(140, 60, 200, 0.15) 50%,
+          transparent 70%
+        );
+        filter: blur(105px);
+        animation: waveAccent3 34s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerAccent 12s ease-in-out infinite 1.2s,
+          curtainAccent 9.3s ease-in-out infinite;
+        mix-blend-mode: darken;
+        transform-origin: 50% 50%;
+        opacity: 0.6;
+      }
+
+      .aurora-accent-4 {
+        position: absolute;
+        left: 10%;
+        top: 35%;
+        width: 50%;
+        height: 45%;
+        background: radial-gradient(
+          ellipse 800px 400px at 32% 50%,
+          rgba(0, 240, 220, 0.5) 0%,
+          rgba(0, 200, 190, 0.25) 40%,
+          transparent 65%
+        );
+        filter: blur(90px);
+        animation: waveAccent4 22s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerAccent 9.5s ease-in-out infinite 0.6s,
+          curtainAccent 7.2s ease-in-out infinite;
+        mix-blend-mode: darken;
+        transform-origin: 35% 50%;
+        opacity: 0.58;
+      }
+
+      .aurora-accent-5 {
+        position: absolute;
+        right: 5%;
+        top: 28%;
+        width: 55%;
+        height: 50%;
+        background: radial-gradient(
+          ellipse 850px 420px at 68% 50%,
+          rgba(255, 100, 185, 0.55) 0%,
+          rgba(230, 80, 165, 0.3) 40%,
+          transparent 65%
+        );
+        filter: blur(92px);
+        animation: waveAccent5 27s cubic-bezier(0.45, 0, 0.2, 1) infinite,
+          shimmerAccent 11s ease-in-out infinite 1.5s,
+          curtainAccent 8.4s ease-in-out infinite;
+        mix-blend-mode: darken;
+        transform-origin: 70% 50%;
+        opacity: 0.58;
+      }
+
+      .aurora-glow {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            ellipse 1100px 500px at 25% 45%,
+            rgba(0, 220, 200, 0.22) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 1200px 550px at 75% 45%,
+            rgba(220, 80, 200, 0.22) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 1000px 500px at 50% 50%,
+            rgba(180, 100, 230, 0.18) 0%,
+            transparent 75%
+          );
+        filter: blur(160px);
+        animation: glowPulse 14s ease-in-out infinite;
+        mix-blend-mode: darken;
+        opacity: 0.55;
+      }
+
+      /* ---- More prominent frosted glass ---- */
+      .frosted-glass {
+        position: fixed;
+        inset: 0;
+        z-index: 6; /* above aurora + stars */
+        pointer-events: none;
+
+        background: rgba(255, 255, 255, 0.28);
+        backdrop-filter: blur(30px) saturate(1.1) contrast(1.02);
+        -webkit-backdrop-filter: blur(30px) saturate(1.1) contrast(1.02);
+
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+          inset 0 0 80px rgba(255, 255, 255, 0.22);
+      }
+
+      .frosted-glass::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+          linear-gradient(
+            115deg,
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0.04) 40%,
+            rgba(255, 255, 255, 0.12) 70%,
+            rgba(255, 255, 255, 0.06)
+          );
+        background-size: 6px 6px, 100% 100%;
+        opacity: 0.28;
+        mix-blend-mode: soft-light;
+        filter: blur(0.25px);
+      }
+
+      .frosted-glass::after {
+        content: "";
+        position: absolute;
+        inset: -20%;
+        background: radial-gradient(
+          circle at 40% 40%,
+          rgba(255, 255, 255, 0.22) 0%,
+          rgba(255, 255, 255, 0.08) 35%,
+          transparent 65%
+        );
+        opacity: 0.35;
+        filter: blur(18px);
+        animation: frostBloom 9s ease-in-out infinite;
+      }
+
+      /* ---- Stars ---- */
+      .stars {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+      }
+
+      .star {
+        position: absolute;
+        border-radius: 50%;
+        background: #333;
+        opacity: 0.28;
+        animation: twinkle 3s infinite;
+      }
+
+      @keyframes twinkle {
+        0%,
+        100% {
+          opacity: 0.12;
+        }
+        50% {
+          opacity: 0.45;
+        }
+      }
+
+      /* ---- Existing wave keyframes (kept) ---- */
+      @keyframes waveLeft {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(-0.4deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        20% {
+          transform: translate3d(18px, -22px, 0) rotate(0.2deg) skewY(0.7deg)
+            scaleX(1.02) scaleY(0.99);
+        }
+        45% {
+          transform: translate3d(8px, -48px, 0) rotate(0.6deg) skewY(0.2deg)
+            scaleX(1.01) scaleY(1.01);
+        }
+        70% {
+          transform: translate3d(-14px, -30px, 0) rotate(-0.1deg) skewY(-0.6deg)
+            scaleX(0.99) scaleY(1.02);
+        }
+      }
+
+      @keyframes waveCenter {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(0deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        18% {
+          transform: translate3d(-10px, -26px, 0) rotate(-0.4deg) skewY(0.9deg)
+            scaleX(1.02) scaleY(0.99);
+        }
+        42% {
+          transform: translate3d(6px, -56px, 0) rotate(0.35deg) skewY(0.25deg)
+            scaleX(1.01) scaleY(1.02);
+        }
+        68% {
+          transform: translate3d(12px, -34px, 0) rotate(0.15deg) skewY(-0.9deg)
+            scaleX(0.99) scaleY(1.01);
+        }
+      }
+
+      @keyframes waveRight {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(0.35deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        22% {
+          transform: translate3d(-18px, -24px, 0) rotate(-0.15deg)
+            skewY(-0.7deg) scaleX(1.02) scaleY(0.99);
+        }
+        48% {
+          transform: translate3d(-8px, -52px, 0) rotate(-0.55deg) skewY(-0.25deg)
+            scaleX(1.01) scaleY(1.02);
+        }
+        72% {
+          transform: translate3d(14px, -32px, 0) rotate(0.05deg) skewY(0.6deg)
+            scaleX(0.99) scaleY(1.01);
+        }
+      }
+
+      @keyframes waveAccent1 {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(-0.2deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        35% {
+          transform: translate3d(12px, -34px, 0) rotate(0.25deg) skewY(0.6deg)
+            scaleX(1.02) scaleY(1.01);
+        }
+        70% {
+          transform: translate3d(-10px, -22px, 0) rotate(-0.1deg) skewY(-0.5deg)
+            scaleX(0.99) scaleY(1.02);
+        }
+      }
+
+      @keyframes waveAccent2 {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(0.2deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        33% {
+          transform: translate3d(-12px, -36px, 0) rotate(-0.25deg)
+            skewY(-0.6deg) scaleX(1.02) scaleY(1.01);
+        }
+        67% {
+          transform: translate3d(10px, -24px, 0) rotate(0.1deg) skewY(0.5deg)
+            scaleX(0.99) scaleY(1.02);
+        }
+      }
+
+      @keyframes waveAccent3 {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(0deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        28% {
+          transform: translate3d(10px, -30px, 0) rotate(0.25deg) skewY(0.7deg)
+            scaleX(1.02) scaleY(0.99);
+        }
+        55% {
+          transform: translate3d(-6px, -58px, 0) rotate(-0.25deg) skewY(0.2deg)
+            scaleX(1.01) scaleY(1.02);
+        }
+        80% {
+          transform: translate3d(8px, -34px, 0) rotate(0.1deg) skewY(-0.7deg)
+            scaleX(0.99) scaleY(1.01);
+        }
+      }
+
+      @keyframes waveAccent4 {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(-0.15deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        45% {
+          transform: translate3d(10px, -32px, 0) rotate(0.2deg) skewY(-0.55deg)
+            scaleX(1.02) scaleY(1.01);
+        }
+        75% {
+          transform: translate3d(-8px, -18px, 0) rotate(-0.1deg) skewY(0.45deg)
+            scaleX(0.99) scaleY(1.02);
+        }
+      }
+
+      @keyframes waveAccent5 {
+        0%,
+        100% {
+          transform: translate3d(0px, 0px, 0) rotate(0.15deg) skewY(0deg)
+            scaleX(1) scaleY(1);
+        }
+        40% {
+          transform: translate3d(-10px, -38px, 0) rotate(-0.2deg) skewY(0.55deg)
+            scaleX(1.02) scaleY(1.01);
+        }
+        78% {
+          transform: translate3d(8px, -22px, 0) rotate(0.1deg) skewY(-0.45deg)
+            scaleX(0.99) scaleY(1.02);
+        }
+      }
+
+      /* ---- Shimmer (more aurora-like) ---- */
+      @keyframes shimmerLeft {
+        0%,
+        100% {
+          opacity: 0.55;
+          filter: blur(112px) brightness(1);
+        }
+        35% {
+          opacity: 0.7;
+          filter: blur(108px) brightness(1.12);
+        }
+        70% {
+          opacity: 0.62;
+          filter: blur(114px) brightness(1.06);
+        }
+      }
+
+      @keyframes shimmerCenter {
+        0%,
+        100% {
+          opacity: 0.54;
+          filter: blur(132px) brightness(1);
+        }
+        35% {
+          opacity: 0.7;
+          filter: blur(126px) brightness(1.14);
+        }
+        70% {
+          opacity: 0.6;
+          filter: blur(134px) brightness(1.06);
+        }
+      }
+
+      @keyframes shimmerRight {
+        0%,
+        100% {
+          opacity: 0.55;
+          filter: blur(122px) brightness(1);
+        }
+        35% {
+          opacity: 0.7;
+          filter: blur(118px) brightness(1.12);
+        }
+        70% {
+          opacity: 0.6;
+          filter: blur(124px) brightness(1.06);
+        }
+      }
+
+      @keyframes shimmerAccent {
+        0%,
+        100% {
+          opacity: 0.45;
+          filter: blur(92px) brightness(1);
+        }
+        40% {
+          opacity: 0.62;
+          filter: blur(88px) brightness(1.12);
+        }
+        75% {
+          opacity: 0.52;
+          filter: blur(94px) brightness(1.05);
+        }
+      }
+
+      @keyframes glowPulse {
+        0%,
+        100% {
+          opacity: 0.42;
+          filter: blur(160px);
+        }
+        40% {
+          opacity: 0.55;
+          filter: blur(150px);
+        }
+        75% {
+          opacity: 0.48;
+          filter: blur(165px);
+        }
+      }
+
+      /* Curtain-like flow */
+      @keyframes curtainLeft {
+        0%,
+        100% {
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+        50% {
+          clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
+        }
+      }
+
+      @keyframes curtainCenter {
+        0%,
+        100% {
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+        50% {
+          clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%);
+        }
+      }
+
+      @keyframes curtainRight {
+        0%,
+        100% {
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+        50% {
+          clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%);
+        }
+      }
+
+      @keyframes curtainAccent {
+        0%,
+        100% {
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+        50% {
+          clip-path: polygon(1% 0, 99% 0, 100% 100%, 0 100%);
+        }
+      }
+
+      @keyframes shimmerField {
+        0%,
+        100% {
+          transform: translate3d(-18px, 10px, 0) scale(1);
+          opacity: 0.75;
+          filter: blur(18px);
+        }
+        45% {
+          transform: translate3d(22px, -16px, 0) scale(1.03);
+          opacity: 0.95;
+          filter: blur(15px);
+        }
+        80% {
+          transform: translate3d(-10px, -22px, 0) scale(1.02);
+          opacity: 0.85;
+          filter: blur(19px);
+        }
+      }
+
+      @keyframes frostBloom {
+        0%,
+        100% {
+          transform: translate3d(-10px, 6px, 0) scale(1);
+          opacity: 0.32;
+        }
+        50% {
+          transform: translate3d(14px, -10px, 0) scale(1.03);
+          opacity: 0.45;
+        }
+      }
+
+      /* Accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        .aurora-wrap::before,
+        .aurora,
+        .aurora-glow,
+        .frosted-glass::after,
+        .star {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="aurora-container">
+      <div class="aurora-wrap" id="auroraWrap">
+        <div class="aurora aurora-left" id="auroraLeft"></div>
+        <div class="aurora aurora-center" id="auroraCenter"></div>
+        <div class="aurora aurora-right" id="auroraRight"></div>
+
+        <div class="aurora aurora-accent-1"></div>
+        <div class="aurora aurora-accent-2"></div>
+        <div class="aurora aurora-accent-3"></div>
+        <div class="aurora aurora-accent-4"></div>
+        <div class="aurora aurora-accent-5"></div>
+
+        <div class="aurora-glow"></div>
+
+        <div class="stars" id="starsContainer"></div>
+      </div>
+
+      <div class="frosted-glass" aria-hidden="true"></div>
+    </div>
+
+    <script>
+      // Stars
+      function generateStars() {
+        const starsContainer = document.getElementById("starsContainer");
+        starsContainer.innerHTML = "";
+        const starCount = 100;
+
+        for (let i = 0; i < starCount; i++) {
+          const star = document.createElement("div");
+          star.className = "star";
+
+          const x = Math.random() * 100;
+          const y = Math.random() * 100;
+          const size = Math.random() * 1.5 + 0.5;
+          const duration = Math.random() * 3 + 2;
+          const delay = Math.random() * 3;
+
+          star.style.left = x + "%";
+          star.style.top = y + "%";
+          star.style.width = size + "px";
+          star.style.height = size + "px";
+          star.style.animationDuration = duration + "s";
+          star.style.animationDelay = delay + "s";
+
+          starsContainer.appendChild(star);
+        }
+      }
+      generateStars();
+
+      // Aurora-like motion: smooth drift + curtain parallax (doesn't overwrite keyframe transforms)
+      const wrap = document.getElementById("auroraWrap");
+      const left = document.getElementById("auroraLeft");
+      const right = document.getElementById("auroraRight");
+      const center = document.getElementById("auroraCenter");
+
+      let mx = 0,
+        my = 0;
+      document.addEventListener("mousemove", (e) => {
+        mx = e.clientX / window.innerWidth - 0.5;
+        my = e.clientY / window.innerHeight - 0.5;
+      });
+
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      let sx = 0,
+        sy = 0;
+
+      function animate(t) {
+        const phase = t / 1000;
+
+        // Smooth mouse follow
+        sx = lerp(sx, mx, 0.06);
+        sy = lerp(sy, my, 0.06);
+
+        // Overall drift for the whole aurora field
+        const driftX = Math.sin(phase * 0.16) * 10 + sx * 10;
+        const driftY = Math.cos(phase * 0.13) * 8 + sy * 8;
+        wrap.style.transform = `translate3d(${driftX.toFixed(2)}px, ${driftY.toFixed(
+          2
+        )}px, 0)`;
+
+        // “Curtain” parallax offsets per layer (translate property doesn't override keyframes)
+        const lx = sx * 18 + Math.sin(phase * 0.55) * 7;
+        const ly = sy * 12 + Math.cos(phase * 0.5) * 8;
+
+        const rx = -sx * 18 + Math.cos(phase * 0.52) * 7;
+        const ry = -sy * 12 + Math.sin(phase * 0.48) * 8;
+
+        const cx = sx * 10 + Math.sin(phase * 0.35) * 6;
+        const cy = sy * 8 + Math.cos(phase * 0.32) * 7;
+
+        // Use CSS translate so keyframes keep working
+        left.style.translate = `${lx.toFixed(2)}px ${ly.toFixed(2)}px`;
+        right.style.translate = `${rx.toFixed(2)}px ${ry.toFixed(2)}px`;
+        center.style.translate = `${cx.toFixed(2)}px ${cy.toFixed(2)}px`;
+
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+
+      window.addEventListener("resize", generateStars);
+    </script>
+  </body>
+</html>

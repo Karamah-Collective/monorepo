@@ -3,36 +3,38 @@
 # ════════════════════════════════════════════════════════════════
 
 # Configuration files with actual keys
-src/config.local.js
+Maps/src/config.local.js
+/.local-backups/
+/.venv/
 # src/config.js is tracked — it contains no secrets (reads from /api/config at runtime)
 .env
 .env.local
 .env.*.local
 .dev.vars
-scripts/apps-script/Code.gs
+Maps/scripts/apps-script/Code.gs
 
 
 # Generated/cached files — transit cache IS committed (deployed to Cloudflare Pages)
-scripts/cache/
-scripts/local-backups/
+Maps/scripts/cache/
+Maps/scripts/local-backups/
 *.cache
 
 # D1 migration (see docs/D1_MIGRATION_PLAN.md) — local dev state and
 # generated one-time migration SQL, never committed
 .wrangler/
-scripts/migrate-to-d1/generated/
+Maps/scripts/migrate-to-d1/generated/
 
 # Playwright generated output
 playwright-report/
 test-results/
 
 # Local development documentation
-docs/GIT_TRACKING.md
-docs/FORMS_SHEETS_SETUP.md
-docs/user-guide.css
-docs/user-guide.html
-docs/guide-images/
-scripts/capture-guide-screenshots.js
+Maps/docs/GIT_TRACKING.md
+Maps/docs/FORMS_SHEETS_SETUP.md
+Maps/docs/user-guide.css
+Maps/docs/user-guide.html
+Maps/docs/guide-images/
+Maps/scripts/capture-guide-screenshots.js
 
 # ════════════════════════════════════════════════════════════════
 # BUILD & DEPENDENCIES
@@ -41,6 +43,10 @@ scripts/capture-guide-screenshots.js
 node_modules/
 dist/
 build/
+!Website/build/
+!Website/build/*.js
+!Website/build/*.cjs
+!Website/build/*.css
 out/
 .next/
 .nuxt/

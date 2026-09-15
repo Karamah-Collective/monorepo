@@ -7,19 +7,19 @@ You are running a **Full Project Audit** on the Halal Finder project.
 
 ## Steps
 
-1. Read `docs/DESIGN_SYSTEM.md` for the full token and template reference.
-2. Read `src/styles/design-tokens.css` for all current tokens and templates.
-3. Read `src/styles/styles.css` and check for:
+1. Read `Maps/docs/DESIGN_SYSTEM.md` for the full token and template reference.
+2. Read `Maps/src/styles/design-tokens.css` for all current tokens and templates.
+3. Read `Maps/src/styles/styles.css` and check for:
    - Hard-coded hex colours, px font sizes, px border-radii, literal box-shadows, or bare transition durations (should be `--token` refs)
    - Visual design rules that should be in a template class in `design-tokens.css`
    - Z-index values not using `--z-*` tokens
-4. Scan all `src/**/*.js` files for:
+4. Scan all `Maps/src/**/*.js` files for:
    - Inline styles that duplicate what design tokens or template classes provide
    - `Array.map(...).join()` missing `.join("")` when building HTML
    - User text injected into HTML without `esc()`
    - console.log left in production code
    - Any runtime npm dependency usage
-5. Scan `functions/**/*.js` for:
+5. Scan `Maps/functions/**/*.js` for:
    - Node.js API usage (fs, path, process, Buffer, require)
    - Missing CORS headers (`allowedOrigin()`)
    - Missing input validation (type checks, length limits)

@@ -1,0 +1,3 @@
+name = "karamah-website"
+compatibility_date = "2026-08-04"
+# Local tooling only; configure deployment secrets in the Pages dashboard.
