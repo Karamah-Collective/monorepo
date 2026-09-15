@@ -80,12 +80,13 @@ const DEPLOY_FILES = [
 const SECRET_OR_LOCAL = /(^|[\\/])(\.env|\.dev\.vars|config\.local\.js|node_modules|dist|\.wrangler|test-results|playwright-report)([\\/]|$)/;
 
 function git(args, options = {}) {
-  return execFileSync("git", args, {
+  const output = execFileSync("git", args, {
     cwd: options.cwd || repoRoot,
     encoding: "utf8",
     stdio: options.stdio || ["ignore", "pipe", "pipe"],
     windowsHide: true,
-  }).trim();
+  });
+  return typeof output === "string" ? output.trim() : "";
 }
 
 function run(command) {
