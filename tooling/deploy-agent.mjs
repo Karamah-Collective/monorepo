@@ -1,10 +1,11 @@
 import { execFileSync, execSync } from "node:child_process";
 import {
-  cp,
+  copyFile,
   mkdir,
   readdir,
   rm,
   writeFile,
+  lstat,
 } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -145,10 +146,7 @@ async function copyDeployFiles(target) {
   for (const item of DEPLOY_FILES) {
     const source = path.join(repoRoot, item);
     if (!existsSync(source)) continue;
-    await cp(source, path.join(target, item), {
-      recursive: true,
-      filter: (candidate) => !SECRET_OR_LOCAL.test(candidate),
-    });
+    await copyPath(source, path.join(target, item));
   }
   await writeFile(
     path.join(target, "README.deploy-branch.md"),
@@ -162,6 +160,21 @@ async function copyDeployFiles(target) {
     ].join("\n"),
     "utf8",
   );
+}
+
+async function copyPath(source, target) {
+  if (SECRET_OR_LOCAL.test(source)) return;
+  const info = await lstat(source);
+  if (info.isDirectory()) {
+    await mkdir(target, { recursive: true });
+    for (const entry of await readdir(source)) {
+      await copyPath(path.join(source, entry), path.join(target, entry));
+    }
+    return;
+  }
+  if (!info.isFile()) return;
+  await mkdir(path.dirname(target), { recursive: true });
+  await copyFile(source, target);
 }
 
 async function listFiles(folder, prefix = "") {
