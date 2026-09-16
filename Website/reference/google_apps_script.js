@@ -10,7 +10,7 @@ var TEAM_SHEET = "people_directory";
 var SUBSCRIBER_SHEET = "updates_opt_ins";
 var CONTENT_SHEET = "website_content";
 var AUDIT_SHEET = "website_audit";
-var SERVICE_VERSION = "2026-09-16-team-crud-v2";
+var SERVICE_VERSION = "2026-09-16-team-crud-v3";
 var CAPABILITIES = {
   teamCrud: true,
   teamDetails: true,
