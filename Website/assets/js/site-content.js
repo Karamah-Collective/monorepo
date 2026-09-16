@@ -24,8 +24,45 @@ function card(inner, extraClass = "") {
 function sectionLabel(label) {
   return label ? `<div class="kc-section-label">${escapeHtml(label)}</div>` : "";
 }
-function cardImage(url, alt) {
-  return url ? `<img class="kc-content-card-img" src="${escapeHtml(url)}" alt="${escapeHtml(alt || "")}" loading="lazy" decoding="async">` : "";
+function cropStyle(crop) {
+  const parts = String(crop || "50,50").split(",").map(Number);
+  const xRaw = parts.length >= 4 ? parts[0] + parts[2] / 2 : parts[0];
+  const yRaw = parts.length >= 4 ? parts[1] + parts[3] / 2 : parts[1];
+  const x = Math.max(0, Math.min(100, Number(xRaw) || 50));
+  const y = Math.max(0, Math.min(100, Number(yRaw) || 50));
+  return `object-position:${x}% ${y}%`;
+}
+function cropVars(crop) {
+  const parts = String(crop || "").split(",").map(Number);
+  if (parts.length < 4 || parts.some((value) => !Number.isFinite(value))) return "";
+  const [xRaw, yRaw, wRaw, hRaw] = parts;
+  const x = Math.max(0, Math.min(100, xRaw));
+  const y = Math.max(0, Math.min(100, yRaw));
+  const w = Math.max(1, Math.min(100 - x, wRaw));
+  const h = Math.max(1, Math.min(100 - y, hRaw));
+  const px = w >= 99 ? 50 : Math.max(0, Math.min(100, (x / (100 - w)) * 100));
+  const py = h >= 99 ? 50 : Math.max(0, Math.min(100, (y / (100 - h)) * 100));
+  return `--kc-crop-size:${10000 / w}% ${10000 / h}%;--kc-crop-pos-x:${px}%;--kc-crop-pos-y:${py}%`;
+}
+function applyCropVars(element, crop) {
+  const declarations = cropVars(crop).split(";").filter(Boolean);
+  if (!declarations.length) {
+    element.style.removeProperty("--kc-crop-size");
+    element.style.removeProperty("--kc-crop-pos-x");
+    element.style.removeProperty("--kc-crop-pos-y");
+    return;
+  }
+  declarations.forEach((declaration) => {
+    const index = declaration.indexOf(":");
+    if (index > 0) element.style.setProperty(declaration.slice(0, index), declaration.slice(index + 1));
+  });
+}
+function safeIcon(icon) {
+  const value = String(icon || "external-link").toLowerCase().replace(/[^a-z0-9-]/g, "");
+  return value || "external-link";
+}
+function cardImage(url, alt, crop) {
+  return url ? `<img class="kc-content-card-img" src="${escapeHtml(url)}" alt="${escapeHtml(alt || "")}" loading="lazy" decoding="async" style="${cropStyle(crop)}">` : "";
 }
 function actionLink(url, label) {
   return url && label ? `<a class="kc-btn kc-btn-outline kc-content-card-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}<i data-lucide="external-link" class="kc-icon-sm kc-icon-after"></i></a>` : "";
@@ -36,6 +73,7 @@ function activeTicket(content) {
     title: String(content.ticketTitle || "Tickets available").trim(),
     description: String(content.ticketDescription || "").trim(),
     imageUrl: String(content.ticketImageUrl || "").trim(),
+    imageCrop: String(content.ticketImageCrop || "50,50").trim(),
     ticketUrl: String(content.ticketUrl || "").trim(),
     buttonLabel: String(content.ticketButtonLabel || "Buy ticket").trim(),
   };
@@ -43,7 +81,7 @@ function activeTicket(content) {
 function renderFlexibleCard(row) {
   const kind = row.kind || (lineItems(row.items).length ? "list" : "text");
   const title = row.title || row.label || "";
-  const image = cardImage(row.imageUrl, title);
+  const image = cardImage(row.imageUrl, title, row.imageCrop);
   const heading = row.title ? `<h3 class="kc-content-card-title">${escapeHtml(row.title)}</h3>` : sectionLabel(row.label);
   const body = row.body ? `<p class="kc-card-desc">${escapeHtml(row.body)}</p>` : "";
   const list = lineItems(row.items).length ? `<ul class="kc-callout-list">${lineItems(row.items).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "";
@@ -92,10 +130,10 @@ function renderPrograms(rows) {
   const container = document.querySelector("[data-programs]");
   if (!container) return;
   container.innerHTML = cardRows(rows).map((row, index) => {
-    const icon = (row.icon || "circle").replace(/[^a-z0-9-]/gi, "") || "circle";
+    const icon = safeIcon(row.icon || "circle");
     const url = String(row.url || "").trim();
     const linkLabel = String(row.linkLabel || "Open link").trim();
-    return `<article class="kc-callout kc-card kc-programcard kc-reveal" data-reveal data-delay="${index * 80}" data-programcard${url ? ` data-programcard-link="${escapeHtml(url)}"` : ""} tabindex="0" role="article" aria-expanded="false">
+    return `<article class="kc-callout kc-card kc-programcard kc-reveal is-inview" data-reveal data-delay="${index * 80}" data-programcard${url ? ` data-programcard-link="${escapeHtml(url)}"` : ""} tabindex="0" role="article" aria-expanded="false">
       <div class="kc-program-row">
         <div class="kc-program-icon"><i data-lucide="${escapeHtml(icon)}" class="kc-icon-md"></i></div>
         <div class="kc-flex-body">
@@ -158,8 +196,15 @@ function renderTicketPopup(ticket) {
   description.textContent = ticket.description || "";
   if (image) {
     image.hidden = !ticket.imageUrl;
-    image.src = ticket.imageUrl || "";
-    image.alt = ticket.title || "Ticket";
+    if (image.tagName === "IMG") {
+      image.src = ticket.imageUrl || "";
+      image.alt = ticket.title || "Ticket";
+      image.style.objectPosition = cropStyle(ticket.imageCrop).replace("object-position:", "");
+    } else {
+      image.style.backgroundImage = ticket.imageUrl ? `url("${ticket.imageUrl.replace(/"/g, "%22")}")` : "";
+      applyCropVars(image, ticket.imageCrop);
+      image.setAttribute("aria-label", ticket.title || "Ticket");
+    }
   }
   action.textContent = ticket.buttonLabel || "Buy ticket";
   action.href = ticket.ticketUrl;
@@ -188,6 +233,16 @@ function renderTicketPopup(ticket) {
   } else if (popup.hidden) {
     scheduleTicketToast(ticket, 0);
   }
+}
+function renderSocialLinks(rows) {
+  const container = document.querySelector(".kc-social-links");
+  if (!container) return;
+  const links = cardRows(rows).filter((row) => String(row.url || "").trim());
+  container.innerHTML = links.map((row) => {
+    const label = String(row.label || "Link").trim();
+    const icon = safeIcon(row.icon);
+    return `<a href="${escapeHtml(row.url)}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" class="kc-social-btn"><i data-lucide="${escapeHtml(icon)}" class="kc-icon-md"></i><span class="kc-social-label">${escapeHtml(label)}</span></a>`;
+  }).join("");
 }
 function renderTicketToast(ticket) {
   const toast = document.querySelector("[data-ticket-toast]");
@@ -267,17 +322,17 @@ export function applyWebsiteContent(raw) {
     updates.disabled = !content.updatesEnabled;
     if (!content.updatesEnabled) updates.checked = false;
   }
+  document.querySelectorAll("[data-site-contact-email]").forEach((element) => {
+    element.textContent = content.contactEmail || "";
+    if (element.tagName === "A") element.href = content.contactEmail ? `mailto:${content.contactEmail}` : "#";
+  });
+  renderSocialLinks(content.socialLinks);
   if (content.pageDescription) {
     document.querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]').forEach((element) => element.setAttribute("content", content.pageDescription));
   }
   if (content.pageTitle) {
     document.title = content.pageTitle;
     document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach((element) => element.setAttribute("content", content.pageTitle));
-  }
-  for (const platform of ["instagram", "linkedin"]) {
-    if (content[`${platform}Url`]) {
-      document.querySelectorAll(`a[href*="${platform}.com"]`).forEach((element) => { element.href = content[`${platform}Url`]; });
-    }
   }
   refreshDynamicUi();
 }

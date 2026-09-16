@@ -207,7 +207,7 @@
         <button class="kc-ticket-popup-close" type="button" data-ticket-popup-close aria-label="Close ticket popup">
           &times;
         </button>
-        <img class="kc-ticket-popup-image" data-ticket-popup-image alt="" hidden />
+        <div class="kc-ticket-popup-image" data-ticket-popup-image role="img" hidden></div>
         <div class="kc-ticket-popup-copy">
           <div class="kc-section-label">Tickets</div>
           <h2 id="ticket-popup-title" data-ticket-popup-title>Tickets available</h2>
@@ -1437,12 +1437,13 @@
                     <a
                       href="mailto:contact@karamahcollective.com"
                       class="kc-link-hover"
+                      data-site-contact-email
                       >contact@karamahcollective.com</a
                     >
                   </div>
                   <div class="kc-contact-row">
                     <i data-lucide="map-pin" class="kc-icon-sm"></i>
-                    Helsinki, Finland
+                    <span data-site-contact-location>Helsinki, Finland</span>
                   </div>
                 </div>
 

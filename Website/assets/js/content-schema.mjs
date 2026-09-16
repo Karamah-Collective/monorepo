@@ -23,8 +23,10 @@ const cards = (label, group, itemFields, defaultValue, maxItems = 12, options = 
 const shortText = { type: "text", maxLength: 160 };
 const bodyText = { type: "textarea", maxLength: 1200 };
 const urlText = { type: "url", maxLength: 500 };
+const imageText = { type: "image", maxLength: 38000 };
 const linesText = { type: "lines", maxLength: 1200 };
 const cardKindText = { type: "hidden", maxLength: 40 };
+const cropText = { type: "hidden", maxLength: 40 };
 const flexibleCardFields = {
   kind: cardKindText,
   label: shortText,
@@ -33,13 +35,14 @@ const flexibleCardFields = {
   items: linesText,
   url: urlText,
   linkLabel: shortText,
-  imageUrl: urlText,
+  imageUrl: imageText,
+  imageCrop: cropText,
 };
 const flexibleCardTemplates = [
-  { label: "Text card", description: "A title or label with paragraph copy.", value: { kind: "text", label: "New note", title: "", body: "", items: [], url: "", linkLabel: "", imageUrl: "" } },
-  { label: "List card", description: "A compact card with bullet points.", value: { kind: "list", label: "New list", title: "", body: "", items: ["First item"], url: "", linkLabel: "", imageUrl: "" } },
-  { label: "Action card", description: "A text card with a button link.", value: { kind: "action", label: "New action", title: "", body: "", items: [], url: "", linkLabel: "Learn more", imageUrl: "" } },
-  { label: "Image card", description: "A visual card with optional text and link.", value: { kind: "image", label: "", title: "New feature", body: "", items: [], url: "", linkLabel: "", imageUrl: "" } },
+  { label: "Text card", description: "A title or label with paragraph copy.", value: { kind: "text", label: "New note", title: "", body: "", items: [], url: "", linkLabel: "", imageUrl: "", imageCrop: "" } },
+  { label: "List card", description: "A compact card with bullet points.", value: { kind: "list", label: "New list", title: "", body: "", items: ["First item"], url: "", linkLabel: "", imageUrl: "", imageCrop: "" } },
+  { label: "Action card", description: "A text card with a button link.", value: { kind: "action", label: "New action", title: "", body: "", items: [], url: "", linkLabel: "Learn more", imageUrl: "", imageCrop: "" } },
+  { label: "Image card", description: "A visual card with optional text and link.", value: { kind: "image", label: "", title: "New feature", body: "", items: [], url: "", linkLabel: "", imageUrl: "", imageCrop: "50,50" } },
 ];
 
 export const WEBSITE_FIELDS = {
@@ -78,7 +81,8 @@ export const WEBSITE_FIELDS = {
   ticketsVisible: toggle("Show ticket popup and buy buttons", "Tickets", false),
   ticketTitle: text("Ticket title", "Tickets", null, 160, ""),
   ticketDescription: text("Ticket description", "Tickets", null, 1200, ""),
-  ticketImageUrl: { ...text("Ticket image URL", "Tickets", null, 500, ""), type: "url" },
+  ticketImageUrl: { ...text("Ticket image", "Tickets", null, 38000, ""), type: "image" },
+  ticketImageCrop: { ...text("Ticket image crop", "Tickets", null, 40, "50,50"), type: "hidden" },
   ticketUrl: { ...text("Buy button link", "Tickets", null, 500, ""), type: "url" },
   ticketButtonLabel: text("Buy button label", "Tickets", null, 80, "Buy ticket"),
   ticketsTitle: { ...text("Section title", "Tickets", null, 100, "Tickets & Registrations"), legacy: true },
@@ -88,14 +92,15 @@ export const WEBSITE_FIELDS = {
     eyebrow: shortText,
     date: shortText,
     description: bodyText,
-    imageUrl: urlText,
+    imageUrl: imageText,
+    imageCrop: cropText,
     ticketUrl: urlText,
     price: shortText,
     status: shortText,
     buttonLabel: shortText,
   }, [], 8, { rowMax: 2, rowHint: "Desktop/tablet: up to 2 ticket cards per row. A third ticket wraps to a new row. Phone: 1 per row.", cardTemplates: [
-    { label: "Ticket card", description: "Image, description, price/status, and ticket button.", value: { title: "New ticketed event", eyebrow: "Event", date: "", description: "", imageUrl: "", ticketUrl: "", price: "", status: "Open", buttonLabel: "Get tickets" } },
-    { label: "Registration card", description: "For free registrations or RSVP links.", value: { title: "New registration", eyebrow: "Registration", date: "", description: "", imageUrl: "", ticketUrl: "", price: "Free", status: "Open", buttonLabel: "Register" } },
+    { label: "Ticket card", description: "Image, description, price/status, and ticket button.", value: { title: "New ticketed event", eyebrow: "Event", date: "", description: "", imageUrl: "", imageCrop: "50,50", ticketUrl: "", price: "", status: "Open", buttonLabel: "Get tickets" } },
+    { label: "Registration card", description: "For free registrations or RSVP links.", value: { title: "New registration", eyebrow: "Registration", date: "", description: "", imageUrl: "", imageCrop: "50,50", ticketUrl: "", price: "Free", status: "Open", buttonLabel: "Register" } },
   ] }), legacy: true },
 
   janazahTitle: text("Section title", "Janazah", "#janazah .kc-section-title", 100, "Janazah Initiative"),
@@ -149,14 +154,22 @@ export const WEBSITE_FIELDS = {
   teamTitle: text("Section title", "Team", "#team .kc-section-title", 100, "Meet the Team"),
   teamVisible: toggle("Show the team", "Team"),
   contactTitle: text("Section title", "Contact", "#contact .kc-section-title", 100, "Contact Us"),
-  contactIntro: text("Contact introduction", "Contact", "[data-site-contact-intro]", 500, ""),
+  contactIntro: text("Contact introduction", "Contact", "[data-site-contact-intro]", 500, "Questions, ideas, volunteering, support requests, and partnerships are welcome."),
+  contactEmail: text("Contact email", "Contact", "[data-site-contact-email]", 254, "contact@karamahcollective.com"),
+  contactLocation: text("Contact location", "Contact", "[data-site-contact-location]", 160, "Helsinki, Finland"),
   updatesEnabled: toggle("Offer the updates signup checkbox", "Contact"),
   noticeEnabled: toggle("Show announcement banner", "Announcement", false),
   noticeText: text("Announcement", "Announcement", "[data-site-notice]", 350, ""),
   pageTitle: { ...text("Browser tab title", "Search & sharing", "title", 100, "Karamah Collective") },
   pageDescription: { ...text("Search description", "Search & sharing", null, 300, "Community-powered support for Muslims in Finland — clear information, practical guidance, and compassionate connections.") },
-  instagramUrl: { ...text("Instagram link", "Links", null, 500, "https://www.instagram.com/karamah.collective/"), type: "url" },
-  linkedinUrl: { ...text("LinkedIn link", "Links", null, 500, "https://www.linkedin.com/company/karamah-collective/"), type: "url" },
+  socialLinks: cards("Social and resource links", "Links", { label: shortText, url: urlText, icon: shortText }, [
+    { label: "Instagram", url: "https://www.instagram.com/karamah.collective/", icon: "instagram" },
+    { label: "LinkedIn", url: "https://www.linkedin.com/company/karamah-collective/", icon: "linkedin" },
+  ], 20, { rowMax: 4, rowHint: "Add any public link visitors should see in Contact.", cardTemplates: [
+    { label: "Social link", description: "A named external link with a Lucide icon name.", value: { label: "New link", url: "", icon: "external-link" } },
+  ] }),
+  instagramUrl: { ...text("Instagram link", "Links", null, 500, "https://www.instagram.com/karamah.collective/"), type: "url", legacy: true },
+  linkedinUrl: { ...text("LinkedIn link", "Links", null, 500, "https://www.linkedin.com/company/karamah-collective/"), type: "url", legacy: true },
 };
 
 for (let i = 1; i <= 4; i++) {
@@ -204,6 +217,12 @@ function validateUrl(label, value) {
   }
   return null;
 }
+function validateImage(label, value, maxLength = 50000) {
+  if (!value) return null;
+  if (value.length > maxLength) return `${label} image is too large. Crop or choose a smaller image.`;
+  if (/^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=]+$/i.test(value)) return null;
+  return validateUrl(label, value);
+}
 export function validateWebsiteContent(content) {
   if (!content || typeof content !== "object" || Array.isArray(content)) return "Invalid website content.";
   for (const [key, value] of Object.entries(content)) {
@@ -224,7 +243,7 @@ export function validateWebsiteContent(content) {
           } else {
             const textValue = raw == null ? "" : raw;
             if (typeof textValue !== "string" || textValue.length > spec.maxLength) return `${field.label} has text that is too long.`;
-            const urlError = spec.type === "url" ? validateUrl(field.label, textValue) : null;
+            const urlError = spec.type === "url" ? validateUrl(field.label, textValue) : spec.type === "image" ? validateImage(field.label, textValue, spec.maxLength) : null;
             if (urlError) return urlError;
           }
         }
@@ -234,6 +253,9 @@ export function validateWebsiteContent(content) {
       if (field.type === "url") {
         const urlError = validateUrl(field.label, value);
         if (urlError) return urlError;
+      } else if (field.type === "image") {
+        const imageError = validateImage(field.label, value, field.maxLength);
+        if (imageError) return imageError;
       }
     }
   }
@@ -272,11 +294,19 @@ export function publicWebsiteContent(value) {
       content.ticketTitle = cleanString(ticket.title).trim();
       content.ticketDescription = cleanString(ticket.description).trim();
       content.ticketImageUrl = cleanString(ticket.imageUrl).trim();
+      content.ticketImageCrop = cleanString(ticket.imageCrop).trim() || "50,50";
       content.ticketUrl = cleanString(ticket.ticketUrl).trim();
       content.ticketButtonLabel = cleanString(ticket.buttonLabel).trim() || "Buy ticket";
     }
   }
   if (!content.ticketTitle && typeof input.ticketsTitle === "string") content.ticketTitle = input.ticketsTitle.trim();
   if (!content.ticketDescription && typeof input.ticketsSubtitle === "string") content.ticketDescription = input.ticketsSubtitle.trim();
+  if (!Array.isArray(input.socialLinks)) {
+    const legacyLinks = [
+      { label: "Instagram", url: cleanString(input.instagramUrl).trim(), icon: "instagram" },
+      { label: "LinkedIn", url: cleanString(input.linkedinUrl).trim(), icon: "linkedin" },
+    ].filter((link) => link.url);
+    if (legacyLinks.length) content.socialLinks = legacyLinks;
+  }
   return content;
 }

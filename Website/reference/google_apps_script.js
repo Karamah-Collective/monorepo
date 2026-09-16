@@ -57,7 +57,7 @@ function doPost(e) {
   var lock;
   try {
     var raw = (e && e.postData && e.postData.contents) || "{}";
-    if (raw.length > 40000) fail("Request too large", 400);
+    if (raw.length > 70000) fail("Request too large", 400);
     var data = JSON.parse(raw);
     var action = data.action || "subscribe";
     var adminActions = [
@@ -402,7 +402,7 @@ function saveContent(data) {
     !data.content ||
     typeof data.content !== "object" ||
     Array.isArray(data.content) ||
-    JSON.stringify(data.content).length > 30000
+    JSON.stringify(data.content).length > 50000
   )
     fail("Invalid website content", 400);
   var record = sheet(CONTENT_SHEET, ["Key", "Value", "Revision", "Updated At"]);

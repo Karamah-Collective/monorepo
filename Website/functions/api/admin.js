@@ -44,7 +44,7 @@ export async function onRequest(context) {
     let data,action;
     if(request.method==='GET'){data={};action=new URL(request.url).searchParams.get('action');if(!reads.has(action))return response(request,{error:'Unknown read action'},400);}
     else {
-      const raw=await request.text();if(raw.length>40000)return response(request,{error:'Request too large'},413);
+      const raw=await request.text();if(raw.length>70000)return response(request,{error:'Request too large'},413);
       try{data=JSON.parse(raw);}catch{return response(request,{error:'Invalid JSON'},400);}
       if(!data||typeof data!=='object'||Array.isArray(data))return response(request,{error:'Invalid request'},400);
       action=data.action;if(!writes.has(action))return response(request,{error:'Unknown write action'},400);
