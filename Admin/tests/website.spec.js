@@ -7,12 +7,14 @@ async function mockWebsite(page, fail = false) {
     export const websiteOrigin = 'https://website.example.test';
     let people = [{id:'person-1',revision:1,name:'Amina Hassan',email:'amina@example.test',position:'Community coordinator',description:'Bringing neighbors together through local projects.',location:'Helsinki',status:'active',order:1}];
     let subscribers = [{id:'signup-1',revision:1,name:'Test Supporter',email:'supporter@example.test',phone:'+35812345',date:'2026-09-01T12:00:00Z',status:'subscribed'},{id:'signup-2',revision:1,name:'Former Supporter',email:'former@example.test',phone:'',date:'2026-08-01T12:00:00Z',status:'unsubscribed'}];
+    const serviceMeta = {serviceVersion:'2026-09-16-team-crud-v2',capabilities:{teamCrud:true,teamDetails:true}};
     let content = {heroTitle:'A shared home for our community'}; let revision=1;
     export async function websiteRequest(action, body) {
       if (${fail}) throw new Error('Website data is not connected yet. Configure GOOGLE_SHEET_URL in the Website Pages project.');
-      if (!body) return action==='admin-team' ? {success:true,people} : action==='admin-subscribers' ? {success:true,subscribers} : {success:true,content,revision};
+      if (!body) return action==='admin-team' ? {success:true,people,...serviceMeta} : action==='admin-subscribers' ? {success:true,subscribers} : {success:true,content,revision};
       window.__websiteMutation={action,body};
-      if (action==='save-person') {const row={...body.person,id:body.id||'new-person',revision:(body.revision||0)+1};people=[...people.filter(p=>p.id!==row.id),row];}
+      if (action==='save-person') {const row={...body.person,id:body.id||'new-person',revision:(body.revision||0)+1};people=[...people.filter(p=>p.id!==row.id),row];return {success:true,id:row.id,revision:row.revision,person:row,...serviceMeta};}
+      if (action==='delete-person') {people=people.filter(p=>p.id!==body.id);return {success:true,id:body.id,...serviceMeta};}
       if (action==='save-content') {content=body.content;revision++;}
       if (action==='unsubscribe') subscribers=subscribers.map(p=>p.id===body.id?{...p,status:'unsubscribed',revision:p.revision+1}:p);
       return {success:true,revision};
@@ -34,6 +36,47 @@ test('team editor saves to the website API and keeps visibility/order fields', a
   const mutation = await page.evaluate(() => window.__websiteMutation);
   expect(mutation.action).toBe('save-person');
   expect(mutation.body).toMatchObject({ id: 'person-1', revision: 1, person: { status: 'inactive', order: 1 } });
+});
+
+test('team editor can add and remove people from the website API', async ({ page }) => {
+  await mockWebsite(page);
+  await page.goto('/website/team');
+  await page.getByRole('button', { name: 'Add team member' }).click();
+  await page.getByLabel('Full name').fill('New Person');
+  await page.getByLabel('Role or position').fill('Program lead');
+  await page.getByLabel('Public email').fill('new-person@example.test');
+  await page.getByLabel('Location').fill('Berlin');
+  await page.getByLabel('Short biography').fill('Testing the full create and delete path.');
+  await page.getByLabel('Website visibility').selectOption('inactive');
+  await page.getByLabel('Display order').fill('7');
+  await page.getByRole('button', { name: 'Save team member' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'New Person' })).toBeVisible();
+  await expect(page.locator('.website-person-card').filter({ hasText: 'New Person' })).toContainText('Berlin');
+  expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({
+    action: 'save-person',
+    body: { revision: 0, person: { name: 'New Person', email: 'new-person@example.test', status: 'inactive', order: 7 } },
+  });
+
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('.website-person-card').filter({ hasText: 'New Person' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('heading', { name: 'New Person' })).toHaveCount(0);
+  expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({ action: 'delete-person', body: { id: 'new-person', revision: 1 } });
+});
+
+test('team editor blocks writes when the data service is outdated', async ({ page }) => {
+  await mockAdmin(page);
+  await page.route('**/src/api/website-client.js*', route => route.fulfill({ contentType: 'text/javascript', body: `
+    export const websiteOrigin = 'https://website.example.test';
+    export async function websiteRequest() {
+      return {success:true,people:[{id:'person-1',revision:1,name:'Amina Hassan',email:'amina@example.test',position:'Community coordinator',description:'Bio',location:'Helsinki',status:'active',order:1}]};
+    }
+  ` }));
+  await page.goto('/website/team');
+  await expect(page.getByRole('alert')).toContainText('Apps Script is updated');
+  await expect(page.getByRole('button', { name: 'Add team member' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeDisabled();
 });
 
 test('content drafts survive section changes and publish with the loaded revision', async ({ page }) => {

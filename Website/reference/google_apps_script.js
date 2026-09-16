@@ -10,6 +10,13 @@ var TEAM_SHEET = "people_directory";
 var SUBSCRIBER_SHEET = "updates_opt_ins";
 var CONTENT_SHEET = "website_content";
 var AUDIT_SHEET = "website_audit";
+var SERVICE_VERSION = "2026-09-16-team-crud-v2";
+var CAPABILITIES = {
+  teamCrud: true,
+  teamDetails: true,
+  websiteContent: true,
+  uploadedTicketImages: true,
+};
 var TEAM_COLUMNS = [
   "Name",
   "Email",
@@ -81,20 +88,23 @@ function doPost(e) {
       fail("Another update is in progress. Try again.", 409);
     var result;
     if (action === "admin-team")
-      result = { success: true, people: privateRows(TEAM_SHEET, TEAM_COLUMNS) };
+      result = withServiceMeta({
+        success: true,
+        people: privateRows(TEAM_SHEET, TEAM_COLUMNS),
+      });
     else if (action === "admin-subscribers")
       result = {
         success: true,
         subscribers: privateRows(SUBSCRIBER_SHEET, SUBSCRIBER_COLUMNS),
       };
-    else if (action === "admin-content") result = readContent();
-    else if (action === "save-person") result = savePerson(data);
+    else if (action === "admin-content") result = withServiceMeta(readContent());
+    else if (action === "save-person") result = withServiceMeta(savePerson(data));
     else if (action === "delete-person")
-      result = removeRecord(TEAM_SHEET, TEAM_COLUMNS, data);
+      result = withServiceMeta(removeRecord(TEAM_SHEET, TEAM_COLUMNS, data));
     else if (action === "unsubscribe") result = unsubscribe(data);
     else if (action === "delete-subscriber")
       result = removeRecord(SUBSCRIBER_SHEET, SUBSCRIBER_COLUMNS, data);
-    else if (action === "save-content") result = saveContent(data);
+    else if (action === "save-content") result = withServiceMeta(saveContent(data));
     else result = subscribe(data);
     if (adminActions.indexOf(action) >= 0 && action.indexOf("admin-") !== 0) {
       try {
@@ -130,6 +140,11 @@ function fail(message, status) {
   var error = new Error(message);
   error.status = status;
   throw error;
+}
+function withServiceMeta(payload) {
+  payload.serviceVersion = SERVICE_VERSION;
+  payload.capabilities = CAPABILITIES;
+  return payload;
 }
 function clean(value) {
   return String(value == null ? "" : value).trim();
@@ -324,6 +339,7 @@ function savePerson(data) {
     id = Utilities.getUuid();
     revision = 1;
   }
+  var updatedAt = new Date().toISOString();
   writeFields(record, row, {
     Name: clean(person.name),
     Email: clean(person.email).toLowerCase(),
@@ -334,9 +350,25 @@ function savePerson(data) {
     Order: person.order,
     ID: id,
     Revision: revision,
-    "Updated At": new Date().toISOString(),
+    "Updated At": updatedAt,
   });
-  return { success: true, id: id, revision: revision };
+  return {
+    success: true,
+    id: id,
+    revision: revision,
+    person: {
+      id: id,
+      revision: revision,
+      name: clean(person.name),
+      email: clean(person.email).toLowerCase(),
+      position: clean(person.position),
+      status: person.status,
+      description: clean(person.description),
+      location: clean(person.location),
+      order: person.order,
+      updatedat: updatedAt,
+    },
+  };
 }
 function removeRecord(name, columns, data) {
   var found = findRecord(name, columns, data);
