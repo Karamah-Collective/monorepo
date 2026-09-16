@@ -54,6 +54,19 @@ const TYPE_GROUP_LABELS = {
   space_space_type: "Spaces",
 };
 
+function isSupportedGoogleMapsLink(value) {
+  try {
+    const url = new URL(value);
+    if (!/^https?:$/.test(url.protocol)) return false;
+    const host = url.hostname.toLowerCase();
+    if (["maps.app.goo.gl", "goo.gl", "g.co"].includes(host)) return true;
+    return /^(?:www\.)?(?:google\.[a-z.]+|maps\.google\.[a-z.]+)$/.test(host) &&
+      (url.pathname.includes("/maps") || host.startsWith("maps.google."));
+  } catch {
+    return false;
+  }
+}
+
 async function resolveFirebaseIdentity(idToken) {
   const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
   if (!cleanToken) return null;
@@ -451,6 +464,11 @@ export async function onRequestPost(context) {
   if (formData.recurrencePattern) formData.recurrencePattern = truncate(formData.recurrencePattern, MAX_FIELD_LEN);
   if (formData.url) formData.url = truncate(formData.url, MAX_FIELD_LEN);
   if (formData.eventId) formData.eventId = truncate(formData.eventId, 50);
+  if (formData.locationName) formData.locationName = truncate(formData.locationName, MAX_FIELD_LEN);
+  if (formData.locationAddress) formData.locationAddress = truncate(formData.locationAddress, MAX_FIELD_LEN);
+  if (formData.locationGmapsLink) formData.locationGmapsLink = truncate(formData.locationGmapsLink, MAX_FIELD_LEN);
+  if (formData.organizerName) formData.organizerName = truncate(formData.organizerName, MAX_FIELD_LEN);
+  if (formData.organizerPlaceId) formData.organizerPlaceId = truncate(formData.organizerPlaceId, 50);
 
   if (formData.eidOrganizer) formData.eidOrganizer = truncate(formData.eidOrganizer, MAX_FIELD_LEN);
   if (formData.eidDate) formData.eidDate = truncate(formData.eidDate, 10);
@@ -469,6 +487,9 @@ export async function onRequestPost(context) {
   }
   if (appSettings?.requireEventUrl && ["event", "event-edit"].includes(formType) && !String(formData.url || "").trim()) {
     return json({ success: false, error: "Please add an event link." }, 200, responseHeaders);
+  }
+  if (["event", "event-edit"].includes(formType) && formData.locationGmapsLink && !isSupportedGoogleMapsLink(formData.locationGmapsLink)) {
+    return json({ success: false, error: "Please use a valid Google Maps location link." }, 200, responseHeaders);
   }
 
   let captcha;
@@ -518,12 +539,41 @@ export async function onRequestPost(context) {
       result = await sendContactEmail(env, data);
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();
-      await env.DB.prepare("INSERT INTO events (id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, status, reject_reason, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,'pending','',?)")
-        .bind(eventId, data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", helsinkiTimestamp()).run();
+      let locationName = data.locationName || "";
+      let locationAddress = data.locationAddress || "";
+      let locationLat = Number.isFinite(Number(data.locationLat)) && data.locationLat !== "" ? Number(data.locationLat) : null;
+      let locationLng = Number.isFinite(Number(data.locationLng)) && data.locationLng !== "" ? Number(data.locationLng) : null;
+      const locationGmapsLink = data.locationGmapsLink || "";
+      if (!data.placeId && locationGmapsLink && (locationLat == null || locationLng == null)) {
+        const enriched = await enrichFromMapsLink(env, {
+          mapsUrl: locationGmapsLink,
+          userName: locationName,
+          userAddress: locationAddress,
+          website: "",
+          phone: "",
+          rich: false,
+        });
+        if (enriched.hasData) {
+          locationName = locationName || enriched.googleName || "";
+          locationAddress = locationAddress || enriched.googleAddress || "";
+          locationLat = enriched.lat;
+          locationLng = enriched.lng;
+        }
+      }
+      await env.DB.prepare(`INSERT INTO events (
+        id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url,
+        location_name, location_address, location_lat, location_lng, location_gmaps_link, organizer_name, organizer_place_id,
+        status, reject_reason, created_at
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?)`)
+        .bind(eventId, data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", locationName, locationAddress, locationLat, locationLng, locationGmapsLink, data.organizerName || "", data.organizerPlaceId || "", helsinkiTimestamp()).run();
       result = { success: true, eventId };
     } else if (formType === "event-edit") {
-      await env.DB.prepare("INSERT INTO event_edits (timestamp, event_id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, score, changes_summary, status, reject_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','')")
-        .bind(helsinkiTimestamp(), data.eventId || "", data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "").run();
+      await env.DB.prepare(`INSERT INTO event_edits (
+        timestamp, event_id, place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url,
+        location_name, location_address, location_lat, location_lng, location_gmaps_link, organizer_name, organizer_place_id,
+        score, changes_summary, status, reject_reason
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','')`)
+        .bind(helsinkiTimestamp(), data.eventId || "", data.placeId || "", data.title || "", data.description || "", data.eventDate || "", data.eventTime || "", data.endTime || "", data.recurring ? 1 : 0, data.recurrencePattern || "", data.url || "", data.locationName || "", data.locationAddress || "", data.locationLat === "" ? null : data.locationLat, data.locationLng === "" ? null : data.locationLng, data.locationGmapsLink || "", data.organizerName || "", data.organizerPlaceId || "", (data.score != null ? Number(data.score).toFixed(2) : ""), data.changesSummary || "").run();
       result = { success: true };
     } else if (formType === "eid") {
       result = await handleEidSubmission(env, data);

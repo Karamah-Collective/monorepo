@@ -202,6 +202,18 @@
 .pp-table td a {
   text-underline-offset: 3px;
 }
+.event-location-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 150px;
+  max-width: 280px;
+}
+.event-location-cell small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
 @media (max-width: 767px) {
   .pp-table-toolbar {
     padding: 12px;

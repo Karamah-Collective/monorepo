@@ -253,6 +253,9 @@ async function getPendingEvents(db) {
       eventId: r.id, placeId: r.place_id, placeName: (place && place.name) || "", title: r.title, description: r.description,
       eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time, recurring: !!r.recurring,
       recurrencePattern: r.recurrence_pattern, url: r.url, createdAt: r.created_at,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
     });
   }
   return out;
@@ -263,13 +266,16 @@ async function getPendingEventEdits(db) {
   const out = [];
   for (const r of results) {
     const place = r.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(r.place_id).first() : null;
-    const current = r.event_id ? await db.prepare("SELECT place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url FROM events WHERE id = ?").bind(r.event_id).first() : null;
+    const current = r.event_id ? await db.prepare("SELECT place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, location_name, location_address, location_lat, location_lng, location_gmaps_link, organizer_name, organizer_place_id FROM events WHERE id = ?").bind(r.event_id).first() : null;
     const currentPlace = current && !place && current.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(current.place_id).first() : null;
     out.push({
       rowId: String(r.id), timestamp: r.timestamp, eventId: r.event_id, placeId: r.place_id,
       placeName: (place && place.name) || (currentPlace && currentPlace.name) || "",
       title: r.title, description: r.description, eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time,
       recurring: !!r.recurring, recurrencePattern: r.recurrence_pattern, url: r.url, changesSummary: r.changes_summary,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
       current: current || {},
     });
   }
@@ -303,6 +309,9 @@ async function getAdminEvents(db) {
       eventId: r.id, placeId: r.place_id, placeName: (place && place.name) || "", title: r.title, description: r.description,
       eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time, recurring: !!r.recurring,
       recurrencePattern: r.recurrence_pattern, url: r.url, createdAt: r.created_at,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
       status: r.status || "", rejectReason: r.reject_reason || "",
     });
   }
@@ -751,7 +760,28 @@ async function updateSponsor(db, data) {
   return { success: true };
 }
 
-async function approveEvent(db, eventId) {
+async function approveEvent(db, eventId, env) {
+  const event = await db.prepare("SELECT * FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) return { error: "Event not found (may already be processed)" };
+  if (!event.place_id && (event.location_lat == null || event.location_lng == null) && event.location_gmaps_link) {
+    const enriched = await enrichFromMapsLink(env, {
+      mapsUrl: event.location_gmaps_link,
+      userName: event.location_name || "",
+      userAddress: event.location_address || "",
+      website: "",
+      phone: "",
+      rich: false,
+    });
+    if (enriched.hasData) {
+      await db.prepare("UPDATE events SET location_name = ?, location_address = ?, location_lat = ?, location_lng = ? WHERE id = ?")
+        .bind(event.location_name || enriched.googleName || "", event.location_address || enriched.googleAddress || "", enriched.lat, enriched.lng, eventId).run();
+      event.location_lat = enriched.lat;
+      event.location_lng = enriched.lng;
+    }
+  }
+  if (!event.place_id && (event.location_lat == null || event.location_lng == null)) {
+    return { error: "Custom location could not be resolved. Check its Google Maps link before approval." };
+  }
   const { meta } = await db.prepare("UPDATE events SET status = 'yes' WHERE id = ?").bind(eventId).run();
   return meta.rows_written > 0 ? { success: true } : { error: "Event not found (may already be processed)" };
 }
@@ -761,10 +791,38 @@ async function rejectEvent(db, eventId, reason) {
   return meta.rows_written > 0 ? { success: true } : { error: "Event not found (may already be processed)" };
 }
 
+async function deleteEvent(db, eventId) {
+  const event = await db.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) return { error: "Event not found" };
+  await db.batch([
+    db.prepare("DELETE FROM event_edits WHERE event_id = ?").bind(eventId),
+    db.prepare("DELETE FROM events WHERE id = ?").bind(eventId),
+  ]);
+  return { success: true };
+}
+
 // Code.gs:1372 applyEventEditToEvents — only overwrites non-empty edit fields.
-async function approveEventEdit(db, rowId) {
+async function approveEventEdit(db, rowId, env) {
   const row = await db.prepare("SELECT * FROM event_edits WHERE id = ?").bind(rowId).first();
   if (!row) return { error: "Event edit not found (may already be processed)" };
+
+  if (!row.place_id && row.location_gmaps_link && (row.location_lat == null || row.location_lng == null)) {
+    const enriched = await enrichFromMapsLink(env, {
+      mapsUrl: row.location_gmaps_link,
+      userName: row.location_name || "",
+      userAddress: row.location_address || "",
+      website: "",
+      phone: "",
+      rich: false,
+    });
+    if (!enriched.hasData || enriched.lat == null || enriched.lng == null) {
+      return { error: "Custom location could not be resolved. Check its Google Maps link before approval." };
+    }
+    row.location_name = row.location_name || enriched.googleName || "";
+    row.location_address = row.location_address || enriched.googleAddress || "";
+    row.location_lat = enriched.lat;
+    row.location_lng = enriched.lng;
+  }
 
   const statements = [db.prepare("UPDATE event_edits SET status = 'yes' WHERE id = ?").bind(rowId)];
   if (row.event_id) {
@@ -774,6 +832,24 @@ async function approveEventEdit(db, rowId) {
       if (val) { sets.push(`${col} = ?`); binds.push(val); }
     }
     if (row.recurring) { sets.push("recurring = 1"); }
+    const locationChanged = row.place_id || row.location_name || row.location_gmaps_link || (row.location_lat != null && row.location_lng != null);
+    if (locationChanged) {
+      for (const [col, val] of [
+        ["place_id", row.place_id || ""],
+        ["location_name", row.location_name || ""],
+        ["location_address", row.location_address || ""],
+        ["location_lat", row.location_lat],
+        ["location_lng", row.location_lng],
+        ["location_gmaps_link", row.location_gmaps_link || ""],
+      ]) {
+        sets.push(`${col} = ?`);
+        binds.push(val);
+      }
+    }
+    if (row.organizer_name || row.organizer_place_id) {
+      sets.push("organizer_name = ?", "organizer_place_id = ?");
+      binds.push(row.organizer_name || "", row.organizer_place_id || "");
+    }
     if (sets.length) statements.push(db.prepare(`UPDATE events SET ${sets.join(", ")} WHERE id = ?`).bind(...binds, row.event_id));
   }
   await db.batch(statements);
@@ -835,9 +911,10 @@ const POST_ACTIONS = {
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
   "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),
-  "approve-event": (db, data) => approveEvent(db, data.eventId),
+  "approve-event": (db, data, env) => approveEvent(db, data.eventId, env),
   "reject-event": (db, data) => rejectEvent(db, data.eventId, data.reason || ""),
-  "approve-event-edit": (db, data) => approveEventEdit(db, data.rowId),
+  "delete-event": (db, data) => deleteEvent(db, data.eventId),
+  "approve-event-edit": (db, data, env) => approveEventEdit(db, data.rowId, env),
   "reject-event-edit": (db, data) => rejectEventEdit(db, data.rowId, data.reason || ""),
   "approve-review": (db, data) => updateReviewStatus(db, data.rowIndex, "yes"),
   "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no"),

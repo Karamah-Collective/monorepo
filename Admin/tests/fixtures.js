@@ -81,6 +81,22 @@ export const responses = {
     ],
   },
   "admin-app-settings": { revision: 1, settings: DEFAULT_APP_SETTINGS },
+  "admin-events": [
+    {
+      eventId: "event-custom-1",
+      title: "Community Dinner",
+      eventDate: "2026-10-12",
+      eventTime: "18:00",
+      status: "pending",
+      placeId: "",
+      placeName: "",
+      locationName: "Harbour Hall",
+      locationAddress: "1 Seaside Way, Helsinki",
+      locationLat: 60.166,
+      locationLng: 24.952,
+      locationGmapsLink: "https://maps.google.com/?q=60.166,24.952",
+    },
+  ],
   "admin-contact": { unreplied: [], replied: [] },
 };
 

@@ -12,6 +12,20 @@ import { useToast } from "../components/Toast.jsx";
 
 const columnHelper = createColumnHelper();
 
+function EventLocation({ event }) {
+  const name = event.placeName || event.locationName || "Custom location";
+  const mapsLink = /^https?:\/\//i.test(event.locationGmapsLink || "") ? event.locationGmapsLink : "";
+  const detail = event.locationAddress || "";
+  return (
+    <div className="event-location-cell">
+      {mapsLink ? (
+        <a href={mapsLink} target="_blank" rel="noreferrer">{name}</a>
+      ) : <span>{name}</span>}
+      {detail && <small>{detail}</small>}
+    </div>
+  );
+}
+
 export default function EventEditsPage() {
   const { data, isLoading, error } = usePendingEventEdits();
   const approve = useApproveEventEdit();
@@ -21,7 +35,11 @@ export default function EventEditsPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor("timestamp", { header: "Submitted" }),
-      columnHelper.accessor("placeName", { header: "Place" }),
+      columnHelper.accessor((row) => row.placeName || row.locationName || row.locationAddress || "Custom location", {
+        id: "location",
+        header: "Location",
+        cell: (info) => <EventLocation event={info.row.original} />,
+      }),
       columnHelper.accessor("title", { header: "Title" }),
       columnHelper.accessor("eventDate", { header: "Date" }),
       columnHelper.accessor("changesSummary", { header: "Summary" }),

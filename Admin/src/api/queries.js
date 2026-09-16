@@ -49,6 +49,7 @@ export const useUpdateWishApproved = () => useAdminMutation("update-wish-approve
 export const useUpdateWishImplemented = () => useAdminMutation("update-wish-implemented", ["admin-wishes"]);
 export const useApproveEvent = () => useAdminMutation("approve-event", ["admin-events", "admin-stats"]);
 export const useRejectEvent = () => useAdminMutation("reject-event", ["admin-events", "admin-stats"]);
+export const useDeleteEvent = () => useAdminMutation("delete-event", ["admin-events", "pending-event-edits", "admin-stats"]);
 export const useApproveEventEdit = () => useAdminMutation("approve-event-edit", ["pending-event-edits", "admin-events", "admin-stats"]);
 export const useRejectEventEdit = () => useAdminMutation("reject-event-edit", ["pending-event-edits", "admin-stats"]);
 export const useApproveReview = () => useAdminMutation("approve-review", ["admin-reviews"]);

@@ -1305,3 +1305,24 @@ test.describe("Zoom Controls — Layout & Position on Mobile", () => {
     expect(box.width).toBeLessThanOrEqual(vw);
   });
 });
+
+test.describe("Event location suggestions on mobile", () => {
+  test("the dropdown is portaled and stays inside the viewport", async ({ page }) => {
+    await setupApp(page);
+    await page.locator("#events-pill").tap();
+    await page.locator("#events-add-btn").tap();
+    await page.locator("#ev-loc-search").focus();
+
+    const dropdown = page.locator("#ev-loc-suggest");
+    await expect(dropdown).toBeVisible();
+    await expect(page.locator("body > #ev-loc-suggest")).toHaveCount(1);
+
+    const bounds = await dropdown.boundingBox();
+    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    await expect(page.locator("#ev-loc-search")).toHaveAttribute("aria-expanded", "true");
+  });
+});

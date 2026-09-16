@@ -238,36 +238,35 @@ const TABLES = [
     map: (r) => [str(r[0]), str(r[1]), str(r[2]), toNum(r[3]), toNum(r[4]), str(r[5]), str(r[6]), str(r[7]), normaliseDateStr(r[8])],
   },
   {
-    // Only the first 12 columns (matching Code.gs's EVENT_HEADERS) plus the
-    // real reject_reason column at idx 12 are migrated — idx 13-19
-    // (location_name/address/lat/lng/organizer_name/organizer_place_id/
-    // location_gmaps_link) are confirmed dead: no Code.gs function reads or
-    // writes them, and every real row has them blank. Not migrated.
+    // Keep the custom-location tail columns so imported events retain their venue.
     sheet: 'Events',
     table: 'events',
-    expectedCols: 13,
+    expectedCols: 20,
     columns: [
       'id', 'place_id', 'title', 'description', 'event_date', 'event_time', 'end_time', 'recurring',
-      'recurrence_pattern', 'url', 'status', 'created_at', 'reject_reason',
+      'recurrence_pattern', 'url', 'status', 'created_at', 'reject_reason', 'location_name', 'location_address',
+      'location_lat', 'location_lng', 'organizer_name', 'organizer_place_id', 'location_gmaps_link',
     ],
     map: (r) => {
       const approved = str(r[10]).trim().toLowerCase();
       const status = approved === 'yes' ? 'yes' : approved === 'no' ? 'no' : 'pending';
       return [
         str(r[0]), str(r[1]), str(r[2]), str(r[3]), normaliseDateStr(r[4]), str(r[5]), str(r[6]), toBool01(r[7]),
-        str(r[8]), str(r[9]), status, str(r[11]), str(r[12]),
+        str(r[8]), str(r[9]), status, str(r[11]), str(r[12]), str(r[13]), str(r[14]),
+        toNum(r[15]), toNum(r[16]), str(r[17]), str(r[18]), str(r[19]),
       ];
     },
   },
   {
-    // Same dead-tail-columns situation as Events; only the first 14 (Code.gs
-    // EVENT_EDIT_HEADERS) + the real RejectReason at idx 14 are migrated.
+    // Keep custom-location fields for pending event edits as well.
     sheet: 'EventEdit',
     table: 'event_edits',
-    expectedCols: 15,
+    expectedCols: 22,
     columns: [
       'timestamp', 'event_id', 'place_id', 'title', 'description', 'event_date', 'event_time', 'end_time',
       'recurring', 'recurrence_pattern', 'url', 'score', 'changes_summary', 'status', 'reject_reason',
+      'location_name', 'location_address', 'location_lat', 'location_lng', 'organizer_name',
+      'organizer_place_id', 'location_gmaps_link',
     ],
     map: (r) => {
       const approved = str(r[13]).trim().toLowerCase();
@@ -275,6 +274,7 @@ const TABLES = [
       return [
         str(r[0]), str(r[1]), str(r[2]), str(r[3]), str(r[4]), normaliseDateStr(r[5]), str(r[6]), str(r[7]),
         toBool01(r[8]), str(r[9]), str(r[10]), str(r[11]), str(r[12]), status, str(r[14]),
+        str(r[15]), str(r[16]), toNum(r[17]), toNum(r[18]), str(r[19]), str(r[20]), str(r[21]),
       ];
     },
   },

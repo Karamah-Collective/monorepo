@@ -6090,6 +6090,16 @@ body.marker-style-bold .custom-mk {
   background: var(--accent-soft);
 }
 
+/* Event form suggestions are portaled to <body> on phones so the scrollable
+   bottom sheet cannot crop them. JS chooses the side with more room. */
+.dir-suggest.dir-suggest--viewport {
+  position: fixed;
+  z-index: calc(var(--z-overlay) + 1);
+  border-radius: var(--r-md);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .ds-icon {
   width: 32px;
   height: 32px;

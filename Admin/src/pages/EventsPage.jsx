@@ -8,6 +8,7 @@ import {
   useAdminEvents,
   useApproveEvent,
   useRejectEvent,
+  useDeleteEvent,
 } from "../api/queries.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -18,16 +19,39 @@ const STATUS_OPTIONS = [
   { value: "no", label: "Rejected" },
 ];
 
+function EventLocation({ event }) {
+  const name = event.placeName || event.locationName || "Custom location";
+  const mapsLink = /^https?:\/\//i.test(event.locationGmapsLink || "") ? event.locationGmapsLink : "";
+  const detail = event.locationAddress || (
+    event.locationLat != null && event.locationLng != null
+      ? `${Number(event.locationLat).toFixed(5)}, ${Number(event.locationLng).toFixed(5)}`
+      : ""
+  );
+  return (
+    <div className="event-location-cell">
+      {mapsLink ? (
+        <a href={mapsLink} target="_blank" rel="noreferrer">{name}</a>
+      ) : <span>{name}</span>}
+      {detail && <small>{detail}</small>}
+    </div>
+  );
+}
+
 export default function EventsPage() {
   const { data, isLoading, error } = useAdminEvents();
   const approve = useApproveEvent();
   const reject = useRejectEvent();
+  const deleteEvent = useDeleteEvent();
   const showToast = useToast();
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("title", { header: "Title" }),
-      columnHelper.accessor("placeName", { header: "Place" }),
+      columnHelper.accessor((row) => row.placeName || row.locationName || row.locationAddress || "Custom location", {
+        id: "location",
+        header: "Location",
+        cell: (info) => <EventLocation event={info.row.original} />,
+      }),
       columnHelper.accessor("eventDate", { header: "Date" }),
       columnHelper.accessor("eventTime", { header: "Time" }),
       columnHelper.accessor("status", {
@@ -41,12 +65,12 @@ export default function EventsPage() {
         header: "Actions",
         cell: (info) => {
           const row = info.row.original;
-          if (row.status !== "pending") return null;
           return (
             <ActionCell
               approving={approve.isPending}
               rejecting={reject.isPending}
-              onApprove={() =>
+              deleting={deleteEvent.isPending}
+              onApprove={row.status === "pending" ? () =>
                 approve.mutate(
                   { eventId: row.eventId },
                   {
@@ -54,8 +78,8 @@ export default function EventsPage() {
                     onError: (e) => showToast(e.message, "error"),
                   },
                 )
-              }
-              onReject={(reason) =>
+              : undefined}
+              onReject={row.status === "pending" ? (reason) =>
                 reject.mutate(
                   { eventId: row.eventId, reason },
                   {
@@ -63,13 +87,23 @@ export default function EventsPage() {
                     onError: (e) => showToast(e.message, "error"),
                   },
                 )
-              }
+              : undefined}
+              onDelete={() => {
+                if (!window.confirm(`Permanently delete "${row.title}"? This cannot be undone.`)) return;
+                deleteEvent.mutate(
+                  { eventId: row.eventId },
+                  {
+                    onSuccess: () => showToast("Event deleted"),
+                    onError: (e) => showToast(e.message, "error"),
+                  },
+                );
+              }}
             />
           );
         },
       }),
     ],
-    [approve, reject, showToast],
+    [approve, reject, deleteEvent, showToast],
   );
 
   return (

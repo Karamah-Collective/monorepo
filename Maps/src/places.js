@@ -4011,6 +4011,64 @@ const EV_COMBO_SEARCH_MIN_QUERY_LENGTH = 2;
 function _setupEventPlaceCombo({ input, list, wrapper, customAlwaysVisible, customLabel, searchPlaces, onSelectPlace, onSelectGeocoded, onSelectCustom, onTyping }) {
   let debounceTimer = 0;
   let searchToken = 0;
+  const listParent = list.parentNode;
+  const listNextSibling = list.nextSibling;
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-controls", list.id);
+  input.setAttribute("aria-expanded", "false");
+  list.setAttribute("role", "listbox");
+
+  function restoreListParent() {
+    if (list.parentNode === listParent) return;
+    listParent.insertBefore(list, listNextSibling);
+    list.classList.remove("dir-suggest--viewport");
+    list.removeAttribute("style");
+  }
+
+  function closeList() {
+    list.classList.add("hide");
+    input.setAttribute("aria-expanded", "false");
+    restoreListParent();
+  }
+
+  function positionMobileList() {
+    if (!window.matchMedia("(max-width: 767px)").matches || list.classList.contains("hide")) return;
+    if (list.parentNode !== document.body) document.body.appendChild(list);
+    const rect = input.getBoundingClientRect();
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const viewportTop = window.visualViewport?.offsetTop || 0;
+    const below = viewportTop + viewportHeight - rect.bottom - 12;
+    const above = rect.top - viewportTop - 12;
+    const openBelow = below >= 160 || below >= above;
+    const available = Math.max(96, Math.min(240, openBelow ? below : above));
+    list.classList.add("dir-suggest--viewport");
+    Object.assign(list.style, {
+      left: `${Math.max(8, rect.left)}px`,
+      width: `${Math.min(rect.width, window.innerWidth - Math.max(8, rect.left) - 8)}px`,
+      maxHeight: `${available}px`,
+      top: openBelow ? `${rect.bottom + 4}px` : "auto",
+      bottom: openBelow ? "auto" : `${window.innerHeight - rect.top + 4}px`,
+    });
+    // Clamp the rendered box as a final guard. Mobile browsers can report a
+    // visual viewport that differs from the layout viewport while the
+    // keyboard or browser chrome is animating.
+    const rendered = list.getBoundingClientRect();
+    const minTop = viewportTop + 8;
+    const maxBottom = viewportTop + viewportHeight - 8;
+    if (rendered.top < minTop || rendered.bottom > maxBottom) {
+      const clampedTop = Math.max(minTop, Math.min(rendered.top, maxBottom - rendered.height));
+      list.style.top = `${clampedTop}px`;
+      list.style.bottom = "auto";
+    }
+  }
+
+  function openList() {
+    list.classList.remove("hide");
+    input.setAttribute("aria-expanded", "true");
+    if (window.matchMedia("(max-width: 767px)").matches) positionMobileList();
+    else restoreListParent();
+  }
 
   function renderList(items, q) {
     const showCustom = customAlwaysVisible || q.length > 0;
@@ -4026,9 +4084,10 @@ function _setupEventPlaceCombo({ input, list, wrapper, customAlwaysVisible, cust
     const customHTML = showCustom
       ? `<li data-custom="1"><span class="ds-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><div class="ds-text"><div class="ds-name ev-combo-add-label">${esc(customLabel(q))}</div></div></li>`
       : "";
-    if (!items.length && !showCustom) { list.classList.add("hide"); return; }
+    if (!items.length && !showCustom) { closeList(); return; }
     list.innerHTML = itemsHTML + customHTML;
-    list.classList.remove("hide");
+    list.querySelectorAll("li").forEach((item) => item.setAttribute("role", "option"));
+    openList();
   }
 
   async function render() {
@@ -4056,7 +4115,7 @@ function _setupEventPlaceCombo({ input, list, wrapper, customAlwaysVisible, cust
     else render();
   });
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") list.classList.add("hide");
+    if (e.key === "Escape") closeList();
     if (e.key === "Enter") {
       e.preventDefault();
       list.querySelector("li")?.click();
@@ -4078,11 +4137,17 @@ function _setupEventPlaceCombo({ input, list, wrapper, customAlwaysVisible, cust
         lng: parseFloat(li.dataset.geoLng),
       });
     }
-    list.classList.add("hide");
+    closeList();
   });
   document.addEventListener("click", (e) => {
-    if (!wrapper.contains(e.target)) list.classList.add("hide");
+    if (!wrapper.contains(e.target) && !list.contains(e.target)) closeList();
   });
+  wrapper.closest("#event-overlay")?.addEventListener("click", (e) => {
+    if (e.target === e.currentTarget || e.target.closest("#event-close")) closeList();
+  });
+  document.addEventListener("scroll", positionMobileList, true);
+  window.addEventListener("resize", positionMobileList);
+  window.visualViewport?.addEventListener("resize", positionMobileList);
 }
 
 /** Reset the location combo to its empty "existing place" state. */

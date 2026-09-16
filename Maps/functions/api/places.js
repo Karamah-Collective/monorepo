@@ -160,7 +160,9 @@ async function getEvents(db) {
   for (const row of results) {
     const title = (row.title || "").toString().trim();
     const placeId = (row.place_id || "").toString().trim();
-    if (!title || !placeId) continue;
+    const lat = row.location_lat == null ? null : Number(row.location_lat);
+    const lng = row.location_lng == null ? null : Number(row.location_lng);
+    if (!title || (!placeId && (!Number.isFinite(lat) || !Number.isFinite(lng)))) continue;
     const recurring = !!row.recurring;
     const eventDate = (row.event_date || "").toString().trim();
     if (!recurring && eventDate) {
@@ -174,6 +176,12 @@ async function getEvents(db) {
     if (row.end_time) evt.endTime = row.end_time;
     if (row.recurrence_pattern) evt.recurrence = row.recurrence_pattern;
     if (row.url) evt.url = row.url;
+    if (row.location_name) evt.locationName = row.location_name;
+    if (row.location_address) evt.locationAddress = row.location_address;
+    if (Number.isFinite(lat) && Number.isFinite(lng)) { evt.lat = lat; evt.lng = lng; }
+    if (row.location_gmaps_link) evt.locationGmapsLink = row.location_gmaps_link;
+    if (row.organizer_name) evt.organizerName = row.organizer_name;
+    if (row.organizer_place_id) evt.organizerPlaceId = row.organizer_place_id;
     result.push(evt);
   }
   return result;

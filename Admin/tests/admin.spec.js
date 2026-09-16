@@ -117,6 +117,30 @@ test("settings section switching preserves drafts and saves the full settings", 
   ).toBe(false);
 });
 
+test("custom event locations are visible during approval", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/events");
+  const row = page.locator("tbody tr").filter({ hasText: "Community Dinner" });
+  await expect(row).toContainText("Harbour Hall");
+  await expect(row).toContainText("1 Seaside Way, Helsinki");
+  await expect(row.getByRole("link", { name: "Harbour Hall" })).toHaveAttribute(
+    "href",
+    "https://maps.google.com/?q=60.166,24.952",
+  );
+});
+
+test("events can be permanently deleted from the admin table", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/events");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "delete-event",
+    body: { eventId: "event-custom-1" },
+  });
+  await expect(page.getByRole("status")).toContainText("Event deleted");
+});
+
 test("page search honors the unsaved settings guard", async ({ page }) => {
   await mockAdmin(page);
   await page.goto("/app-settings");
