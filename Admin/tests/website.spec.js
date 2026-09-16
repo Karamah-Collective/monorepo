@@ -40,14 +40,36 @@ test('content drafts survive section changes and publish with the loaded revisio
   await mockWebsite(page);
   await page.goto('/website/content');
   await page.getByLabel('Main headline').fill('Together, we make room.');
+  await page.getByRole('button', { name: 'Programs', exact: true }).click();
+  await page.getByRole('button', { name: 'Add card' }).click();
+  await page.locator('.website-content-card-editor').last().getByLabel('Title').fill('Community kitchen');
+  await page.locator('.website-content-card-editor').last().getByLabel('Body').fill('Shared meals and practical food support.');
   await page.getByRole('button', { name: 'About', exact: true }).click();
   await page.getByLabel('Show the About section').uncheck();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
   await expect(page.getByLabel('Main headline')).toHaveValue('Together, we make room.');
   await page.getByRole('button', { name: 'Publish changes' }).click();
   await expect(page.getByText('All changes published')).toBeVisible();
-  expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({ action: 'save-content', body: { revision: 1, content: { heroTitle: 'Together, we make room.', aboutVisible: false } } });
+  expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({ action: 'save-content', body: { revision: 1, content: { heroTitle: 'Together, we make room.', aboutVisible: false, programCards: expect.arrayContaining([expect.objectContaining({ title: 'Community kitchen' })]) } } });
   await page.screenshot({ path: 'test-results/website-content-desktop.png', fullPage: true });
+});
+
+test('single ticket controls publish from the content editor', async ({ page }) => {
+  await mockWebsite(page);
+  await page.goto('/website/content');
+  await page.getByRole('button', { name: 'Tickets', exact: true }).click();
+  await page.getByLabel('Show ticket popup and buy buttons').check();
+  await page.getByLabel('Ticket title').fill('Community Dinner');
+  await page.getByLabel('Ticket description').fill('Reserve a seat for the next gathering.');
+  await page.getByLabel('Ticket image URL').fill('https://images.example.test/dinner.jpg');
+  await page.getByLabel('Buy button link').fill('https://tickets.example.test/community-dinner');
+  await page.getByLabel('Buy button label').fill('Register');
+  await page.getByRole('button', { name: 'Publish changes' }).click();
+  await expect(page.getByText('All changes published')).toBeVisible();
+  expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({
+    action: 'save-content',
+    body: { content: { ticketsVisible: true, ticketTitle: 'Community Dinner', ticketButtonLabel: 'Register', ticketUrl: 'https://tickets.example.test/community-dinner' } },
+  });
 });
 
 test('signup exports omit unsubscribed people and unsubscribe persists', async ({ page }) => {

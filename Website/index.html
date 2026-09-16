@@ -140,6 +140,14 @@
               <button class="kc-navbtn" data-nav="team" type="button">Team</button>
               <button class="kc-navbtn kc-navbtn-contact" data-nav="contact" type="button">Contact</button>
             </nav>
+            <a
+              class="kc-ticket-topbar-btn"
+              data-ticket-buy-top
+              href="#"
+              hidden
+            >
+              Buy ticket
+            </a>
           </div>
         </div>
       </div>
@@ -170,6 +178,44 @@
     </div>
 
     <aside class="kc-site-notice" data-site-notice hidden aria-label="Announcement"></aside>
+    <aside
+      class="kc-ticket-toast"
+      data-ticket-toast
+      hidden
+      aria-label="Ticket announcement"
+    >
+      <button class="kc-ticket-toast-close" type="button" data-ticket-toast-close aria-label="Dismiss ticket announcement">
+        &times;
+      </button>
+      <button class="kc-ticket-toast-copy" type="button" data-ticket-toast-toggle aria-expanded="false">
+        <strong data-ticket-toast-title></strong>
+        <span data-ticket-toast-description></span>
+      </button>
+      <a class="kc-ticket-toast-action" data-ticket-toast-action href="#">Buy ticket</a>
+    </aside>
+    <aside
+      class="kc-ticket-popup"
+      data-ticket-popup
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ticket-popup-title"
+      aria-describedby="ticket-popup-description"
+    >
+      <div class="kc-ticket-popup-backdrop" data-ticket-popup-close></div>
+      <article class="kc-ticket-popup-panel" data-ticket-popup-panel>
+        <button class="kc-ticket-popup-close" type="button" data-ticket-popup-close aria-label="Close ticket popup">
+          &times;
+        </button>
+        <img class="kc-ticket-popup-image" data-ticket-popup-image alt="" hidden />
+        <div class="kc-ticket-popup-copy">
+          <div class="kc-section-label">Tickets</div>
+          <h2 id="ticket-popup-title" data-ticket-popup-title>Tickets available</h2>
+          <p id="ticket-popup-description" data-ticket-popup-description></p>
+          <a class="kc-ticket-popup-action" data-ticket-popup-action href="#" target="_blank" rel="noopener noreferrer">Buy ticket</a>
+        </div>
+      </article>
+    </aside>
     <main id="app">
       <section id="home" class="kc-hero kc-hero-aurora" data-hero-wrapper>
         <div class="kc-hero-layers">
@@ -302,6 +348,9 @@
                     <button class="kc-btn kc-btn-lg kc-btn-primary" type="button" data-scrollto="contact">
                       Contact
                     </button>
+                    <a class="kc-btn kc-btn-lg kc-hero-ticket-btn" data-ticket-buy-home href="#" hidden>
+                      Buy ticket
+                    </a>
                   </div>
                 </div>
               </div>

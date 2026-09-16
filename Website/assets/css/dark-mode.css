@@ -286,6 +286,25 @@ html.dark .kc-btn-primary svg {
   color: #0B3C49;
 }
 
+html.dark .kc-ticket-topbar-btn,
+html.dark .kc-hero-ticket-btn,
+html.dark .kc-btn-primary.kc-hero-ticket-btn,
+html.dark [data-ticket-buy-home].kc-btn-primary,
+html.dark .kc-ticket-popup-action,
+html.dark .kc-ticket-toast-action {
+  background: var(--kc-accent) !important;
+  border-color: rgba(92, 196, 168, 0.72) !important;
+  color: #0B3C49 !important;
+}
+
+html.dark .kc-btn-primary.kc-hero-ticket-btn,
+html.dark .kc-hero-ticket-btn,
+html.dark [data-ticket-buy-home].kc-btn-primary,
+html.dark .kc-btn-primary.kc-hero-ticket-btn i,
+html.dark .kc-btn-primary.kc-hero-ticket-btn svg {
+  color: #0B3C49 !important;
+}
+
 html.dark .kc-btn:active { border-color: rgba(237, 232, 223, 0.2); }
 html.dark .kc-btn-primary:active { border-color: rgba(242, 200, 121, 0.7); }
 

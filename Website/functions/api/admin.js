@@ -2,7 +2,7 @@ import { verifyFirebaseIdToken } from '../../../shared/firebase-verify.mjs';
 import { sheetRequest, SheetError } from '../_sheets.js';
 import { validateWebsiteContent, publicWebsiteContent } from '../../assets/js/content-schema.mjs';
 
-const origins=['https://admin.maps.karamahcollective.com','http://localhost:5173','http://127.0.0.1:5173'];
+const origins=['https://admin.karamahcollective.com','https://admin.maps.karamahcollective.com','http://localhost:5173','http://127.0.0.1:5173'];
 const reads=new Set(['admin-team','admin-subscribers','admin-content']);
 const writes=new Set(['save-person','delete-person','unsubscribe','delete-subscriber','save-content']);
 function allowedOrigins(env={}) {

@@ -50,7 +50,20 @@
 .website-content-section-heading p { color:var(--text-muted); margin:0; line-height:1.6; }
 .website-toggle-field { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 16px; border-radius:var(--radius-sm); background:var(--bg-alt); }
 .website-toggle-field input { accent-color:var(--accent); width:20px; height:20px; }
+.website-card-list-field { display:grid; gap:12px; padding:14px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); }
+.website-card-list-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.website-card-list-head label { display:block; font-weight:600; font-size:13px; color:var(--text); }
+.website-card-list-head small { display:block; margin-top:3px; color:var(--text-muted); font-size:11px; }
+.website-add-card-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.website-add-card-controls select { min-height:36px; border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px; background:var(--bg); color:var(--text); }
+.website-card-list { display:grid; gap:12px; }
+.website-content-card-editor { border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); overflow:clip; }
+.website-content-card-editor>header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-bottom:1px solid var(--border); }
+.website-content-card-editor>header strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.website-content-card-editor>header span { display:flex; gap:4px; flex-shrink:0; }
+.website-content-card-editor .icon-button { width:30px; height:30px; font-size:14px; }
+.website-content-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:14px; }
 @keyframes website-enter { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 @media(max-width:1000px) { .website-page-heading { flex-direction:column; } .website-content-hint { flex-basis:100%; order:3; } .website-content-toolbar .website-save-state { margin-right:auto; } }
-@media(max-width:600px) { .website-content-layout { grid-template-columns:1fr; } .website-content-tabs { display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--border); gap:4px; } .website-content-tabs button { width:auto; flex-shrink:0; gap:10px; } .website-content-tabs svg { display:none; } .website-content-fields { padding:20px 16px; } .website-person-fields { grid-template-columns:1fr; padding:20px; } .website-editor-dialog footer { flex-wrap:wrap; padding:16px 20px; } .website-editor-dialog footer p { flex-basis:100%; margin-bottom:8px; } .website-summary-strip>span:nth-child(3) { flex-basis:100%; } .website-content-toolbar { gap:8px; padding:12px; } .website-save-state { flex-basis:100%; margin-bottom:4px; } }
+@media(max-width:600px) { .website-content-layout { grid-template-columns:1fr; } .website-content-tabs { display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--border); gap:4px; } .website-content-tabs button { width:auto; flex-shrink:0; gap:10px; } .website-content-tabs svg { display:none; } .website-content-fields { padding:20px 16px; } .website-person-fields,.website-content-card-grid { grid-template-columns:1fr; padding:20px; } .website-editor-dialog footer { flex-wrap:wrap; padding:16px 20px; } .website-editor-dialog footer p { flex-basis:100%; margin-bottom:8px; } .website-summary-strip>span:nth-child(3) { flex-basis:100%; } .website-content-toolbar { gap:8px; padding:12px; } .website-save-state { flex-basis:100%; margin-bottom:4px; } .website-card-list-head { align-items:flex-start; flex-direction:column; } .website-add-card-controls { width:100%; justify-content:stretch; } .website-add-card-controls select,.website-add-card-controls button { flex:1; } }
 @media(prefers-reduced-motion:reduce) { .website-person-card,.website-editor-dialog { animation:none; } .website-content-tabs button { transition:none; } }

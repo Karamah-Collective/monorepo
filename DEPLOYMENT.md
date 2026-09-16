@@ -50,7 +50,7 @@ Folder capitalization matters on Cloudflare's Linux builders. Use `Admin`, not `
 
 ### Admin: update the folder too
 
-Apply the Admin column to its existing Pages project. Keep `admin.maps.karamahcollective.com` and the existing Firebase project. Production defaults already call the existing Maps and Website domains.
+Apply the Admin column to its existing Pages project. Use `admin.karamahcollective.com` for the admin dashboard and keep the existing Firebase project. Production defaults already call the existing Maps and Website domains.
 
 Optional build variables, useful while testing a replacement Website project:
 

@@ -26,7 +26,7 @@ Applied via `migrations/0004_place_social_videos.sql` on `halal-finder-db` (+ pr
 
 ## Admin API (Firebase `@karamahcollective.com`)
 
-**UI:** [admin.maps.karamahcollective.com](https://admin.maps.karamahcollective.com) → **Social Videos**
+**UI:** [admin.karamahcollective.com](https://admin.karamahcollective.com) -> **Social Videos**
 (built from `halal-finder/admin`, not the legacy `halal_finder_admin` repo).
 
 List:

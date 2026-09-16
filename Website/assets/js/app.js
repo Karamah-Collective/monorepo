@@ -1429,6 +1429,8 @@ function initPrograms() {
   apply();
 }
 
+window.addEventListener("kc:content-rendered", initPrograms);
+
 let snackbarTimer = 0;
 
 function initSnackbar() {

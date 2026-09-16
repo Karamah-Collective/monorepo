@@ -47,6 +47,7 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
+  "https://admin.karamahcollective.com",
   "https://admin.maps.karamahcollective.com",
   "http://localhost:5173",
   "http://127.0.0.1:5173",

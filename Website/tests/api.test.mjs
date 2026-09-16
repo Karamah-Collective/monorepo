@@ -16,7 +16,7 @@ function token(overrides = {}) {
   const input = `${header}.${payload}`;
   return `${input}.${sign('RSA-SHA256', Buffer.from(input), privateKey).toString('base64url')}`;
 }
-function request(action, body, bearer = token(), origin = 'https://admin.maps.karamahcollective.com') {
+function request(action, body, bearer = token(), origin = 'https://admin.karamahcollective.com') {
   const url = new URL('https://website.test/api/admin');
   if (!body) url.searchParams.set('action', action);
   return new Request(url, { method: body ? 'POST' : 'GET', headers: { Origin: origin, ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), 'Content-Type': 'application/json' }, body: body ? JSON.stringify({ ...body, action }) : undefined });
@@ -38,9 +38,10 @@ test('website admin verifies real JWT signatures, verified domain and exact CORS
   const result = await onRequest({ request: request('admin-team'), env });
   assert.equal(result.status, 200);
   assert.equal(result.headers.get('Cache-Control'), 'no-store');
-  assert.equal(result.headers.get('Access-Control-Allow-Origin'), 'https://admin.maps.karamahcollective.com');
+  assert.equal(result.headers.get('Access-Control-Allow-Origin'), 'https://admin.karamahcollective.com');
   assert.equal(calls[0].key, env.WEBSITE_ADMIN_KEY);
   assert.equal(calls[0].actor.email, 'editor@karamahcollective.com');
+  assert.equal((await onRequest({ request: request('admin-team', null, token(), 'https://admin.maps.karamahcollective.com'), env })).status, 200);
   assert.equal((await onRequest({ request: request('admin-team', null, token(), 'https://preview-admin.pages.dev'), env: { ...env, ADMIN_ALLOWED_ORIGINS: 'https://preview-admin.pages.dev' } })).status, 200);
 });
 
@@ -67,8 +68,17 @@ test('missing connection falls back to original public content but fails private
   assert.equal(data.fallback, true);
   assert.deepEqual(data.content, WEBSITE_DEFAULTS);
   assert.equal(validateWebsiteContent({ heroTitle: '<img src=x onerror=alert(1)>' }), null);
-  assert.equal(publicWebsiteContent({ instagramUrl: 'http://unsafe.test', mapsVisible: false }).instagramUrl, '');
+  assert.equal(publicWebsiteContent({ instagramUrl: 'http://unsafe.test', mapsVisible: false }).instagramUrl, WEBSITE_DEFAULTS.instagramUrl);
   assert.equal(publicWebsiteContent({ mapsVisible: false }).mapsVisible, false);
+});
+
+test('local website preview injects a mock ticket without production env', async () => {
+  const response = await contentRequest({ env: {}, request: new Request('http://127.0.0.1:8789/api/content') });
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.content.ticketsVisible, true);
+  assert.equal(data.content.ticketTitle, 'Karamah Community Dinner');
+  assert.match(data.content.ticketUrl, /^https:\/\//);
 });
 
 test('contact writes only explicit opt-ins and reports a failed sheet save honestly', async t => {
