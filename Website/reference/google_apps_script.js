@@ -90,7 +90,9 @@ function doPost(e) {
     if (action === "admin-team")
       result = withServiceMeta({
         success: true,
-        people: privateRows(TEAM_SHEET, TEAM_COLUMNS),
+        // Keep team CRUD isolated from legacy Apps Script files. Apps Script shares
+        // a global function namespace across every .gs file in the project.
+        people: teamPrivateRowsV3(),
       });
     else if (action === "admin-subscribers")
       result = {
@@ -98,9 +100,10 @@ function doPost(e) {
         subscribers: privateRows(SUBSCRIBER_SHEET, SUBSCRIBER_COLUMNS),
       };
     else if (action === "admin-content") result = withServiceMeta(readContent());
-    else if (action === "save-person") result = withServiceMeta(savePerson(data));
+    else if (action === "save-person")
+      result = withServiceMeta(saveTeamPersonV3(data));
     else if (action === "delete-person")
-      result = withServiceMeta(removeRecord(TEAM_SHEET, TEAM_COLUMNS, data));
+      result = withServiceMeta(deleteTeamPersonV3(data));
     else if (action === "unsubscribe") result = unsubscribe(data);
     else if (action === "delete-subscriber")
       result = removeRecord(SUBSCRIBER_SHEET, SUBSCRIBER_COLUMNS, data);
@@ -369,6 +372,157 @@ function savePerson(data) {
       updatedat: updatedAt,
     },
   };
+}
+
+// These functions deliberately have a versioned name. A spreadsheet-bound Apps
+// Script project can contain several .gs files, whose top-level functions share
+// one namespace. Older copies of savePerson/removeRecord must not override the
+// live team editor when this file is pasted alongside legacy code.
+function teamCleanV3(value) {
+  return String(value == null ? "" : value).trim();
+}
+function teamKeyV3(value) {
+  return teamCleanV3(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+function teamSheetV3() {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var tab = book.getSheetByName(TEAM_SHEET) || book.insertSheet(TEAM_SHEET);
+  if (!tab.getLastRow()) tab.appendRow(TEAM_COLUMNS);
+  var headers = tab
+    .getRange(1, 1, 1, Math.max(1, tab.getLastColumn()))
+    .getValues()[0];
+  var map = {};
+  headers.forEach(function (header, index) {
+    map[teamKeyV3(header)] = index;
+  });
+  TEAM_COLUMNS.forEach(function (column) {
+    var normalized = teamKeyV3(column);
+    if (map[normalized] === undefined) {
+      headers.push(column);
+      tab.getRange(1, headers.length).setValue(column);
+      map[normalized] = headers.length - 1;
+    }
+  });
+  return { tab: tab, headers: headers, map: map };
+}
+function teamWriteV3(record, row, column, value) {
+  var cell = record.tab.getRange(row, record.map[teamKeyV3(column)] + 1);
+  if (typeof value === "string") {
+    cell.setNumberFormat("@");
+    cell.setValue(/^[=+@\-\t\r\n]/.test(value) ? "'" + value : value);
+  } else {
+    cell.setValue(value);
+  }
+}
+function teamRowsV3(record) {
+  if (record.tab.getLastRow() < 2) return [];
+  return record.tab
+    .getRange(2, 1, record.tab.getLastRow() - 1, record.headers.length)
+    .getValues()
+    .map(function (values, index) {
+      var row = { _row: index + 2 };
+      record.headers.forEach(function (header, column) {
+        var value = values[column];
+        row[teamKeyV3(header)] = value instanceof Date ? value.toISOString() : value;
+      });
+      return row;
+    })
+    .filter(function (row) {
+      return teamCleanV3(row.name) || teamCleanV3(row.email);
+    });
+}
+function teamShapeV3(row) {
+  return {
+    id: teamCleanV3(row.id),
+    revision: Number(row.revision) || 1,
+    name: teamCleanV3(row.name),
+    email: teamCleanV3(row.email),
+    position: teamCleanV3(row.position),
+    status: teamCleanV3(row.status).toLowerCase() || "inactive",
+    description: teamCleanV3(row.description),
+    location: teamCleanV3(row.location),
+    order: Number(row.order) || 0,
+    updatedat: row.updatedat || "",
+  };
+}
+function teamPrivateRowsV3() {
+  var record = teamSheetV3();
+  return teamRowsV3(record).map(function (row) {
+    if (!teamCleanV3(row.id)) {
+      row.id = Utilities.getUuid();
+      teamWriteV3(record, row._row, "ID", row.id);
+    }
+    if (!Number(row.revision)) {
+      row.revision = 1;
+      teamWriteV3(record, row._row, "Revision", 1);
+    }
+    return teamShapeV3(row);
+  });
+}
+function teamValidatePersonV3(person) {
+  if (!teamCleanV3(person.name)) fail("Name is required", 400);
+  if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email))
+    fail("Invalid email", 400);
+  if (["active", "inactive"].indexOf(person.status) < 0)
+    fail("Invalid team status", 400);
+  if (!Number.isInteger(person.order) || person.order < 0 || person.order > 10000)
+    fail("Invalid display order", 400);
+  var limits = { name: 120, email: 254, position: 160, description: 1200, location: 160 };
+  Object.keys(limits).forEach(function (field) {
+    if (typeof person[field] !== "string" || person[field].length > limits[field])
+      fail("Invalid " + field, 400);
+  });
+}
+function saveTeamPersonV3(data) {
+  var person = data.person || {};
+  teamValidatePersonV3(person);
+  var record = teamSheetV3();
+  var rows = teamRowsV3(record);
+  var row, id, revision;
+  if (data.id) {
+    var existing = rows.filter(function (candidate) {
+      return teamCleanV3(candidate.id) === data.id;
+    })[0];
+    if (!existing) fail("Record no longer exists. Reload the list.", 404);
+    if (!Number.isInteger(data.revision) || Number(existing.revision) !== data.revision)
+      fail("Someone else changed this record. Reload it before saving.", 409);
+    row = existing._row;
+    id = data.id;
+    revision = data.revision + 1;
+  } else {
+    if (data.revision !== 0) fail("Invalid new record", 400);
+    row = record.tab.getLastRow() + 1;
+    id = Utilities.getUuid();
+    revision = 1;
+  }
+  var updatedAt = new Date().toISOString();
+  var fields = {
+    Name: teamCleanV3(person.name), Email: teamCleanV3(person.email).toLowerCase(),
+    Position: teamCleanV3(person.position), Status: person.status,
+    Description: teamCleanV3(person.description), Location: teamCleanV3(person.location),
+    Order: person.order, ID: id, Revision: revision, "Updated At": updatedAt,
+  };
+  Object.keys(fields).forEach(function (column) {
+    teamWriteV3(record, row, column, fields[column]);
+  });
+  return { success: true, id: id, revision: revision, person: teamShapeV3({
+    id: id, revision: revision, name: fields.Name, email: fields.Email,
+    position: fields.Position, status: fields.Status, description: fields.Description,
+    location: fields.Location, order: fields.Order, updatedat: updatedAt,
+  }) };
+}
+function deleteTeamPersonV3(data) {
+  var record = teamSheetV3();
+  var existing = teamRowsV3(record).filter(function (candidate) {
+    return teamCleanV3(candidate.id) === data.id;
+  })[0];
+  if (!existing) fail("Record no longer exists. Reload the list.", 404);
+  if (!Number.isInteger(data.revision) || Number(existing.revision) !== data.revision)
+    fail("Someone else changed this record. Reload it before saving.", 409);
+  record.tab.deleteRow(existing._row);
+  return { success: true, id: data.id };
 }
 function removeRecord(name, columns, data) {
   var found = findRecord(name, columns, data);
