@@ -8,7 +8,7 @@ import { Icons, CloseIcon } from '../icons.jsx';
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
 
 const EMPTY = { name: '', email: '', position: '', description: '', location: '', status: 'active', order: 0 };
-const REQUIRED_TEAM_SERVICE_VERSION = '2026-09-16-team-crud-v3';
+const REQUIRED_TEAM_SERVICE_VERSION = '2026-09-16-d1-v1';
 
 function hasCurrentTeamService(data) {
   return (

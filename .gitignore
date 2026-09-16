@@ -23,6 +23,7 @@ Maps/scripts/local-backups/
 # generated one-time migration SQL, never committed
 .wrangler/
 Maps/scripts/migrate-to-d1/generated/
+Website/.local/
 
 # Playwright generated output
 playwright-report/

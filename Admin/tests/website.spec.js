@@ -7,7 +7,7 @@ async function mockWebsite(page, fail = false) {
     export const websiteOrigin = 'https://website.example.test';
     let people = [{id:'person-1',revision:1,name:'Amina Hassan',email:'amina@example.test',position:'Community coordinator',description:'Bringing neighbors together through local projects.',location:'Helsinki',status:'active',order:1}];
     let subscribers = [{id:'signup-1',revision:1,name:'Test Supporter',email:'supporter@example.test',phone:'+35812345',date:'2026-09-01T12:00:00Z',status:'subscribed'},{id:'signup-2',revision:1,name:'Former Supporter',email:'former@example.test',phone:'',date:'2026-08-01T12:00:00Z',status:'unsubscribed'}];
-    const serviceMeta = {serviceVersion:'2026-09-16-team-crud-v3',capabilities:{teamCrud:true,teamDetails:true}};
+    const serviceMeta = {serviceVersion:'2026-09-16-d1-v1',capabilities:{teamCrud:true,teamDetails:true,d1:true}};
     let content = {heroTitle:'A shared home for our community'}; let revision=1;
     export async function websiteRequest(action, body) {
       if (${fail}) throw new Error('Website data is not connected yet. Configure GOOGLE_SHEET_URL in the Website Pages project.');

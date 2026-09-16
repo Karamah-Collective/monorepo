@@ -1,4 +1,4 @@
-import { readPublicContent } from './_sheets.js';
+import { readPublicContent } from './_website-data.js';
 import { publicWebsiteContent } from '../assets/js/content-schema.mjs';
 
 // Render metadata into the HTML response so link previews and search crawlers

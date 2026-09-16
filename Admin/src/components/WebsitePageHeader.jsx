@@ -26,7 +26,7 @@ export default function WebsitePageHeader({ title, description, children }) {
 export function WebsiteError({ query }) {
   if (!query.error) return null;
   const message = query.error.message || "Website data could not be loaded.";
-  const isSetup = /GOOGLE_SHEET_URL|WEBSITE_ADMIN_KEY|WEBSITE_FORM_KEY/i.test(
+  const isSetup = /DB D1 binding|Website data is not connected/i.test(
     message,
   );
 
@@ -36,9 +36,8 @@ export function WebsiteError({ query }) {
       <p>{message}</p>
       {isSetup && (
         <p className="setup-hint">
-          Local setup: run <code>npm run setup:website</code>, restart the dev
-          servers, and make sure the same keys are saved in Apps Script and the
-          Website Cloudflare project.
+          Add the <code>DB</code> D1 binding to the Website Cloudflare Pages
+          project, then redeploy it.
         </p>
       )}
       <button className="pp-btn" onClick={() => query.refetch()}>

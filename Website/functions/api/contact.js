@@ -1,4 +1,4 @@
-import { sheetRequest } from "../_sheets.js";
+import { subscribeToUpdates } from "../_website-data.js";
 const CONTACT_EMAIL = "contact@karamahcollective.com";
 const SENDER_NAME = "Karamah Collective";
 const DEFAULT_RECAPTCHA_THRESHOLD = 0.5;
@@ -140,9 +140,9 @@ async function sendBrevoEmail(data, env) {
   return res.json();
 }
 
-async function saveOptInToSheet(data, env) {
+async function saveOptIn(data, env) {
   if (data.updates !== "yes") return { skipped: true };
-  return sheetRequest(env, "subscribe", {
+  return subscribeToUpdates(env, {
     name: data.name, email: data.email, phone: data.phone,
     updates: "yes", recaptchaScore: data.recaptchaScore,
     submittedAt: data.submittedAtIso,
@@ -215,10 +215,10 @@ export async function onRequestPost(context) {
     let sheetSaved = false;
     if (updates === "yes") {
       try {
-        const saved = await saveOptInToSheet(submission, env);
+        const saved = await saveOptIn(submission, env);
         sheetSaved = saved.success === true;
       } catch (sheetError) {
-        console.error("Opt-in sheet save failed:", sheetError);
+        console.error("Opt-in database save failed:", sheetError);
       }
     }
 

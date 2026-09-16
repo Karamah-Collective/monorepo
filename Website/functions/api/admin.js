@@ -1,5 +1,5 @@
 import { verifyFirebaseIdToken } from '../../../shared/firebase-verify.mjs';
-import { sheetRequest, SheetError } from '../_sheets.js';
+import { websiteDataRequest, WebsiteDataError } from '../_website-data.js';
 import { validateWebsiteContent, publicWebsiteContent } from '../../assets/js/content-schema.mjs';
 
 const origins=['https://admin.karamahcollective.com','https://admin.maps.karamahcollective.com','http://localhost:5173','http://127.0.0.1:5173'];
@@ -52,6 +52,6 @@ export async function onRequest(context) {
       if(action==='save-content')data.content=publicWebsiteContent(data.content);
     }
     const payload={id:data.id,revision:data.revision,person:data.person,content:data.content,actor:{email:actor.email,name:actor.name||''}};
-    return response(request,await sheetRequest(env,action,payload));
-  } catch(error) { return response(request,{error:error instanceof SheetError?error.message:'Website administration is temporarily unavailable.'},error instanceof SheetError?error.status:502); }
+    return response(request,await websiteDataRequest(env,action,payload));
+  } catch(error) { return response(request,{error:error instanceof WebsiteDataError?error.message:'Website administration is temporarily unavailable.'},error instanceof WebsiteDataError?error.status:502); }
 }

@@ -1,3 +1,7 @@
 name = "karamah-website"
 compatibility_date = "2026-08-04"
 # Local tooling only; configure deployment secrets in the Pages dashboard.
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"

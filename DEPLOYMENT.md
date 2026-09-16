@@ -88,6 +88,20 @@ Attach the domain through the Pages dashboard before relying on a DNS record alo
 
 ## 3. Connect Google Sheets to Admin
 
+### Website data: D1 cutover
+
+Website team profiles, authored website content, and update signups now use the
+existing Maps D1 database. In the Website Pages project, add a D1 binding named
+`DB` that targets the same production database as Maps (`halal-finder-db`), and
+add the equivalent preview binding to the preview database. Apply
+`Maps/migrations/0009_website_data.sql` before deploying the Website branch.
+To preserve existing data, run `node Website/scripts/export-sheet-to-d1.mjs`,
+then execute the generated `Website/.local/website-d1-seed.sql` against the
+same database. The generated file is ignored by Git because it can contain
+signup contact information. After the cutover, `GOOGLE_SHEET_URL`,
+`WEBSITE_ADMIN_KEY`, and `WEBSITE_FORM_KEY` are no longer used by Website data
+routes and may be removed from the Website Pages project after verification.
+
 This is a one-time update to your **existing spreadsheet-bound Apps Script project**. The new code retains `people_directory` and `updates_opt_ins`; it does not replace existing rows or remove extra columns.
 
 ### Generate two secrets
