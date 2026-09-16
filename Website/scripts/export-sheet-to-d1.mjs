@@ -25,7 +25,7 @@ async function read(action) {
 }
 
 const [team, subscribers, content] = await Promise.all([read('admin-team'), read('admin-subscribers'), read('admin-content')]);
-const lines = ['BEGIN TRANSACTION;'];
+const lines = [];
 for (const item of team.people || []) {
   const id = item.id || crypto.randomUUID();
   const timestamp = item.updatedat || new Date().toISOString();
@@ -37,7 +37,6 @@ for (const item of subscribers.subscribers || []) {
   lines.push(`INSERT OR REPLACE INTO website_subscribers (id, revision, name, email, phone, recaptcha_score, subscribed_at, status, updated_at) VALUES (${quote(id)}, ${integer(item.revision, 1)}, ${quote(item.name)}, ${quote(item.email).toLowerCase()}, ${quote(item.phone)}, ${quote(item.recaptchascore)}, ${quote(item.date || timestamp)}, ${quote(item.status || 'subscribed')}, ${quote(timestamp)});`);
 }
 lines.push(`UPDATE website_content SET content = ${quote(JSON.stringify(content.content || {}))}, revision = ${integer(content.revision)}, updated_at = ${quote(new Date().toISOString())} WHERE id = 1;`);
-lines.push('COMMIT;');
 await mkdir(path.dirname(output), { recursive: true });
 await writeFile(output, `${lines.join('\n')}\n`, 'utf8');
 console.log(`Exported ${team.people?.length || 0} team profiles, ${subscribers.subscribers?.length || 0} signups, and website content to ${output}`);
