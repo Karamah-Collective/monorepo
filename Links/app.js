@@ -6,6 +6,7 @@ const toast = $('#toast');
 const fallbackCopy = {
   copy_success_text: 'Link copied', error_title: 'The directory is taking a pause',
   error_description: 'We could not load these links just now.', retry_label: 'Try again',
+  featured_label: 'Featured', share_page_label: 'Share this page', share_link_label: 'Share',
 };
 let currentSettings = fallbackCopy;
 
@@ -28,7 +29,7 @@ async function share({ title, url, text = '' }) {
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast(currentSettings.copy_success_text);
+    showToast(currentSettings.copy_success_text || fallbackCopy.copy_success_text);
   } catch {
     showToast(url);
   }
@@ -79,7 +80,7 @@ function renderLink(link, index, settings) {
   image.decoding = 'async';
   setImage(image, link.imageUrl || link.faviconUrl || '/assets/favicon.ico', link.faviconUrl);
   media.append(image);
-  if (link.featured) {
+  if (link.featured && settings.featured_label) {
     const badge = document.createElement('span');
     badge.className = 'featured-label';
     badge.textContent = settings.featured_label;
@@ -108,9 +109,10 @@ function renderLink(link, index, settings) {
     const button = document.createElement('button');
     button.className = 'link-share';
     button.type = 'button';
-    button.setAttribute('aria-label', `${settings.share_link_label}: ${link.title}`);
+    const shareLabel = settings.share_link_label || fallbackCopy.share_link_label;
+    button.setAttribute('aria-label', `${shareLabel}: ${link.title}`);
     const label = document.createElement('span');
-    label.textContent = settings.share_link_label;
+    label.textContent = shareLabel;
     button.append(label);
     button.insertAdjacentHTML('beforeend', icons.share);
     button.addEventListener('click', () => share({ title: link.title, text: link.description, url: link.url }));
@@ -121,7 +123,9 @@ function renderLink(link, index, settings) {
 
 function setText(selector, value) {
   const element = $(selector);
-  if (element) element.textContent = value || '';
+  if (!element) return;
+  element.textContent = value || '';
+  element.hidden = !String(value || '').trim();
 }
 
 function applySettings(settings) {
@@ -149,27 +153,44 @@ function applySettings(settings) {
   setText('#profile-share-label', settings.share_page_label);
   setText('#footer-text', settings.footer_text);
   setText('#footer-link-label', settings.footer_link_label);
-  $('#footer-link').href = settings.footer_link_url || '#';
-  $('#brand-link').href = settings.footer_link_url || '#';
-  $('#profile-share').setAttribute('aria-label', settings.share_page_label);
+  const destination = settings.footer_link_url || '';
+  $('.footer-mark').hidden = !settings.footer_text;
+  $('#footer-link').href = destination || location.href;
+  $('#footer-link').hidden = !destination || !settings.footer_link_label;
+  $('#brand-link').href = destination || location.href;
+  $('#brand-link').setAttribute('aria-label', settings.profile_name || 'Karamah Collective');
+  $('#profile-share').setAttribute('aria-label', settings.share_page_label || fallbackCopy.share_page_label);
 
   const profileImage = $('#profile-image');
-  profileImage.alt = settings.profile_name;
+  profileImage.alt = settings.profile_name || 'Karamah Collective';
   profileImage.src = settings.avatar_url || '/assets/karamah-logo.webp';
-  document.title = settings.seo_title;
-  document.querySelector('meta[name="description"]').content = settings.seo_description;
+  document.title = settings.seo_title || settings.profile_name || 'Links';
+  document.querySelector('meta[name="description"]').content = settings.seo_description || '';
   document.querySelector('meta[name="theme-color"]').content = settings.background_color;
+
+  $('.profile-copy').hidden = ![settings.page_kicker, settings.profile_name, settings.profile_bio]
+    .some(value => String(value || '').trim());
+  $('.directory-head').hidden = ![settings.links_kicker, settings.links_heading, settings.links_description, settings.count_suffix]
+    .some(value => String(value || '').trim());
+  $('.site-footer').hidden = ![settings.footer_text, settings.footer_link_label && destination]
+    .some(value => String(value || '').trim());
 }
 
 function renderState(title, description, action) {
   state.hidden = false;
   const mark = document.createElement('span');
   mark.className = 'state-mark';
-  const heading = document.createElement('strong');
-  heading.textContent = title;
-  const copy = document.createElement('p');
-  copy.textContent = description;
-  const children = [mark, heading, copy];
+  const children = [mark];
+  if (title) {
+    const heading = document.createElement('strong');
+    heading.textContent = title;
+    children.push(heading);
+  }
+  if (description) {
+    const copy = document.createElement('p');
+    copy.textContent = description;
+    children.push(copy);
+  }
   if (action) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -188,7 +209,7 @@ async function load() {
     applySettings(data.settings);
     state.hidden = true;
     linksRoot.replaceChildren(...data.links.map((link, index) => renderLink(link, index, data.settings)));
-    setText('#link-count', `${data.links.length} ${data.settings.count_suffix}`);
+    setText('#link-count', data.settings.count_suffix ? `${data.links.length} ${data.settings.count_suffix}` : '');
     if (!data.links.length) renderState(data.settings.empty_title, data.settings.empty_description);
   } catch {
     linksRoot.replaceChildren();

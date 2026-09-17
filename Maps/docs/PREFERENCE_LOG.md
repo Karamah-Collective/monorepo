@@ -4857,3 +4857,35 @@ middle fieldset the only vertical scrollbar, keeping the Admin-standard header
 and action footer fixed. Link fields use the Admin panel's flat label/control
 rhythm, full-width textareas and selects, and rule-separated sections rather
 than misaligned browser-default controls or extra nested cards.
+
+## 2026-09-17 - Link Hub optional-copy and visual audit
+
+**User correction:** the public directory should not invent editorial copy.
+The profile eyebrow, biography, directory labels, count wording, and footer are
+optional and must begin empty. When an administrator leaves one blank, the
+public page and Admin preview remove both the element and its layout space.
+The intentional default is the Karamah logo, profile name, and compact links.
+
+**Public Links decision:** retain the centered, familiar link-in-bio structure,
+but reduce the profile height, remove duplicated brand text from the masthead,
+keep every card the same compact size, and use only subtle Karamah green for
+featured and interactive states. Motion is limited to a short first-load
+cascade and tactile press/hover feedback, with reduced-motion fallbacks.
+
+**Admin decision:** consolidate the Link Hub's accumulated overrides into one
+responsive stylesheet. Desktop keeps the library and contextual preview side
+by side; tablet and phone place the working library before the preview. Mobile
+uses compact three-way tabs, a two-by-two status strip, full-width row actions,
+and a viewport-bounded editor whose body alone scrolls while its header and
+save actions remain visible.
+
+**Data decision:** `0014_link_hub_optional_copy.sql` clears only untouched
+legacy defaults and preserves administrator-authored content. Clean installs
+also receive empty optional defaults from migrations `0011` and `0012`.
+
+**Verification:** browser screenshots were audited at phone, tablet, and
+desktop sizes because the user explicitly requested a run-and-audit pass. Links
+passed four Playwright checks; the Admin Link Hub passed five focused checks,
+including no horizontal overflow, blank optional copy, and a scrollable mobile
+editor with visible actions. Both production builds and the repository layout
+check passed.

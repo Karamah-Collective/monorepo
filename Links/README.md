@@ -27,16 +27,18 @@ node Maps/scripts/local-db.mjs
 Run these from the monorepo root after authenticating Wrangler. Confirm the
 database name and ID in `Maps/wrangler.toml` before using `--remote`.
 
-For a new database, apply all three migrations in order:
+For a new database, apply all four migrations in order:
 
 ```sh
 npx wrangler d1 execute halal-finder-db --remote --config Maps/wrangler.toml --file Maps/migrations/0011_link_hub.sql
 npx wrangler d1 execute halal-finder-db --remote --config Maps/wrangler.toml --file Maps/migrations/0012_link_hub_content.sql
 npx wrangler d1 execute halal-finder-db --remote --config Maps/wrangler.toml --file Maps/migrations/0013_link_hub_card_overrides.sql
+npx wrangler d1 execute halal-finder-db --remote --config Maps/wrangler.toml --file Maps/migrations/0014_link_hub_optional_copy.sql
 ```
 
 If `0011_link_hub.sql` was already applied, run `0012_link_hub_content.sql`
-and `0013_link_hub_card_overrides.sql` in order.
+through `0014_link_hub_optional_copy.sql` in order. Migration `0014` only
+clears the original decorative defaults when they have not been customized.
 
 Read-only verification:
 

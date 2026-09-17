@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS link_hub_settings (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   profile_name TEXT NOT NULL DEFAULT 'Karamah Collective',
-  profile_bio TEXT NOT NULL DEFAULT 'Community, connection and useful places — all in one place.',
+  profile_bio TEXT NOT NULL DEFAULT '',
   avatar_url TEXT NOT NULL DEFAULT '',
   background_color TEXT NOT NULL DEFAULT '#f4f3ee',
   surface_color TEXT NOT NULL DEFAULT '#ffffff',
@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS link_hub_settings (
   show_descriptions INTEGER NOT NULL DEFAULT 1 CHECK(show_descriptions IN (0, 1)),
   show_domains INTEGER NOT NULL DEFAULT 1 CHECK(show_domains IN (0, 1)),
   show_share INTEGER NOT NULL DEFAULT 1 CHECK(show_share IN (0, 1)),
-  footer_text TEXT NOT NULL DEFAULT 'Karamah Collective',
+  footer_text TEXT NOT NULL DEFAULT '',
   seo_title TEXT NOT NULL DEFAULT 'Karamah Collective — Links',
-  seo_description TEXT NOT NULL DEFAULT 'Find Karamah Collective across the web.',
+  seo_description TEXT NOT NULL DEFAULT 'Karamah Collective links.',
   revision INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT ''
 );

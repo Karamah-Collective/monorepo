@@ -69,7 +69,8 @@ different hostname). Add a `DB` D1 binding that targets the same production
 database as Maps, and use the preview database for preview deployments. Apply
 `Maps/migrations/0011_link_hub.sql` and
 `Maps/migrations/0012_link_hub_content.sql`, then
-`Maps/migrations/0013_link_hub_card_overrides.sql` before the first deployment. The public
+`Maps/migrations/0013_link_hub_card_overrides.sql`, then
+`Maps/migrations/0014_link_hub_optional_copy.sql` before the first deployment. The public
 project only reads published links and records aggregate open counts; all
 editing remains behind the existing Firebase-protected Maps admin API.
 
@@ -175,7 +176,7 @@ Under each Pages project's **Build watch paths**, include:
 | Maps | `Maps/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Website | `Website/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Admin | `Admin/*`, `Maps/src/app-settings-schema.js`, `Maps/src/app-controls-schema.js`, `Website/assets/js/content-schema.mjs`, `package.json`, `package-lock.json` |
-| Links | `Links/*`, `Maps/migrations/0011_link_hub.sql`, `Maps/migrations/0012_link_hub_content.sql`, `Maps/migrations/0013_link_hub_card_overrides.sql`, `package.json`, `package-lock.json` |
+| Links | `Links/*`, `Maps/migrations/0011_link_hub.sql`, `Maps/migrations/0012_link_hub_content.sql`, `Maps/migrations/0013_link_hub_card_overrides.sql`, `Maps/migrations/0014_link_hub_optional_copy.sql`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 

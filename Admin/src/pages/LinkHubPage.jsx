@@ -8,19 +8,19 @@ import karamahLogo from '../../../Website/assets/images/kc_logo_small.webp';
 
 const EMPTY_LINK = { url: '', title: '', description: '', image_url: '', custom_site_name: '', custom_favicon_url: '', active: 1, featured: 0, sort_order: 0 };
 const SETTINGS_DEFAULTS = {
-  profile_name: 'Karamah Collective', profile_bio: '', avatar_url: '', page_kicker: 'Karamah, collected',
-  links_kicker: 'Directory', links_heading: 'Places worth keeping close', links_description: '', count_suffix: 'destinations',
+  profile_name: 'Karamah Collective', profile_bio: '', avatar_url: '', page_kicker: '',
+  links_kicker: '', links_heading: '', links_description: '', count_suffix: '',
   featured_label: 'Featured', share_page_label: 'Share this page', share_link_label: 'Share', copy_success_text: 'Link copied',
-  footer_text: 'Karamah Collective', footer_link_label: 'Visit the collective', footer_link_url: 'https://karamahcollective.com',
+  footer_text: '', footer_link_label: '', footer_link_url: 'https://karamahcollective.com',
   empty_title: 'Nothing published yet', empty_description: '', error_title: 'The directory is taking a pause',
   error_description: '', retry_label: 'Try again', seo_title: 'Karamah Collective — Links', seo_description: '',
   background_color: '#f1efe7', surface_color: '#fffdf8', text_color: '#202923', accent_color: '#2b745c',
-  theme: 'light', card_style: 'soft', corner_style: 'rounded', layout: 'grid', background_style: 'paper', image_style: 'cover',
-  max_width: 1100, show_descriptions: true, show_domains: true, show_share: true,
+  theme: 'light', card_style: 'soft', corner_style: 'rounded', layout: 'stack', background_style: 'paper', image_style: 'cover',
+  max_width: 680, show_descriptions: true, show_domains: true, show_share: true,
 };
 const linksOrigin = (import.meta.env.VITE_LINKS_ORIGIN || 'https://links.karamahcollective.com').replace(/\/$/, '');
 
-function normalizeSettings(settings) {
+function normalizeSettings(settings = {}) {
   return {
     ...SETTINGS_DEFAULTS, ...settings,
     show_descriptions: !!settings.show_descriptions,
@@ -184,19 +184,17 @@ function LinkEditor({ link, onClose }) {
 }
 
 function PublicPreview({ settings, links }) {
-  const samples = links.filter(item => item.active).slice(0, 4);
-  const shown = samples.length ? samples : [
-    { id: 'sample-a', title: 'Find halal places across Finland', site_name: 'Karamah Maps', featured: 1 },
-    { id: 'sample-b', title: 'Community events', site_name: 'Karamah Collective' },
-    { id: 'sample-c', title: 'Keep in touch', site_name: 'Karamah updates' },
-  ];
+  const shown = links.filter(item => item.active).slice(0, 4);
+  const hasDirectoryHeading = [settings.links_kicker, settings.links_heading, settings.count_suffix].some(Boolean);
   return <div className="hub-public-preview is-compact" style={{ '--preview-bg': settings.background_color, '--preview-surface': settings.surface_color, '--preview-text': settings.text_color, '--preview-accent': settings.accent_color }} data-card={settings.card_style} data-corner={settings.corner_style}>
     <div className="hub-mini-top"><img src={karamahLogo} alt="" /><Icons.upload size={10} /></div>
-    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div><small>{settings.page_kicker}</small><h3>{settings.profile_name}</h3><p>{settings.profile_bio}</p></div>
-    <section className="hub-mini-directory"><header><div><small>{settings.links_kicker}</small><h4>{settings.links_heading}</h4></div><span>{shown.length}</span></header><div className="hub-public-cards">{shown.map(item => {
+    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div>{settings.page_kicker && <small>{settings.page_kicker}</small>}{settings.profile_name && <h3>{settings.profile_name}</h3>}{settings.profile_bio && <p>{settings.profile_bio}</p>}</div>
+    <section className="hub-mini-directory">{hasDirectoryHeading && <header><div>{settings.links_kicker && <small>{settings.links_kicker}</small>}{settings.links_heading && <h4>{settings.links_heading}</h4>}</div>{settings.count_suffix && <span>{shown.length} {settings.count_suffix}</span>}</header>}<div className="hub-public-cards">{shown.map(item => {
       const image = item.image_url || item.metadata_image_url || item.custom_favicon_url || item.favicon_url;
-      return <div className={`hub-public-card${item.featured ? ' is-featured' : ''}`} key={item.id}><i>{image ? <img src={image} alt="" /> : <Icons.globe size={13} />}</i><div><small>{item.custom_site_name || item.site_name || 'Website'}</small><b>{item.title || item.metadata_title || 'Untitled link'}</b>{settings.show_descriptions && <span>{item.description || item.metadata_description || 'A useful Karamah destination.'}</span>}</div><Icons.arrowUpRight size={11} /></div>;
-    })}</div></section>
+      const siteName = item.custom_site_name || item.site_name;
+      const description = item.description || item.metadata_description;
+      return <div className={`hub-public-card${item.featured ? ' is-featured' : ''}`} key={item.id}><i>{image ? <img src={image} alt="" /> : <Icons.globe size={13} />}</i><div>{settings.show_domains && siteName && <small>{siteName}</small>}<b>{item.title || item.metadata_title || item.url || 'Untitled link'}</b>{settings.show_descriptions && description && <span>{description}</span>}</div><Icons.arrowUpRight size={11} /></div>;
+    })}</div>{!shown.length && <div className="hub-mini-empty"><Icons.link size={16} /><b>{settings.empty_title || 'No published links'}</b></div>}</section>
   </div>;
 }
 
@@ -251,19 +249,19 @@ export default function LinkHubPage() {
   return <div className="pp-page link-hub-page">
     <div className="hub-page-head">
       <div><span className="eyebrow">PUBLIC CHANNEL</span><h1 className="pp-page-title">Link hub</h1><p className="pp-page-lead">A single, considered home for every Karamah destination.</p></div>
-      <div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page</a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}>Add link</button></div>
+      <div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page <Icons.arrowUpRight size={14} /></a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}><Icons.plusCircle size={15} /> Add link</button></div>
     </div>
     {query.error && <div className="query-error" role="alert"><strong>Link hub data could not be loaded</strong><p>{query.error.message}</p><button className="pp-btn" onClick={() => query.refetch()}>Try again</button></div>}
     {query.isLoading && <LoadingState />}
     {draft && <>
       <OverviewStats links={allLinks} />
       <nav className="hub-workspace-tabs" aria-label="Link hub sections">
-        {[['links', 'Links', 'Add, publish and review destinations'], ['content', 'Page content', 'Edit every public word and message'], ['appearance', 'Appearance', 'Shape the public page and cards']].map(([id, label, description]) => <button type="button" key={id} className={tab === id ? 'is-active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><span>{label}</span><small>{description}</small></button>)}
+        {[['links', 'Links', 'Add, publish and review destinations', Icons.link], ['content', 'Page content', 'Edit every public word and message', Icons.pencil], ['appearance', 'Appearance', 'Shape the public page and cards', Icons.palette]].map(([id, label, description, Icon]) => <button type="button" key={id} className={tab === id ? 'is-active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={16} /><span><b>{label}</b><small>{description}</small></span></button>)}
       </nav>
 
       {tab === 'links' && <div className="hub-links-workspace">
         <section className="hub-library">
-          <header className="hub-library-head"><div><span className="eyebrow">DESTINATIONS</span><h2>Your link library</h2><p>Published links appear immediately. Website details are cached in D1.</p></div><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)}>Add link</button></header>
+          <header className="hub-library-head"><div><span className="eyebrow">DESTINATIONS</span><h2>Your link library</h2><p>Published links appear immediately. Website details are cached in D1.</p></div></header>
           <div className="hub-library-tools"><div className="table-search-wrap"><Icons.search size={16} /><input className="pp-table-search" type="search" placeholder="Search links…" aria-label="Search links" value={search} onChange={event => setSearch(event.target.value)} /></div><div className="hub-filter" aria-label="Filter links">{[['all','All'],['published','Published'],['hidden','Hidden']].map(([id,label]) => <button type="button" className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)}>{label}</button>)}</div></div>
           <div className="hub-admin-list">
             {links.map(link => <article className="hub-admin-link" key={link.id}>
@@ -282,16 +280,16 @@ export default function LinkHubPage() {
       {tab === 'content' && <div className="hub-settings-workspace">
         <form className="hub-settings-editor" onSubmit={event => { event.preventDefault(); publishSettings(); }}>
           <FormSection eyebrow="IDENTITY" title="Profile introduction" description="The first words and image visitors use to understand this page.">
-            <Field label="Small heading"><input maxLength={120} value={draft.page_kicker} onChange={event => update('page_kicker', event.target.value)} /></Field>
-            <Field label="Profile name"><input maxLength={120} value={draft.profile_name} onChange={event => update('profile_name', event.target.value)} /></Field>
-            <Field label="Profile description" wide><textarea rows={3} maxLength={500} value={draft.profile_bio} onChange={event => update('profile_bio', event.target.value)} /></Field>
+            <Field label="Eyebrow (optional)"><input maxLength={120} placeholder="Leave blank for a cleaner profile" value={draft.page_kicker} onChange={event => update('page_kicker', event.target.value)} /></Field>
+            <Field label="Profile name"><input maxLength={120} placeholder="Karamah Collective" value={draft.profile_name} onChange={event => update('profile_name', event.target.value)} /></Field>
+            <Field label="Profile description (optional)" wide><textarea rows={3} maxLength={500} placeholder="Add a short introduction, or leave this blank" value={draft.profile_bio} onChange={event => update('profile_bio', event.target.value)} /></Field>
             <Field label="Avatar or logo URL" hint="Leave blank to use the Karamah mark." wide><input type="url" maxLength={2048} placeholder="https://…" value={draft.avatar_url} onChange={event => update('avatar_url', event.target.value)} /></Field>
           </FormSection>
           <FormSection eyebrow="DIRECTORY" title="Link collection heading" description="Introduces the list and labels highlighted destinations.">
-            <Field label="Small heading"><input maxLength={120} value={draft.links_kicker} onChange={event => update('links_kicker', event.target.value)} /></Field>
-            <Field label="Main heading"><input maxLength={200} value={draft.links_heading} onChange={event => update('links_heading', event.target.value)} /></Field>
-            <Field label="Introduction" wide><textarea rows={3} maxLength={500} value={draft.links_description} onChange={event => update('links_description', event.target.value)} /></Field>
-            <Field label="Count wording" hint={`Shown as “${allLinks.filter(link => link.active).length} ${draft.count_suffix}”`}><input maxLength={80} value={draft.count_suffix} onChange={event => update('count_suffix', event.target.value)} /></Field>
+            <Field label="Eyebrow (optional)"><input maxLength={120} placeholder="For example: Directory" value={draft.links_kicker} onChange={event => update('links_kicker', event.target.value)} /></Field>
+            <Field label="Main heading (optional)"><input maxLength={200} placeholder="Leave blank to start directly with links" value={draft.links_heading} onChange={event => update('links_heading', event.target.value)} /></Field>
+            <Field label="Introduction (optional)" wide><textarea rows={3} maxLength={500} placeholder="A short note above the link collection" value={draft.links_description} onChange={event => update('links_description', event.target.value)} /></Field>
+            <Field label="Count wording (optional)" hint={draft.count_suffix ? `Shown as “${allLinks.filter(link => link.active).length} ${draft.count_suffix}”` : 'Leave blank to hide the link count.'}><input maxLength={80} placeholder="For example: links" value={draft.count_suffix} onChange={event => update('count_suffix', event.target.value)} /></Field>
             <Field label="Featured badge"><input maxLength={80} value={draft.featured_label} onChange={event => update('featured_label', event.target.value)} /></Field>
           </FormSection>
           <FormSection eyebrow="ACTIONS" title="Sharing and feedback" description="Labels used when people share or copy a destination.">
@@ -307,8 +305,8 @@ export default function LinkHubPage() {
             <Field label="Error description"><textarea rows={3} maxLength={500} value={draft.error_description} onChange={event => update('error_description', event.target.value)} /></Field>
           </FormSection>
           <FormSection eyebrow="FOOTER & META" title="Closing line and page metadata" description="Controls the footer destination plus search and sharing previews.">
-            <Field label="Footer signature"><input maxLength={120} value={draft.footer_text} onChange={event => update('footer_text', event.target.value)} /></Field>
-            <Field label="Footer link label"><input maxLength={120} value={draft.footer_link_label} onChange={event => update('footer_link_label', event.target.value)} /></Field>
+            <Field label="Footer signature (optional)"><input maxLength={120} placeholder="Leave blank to hide" value={draft.footer_text} onChange={event => update('footer_text', event.target.value)} /></Field>
+            <Field label="Footer link label (optional)"><input maxLength={120} placeholder="Leave blank to hide the footer link" value={draft.footer_link_label} onChange={event => update('footer_link_label', event.target.value)} /></Field>
             <Field label="Footer link URL" wide><input type="url" maxLength={2048} value={draft.footer_link_url} onChange={event => update('footer_link_url', event.target.value)} /></Field>
             <Field label="Browser and share title"><input maxLength={200} value={draft.seo_title} onChange={event => update('seo_title', event.target.value)} /></Field>
             <Field label="Search and share description"><textarea rows={3} maxLength={500} value={draft.seo_description} onChange={event => update('seo_description', event.target.value)} /></Field>

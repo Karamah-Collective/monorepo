@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: ".",
-  testMatch: ["admin.spec.js", "website.spec.js"],
+  testMatch: ["admin.spec.js", "website.spec.js", "link-hub.spec.js"],
   outputDir: "../../test-results/admin-tests",
   fullyParallel: true,
   workers: 3,

@@ -37,7 +37,7 @@ const APP_SCOPES = {
   },
   links: {
     label: "Links",
-    paths: ["Links/", "Maps/functions/_link-hub.js", "Maps/functions/api/admin.js", "Maps/migrations/0011_link_hub.sql", "Maps/migrations/0012_link_hub_content.sql", "Maps/migrations/0013_link_hub_card_overrides.sql", "package.json", "package-lock.json"],
+    paths: ["Links/", "Maps/functions/_link-hub.js", "Maps/functions/api/admin.js", "Maps/migrations/0011_link_hub.sql", "Maps/migrations/0012_link_hub_content.sql", "Maps/migrations/0013_link_hub_card_overrides.sql", "Maps/migrations/0014_link_hub_optional_copy.sql", "package.json", "package-lock.json"],
     checks: ["npm run build:links", "npm run test:links"],
   },
 };
