@@ -5,24 +5,28 @@
   "workspaces": [
     "Maps",
     "Website",
-    "Admin"
+    "Admin",
+    "Links"
   ],
   "scripts": {
     "dev": "node tooling/dev.mjs",
     "dev:maps": "node tooling/dev.mjs maps",
     "dev:website": "node tooling/dev.mjs website",
     "dev:admin": "node tooling/dev.mjs admin",
+    "dev:links": "node tooling/dev.mjs links",
     "setup:website": "node tooling/setup-website-env.mjs",
     "deploy:agent": "node tooling/deploy-agent.mjs",
     "build": "npm run build --workspaces --if-present",
     "build:maps": "npm run build --workspace Maps",
     "build:website": "npm run build --workspace Website",
     "build:admin": "npm run build --workspace Admin",
+    "build:links": "npm run build --workspace Links",
     "test:admin": "playwright test --config Admin/tests/playwright.config.js",
     "test:maps": "playwright test --config Maps/tests/playwright.config.js",
     "test:maps:smoke": "playwright test --config Maps/tests/playwright.config.js Maps/tests/01-dom-elements.spec.js -g \"app container and map canvas exist|map canvas has non-zero dimensions|tab bar exists\" --project \"Desktop Chrome\"",
     "test:website": "node --test Website/tests/*.test.mjs",
     "test:website:ui": "playwright test --config Website/tests/playwright.config.js",
+    "test:links": "playwright test --config Links/tests/playwright.config.js",
     "check": "node tooling/check-layout.mjs",
     "update": "npm run update --workspace Maps",
     "update:force": "npm run update:force --workspace Maps"

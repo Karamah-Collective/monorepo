@@ -1,0 +1,10 @@
+name = "karamah-links"
+compatibility_date = "2026-08-04"
+
+# Local development only. This intentionally has no pages_build_output_dir so
+# Production and Preview bindings remain managed separately in the Pages
+# dashboard. Production shares Maps' live DB; Preview uses the preview DB.
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"

@@ -51,6 +51,45 @@ async function seedEmptyDatabase() {
   console.info(`Seeded ${places.length} bundled places into the local database.`);
 }
 
+async function seedLocalLinkHub() {
+  const [result] = await runLocal(["--command", "SELECT COUNT(*) AS count FROM link_hub_links"]);
+  if (result.results[0].count) return;
+  const now = new Date().toISOString();
+  const samples = [
+    {
+      id: "local-karamah-map", url: "https://maps.karamahcollective.com", title: "Find halal places across Finland",
+      description: "Mosques, restaurants, services and community spaces — mapped with care for everyday use.",
+      image: "https://picsum.photos/seed/karamah-map-finland/1200/760", site: "Karamah Maps", icon: "https://maps.karamahcollective.com/data/icons/favicon.png", featured: 1, order: 10,
+    },
+    {
+      id: "local-karamah-home", url: "https://karamahcollective.com", title: "Karamah Collective",
+      description: "Meet the collective, follow current programs and learn what we are building together.",
+      image: "https://picsum.photos/seed/karamah-collective/900/700", site: "Karamah Collective", icon: "https://karamahcollective.com/assets/images/kc_logo_small_icon.ico", featured: 0, order: 20,
+    },
+    {
+      id: "local-community-calendar", url: "https://maps.karamahcollective.com", title: "Community events and gatherings",
+      description: "A practical view of what is happening nearby and where to join in.",
+      image: "https://picsum.photos/seed/karamah-community/900/700", site: "Community calendar", icon: "https://maps.karamahcollective.com/data/icons/favicon.png", featured: 0, order: 30,
+    },
+    {
+      id: "local-janazah", url: "https://karamahcollective.com", title: "Janazah Initiative",
+      description: "Guidance and community support, brought together when families need it most.",
+      image: "https://picsum.photos/seed/karamah-janazah/900/700", site: "Karamah Collective", icon: "https://karamahcollective.com/assets/images/kc_logo_small_icon.ico", featured: 0, order: 40,
+    },
+    {
+      id: "local-updates", url: "https://karamahcollective.com/#contact", title: "Keep in touch with Karamah",
+      description: "Get occasional updates about new tools, events and community work.",
+      image: "https://picsum.photos/seed/karamah-updates/900/700", site: "Karamah updates", icon: "https://karamahcollective.com/assets/images/kc_logo_small_icon.ico", featured: 0, order: 50,
+    },
+  ];
+  const statements = samples.map((link) => `INSERT OR IGNORE INTO link_hub_links (id,url,title,description,metadata_image_url,site_name,favicon_url,metadata_status,active,featured,sort_order,created_at,updated_at) VALUES (${[
+    link.id, link.url, link.title, link.description, link.image, link.site, link.icon, "ready", 1, link.featured, link.order, now, now,
+  ].map(quote).join(",")});`);
+  statements.push("UPDATE link_hub_settings SET layout='stack', max_width=680 WHERE id=1;");
+  await executeSql(statements.join("\n"));
+  console.info(`Seeded ${samples.length} local-only Link Hub examples.`);
+}
+
 /** Reconcile old local schemas without erasing data, then apply new migrations once. */
 export async function setupLocalDatabase() {
   await runLocal(["--command", "CREATE TABLE IF NOT EXISTS admin_local_migrations (name TEXT PRIMARY KEY)"]);
@@ -79,11 +118,13 @@ export async function setupLocalDatabase() {
       return statement;
     });
     console.info(`Checking local migration: ${file}`);
-    if (sql.trim()) await executeSql(sql);
+    const executableSql = sql.replace(/--.*$/gm, "").trim();
+    if (executableSql) await executeSql(sql);
     await executeSql(`INSERT OR IGNORE INTO admin_local_migrations (name) VALUES (${quote(file)});`);
     console.info(`Local migration: ${file}`);
   }
   await seedEmptyDatabase();
+  await seedLocalLinkHub();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

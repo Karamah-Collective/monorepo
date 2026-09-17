@@ -4769,3 +4769,91 @@ touched by this command.
 **Verification:** ran local D1 setup, targeted `node --check` passes, admin Vite
 production build, and a Vite proxy request to `/api/app-settings`. No
 Playwright/browser tests were run, honoring the standing preference.
+
+## 2026-09-17 - Link Hub architectural redesign and monorepo design reference
+
+**User preference:** a new public app is not complete when its data flow merely
+works. The public composition and its Admin authoring experience must both be
+fully resolved, clean, compact, intuitive, and visually consistent with their
+respective Karamah contexts. Avoid long undifferentiated forms and generic
+link-button stacks. Every visitor-facing word, including headers, labels,
+footers, empty/error messages, and action feedback, must be editable from Admin
+and persisted in D1.
+
+**Public Links decision:** use an editorial split rather than a centered
+Linktree clone. Desktop pairs a sticky Karamah identity rail with a wider
+destination library; tablet narrows the rail; phone collapses identity above a
+single compact link stack. A featured destination spans the grid, regular
+destinations remain compact horizontal records, and every major card uses a
+restrained nested surface. General Sans, warm paper neutrals, charcoal, and one
+muted green accent connect it to the Karamah family without copying Maps or the
+Website. Background texture, image fit, layout, page width, card treatment,
+corners, color, and information visibility are configurable.
+
+**Admin Links decision:** organize the editor by task: Links, Page content, and
+Appearance. Links is the default workspace and exposes publishing totals,
+search, visibility filters, metadata health, direct publish/hide controls,
+opens, editing, and removal beside a contextual preview. Content and Appearance
+use grouped sections plus a sticky dirty-state publish bar and live preview.
+Link overrides include title, description, image, site name, and favicon.
+
+**Content/data decision:** `0012_link_hub_content.sql` extends the singleton D1
+settings row with every public label and state message; `0013_link_hub_card_overrides.sql`
+adds administrator-controlled site-name and favicon overrides. The local database setup
+adds five representative sample destinations only when the local Link Hub is
+empty; production migrations contain no demo records. Restart local servers
+after migration so Links and Admin share the persisted Maps D1 state.
+
+**Design-system decision:** root `DESIGN_SYSTEM.md` is now the family-level
+reference for Maps, Website, Admin, Links, and future apps. It defines shared
+brand principles, typography, palette, depth, motion, interaction states,
+responsive rules, each app's distinct design expression, source-of-truth files,
+and a new-app checklist. App-specific design documents remain authoritative for
+detailed implementation.
+
+**Verification:** applied the local D1 migration and confirmed five local-only
+records plus the new settings fields. Admin and Links production builds,
+targeted `node --check`, and `git diff --check` passed. No Playwright or browser
+test suite was run, honoring the standing preference.
+
+## 2026-09-17 - Link Hub density correction and D1 image uploads
+
+**User correction:** the editorial split gave the public Links app too much
+visual ceremony. The desired reference is the clarity and density of a good
+link-in-bio page: centered identity, short introduction, and compact horizontal
+links as the immediate focus. Do not copy Linktree branding or chrome, but keep
+the interaction model familiar and express Karamah through warm mineral color,
+General Sans, the Karamah mark, muted green, and precise small details.
+
+**Public Links decision:** replace the desktop identity rail, oversized
+headlines, and enlarged featured card with one centered flow capped at a
+readable directory width. Every destination now has the same compact footprint;
+featured state is communicated with a slim accent and small badge. The optional
+grid remains available, but no longer turns featured content into a hero.
+
+**Admin editor decision:** the add/edit dialog is a dedicated scrollable
+workspace with a stable header and footer, numbered URL/content/publishing
+sections, a live card preview, and responsive single-column behavior. Link card
+images may be pasted as public URLs or uploaded. Uploaded JPG/PNG/WebP files are
+resized and compressed in the browser, validated as small image data URLs, and
+stored in the existing D1 `image_url` field; no R2 bucket or new migration is
+required. Audit rows record only the uploaded payload size rather than copying
+the image a second time.
+
+**Verification:** Admin and Links production builds, repository layout checks,
+targeted JavaScript syntax checks, and `git diff --check` passed. No Playwright
+or browser suite was run, honoring the standing preference.
+
+### Final Link Hub polish
+
+The public logo must use the dark transparent Karamah mark on the warm Links
+canvas. Local Pages development now builds and serves `Links/dist`, matching
+production and ensuring the copied logo, favicon, and General Sans asset exist;
+serving the raw `Links` source was the cause of the broken images in the phone
+screenshot.
+
+The link dialog now owns an explicit viewport-bounded height and gives its
+middle fieldset the only vertical scrollbar, keeping the Admin-standard header
+and action footer fixed. Link fields use the Admin panel's flat label/control
+rhythm, full-width textareas and selects, and rule-separated sections rather
+than misaligned browser-default controls or extra nested cards.

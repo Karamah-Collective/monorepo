@@ -16,6 +16,7 @@ import "./styles/cells.css";
 import "./styles/table.css";
 import "./styles/dashboard.css";
 import "./styles/website.css";
+import "./styles/links.css";
 import faviconUrl from "../../Website/assets/images/kc_logo_small_icon.ico";
 
 const favicon = document.querySelector('link[rel="icon"]') || document.createElement("link");

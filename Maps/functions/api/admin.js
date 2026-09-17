@@ -45,6 +45,7 @@ import {
 } from "../_place-videos.js";
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
+import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
@@ -87,7 +88,10 @@ const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action"]);
 function buildAuditDetail(data) {
   const rest = {};
   for (const k of Object.keys(data)) {
-    if (!AUDIT_DETAIL_NOISE_FIELDS.has(k)) rest[k] = data[k];
+    if (AUDIT_DETAIL_NOISE_FIELDS.has(k)) continue;
+    if (k === "link" && data.link?.image_url?.startsWith("data:image/")) {
+      rest[k] = { ...data.link, image_url: `[uploaded image: ${data.link.image_url.length} characters]` };
+    } else rest[k] = data[k];
   }
   return JSON.stringify(rest);
 }
@@ -344,6 +348,7 @@ async function getAdminTypeStyles(db) {
 }
 
 const GET_ACTIONS = {
+  "admin-link-hub": (db) => getAdminLinkHub(db),
   "admin-app-settings": (db) => readAdminAppSettings(db),
   "admin-stats": (db) => getAdminStats(db),
   "pending-new": (db) => getPendingNew(db),
@@ -897,6 +902,9 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
+  "save-link-hub-settings": (db, data) => saveLinkHubSettings(db, data),
+  "save-link-hub-link": (db, data) => saveLinkHubLink(db, data),
+  "delete-link-hub-link": (db, data) => deleteLinkHubLink(db, data),
   "update-app-settings": (db, data) => saveAppSettings(db, data),
   "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
   "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),

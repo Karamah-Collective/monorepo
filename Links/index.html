@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f1efe7">
+  <meta name="description" content="Find Karamah Collective across the web.">
+  <meta property="og:title" content="Karamah Collective — Links">
+  <meta property="og:description" content="Find Karamah Collective across the web.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Karamah Collective — Links">
+  <meta name="twitter:description" content="Find Karamah Collective across the web.">
+  <title>Karamah Collective — Links</title>
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <main class="page" id="page" aria-live="polite">
+    <header class="masthead">
+      <a class="brand" id="brand-link" href="https://karamahcollective.com" aria-label="Karamah Collective">
+        <img src="/assets/karamah-logo.webp" alt="">
+        <span id="brand-name">Karamah Collective</span>
+      </a>
+      <button class="round-action" id="profile-share" type="button">
+        <span id="profile-share-label">Share this page</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12v7h10v-7M12 16V4m0 0L8.5 7.5M12 4l3.5 3.5"/></svg>
+      </button>
+    </header>
+
+    <section class="profile-panel">
+      <div class="profile-portrait" id="profile-portrait">
+        <div class="portrait-core"><img id="profile-image" src="/assets/karamah-logo.webp" alt="Karamah Collective"></div>
+        <span class="portrait-orbit" aria-hidden="true"></span>
+      </div>
+      <div class="profile-copy">
+        <span class="kicker" id="page-kicker">Karamah, collected</span>
+        <h1 id="profile-name">Karamah Collective</h1>
+        <p id="profile-bio">Community, connection and useful places — all in one place.</p>
+      </div>
+    </section>
+
+    <section class="directory" aria-labelledby="links-heading">
+      <header class="directory-head">
+        <div>
+          <span class="kicker" id="links-kicker">Directory</span>
+          <h2 id="links-heading">Places worth keeping close</h2>
+          <p id="links-description">Our projects, community spaces and the places we show up online.</p>
+        </div>
+        <span class="count" id="link-count"></span>
+      </header>
+      <div class="links" id="links">
+        <div class="skeleton" aria-label="Loading links"><i></i><span></span></div>
+        <div class="skeleton"><i></i><span></span></div>
+        <div class="skeleton"><i></i><span></span></div>
+      </div>
+      <div class="state" id="state" hidden></div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-mark"><span></span><p id="footer-text">Karamah Collective</p></div>
+      <a id="footer-link" href="https://karamahcollective.com" rel="noreferrer">
+        <span id="footer-link-label">Visit the collective</span>
+        <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 16 8m-6 0h6v6"/></svg></i>
+      </a>
+    </footer>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

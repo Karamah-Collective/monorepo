@@ -21,6 +21,7 @@ import AppSettingsPage from "./pages/AppSettingsPage.jsx";
 import WebsiteTeamPage from "./pages/WebsiteTeamPage.jsx";
 import WebsiteSubscribersPage from "./pages/WebsiteSubscribersPage.jsx";
 import WebsiteContentPage from "./pages/WebsiteContentPage.jsx";
+import LinkHubPage from "./pages/LinkHubPage.jsx";
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/website/team" element={<WebsiteTeamPage />} />
             <Route path="/website/subscribers" element={<WebsiteSubscribersPage />} />
             <Route path="/website/content" element={<WebsiteContentPage />} />
+            <Route path="/links" element={<LinkHubPage />} />
           </Route>
         </Route>
 

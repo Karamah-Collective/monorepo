@@ -34,6 +34,7 @@ import {
   Clock,
   Sun,
   UploadSimple,
+  LinkSimple,
 } from "@phosphor-icons/react";
 
 const wrap = (Component) =>
@@ -77,6 +78,7 @@ export const Icons = Object.fromEntries(
     clock: Clock,
     sun: Sun,
     upload: UploadSimple,
+    link: LinkSimple,
   }).map(([key, component]) => [key, wrap(component)]),
 );
 export const CloseIcon = wrap(X);

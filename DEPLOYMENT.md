@@ -2,7 +2,7 @@
 
 ## 1. Cloudflare build settings
 
-Use **three separate Cloudflare Pages projects connected to this same GitHub repository**. Each project builds its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
+Use **four separate Cloudflare Pages projects connected to this same GitHub repository**. Each project builds its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
 
 Branch policy:
 
@@ -25,14 +25,14 @@ Add `--push` to the sync commands when you are ready to publish the generated br
 
 In **Workers & Pages → your project → Settings → Builds & deployments / Build configuration**, use:
 
-| Setting | Maps project | Website project | Admin project |
-| --- | --- | --- | --- |
-| Framework preset | None | None | Vite / None |
-| Root directory | `Maps` | `Website` | `Admin` |
-| Build command | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` |
-| Build output directory | `dist` | `dist` | `dist` |
-| Environment variable | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` |
-| Environment variable | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` |
+| Setting | Maps project | Website project | Admin project | Links project |
+| --- | --- | --- | --- | --- |
+| Framework preset | None | None | Vite / None | None |
+| Root directory | `Maps` | `Website` | `Admin` | `Links` |
+| Build command | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` |
+| Build output directory | `dist` | `dist` | `dist` | `dist` |
+| Environment variable | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` |
+| Environment variable | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` |
 
 The explicit install uses the shared root lockfile. Set those environment variables for both Production and Preview. Cloudflare documents the root/output settings in [build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/) and the install override in [build image configuration](https://developers.cloudflare.com/pages/configuration/build-image/).
 
@@ -60,6 +60,18 @@ VITE_WEBSITE_ORIGIN=https://karamahcollective.com
 ```
 
 These are public API origins, without trailing paths. They contain no secrets and are embedded at build time. Rebuild Admin after changing them.
+
+### Links: create the shared-D1 project
+
+Create a fourth Pages project with the Links column settings above and attach
+`links.karamahcollective.com` (or set `VITE_LINKS_ORIGIN` in Admin if using a
+different hostname). Add a `DB` D1 binding that targets the same production
+database as Maps, and use the preview database for preview deployments. Apply
+`Maps/migrations/0011_link_hub.sql` and
+`Maps/migrations/0012_link_hub_content.sql`, then
+`Maps/migrations/0013_link_hub_card_overrides.sql` before the first deployment. The public
+project only reads published links and records aggregate open counts; all
+editing remains behind the existing Firebase-protected Maps admin API.
 
 ## 2. Move the Website deployment to this repository
 
@@ -163,6 +175,7 @@ Under each Pages project's **Build watch paths**, include:
 | Maps | `Maps/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Website | `Website/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Admin | `Admin/*`, `Maps/src/app-settings-schema.js`, `Maps/src/app-controls-schema.js`, `Website/assets/js/content-schema.mjs`, `package.json`, `package-lock.json` |
+| Links | `Links/*`, `Maps/migrations/0011_link_hub.sql`, `Maps/migrations/0012_link_hub_content.sql`, `Maps/migrations/0013_link_hub_card_overrides.sql`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 

@@ -86,6 +86,12 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: "Links",
+    links: [
+      { to: "/links", label: "Link hub", icon: "link", description: "Publish and style every Karamah link in one place." },
+    ],
+  },
+  {
     label: "Manage",
     links: [
       {
