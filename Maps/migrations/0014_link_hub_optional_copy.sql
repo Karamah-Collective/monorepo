@@ -3,7 +3,10 @@
 UPDATE link_hub_settings
 SET
   profile_bio = CASE
-    WHEN profile_bio = 'Community, connection and useful places — all in one place.' THEN ''
+    WHEN profile_bio IN (
+      'Community, connection and useful places — all in one place.',
+      'Community, connection and useful places â€” all in one place.'
+    ) THEN ''
     ELSE profile_bio
   END,
   page_kicker = CASE WHEN page_kicker = 'Karamah, collected' THEN '' ELSE page_kicker END,
@@ -20,11 +23,18 @@ SET
     WHEN seo_description = 'Find Karamah Collective across the web.' THEN 'Karamah Collective links.'
     ELSE seo_description
   END,
+  seo_title = CASE
+    WHEN seo_title = 'Karamah Collective â€” Links' THEN 'Karamah Collective — Links'
+    ELSE seo_title
+  END,
   revision = revision + 1,
   updated_at = datetime('now')
 WHERE id = 1
   AND (
-    profile_bio = 'Community, connection and useful places — all in one place.'
+    profile_bio IN (
+      'Community, connection and useful places — all in one place.',
+      'Community, connection and useful places â€” all in one place.'
+    )
     OR page_kicker = 'Karamah, collected'
     OR links_kicker = 'Directory'
     OR links_heading = 'Places worth keeping close'
@@ -33,4 +43,5 @@ WHERE id = 1
     OR footer_text = 'Karamah Collective'
     OR footer_link_label = 'Visit the collective'
     OR seo_description = 'Find Karamah Collective across the web.'
+    OR seo_title = 'Karamah Collective â€” Links'
   );
