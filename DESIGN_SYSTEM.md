@@ -239,6 +239,8 @@ Karamah without turning the directory into an editorial landing page.
 - General Sans.
 - Warm paper canvas, warm-white cards, charcoal copy, muted green accent.
 - Fine grain or soft color mist as optional atmosphere.
+- A restrained inset canvas gives the small directory a deliberate edge and
+  enough presence to hold up when only one or two links are published.
 - Compact horizontal destination cards with genuine site imagery and optional
   metadata.
 - Featured links use a restrained accent edge and badge, not a larger card.
@@ -251,6 +253,9 @@ Karamah without turning the directory into an editorial landing page.
 - Profile eyebrow, biography, directory heading, link-count wording, and footer
   are optional. Empty values remove the element and its spacing completely;
   the default public composition is logo, profile name, and links.
+- When directory copy is empty, retain only a hairline and zero-padded live
+  link count. This is derived interface data rather than authored filler copy,
+  and gives the link stack a quiet visual beginning without inventing content.
 - Stack layout remains narrow and focused; the optional grid only expands the
   repeated link collection, never the profile.
 - Tablet and phone retain the same hierarchy and use compact horizontal rows.

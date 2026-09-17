@@ -184,12 +184,14 @@ function LinkEditor({ link, onClose }) {
 }
 
 function PublicPreview({ settings, links }) {
-  const shown = links.filter(item => item.active).slice(0, 4);
-  const hasDirectoryHeading = [settings.links_kicker, settings.links_heading, settings.count_suffix].some(Boolean);
+  const published = links.filter(item => item.active);
+  const shown = published.slice(0, 4);
+  const hasDirectoryCopy = [settings.links_kicker, settings.links_heading, settings.links_description].some(Boolean);
+  const renderedCount = settings.count_suffix ? `${published.length} ${settings.count_suffix}` : String(published.length).padStart(2, '0');
   return <div className="hub-public-preview is-compact" style={{ '--preview-bg': settings.background_color, '--preview-surface': settings.surface_color, '--preview-text': settings.text_color, '--preview-accent': settings.accent_color }} data-card={settings.card_style} data-corner={settings.corner_style}>
     <div className="hub-mini-top"><img src={karamahLogo} alt="" /><Icons.upload size={10} /></div>
-    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div>{settings.page_kicker && <small>{settings.page_kicker}</small>}{settings.profile_name && <h3>{settings.profile_name}</h3>}{settings.profile_bio && <p>{settings.profile_bio}</p>}</div>
-    <section className="hub-mini-directory">{hasDirectoryHeading && <header><div>{settings.links_kicker && <small>{settings.links_kicker}</small>}{settings.links_heading && <h4>{settings.links_heading}</h4>}</div>{settings.count_suffix && <span>{shown.length} {settings.count_suffix}</span>}</header>}<div className="hub-public-cards">{shown.map(item => {
+    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div>{settings.page_kicker && <small>{settings.page_kicker}</small>}{settings.profile_name && <h3>{settings.profile_name}</h3>}{settings.profile_bio && <p>{settings.profile_bio}</p>}<span className="hub-mini-signature" aria-hidden="true"><i /><b /><i /></span></div>
+    <section className="hub-mini-directory">{(hasDirectoryCopy || published.length > 0) && <header className={hasDirectoryCopy ? '' : 'is-minimal'}><div hidden={!hasDirectoryCopy}>{settings.links_kicker && <small>{settings.links_kicker}</small>}{settings.links_heading && <h4>{settings.links_heading}</h4>}{settings.links_description && <p>{settings.links_description}</p>}</div><span className="hub-mini-count"><i />{renderedCount}</span></header>}<div className="hub-public-cards">{shown.map(item => {
       const image = item.image_url || item.metadata_image_url || item.custom_favicon_url || item.favicon_url;
       const siteName = item.custom_site_name || item.site_name;
       const description = item.description || item.metadata_description;

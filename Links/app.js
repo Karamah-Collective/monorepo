@@ -128,7 +128,7 @@ function setText(selector, value) {
   element.hidden = !String(value || '').trim();
 }
 
-function applySettings(settings) {
+function applySettings(settings, linkCount = 0) {
   currentSettings = settings;
   const root = document.documentElement;
   root.style.setProperty('--canvas', settings.background_color);
@@ -170,8 +170,17 @@ function applySettings(settings) {
 
   $('.profile-copy').hidden = ![settings.page_kicker, settings.profile_name, settings.profile_bio]
     .some(value => String(value || '').trim());
-  $('.directory-head').hidden = ![settings.links_kicker, settings.links_heading, settings.links_description, settings.count_suffix]
+  const hasDirectoryCopy = [settings.links_kicker, settings.links_heading, settings.links_description]
     .some(value => String(value || '').trim());
+  const directoryHead = $('.directory-head');
+  $('.directory-copy').hidden = !hasDirectoryCopy;
+  directoryHead.hidden = !hasDirectoryCopy && !linkCount;
+  directoryHead.classList.toggle('is-minimal', !hasDirectoryCopy);
+  const renderedCount = settings.count_suffix
+    ? `${linkCount} ${settings.count_suffix}`
+    : String(linkCount).padStart(2, '0');
+  setText('#link-count', renderedCount);
+  $('#directory-index').setAttribute('aria-label', `${linkCount} published ${linkCount === 1 ? 'link' : 'links'}`);
   $('.site-footer').hidden = ![settings.footer_text, settings.footer_link_label && destination]
     .some(value => String(value || '').trim());
 }
@@ -206,10 +215,9 @@ async function load() {
     const response = await fetch('/api/hub');
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || fallbackCopy.error_description);
-    applySettings(data.settings);
+    applySettings(data.settings, data.links.length);
     state.hidden = true;
     linksRoot.replaceChildren(...data.links.map((link, index) => renderLink(link, index, data.settings)));
-    setText('#link-count', data.settings.count_suffix ? `${data.links.length} ${data.settings.count_suffix}` : '');
     if (!data.links.length) renderState(data.settings.empty_title, data.settings.empty_description);
   } catch {
     linksRoot.replaceChildren();

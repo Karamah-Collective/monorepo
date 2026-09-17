@@ -39,16 +39,20 @@
         <h1 id="profile-name">Karamah Collective</h1>
         <p id="profile-bio"></p>
       </div>
+      <div class="profile-signature" aria-hidden="true"><i></i><span></span><i></i></div>
     </section>
 
-    <section class="directory" aria-labelledby="links-heading">
-      <header class="directory-head">
-        <div>
+    <section class="directory" aria-label="Links">
+      <header class="directory-head" hidden>
+        <div class="directory-copy">
           <span class="kicker" id="links-kicker"></span>
           <h2 id="links-heading"></h2>
           <p id="links-description"></p>
         </div>
-        <span class="count" id="link-count"></span>
+        <div class="directory-index" id="directory-index">
+          <i aria-hidden="true"></i>
+          <strong id="link-count"></strong>
+        </div>
       </header>
       <div class="links" id="links">
         <div class="skeleton" aria-label="Loading links"><i></i><span></span></div>
