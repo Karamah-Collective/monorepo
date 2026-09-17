@@ -322,7 +322,7 @@ function SettingsEditor({ data, reload, reloading }) {
         onSuccess: (result) => {
           setSaved(result);
           setDraft(result.settings);
-          toast("App settings saved");
+          toast("Map settings saved");
         },
       },
     );
@@ -438,7 +438,7 @@ export default function AppSettingsPage() {
   const query = useAdminAppSettings();
   return (
     <div className="pp-page">
-      <h1 className="pp-page-title">App Settings</h1>
+      <h1 className="pp-page-title">Map settings</h1>
       <p className="pp-page-lead">
         Choose how visitors experience the map. Your team can follow saved
         changes in the activity log.

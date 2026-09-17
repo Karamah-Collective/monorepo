@@ -6,10 +6,11 @@ import { useToast } from '../components/Toast.jsx';
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
 import karamahLogo from '../../../Website/assets/images/kc_logo_small.webp';
 
-const EMPTY_LINK = { url: '', title: '', description: '', image_url: '', custom_site_name: '', custom_favicon_url: '', active: 1, featured: 0, sort_order: 0 };
+const EMPTY_LINK = { url: '', title: '', description: '', image_url: '', custom_site_name: '', custom_favicon_url: '', link_kind: 'link', social_platform: '', social_handle: '', active: 1, featured: 0, sort_order: 0 };
 const SETTINGS_DEFAULTS = {
   profile_name: 'Karamah Collective', profile_bio: '', avatar_url: '', page_kicker: '',
   links_kicker: '', links_heading: '', links_description: '', count_suffix: '',
+  socials_kicker: '', socials_heading: '', socials_description: '',
   featured_label: 'Featured', share_page_label: 'Share this page', share_link_label: 'Share', copy_success_text: 'Link copied',
   footer_text: '', footer_link_label: '', footer_link_url: 'https://karamahcollective.com',
   empty_title: 'Nothing published yet', empty_description: '', error_title: 'The directory is taking a pause',
@@ -19,6 +20,33 @@ const SETTINGS_DEFAULTS = {
   max_width: 680, show_descriptions: true, show_domains: true, show_share: true,
 };
 const linksOrigin = (import.meta.env.VITE_LINKS_ORIGIN || 'https://links.karamahcollective.com').replace(/\/$/, '');
+const SOCIAL_PLATFORMS = {
+  instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', youtube: 'YouTube',
+  tiktok: 'TikTok', x: 'X', threads: 'Threads', bluesky: 'Bluesky', whatsapp: 'WhatsApp',
+  telegram: 'Telegram', spotify: 'Spotify', other: 'Other social platform',
+};
+
+function inferSocialPlatform(url = '') {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    return Object.keys(SOCIAL_PLATFORMS).find(key => ({
+      instagram: ['instagram.com'], linkedin: ['linkedin.com'], facebook: ['facebook.com', 'fb.com'],
+      youtube: ['youtube.com', 'youtu.be'], tiktok: ['tiktok.com'], x: ['x.com', 'twitter.com'],
+      threads: ['threads.net'], bluesky: ['bsky.app'], whatsapp: ['whatsapp.com', 'wa.me'],
+      telegram: ['t.me', 'telegram.me'], spotify: ['spotify.com'], other: [],
+    })[key].some(domain => host === domain || host.endsWith(`.${domain}`))) || 'other';
+  } catch { return 'other'; }
+}
+
+function SocialIcon({ platform, size = 18 }) {
+  const key = platform || 'other';
+  const Icon = {
+    instagram: Icons.instagram, linkedin: Icons.linkedin, facebook: Icons.facebook,
+    youtube: Icons.youtube, tiktok: Icons.tiktok, x: Icons.xSocial, threads: Icons.threads,
+    whatsapp: Icons.whatsapp, telegram: Icons.telegram, spotify: Icons.spotify,
+  }[key] || Icons.globe;
+  return <Icon size={size} />;
+}
 
 function normalizeSettings(settings = {}) {
   return {
@@ -119,11 +147,14 @@ function LinkEditor({ link, onClose }) {
   const previewDescription = draft.description || link.metadata_description || 'The site description will be collected when you save.';
   const previewImage = draft.image_url || link.metadata_image_url || draft.custom_favicon_url || link.favicon_url;
   const hasUploadedImage = draft.image_url.startsWith('data:image/');
+  const isSocial = draft.link_kind === 'social';
+  const socialPlatform = draft.social_platform || inferSocialPlatform(draft.url);
+  const socialLabel = SOCIAL_PLATFORMS[socialPlatform] || SOCIAL_PLATFORMS.other;
 
   return <dialog ref={dialog} className="website-editor-dialog hub-link-dialog" aria-labelledby="hub-link-dialog-title" onCancel={event => { event.preventDefault(); close(); }}>
     <form onSubmit={submit}>
       <header className="hub-dialog-head">
-        <div><span className="eyebrow">DESTINATION</span><h2 id="hub-link-dialog-title">{link.id ? 'Edit link' : 'Add a new link'}</h2><p>Add the address first, then keep the automatic website preview or make the card your own.</p></div>
+        <div><span className="eyebrow">{isSocial ? 'SOCIAL PROFILE' : 'DESTINATION'}</span><h2 id="hub-link-dialog-title">{link.id ? `Edit ${isSocial ? 'social profile' : 'link'}` : 'Add a new link'}</h2><p>{isSocial ? 'Add a social profile to the compact strip between the profile and link directory.' : 'Add the address first, then keep the automatic website preview or make the card your own.'}</p></div>
         <button className="icon-button" type="button" aria-label="Close editor" onClick={close}><CloseIcon /></button>
       </header>
       <fieldset disabled={save.isPending || processingImage}>
@@ -131,17 +162,20 @@ function LinkEditor({ link, onClose }) {
           <div className="hub-link-fields">
             <section className="hub-editor-section is-primary">
               <div className="hub-editor-section-head"><span>01</span><div><strong>Where should it go?</strong><small>Paste a public page address. Karamah collects its details when you save.</small></div></div>
-              <Field label="Destination URL"><input autoFocus type="url" required maxLength={2048} placeholder="https://example.com/page" value={draft.url} onChange={event => setDraft({ ...draft, url: event.target.value })} /></Field>
+              <div className="hub-kind-picker" role="group" aria-label="Link type"><button type="button" className={!isSocial ? 'is-active' : ''} onClick={() => setDraft({ ...draft, link_kind: 'link' })}><Icons.link size={15} /><span><strong>Destination</strong><small>Full image card</small></span></button><button type="button" className={isSocial ? 'is-active' : ''} onClick={() => setDraft({ ...draft, link_kind: 'social', featured: 0 })}><Icons.instagram size={15} /><span><strong>Social profile</strong><small>Compact icon card</small></span></button></div>
+              <Field label={isSocial ? 'Social profile URL' : 'Destination URL'}><input autoFocus type="url" required maxLength={2048} placeholder={isSocial ? 'https://instagram.com/karamahcollective' : 'https://example.com/page'} value={draft.url} onChange={event => setDraft({ ...draft, url: event.target.value })} /></Field>
             </section>
 
             <section className="hub-editor-section">
-              <div className="hub-editor-section-head"><span>02</span><div><strong>Card content</strong><small>Optional overrides for the title, source, description, and image.</small></div></div>
-              <div className="hub-editor-grid">
+              <div className="hub-editor-section-head"><span>02</span><div><strong>{isSocial ? 'Social identity' : 'Card content'}</strong><small>{isSocial ? 'Choose the platform and optionally set the exact username shown publicly.' : 'Optional overrides for the title, source, description, and image.'}</small></div></div>
+              {isSocial ? <div className="hub-editor-grid">
+                <Field label="Platform"><select value={draft.social_platform} onChange={event => setDraft({ ...draft, social_platform: event.target.value })}><option value="">Detect from URL</option>{Object.entries(SOCIAL_PLATFORMS).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></Field>
+                <Field label="Username or display name" hint="Leave blank to derive it from the URL."><input maxLength={120} placeholder="@karamahcollective" value={draft.social_handle} onChange={event => setDraft({ ...draft, social_handle: event.target.value.replace(/^@/, '') })} /></Field>
+              </div> : <><div className="hub-editor-grid">
                 <Field label="Display title"><input maxLength={240} placeholder={link.metadata_title || 'Automatic from website'} value={draft.title} onChange={event => setDraft({ ...draft, title: event.target.value })} /></Field>
                 <Field label="Site name"><input maxLength={120} placeholder={link.site_name || 'Automatic from website'} value={draft.custom_site_name} onChange={event => setDraft({ ...draft, custom_site_name: event.target.value })} /></Field>
                 <Field label="Description" wide><textarea rows={3} maxLength={800} placeholder={link.metadata_description || 'Automatic from website'} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} /></Field>
-              </div>
-              <div className="pp-field hub-image-source">
+              </div><div className="pp-field hub-image-source">
                 <label htmlFor="hub-card-image">Card image</label>
                 <div className="hub-image-controls">
                   <input id="hub-card-image" type="text" inputMode="url" maxLength={2048} placeholder={hasUploadedImage ? 'Uploaded image ready' : 'Paste an image URL or upload a file'} value={hasUploadedImage ? '' : draft.image_url} onChange={event => { setImageError(''); setDraft({ ...draft, image_url: event.target.value }); }} />
@@ -152,28 +186,29 @@ function LinkEditor({ link, onClose }) {
                 {imageError && <small className="pp-error-text">{imageError}</small>}
               </div>
               <Field label="Site icon URL" hint="Optional favicon override."><input type="url" maxLength={2048} placeholder="https://..." value={draft.custom_favicon_url} onChange={event => setDraft({ ...draft, custom_favicon_url: event.target.value })} /></Field>
+              </>}
             </section>
 
             <section className="hub-editor-section">
               <div className="hub-editor-section-head"><span>03</span><div><strong>Publishing</strong><small>Choose its order and how prominently it appears.</small></div></div>
-              <div className="hub-link-options">
+              <div className={`hub-link-options${isSocial ? ' is-social' : ''}`}>
                 <Field label="Display order"><input type="number" min="0" max="10000" value={draft.sort_order} onChange={event => setDraft({ ...draft, sort_order: event.target.value })} /></Field>
                 <label className="hub-check"><input type="checkbox" checked={!!draft.active} onChange={event => setDraft({ ...draft, active: event.target.checked })} /><span><strong>Published</strong><small>Visible publicly</small></span></label>
-                <label className="hub-check"><input type="checkbox" checked={!!draft.featured} onChange={event => setDraft({ ...draft, featured: event.target.checked })} /><span><strong>Featured</strong><small>Accent treatment</small></span></label>
+                {!isSocial && <label className="hub-check"><input type="checkbox" checked={!!draft.featured} onChange={event => setDraft({ ...draft, featured: event.target.checked })} /><span><strong>Featured</strong><small>Accent treatment</small></span></label>}
               </div>
-              {link.id && <label className="hub-refresh"><input type="checkbox" checked={refreshMetadata} onChange={event => setRefreshMetadata(event.target.checked)} /><span><strong>Refresh website details</strong><small>Fetch the latest title, description, image, and icon when saving.</small></span></label>}
+              {link.id && !isSocial && <label className="hub-refresh"><input type="checkbox" checked={refreshMetadata} onChange={event => setRefreshMetadata(event.target.checked)} /><span><strong>Refresh website details</strong><small>Fetch the latest title, description, image, and icon when saving.</small></span></label>}
             </section>
           </div>
 
           <aside className="hub-editor-preview">
             <div className="hub-preview-heading"><span className="eyebrow">LIVE PREVIEW</span><small>{hasUploadedImage ? 'Uploaded image' : 'Public card'}</small></div>
-            <div className={`hub-editor-card${draft.featured ? ' is-featured' : ''}`}>
+            {isSocial ? <div className="hub-editor-social"><i><SocialIcon platform={socialPlatform} size={19} /></i><span><small>{socialLabel}</small><strong>{draft.social_handle ? `@${draft.social_handle}` : 'Username from URL'}</strong></span></div> : <div className={`hub-editor-card${draft.featured ? ' is-featured' : ''}`}>
               <div className="hub-editor-image">{previewImage ? <img src={previewImage} alt="" /> : <Icons.globe size={24} />}</div>
               <div><small>{draft.custom_site_name || link.site_name || 'WEBSITE'}</small><strong>{previewTitle}</strong><p>{previewDescription}</p></div>
               <i><Icons.arrowUpRight size={15} /></i>
-            </div>
-            <dl><div><dt>Content</dt><dd>{draft.title || draft.description || draft.image_url ? 'Custom + website' : 'Website metadata'}</dd></div><div><dt>Visibility</dt><dd>{draft.active ? 'Published' : 'Hidden'}</dd></div><div><dt>Placement</dt><dd>{draft.featured ? 'Featured' : `Order ${draft.sort_order}`}</dd></div></dl>
-            {link.metadata_status === 'error' && <p className="hub-metadata-error">{link.metadata_error}</p>}
+            </div>}
+            <dl><div><dt>Type</dt><dd>{isSocial ? 'Social strip' : 'Link directory'}</dd></div><div><dt>Visibility</dt><dd>{draft.active ? 'Published' : 'Hidden'}</dd></div><div><dt>Placement</dt><dd>{!isSocial && draft.featured ? 'Featured' : `Order ${draft.sort_order}`}</dd></div></dl>
+            {!isSocial && link.metadata_status === 'error' && <p className="hub-metadata-error">{link.metadata_error}</p>}
           </aside>
         </div>
       </fieldset>
@@ -185,13 +220,15 @@ function LinkEditor({ link, onClose }) {
 
 function PublicPreview({ settings, links }) {
   const published = links.filter(item => item.active);
-  const shown = published.slice(0, 4);
+  const socials = published.filter(item => item.link_kind === 'social').slice(0, 3);
+  const destinations = published.filter(item => item.link_kind !== 'social');
+  const shown = destinations.slice(0, 3);
   const hasDirectoryCopy = [settings.links_kicker, settings.links_heading, settings.links_description].some(Boolean);
-  const renderedCount = settings.count_suffix ? `${published.length} ${settings.count_suffix}` : String(published.length).padStart(2, '0');
   return <div className="hub-public-preview is-compact" style={{ '--preview-bg': settings.background_color, '--preview-surface': settings.surface_color, '--preview-text': settings.text_color, '--preview-accent': settings.accent_color }} data-card={settings.card_style} data-corner={settings.corner_style}>
-    <div className="hub-mini-top"><img src={karamahLogo} alt="" /><Icons.upload size={10} /></div>
-    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div>{settings.page_kicker && <small>{settings.page_kicker}</small>}{settings.profile_name && <h3>{settings.profile_name}</h3>}{settings.profile_bio && <p>{settings.profile_bio}</p>}<span className="hub-mini-signature" aria-hidden="true"><i /><b /><i /></span></div>
-    <section className="hub-mini-directory">{(hasDirectoryCopy || published.length > 0) && <header className={hasDirectoryCopy ? '' : 'is-minimal'}><div hidden={!hasDirectoryCopy}>{settings.links_kicker && <small>{settings.links_kicker}</small>}{settings.links_heading && <h4>{settings.links_heading}</h4>}{settings.links_description && <p>{settings.links_description}</p>}</div><span className="hub-mini-count"><i />{renderedCount}</span></header>}<div className="hub-public-cards">{shown.map(item => {
+    <div className="hub-mini-top"><span><img src={karamahLogo} alt="" /><b>{settings.profile_name || 'Karamah Collective'}</b></span><Icons.upload size={10} /></div>
+    <div className="hub-mini-profile"><div><img src={settings.avatar_url || karamahLogo} alt="" onError={event => { event.currentTarget.src = karamahLogo; }} /></div>{settings.page_kicker && <small>{settings.page_kicker}</small>}{settings.profile_name && <h3>{settings.profile_name}</h3>}{settings.profile_bio && <p>{settings.profile_bio}</p>}</div>
+    {!!socials.length && <section className="hub-mini-socials">{(settings.socials_kicker || settings.socials_heading) && <header>{settings.socials_kicker && <small>{settings.socials_kicker}</small>}{settings.socials_heading && <h4>{settings.socials_heading}</h4>}</header>}<div>{socials.map(item => { const platform = item.social_platform || inferSocialPlatform(item.url); return <span key={item.id}><i><SocialIcon platform={platform} size={10} /></i><b>{item.social_handle ? `@${item.social_handle}` : SOCIAL_PLATFORMS[platform] || 'Social'}</b></span>; })}</div></section>}
+    <section className="hub-mini-directory">{(hasDirectoryCopy || settings.count_suffix) && <header><div hidden={!hasDirectoryCopy}>{settings.links_kicker && <small>{settings.links_kicker}</small>}{settings.links_heading && <h4>{settings.links_heading}</h4>}{settings.links_description && <p>{settings.links_description}</p>}</div>{settings.count_suffix && <span>{destinations.length} {settings.count_suffix}</span>}</header>}<div className="hub-public-cards">{shown.map(item => {
       const image = item.image_url || item.metadata_image_url || item.custom_favicon_url || item.favicon_url;
       const siteName = item.custom_site_name || item.site_name;
       const description = item.description || item.metadata_description;
@@ -201,11 +238,12 @@ function PublicPreview({ settings, links }) {
 }
 
 function OverviewStats({ links }) {
-  const published = links.filter(link => link.active).length;
-  const hidden = links.length - published;
+  const published = links.filter(link => link.active);
+  const destinations = published.filter(link => link.link_kind !== 'social').length;
+  const socials = published.filter(link => link.link_kind === 'social').length;
+  const hidden = links.length - published.length;
   const opens = links.reduce((sum, link) => sum + Number(link.clicks || 0), 0);
-  const issues = links.filter(link => link.metadata_status === 'error').length;
-  return <div className="hub-stats"><div><span>Published</span><strong>{published}</strong></div><div><span>Hidden</span><strong>{hidden}</strong></div><div><span>Total opens</span><strong>{opens.toLocaleString()}</strong></div><div><span>Preview issues</span><strong className={issues ? 'has-issue' : ''}>{issues}</strong></div></div>;
+  return <div className="hub-stats"><div><span>Destinations</span><strong>{destinations}</strong></div><div><span>Social profiles</span><strong>{socials}</strong></div><div><span>Hidden</span><strong>{hidden}</strong></div><div><span>Total opens</span><strong>{opens.toLocaleString()}</strong></div></div>;
 }
 
 export default function LinkHubPage() {
@@ -225,8 +263,11 @@ export default function LinkHubPage() {
   useUnsavedChanges(dirty);
   const allLinks = query.data?.links || [];
   const links = useMemo(() => allLinks.filter(link => {
-    const matchesSearch = `${link.title} ${link.metadata_title} ${link.url} ${link.custom_site_name} ${link.site_name}`.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'published' ? !!link.active : !link.active);
+    const matchesSearch = `${link.title} ${link.metadata_title} ${link.url} ${link.custom_site_name} ${link.site_name} ${link.social_platform} ${link.social_handle}`.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'all'
+      || (filter === 'links' ? link.link_kind !== 'social' : false)
+      || (filter === 'socials' ? link.link_kind === 'social' : false)
+      || (filter === 'hidden' ? !link.active : false);
     return matchesSearch && matchesFilter;
   }), [allLinks, search, filter]);
 
@@ -251,30 +292,30 @@ export default function LinkHubPage() {
   return <div className="pp-page link-hub-page">
     <div className="hub-page-head">
       <div><span className="eyebrow">PUBLIC CHANNEL</span><h1 className="pp-page-title">Link hub</h1><p className="pp-page-lead">A single, considered home for every Karamah destination.</p></div>
-      <div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page <Icons.arrowUpRight size={14} /></a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}><Icons.plusCircle size={15} /> Add link</button></div>
+      <div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page <Icons.arrowUpRight size={14} /></a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}><Icons.plusCircle size={15} /> Add item</button></div>
     </div>
     {query.error && <div className="query-error" role="alert"><strong>Link hub data could not be loaded</strong><p>{query.error.message}</p><button className="pp-btn" onClick={() => query.refetch()}>Try again</button></div>}
     {query.isLoading && <LoadingState />}
     {draft && <>
       <OverviewStats links={allLinks} />
       <nav className="hub-workspace-tabs" aria-label="Link hub sections">
-        {[['links', 'Links', 'Add, publish and review destinations', Icons.link], ['content', 'Page content', 'Edit every public word and message', Icons.pencil], ['appearance', 'Appearance', 'Shape the public page and cards', Icons.palette]].map(([id, label, description, Icon]) => <button type="button" key={id} className={tab === id ? 'is-active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={16} /><span><b>{label}</b><small>{description}</small></span></button>)}
+        {[['links', 'Links & socials', 'Organize destinations and social profiles', Icons.link], ['content', 'Page content', 'Edit every optional public word', Icons.pencil], ['appearance', 'Appearance', 'Shape the public page and cards', Icons.palette]].map(([id, label, description, Icon]) => <button type="button" key={id} className={tab === id ? 'is-active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={16} /><span><b>{label}</b><small>{description}</small></span></button>)}
       </nav>
 
       {tab === 'links' && <div className="hub-links-workspace">
         <section className="hub-library">
-          <header className="hub-library-head"><div><span className="eyebrow">DESTINATIONS</span><h2>Your link library</h2><p>Published links appear immediately. Website details are cached in D1.</p></div></header>
-          <div className="hub-library-tools"><div className="table-search-wrap"><Icons.search size={16} /><input className="pp-table-search" type="search" placeholder="Search links…" aria-label="Search links" value={search} onChange={event => setSearch(event.target.value)} /></div><div className="hub-filter" aria-label="Filter links">{[['all','All'],['published','Published'],['hidden','Hidden']].map(([id,label]) => <button type="button" className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)}>{label}</button>)}</div></div>
+          <header className="hub-library-head"><div><span className="eyebrow">PUBLIC COLLECTION</span><h2>Links and social profiles</h2><p>Destinations become full cards; social profiles use the compact strip above them.</p></div></header>
+          <div className="hub-library-tools"><div className="table-search-wrap"><Icons.search size={16} /><input className="pp-table-search" type="search" placeholder="Search the collection…" aria-label="Search links and social profiles" value={search} onChange={event => setSearch(event.target.value)} /></div><div className="hub-filter" aria-label="Filter collection">{[['all','All'],['links','Links'],['socials','Socials'],['hidden','Hidden']].map(([id,label]) => <button type="button" className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)}>{label}</button>)}</div></div>
           <div className="hub-admin-list">
             {links.map(link => <article className="hub-admin-link" key={link.id}>
-              <div className="hub-admin-image">{(link.image_url || link.metadata_image_url || link.custom_favicon_url || link.favicon_url) ? <img src={link.image_url || link.metadata_image_url || link.custom_favicon_url || link.favicon_url} alt="" /> : <Icons.link size={20} />}</div>
-              <div className="hub-admin-copy"><div><strong>{link.title || link.metadata_title || link.custom_site_name || link.site_name || 'Untitled link'}</strong>{link.featured ? <span className="hub-featured">Featured</span> : null}</div><span>{link.custom_site_name || link.site_name || link.url}</span>{link.metadata_status === 'error' && <small>{link.metadata_error}</small>}</div>
+              <div className={`hub-admin-image${link.link_kind === 'social' ? ' is-social' : ''}`}>{link.link_kind === 'social' ? <SocialIcon platform={link.social_platform || inferSocialPlatform(link.url)} size={22} /> : (link.image_url || link.metadata_image_url || link.custom_favicon_url || link.favicon_url) ? <img src={link.image_url || link.metadata_image_url || link.custom_favicon_url || link.favicon_url} alt="" /> : <Icons.link size={20} />}</div>
+              <div className="hub-admin-copy"><div><strong>{link.link_kind === 'social' ? link.social_handle ? `@${link.social_handle}` : SOCIAL_PLATFORMS[link.social_platform || inferSocialPlatform(link.url)] : link.title || link.metadata_title || link.custom_site_name || link.site_name || 'Untitled link'}</strong><span className="hub-kind">{link.link_kind === 'social' ? 'Social' : 'Link'}</span>{link.featured ? <span className="hub-featured">Featured</span> : null}</div><span>{link.link_kind === 'social' ? SOCIAL_PLATFORMS[link.social_platform || inferSocialPlatform(link.url)] || link.url : link.custom_site_name || link.site_name || link.url}</span>{link.metadata_status === 'error' && link.link_kind !== 'social' && <small>{link.metadata_error}</small>}</div>
               <div className="hub-admin-metrics"><span><b>{link.clicks || 0}</b> opens</span><span>Order {link.sort_order}</span></div>
               <button type="button" className={`hub-visibility ${link.active ? 'is-live' : ''}`} onClick={() => toggleLink(link)} disabled={saveLink.isPending}><i></i>{link.active ? 'Published' : 'Hidden'}</button>
               <div className="hub-row-actions"><button className="pp-btn" onClick={() => setEditing(link)}>Edit</button><button className="pp-btn pp-btn-delete" disabled={remove.isPending} onClick={() => removeLink(link)}>Remove</button></div>
             </article>)}
           </div>
-          {!links.length && <div className="inline-empty"><Icons.link size={28} /><strong>{allLinks.length ? 'No links match this view' : 'Your library is ready for its first link'}</strong><span>{allLinks.length ? 'Clear the search or choose another filter.' : 'Add a URL and Karamah will collect its public preview.'}</span></div>}
+          {!links.length && <div className="inline-empty"><Icons.link size={28} /><strong>{allLinks.length ? 'Nothing matches this view' : 'Your collection is ready for its first item'}</strong><span>{allLinks.length ? 'Clear the search or choose another filter.' : 'Add a destination or social profile to begin.'}</span></div>}
         </section>
         <aside className="hub-side-preview"><header><span className="eyebrow">PUBLIC PREVIEW</span><h2>How it comes together</h2><p>Content and appearance changes update here before you publish.</p></header><PublicPreview settings={draft} links={allLinks} /><a href={linksOrigin} target="_blank" rel="noreferrer">Open full public page <Icons.arrowUpRight size={14} /></a></aside>
       </div>}
@@ -287,11 +328,16 @@ export default function LinkHubPage() {
             <Field label="Profile description (optional)" wide><textarea rows={3} maxLength={500} placeholder="Add a short introduction, or leave this blank" value={draft.profile_bio} onChange={event => update('profile_bio', event.target.value)} /></Field>
             <Field label="Avatar or logo URL" hint="Leave blank to use the Karamah mark." wide><input type="url" maxLength={2048} placeholder="https://…" value={draft.avatar_url} onChange={event => update('avatar_url', event.target.value)} /></Field>
           </FormSection>
+          <FormSection eyebrow="SOCIALS" title="Social profile heading" description="Optional copy above the compact social strip. Leave every field blank to show only the social cards.">
+            <Field label="Eyebrow (optional)"><input maxLength={120} placeholder="Leave blank to hide" value={draft.socials_kicker} onChange={event => update('socials_kicker', event.target.value)} /></Field>
+            <Field label="Heading (optional)"><input maxLength={200} placeholder="Leave blank to hide" value={draft.socials_heading} onChange={event => update('socials_heading', event.target.value)} /></Field>
+            <Field label="Introduction (optional)" wide><textarea rows={3} maxLength={500} placeholder="Leave blank for an icon-first social strip" value={draft.socials_description} onChange={event => update('socials_description', event.target.value)} /></Field>
+          </FormSection>
           <FormSection eyebrow="DIRECTORY" title="Link collection heading" description="Introduces the list and labels highlighted destinations.">
             <Field label="Eyebrow (optional)"><input maxLength={120} placeholder="For example: Directory" value={draft.links_kicker} onChange={event => update('links_kicker', event.target.value)} /></Field>
             <Field label="Main heading (optional)"><input maxLength={200} placeholder="Leave blank to start directly with links" value={draft.links_heading} onChange={event => update('links_heading', event.target.value)} /></Field>
             <Field label="Introduction (optional)" wide><textarea rows={3} maxLength={500} placeholder="A short note above the link collection" value={draft.links_description} onChange={event => update('links_description', event.target.value)} /></Field>
-            <Field label="Count wording (optional)" hint={draft.count_suffix ? `Shown as “${allLinks.filter(link => link.active).length} ${draft.count_suffix}”` : 'Leave blank to hide the link count.'}><input maxLength={80} placeholder="For example: links" value={draft.count_suffix} onChange={event => update('count_suffix', event.target.value)} /></Field>
+            <Field label="Count wording (optional)" hint={draft.count_suffix ? `Shown as “${allLinks.filter(link => link.active && link.link_kind !== 'social').length} ${draft.count_suffix}”` : 'Leave blank to hide the link count.'}><input maxLength={80} placeholder="For example: links" value={draft.count_suffix} onChange={event => update('count_suffix', event.target.value)} /></Field>
             <Field label="Featured badge"><input maxLength={80} value={draft.featured_label} onChange={event => update('featured_label', event.target.value)} /></Field>
           </FormSection>
           <FormSection eyebrow="ACTIONS" title="Sharing and feedback" description="Labels used when people share or copy a destination.">

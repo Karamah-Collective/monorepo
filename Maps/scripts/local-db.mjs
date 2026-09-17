@@ -90,6 +90,18 @@ async function seedLocalLinkHub() {
   console.info(`Seeded ${samples.length} local-only Link Hub examples.`);
 }
 
+async function seedLocalSocialProfiles() {
+  const now = new Date().toISOString();
+  const socials = [
+    { id: "local-instagram", url: "https://www.instagram.com/karamahcollective/", platform: "instagram", handle: "karamahcollective", order: 10 },
+    { id: "local-linkedin", url: "https://www.linkedin.com/company/karamah-collective/", platform: "linkedin", handle: "karamah-collective", order: 20 },
+  ];
+  const statements = socials.map((social) => `INSERT OR IGNORE INTO link_hub_links (id,url,metadata_status,active,featured,sort_order,link_kind,social_platform,social_handle,created_at,updated_at) VALUES (${[
+    social.id, social.url, "ready", 1, 0, social.order, "social", social.platform, social.handle, now, now,
+  ].map(quote).join(",")});`);
+  await executeSql(statements.join("\n"));
+}
+
 /** Reconcile old local schemas without erasing data, then apply new migrations once. */
 export async function setupLocalDatabase() {
   await runLocal(["--command", "CREATE TABLE IF NOT EXISTS admin_local_migrations (name TEXT PRIMARY KEY)"]);
@@ -125,6 +137,7 @@ export async function setupLocalDatabase() {
   }
   await seedEmptyDatabase();
   await seedLocalLinkHub();
+  await seedLocalSocialProfiles();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -61,7 +61,7 @@
 }
 .brand-copy > span {
   display: block;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.2em;
   margin-top: 6px;
   font-weight: 400;
@@ -88,7 +88,7 @@
 }
 .workspace-label small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #9eac9f;
   margin-top: 4px;
 }
@@ -117,7 +117,7 @@
 }
 .nav-group-label {
   color: #8d9c90;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@
   border-radius: 6px;
   text-decoration: none;
   color: #b4c0b7;
-  font-size: 12px;
+  font-size: 13px;
   transition:
     background 160ms ease,
     color 160ms ease,
@@ -185,7 +185,7 @@
   color: #c8d4cb;
   border-radius: 4px;
   padding: 1px 5px;
-  font: 9px var(--font-mono);
+  font: 11px var(--font-mono);
   max-width: 42px;
 }
 .active .nav-count {
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 10px;
   color: #aebbaf;
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 11px;
   text-decoration: none;
   width: 100%;
@@ -244,7 +244,7 @@
 }
 .user-details strong {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -252,7 +252,7 @@
 }
 .user-details small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 3px;
   color: #99a89b;
 }
@@ -279,7 +279,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .breadcrumbs strong {
@@ -295,13 +295,13 @@
   border: 0;
   background: transparent;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px;
   border-radius: 6px;
 }
 kbd {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   border: 1px solid var(--border);
   padding: 3px 5px;
   border-radius: 4px;
@@ -357,7 +357,7 @@ kbd {
 .page-eyebrow {
   display: flex;
   gap: 9px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 13px;
   flex-wrap: wrap;
@@ -373,7 +373,7 @@ kbd {
   margin: 0 0 20px;
 }
 .pp-page-lead {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   line-height: 1.6;
   margin: -9px 0 22px;
@@ -404,7 +404,7 @@ kbd {
   margin: 24px auto 0;
   padding: 16px 0;
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 11px;
   border-top: 1px solid var(--border);
 }
 .footer-divider {
@@ -420,6 +420,11 @@ kbd {
   z-index: 60;
   padding: 12px;
 }
+
+/* Reading-floor calibration: ordinary Admin UI never drops beneath 11px. */
+#main-content .pp-page small { font-size: max(11px, .785em); }
+#main-content .pp-page .eyebrow { font-size: 11px; }
+#main-content .pp-page .pp-btn { font-size: 12px; }
 .skip-link:focus {
   transform: none;
 }

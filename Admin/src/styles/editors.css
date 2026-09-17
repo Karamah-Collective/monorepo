@@ -529,7 +529,7 @@
   background: transparent;
   color: var(--text-muted);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   transition:
     background 160ms ease,
     color 160ms ease;
@@ -655,7 +655,7 @@
 }
 .pp-field input,
 .pp-field select {
-  font-size: 12px;
+  font-size: 13px;
   min-height: 36px;
 }
 .pp-settings-form .pp-btn {

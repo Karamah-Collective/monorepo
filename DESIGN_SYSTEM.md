@@ -239,23 +239,26 @@ Karamah without turning the directory into an editorial landing page.
 - General Sans.
 - Warm paper canvas, warm-white cards, charcoal copy, muted green accent.
 - Fine grain or soft color mist as optional atmosphere.
-- A restrained inset canvas gives the small directory a deliberate edge and
-  enough presence to hold up when only one or two links are published.
+- A full warm canvas gives the directory breathing room; the content remains
+  deliberately narrow so the page still feels composed with only a few links.
+- Social profiles form a separate compact horizontal strip between identity
+  and directory. They use recognizable brand icons plus a platform or handle,
+  never full destination-card imagery.
 - Compact horizontal destination cards with genuine site imagery and optional
   metadata.
 - Featured links use a restrained accent edge and badge, not a larger card.
 
 ### Composition
 
-- Desktop: quiet masthead, centered identity block, then the directory.
+- Desktop: quiet masthead, centered identity block, optional social strip, then
+  the directory.
 - The profile stays short enough that useful links remain visible without an
   introductory scroll.
 - Profile eyebrow, biography, directory heading, link-count wording, and footer
   are optional. Empty values remove the element and its spacing completely;
   the default public composition is logo, profile name, and links.
-- When directory copy is empty, retain only a hairline and zero-padded live
-  link count. This is derived interface data rather than authored filler copy,
-  and gives the link stack a quiet visual beginning without inventing content.
+- Social and directory headings collapse completely when their authored fields
+  are empty. Do not invent labels, counts, kickers, or filler copy in public UI.
 - Stack layout remains narrow and focused; the optional grid only expands the
   repeated link collection, never the profile.
 - Tablet and phone retain the same hierarchy and use compact horizontal rows.
@@ -271,7 +274,8 @@ Karamah without turning the directory into an editorial landing page.
 - Database: `Maps/migrations/0011_link_hub.sql` and
   `Maps/migrations/0012_link_hub_content.sql`, plus
   `Maps/migrations/0013_link_hub_card_overrides.sql` and
-  `Maps/migrations/0014_link_hub_optional_copy.sql`
+  `Maps/migrations/0014_link_hub_optional_copy.sql`, plus
+  `Maps/migrations/0015_link_hub_socials.sql`
 
 ## 7. Selecting the right expression for a new app
 

@@ -1232,9 +1232,6 @@ function _buildCard(p, i) {
   const distBadge = userLocLat !== null
     ? `<span class="pl-dist">${formatDist(haversineDistance(userLocLat, userLocLng, p.lat, p.lng))}</span>`
     : "";
-  const boycottBadge = p.boycott
-    ? `<span class="pl-boycott-chip">Boycott Watch</span>`
-    : "";
   const sponsorBadge = activeSponsor(p)
     ? `<span class="pl-sponsor-chip">Featured</span>`
     : "";
@@ -1246,7 +1243,7 @@ function _buildCard(p, i) {
       : "";
   const ratingChip = _buildRatingChip(p.id);
   const tagBadge = `<span class="pl-tags-summary" style="--type-c:${cssColor}" data-type="${esc(specificTypeLabel)}" data-tags='${JSON.stringify(tagNames).replace(/'/g, "&#39;")}'>${tagSummary}</span>`;
-  const desktopMetaHTML = `${openBadge}${ratingChip}${tagBadge}${distBadge}${boycottBadge}${sponsorBadge}`;
+  const desktopMetaHTML = `${openBadge}${ratingChip}${tagBadge}${distBadge}${sponsorBadge}`;
   const compactNameHTML = `${tagBadge}${distBadge}`;
   const compactAddrHTML = `${openBadge}${ratingChip}`;
   const placeEvents = eventsData.filter((ev) => ev.placeId === p.id);
@@ -1273,7 +1270,7 @@ function _buildCard(p, i) {
   // Dot gets data-ev-count for event badge rendering via CSS ::after
   const dotAttrs = evCount ? ` data-ev-count="${evCount}" role="button" tabindex="0" aria-label="${evCount} event${evCount > 1 ? "s" : ""}, tap to expand" aria-expanded="false"` : "";
 
-  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
+  return `<li class="pl-card${isFeatured ? ' pl-card--featured' : ''}${p.boycott ? ' pl-card--boycott' : ''}${evCount ? ' pl-card--has-events' : ''}" data-idx="${i}" data-place-id="${p.id}" style="--place-c:${cssColor};--i:${i}">
     <span class="pl-dot"${dotAttrs} style="background:${cssColor}"><svg viewBox="0 0 24 24" fill="#fff">${_placeVisualIconHTML(visual)}</svg></span>
     <span class="pl-name"><span class="pl-title">${_highlightMatch(esc(p.name), placeSearchQuery.trim())}</span><span class="pl-name-chips">${compactNameHTML}</span></span>
     <span class="pl-addr"><span class="pl-addr-text">${_highlightMatch(esc(p.address), placeSearchQuery.trim())}</span><span class="pl-addr-chips">${compactAddrHTML}</span></span>

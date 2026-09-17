@@ -6,12 +6,38 @@ const SETTING_FIELDS = [
   'max_width', 'show_descriptions', 'show_domains', 'show_share', 'footer_text',
   'seo_title', 'seo_description',
   'page_kicker', 'links_kicker', 'links_heading', 'links_description',
+  'socials_kicker', 'socials_heading', 'socials_description',
   'count_suffix', 'featured_label', 'share_page_label', 'share_link_label',
   'copy_success_text', 'footer_link_label', 'footer_link_url', 'empty_title',
   'empty_description', 'error_title', 'error_description', 'retry_label',
   'background_style', 'image_style',
 ];
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const SOCIAL_PLATFORMS = new Set([
+  'instagram', 'linkedin', 'facebook', 'youtube', 'tiktok', 'x', 'threads',
+  'bluesky', 'whatsapp', 'telegram', 'spotify', 'other',
+]);
+
+function inferSocial(url) {
+  const parsed = new URL(url);
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+  const path = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  let platform = 'other';
+  if (host.endsWith('instagram.com')) platform = 'instagram';
+  else if (host.endsWith('linkedin.com')) platform = 'linkedin';
+  else if (host.endsWith('facebook.com') || host === 'fb.com') platform = 'facebook';
+  else if (host.endsWith('youtube.com') || host === 'youtu.be') platform = 'youtube';
+  else if (host.endsWith('tiktok.com')) platform = 'tiktok';
+  else if (host.endsWith('threads.net')) platform = 'threads';
+  else if (host === 'bsky.app') platform = 'bluesky';
+  else if (host.endsWith('twitter.com') || host === 'x.com') platform = 'x';
+  else if (host.endsWith('whatsapp.com') || host === 'wa.me') platform = 'whatsapp';
+  else if (host === 't.me' || host.endsWith('telegram.me')) platform = 'telegram';
+  else if (host.endsWith('spotify.com')) platform = 'spotify';
+  const ignored = new Set(['in', 'company', 'channel', 'user', 'c', 'profile', 'intent', 'share']);
+  const candidate = path.find(part => !ignored.has(part.toLowerCase())) || '';
+  return { platform, handle: truncate(candidate.replace(/^@/, ''), 120) };
+}
 
 /** Validate and normalize a public HTTP(S) URL while rejecting private-network targets. */
 export function cleanPublicUrl(value, { allowEmpty = false } = {}) {
@@ -114,7 +140,7 @@ export async function saveLinkHubSettings(db, data) {
     if (field === 'max_width') return Math.min(1100, Math.max(480, Number(value[field]) || 680));
     if (field.startsWith('show_')) return value[field] ? 1 : 0;
     if (field === 'avatar_url' || field === 'footer_link_url') return cleanPublicUrl(value[field], { allowEmpty: true }) || '';
-    return truncate(value[field] || '', ['profile_bio', 'seo_description', 'links_description', 'empty_description', 'error_description'].includes(field) ? 500 : 200);
+    return truncate(value[field] || '', ['profile_bio', 'seo_description', 'links_description', 'socials_description', 'empty_description', 'error_description'].includes(field) ? 500 : 200);
   });
   const assignments = SETTING_FIELDS.map(field => `${field} = ?`).join(', ');
   await db.prepare(`UPDATE link_hub_settings SET ${assignments}, revision = revision + 1, updated_at = ? WHERE id = 1`).bind(...cleaned, new Date().toISOString()).run();
@@ -129,8 +155,16 @@ export async function saveLinkHubLink(db, data) {
   const id = truncate(link.id || crypto.randomUUID(), 80);
   const existing = await db.prepare('SELECT * FROM link_hub_links WHERE id = ?').bind(id).first();
   if (existing && Number(link.revision) !== existing.revision) return { error: 'This link changed in another session. Reload and try again.' };
+  const linkKind = link.link_kind === 'social' ? 'social' : 'link';
+  const inferredSocial = inferSocial(url);
+  const socialPlatform = linkKind === 'social' && SOCIAL_PLATFORMS.has(link.social_platform)
+    ? link.social_platform
+    : linkKind === 'social' ? inferredSocial.platform : '';
+  const socialHandle = linkKind === 'social'
+    ? truncate(link.social_handle || inferredSocial.handle || '', 120)
+    : '';
   let metadata = null;
-  if (!existing || data.refreshMetadata || existing.url !== url) {
+  if (linkKind === 'link' && (!existing || data.refreshMetadata || existing.url !== url)) {
     try { metadata = await fetchMetadata(url); } catch (error) { metadata = { error: error?.name === 'TimeoutError' ? 'The site took too long to respond.' : 'Preview metadata could not be loaded.' }; }
   }
   const customImageUrl = cleanLinkImage(link.image_url);
@@ -148,14 +182,15 @@ export async function saveLinkHubLink(db, data) {
     metadata?.success ? metadata.imageUrl : (existing?.metadata_image_url || ''),
     metadata?.success ? metadata.siteName : (existing?.site_name || ''),
     metadata?.success ? metadata.faviconUrl : (existing?.favicon_url || ''),
-    metadata ? (metadata.success ? 'ready' : 'error') : (existing?.metadata_status || 'pending'),
-    metadata?.error || '', link.active === false || link.active === 0 ? 0 : 1,
-    link.featured ? 1 : 0, Math.max(0, Number(link.sort_order) || 0),
+    linkKind === 'social' ? 'ready' : metadata ? (metadata.success ? 'ready' : 'error') : (existing?.metadata_status || 'pending'),
+    linkKind === 'social' ? '' : (metadata?.error || ''), link.active === false || link.active === 0 ? 0 : 1,
+    linkKind === 'link' && link.featured ? 1 : 0, Math.max(0, Number(link.sort_order) || 0),
+    linkKind, socialPlatform, socialHandle,
   ];
   if (existing) {
-    await db.prepare('UPDATE link_hub_links SET url=?,title=?,description=?,image_url=?,custom_site_name=?,custom_favicon_url=?,metadata_title=?,metadata_description=?,metadata_image_url=?,site_name=?,favicon_url=?,metadata_status=?,metadata_error=?,active=?,featured=?,sort_order=?,revision=revision+1,updated_at=? WHERE id=?').bind(...values, now, id).run();
+    await db.prepare('UPDATE link_hub_links SET url=?,title=?,description=?,image_url=?,custom_site_name=?,custom_favicon_url=?,metadata_title=?,metadata_description=?,metadata_image_url=?,site_name=?,favicon_url=?,metadata_status=?,metadata_error=?,active=?,featured=?,sort_order=?,link_kind=?,social_platform=?,social_handle=?,revision=revision+1,updated_at=? WHERE id=?').bind(...values, now, id).run();
   } else {
-    await db.prepare('INSERT INTO link_hub_links (id,url,title,description,image_url,custom_site_name,custom_favicon_url,metadata_title,metadata_description,metadata_image_url,site_name,favicon_url,metadata_status,metadata_error,active,featured,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id, ...values, now, now).run();
+    await db.prepare('INSERT INTO link_hub_links (id,url,title,description,image_url,custom_site_name,custom_favicon_url,metadata_title,metadata_description,metadata_image_url,site_name,favicon_url,metadata_status,metadata_error,active,featured,sort_order,link_kind,social_platform,social_handle,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id, ...values, now, now).run();
   }
   return { success: true, link: await db.prepare('SELECT * FROM link_hub_links WHERE id = ?').bind(id).first() };
 }

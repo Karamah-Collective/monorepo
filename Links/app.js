@@ -1,5 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const linksRoot = $('#links');
+const socialsRoot = $('#social-links');
+const socialsSection = $('#socials-section');
 const state = $('#state');
 const toast = $('#toast');
 
@@ -14,6 +16,40 @@ const icons = {
   arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 16 8m-6 0h6v6"/></svg>',
   share: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.25"/><circle cx="6" cy="12" r="2.25"/><circle cx="18" cy="19" r="2.25"/><path d="m8 11 7.8-4.7M8 13l7.8 4.7"/></svg>',
 };
+
+const socialPlatforms = {
+  instagram: { label: 'Instagram', hosts: ['instagram.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg>' },
+  linkedin: { label: 'LinkedIn', hosts: ['linkedin.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 9.2V19M6.7 6.2v.1M11 19v-5.5c0-2.4 3.1-2.7 3.1 0V19M11 9.2V19M17.3 19v-6.1c0-5.2-6.3-4.7-6.3-.5"/></svg>' },
+  facebook: { label: 'Facebook', hosts: ['facebook.com', 'fb.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 20v-7h2.7l.4-3h-3.1V8.1c0-.9.3-1.6 1.6-1.6H18V3.8c-.6-.1-1.4-.2-2.4-.2-2.4 0-4.1 1.5-4.1 4.3V10H9v3h2.5v7"/></svg>' },
+  youtube: { label: 'YouTube', hosts: ['youtube.com', 'youtu.be'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 7.1c-.2-.9-.9-1.6-1.8-1.8C17 5 12 5 12 5s-5 0-6.6.3c-.9.2-1.6.9-1.8 1.8C3.3 8.7 3.3 12 3.3 12s0 3.3.3 4.9c.2.9.9 1.6 1.8 1.8C7 19 12 19 12 19s5 0 6.6-.3c.9-.2 1.6-.9 1.8-1.8.3-1.6.3-4.9.3-4.9s0-3.3-.3-4.9Z"/><path d="m10 15.2 5.2-3.2L10 8.8v6.4Z"/></svg>' },
+  tiktok: { label: 'TikTok', hosts: ['tiktok.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4v10.2a4.2 4.2 0 1 1-3.4-4.1M14.5 4c.5 2.6 2 4.1 4.5 4.5"/></svg>' },
+  x: { label: 'X', hosts: ['x.com', 'twitter.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 4 14 16M19 4 5 20"/></svg>' },
+  threads: { label: 'Threads', hosts: ['threads.net'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.2 10.3c-.4-4-2.6-6.3-6.2-6.3-4.1 0-7 3.1-7 8s2.9 8 7 8c3.5 0 6-1.9 6-4.6 0-2.4-1.9-3.9-4.6-3.9-2.4 0-3.8 1.1-3.8 2.6 0 1.3 1 2.2 2.5 2.2 2.9 0 4.7-2.1 4.7-5.1 0-2.6-1.4-4.4-4.2-4.4-1.8 0-3.2.7-4 2"/></svg>' },
+  bluesky: { label: 'Bluesky', hosts: ['bsky.app'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.2c-1-2-3.7-5.6-6.2-7.4C3.4 2.1 2.5 2.4 2 2.7c-.6.4-.7 1.5-.7 2.1 0 .7.4 5.5.7 6.3.9 2.8 4 3.7 6.8 3.2-4.8.8-9 2.7-3.4 8.9 6.1 6.3 8.4-1.3 9.1-3.3.7 2 2.4 9.5 8.6 3.3 5.6-5.6 1.4-8.1-3.4-8.9 2.8.5 5.9-.4 6.8-3.2.3-.8.7-5.6.7-6.3 0-.6-.1-1.7-.7-2.1-.5-.3-1.4-.6-3.8 1.1-2.5 1.8-5.2 5.4-6.2 7.4Z" transform="scale(.72) translate(4.6 2)"/></svg>' },
+  whatsapp: { label: 'WhatsApp', hosts: ['whatsapp.com', 'wa.me'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.7a8 8 0 0 1-11.8 7L4 20l1.3-4A8 8 0 1 1 20 11.7Z"/><path d="M9 8.2c.4 3 2.4 5 5.4 5.8l1.2-1.3 2 .9c-.5 1.8-1.7 2.6-3.5 2.3-3.8-.7-7-3.8-7.7-7.5-.3-1.7.5-2.9 2.2-3.5l1 2-1.3 1.2"/></svg>' },
+  telegram: { label: 'Telegram', hosts: ['t.me', 'telegram.me'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 17-7-4 16-5.5-5-3.4 2.6.5-4.4L17 7l-8 7"/></svg>' },
+  spotify: { label: 'Spotify', hosts: ['spotify.com'], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M7.5 9.2c3.2-.9 7.2-.5 9.6.9M8.2 12.4c2.6-.7 5.9-.3 8 .7M8.8 15.3c2-.5 4.7-.2 6.5.6"/></svg>' },
+  other: { label: 'Social', hosts: [], icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.2 2.5 3.3 5.5 3.3 9S14.2 18.5 12 21M12 3C9.8 5.5 8.7 8.5 8.7 12s1.1 6.5 3.3 9"/></svg>' },
+};
+
+function socialDetails(item) {
+  let parsed;
+  try { parsed = new URL(item.url); } catch { parsed = new URL(location.href); }
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+  const inferredKey = Object.entries(socialPlatforms).find(([, value]) => value.hosts.some(domain => host === domain || host.endsWith(`.${domain}`)))?.[0] || 'other';
+  const key = socialPlatforms[item.socialPlatform] ? item.socialPlatform : inferredKey;
+  const ignored = new Set(['in', 'company', 'channel', 'user', 'c', 'profile', 'intent', 'share']);
+  const candidate = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent).find(part => !ignored.has(part.toLowerCase())) || '';
+  const handle = String(item.socialHandle || candidate).replace(/^@/, '');
+  return { key, ...socialPlatforms[key], handle };
+}
+
+function trackOpen(id) {
+  fetch('/api/click', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }), keepalive: true,
+  }).catch(() => {});
+}
 
 function showToast(message) {
   toast.textContent = message;
@@ -67,10 +103,7 @@ function renderLink(link, index, settings) {
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
   anchor.setAttribute('aria-label', `${link.title}, opens in a new tab`);
-  anchor.addEventListener('click', () => fetch('/api/click', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: link.id }), keepalive: true,
-  }).catch(() => {}));
+  anchor.addEventListener('click', () => trackOpen(link.id));
 
   const media = document.createElement('div');
   media.className = 'link-media';
@@ -80,12 +113,6 @@ function renderLink(link, index, settings) {
   image.decoding = 'async';
   setImage(image, link.imageUrl || link.faviconUrl || '/assets/favicon.ico', link.faviconUrl);
   media.append(image);
-  if (link.featured && settings.featured_label) {
-    const badge = document.createElement('span');
-    badge.className = 'featured-label';
-    badge.textContent = settings.featured_label;
-    media.append(badge);
-  }
 
   const copy = document.createElement('div');
   copy.className = 'link-copy';
@@ -121,6 +148,36 @@ function renderLink(link, index, settings) {
   return article;
 }
 
+function renderSocial(item, index) {
+  const details = socialDetails(item);
+  const anchor = document.createElement('a');
+  anchor.className = 'social-card';
+  anchor.href = item.url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  anchor.style.setProperty('--index', index);
+  anchor.setAttribute('aria-label', `${details.label}${details.handle ? `, @${details.handle}` : ''}, opens in a new tab`);
+  anchor.addEventListener('click', () => trackOpen(item.id));
+  const icon = document.createElement('span');
+  icon.className = 'social-icon';
+  icon.innerHTML = details.icon;
+  const copy = document.createElement('span');
+  copy.className = 'social-copy';
+  if (details.handle) {
+    const platform = document.createElement('small');
+    platform.textContent = details.label;
+    const handle = document.createElement('strong');
+    handle.textContent = `@${details.handle}`;
+    copy.append(platform, handle);
+  } else {
+    const label = document.createElement('strong');
+    label.textContent = item.title || details.label;
+    copy.append(label);
+  }
+  anchor.append(icon, copy);
+  return anchor;
+}
+
 function setText(selector, value) {
   const element = $(selector);
   if (!element) return;
@@ -150,16 +207,21 @@ function applySettings(settings, linkCount = 0) {
   setText('#links-kicker', settings.links_kicker);
   setText('#links-heading', settings.links_heading);
   setText('#links-description', settings.links_description);
-  setText('#profile-share-label', settings.share_page_label);
+  setText('#socials-kicker', settings.socials_kicker);
+  setText('#socials-heading', settings.socials_heading);
+  setText('#socials-description', settings.socials_description);
   setText('#footer-text', settings.footer_text);
   setText('#footer-link-label', settings.footer_link_label);
+  const pageShare = $('#profile-share');
+  const pageShareLabel = 'Share';
+  setText('#profile-share-label', pageShareLabel);
+  pageShare?.setAttribute('aria-label', pageShareLabel);
   const destination = settings.footer_link_url || '';
   $('.footer-mark').hidden = !settings.footer_text;
   $('#footer-link').href = destination || location.href;
   $('#footer-link').hidden = !destination || !settings.footer_link_label;
   $('#brand-link').href = destination || location.href;
   $('#brand-link').setAttribute('aria-label', settings.profile_name || 'Karamah Collective');
-  $('#profile-share').setAttribute('aria-label', settings.share_page_label || fallbackCopy.share_page_label);
 
   const profileImage = $('#profile-image');
   profileImage.alt = settings.profile_name || 'Karamah Collective';
@@ -174,13 +236,11 @@ function applySettings(settings, linkCount = 0) {
     .some(value => String(value || '').trim());
   const directoryHead = $('.directory-head');
   $('.directory-copy').hidden = !hasDirectoryCopy;
-  directoryHead.hidden = !hasDirectoryCopy && !linkCount;
-  directoryHead.classList.toggle('is-minimal', !hasDirectoryCopy);
-  const renderedCount = settings.count_suffix
-    ? `${linkCount} ${settings.count_suffix}`
-    : String(linkCount).padStart(2, '0');
-  setText('#link-count', renderedCount);
-  $('#directory-index').setAttribute('aria-label', `${linkCount} published ${linkCount === 1 ? 'link' : 'links'}`);
+  directoryHead.hidden = !hasDirectoryCopy && !settings.count_suffix;
+  setText('#link-count', settings.count_suffix ? `${linkCount} ${settings.count_suffix}` : '');
+  const hasSocialCopy = [settings.socials_kicker, settings.socials_heading, settings.socials_description]
+    .some(value => String(value || '').trim());
+  $('.socials-head').hidden = !hasSocialCopy;
   $('.site-footer').hidden = ![settings.footer_text, settings.footer_link_label && destination]
     .some(value => String(value || '').trim());
 }
@@ -215,12 +275,17 @@ async function load() {
     const response = await fetch('/api/hub');
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || fallbackCopy.error_description);
+    const socials = Array.isArray(data.socials) ? data.socials : [];
     applySettings(data.settings, data.links.length);
     state.hidden = true;
     linksRoot.replaceChildren(...data.links.map((link, index) => renderLink(link, index, data.settings)));
+    socialsRoot.replaceChildren(...socials.map(renderSocial));
+    socialsSection.hidden = !socials.length;
     if (!data.links.length) renderState(data.settings.empty_title, data.settings.empty_description);
   } catch {
     linksRoot.replaceChildren();
+    socialsRoot.replaceChildren();
+    socialsSection.hidden = true;
     renderState(currentSettings.error_title, currentSettings.error_description, {
       label: currentSettings.retry_label,
       onClick: () => { state.hidden = true; load(); },
@@ -228,10 +293,8 @@ async function load() {
   }
 }
 
-$('#profile-share').addEventListener('click', () => share({
-  title: currentSettings.seo_title,
-  text: currentSettings.seo_description,
-  url: location.href,
-}));
+$('#profile-share')?.addEventListener('click', () => {
+  share({ title: document.title, text: currentSettings.profile_bio || '', url: location.href });
+});
 
 load();

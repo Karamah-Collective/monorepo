@@ -35,6 +35,16 @@ import {
   Sun,
   UploadSimple,
   LinkSimple,
+  InstagramLogo,
+  LinkedinLogo,
+  FacebookLogo,
+  YoutubeLogo,
+  TiktokLogo,
+  XLogo,
+  ThreadsLogo,
+  WhatsappLogo,
+  TelegramLogo,
+  SpotifyLogo,
 } from "@phosphor-icons/react";
 
 const wrap = (Component) =>
@@ -79,6 +89,16 @@ export const Icons = Object.fromEntries(
     sun: Sun,
     upload: UploadSimple,
     link: LinkSimple,
+    instagram: InstagramLogo,
+    linkedin: LinkedinLogo,
+    facebook: FacebookLogo,
+    youtube: YoutubeLogo,
+    tiktok: TiktokLogo,
+    xSocial: XLogo,
+    threads: ThreadsLogo,
+    whatsapp: WhatsappLogo,
+    telegram: TelegramLogo,
+    spotify: SpotifyLogo,
   }).map(([key, component]) => [key, wrap(component)]),
 );
 export const CloseIcon = wrap(X);

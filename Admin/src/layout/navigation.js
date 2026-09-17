@@ -1,6 +1,6 @@
 export const NAV_GROUPS = [
   {
-    label: "Workspace",
+    label: "Maps",
     links: [
       {
         to: "/",
@@ -32,7 +32,7 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: "Review & community",
+    label: "Maps / community review",
     links: [
       {
         to: "/submissions/new",
@@ -92,7 +92,7 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: "Manage",
+    label: "Maps / configuration",
     links: [
       {
         to: "/social-videos",
@@ -108,15 +108,26 @@ export const NAV_GROUPS = [
       },
       {
         to: "/app-settings",
-        label: "App settings",
+        label: "Map settings",
         icon: "settings",
         description: "Control the experience visitors see on the map.",
       },
+    ],
+  },
+  {
+    label: "Workspace",
+    links: [
       {
         to: "/log",
         label: "Activity log",
         icon: "list",
         description: "A shared record of changes made by your team.",
+      },
+      {
+        to: "/workspace/preferences",
+        label: "Admin preferences",
+        icon: "settings",
+        description: "Set your sidebar, table, and motion preferences for this browser.",
       },
     ],
   },

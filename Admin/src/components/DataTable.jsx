@@ -25,7 +25,9 @@ export default function DataTable({
   const [columnFilters, setColumnFilters] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [compact, setCompact] = useState(false);
+  const [compact, setCompact] = useState(() => {
+    try { return localStorage.getItem("admin-table-density") === "compact"; } catch { return false; }
+  });
 
   const table = useReactTable({
     data,
@@ -40,7 +42,7 @@ export default function DataTable({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize } },
+    initialState: { pagination: { pageSize: (() => { try { return Number(localStorage.getItem("admin-table-page-size")) || pageSize; } catch { return pageSize; } })() } },
   });
 
   const rows = table.getRowModel().rows;

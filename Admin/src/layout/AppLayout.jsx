@@ -47,6 +47,20 @@ export default function AppLayout() {
     };
   }, []);
   useEffect(() => {
+    function syncPreferences() {
+      try {
+        const preference = localStorage.getItem("admin-sidebar");
+        if (preference) setCollapsed(preference === "collapsed");
+        document.documentElement.dataset.adminMotion = localStorage.getItem("admin-motion") || "standard";
+        document.documentElement.dataset.adminReadingScale = localStorage.getItem("admin-reading-scale") || "standard";
+        document.documentElement.dataset.adminContrast = localStorage.getItem("admin-contrast") || "standard";
+      } catch {}
+    }
+    syncPreferences();
+    window.addEventListener("admin-preferences", syncPreferences);
+    return () => window.removeEventListener("admin-preferences", syncPreferences);
+  }, []);
+  useEffect(() => {
     const tablet = window.matchMedia(
       "(min-width:768px) and (max-width:1100px)",
     );

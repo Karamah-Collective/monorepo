@@ -37,9 +37,9 @@
   --settings-gap-sm: 8px;
   --settings-gap: 16px;
   --settings-gap-lg: 24px;
-  --settings-text-sm: 12px;
-  --settings-text: 13px;
-  --settings-heading: 16px;
+  --settings-text-sm: 13px;
+  --settings-text: 14px;
+  --settings-heading: 17px;
   --settings-weight: 600;
   --settings-leading: 1.5;
   --settings-rule: 1px;
@@ -58,7 +58,7 @@ body,
 }
 body {
   font-family: "Geist", sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   background: var(--bg-alt);
   -webkit-font-smoothing: antialiased;
@@ -113,7 +113,7 @@ svg {
   white-space: nowrap;
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
   letter-spacing: 0.13em;
   font-weight: 600;

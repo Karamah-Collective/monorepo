@@ -573,6 +573,28 @@ async function updatePlaceDisabled(db, placeId, disabled) {
   return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
 }
 
+async function updatePlaceCoordinates(db, data) {
+  const placeId = (data.placeId || "").toString().trim();
+  if (!placeId) return { error: "Missing placeId" };
+
+  const hasBothCoordinates = data.lat != null && data.lng != null
+    && String(data.lat).trim() !== "" && String(data.lng).trim() !== "";
+  const lat = Number(data.lat);
+  const lng = Number(data.lng);
+  if (!hasBothCoordinates || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { error: "Latitude and longitude must both be valid numbers" };
+  }
+  if (lat < -90 || lat > 90) return { error: "Latitude must be between -90 and 90" };
+  if (lng < -180 || lng > 180) return { error: "Longitude must be between -180 and 180" };
+
+  const { meta } = await db.prepare(
+    "UPDATE places SET lat = ?, lng = ? WHERE id = ?"
+  ).bind(lat, lng, placeId).run();
+  return meta.rows_written > 0
+    ? { success: true, coordinates: { lat, lng } }
+    : { error: `Place not found: ${placeId}` };
+}
+
 async function refreshPlaceInfo(db, placeId, env) {
   if (!placeId) return { error: "Missing placeId" };
   const place = await db.prepare("SELECT * FROM places WHERE id = ?").bind(placeId).first();
@@ -605,8 +627,13 @@ async function refreshPlaceInfo(db, placeId, env) {
 
   const name = enriched.googleName || place.name || "";
   const address = normaliseAddress(enriched.googleAddress || place.address || "");
-  const lat = enriched.lat != null ? enriched.lat : place.lat;
-  const lng = enriched.lng != null ? enriched.lng : place.lng;
+  const hasGoogleCoordinates = enriched.lat != null && enriched.lng != null
+    && String(enriched.lat).trim() !== "" && String(enriched.lng).trim() !== "";
+  const lat = Number(enriched.lat);
+  const lng = Number(enriched.lng);
+  if (!hasGoogleCoordinates || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return { error: "Google Place Details did not return valid coordinates" };
+  }
   const googleInfoRaw = Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : place.google_info || "";
 
   await db.prepare(
@@ -644,7 +671,7 @@ async function refreshPlaceInfo(db, placeId, env) {
     ).run();
   }
 
-  return { success: true };
+  return { success: true, coordinates: { lat, lng } };
 }
 
 async function deletePlace(db, placeId) {
@@ -912,6 +939,7 @@ const POST_ACTIONS = {
   "reject-edit": (db, data) => rejectEdit(db, data.rowId, data.reason || ""),
   "update-boycott": (db, data) => updateBoycott(db, data.placeId, data.boycott),
   "update-place-disabled": (db, data) => updatePlaceDisabled(db, data.placeId, data.disabled),
+  "update-place-coordinates": (db, data) => updatePlaceCoordinates(db, data),
   "refresh-place-info": (db, data, env) => refreshPlaceInfo(db, data.placeId, env),
   "delete-place": (db, data) => deletePlace(db, data.placeId),
   "update-sponsor": (db, data) => updateSponsor(db, data),

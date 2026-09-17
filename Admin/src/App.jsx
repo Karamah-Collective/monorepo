@@ -22,6 +22,7 @@ import WebsiteTeamPage from "./pages/WebsiteTeamPage.jsx";
 import WebsiteSubscribersPage from "./pages/WebsiteSubscribersPage.jsx";
 import WebsiteContentPage from "./pages/WebsiteContentPage.jsx";
 import LinkHubPage from "./pages/LinkHubPage.jsx";
+import AdminPreferencesPage from "./pages/AdminPreferencesPage.jsx";
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/social-videos" element={<SocialVideosPage />} />
             <Route path="/type-styles" element={<TypeStylesPage />} />
             <Route path="/app-settings" element={<AppSettingsPage />} />
+            <Route path="/workspace/preferences" element={<AdminPreferencesPage />} />
             <Route path="/log" element={<LogPage />} />
             <Route path="/website/team" element={<WebsiteTeamPage />} />
             <Route path="/website/subscribers" element={<WebsiteSubscribersPage />} />

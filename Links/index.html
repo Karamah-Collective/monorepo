@@ -21,11 +21,13 @@
     <header class="masthead">
       <a class="brand" id="brand-link" href="https://karamahcollective.com" aria-label="Karamah Collective">
         <img src="/assets/karamah-logo.webp" alt="">
-        <span class="sr-only" id="brand-name">Karamah Collective</span>
+        <span id="brand-name">Karamah Collective</span>
       </a>
-      <button class="round-action" id="profile-share" type="button">
-        <span id="profile-share-label">Share this page</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12v7h10v-7M12 16V4m0 0L8.5 7.5M12 4l3.5 3.5"/></svg>
+      <button class="page-share" id="profile-share" type="button" aria-label="Share this page">
+        <span id="profile-share-label">Share</span>
+        <i aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 15.5V4m0 0-4 4m4-4 4 4M5.5 12.5v5.1c0 .8.6 1.4 1.4 1.4h10.2c.8 0 1.4-.6 1.4-1.4v-5.1"/></svg>
+        </i>
       </button>
     </header>
 
@@ -39,7 +41,15 @@
         <h1 id="profile-name">Karamah Collective</h1>
         <p id="profile-bio"></p>
       </div>
-      <div class="profile-signature" aria-hidden="true"><i></i><span></span><i></i></div>
+    </section>
+
+    <section class="socials" id="socials-section" aria-label="Social profiles" hidden>
+      <header class="socials-head" hidden>
+        <span class="kicker" id="socials-kicker"></span>
+        <h2 id="socials-heading"></h2>
+        <p id="socials-description"></p>
+      </header>
+      <div class="social-list" id="social-links"></div>
     </section>
 
     <section class="directory" aria-label="Links">
@@ -49,10 +59,7 @@
           <h2 id="links-heading"></h2>
           <p id="links-description"></p>
         </div>
-        <div class="directory-index" id="directory-index">
-          <i aria-hidden="true"></i>
-          <strong id="link-count"></strong>
-        </div>
+        <span class="count" id="link-count"></span>
       </header>
       <div class="links" id="links">
         <div class="skeleton" aria-label="Loading links"><i></i><span></span></div>

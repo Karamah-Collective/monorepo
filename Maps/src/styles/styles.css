@@ -2458,6 +2458,7 @@ body.dark-mode .sp-tip {
   gap: var(--sp-5);
   padding: var(--sp-7) var(--sp-8);
   border-bottom: 1px solid var(--border-light);
+  box-shadow: none;
   cursor: grab;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -3066,8 +3067,17 @@ body.dark-mode .sp-tip {
   font-style: italic;
 }
 #menu-sheet-body {
-  padding: var(--sp-3) 0 var(--sp-7);
+  padding: 0 0 var(--sp-7);
 }
+#menu-sheet .sheet-head { border-bottom: 0; }
+#menu-sheet #mp-scroll,
+#menu-sheet #mp-height-wrap,
+#menu-sheet #mp-pane-track,
+#menu-sheet .mp-pane {
+  border-top: 0;
+  box-shadow: none;
+}
+#menu-sheet-body > .menu-section:first-of-type { padding-top: var(--sp-5); }
 #menu-sheet-body #style-panel {
   padding: var(--sp-2) 14px;
 }
@@ -5074,21 +5084,13 @@ body.marker-style-bold .custom-mk {
   align-self: center;
 }
 
-/* Boycott chip inline in list card name */
-.pl-boycott-chip {
-  display: inline-block;
-  margin-left: var(--sp-2);
-  vertical-align: middle;
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--ls-caps);
-  padding: 1px 5px;
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--danger) 14%, transparent);
-  color: var(--danger);
-  white-space: nowrap;
-  line-height: 1.6;
+/* Boycotted places stay legible in a dense card row without consuming a metadata slot. */
+#places-list li.pl-card--boycott {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 58%, var(--border-light));
+  border-color: color-mix(in srgb, var(--danger) 44%, var(--border-light));
+}
+#places-list li.pl-card--boycott:hover {
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface));
 }
 
 /* Open/Closed chips — spacing handled by .pl-meta flex gap */

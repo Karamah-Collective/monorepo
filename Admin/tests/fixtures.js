@@ -30,6 +30,8 @@ export const places = Array.from({ length: 31 }, (_, i) => ({
   type: ["restaurant", "space", "service"][i % 3],
   city: i % 2 ? "Espoo" : "Helsinki",
   address: `${i + 2} Siltasaarenkatu`,
+  lat: 60.1699 + i * 0.001,
+  lng: 24.9384 + i * 0.001,
   boycott: false,
   disabled: false,
 }));
@@ -91,6 +93,9 @@ export const responses = {
       links_kicker: "",
       links_heading: "",
       links_description: "",
+      socials_kicker: "",
+      socials_heading: "",
+      socials_description: "",
       count_suffix: "",
       featured_label: "Featured",
       share_page_label: "Share this page",
@@ -125,6 +130,9 @@ export const responses = {
     links: [
       {
         id: "maps",
+        link_kind: "link",
+        social_platform: "",
+        social_handle: "",
         url: "https://maps.karamahcollective.com",
         title: "Find halal places across Finland",
         description: "Mosques, restaurants, services and community spaces mapped with care.",
@@ -143,6 +151,9 @@ export const responses = {
       },
       {
         id: "collective",
+        link_kind: "link",
+        social_platform: "",
+        social_handle: "",
         url: "https://karamahcollective.com",
         title: "Karamah Collective",
         description: "Community work, current programs and ways to take part.",
