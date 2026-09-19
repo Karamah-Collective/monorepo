@@ -425,7 +425,7 @@
 .place-sponsor-fields { display:grid; gap:13px; margin:17px 0 0 44px; }
 .place-field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .place-field-grid .pp-field { display:grid; gap:6px; margin:0; color:var(--text); font-size:12px; font-weight:500; }
-.place-field-grid .pp-field input,.place-field-grid .pp-field select { width:100%; min-height:38px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); }
+.place-field-grid .pp-field input,.place-field-grid .pp-field select { width:100%; max-width:100%; min-width:0; min-height:38px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); }
 .place-field-grid .pp-field input:focus,.place-field-grid .pp-field select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent); }
 .place-sponsor-fields > .place-field-grid { grid-template-columns:minmax(0,1.35fr) repeat(2,minmax(0,1fr)); }
 .place-promos-head { display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid var(--border); font-size:12px; }
@@ -463,6 +463,13 @@
 @media (max-width:600px) {
   .place-manager-dialog,.place-manager-shell { width:calc(100vw - 12px); max-width:calc(100vw - 12px); max-height:calc(100dvh - 12px); margin:auto; }
   .place-action-section,.place-danger-zone { padding:18px; }
+  .place-promo { grid-template-columns:minmax(0,1fr); }
+  .place-promo-fields,
+  .place-promo .pp-field,
+  .place-promo input,
+  .place-promo select { min-width:0; max-width:100%; }
+  .place-promo input[type="date"] { width:100%; -webkit-appearance:none; appearance:none; }
+  .place-promo .pp-sponsor-remove { justify-self:end; }
   .place-action-toggles,.place-sponsor-fields { margin-left:0; }
   .place-field-grid,.place-sponsor-fields > .place-field-grid,.place-promo .place-field-grid:first-child { grid-template-columns:1fr; }
   .place-refresh-section,.place-danger-zone { align-items:flex-start; flex-direction:column; }

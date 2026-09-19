@@ -108,6 +108,9 @@ select,
 textarea {
   color: var(--text);
   background: var(--bg);
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 button,
 a {

@@ -53,6 +53,7 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="karamah-build-version" content="__KARAMAH_BUILD_VERSION__" />
 
     <link rel="preload" href="./assets/images/kc_logo_big.inline.svg" as="fetch" crossorigin />
     <link rel="preload" href="./assets/images/karamah-logo.svg" as="image" type="image/svg+xml" />
@@ -69,6 +70,7 @@
     <link rel="stylesheet" href="./assets/css/site-content.css?v=initial" />
 
     <script>
+      window.KARAMAH_BUILD_VERSION = "__KARAMAH_BUILD_VERSION__";
       /* Dark mode: apply saved preference instantly (FOUC prevention).
          Desktop  ? localStorage shared across tabs; resets on new browser session.
          Mobile   ? localStorage (persists) or system default. */

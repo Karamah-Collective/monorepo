@@ -47,6 +47,9 @@ export default function DataTable({
 
   const rows = table.getRowModel().rows;
   const rowAnimationKey = `${compact ? "compact" : "comfortable"}-${globalFilter}-${JSON.stringify(columnFilters)}-${sorting.map((item) => `${item.id}:${item.desc}`).join("|")}`;
+  const filterableColumns = table
+    .getAllLeafColumns()
+    .filter((column) => column.getCanFilter());
   const columnLabels = useMemo(() => {
     const labels = new Map();
     for (const column of columns) {
@@ -112,6 +115,19 @@ export default function DataTable({
         </div>
       </div>
 
+      {showFilters && (
+        <div className="pp-table-filter-panel" aria-label="Column filters">
+          {filterableColumns.map((column) => (
+            <label className="pp-table-filter-field" key={column.id}>
+              <span>
+                {columnLabels.get(column.id) || column.columnDef.header || column.id}
+              </span>
+              <ColumnFilter column={column} />
+            </label>
+          ))}
+        </div>
+      )}
+
       <div className="pp-table-scroll pp-scroll">
         <table className="pp-table" aria-label="Collection records">
           <thead>
@@ -149,9 +165,6 @@ export default function DataTable({
                       {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted()] ||
                         ""}
                     </button>
-                    {showFilters && header.column.getCanFilter() && (
-                      <ColumnFilter column={header.column} />
-                    )}
                   </th>
                 ))}
               </tr>

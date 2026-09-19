@@ -1,4 +1,13 @@
 ﻿/* app.js */
+const KARAMAH_BUILD_VERSION = window.KARAMAH_BUILD_VERSION || "dev";
+try {
+  const previousVersion = localStorage.getItem("karamah-website-version");
+  if (previousVersion && previousVersion !== KARAMAH_BUILD_VERSION && "caches" in window) {
+    caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name)))).catch(() => {});
+  }
+  localStorage.setItem("karamah-website-version", KARAMAH_BUILD_VERSION);
+} catch {}
+
 const SETTINGS = {
   sections: ["home", "about", "programs", "janazah", "maps", "team", "contact"],
   recaptchaSiteKey: "",

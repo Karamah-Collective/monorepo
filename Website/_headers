@@ -13,13 +13,13 @@
   Cache-Control: public, max-age=0, must-revalidate
 
 /assets/css/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
 
 /assets/js/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
 
 /assets/js/content-schema.mjs
   Cache-Control: public, max-age=0, must-revalidate
 
 /assets/images/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate

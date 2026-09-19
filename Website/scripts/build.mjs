@@ -21,6 +21,7 @@ if (!process.argv.includes('--css-only')) {
     html=html.replace(match[0],match[0].replace(/\?v=.*/,`?v=${hash}`));
   }
   const version=getBuildVersion();
+  html=html.replaceAll('__KARAMAH_BUILD_VERSION__', version);
   html=html.replace(/((?:src|href|data|data-src)=["'])(?!https?:|#)(\.?\/?assets\/[^"'?]+)(?:\?v=[^"']*)?(["'])/g,`$1$2?v=${version}$3`);
   await writeFile(path.join(output,'index.html'),html);
   console.log(`Website built in Website/dist with deployment version ${version}.`);

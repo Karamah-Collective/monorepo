@@ -66,6 +66,28 @@
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 170ms var(--ease);
 }
 .table-toolbar-actions .pp-btn:active { transform: scale(.98); }
+.pp-table-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-alt) 78%, var(--bg));
+  animation: pp-filter-panel-in 240ms var(--ease) both;
+  transform-origin: top center;
+}
+.pp-table-filter-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.pp-table-filter-field > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
 .pp-table-scroll {
   overflow: auto;
   max-height: max(320px, calc(100dvh - 290px));
@@ -177,9 +199,10 @@
 }
 .pp-col-filter {
   width: 100%;
+  max-width: 100%;
   min-width: 80px;
   padding: 5px 7px;
-  margin-bottom: 9px;
+  margin: 0;
   font-size: 12px;
   border: 1px solid var(--border);
   border-radius: 5px;
@@ -286,6 +309,10 @@
   from { opacity: 0; transform: translateY(-4px) scaleY(.96); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes pp-filter-panel-in {
+  from { opacity: 0; transform: translateY(-8px) scaleY(.96); }
+  to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
 @keyframes pp-empty-in {
   from { opacity: 0; transform: translateY(6px) scale(.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -301,6 +328,10 @@
   .pp-table-pagination {
     gap: 8px;
     padding: 10px 12px;
+  }
+  .pp-table-filter-panel {
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
   .pagination-controls {
     gap: 7px;
@@ -373,6 +404,7 @@
   .pp-table tbody,
   .pp-table tbody tr,
   .pp-col-filter,
+  .pp-table-filter-panel,
   .table-empty-content {
     animation: none;
   }
