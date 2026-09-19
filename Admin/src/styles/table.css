@@ -1,0 +1,379 @@
+.pp-table-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.pp-table-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: padding 190ms var(--ease), background-color 180ms ease;
+}
+.table-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-alt);
+  min-width: 190px;
+  width: 270px;
+  color: var(--text-faint);
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms var(--ease);
+}
+.table-search-wrap:focus-within {
+  border-color: var(--accent);
+  background: var(--bg);
+  transform: translateY(-1px);
+}
+.pp-table-search {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 0;
+  font-size: 13px;
+  background: transparent;
+}
+.pp-table-count {
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+  white-space: nowrap;
+}
+.table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+}
+.table-toolbar-actions .pp-btn[aria-pressed="true"] {
+  background: var(--accent-bg);
+  border-color: var(--accent-light);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.table-toolbar-actions .pp-btn {
+  transform: translateY(0);
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 170ms var(--ease);
+}
+.table-toolbar-actions .pp-btn:active { transform: scale(.98); }
+.pp-table-scroll {
+  overflow: auto;
+  max-height: max(320px, calc(100dvh - 290px));
+  scrollbar-gutter: stable;
+}
+.pp-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 13px;
+}
+.pp-table tbody {
+  animation: pp-table-body-in 180ms var(--ease) both;
+}
+.pp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0 14px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.pp-th-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  text-align: left;
+  width: 100%;
+}
+.pp-th-sorted {
+  color: var(--accent) !important;
+}
+.pp-th-label:disabled {
+  opacity: 1;
+}
+.pp-table td {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  line-height: 1.65;
+  max-width: 360px;
+  min-width: 95px;
+  overflow-wrap: anywhere;
+  transition: padding 190ms var(--ease), font-size 190ms var(--ease), line-height 190ms var(--ease), background-color 160ms ease;
+}
+.pp-table td > :is(span, p, div, strong) {
+  max-width: 100%;
+}
+.pp-table td :where(.pp-current-diff, pre) {
+  display: block;
+  max-width: min(58ch, 100%);
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-alt);
+  color: var(--text);
+  font: 11px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.log-detail {
+  max-width: min(58ch, 100%);
+}
+.log-detail summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.log-detail pre {
+  margin: 8px 0 0;
+}
+.pp-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.pp-table tbody tr {
+  animation: pp-table-row-in 220ms var(--ease) both;
+  animation-delay: min(calc(var(--row-index, 0) * 18ms), 180ms);
+  transition: background-color 130ms ease, transform 160ms var(--ease);
+}
+.pp-table tbody tr:hover {
+  background: var(--bg-alt);
+}
+.pp-table tbody tr:has(button:active) {
+  transform: scale(.998);
+}
+.table-is-compact .pp-table td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.pp-table td:first-child {
+  font-weight: 500;
+}
+.pp-col-filter {
+  width: 100%;
+  min-width: 80px;
+  padding: 5px 7px;
+  margin-bottom: 9px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  animation: pp-filter-in 220ms var(--ease) both;
+  transform-origin: top center;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms var(--ease), opacity 160ms ease;
+}
+.pp-col-filter:focus {
+  border-color: var(--accent);
+  outline: 0;
+  transform: translateY(-1px);
+}
+.pp-table-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.pagination-controls > span {
+  font: 11px var(--font-mono);
+}
+.pp-table-pagination label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pp-table-pagination select {
+  border: 1px solid var(--border);
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.pp-table-pagination .icon-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+}
+.table-empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  animation: pp-empty-in 220ms var(--ease) both;
+}
+.table-empty-content > svg {
+  color: #83967b;
+}
+.table-empty-content strong {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 14px;
+}
+.table-empty-content p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+.pp-table .pp-btn {
+  min-height: 29px;
+  font-size: 12px;
+  padding: 5px 9px;
+}
+.pp-table .pp-empty-state {
+  padding: 0;
+}
+.pp-table td a {
+  text-underline-offset: 3px;
+}
+.event-location-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 150px;
+  max-width: 280px;
+}
+.event-location-cell small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
+@keyframes pp-table-body-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pp-table-row-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pp-filter-in {
+  from { opacity: 0; transform: translateY(-4px) scaleY(.96); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pp-empty-in {
+  from { opacity: 0; transform: translateY(6px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 767px) {
+  .pp-table-toolbar {
+    padding: 12px;
+    gap: 9px;
+  }
+  .table-search-wrap {
+    width: 100%;
+  }
+  .pp-table-pagination {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .pagination-controls {
+    gap: 7px;
+  }
+  .pp-table-pagination > .pagination-summary {
+    display: none;
+  }
+  .pp-table-scroll {
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+    background: var(--bg-alt);
+  }
+  .pp-table {
+    display: block;
+  }
+  .pp-table thead {
+    display: none;
+  }
+  .pp-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .pp-table tbody tr {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .pp-table tbody tr:hover {
+    background: var(--bg);
+  }
+  .pp-table td {
+    display: grid;
+    grid-template-columns: minmax(86px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    max-width: none;
+    min-width: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pp-table td::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .pp-table td > * {
+    min-width: 0;
+  }
+  .pp-table td :where(.pp-current-diff, pre),
+  .log-detail {
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-table-card,
+  .table-search-wrap,
+  .table-toolbar-actions .pp-btn,
+  .pp-table tbody tr,
+  .pp-table td,
+  .pp-col-filter {
+    transition: none;
+  }
+  .pp-table tbody,
+  .pp-table tbody tr,
+  .pp-col-filter,
+  .table-empty-content {
+    animation: none;
+  }
+}
