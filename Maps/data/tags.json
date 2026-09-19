@@ -1,0 +1,452 @@
+{
+  "mosque": [
+    {
+      "id": "daily_prayers",
+      "label": "5 Daily"
+    },
+    {
+      "id": "jummah",
+      "label": "Jummah"
+    },
+    {
+      "id": "taraweeh",
+      "label": "Taraweeh"
+    },
+    {
+      "id": "eid_prayer",
+      "label": "Eid Prayer"
+    },
+    {
+      "id": "janaza",
+      "label": "Janaza"
+    },
+    {
+      "id": "quran_classes",
+      "label": "Quran Class"
+    },
+    {
+      "id": "female_prayer",
+      "label": "Sisters Section"
+    },
+    {
+      "id": "female_wudu",
+      "label": "Sisters Wudu"
+    }
+  ],
+  "prayer_room": [
+    {
+      "id": "wudu",
+      "label": "Wudu"
+    },
+    {
+      "id": "female_prayer",
+      "label": "Sisters Section"
+    },
+    {
+      "id": "female_wudu",
+      "label": "Sisters Wudu"
+    },
+    {
+      "id": "quran_available",
+      "label": "Quran Available"
+    }
+  ],
+  "shop": [
+    {
+      "id": "halal_meat",
+      "label": "Halal Meat"
+    },
+    {
+      "id": "halal_butchery",
+      "label": "Butchery"
+    },
+    {
+      "id": "halal_groceries",
+      "label": "Groceries"
+    },
+    {
+      "id": "asian_products",
+      "label": "Asian"
+    },
+    {
+      "id": "african_products",
+      "label": "African"
+    },
+    {
+      "id": "arab_products",
+      "label": "Arab"
+    },
+    {
+      "id": "halal_certified",
+      "label": "Certified"
+    }
+  ],
+  "restaurant": [
+    {
+      "id": "restaurant_type",
+      "label": "Food Type"
+    },
+    {
+      "id": "no_alcohol",
+      "label": "No Alcohol"
+    },
+    {
+      "id": "halal_status",
+      "label": "Halal Status"
+    },
+    {
+      "id": "cuisine",
+      "label": "Cuisine"
+    }
+  ],
+  "restaurant_halal_status": [
+    {
+      "id": "fully_halal",
+      "label": "Fully Halal"
+    },
+    {
+      "id": "partially_halal",
+      "label": "Partially Halal"
+    }
+  ],
+  "restaurant_cuisine": [
+    {
+      "id": "cuisine_indian",
+      "label": "Indian"
+    },
+    {
+      "id": "cuisine_pakistani",
+      "label": "Pakistani"
+    },
+    {
+      "id": "cuisine_bangladeshi",
+      "label": "Bangladeshi"
+    },
+    {
+      "id": "cuisine_turkish",
+      "label": "Turkish"
+    },
+    {
+      "id": "cuisine_arab",
+      "label": "Arab"
+    },
+    {
+      "id": "cuisine_somali",
+      "label": "Somali"
+    },
+    {
+      "id": "cuisine_african",
+      "label": "African"
+    },
+    {
+      "id": "cuisine_mediterranean",
+      "label": "Mediterranean"
+    },
+    {
+      "id": "cuisine_chinese",
+      "label": "Chinese"
+    },
+    {
+      "id": "cuisine_thai",
+      "label": "Thai"
+    },
+    {
+      "id": "cuisine_italian",
+      "label": "Italian"
+    },
+    {
+      "id": "cuisine_mexican",
+      "label": "Mexican"
+    },
+    {
+      "id": "cuisine_kebab",
+      "label": "Kebab"
+    },
+    {
+      "id": "cuisine_burger",
+      "label": "Burger"
+    },
+    {
+      "id": "cuisine_pizza",
+      "label": "Pizza"
+    },
+    {
+      "id": "cuisine_fast_food",
+      "label": "Fast Food"
+    },
+    {
+      "id": "cuisine_uyghur",
+      "label": "Uyghur"
+    },
+    {
+      "id": "cuisine_japanese",
+      "label": "Japanese"
+    },
+    {
+      "id": "cuisine_korean",
+      "label": "Korean"
+    },
+    {
+      "id": "cuisine_malaysian",
+      "label": "Malaysian"
+    },
+    {
+      "id": "cuisine_sushi",
+      "label": "Sushi"
+    },
+    {
+      "id": "cuisine_uzbek",
+      "label": "Uzbek"
+    },
+    {
+      "id": "cuisine_central_asia",
+      "label": "Central Asia"
+    },
+    {
+      "id": "cuisine_middle_eastern",
+      "label": "Middle Eastern"
+    },
+    {
+      "id": "cuisine_palestinian",
+      "label": "Palestinian"
+    },
+    {
+      "id": "cuisine_steak",
+      "label": "Steak"
+    },
+    {
+      "id": "cuisine_fried_chicken",
+      "label": "Fried Chicken"
+    },
+    {
+      "id": "cuisine_vietnamese",
+      "label": "Vietnamese"
+    },
+    {
+      "id": "cuisine_syrian",
+      "label": "Syrian"
+    },
+    {
+      "id": "cuisine_sri_lankan",
+      "label": "Sri Lankan"
+    },
+    {
+      "id": "cuisine_nepalese",
+      "label": "Nepalese"
+    },
+    {
+      "id": "cuisine_yemeni",
+      "label": "Yemeni"
+    },
+    {
+      "id": "cuisine_tunisian",
+      "label": "Tunisian"
+    },
+    {
+      "id": "cuisine_singaporean",
+      "label": "Singaporean"
+    },
+    {
+      "id": "cuisine_teppanyaki",
+      "label": "Teppanyaki"
+    },
+    {
+      "id": "cuisine_d_ner",
+      "label": "Döner"
+    }
+  ],
+  "service": [
+    {
+      "id": "service_type",
+      "label": "Service Type"
+    },
+    {
+      "id": "halal_meat",
+      "label": "Halal Meat"
+    },
+    {
+      "id": "halal_butchery",
+      "label": "Butchery"
+    },
+    {
+      "id": "halal_groceries",
+      "label": "Groceries"
+    },
+    {
+      "id": "asian_products",
+      "label": "Asian"
+    },
+    {
+      "id": "african_products",
+      "label": "African"
+    },
+    {
+      "id": "arab_products",
+      "label": "Arab"
+    },
+    {
+      "id": "halal_certified",
+      "label": "Certified"
+    },
+    {
+      "id": "muslim_owned",
+      "label": "Muslim-owned"
+    }
+  ],
+  "service_service_type": [
+    {
+      "id": "service_type_grocery",
+      "label": "Grocery"
+    },
+    {
+      "id": "service_type_butchery",
+      "label": "Butchery"
+    },
+    {
+      "id": "service_type_bookshop",
+      "label": "Bookshop"
+    },
+    {
+      "id": "service_type_salon",
+      "label": "Salon"
+    },
+    {
+      "id": "service_type_clothing",
+      "label": "Clothing"
+    },
+    {
+      "id": "service_type_islamic_goods",
+      "label": "Islamic Goods"
+    },
+    {
+      "id": "service_type_education",
+      "label": "Education"
+    },
+    {
+      "id": "service_type_community_service",
+      "label": "Community Service"
+    },
+    {
+      "id": "service_type_charity",
+      "label": "Charity"
+    }
+  ],
+  "space": [
+    {
+      "id": "space_type",
+      "label": "Space Type"
+    },
+    {
+      "id": "wudu",
+      "label": "Wudu"
+    },
+    {
+      "id": "female_prayer",
+      "label": "Sisters Section"
+    },
+    {
+      "id": "female_wudu",
+      "label": "Sisters Wudu"
+    },
+    {
+      "id": "quran_available",
+      "label": "Quran Available"
+    },
+    {
+      "id": "daily_prayers",
+      "label": "Daily Prayers"
+    },
+    {
+      "id": "jummah",
+      "label": "Jummah"
+    },
+    {
+      "id": "taraweeh",
+      "label": "Taraweeh"
+    },
+    {
+      "id": "eid_prayer",
+      "label": "Eid Prayer"
+    },
+    {
+      "id": "janaza",
+      "label": "Janaza"
+    },
+    {
+      "id": "quran_classes",
+      "label": "Quran Classes"
+    }
+  ],
+  "space_space_type": [
+    {
+      "id": "space_type_prayer_place",
+      "label": "Prayer Place"
+    },
+    {
+      "id": "space_type_cemetery",
+      "label": "Cemetery"
+    },
+    {
+      "id": "space_type_community_hall",
+      "label": "Community Hall"
+    },
+    {
+      "id": "space_type_event_space",
+      "label": "Event Space"
+    },
+    {
+      "id": "space_type_classroom",
+      "label": "Classroom"
+    },
+    {
+      "id": "space_type_wudu_facility",
+      "label": "Wudu Facility"
+    },
+    {
+      "id": "space_type_sisters_space",
+      "label": "Sisters Space"
+    },
+    {
+      "id": "space_type_mosque",
+      "label": "Mosque"
+    },
+    {
+      "id": "space_type_eid_prayer_place",
+      "label": "Eid Prayer Place"
+    }
+  ],
+  "restaurant_restaurant_type": [
+    {
+      "id": "restaurant_type_restaurant",
+      "label": "Restaurant"
+    },
+    {
+      "id": "restaurant_type_cafe",
+      "label": "Cafe"
+    },
+    {
+      "id": "restaurant_type_bakery",
+      "label": "Bakery"
+    },
+    {
+      "id": "restaurant_type_dessert",
+      "label": "Dessert"
+    },
+    {
+      "id": "restaurant_type_food_truck",
+      "label": "Food Truck"
+    },
+    {
+      "id": "restaurant_type_catering",
+      "label": "Catering"
+    },
+    {
+      "id": "restaurant_type_takeaway",
+      "label": "Takeaway"
+    },
+    {
+      "id": "restaurant_type_buffet",
+      "label": "Buffet"
+    }
+  ]
+}
