@@ -56,7 +56,7 @@ const DEPLOY_FILES = [
   "Maps/_headers",
   "Maps/_routes.json",
   "Maps/kc_logo_big.inline.svg",
-  "Maps/LOGO - halal finder.svg",
+  "Maps/LOGO - Manarah.svg",
   "Maps/src",
   "Maps/data",
   "Maps/functions",
