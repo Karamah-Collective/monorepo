@@ -7,7 +7,7 @@ const output = path.join(root, 'dist');
 if (path.dirname(output) !== path.resolve(root)) throw new Error('Invalid build destination');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-const assets = ['index.html','manifest.json','sw.js','_headers','_routes.json','kc_logo_big.inline.svg','LOGO - halal finder.svg','src','data','scripts/transit-cache.json'];
+const assets = ['index.html','manifest.json','sw.js','_headers','_routes.json','kc_logo_big.inline.svg','LOGO - Manarah.svg','src','data','scripts/transit-cache.json'];
 for (const item of assets) {
   await cp(path.join(root,item), path.join(output,item), {recursive:true, filter: source => !source.endsWith('config.local.js') && !source.endsWith('.bak')});
 }

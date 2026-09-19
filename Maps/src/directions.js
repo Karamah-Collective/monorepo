@@ -386,7 +386,7 @@ dirShareBtn.addEventListener("click", async () => {
   const url = await _buildRouteShareUrl();
   if (!url) return;
   const title = `${dir.origin?.name || "Origin"} → ${dir.dest?.name || "Destination"}`;
-  shareUrl(url, title, `${title} – Halal Finder`);
+  shareUrl(url, title, `${title} – Manarah`);
 });
 
 let _pendingItinIdx = null;

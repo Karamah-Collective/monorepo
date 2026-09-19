@@ -39,7 +39,7 @@ import "./search.js";
 import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
 
-const WELCOME_LOGO_URL = "/LOGO%20-%20halal%20finder.svg";
+const WELCOME_LOGO_URL = "/LOGO%20-%20Manarah.svg";
 const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
 const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
 const WELCOME_REVEAL_SETTLE_MS = 180;
@@ -57,11 +57,15 @@ function _addWelcomeLogoTrace(path, className) {
   path.classList.add("welcome-logo-final");
 }
 
+function _getWelcomeLogoPathFill(path) {
+  return (path.getAttribute("fill") || path.closest("[fill]")?.getAttribute("fill") || "").trim().toLowerCase();
+}
+
 function _prepareWelcomeLogo(svg) {
   if (!svg) return null;
   svg.removeAttribute("width");
   svg.removeAttribute("height");
-  svg.setAttribute("aria-label", "Halal Finder");
+  svg.setAttribute("aria-label", "Manarah");
   svg.setAttribute("role", "img");
   svg.classList.add("welcome-logo");
 
@@ -72,19 +76,10 @@ function _prepareWelcomeLogo(svg) {
     .forEach((child) => art.appendChild(child));
   svg.appendChild(art);
 
-  const goldPath = svg.querySelector('path[fill="#b19761"]');
-  const wordGroups = svg.querySelectorAll('g[fill="#352359"]');
-
-  if (goldPath) {
-    goldPath.classList.add("welcome-logo-gold");
-    _addWelcomeLogoTrace(goldPath, "welcome-logo-trace-gold");
-  }
-
-  wordGroups.forEach((group) => {
-    group.classList.add("welcome-logo-word");
-    group.querySelectorAll("path").forEach((path) => {
-      _addWelcomeLogoTrace(path, "welcome-logo-trace-word");
-    });
+  art.querySelectorAll("path").forEach((path) => {
+    const isGoldPath = _getWelcomeLogoPathFill(path) === "#b19761";
+    path.classList.add(isGoldPath ? "welcome-logo-gold" : "welcome-logo-word");
+    _addWelcomeLogoTrace(path, isGoldPath ? "welcome-logo-trace-gold" : "welcome-logo-trace-word");
   });
 
   return svg;

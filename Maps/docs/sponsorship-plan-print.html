@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Halal Finder — Sponsorship Plan</title>
+<title>Manarah � Sponsorship Plan</title>
 <style>
-/* ── Tokens ─────────────────────────────────────────────────────────── */
+/* -- Tokens ----------------------------------------------------------- */
 :root {
   --accent:#08705B; --accent-soft:#e6f2ef;
   --gold:#b89030; --gold-soft:#fdf6e8;
@@ -28,19 +28,19 @@
   --sponsor:#b08830; --sponsor-soft:#faf5eb;
 }
 
-/* ── Page layout ────────────────────────────────────────────────────── */
+/* -- Page layout ------------------------------------------------------ */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#fff;color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:13px}
 .page{max-width:820px;margin:0 auto;padding:36px 36px 48px}
 
-/* ── Cover ──────────────────────────────────────────────────────────── */
+/* -- Cover ------------------------------------------------------------ */
 .cover{text-align:center;padding:40px 0 30px;border-bottom:3px solid var(--sponsor)}
 .cover h1{font-size:36px;font-weight:800;letter-spacing:-0.03em;margin-bottom:8px}
 .cover .org{font-size:16px;color:var(--sponsor);font-weight:600;margin-bottom:24px}
 .cover .meta{font-size:13px;color:var(--text-3);line-height:1.5}
 .cover .badge-preview{margin-top:16px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
 
-/* ── TOC ────────────────────────────────────────────────────────────── */
+/* -- TOC -------------------------------------------------------------- */
 .toc{margin:20px 0 10px}
 .toc h2{font-size:18px;font-weight:700;margin-bottom:16px}
 .toc ol{padding-left:24px;counter-reset:toc}
@@ -48,7 +48,7 @@ body{font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:
 .toc a{color:var(--accent);text-decoration:none}
 .toc a:hover{text-decoration:underline}
 
-/* ── Section headers ────────────────────────────────────────────────── */
+/* -- Section headers -------------------------------------------------- */
 h2.s{font-size:22px;font-weight:700;margin:28px 0 6px;padding-bottom:4px;border-bottom:2px solid var(--border-light);letter-spacing:-0.01em}
 h3.s{font-size:17px;font-weight:700;margin:18px 0 6px;color:var(--text)}
 h4.s{font-size:15px;font-weight:600;margin:14px 0 4px;color:var(--text-2)}
@@ -57,7 +57,7 @@ ul,ol{margin:0 0 8px 20px}
 li{margin-bottom:4px}
 blockquote{border-left:3px solid var(--border);padding:6px 14px;margin:8px 0;color:var(--text-2);font-style:italic;background:var(--surface-2);border-radius:0 var(--r-xs) var(--r-xs) 0}
 
-/* ── Tables ─────────────────────────────────────────────────────────── */
+/* -- Tables ----------------------------------------------------------- */
 table{width:100%;border-collapse:collapse;margin:10px 0 14px;font-size:13px}
 th{background:var(--surface-2);font-weight:700;text-align:left;padding:8px 12px;border:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;color:var(--text-3)}
 td{padding:7px 12px;border:1px solid var(--border);color:var(--text)}
@@ -65,18 +65,18 @@ td code{font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius
 .new-col{background:var(--sponsor-soft)}
 th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));color:var(--sponsor)}
 
-/* ── Callout boxes ──────────────────────────────────────────────────── */
+/* -- Callout boxes ---------------------------------------------------- */
 .callout{border-left:3px solid var(--sponsor);padding:10px 14px;background:var(--sponsor-soft);border-radius:0 var(--r-xs) var(--r-xs) 0;font-size:13px;color:var(--text-2);line-height:1.6;margin:10px 0}
 .callout strong{color:var(--text)}
 .callout-blue{border-left-color:var(--accent);background:var(--accent-soft)}
 .callout-green{border-left-color:var(--success);background:var(--success-soft)}
 
-/* ── Visual example frames ──────────────────────────────────────────── */
+/* -- Visual example frames -------------------------------------------- */
 .example{margin:14px 0;padding:16px;background:var(--surface-2);border-radius:var(--r-md);border:1px solid var(--border-light)}
 .example-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:10px}
 .example-row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
 
-/* ── Popup mockups ──────────────────────────────────────────────────── */
+/* -- Popup mockups ---------------------------------------------------- */
 .pp-wrap{background:var(--surface);border-radius:var(--r-md);box-shadow:0 8px 30px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.08);width:260px;overflow:hidden;flex-shrink:0}
 .pp{display:flex;flex-direction:column;position:relative}
 .pp-inner{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
@@ -95,7 +95,7 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .pp-sponsor .info-icon{width:10px;height:10px;opacity:0.6}
 .pp-promo-btn{background:var(--sponsor-soft)!important;color:var(--sponsor)!important;border-color:color-mix(in srgb,var(--sponsor) 30%,var(--border))!important}
 
-/* ── List cards ─────────────────────────────────────────────────────── */
+/* -- List cards ------------------------------------------------------- */
 .pl-card{padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);display:grid;grid-template:"icon name meta" auto "icon addr meta" auto/auto 1fr auto;align-items:center;column-gap:10px;width:100%;max-width:380px}
 .pl-dot{grid-area:icon;width:24px;height:24px;border-radius:var(--r-xs);display:flex;align-items:center;justify-content:center;color:#fff}
 .pl-dot svg{width:12px;height:12px}
@@ -106,7 +106,7 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .pl-tags-summary{width:3.5em;text-align:center;font-size:10px;font-weight:var(--fw-bold);color:var(--type-c,var(--accent));padding:2px 0;background:color-mix(in srgb,var(--type-c,var(--accent)) 12%,transparent);border-radius:var(--r-pill)}
 .pl-sponsor-chip{display:inline-block;margin-left:4px;vertical-align:middle;font-size:9px;font-weight:var(--fw-bold);text-transform:uppercase;letter-spacing:0.04em;padding:1px 5px;border-radius:var(--r-pill);background:var(--sponsor-soft);color:var(--sponsor);line-height:1.6}
 
-/* ── Carousel ───────────────────────────────────────────────────────── */
+/* -- Carousel --------------------------------------------------------- */
 .sponsor-carousel{display:flex;gap:10px;overflow:hidden}
 .sponsor-carousel-card{flex:0 0 160px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;display:flex;flex-direction:column;gap:5px;position:relative;overflow:hidden}
 .sponsor-carousel-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sponsor),color-mix(in srgb,var(--sponsor) 40%,transparent))}
@@ -117,7 +117,7 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .sc-name{font-size:12px;font-weight:var(--fw-bold);color:var(--text);line-height:1.3}
 .sc-view{font-size:10px;font-weight:var(--fw-semibold);color:var(--sponsor);padding:0;background:none;border:none}
 
-/* ── Map pins ───────────────────────────────────────────────────────── */
+/* -- Map pins --------------------------------------------------------- */
 .pin-demo{display:flex;align-items:flex-end;gap:36px;flex-wrap:wrap}
 .pin-item{display:flex;flex-direction:column;align-items:center;gap:10px}
 .pin-item-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);text-align:center}
@@ -143,7 +143,7 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .place-mk--sponsored{width:calc(var(--icon-md)*1.1);height:calc(var(--icon-md)*1.1);border:2.5px solid rgba(176,136,48,.5);box-shadow:0 0 0 4px rgba(176,136,48,.1),0 0 12px rgba(176,136,48,.25),0 2px 8px rgba(0,0,0,.15);animation:sponsorPulse 2.5s ease-in-out infinite,sponsorBounce 3s ease-in-out infinite}
 .place-mk--spotlight{width:calc(var(--icon-md)*1.2);height:calc(var(--icon-md)*1.2);border:3px solid rgba(176,136,48,.65);box-shadow:0 0 0 6px rgba(176,136,48,.12),0 0 16px rgba(176,136,48,.32),0 2px 8px rgba(0,0,0,.15);animation:sponsorPulse 2s ease-in-out infinite,sponsorBounceScale 2.2s ease-in-out infinite}
 
-/* ── Search results ─────────────────────────────────────────────────── */
+/* -- Search results --------------------------------------------------- */
 .search-dropdown{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);overflow:hidden;max-width:340px;width:100%}
 .search-item{display:flex;align-items:center;gap:8px;padding:8px 12px}
 .search-item+.search-item{border-top:1px solid var(--border-light)}
@@ -154,7 +154,7 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .r-halal-badge{font-size:9px;font-weight:700;color:var(--success)}
 .r-sponsor-prefix{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--sponsor);letter-spacing:0.03em}
 
-/* ── Toast ──────────────────────────────────────────────────────────── */
+/* -- Toast ------------------------------------------------------------ */
 .snack{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:8px 12px;max-width:360px;width:fit-content}
 .snack-icon{flex-shrink:0;width:24px;height:24px;border-radius:var(--r-xs);display:flex;align-items:center;justify-content:center}
 .snack-icon--success{background:var(--success-soft);color:var(--success)}
@@ -164,13 +164,13 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .snack-sub{font-size:11px;color:var(--text-3)}
 .snack-close{flex-shrink:0;background:none;border:none;color:var(--text-3);padding:3px;display:flex;align-items:center;line-height:1}
 
-/* ── Pill buttons ───────────────────────────────────────────────────── */
+/* -- Pill buttons ----------------------------------------------------- */
 .pill-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mock-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-pill);box-shadow:var(--shadow-sm);font-size:12px;font-weight:var(--fw-semibold);color:var(--text-2);white-space:nowrap}
 .mock-pill svg{flex-shrink:0}
 .mock-pill--promo{color:var(--sponsor);border-color:color-mix(in srgb,var(--sponsor) 25%,var(--border));background:var(--sponsor-soft)}
 
-/* ── Promo panel ────────────────────────────────────────────────────── */
+/* -- Promo panel ------------------------------------------------------ */
 .promo-panel{max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow-lg);overflow:hidden}
 .promo-panel-hdr{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:13px;font-weight:var(--fw-bold);color:var(--text);border-bottom:1px solid var(--border-light)}
 .promo-panel-hdr svg{color:var(--sponsor);flex-shrink:0}
@@ -183,16 +183,16 @@ th.new-col{background:color-mix(in srgb,var(--sponsor) 20%,var(--surface-2));col
 .promo-item-desc{font-size:11px;color:var(--text-3)}
 .promo-item-code{flex-shrink:0;font-size:10px;font-weight:var(--fw-bold);color:var(--sponsor);background:var(--sponsor-soft);padding:2px 7px;border-radius:var(--r-pill);border:1px solid color-mix(in srgb,var(--sponsor) 20%,transparent)}
 
-/* ── Tier labels ────────────────────────────────────────────────────── */
+/* -- Tier labels ------------------------------------------------------ */
 .tier-label{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:999px;margin-bottom:10px}
 .tier-label--basic{background:var(--sponsor-soft);color:var(--sponsor)}
 .tier-label--featured{background:var(--sponsor-soft);color:var(--sponsor);border:1.5px solid var(--sponsor)}
 .tier-label--spotlight{background:var(--sponsor);color:#fff}
 
-/* ── Separator ──────────────────────────────────────────────────────── */
+/* -- Separator -------------------------------------------------------- */
 hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
-/* ── Print ──────────────────────────────────────────────────────────── */
+/* -- Print ------------------------------------------------------------ */
 @media print{
   body{font-size:12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .page{padding:0;max-width:none}
@@ -212,13 +212,13 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <div class="page">
 
-<!-- ════════════════ COVER ═════════════════════════════════════════════ -->
+<!-- ---------------- COVER --------------------------------------------- -->
 <div class="cover">
-  <h1>Halal Finder — Sponsorship Plan</h1>
+  <h1>Manarah � Sponsorship Plan</h1>
   <div class="org">Karamah Collective</div>
   <div class="meta">
-    March 2026 · Version 1.0 — Draft<br>
-    Confidential — For internal & partner review
+    March 2026 � Version 1.0 � Draft<br>
+    Confidential � For internal & partner review
   </div>
   <div class="badge-preview">
     <span class="tier-label tier-label--basic">Basic</span>
@@ -227,7 +227,7 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
   </div>
 </div>
 
-<!-- ════════════════ TOC ══════════════════════════════════════════════ -->
+<!-- ---------------- TOC ---------------------------------------------- -->
 <div class="toc">
   <h2>Contents</h2>
   <ol>
@@ -247,53 +247,53 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <hr>
 
-<!-- ════════════════ 1. OVERVIEW ══════════════════════════════════════ -->
+<!-- ---------------- 1. OVERVIEW -------------------------------------- -->
 <h2 class="s" id="overview">1. Overview</h2>
-<p>Halal Finder is a free, community-driven Progressive Web App (PWA) that helps users locate halal-certified restaurants, shops, mosques, and prayer rooms across Finland. As the platform grows, we are introducing a <strong>transparent, ethical sponsorship program</strong> that allows local businesses to gain visibility while directly supporting the app's mission.</p>
+<p>Manarah is a free, community-driven Progressive Web App (PWA) that helps users locate halal-certified restaurants, shops, mosques, and prayer rooms across Finland. As the platform grows, we are introducing a <strong>transparent, ethical sponsorship program</strong> that allows local businesses to gain visibility while directly supporting the app's mission.</p>
 <p>This document outlines the sponsorship model: what sponsors get, how it's implemented, and how transparency is maintained.</p>
 
 <hr>
 
-<!-- ════════════════ 2. PRINCIPLES ═══════════════════════════════════ -->
+<!-- ---------------- 2. PRINCIPLES ----------------------------------- -->
 <h2 class="s" id="principles">2. Guiding Principles</h2>
 <ol>
   <li><strong>Transparency first.</strong> Every sponsored element in the app is clearly labelled. Users always know when content is sponsored.</li>
   <li><strong>Halal verification is independent.</strong> Sponsorship has no influence on halal status tags, ratings, or user-reported data.</li>
-  <li><strong>Boycott overrides sponsorship.</strong> If a place is flagged on the boycott list, all sponsorship UI is suppressed — no exceptions.</li>
-  <li><strong>Community trust is non-negotiable.</strong> Users can tap an ℹ️ icon on any sponsor badge to read the full sponsorship policy.</li>
+  <li><strong>Boycott overrides sponsorship.</strong> If a place is flagged on the boycott list, all sponsorship UI is suppressed � no exceptions.</li>
+  <li><strong>Community trust is non-negotiable.</strong> Users can tap an ?? icon on any sponsor badge to read the full sponsorship policy.</li>
 </ol>
 
 <hr>
 
-<!-- ════════════════ 3. TIERS ════════════════════════════════════════ -->
+<!-- ---------------- 3. TIERS ---------------------------------------- -->
 <h2 class="s" id="tiers">3. Sponsorship Tiers</h2>
-<p>We offer three tiers, each building on the previous one. All tiers display the same <strong>"Sponsored ✦"</strong> label to users — the tier determines which features are enabled behind the scenes.</p>
+<p>We offer three tiers, each building on the previous one. All tiers display the same <strong>"Sponsored ?"</strong> label to users � the tier determines which features are enabled behind the scenes.</p>
 
 <table>
   <tr><th style="text-align:left">Feature</th><th style="text-align:center">Basic</th><th style="text-align:center">Featured</th><th style="text-align:center">Spotlight</th></tr>
-  <tr><td>"Sponsored ✦" badge in popup</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>"Sponsored" chip on list card</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+  <tr><td>"Sponsored ?" badge in popup</td><td style="text-align:center">?</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>"Sponsored" chip on list card</td><td style="text-align:center">?</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
   <tr><td>Enhanced map pin (glow + movement)</td><td style="text-align:center">Float</td><td style="text-align:center">Bounce + glow</td><td style="text-align:center">Bounce + scale + glow</td></tr>
-  <tr><td>Promo code in popup</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Search ranking boost</td><td style="text-align:center">—</td><td style="text-align:center">+0.15</td><td style="text-align:center">+0.25</td></tr>
-  <tr><td>Promos pill listing</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Sponsored carousel slot</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Enhanced link sharing (OG)</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
+  <tr><td>Promo code in popup</td><td style="text-align:center">�</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>Search ranking boost</td><td style="text-align:center">�</td><td style="text-align:center">+0.15</td><td style="text-align:center">+0.25</td></tr>
+  <tr><td>Promos pill listing</td><td style="text-align:center">�</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>Sponsored carousel slot</td><td style="text-align:center">�</td><td style="text-align:center">�</td><td style="text-align:center">?</td></tr>
+  <tr><td>Enhanced link sharing (OG)</td><td style="text-align:center">�</td><td style="text-align:center">�</td><td style="text-align:center">?</td></tr>
 </table>
-<p><strong>Basic</strong> — independent restaurants wanting a credibility signal. <strong>Featured</strong> — drive foot traffic with promo codes + search visibility. <strong>Spotlight</strong> — maximum exposure across the entire app.</p>
+<p><strong>Basic</strong> � independent restaurants wanting a credibility signal. <strong>Featured</strong> � drive foot traffic with promo codes + search visibility. <strong>Spotlight</strong> � maximum exposure across the entire app.</p>
 
 <hr>
 
-<!-- ════════════════ 4. FEATURES + VISUALS ═══════════════════════════ -->
+<!-- ---------------- 4. FEATURES + VISUALS --------------------------- -->
 <h2 class="s" id="features">4. Feature Details & Visual Examples</h2>
 
 <!-- 4.1 Badge -->
 <h3 class="s">4.1 Sponsor Badge (Popup)</h3>
-<p>When a user taps a sponsored place, the popup displays a gold <strong>"Sponsored ✦"</strong> badge pill next to the place type. The badge is identical for all tiers — users do not see which tier a sponsor has purchased. Each badge includes a small ℹ️ icon. Tapping it shows a tooltip:</p>
-<blockquote>"This place financially supports Halal Finder. Sponsorship does not influence how a place is listed, tagged, or reported by the community."</blockquote>
+<p>When a user taps a sponsored place, the popup displays a gold <strong>"Sponsored ?"</strong> badge pill next to the place type. The badge is identical for all tiers � users do not see which tier a sponsor has purchased. Each badge includes a small ?? icon. Tapping it shows a tooltip:</p>
+<blockquote>"This place financially supports Manarah. Sponsorship does not influence how a place is listed, tagged, or reported by the community."</blockquote>
 
 <div class="example">
-  <div class="example-label">Visual — Popup: before (left) vs. sponsored (right)</div>
+  <div class="example-label">Visual � Popup: before (left) vs. sponsored (right)</div>
   <div class="example-row">
     <!-- Non-sponsored -->
     <div class="pp-wrap">
@@ -304,7 +304,7 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
             <span class="pp-badge" style="background:color-mix(in srgb,var(--hsl-trunk) 12%,transparent);color:var(--hsl-trunk)">Restaurant</span>
           </div>
           <div class="pp-title">Hanami Sushi</div>
-          <div class="pp-addr">Hämeentie 45, 00500 Helsinki</div>
+          <div class="pp-addr">H�meentie 45, 00500 Helsinki</div>
           <div class="pp-tags">
             <span class="pp-chip pp-chip-yes">Fully Halal</span>
             <span class="pp-chip pp-chip-yes">Alcohol-free</span>
@@ -324,10 +324,10 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
           <div class="pp-hdr">
             <span class="pp-icon" style="color:var(--hsl-trunk)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
             <span class="pp-badge" style="background:color-mix(in srgb,var(--hsl-trunk) 12%,transparent);color:var(--hsl-trunk)">Restaurant</span>
-            <span class="pp-sponsor">Sponsored ✦ <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+            <span class="pp-sponsor">Sponsored ? <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
           </div>
           <div class="pp-title">Hanami Sushi</div>
-          <div class="pp-addr">Hämeentie 45, 00500 Helsinki</div>
+          <div class="pp-addr">H�meentie 45, 00500 Helsinki</div>
           <div class="pp-tags">
             <span class="pp-chip pp-chip-yes">Fully Halal</span>
             <span class="pp-chip pp-chip-yes">Alcohol-free</span>
@@ -349,18 +349,18 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <p>All sponsored places show a gold <strong>"Sponsored"</strong> chip next to the place name. Identical for all tiers.</p>
 
 <div class="example">
-  <div class="example-label">Visual — List card: normal (top) vs. sponsored (bottom)</div>
+  <div class="example-label">Visual � List card: normal (top) vs. sponsored (bottom)</div>
   <div style="display:flex;flex-direction:column;gap:10px">
     <div class="pl-card">
       <span class="pl-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
       <span class="pl-name">Hanami Sushi</span>
-      <span class="pl-addr">Hämeentie 45 <span class="pl-dist">1.2 km</span></span>
+      <span class="pl-addr">H�meentie 45 <span class="pl-dist">1.2 km</span></span>
       <div class="pl-meta"><span class="pl-tags-summary" style="--type-c:var(--hsl-trunk)">3 tags</span></div>
     </div>
     <div class="pl-card">
       <span class="pl-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
       <span class="pl-name">Hanami Sushi <span class="pl-sponsor-chip">Sponsored</span></span>
-      <span class="pl-addr">Hämeentie 45 <span class="pl-dist">1.2 km</span></span>
+      <span class="pl-addr">H�meentie 45 <span class="pl-dist">1.2 km</span></span>
       <div class="pl-meta"><span class="pl-tags-summary" style="--type-c:var(--hsl-trunk)">3 tags</span></div>
     </div>
   </div>
@@ -373,12 +373,12 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <ol>
   <li>Generates a <strong>unique promo code</strong> tied to the user's IP hash (e.g., <code>HANAMI10-X7K</code>)</li>
   <li>Copies it to the clipboard</li>
-  <li>Shows a <strong>persistent toast</strong> (does not auto-close) with the code, offer description, and a dismiss ✕ button</li>
+  <li>Shows a <strong>persistent toast</strong> (does not auto-close) with the code, offer description, and a dismiss ? button</li>
 </ol>
-<div class="callout"><strong>Anti-abuse:</strong> Codes include a short unique suffix derived from the user's IP hash — unique per user, but short enough to say at a counter. Same IP always generates the same code.</div>
+<div class="callout"><strong>Anti-abuse:</strong> Codes include a short unique suffix derived from the user's IP hash � unique per user, but short enough to say at a counter. Same IP always generates the same code.</div>
 
 <div class="example">
-  <div class="example-label">Visual — Persistent promo toast (does not auto-close)</div>
+  <div class="example-label">Visual � Persistent promo toast (does not auto-close)</div>
   <div style="display:flex;flex-direction:column;gap:12px">
     <div class="snack">
       <div class="snack-icon snack-icon--success"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -391,8 +391,8 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
     <div class="snack">
       <div class="snack-icon snack-icon--info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
       <div class="snack-body">
-        <div class="snack-label">Some restaurants support Halal Finder through sponsorship</div>
-        <div class="snack-sub">Tap ℹ️ on any sponsor badge to learn more</div>
+        <div class="snack-label">Some restaurants support Manarah through sponsorship</div>
+        <div class="snack-sub">Tap ?? on any sponsor badge to learn more</div>
       </div>
     </div>
   </div>
@@ -403,7 +403,7 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <p>A <strong>"Promos" pill button</strong> sits next to the existing Prayer Times pill. Tapping it opens a panel listing all restaurants with active promo codes.</p>
 
 <div class="example">
-  <div class="example-label">Visual — Promos pill (left) and panel (right)</div>
+  <div class="example-label">Visual � Promos pill (left) and panel (right)</div>
   <div class="example-row">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="pill-row">
@@ -415,7 +415,7 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
       <div class="promo-panel-hdr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> Restaurant Promos</div>
       <div class="promo-item">
         <div class="promo-item-icon" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
-        <div class="promo-item-body"><div class="promo-item-name">Hanami Sushi</div><div class="promo-item-desc">10% off for Halal Finder users</div></div>
+        <div class="promo-item-body"><div class="promo-item-name">Hanami Sushi</div><div class="promo-item-desc">10% off for Manarah users</div></div>
         <span class="promo-item-code">HANAMI10</span>
       </div>
       <div class="promo-item">
@@ -429,10 +429,10 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <!-- 4.4 Map pin -->
 <h3 class="s">4.4 Enhanced Map Pin (All tiers)</h3>
-<p>All sponsored pins have <strong>tier-differentiated movement</strong> that gets progressively more eye-catching. <strong>Basic:</strong> a barely-perceptible gentle float (4s cycle). <strong>Featured:</strong> a soft bounce + breathing gold glow (3s). <strong>Spotlight:</strong> a lively bounce with scale pulse + stronger glow (2.2s). Pins retain their original type colour — gold is an ambient accent, not a replacement.</p>
+<p>All sponsored pins have <strong>tier-differentiated movement</strong> that gets progressively more eye-catching. <strong>Basic:</strong> a barely-perceptible gentle float (4s cycle). <strong>Featured:</strong> a soft bounce + breathing gold glow (3s). <strong>Spotlight:</strong> a lively bounce with scale pulse + stronger glow (2.2s). Pins retain their original type colour � gold is an ambient accent, not a replacement.</p>
 
 <div class="example">
-  <div class="example-label">Visual — Map pins: normal → basic → featured → spotlight</div>
+  <div class="example-label">Visual � Map pins: normal ? basic ? featured ? spotlight</div>
   <div class="pin-demo">
     <div class="pin-item">
       <div class="place-mk" style="background:var(--hsl-trunk)"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
@@ -459,23 +459,23 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <!-- 4.5 Search -->
 <h3 class="s">4.5 Search Ranking Boost (Featured & Spotlight)</h3>
-<p>Sponsored places receive a small score bonus: Featured +0.15, Spotlight +0.25. Boosted results always show a <strong>"Sponsored ·"</strong> prefix. Max 2 sponsored results in the top 4.</p>
+<p>Sponsored places receive a small score bonus: Featured +0.15, Spotlight +0.25. Boosted results always show a <strong>"Sponsored �"</strong> prefix. Max 2 sponsored results in the top 4.</p>
 
 <div class="example">
-  <div class="example-label">Visual — Search results with sponsored label</div>
+  <div class="example-label">Visual � Search results with sponsored label</div>
   <div class="search-dropdown">
     <div class="search-item">
       <span class="r-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
       <div class="r-body">
-        <div class="r-name">Hanami Sushi <span class="r-halal-badge">✓ verified</span> <span class="r-sponsor-prefix">· Sponsored</span></div>
-        <div class="r-addr">Hämeentie 45, Helsinki</div>
+        <div class="r-name">Hanami Sushi <span class="r-halal-badge">? verified</span> <span class="r-sponsor-prefix">� Sponsored</span></div>
+        <div class="r-addr">H�meentie 45, Helsinki</div>
       </div>
     </div>
     <div class="search-item">
       <span class="r-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></span>
       <div class="r-body">
-        <div class="r-name">Shalimar Restaurant <span class="r-halal-badge">✓ verified</span></div>
-        <div class="r-addr">Lönnrotinkatu 3, Helsinki</div>
+        <div class="r-name">Shalimar Restaurant <span class="r-halal-badge">? verified</span></div>
+        <div class="r-addr">L�nnrotinkatu 3, Helsinki</div>
       </div>
     </div>
     <div class="search-item">
@@ -493,35 +493,35 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <p>A horizontal-scroll carousel titled <strong>"Sponsored Restaurants"</strong> appears at the top of the places list. Maximum 6 cards. Restaurants only.</p>
 
 <div class="example">
-  <div class="example-label">Visual — Sponsored restaurants carousel</div>
+  <div class="example-label">Visual � Sponsored restaurants carousel</div>
   <div class="sponsor-carousel">
     <div class="sponsor-carousel-card">
       <div class="sc-icon-row"><div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div><span class="sc-type">Restaurant</span></div>
       <span class="sc-name">Hanami Sushi</span>
-      <span class="sc-view">View on map →</span>
+      <span class="sc-view">View on map ?</span>
     </div>
     <div class="sponsor-carousel-card">
       <div class="sc-icon-row"><div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div><span class="sc-type">Restaurant</span></div>
       <span class="sc-name">Falafel King</span>
-      <span class="sc-view">View on map →</span>
+      <span class="sc-view">View on map ?</span>
     </div>
     <div class="sponsor-carousel-card">
       <div class="sc-icon-row"><div class="sc-dot" style="background:var(--hsl-trunk)"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div><span class="sc-type">Restaurant</span></div>
       <span class="sc-name">Biryani House</span>
-      <span class="sc-view">View on map →</span>
+      <span class="sc-view">View on map ?</span>
     </div>
   </div>
 </div>
 
 <!-- 4.7 Sharing -->
 <h3 class="s">4.7 Enhanced Sharing (Spotlight only)</h3>
-<p>When a user shares a spotlight place, the Open Graph metadata appends "— Sponsored Partner" to the description. Visible in social media previews (WhatsApp, Telegram, etc.).</p>
+<p>When a user shares a spotlight place, the Open Graph metadata appends "� Sponsored Partner" to the description. Visible in social media previews (WhatsApp, Telegram, etc.).</p>
 
 <hr>
 
-<!-- ════════════════ 5. DATA ════════════════════════════════════════ -->
+<!-- ---------------- 5. DATA ---------------------------------------- -->
 <h2 class="s" id="data">5. Data Management</h2>
-<p>Sponsorship is managed directly from the existing Google Sheets database — no new tools required.</p>
+<p>Sponsorship is managed directly from the existing Google Sheets database � no new tools required.</p>
 
 <h3 class="s">5.1 New Columns (Places sheet)</h3>
 <table>
@@ -532,10 +532,10 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 </table>
 
 <div class="example">
-  <div class="example-label">Visual — Google Sheets with new columns (gold)</div>
+  <div class="example-label">Visual � Google Sheets with new columns (gold)</div>
   <table style="font-size:11px;white-space:nowrap">
     <tr><th>name</th><th>type</th><th>address</th><th class="new-col">sponsor_tier</th><th class="new-col">sponsor_promo</th><th class="new-col">sponsor_promo_text</th></tr>
-    <tr><td>Hanami Sushi</td><td>restaurant</td><td>Hämeentie 45</td><td class="new-col"><strong>spotlight</strong></td><td class="new-col">HANAMI10</td><td class="new-col">10% off</td></tr>
+    <tr><td>Hanami Sushi</td><td>restaurant</td><td>H�meentie 45</td><td class="new-col"><strong>spotlight</strong></td><td class="new-col">HANAMI10</td><td class="new-col">10% off</td></tr>
     <tr><td>Falafel King</td><td>restaurant</td><td>Vaasankatu 12</td><td class="new-col"><strong>featured</strong></td><td class="new-col">FALAFEL1</td><td class="new-col">Free side dish</td></tr>
     <tr><td>Helsinki Mosque</td><td>mosque</td><td>Fredrikinkatu 33</td><td class="new-col"></td><td class="new-col"></td><td class="new-col"></td></tr>
   </table>
@@ -552,43 +552,43 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <div class="callout-green callout"><strong>No code changes are needed to add or remove sponsors.</strong> It's fully data-driven.</div>
 
 <h3 class="s">5.3 Boycott Override</h3>
-<p>If the <code>boycott</code> column is set to "yes", all sponsor UI is suppressed — enforced in code, cannot be bypassed from the sheet.</p>
+<p>If the <code>boycott</code> column is set to "yes", all sponsor UI is suppressed � enforced in code, cannot be bypassed from the sheet.</p>
 
 <hr>
 
-<!-- ════════════════ 6. ETHICS ═════════════════════════════════════════ -->
+<!-- ---------------- 6. ETHICS ----------------------------------------- -->
 <h2 class="s" id="ethics">6. Ethical & Transparency Safeguards</h2>
 <table>
   <tr><th>Safeguard</th><th>Implementation</th></tr>
   <tr><td>Every sponsor UI element is labelled</td><td>Badge, search prefix, carousel title, promo panel all use "Sponsored"</td></tr>
-  <tr><td>Users can learn what sponsorship means</td><td>ℹ️ icon on every badge → tooltip + link to policy</td></tr>
+  <tr><td>Users can learn what sponsorship means</td><td>?? icon on every badge ? tooltip + link to policy</td></tr>
   <tr><td>Halal status is never influenced</td><td>Tags, certification, and user data on independent columns</td></tr>
-  <tr><td>Boycott always wins</td><td>Code-level check: <code>if (place.boycott)</code> → skip all sponsor rendering</td></tr>
+  <tr><td>Boycott always wins</td><td>Code-level check: <code>if (place.boycott)</code> ? skip all sponsor rendering</td></tr>
   <tr><td>Search isn't flooded</td><td>Max 2 sponsored results in top 4</td></tr>
-  <tr><td>No tracking or redirects</td><td>Clipboard copy only — no external URLs, no analytics pixels</td></tr>
+  <tr><td>No tracking or redirects</td><td>Clipboard copy only � no external URLs, no analytics pixels</td></tr>
   <tr><td>Unique codes prevent abuse</td><td>IP-hash suffix per code prevents mass sharing</td></tr>
-  <tr><td>Sponsor data is public</td><td>Same API, same JSON — anyone can inspect</td></tr>
-  <tr><td>First-encounter notice</td><td>One-time toast: "Some places support Halal Finder through sponsorship"</td></tr>
+  <tr><td>Sponsor data is public</td><td>Same API, same JSON � anyone can inspect</td></tr>
+  <tr><td>First-encounter notice</td><td>One-time toast: "Some places support Manarah through sponsorship"</td></tr>
 </table>
 
 <hr>
 
-<!-- ════════════════ 7. UX WALKTHROUGH ═════════════════════════════════ -->
+<!-- ---------------- 7. UX WALKTHROUGH --------------------------------- -->
 <h2 class="s" id="ux">7. User Experience Walkthrough</h2>
 
 <h3 class="s">A user finds a sponsored restaurant on the map:</h3>
 <ol>
-  <li>They see the pin has a <strong>soft breathing gold glow</strong> — subtle but distinct</li>
-  <li>They tap it. The popup shows "Restaurant" badge, then a gold <strong>"Sponsored ✦"</strong> badge with an ℹ️ icon</li>
-  <li>Below the title: restaurant name, address, and tags — <strong>unchanged from non-sponsored places</strong></li>
+  <li>They see the pin has a <strong>soft breathing gold glow</strong> � subtle but distinct</li>
+  <li>They tap it. The popup shows "Restaurant" badge, then a gold <strong>"Sponsored ?"</strong> badge with an ?? icon</li>
+  <li>Below the title: restaurant name, address, and tags � <strong>unchanged from non-sponsored places</strong></li>
   <li>In the action bar, there's a <strong>tag icon button</strong> with a gold tint</li>
-  <li>They tap it → unique code <code>HANAMI10-X7K</code> is generated and copied → persistent toast appears</li>
+  <li>They tap it ? unique code <code>HANAMI10-X7K</code> is generated and copied ? persistent toast appears</li>
   <li>They visit the restaurant and mention the code</li>
 </ol>
 
 <h3 class="s">A user searches for "sushi":</h3>
 <ol>
-  <li>Results show 4 matches. The 1st is sponsored — shows <strong>"Sponsored · Hanami Sushi"</strong></li>
+  <li>Results show 4 matches. The 1st is sponsored � shows <strong>"Sponsored � Hanami Sushi"</strong></li>
   <li>The remaining 3 are organic, ranked by relevance and distance</li>
   <li>The user can see at a glance which result is sponsored</li>
 </ol>
@@ -596,8 +596,8 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 <h3 class="s">A user taps the Promos pill:</h3>
 <ol>
   <li>They tap <strong>"Promos"</strong> (next to Prayer Times) at the bottom-right</li>
-  <li>A panel lists all restaurants with active promotions — name, offer, tappable code</li>
-  <li>They tap a code → it's copied → persistent toast confirms</li>
+  <li>A panel lists all restaurants with active promotions � name, offer, tappable code</li>
+  <li>They tap a code ? it's copied ? persistent toast confirms</li>
 </ol>
 
 <h3 class="s">A user opens the places list:</h3>
@@ -609,20 +609,20 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <hr>
 
-<!-- ════════════════ 8. IMPLEMENTATION ═════════════════════════════════ -->
+<!-- ---------------- 8. IMPLEMENTATION --------------------------------- -->
 <h2 class="s" id="implementation">8. Implementation Summary</h2>
 
 <h3 class="s">What changes</h3>
 <table>
   <tr><th>Component</th><th>Change</th></tr>
-  <tr><td>Google Sheet</td><td>3 new columns (J–L)</td></tr>
+  <tr><td>Google Sheet</td><td>3 new columns (J�L)</td></tr>
   <tr><td>Apps Script</td><td>Include new columns in API output</td></tr>
   <tr><td>CSS Design Tokens</td><td>New <code>--sponsor</code> gold colour, badge template, glow effect</td></tr>
   <tr><td>CSS Styles</td><td>Sponsor badge, promo button, carousel, chip positioning</td></tr>
   <tr><td>Map Markers</td><td>Breathing gold glow animation + size scale</td></tr>
-  <tr><td>Place Popup</td><td>"Sponsored ✦" badge, ℹ️ tooltip, icon-only promo button, persistent toast</td></tr>
+  <tr><td>Place Popup</td><td>"Sponsored ?" badge, ?? tooltip, icon-only promo button, persistent toast</td></tr>
   <tr><td>Place List</td><td>"Sponsored" chip, carousel, Promos pill + panel</td></tr>
-  <tr><td>Search</td><td>Score bonus + "Sponsored ·" label + max-2 cap</td></tr>
+  <tr><td>Search</td><td>Score bonus + "Sponsored �" label + max-2 cap</td></tr>
   <tr><td>Middleware</td><td>OG meta for spotlight shares</td></tr>
 </table>
 
@@ -637,20 +637,20 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <hr>
 
-<!-- ════════════════ 9. PRICING ════════════════════════════════════════= -->
+<!-- ---------------- 9. PRICING ----------------------------------------= -->
 <h2 class="s" id="pricing">9. Pricing Considerations</h2>
-<p><em>To be decided by the team — placeholder structure below.</em></p>
+<p><em>To be decided by the team � placeholder structure below.</em></p>
 <table>
   <tr><th>Tier</th><th>Suggested Range (monthly)</th><th>Notes</th></tr>
-  <tr><td>Basic</td><td>€XX – €XX</td><td>Low barrier for small businesses</td></tr>
-  <tr><td>Featured</td><td>€XX – €XX</td><td>Includes promo code + search boost</td></tr>
-  <tr><td>Spotlight</td><td>€XX – €XX</td><td>Full presence, best for high-commitment sponsors</td></tr>
+  <tr><td>Basic</td><td>�XX � �XX</td><td>Low barrier for small businesses</td></tr>
+  <tr><td>Featured</td><td>�XX � �XX</td><td>Includes promo code + search boost</td></tr>
+  <tr><td>Spotlight</td><td>�XX � �XX</td><td>Full presence, best for high-commitment sponsors</td></tr>
 </table>
 <p>Consider: introductory pricing for early sponsors, non-profit discounts, quarterly/annual plans, and revenue transparency (sharing how sponsor revenue supports the platform).</p>
 
 <hr>
 
-<!-- ════════════════ 10. FUTURE ═══════════════════════════════════════= -->
+<!-- ---------------- 10. FUTURE ---------------------------------------= -->
 <h2 class="s" id="future">10. Future Enhancements (Not in v1)</h2>
 <table>
   <tr><th>Enhancement</th><th>Description</th></tr>
@@ -664,40 +664,40 @@ hr{border:none;border-top:1px solid var(--border-light);margin:20px 0}
 
 <hr>
 
-<!-- ════════════════ 11. NEXT STEPS ═══════════════════════════════════= -->
+<!-- ---------------- 11. NEXT STEPS -----------------------------------= -->
 <h2 class="s" id="next">11. Next Steps</h2>
 <ol>
-  <li><strong>Team review</strong> — circulate this document for feedback</li>
-  <li><strong>Pricing decision</strong> — finalise tier pricing</li>
-  <li><strong>First sponsor outreach</strong> — identify 1–2 pilot sponsors for soft launch</li>
-  <li><strong>Implementation</strong> — Phase 1 (data layer) → Phase 2–8 (UI, search, transparency)</li>
-  <li><strong>Testing</strong> — verify all tiers on desktop + mobile, light + dark mode</li>
-  <li><strong>Launch communication</strong> — brief in-app announcement about the new sponsorship program</li>
+  <li><strong>Team review</strong> � circulate this document for feedback</li>
+  <li><strong>Pricing decision</strong> � finalise tier pricing</li>
+  <li><strong>First sponsor outreach</strong> � identify 1�2 pilot sponsors for soft launch</li>
+  <li><strong>Implementation</strong> � Phase 1 (data layer) ? Phase 2�8 (UI, search, transparency)</li>
+  <li><strong>Testing</strong> � verify all tiers on desktop + mobile, light + dark mode</li>
+  <li><strong>Launch communication</strong> � brief in-app announcement about the new sponsorship program</li>
 </ol>
 
 <hr>
 
-<!-- ════════════════ TIER MATRIX (appendix) ═════════════════════════ -->
+<!-- ---------------- TIER MATRIX (appendix) ------------------------- -->
 <h2 class="s">Appendix: Tier Comparison Matrix (internal)</h2>
 <p>Users see only "Sponsored" regardless of tier. The tiers control which features are enabled.</p>
 <table>
   <tr><th style="text-align:left">Feature</th><th>Basic</th><th>Featured</th><th>Spotlight</th></tr>
-  <tr><td>User-visible label</td><td colspan="3" style="text-align:center">"Sponsored ✦" (same for all)</td></tr>
-  <tr><td>Popup sponsor badge</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>List card "Sponsored" chip</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Promo code (popup + panel)</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Search ranking boost</td><td style="text-align:center">—</td><td style="text-align:center">+0.15</td><td style="text-align:center">+0.25</td></tr>
+  <tr><td>User-visible label</td><td colspan="3" style="text-align:center">"Sponsored ?" (same for all)</td></tr>
+  <tr><td>Popup sponsor badge</td><td style="text-align:center">?</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>List card "Sponsored" chip</td><td style="text-align:center">?</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>Promo code (popup + panel)</td><td style="text-align:center">�</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
+  <tr><td>Search ranking boost</td><td style="text-align:center">�</td><td style="text-align:center">+0.15</td><td style="text-align:center">+0.25</td></tr>
   <tr><td>Enhanced map pin (glow + movement)</td><td style="text-align:center">Float</td><td style="text-align:center">Bounce + glow</td><td style="text-align:center">Bounce + scale + glow</td></tr>
-  <tr><td>Sponsored carousel</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Enhanced social sharing</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">✅</td></tr>
-  <tr><td>Promos pill</td><td style="text-align:center">—</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td></tr>
+  <tr><td>Sponsored carousel</td><td style="text-align:center">�</td><td style="text-align:center">�</td><td style="text-align:center">?</td></tr>
+  <tr><td>Enhanced social sharing</td><td style="text-align:center">�</td><td style="text-align:center">�</td><td style="text-align:center">?</td></tr>
+  <tr><td>Promos pill</td><td style="text-align:center">�</td><td style="text-align:center">?</td><td style="text-align:center">?</td></tr>
 </table>
 
 <hr>
 
 <p style="text-align:center;color:var(--text-3);font-size:12px;margin-top:40px">
-  Halal Finder — Sponsorship Plan · Karamah Collective · March 2026<br>
-  This is a living draft. Open in browser → File → Print → Save as PDF.
+  Manarah � Sponsorship Plan � Karamah Collective � March 2026<br>
+  This is a living draft. Open in browser ? File ? Print ? Save as PDF.
 </p>
 
 </div>

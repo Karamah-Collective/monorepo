@@ -342,7 +342,7 @@ function buildContactEmail(data) {
 
   const textContent = [message, "", ...signature].join("\n");
 
-  return { name, email, subject: `Halal Finder contact: ${name || "New message"}`, textContent };
+  return { name, email, subject: `Manarah contact: ${name || "New message"}`, textContent };
 }
 
 async function sendContactEmail(env, data) {
@@ -369,7 +369,7 @@ async function sendContactEmail(env, data) {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      sender: { name: "Halal Finder", email: CONTACT_FROM_EMAIL },
+      sender: { name: "Manarah", email: CONTACT_FROM_EMAIL },
       to: [{ email: CONTACT_TO_EMAIL, name: "Karamah Collective" }],
       replyTo: { email: email.email, name: email.name || email.email },
       subject: email.subject,

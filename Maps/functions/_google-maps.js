@@ -12,7 +12,7 @@
 
 import { normaliseAddress, isInsideFinlandBounds } from "./_gas-compat.js";
 
-const NOMINATIM_USER_AGENT = "HalalFinderHelsinki/1.0 (+https://maps.karamahcollective.com)";
+const NOMINATIM_USER_AGENT = "Manarah/1.0 (+https://maps.karamahcollective.com)";
 const GOOGLE_MAPS_HOST_RE = /^(?:www\.)?(?:google\.[a-z.]+|maps\.google\.[a-z.]+)$/i;
 const GOOGLE_MAPS_URL_RE = /https?:\/\/(?:(?:www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)(?:\\u[0-9a-fA-F]{4}|[^"'\s<>\\])*/i;
 const COORD_RE = "(-?\\d+(?:\\.\\d+)?)";
@@ -317,7 +317,7 @@ export async function findPlaceIdFromText(apiKey, query, lat, lng) {
  * @param {string} apiKey - MAPS_API_KEY
  * @param {number|null} lat
  * @param {number|null} lng
- * @param {string} placeType - Halal Finder place type
+ * @param {string} placeType - Manarah place type
  * @param {string} userName - Submitted/display name, if usable
  * @returns {Promise<{placeId: string, name: string}|null>}
  */

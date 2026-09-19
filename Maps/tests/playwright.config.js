@@ -2,7 +2,7 @@
 const { defineConfig, devices } = require("@playwright/test");
 
 /**
- * Halal Finder – Playwright Test Configuration
+ * Manarah – Playwright Test Configuration
  *
  * Serves the app on a local static server, then runs all test suites across
  * four browser projects:

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Halal Finder Logo Loading Variations</title>
+  <title>Manarah Logo Loading Variations</title>
   <link rel="stylesheet" href="../src/styles/design-tokens.css" />
   <style>
     html,
@@ -507,7 +507,7 @@
   <main class="page">
     <header class="mast">
       <div>
-        <p class="eyebrow">Halal Finder loading screen</p>
+        <p class="eyebrow">Manarah loading screen</p>
         <h1>KC-inspired logo-only SVG motion.</h1>
       </div>
       <div class="theme-toggle" aria-label="Theme preview">
@@ -551,7 +551,7 @@
   </main>
 
   <script>
-    const LOGO_URL = "../LOGO%20-%20halal%20finder.svg";
+    const LOGO_URL = "../LOGO%20-%20Manarah.svg";
     const themeButtons = [...document.querySelectorAll("[data-theme]")];
 
     function setTheme(mode) {
@@ -573,7 +573,7 @@
     function prepareLogo(svg) {
       svg.removeAttribute("width");
       svg.removeAttribute("height");
-      svg.setAttribute("aria-label", "Halal Finder");
+      svg.setAttribute("aria-label", "Manarah");
       svg.setAttribute("role", "img");
       svg.classList.add("hf-logo");
 
@@ -629,7 +629,7 @@
       document.querySelectorAll("[data-logo-stage]").forEach((stage) => {
         const img = document.createElement("img");
         img.src = LOGO_URL;
-        img.alt = "Halal Finder";
+        img.alt = "Manarah";
         stage.appendChild(img);
       });
     });

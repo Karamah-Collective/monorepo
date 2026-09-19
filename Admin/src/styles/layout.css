@@ -1031,6 +1031,15 @@ html[data-input-mode="keyboard"] .pp-reason-popover {
 :root[data-admin-theme="dark"] .query-error code { background:var(--bg); border-color:var(--danger); }
 :root[data-admin-theme="dark"] .query-error .setup-hint { color:var(--danger); }
 :root[data-admin-theme="dark"] .command-dialog::backdrop { background:#070d09a8; }
+
+@media (max-width: 600px) {
+  .command-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: auto;
+  }
+}
 .reason-label {
   display: block;
   margin-bottom: 8px;

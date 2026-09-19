@@ -3895,7 +3895,7 @@ Also explicitly checked, per the task's instruction, whether `initSheetDrag()`'s
 
 **Production wording correction:** after reviewing commit `51d2ca5`, the user flagged that setup/provider details must not be exposed to form submitters. Browser-facing contact errors now stay provider-neutral; Brevo-specific diagnosis remains only in server logs.
 
-**Brand correction:** contact alert sender and subject now use Halal Finder, not Karamah Maps.
+**Brand correction:** contact alert sender and subject now use Manarah consistently.
 
 **Reply-safe email shape:** contact alert bodies keep the submitter's message first, then a simple `---` signature with From, Email, and Phone only when a phone number was provided. Removed the received timestamp because the inbox already records delivery time.
 
@@ -4308,14 +4308,14 @@ generic centered loader cards.
 
 **Second follow-up:** user preferred concepts B (route trace) and E (place
 constellation), asked to combine them, and clarified the product name is
-**Halal Finder**. The concept board now focuses only on B+E hybrids: animated
+**Manarah**. The concept board now focuses only on B+E hybrids: animated
 routes drawing over a map texture while halal/location pins wake up along or
 around the path. The welcome title should be randomized from a broad set of
 short map/location phrases on each load, with small title-style variations, so
 the startup moment feels less repetitive.
 
-**Third follow-up:** user provided `LOGO - halal finder.svg` as the official
-Halal Finder brand asset and wants the loading screen to animate the actual SVG
+**Third follow-up:** user provided `LOGO - Manarah.svg` as the official
+Manarah brand asset and wants the loading screen to animate the actual SVG
 logo rather than a recreated placeholder. The concept board now uses the real
 logo in every variation, with restrained brand motion: logo settle/breathe,
 subtle rings, light sweep, route drawing, and place pins waking around it. Keep
@@ -4326,16 +4326,16 @@ brand, not overpower it.
 For the welcome/loading screen, use a clean logo-only treatment: animate the
 provided SVG itself, with no map panels, routes, pins, constellation effects,
 or decorative loading scenery. Motion should be proper, quiet, and beautiful,
-letting the Halal Finder logo be the entire visual focus.
+letting the Manarah logo be the entire visual focus.
 
 **Fifth follow-up:** user provided `kc_logo_big.inline.svg` as the preferred
-motion reference. For Halal Finder loading concepts, adapt that same restrained
+motion reference. For Manarah loading concepts, adapt that same restrained
 inline-SVG language: stroke traces drawing first, the final fill settling after,
 slow inherited ink/color drift, a tiny breath, and faint depth/whisper duplicate
 layers. Keep the result clean and logo-only.
 
 **Production choice:** user selected **Draw then fill** for the real app welcome
-screen. Production should show only the official Halal Finder SVG logo, centered
+screen. Production should show only the official Manarah SVG logo, centered
 on a clean theme-aware canvas, with SVG stroke traces drawing before the final
 fill settles. No supporting copy, map decoration, route lines, pins, spinner, or
 surrounding UI. The screen should stay up for the initial places data readiness
@@ -4463,7 +4463,7 @@ or a `cid:`/`ftid` token that did not produce full Google Place Details. Root
 cause: the code treated `cid:` as a Details-ready ID and, after that failed,
 Text Search could be too weak if the URL path was `/maps/place/data=...` and
 only an address/coordinate remained. Fix pattern: for rich new-place approval
-and refresh, pass the Halal Finder place type into enrichment, use Google
+and refresh, pass the Manarah place type into enrichment, use Google
 Nearby Search around the resolved coordinates as a final way to get a real
 `place_id`, then fetch Place Details again. Admin approval/refresh now fails
 loudly instead of adding/updating a Maps-link place when no rich Google fields

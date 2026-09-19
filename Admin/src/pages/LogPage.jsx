@@ -25,9 +25,12 @@ export default function LogPage() {
         header: "Detail",
         cell: (info) => {
           const detail = info.row.original.detail;
-          if (!detail || Object.keys(detail).length === 0) return "—";
+          if (!detail || Object.keys(detail).length === 0) return "-";
           return (
-            <span className="pp-current-diff">{JSON.stringify(detail)}</span>
+            <details className="log-detail">
+              <summary>View detail</summary>
+              <pre>{JSON.stringify(detail, null, 2)}</pre>
+            </details>
           );
         },
       }),
@@ -36,9 +39,9 @@ export default function LogPage() {
   );
 
   return (
-    <div className="pp-page">
+    <div className="pp-page activity-log-page">
       <h1 className="pp-page-title">Activity Log</h1>
-      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
+      <p className="pp-page-lead">
         Every approval, rejection, update, sign-in, and sign-up, visible to the
         whole team.
       </p>

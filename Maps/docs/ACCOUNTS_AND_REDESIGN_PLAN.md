@@ -9,7 +9,7 @@ This file is the living plan **and** progress tracker for this initiative. Updat
 
 ## Context
 
-At the start of this work, Karamah Maps was fully anonymous and device-local: favourites, saved pins, home location, and review-verification all lived only in `localStorage`. Reviews were gated by a one-off email+OTP flow (7-day token), so a review couldn't be edited/deleted later and nothing followed a user across devices. The place-detail view was a floating MapLibre popup capped at ~320px, too small for phone/website/inline reviews. The right-side button rail had grown to 6 stacked pills with no room for account/profile UI.
+At the start of this work, Manarah was fully anonymous and device-local: favourites, saved pins, home location, and review-verification all lived only in `localStorage`. Reviews were gated by a one-off email+OTP flow (7-day token), so a review couldn't be edited/deleted later and nothing followed a user across devices. The place-detail view was a floating MapLibre popup capped at ~320px, too small for phone/website/inline reviews. The right-side button rail had grown to 6 stacked pills with no room for account/profile UI.
 
 This plan added Firebase Auth (Google/Microsoft sign-in, email magic link, and email/password accounts) as a pure **identity layer** — no Firestore. The original Sheets/Apps Script persistence layer has since been replaced by Cloudflare D1 (see `docs/D1_MIGRATION_PLAN.md`), which is now the source of truth for synced favourites/home location/reviews. Firebase ID tokens are verified at the Cloudflare Pages Function edge (Web Crypto + Firebase's public JWKS — no server SDK needed).
 

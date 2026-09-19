@@ -130,8 +130,8 @@ export async function onRequest(context) {
     }
     ogTitle = `✨ Eid Mubarak! — ${name ? `${name} Eid Prayer` : 'Eid Prayer Location'}`;
     ogDescription = name
-      ? `Join ${name} for Eid prayer. Find times, location, and directions on Halal Finder Helsinki.`
-      : 'Find Eid prayer times, locations, and directions on Halal Finder Helsinki.';
+      ? `Join ${name} for Eid prayer. Find times, location, and directions on Manarah.`
+      : 'Find Eid prayer times, locations, and directions on Manarah.';
   } else if (isRoute) {
     let oname = '', dname = '', mode = 'transit';
     if (routeToken) {
@@ -159,8 +159,8 @@ export async function onRequest(context) {
     const modeLabel = modeLabels[mode] || 'Transit';
     const from = oname || 'Origin';
     const to = dname || 'Destination';
-    ogTitle = `${from} → ${to} — Halal Finder Helsinki`;
-    ogDescription = `${modeLabel} route shared via Halal Finder Helsinki`;
+    ogTitle = `${from} → ${to} — Manarah`;
+    ogDescription = `${modeLabel} route shared via Manarah`;
   } else if (placeId) {
     try {
       const res = await context.env.ASSETS.fetch(new URL('/data/places.json', url.origin));
@@ -168,7 +168,7 @@ export async function onRequest(context) {
       const place = places.find(p => p.id === placeId);
       if (place) {
         const typeLabel = PLACE_TYPES[place.type] || place.type;
-        ogTitle = `${place.name} — Halal Finder Helsinki`;
+        ogTitle = `${place.name} — Manarah`;
         const sponsorSuffix = (place.sponsor?.tier === 'spotlight' && !place.boycott) ? ' — Sponsored Partner' : '';
         ogDescription = `${typeLabel} at ${place.address}${sponsorSuffix}`;
       }
@@ -179,11 +179,11 @@ export async function onRequest(context) {
     if (cp) {
       const name = cp.name ? cp.name.slice(0, 100) : null;
       if (cp.isStop && name) {
-        ogTitle = `${name} — Halal Finder Helsinki`;
-        ogDescription = 'Transit stop shared via Halal Finder Helsinki';
+        ogTitle = `${name} — Manarah`;
+        ogDescription = 'Transit stop shared via Manarah';
       } else {
-        ogTitle = 'Shared Location — Halal Finder Helsinki';
-        ogDescription = name ? `${name} — shared via Halal Finder Helsinki`
+        ogTitle = 'Shared Location — Manarah';
+        ogDescription = name ? `${name} — shared via Manarah`
           : `Location at ${cp.lat.toFixed(4)}, ${cp.lng.toFixed(4)}`;
       }
     }
@@ -193,10 +193,10 @@ export async function onRequest(context) {
     // Limit name length to prevent abuse
     const name = rawName ? rawName.slice(0, 100) : null;
     if (name) {
-      ogTitle = `${name} — Halal Finder Helsinki`;
-      ogDescription = 'Transit stop shared via Halal Finder Helsinki';
+      ogTitle = `${name} — Manarah`;
+      ogDescription = 'Transit stop shared via Manarah';
     } else {
-      ogTitle = 'Shared Location — Halal Finder Helsinki';
+      ogTitle = 'Shared Location — Manarah';
       ogDescription = `Location at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
     }
   }

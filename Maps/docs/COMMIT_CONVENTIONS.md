@@ -1,6 +1,6 @@
 # Commit Message Conventions
 
-This document defines commit message standards for Halal Finder to maintain a clean, readable git history and enable automated tooling (changelog generation, CI/CD parsing, etc.).
+This document defines commit message standards for Manarah to maintain a clean, readable git history and enable automated tooling (changelog generation, CI/CD parsing, etc.).
 
 ## Format
 

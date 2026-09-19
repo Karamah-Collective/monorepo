@@ -412,7 +412,7 @@
 .place-location-cell strong { font-size:13px; font-weight:500; }
 .place-location-cell small { color:var(--text-muted); font-size:12px; }
 .place-manage-button { min-width:82px; }
-.place-manager-dialog { width:min(720px,calc(100% - 24px)); max-height:calc(100dvh - 24px); }
+.place-manager-dialog { width:min(720px,calc(100% - 24px)); max-height:calc(100dvh - 24px); margin:auto; }
 .place-manager-shell { display:flex; flex-direction:column; max-height:calc(100dvh - 24px); }
 .place-manager-dialog header p { margin:5px 0 0; color:var(--text-muted); font-size:13px; }
 .place-manager-body { display:grid; gap:0; overflow:auto; overscroll-behavior:contain; }
@@ -461,7 +461,7 @@
 :root[data-admin-theme="dark"] .place-manager-dialog::backdrop { background:#070d09b8; }
 
 @media (max-width:600px) {
-  .place-manager-dialog,.place-manager-shell { width:calc(100% - 12px); max-height:calc(100dvh - 12px); }
+  .place-manager-dialog,.place-manager-shell { width:calc(100vw - 12px); max-width:calc(100vw - 12px); max-height:calc(100dvh - 12px); margin:auto; }
   .place-action-section,.place-danger-zone { padding:18px; }
   .place-action-toggles,.place-sponsor-fields { margin-left:0; }
   .place-field-grid,.place-sponsor-fields > .place-field-grid,.place-promo .place-field-grid:first-child { grid-template-columns:1fr; }

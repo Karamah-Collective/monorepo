@@ -2130,7 +2130,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   function doShare(e) {
     e.preventDefault();
     e.stopPropagation();
-    shareUrl(buildShareUrl(place), place.name, `${place.name} – Halal Finder Helsinki`);
+    shareUrl(buildShareUrl(place), place.name, `${place.name} – Manarah`);
   }
   shareBtn.addEventListener("click", doShare);
 

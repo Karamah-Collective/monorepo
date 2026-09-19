@@ -1,5 +1,5 @@
 /**
- * Halal Finder — Service Worker
+ * Manarah — Service Worker
  *
  * Caching strategy:
  *   App shell (own-origin JS / CSS / data)    → pre-cached on install, then stale-while-revalidate
@@ -75,7 +75,7 @@ const SHELL_ASSETS = [
   '/src/styles/design-tokens.css',
   '/src/styles/fonts/PlusJakartaSans-Variable-Latin.woff2',
   '/src/styles/fonts/PlusJakartaSans-Variable-LatinExt.woff2',
-  '/LOGO%20-%20halal%20finder.svg',
+  '/LOGO%20-%20Manarah.svg',
   '/data/places.json',
   '/data/tags.json',
   '/data/eid-prayers.json',

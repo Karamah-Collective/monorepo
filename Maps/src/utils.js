@@ -715,7 +715,7 @@ export function showEarlyDevNotice() {
     </span>
     <span class="snack-body">
       <span class="snack-label">Early Development 🚧</span>
-      <span class="snack-sub">Halal Finder is still in its early stages. Some features may not work as expected, and places are being added gradually by the community. JazakAllah Khair for your patience &mdash; we appreciate you being here!</span>
+      <span class="snack-sub">Manarah is still in its early stages. Some features may not work as expected, and places are being added gradually by the community. JazakAllah Khair for your patience &mdash; we appreciate you being here!</span>
     </span>
     <button class="sheet-x btn-roundel" aria-label="Dismiss">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>

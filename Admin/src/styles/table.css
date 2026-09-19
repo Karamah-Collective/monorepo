@@ -122,6 +122,36 @@
   overflow-wrap: anywhere;
   transition: padding 190ms var(--ease), font-size 190ms var(--ease), line-height 190ms var(--ease), background-color 160ms ease;
 }
+.pp-table td > :is(span, p, div, strong) {
+  max-width: 100%;
+}
+.pp-table td :where(.pp-current-diff, pre) {
+  display: block;
+  max-width: min(58ch, 100%);
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-alt);
+  color: var(--text);
+  font: 11px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.log-detail {
+  max-width: min(58ch, 100%);
+}
+.log-detail summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.log-detail pre {
+  margin: 8px 0 0;
+}
 .pp-table tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -279,7 +309,56 @@
     display: none;
   }
   .pp-table-scroll {
-    max-height: 65dvh;
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+    background: var(--bg-alt);
+  }
+  .pp-table {
+    display: block;
+  }
+  .pp-table thead {
+    display: none;
+  }
+  .pp-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .pp-table tbody tr {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .pp-table tbody tr:hover {
+    background: var(--bg);
+  }
+  .pp-table td {
+    display: grid;
+    grid-template-columns: minmax(86px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    max-width: none;
+    min-width: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pp-table td::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .pp-table td > * {
+    min-width: 0;
+  }
+  .pp-table td :where(.pp-current-diff, pre),
+  .log-detail {
+    max-width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -59,7 +59,7 @@ async function seedLocalLinkHub() {
     {
       id: "local-karamah-map", url: "https://maps.karamahcollective.com", title: "Find halal places across Finland",
       description: "Mosques, restaurants, services and community spaces — mapped with care for everyday use.",
-      image: "https://picsum.photos/seed/karamah-map-finland/1200/760", site: "Karamah Maps", icon: "https://maps.karamahcollective.com/data/icons/favicon.png", featured: 1, order: 10,
+      image: "https://picsum.photos/seed/karamah-map-finland/1200/760", site: "Manarah", icon: "https://maps.karamahcollective.com/data/icons/favicon.png", featured: 1, order: 10,
     },
     {
       id: "local-karamah-home", url: "https://karamahcollective.com", title: "Karamah Collective",

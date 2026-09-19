@@ -5,14 +5,35 @@ const socialsSection = $('#socials-section');
 const state = $('#state');
 const toast = $('#toast');
 const startupStartedAt = performance.now();
+const colorSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+function getSavedColorMode() {
+  try {
+    const saved = localStorage.getItem('kc-links-theme');
+    return saved === 'dark' || saved === 'light' ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSystemColorMode() {
+  return colorSchemeQuery?.matches ? 'dark' : 'light';
+}
 
 function setColorMode(mode, persist = false) {
   const dark = mode === 'dark';
   document.documentElement.dataset.colorMode = dark ? 'dark' : 'light';
+  document.documentElement.dataset.theme = getSavedColorMode() || 'system';
   $('#theme-toggle')?.setAttribute('aria-label', dark ? 'Use light mode' : 'Use dark mode');
   if (persist) {
     try { localStorage.setItem('kc-links-theme', dark ? 'dark' : 'light'); } catch {}
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   }
+}
+
+function syncSystemColorMode() {
+  const saved = getSavedColorMode();
+  setColorMode(saved || getSystemColorMode());
 }
 
 function finishStartup() {
@@ -214,18 +235,13 @@ function applySettings(settings, linkCount = 0) {
   root.style.setProperty('--ink-light', settings.text_color);
   root.style.setProperty('--accent', settings.accent_color);
   root.style.setProperty('--content-width', `${settings.max_width}px`);
-  root.dataset.theme = settings.theme;
+  root.dataset.theme = getSavedColorMode() || 'system';
   root.dataset.cards = settings.card_style;
   root.dataset.corners = settings.corner_style;
   root.dataset.layout = settings.layout;
   root.dataset.background = settings.background_style;
   root.dataset.images = settings.image_style;
-  try {
-    if (!localStorage.getItem('kc-links-theme')) {
-      const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-      setColorMode(dark ? 'dark' : 'light');
-    }
-  } catch {}
+  syncSystemColorMode();
 
   setText('#brand-name', settings.profile_name);
   setText('#page-kicker', settings.page_kicker);
@@ -329,6 +345,7 @@ $('#profile-share')?.addEventListener('click', () => {
 $('#theme-toggle')?.addEventListener('click', () => {
   setColorMode(document.documentElement.dataset.colorMode === 'dark' ? 'light' : 'dark', true);
 });
-setColorMode(document.documentElement.dataset.colorMode || 'light');
+colorSchemeQuery?.addEventListener?.('change', syncSystemColorMode);
+syncSystemColorMode();
 
 load();

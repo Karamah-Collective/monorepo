@@ -1,4 +1,4 @@
-# Halal Finder — Design System
+# Manarah — Design System
 
 ## Overview
 
@@ -45,7 +45,7 @@ All tokens are CSS custom properties on `:root`.
 | `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |\n| `--on-accent` | `#fff` | Text/icons on any accent or coloured background |
 | `--gold` | `#b89030` | Sponsor / Eid highlight, partially-halal chip |
 | `--gold-soft` | `#fdf6e8` | Gold tint surface |
-| `--logo-word` | `#352359` | Official Halal Finder wordmark colour; dark mode adapts it against the dark canvas |
+| `--logo-word` | `#352359` | Official Manarah wordmark colour; dark mode adapts it against the dark canvas |
 | `--sponsor` | `var(--gold)` | Alias — sponsor badge/chip colour |
 | `--sponsor-soft` | `var(--gold-soft)` | Alias — sponsor badge/chip background |
 | `--success` | `#1FA86A` | Green — mosques, confirmed features |

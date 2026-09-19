@@ -274,7 +274,10 @@ svg {
   opacity: 0;
 }
 :root[data-admin-theme="dark"] .pp-loader-written-fill {
-  filter: invert(1);
+  filter: brightness(0) invert(1);
+}
+:root[data-admin-theme="dark"] .pp-brand-loader-mark.pp-loader-written {
+  color: #f4f1e9;
 }
 .pp-brand-loader-mark.pp-loader-written .pp-loader-written-outline {
   animation: pp-loader-written-outline 1.55s var(--ease) both;

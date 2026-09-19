@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Halal Finder — Update Script
+ * Manarah — Update Script
  *
  * Steps:
  *   version  — Bump VERSION in sw.js and ?v= in index.html to today's date (YYYYMMDD)
@@ -180,7 +180,7 @@ async function main() {
   ].filter(Boolean).join(', ');
 
   const version = computeNextVersion(force);
-  console.log(`\n🚀  Halal Finder — update  (${stepList})  [target: ${version}]`);
+  console.log(`\n🚀  Manarah — update  (${stepList})  [target: ${version}]`);
 
   const errors = [];
 

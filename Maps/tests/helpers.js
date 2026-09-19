@@ -1,5 +1,5 @@
 /**
- * Shared test helpers for Halal Finder test suite.
+ * Shared test helpers for Manarah test suite.
  *
  * Provides a pre-configured `test` fixture that:
  *   1. Navigates to the app

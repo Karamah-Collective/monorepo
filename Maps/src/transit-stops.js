@@ -225,7 +225,7 @@ function _openStopFeaturePopup(f) {
       openDirPanel();
       if (!dir.dest) startPick("to");
     } else if (shrBtn) {
-      shareUrl(_buildStopShareUrl(lat, lng, displayName), displayName, `${displayName} – Halal Finder`);
+      shareUrl(_buildStopShareUrl(lat, lng, displayName), displayName, `${displayName} – Manarah`);
     } else if (clsBtn) {
       fadeAndRemovePopup(popup);
     }

@@ -246,7 +246,7 @@ function openHomePopup() {
       openDirPanel();
       if (!dir.dest) startPick("to");
     } else if (shrBtn) {
-      shareUrl(_buildHomeShareUrl(home.lat, home.lng), "Home", "Home – Halal Finder");
+      shareUrl(_buildHomeShareUrl(home.lat, home.lng), "Home", "Home – Manarah");
     } else if (rmBtn) {
       fadeAndRemovePopup(popup);
       clearHomeLocation();

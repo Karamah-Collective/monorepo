@@ -1,6 +1,6 @@
 {
-  "name": "Halal Finder Helsinki",
-  "short_name": "Halal Finder",
+  "name": "Manarah",
+  "short_name": "Manarah",
   "description": "Find halal food, shops, and prayer spaces across Finland.",
   "start_url": "/",
   "display": "standalone",

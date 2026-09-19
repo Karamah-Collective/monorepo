@@ -1,4 +1,4 @@
--- Cloudflare D1 schema for Halal Finder / Maps_Finland.
+-- Cloudflare D1 schema for Manarah / Maps_Finland.
 -- Ported 1:1 from the Google Sheets structure documented at the top of
 -- scripts/apps-script/Code.gs. See docs/D1_MIGRATION_PLAN.md for the full
 -- migration plan and rationale for every deliberate deviation noted inline

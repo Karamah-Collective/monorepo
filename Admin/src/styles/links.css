@@ -477,6 +477,7 @@
   width: min(920px, calc(100vw - 32px));
   height: min(790px, calc(100dvh - 28px));
   max-height: none;
+  margin: auto;
   overflow: hidden;
 }
 .hub-link-dialog > form { height: 100%; display: flex; flex-direction: column; }
@@ -684,7 +685,7 @@
 }
 
 @media (max-width: 600px) {
-  .hub-link-dialog { width: calc(100vw - 12px); height: calc(100dvh - 12px); }
+  .hub-link-dialog { width: calc(100vw - 12px); max-width: calc(100vw - 12px); height: calc(100dvh - 12px); margin: auto; }
   .hub-link-dialog .hub-dialog-head { padding: 16px; }
   .hub-link-dialog > form > fieldset { scrollbar-gutter: auto; }
   .hub-editor-section { padding: 17px 15px; }

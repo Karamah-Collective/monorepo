@@ -25,7 +25,7 @@ const BREVO_SMTP_PASSWORD_PREFIX = ["x", "smtpsib-"].join("");
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_HOSTNAME = "maps.karamahcollective.com";
 const DEFAULT_FROM = "analytics@karamahcollective.com";
-const DEFAULT_FROM_NAME = "Halal Finder Analytics";
+const DEFAULT_FROM_NAME = "Manarah Analytics";
 const DEFAULT_TO = "home@karamahcollective.com";
 
 function clean(value) {
@@ -535,7 +535,7 @@ function buildEmail(report) {
   const { current, previous, baselineAvg } = community;
   const period = `${shortDate(windows.current.since)}-${shortDate(windows.current.until)}, ${windows.current.until.getUTCFullYear()}`;
   const precisePeriod = `${isoDate(windows.current.since)} to ${isoDate(windows.current.until)}`;
-  const subject = `Halal Finder weekly report: ${period}`;
+  const subject = `Manarah weekly report: ${period}`;
   const currentAnalytics = analytics.current;
   const previousAnalytics = analytics.previous;
   const baselineAnalytics = analytics.baseline;
@@ -590,7 +590,7 @@ function buildEmail(report) {
   ];
 
   const textContent = [
-    "Halal Finder - Weekly Analytics",
+    "Manarah - Weekly Analytics",
     precisePeriod,
     "",
     "Website",
@@ -640,7 +640,7 @@ function buildEmail(report) {
                 <table style="border-collapse:collapse;"><tr>
                   <td style="width:32px;height:32px;text-align:center;vertical-align:middle;background:#08705b;color:#ffffff;font-size:15px;font-weight:700;border-radius:10px;">H</td>
                   <td style="padding-left:9px;">
-                    <div style="font-size:15px;line-height:1.15;color:#101714;font-weight:700;">Halal Finder</div>
+                    <div style="font-size:15px;line-height:1.15;color:#101714;font-weight:700;">Manarah</div>
                     <div style="margin-top:2px;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#89928d;font-weight:700;">Weekly analytics</div>
                   </td>
                 </tr></table>
@@ -702,7 +702,7 @@ function buildEmail(report) {
           <table style="width:100%;border-collapse:collapse;margin:10px 2px 2px;">
             <tr>
               <td style="color:#89928d;font-size:9px;line-height:1.4;">Localhost traffic is excluded. The baseline uses the four complete weeks before this reporting window.</td>
-              <td style="width:150px;text-align:right;color:#101714;font-size:9px;font-weight:700;white-space:nowrap;">Halal Finder Analytics</td>
+              <td style="width:150px;text-align:right;color:#101714;font-size:9px;font-weight:700;white-space:nowrap;">Manarah Analytics</td>
             </tr>
           </table>
         </div>

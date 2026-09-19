@@ -1062,7 +1062,8 @@ select.is-invalid {
 }
 
 html.dark .kc-startup-screen { background: #101a1d; }
-html.dark .kc-startup-mark img { filter: invert(1); }
+html.dark .kc-startup-mark { --kc-startup-logo-filter: brightness(0) invert(1); }
+html.dark .kc-startup-mark img { filter: var(--kc-startup-logo-filter); }
 
 .kc-startup-mark {
   display: grid;
@@ -1091,6 +1092,7 @@ html.dark .kc-startup-mark img { filter: invert(1); }
   height: auto;
   opacity: 0;
   transform: scale(.985);
+  filter: var(--kc-startup-logo-filter, none);
 }
 
 .kc-startup-screen.is-running .kc-startup-mark img {
@@ -1137,8 +1139,8 @@ html.dark .kc-startup-mark img { filter: invert(1); }
   100% { opacity: .34; transform: scale(1.04); }
 }
 @keyframes kc-loader-guiding-logo {
-  0% { opacity: 0; filter: blur(3px); transform: scale(.975); }
-  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+  0% { opacity: 0; filter: blur(3px) var(--kc-startup-logo-filter, none); transform: scale(.975); }
+  100% { opacity: 1; filter: blur(0) var(--kc-startup-logo-filter, none); transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

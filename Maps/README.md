@@ -1,6 +1,6 @@
 > **Monorepo setup:** This application now lives in `Maps/`. Install dependencies once at the repository root with `npm ci`. See [the root README](../README.md) and [DEPLOYMENT.md](../DEPLOYMENT.md) for current development, Cloudflare, and Google Sheets instructions. The older standalone setup/deployment commands below are superseded.
 
-# Halal Finder Helsinki
+# Manarah
 
 A community-driven Progressive Web App for discovering halal food, shops, and prayer spaces across Helsinki and Finland. Built with vanilla JavaScript ES Modules and MapLibre GL, deployed globally on Cloudflare Pages.
 
@@ -37,7 +37,7 @@ A community-driven Progressive Web App for discovering halal food, shops, and pr
 
 ## Overview
 
-Halal Finder Helsinki is a mobile-first web application that helps the Muslim community in Helsinki and across Finland locate halal restaurants, grocery shops, mosques, prayer rooms, and cemeteries. The app provides:
+Manarah is a mobile-first web application that helps the Muslim community in Helsinki and across Finland locate halal restaurants, grocery shops, mosques, prayer rooms, and cemeteries. The app provides:
 
 - An interactive map with 76+ community-verified halal locations
 - Real-time transit, walking, cycling, and driving directions
@@ -326,8 +326,8 @@ The app is fully installable as a PWA on iOS (Add to Home Screen) and Android (I
 
 ```json
 {
-  "name": "Halal Finder Helsinki",
-  "short_name": "Halal Finder",
+  "name": "Manarah",
+  "short_name": "Manarah",
   "display": "standalone",
   "theme_color": "#08705B",
   "background_color": "#f2f2f2",
@@ -947,4 +947,4 @@ Types: `feat`, `fix`, `chore`, `style`, `refactor`, `test`, `docs`
 
 ---
 
-*Halal Finder Helsinki — built for the community, by the community.*
+*Manarah — built for the community, by the community.*

@@ -47,6 +47,15 @@ export default function DataTable({
 
   const rows = table.getRowModel().rows;
   const rowAnimationKey = `${compact ? "compact" : "comfortable"}-${globalFilter}-${JSON.stringify(columnFilters)}-${sorting.map((item) => `${item.id}:${item.desc}`).join("|")}`;
+  const columnLabels = useMemo(() => {
+    const labels = new Map();
+    for (const column of columns) {
+      const id = column.id || column.accessorKey;
+      if (!id) continue;
+      labels.set(id, typeof column.header === "string" ? column.header : id);
+    }
+    return labels;
+  }, [columns]);
 
   return (
     // Bound the row area so search and pagination remain within reach.
@@ -180,7 +189,12 @@ export default function DataTable({
               rows.map((row, index) => (
                 <tr key={row.id} style={{ "--row-index": index }}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
+                    <td
+                      key={cell.id}
+                      data-label={
+                        columnLabels.get(cell.column.id) || cell.column.id
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

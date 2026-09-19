@@ -108,7 +108,7 @@ svg {
 .startup-mark-gathering::after { animation:gathering-right 760ms var(--ease-out) 160ms both; }
 .startup-screen.is-closing { opacity:0; pointer-events:none; }
 .startup-screen.is-closing .startup-mark { transform:translateY(-4px) scale(.99); transition:transform 240ms var(--ease-out); }
-:root[data-color-mode='dark'] .startup-mark img { filter:invert(1); }
+:root[data-color-mode='dark'] .startup-mark img { filter:brightness(0) invert(1); }
 :root[data-color-mode='dark'] .startup-screen { background:#101815; }
 :root[data-color-mode='dark'] .brand img[src*='karamah-logo'],
 :root[data-color-mode='dark'] #profile-image[src*='karamah-logo'] { filter:invert(1); }

@@ -298,7 +298,7 @@ function _openPinPopup(lng, lat, kind, entry) {
       // that's known, is what previously produced a stacked "Pin saved" +
       // "Couldn't save pin" pair for the same tap.
     } else if (shrBtn) {
-      shareUrl(_buildPinShareUrl(lat, lng), badgeLabel, `${badgeLabel} – Halal Finder`);
+      shareUrl(_buildPinShareUrl(lat, lng), badgeLabel, `${badgeLabel} – Manarah`);
     } else if (rmBtn) {
       fadeAndRemovePopup(popup);
       if (isSearch) { searchMarkerPopup = null; clearSearchMarker(); }
