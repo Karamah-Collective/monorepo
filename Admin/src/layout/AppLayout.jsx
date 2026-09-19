@@ -18,6 +18,9 @@ export default function AppLayout() {
     }
   });
   const [commandOpen, setCommandOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+    () => document.documentElement.dataset.adminTheme === "dark",
+  );
   const location = useLocation();
   const navRef = useRef(null);
   const mainRef = useRef(null);
@@ -120,6 +123,16 @@ export default function AppLayout() {
       return !value;
     });
   }
+  function toggleTheme() {
+    setDarkMode((current) => {
+      const next = !current;
+      document.documentElement.dataset.adminTheme = next ? "dark" : "light";
+      try {
+        localStorage.setItem("karamah-admin-theme", next ? "dark" : "light");
+      } catch {}
+      return next;
+    });
+  }
   return (
     <div className={`pp-app-shell${collapsed ? " nav-is-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">
@@ -160,6 +173,15 @@ export default function AppLayout() {
             <Icons.search size={17} />
             <span>Find a page…</span>
             <kbd>Ctrl K</kbd>
+          </button>
+          <button
+            className="topbar-theme icon-button"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={darkMode ? "Use light mode" : "Use dark mode"}
+            title={darkMode ? "Use light mode" : "Use dark mode"}
+          >
+            {darkMode ? <Icons.sun /> : <Icons.moon />}
           </button>
           <a
             className="topbar-map icon-button"

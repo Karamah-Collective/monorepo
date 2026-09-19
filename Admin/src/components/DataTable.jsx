@@ -26,7 +26,7 @@ export default function DataTable({
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [compact, setCompact] = useState(() => {
-    try { return localStorage.getItem("admin-table-density") === "compact"; } catch { return false; }
+    try { return localStorage.getItem("admin-table-density") !== "comfortable"; } catch { return true; }
   });
 
   const table = useReactTable({
@@ -46,10 +46,11 @@ export default function DataTable({
   });
 
   const rows = table.getRowModel().rows;
+  const rowAnimationKey = `${compact ? "compact" : "comfortable"}-${globalFilter}-${JSON.stringify(columnFilters)}-${sorting.map((item) => `${item.id}:${item.desc}`).join("|")}`;
 
   return (
     // Bound the row area so search and pagination remain within reach.
-    <div className={`pp-table-card${compact ? " table-is-compact" : ""}`}>
+    <div className={`pp-table-card${compact ? " table-is-compact" : ""}${showFilters ? " table-filters-open" : ""}`}>
       <div className="pp-table-toolbar">
         <div className="table-search-wrap">
           <Icons.search size={16} />
@@ -79,7 +80,11 @@ export default function DataTable({
             className="pp-btn"
             aria-label="Compact rows"
             aria-pressed={compact}
-            onClick={() => setCompact((value) => !value)}
+            onClick={() => setCompact((value) => {
+              const next = !value;
+              try { localStorage.setItem("admin-table-density", next ? "compact" : "comfortable"); } catch {}
+              return next;
+            })}
           >
             <Icons.rows size={14} />
             <span>Compact</span>
@@ -143,7 +148,7 @@ export default function DataTable({
               </tr>
             ))}
           </thead>
-          <tbody>
+          <tbody key={rowAnimationKey}>
             {rows.length === 0 ? (
               <tr>
                 <td className="pp-empty-state" colSpan={columns.length}>
@@ -172,8 +177,8 @@ export default function DataTable({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
-                <tr key={row.id}>
+              rows.map((row, index) => (
+                <tr key={row.id} style={{ "--row-index": index }}>
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id}>
                       {flexRender(

@@ -3593,8 +3593,11 @@ _eventsPill.addEventListener("click", () => {
  * @param {string} evId - The event ID to highlight.
  */
 function _openEventsOverlayToEvent(evId) {
+  // Build the list while the sheet is still hidden. Rendering after opening
+  // animates the card's height and looks like a content reveal on phones;
+  // preparing first preserves the standard bottom-sheet entrance.
+  _renderEventsList({ animate: false });
   _eventsOverlay.classList.remove("hide");
-  _renderEventsList();
   requestAnimationFrame(() => {
     const card = _eventsList.querySelector(`.ev-overlay-card[data-ev-id="${CSS.escape(evId)}"]`);
     if (!card) return;

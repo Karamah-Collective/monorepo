@@ -74,7 +74,7 @@ function TypeStyleRow({ item, saving, onSave }) {
         <span className="pp-type-style-edit">{open ? "Done" : "Edit"}</span>
       </button>
 
-      {open && (
+      <div className="pp-type-style-editor-shell" data-open={open ? "true" : "false"} aria-hidden={!open} inert={!open ? "" : undefined}>
         <div className="pp-type-style-editor">
           <div className="pp-type-style-preview-pane">
             <TypeIconPreview iconKeyOrDataUrl={icon} color={color} size={24} />
@@ -133,7 +133,7 @@ function TypeStyleRow({ item, saving, onSave }) {
             />
           </label>
         </div>
-      )}
+      </div>
     </article>
   );
 }
@@ -186,7 +186,7 @@ export default function TypeStylesPage() {
       {!!categoryOrder.length && (
         <>
           <div
-            className="pp-type-style-tabs"
+            className="pp-type-style-tabs pp-section-tabs"
             role="tablist"
             aria-label="Type categories"
           >
@@ -204,7 +204,7 @@ export default function TypeStylesPage() {
               </button>
             ))}
           </div>
-          <section className="pp-type-style-section">
+          <section className="pp-type-style-section pp-tab-panel" key={activeCategory} role="tabpanel">
             <div className="pp-type-style-list">
               {activeItems.map((item) => (
                 <TypeStyleRow

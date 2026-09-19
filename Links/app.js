@@ -4,6 +4,27 @@ const socialsRoot = $('#social-links');
 const socialsSection = $('#socials-section');
 const state = $('#state');
 const toast = $('#toast');
+const startupStartedAt = performance.now();
+
+function setColorMode(mode, persist = false) {
+  const dark = mode === 'dark';
+  document.documentElement.dataset.colorMode = dark ? 'dark' : 'light';
+  $('#theme-toggle')?.setAttribute('aria-label', dark ? 'Use light mode' : 'Use dark mode');
+  if (persist) {
+    try { localStorage.setItem('kc-links-theme', dark ? 'dark' : 'light'); } catch {}
+  }
+}
+
+function finishStartup() {
+  const screen = $('#startup-screen');
+  if (!screen || screen.classList.contains('is-closing')) return;
+  const wait = Math.max(0, 900 - (performance.now() - startupStartedAt));
+  window.setTimeout(() => {
+    screen.classList.add('is-closing');
+    screen.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => screen.remove(), 260);
+  }, wait);
+}
 
 const fallbackCopy = {
   copy_success_text: 'Link copied', error_title: 'The directory is taking a pause',
@@ -188,9 +209,9 @@ function setText(selector, value) {
 function applySettings(settings, linkCount = 0) {
   currentSettings = settings;
   const root = document.documentElement;
-  root.style.setProperty('--canvas', settings.background_color);
-  root.style.setProperty('--surface', settings.surface_color);
-  root.style.setProperty('--ink', settings.text_color);
+  root.style.setProperty('--canvas-light', settings.background_color);
+  root.style.setProperty('--surface-light', settings.surface_color);
+  root.style.setProperty('--ink-light', settings.text_color);
   root.style.setProperty('--accent', settings.accent_color);
   root.style.setProperty('--content-width', `${settings.max_width}px`);
   root.dataset.theme = settings.theme;
@@ -199,6 +220,12 @@ function applySettings(settings, linkCount = 0) {
   root.dataset.layout = settings.layout;
   root.dataset.background = settings.background_style;
   root.dataset.images = settings.image_style;
+  try {
+    if (!localStorage.getItem('kc-links-theme')) {
+      const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      setColorMode(dark ? 'dark' : 'light');
+    }
+  } catch {}
 
   setText('#brand-name', settings.profile_name);
   setText('#page-kicker', settings.page_kicker);
@@ -272,7 +299,7 @@ function renderState(title, description, action) {
 
 async function load() {
   try {
-    const response = await fetch('/api/hub');
+    const response = await fetch('/api/hub', { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || fallbackCopy.error_description);
     const socials = Array.isArray(data.socials) ? data.socials : [];
@@ -290,11 +317,18 @@ async function load() {
       label: currentSettings.retry_label,
       onClick: () => { state.hidden = true; load(); },
     });
+  } finally {
+    finishStartup();
   }
 }
 
 $('#profile-share')?.addEventListener('click', () => {
   share({ title: document.title, text: currentSettings.profile_bio || '', url: location.href });
 });
+
+$('#theme-toggle')?.addEventListener('click', () => {
+  setColorMode(document.documentElement.dataset.colorMode === 'dark' ? 'light' : 'dark', true);
+});
+setColorMode(document.documentElement.dataset.colorMode || 'light');
 
 load();

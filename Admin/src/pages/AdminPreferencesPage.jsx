@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useToast } from "../components/Toast.jsx";
-import { Icons } from "../icons.jsx";
 
 function stored(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -18,7 +17,7 @@ function Choice({ title, description, value, onChange, options }) {
 export default function AdminPreferencesPage() {
   const toast = useToast();
   const [sidebar, setSidebar] = useState(() => stored("admin-sidebar", "expanded"));
-  const [density, setDensity] = useState(() => stored("admin-table-density", "comfortable"));
+  const [density, setDensity] = useState(() => stored("admin-table-density", "compact"));
   const [pageSize, setPageSize] = useState(() => stored("admin-table-page-size", "25"));
   const [readingScale, setReadingScale] = useState(() => stored("admin-reading-scale", "standard"));
   const [motion, setMotion] = useState(() => stored("admin-motion", "standard"));
@@ -39,7 +38,8 @@ export default function AdminPreferencesPage() {
   }, [sidebar, density, pageSize, readingScale, motion, contrast]);
 
   return <div className="pp-page admin-preferences-page">
-    <div className="admin-preferences-heading"><span className="admin-preferences-icon"><Icons.settings size={20} /></span><div><h1 className="pp-page-title">Admin preferences</h1><p className="pp-page-lead">Personal workspace choices stored in this browser. They never affect public Maps, Website, or Links.</p></div></div>
+    <h1 className="pp-page-title">Admin preferences</h1>
+    <p className="pp-page-lead">Personal workspace choices stored in this browser. They never affect public Maps, Website, or Links.</p>
     <div className="admin-preferences-panel">
       <Choice title="Sidebar" description="Choose whether your navigation begins expanded or compact on desktop." value={sidebar} onChange={setSidebar} options={[{ value: "expanded", label: "Expanded" }, { value: "collapsed", label: "Compact" }]} />
       <Choice title="Table density" description="Use comfortable rows by default, or choose compact rows when reviewing large collections." value={density} onChange={setDensity} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} />

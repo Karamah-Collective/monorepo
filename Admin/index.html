@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
+    <script>
+      try {
+        var adminTheme = localStorage.getItem("karamah-admin-theme");
+        var adminDark = adminTheme ? adminTheme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.adminTheme = adminDark ? "dark" : "light";
+      } catch (_) {
+        document.documentElement.dataset.adminTheme = "light";
+      }
+    </script>
     <title>Karamah Collective — Admin</title>
   </head>
   <body>

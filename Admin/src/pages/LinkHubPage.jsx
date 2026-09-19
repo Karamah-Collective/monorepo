@@ -5,6 +5,7 @@ import { LoadingState } from '../components/QueryState.jsx';
 import { useToast } from '../components/Toast.jsx';
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
 import karamahLogo from '../../../Website/assets/images/kc_logo_small.webp';
+import ManageActions from '../components/ManageActions.jsx';
 
 const EMPTY_LINK = { url: '', title: '', description: '', image_url: '', custom_site_name: '', custom_favicon_url: '', link_kind: 'link', social_platform: '', social_handle: '', active: 1, featured: 0, sort_order: 0 };
 const SETTINGS_DEFAULTS = {
@@ -298,11 +299,11 @@ export default function LinkHubPage() {
     {query.isLoading && <LoadingState />}
     {draft && <>
       <OverviewStats links={allLinks} />
-      <nav className="hub-workspace-tabs" aria-label="Link hub sections">
-        {[['links', 'Links & socials', 'Organize destinations and social profiles', Icons.link], ['content', 'Page content', 'Edit every optional public word', Icons.pencil], ['appearance', 'Appearance', 'Shape the public page and cards', Icons.palette]].map(([id, label, description, Icon]) => <button type="button" key={id} className={tab === id ? 'is-active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={16} /><span><b>{label}</b><small>{description}</small></span></button>)}
+      <nav className="hub-workspace-tabs pp-section-tabs" role="tablist" aria-label="Link hub sections">
+        {[['links', 'Links & socials'], ['content', 'Page content'], ['appearance', 'Appearance']].map(([id, label]) => <button type="button" role="tab" key={id} className={tab === id ? 'is-active' : ''} aria-selected={tab === id} onClick={() => setTab(id)}><span><b>{label}</b></span></button>)}
       </nav>
 
-      {tab === 'links' && <div className="hub-links-workspace">
+      {tab === 'links' && <div className="hub-links-workspace pp-tab-panel" role="tabpanel">
         <section className="hub-library">
           <header className="hub-library-head"><div><span className="eyebrow">PUBLIC COLLECTION</span><h2>Links and social profiles</h2><p>Destinations become full cards; social profiles use the compact strip above them.</p></div></header>
           <div className="hub-library-tools"><div className="table-search-wrap"><Icons.search size={16} /><input className="pp-table-search" type="search" placeholder="Search the collection…" aria-label="Search links and social profiles" value={search} onChange={event => setSearch(event.target.value)} /></div><div className="hub-filter" aria-label="Filter collection">{[['all','All'],['links','Links'],['socials','Socials'],['hidden','Hidden']].map(([id,label]) => <button type="button" className={filter === id ? 'is-active' : ''} key={id} onClick={() => setFilter(id)}>{label}</button>)}</div></div>
@@ -312,7 +313,7 @@ export default function LinkHubPage() {
               <div className="hub-admin-copy"><div><strong>{link.link_kind === 'social' ? link.social_handle ? `@${link.social_handle}` : SOCIAL_PLATFORMS[link.social_platform || inferSocialPlatform(link.url)] : link.title || link.metadata_title || link.custom_site_name || link.site_name || 'Untitled link'}</strong><span className="hub-kind">{link.link_kind === 'social' ? 'Social' : 'Link'}</span>{link.featured ? <span className="hub-featured">Featured</span> : null}</div><span>{link.link_kind === 'social' ? SOCIAL_PLATFORMS[link.social_platform || inferSocialPlatform(link.url)] || link.url : link.custom_site_name || link.site_name || link.url}</span>{link.metadata_status === 'error' && link.link_kind !== 'social' && <small>{link.metadata_error}</small>}</div>
               <div className="hub-admin-metrics"><span><b>{link.clicks || 0}</b> opens</span><span>Order {link.sort_order}</span></div>
               <button type="button" className={`hub-visibility ${link.active ? 'is-live' : ''}`} onClick={() => toggleLink(link)} disabled={saveLink.isPending}><i></i>{link.active ? 'Published' : 'Hidden'}</button>
-              <div className="hub-row-actions"><button className="pp-btn" onClick={() => setEditing(link)}>Edit</button><button className="pp-btn pp-btn-delete" disabled={remove.isPending} onClick={() => removeLink(link)}>Remove</button></div>
+              <div className="hub-row-actions"><ManageActions disabled={remove.isPending}>{({ close }) => <><button role="menuitem" className="pp-manage-action" onClick={() => { close(); setEditing(link); }}><span>Edit item</span><small>Change content and appearance</small></button><button role="menuitem" className="pp-manage-action pp-manage-action-danger" onClick={() => { close(); removeLink(link); }}><span>Remove item</span><small>Delete from the public page</small></button></>}</ManageActions></div>
             </article>)}
           </div>
           {!links.length && <div className="inline-empty"><Icons.link size={28} /><strong>{allLinks.length ? 'Nothing matches this view' : 'Your collection is ready for its first item'}</strong><span>{allLinks.length ? 'Clear the search or choose another filter.' : 'Add a destination or social profile to begin.'}</span></div>}
@@ -320,7 +321,7 @@ export default function LinkHubPage() {
         <aside className="hub-side-preview"><header><span className="eyebrow">PUBLIC PREVIEW</span><h2>How it comes together</h2><p>Content and appearance changes update here before you publish.</p></header><PublicPreview settings={draft} links={allLinks} /><a href={linksOrigin} target="_blank" rel="noreferrer">Open full public page <Icons.arrowUpRight size={14} /></a></aside>
       </div>}
 
-      {tab === 'content' && <div className="hub-settings-workspace">
+      {tab === 'content' && <div className="hub-settings-workspace pp-tab-panel" role="tabpanel">
         <form className="hub-settings-editor" onSubmit={event => { event.preventDefault(); publishSettings(); }}>
           <FormSection eyebrow="IDENTITY" title="Profile introduction" description="The first words and image visitors use to understand this page.">
             <Field label="Eyebrow (optional)"><input maxLength={120} placeholder="Leave blank for a cleaner profile" value={draft.page_kicker} onChange={event => update('page_kicker', event.target.value)} /></Field>
@@ -364,7 +365,7 @@ export default function LinkHubPage() {
         <aside className="hub-side-preview is-sticky"><header><span className="eyebrow">LIVE COPY</span><h2>Read it in context</h2><p>The preview follows your unsaved draft.</p></header><PublicPreview settings={draft} links={allLinks} /></aside>
       </div>}
 
-      {tab === 'appearance' && <div className="hub-settings-workspace">
+      {tab === 'appearance' && <div className="hub-settings-workspace pp-tab-panel" role="tabpanel">
         <form className="hub-settings-editor" onSubmit={event => { event.preventDefault(); publishSettings(); }}>
           <FormSection eyebrow="PALETTE" title="Color system" description="One restrained accent and a warm neutral surface keep the Karamah character intact.">
             {[['background_color','Background'],['surface_color','Card surface'],['text_color','Primary text'],['accent_color','Accent']].map(([key,label]) => <Field label={label} key={key}><div className="hub-color-input"><input type="color" value={draft[key]} onChange={event => update(key, event.target.value)} /><input pattern="#[0-9a-fA-F]{6}" value={draft[key]} onChange={event => update(key, event.target.value)} /></div></Field>)}

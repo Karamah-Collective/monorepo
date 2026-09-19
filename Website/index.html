@@ -55,6 +55,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="preload" href="./assets/images/kc_logo_big.inline.svg" as="fetch" crossorigin />
+    <link rel="preload" href="./assets/images/karamah-logo.svg" as="image" type="image/svg+xml" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -103,6 +104,13 @@
   </head>
 
   <body>
+    <div class="kc-startup-screen" data-startup-screen role="status" aria-label="Loading Karamah Collective">
+      <div class="kc-startup-mark kc-loader-guiding">
+        <img src="assets/images/karamah-logo.svg" alt="Karamah Collective" />
+        <span aria-hidden="true"></span>
+      </div>
+    </div>
+    <noscript><style>.kc-startup-screen{display:none}</style></noscript>
     <header id="topbar">
       <div>
         <div class="kc-topbar-inner">
@@ -265,7 +273,7 @@
                       aria-expanded="false"
                     >
                       <object
-                        data="assets/images/kc_logo_big.inline.svg"
+                        data-src="assets/images/kc_logo_big.inline.svg"
                         type="image/svg+xml"
                         class="kc-hero-logo"
                         aria-label="Karamah (Arabic logo)"

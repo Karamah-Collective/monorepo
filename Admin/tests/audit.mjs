@@ -11,7 +11,7 @@ for (const [name, width, height] of [
   const page = await browser.newPage({ viewport: { width, height } });
   await mockAdmin(page);
   await page.goto("http://127.0.0.1:5173");
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1400);
   await page.screenshot({
     path: `test-results/admin/${process.argv[2] || "before"}-${name}.png`,
     fullPage: true,

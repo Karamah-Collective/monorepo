@@ -6,6 +6,7 @@ import WebsitePageHeader, { WebsiteError } from '../components/WebsitePageHeader
 import { useToast } from '../components/Toast.jsx';
 import { Icons, CloseIcon } from '../icons.jsx';
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
+import ManageActions from '../components/ManageActions.jsx';
 
 const EMPTY = { name: '', email: '', position: '', description: '', location: '', status: 'active', order: 0 };
 const REQUIRED_TEAM_SERVICE_VERSION = '2026-09-16-d1-v1';
@@ -212,8 +213,12 @@ export default function WebsiteTeamPage() {
                 </div>
                 <footer>
                   <span>Order {person.order || 0}</span>
-                  <button className="pp-btn" disabled={!teamServiceReady} onClick={() => setEditing(person)}><Icons.pencil size={14} />Edit</button>
-                  <button className="pp-btn pp-btn-delete" disabled={remove.isPending || !teamServiceReady} onClick={() => removePerson(person)}>Remove</button>
+                  <ManageActions disabled={remove.isPending || !teamServiceReady}>
+                    {({ close }) => <>
+                      <button role="menuitem" aria-label="Edit" className="pp-manage-action" onClick={() => { close(); setEditing(person); }}><span>Edit profile</span><small>Update details and visibility</small></button>
+                      <button role="menuitem" aria-label="Remove" className="pp-manage-action pp-manage-action-danger" onClick={() => { close(); removePerson(person); }}><span>Remove member</span><small>Delete from the directory</small></button>
+                    </>}
+                  </ManageActions>
                 </footer>
               </article>
             ))}

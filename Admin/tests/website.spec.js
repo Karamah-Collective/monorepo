@@ -26,6 +26,7 @@ test('team editor saves to the website API and keeps visibility/order fields', a
   await mockWebsite(page);
   await page.goto('/website/team');
   await expect(page.getByRole('heading', { name: 'Amina Hassan' })).toBeVisible();
+  await page.getByRole('button', { name: 'Manage', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Short biography').fill('Organizing our community gatherings.');
@@ -59,7 +60,9 @@ test('team editor can add and remove people from the website API', async ({ page
   });
 
   page.once('dialog', dialog => dialog.accept());
-  await page.locator('.website-person-card').filter({ hasText: 'New Person' }).getByRole('button', { name: 'Remove' }).click();
+  const newPerson = page.locator('.website-person-card').filter({ hasText: 'New Person' });
+  await newPerson.getByRole('button', { name: 'Manage', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'New Person' })).toHaveCount(0);
   expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({ action: 'delete-person', body: { id: 'new-person', revision: 1 } });
 });
@@ -75,8 +78,7 @@ test('team editor blocks writes when the data service is outdated', async ({ pag
   await page.goto('/website/team');
   await expect(page.getByRole('alert')).toContainText('Apps Script is updated');
   await expect(page.getByRole('button', { name: 'Add team member' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Remove' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Manage', exact: true })).toBeDisabled();
 });
 
 test('content drafts survive section changes and publish with the loaded revision', async ({ page }) => {
@@ -128,6 +130,7 @@ test('signup exports omit unsubscribed people and unsubscribe persists', async (
   expect(csv).not.toContain('former@example.test');
   expect(csv).toContain("'+35812345");
   page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Manage', exact: true }).first().click();
   await page.getByRole('button', { name: 'Unsubscribe', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Export subscribed CSV' })).toBeDisabled();
 });
@@ -148,6 +151,7 @@ test('website controls fit a narrow viewport and keep the editor usable', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/website-content-mobile.png', fullPage: true });
   await page.goto('/website/team');
+  await page.getByRole('button', { name: 'Manage', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save team member' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

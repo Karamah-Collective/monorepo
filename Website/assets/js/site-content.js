@@ -167,6 +167,8 @@ function syncTicketCtas(content) {
 let ticketToastTimer = 0;
 let ticketPopupShown = false;
 let currentTicket = null;
+let ticketWaitingForStartup = false;
+let ticketWaitingForHeroLogo = false;
 function scheduleTicketToast(ticket, delay = 5000) {
   window.clearTimeout(ticketToastTimer);
   if (!ticket) return;
@@ -224,6 +226,28 @@ function renderTicketPopup(ticket) {
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !popup.hidden) closePopup();
     });
+  }
+  if (document.documentElement.dataset.startupComplete !== "true") {
+    popup.hidden = true;
+    if (!ticketWaitingForStartup) {
+      ticketWaitingForStartup = true;
+      window.addEventListener("kc:startup-complete", () => {
+        ticketWaitingForStartup = false;
+        renderTicketPopup(currentTicket);
+      }, { once: true });
+    }
+    return;
+  }
+  if (document.documentElement.dataset.heroLogoComplete !== "true") {
+    popup.hidden = true;
+    if (!ticketWaitingForHeroLogo) {
+      ticketWaitingForHeroLogo = true;
+      window.addEventListener("kc:hero-logo-complete", () => {
+        ticketWaitingForHeroLogo = false;
+        renderTicketPopup(currentTicket);
+      }, { once: true });
+    }
+    return;
   }
   if (!ticketPopupShown) {
     ticketPopupShown = true;

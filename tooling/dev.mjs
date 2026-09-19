@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { copyFile } from 'node:fs/promises';
 import path from 'node:path';
 import net from 'node:net';
 import { setupLocalDatabase } from '../Maps/scripts/local-db.mjs';
@@ -26,6 +27,7 @@ process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
 try {
   const target=process.argv[2]||'all';
   if(!['all','admin','maps','website','links'].includes(target))throw new Error('Use maps, website, links, or admin.');
+  if(target!=='maps') await copyFile(path.join(root,'shared','brand','karamah-logo.svg'),path.join(root,'Website','assets','images','karamah-logo.svg'));
   if(target!=='website' && !await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const child=launch(wrangler,['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
   if(target!=='maps' && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
   if(target!=='maps' && target!=='website' && !await busy(8790)) {

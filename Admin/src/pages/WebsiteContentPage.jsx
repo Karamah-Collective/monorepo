@@ -313,8 +313,8 @@ function ContentEditor({ published }) {
       <button type="submit" className="pp-btn pp-btn-primary" disabled={!dirty || save.isPending}><Icons.globe size={16}/>{save.isPending ? 'Publishing…' : 'Publish changes'}</button>
     </div>
     <div className="website-content-layout">
-      <nav className="website-content-tabs" aria-label="Website sections">{groups.map(name => <button type="button" key={name} aria-current={group === name ? 'true' : undefined} onClick={() => setGroup(name)}>{name}<Icons.right size={14}/></button>)}</nav>
-      <section className="website-content-fields" aria-labelledby="content-group-title">
+      <nav className="website-content-tabs pp-section-tabs" role="tablist" aria-label="Website sections">{groups.map(name => <button type="button" role="tab" key={name} aria-selected={group === name} onClick={() => setGroup(name)}>{name}</button>)}</nav>
+      <section className="website-content-fields pp-tab-panel" key={group} role="tabpanel" aria-labelledby="content-group-title">
         <div className="website-content-section-heading"><span className="eyebrow">WEBSITE CONTENT</span><h2 id="content-group-title">{group}</h2><p>Edit the words and visibility visitors see. Publishing applies all sections together.</p></div>
         <fieldset disabled={save.isPending}>{editableFields.filter(([, field]) => field.group === group && field.type !== 'hidden').map(([key, field]) => field.type === 'boolean' ?
           <label className="website-toggle-field" key={key}><span>{field.label}</span><input type="checkbox" checked={draft[key]} onChange={e => setDraft({ ...draft, [key]: e.target.checked })}/></label> :

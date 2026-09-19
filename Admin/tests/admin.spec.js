@@ -14,6 +14,7 @@ test("overview uses API totals and links to the review queue", async ({
   await expect(page.locator(".activity-list")).toContainText("Amina Hassan");
   await page.getByRole("link", { name: "Review", exact: true }).click();
   await expect(page).toHaveURL(/submissions\/new/);
+  await page.getByRole("button", { name: "Manage", exact: true }).first().click();
   await expect(
     page.getByRole("button", { name: "Approve", exact: true }),
   ).toBeVisible();
@@ -57,7 +58,7 @@ test("collection search, column filtering, keyboard sorting, density and paginat
     .click();
   await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "Filter City", exact: true })
+    .getByRole("textbox", { name: "Filter Location", exact: true })
     .fill("Espoo");
   await expect(page.locator(".pp-table-count")).toHaveText("15 / 31 records");
   await page.getByRole("button", { name: "Clear", exact: true }).click();
@@ -67,8 +68,9 @@ test("collection search, column filtering, keyboard sorting, density and paginat
     "aria-sort",
     "ascending",
   );
-  await page.getByRole("button", { name: "Compact rows" }).click();
   await expect(page.locator(".pp-table-card")).toHaveClass(/table-is-compact/);
+  await page.getByRole("button", { name: "Compact rows" }).click();
+  await expect(page.locator(".pp-table-card")).not.toHaveClass(/table-is-compact/);
   await page
     .getByRole("combobox", { name: "Rows per page" })
     .selectOption("10");
@@ -81,12 +83,14 @@ test("moderation still calls the existing actions and shows feedback", async ({
 }) => {
   await mockAdmin(page);
   await page.goto("/submissions/new");
+  await page.getByRole("button", { name: "Manage", exact: true }).first().click();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Approved");
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({
     action: "approve-new",
     body: { rowId: "1" },
   });
+  await page.getByRole("button", { name: "Manage", exact: true }).first().click();
   await page.getByRole("button", { name: "Reject", exact: true }).click();
   await page.getByPlaceholder("Reason (optional)").fill("Duplicate place");
   await page.getByRole("button", { name: "Confirm reject" }).click();
@@ -133,6 +137,7 @@ test("events can be permanently deleted from the admin table", async ({ page }) 
   await mockAdmin(page);
   await page.goto("/events");
   page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Manage", exact: true }).first().click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({
     action: "delete-event",

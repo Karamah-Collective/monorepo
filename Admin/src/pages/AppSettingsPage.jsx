@@ -201,7 +201,7 @@ function SettingsGroup({ group, description, draft, update }) {
   );
   return (
     <section
-      className="pp-settings-section"
+      className="pp-settings-section pp-tab-panel"
       aria-labelledby={`settings-${group.replaceAll(" ", "-").toLowerCase()}`}
     >
       <div className="pp-settings-section-head">
@@ -329,12 +329,13 @@ function SettingsEditor({ data, reload, reloading }) {
   };
   return (
     <form className="pp-settings-form" onSubmit={save}>
-      <nav className="settings-navigation" aria-label="Settings sections">
+      <nav className="settings-navigation map-settings-tabs pp-section-tabs" role="tablist" aria-label="Settings sections">
         {GROUPS.map(([group]) => (
           <button
             type="button"
+            role="tab"
             key={group}
-            aria-pressed={activeGroup === group}
+            aria-selected={activeGroup === group}
             onClick={() => setActiveGroup(group)}
           >
             {group}

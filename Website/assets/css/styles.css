@@ -1044,6 +1044,113 @@ select.is-invalid {
   align-items: stretch;
 }
 
+/* First-paint brand screen. Kept independent of the page reveal system so it
+   remains smooth while heavier homepage assets initialise underneath. */
+.kc-startup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 2rem;
+  overflow: hidden;
+  background: #fff;
+  opacity: 1;
+  transform: translateZ(0);
+  transition: opacity 240ms var(--kc-ease);
+}
+
+html.dark .kc-startup-screen { background: #101a1d; }
+html.dark .kc-startup-mark img { filter: invert(1); }
+
+.kc-startup-mark {
+  display: grid;
+  justify-items: center;
+  gap: 1.125rem;
+  width: min(64vw, 15rem);
+  position: relative;
+  isolation: isolate;
+}
+
+.kc-startup-mark.kc-loader-guiding::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: min(62vw, 14.5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--kc-accent) 18%, transparent), transparent 68%);
+  opacity: 0;
+  transform: scale(.74);
+}
+
+.kc-startup-mark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+  transform: scale(.985);
+}
+
+.kc-startup-screen.is-running .kc-startup-mark img {
+  animation: kc-startup-mark-in 620ms var(--kc-ease) 80ms forwards;
+}
+
+.kc-startup-screen.is-running .kc-startup-mark.kc-loader-guiding::before {
+  animation: kc-loader-guiding-field 980ms var(--kc-ease) both;
+}
+
+.kc-startup-screen.is-running .kc-startup-mark.kc-loader-guiding img {
+  animation: kc-loader-guiding-logo 860ms var(--kc-ease) 120ms forwards;
+}
+
+.kc-startup-mark span {
+  position: relative;
+  width: 3.375rem;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(11, 60, 73, .18);
+}
+
+.kc-startup-mark span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--kc-accent);
+  transform: translateX(-100%);
+}
+
+.kc-startup-screen.is-running .kc-startup-mark span::after {
+  animation: kc-startup-progress 900ms var(--kc-ease) 120ms both;
+}
+.kc-startup-mark.kc-loader-guiding span { display: none; }
+
+.kc-startup-screen.is-closing { opacity: 0; pointer-events: none; }
+.kc-startup-screen.is-closing .kc-startup-mark { transform: translateY(-4px) scale(.99); transition: transform 240ms var(--kc-ease); }
+
+@keyframes kc-startup-mark-in { to { opacity: 1; transform: scale(1); } }
+@keyframes kc-startup-progress { to { transform: translateX(0); } }
+@keyframes kc-loader-guiding-field {
+  0% { opacity: 0; transform: scale(.72); }
+  58% { opacity: .95; transform: scale(1); }
+  100% { opacity: .34; transform: scale(1.04); }
+}
+@keyframes kc-loader-guiding-logo {
+  0% { opacity: 0; filter: blur(3px); transform: scale(.975); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kc-startup-mark img { opacity: 1; transform: none; }
+  .kc-startup-screen.is-running .kc-startup-mark img,
+  .kc-startup-screen.is-running .kc-startup-mark span::after,
+  .kc-startup-screen.is-running .kc-startup-mark.kc-loader-guiding::before { animation: none; }
+  .kc-startup-mark span::after { transform: none; }
+  .kc-startup-screen,
+  .kc-startup-screen.is-closing .kc-startup-mark { transition: opacity 120ms ease; }
+}
+
 .kc-grid-team[hidden] {
   display: none !important;
 }

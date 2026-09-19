@@ -36,6 +36,21 @@ In **Workers & Pages → your project → Settings → Builds & deployments / Bu
 
 The explicit install uses the shared root lockfile. Set those environment variables for both Production and Preview. Cloudflare documents the root/output settings in [build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/) and the install override in [build image configuration](https://developers.cloudflare.com/pages/configuration/build-image/).
 
+### Automatic release versions and cache refresh
+
+Every production build derives one shared release version from Cloudflare's
+`CF_PAGES_COMMIT_SHA` (with GitHub, local Git, and timestamp fallbacks). The
+Website and Links builds append that version to local asset URLs, Admin embeds
+it in the Vite bundle and clears old Cache Storage entries when it changes, and
+Maps uses it for the service-worker cache name. Consequently, every deployed
+commit requests fresh application assets without requiring a manual version
+edit. Keep `tooling/build-version.mjs` and `shared/brand/karamah-logo.svg` in the generated
+deployment branches; `npm run deploy:agent -- sync ...` includes both.
+
+HTML entry points remain revalidated while fingerprinted or versioned assets
+may be cached immutably. Do not replace the app-specific `_headers` files with a
+blanket long-lived cache rule for `/` or `index.html`.
+
 Folder capitalization matters on Cloudflare's Linux builders. Use `Admin`, not `admin`. Output `dist` is relative to each project's root directory; do not enter `Maps/dist` when the root is already `Maps`.
 
 ### Maps: keep the existing project

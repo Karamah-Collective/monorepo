@@ -7,9 +7,12 @@
 
 :root {
   color-scheme: light;
-  --canvas: #f1efe7;
-  --surface: #fffdf8;
-  --ink: #202923;
+  --canvas-light: #f1efe7;
+  --surface-light: #fffdf8;
+  --ink-light: #202923;
+  --canvas: var(--canvas-light);
+  --surface: var(--surface-light);
+  --ink: var(--ink-light);
   --accent: #2b745c;
   --content-width: 680px;
   --muted: color-mix(in srgb, var(--ink) 62%, transparent);
@@ -22,13 +25,21 @@
   --ease-out: cubic-bezier(.23, 1, .32, 1);
   font-family: KaramahSans, sans-serif;
   color: var(--ink);
-  background: var(--canvas);
+  background: #fff;
 }
 
 :root[data-corners='compact'] { --radius-card: 10px; --radius-image: 7px; }
 :root[data-corners='pill'] { --radius-card: 28px; --radius-image: 22px; }
 :root[data-theme='dark'] { color-scheme: dark; }
 :root[data-theme='system'] { color-scheme: light dark; }
+
+:root[data-color-mode='dark'] {
+  color-scheme: dark;
+  --canvas: #151d19;
+  --surface: #202923;
+  --ink: #f4f1e9;
+  --accent: #75b59f;
+}
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme='system'] { color-scheme: dark; }
@@ -67,6 +78,48 @@ svg {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.startup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 32px;
+  background: var(--canvas);
+  opacity: 1;
+  transform: translateZ(0);
+  transition: opacity 240ms var(--ease-out);
+}
+.startup-mark { position:relative; display:grid; justify-items:center; gap:18px; width:min(64vw,238px); isolation:isolate; }
+.startup-mark img { display:block; width:100%; height:auto; opacity:0; transform:scale(.985); animation:startup-mark-in 620ms var(--ease-out) 80ms forwards; }
+.startup-mark span { position:relative; width:54px; height:1px; overflow:hidden; background:var(--line-strong); }
+.startup-mark span::after { content:''; position:absolute; inset:0; background:var(--accent); transform:translateX(-100%); animation:startup-progress 900ms var(--ease-out) 120ms both; }
+.startup-mark-gathering::before,
+.startup-mark-gathering::after { content:''; position:absolute; bottom:24px; width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:0; }
+.startup-mark-gathering::before { margin-left:-44px; }
+.startup-mark-gathering::after { margin-left:44px; }
+.startup-mark-gathering span { position:absolute; bottom:24px; width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:0; }
+.startup-mark-gathering span::after { display:none; }
+.startup-mark-gathering img { animation:gathering-logo 820ms var(--ease-out) 300ms forwards; }
+.startup-mark-gathering::before { animation:gathering-left 760ms var(--ease-out) both; }
+.startup-mark-gathering span { animation:gathering-center 760ms var(--ease-out) 80ms both; }
+.startup-mark-gathering::after { animation:gathering-right 760ms var(--ease-out) 160ms both; }
+.startup-screen.is-closing { opacity:0; pointer-events:none; }
+.startup-screen.is-closing .startup-mark { transform:translateY(-4px) scale(.99); transition:transform 240ms var(--ease-out); }
+:root[data-color-mode='dark'] .startup-mark img { filter:invert(1); }
+:root[data-color-mode='dark'] .startup-screen { background:#101815; }
+:root[data-color-mode='dark'] .brand img[src*='karamah-logo'],
+:root[data-color-mode='dark'] #profile-image[src*='karamah-logo'] { filter:invert(1); }
+
+.masthead-actions { display:flex; align-items:center; gap:7px; }
+.theme-toggle { width:38px; height:38px; display:grid; place-items:center; padding:0; border:1px solid var(--line); border-radius:13px; background:color-mix(in srgb,var(--surface) 80%,transparent); color:var(--ink); cursor:pointer; transition:background-color 180ms ease,border-color 180ms ease,transform 150ms var(--ease-out); }
+.theme-toggle svg { grid-area:1/1; width:16px; height:16px; transition:opacity 160ms ease,transform 180ms var(--ease-out); }
+.theme-toggle .theme-sun { opacity:0; transform:scale(.9); }
+:root[data-color-mode='dark'] .theme-toggle .theme-moon { opacity:0; transform:scale(.9); }
+:root[data-color-mode='dark'] .theme-toggle .theme-sun { opacity:1; transform:scale(1); }
+.theme-toggle:active { transform:scale(.97); }
 
 .atmosphere { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .atmosphere::before {
@@ -587,12 +640,67 @@ svg {
   .skeleton i::after,
   .skeleton span::after { animation: none; }
   .brand,
+  .startup-screen,
+  .startup-mark,
+  .theme-toggle,
   .page-share,
   .social-card,
   .link-card,
   .link-share,
   .state button,
   .toast { transition-duration: 1ms; }
+  .startup-mark img { opacity:1; transform:none; animation:none; }
+  .startup-mark span::after,
+  .startup-mark-gathering::before,
+  .startup-mark-gathering::after { transform:none; animation:none; }
+}
+
+@keyframes startup-mark-in { to { opacity:1; transform:scale(1); } }
+@keyframes startup-progress { to { transform:translateX(0); } }
+@keyframes gathering-logo { 0% { opacity:0; transform:scale(.965); } 100% { opacity:1; transform:scale(1); } }
+@keyframes gathering-left { 0% { opacity:0; transform:translateX(-28px); } 55% { opacity:1; } 100% { opacity:0; transform:translateX(44px); } }
+@keyframes gathering-center { 0% { opacity:0; transform:translateY(18px); } 55% { opacity:1; } 100% { opacity:0; transform:none; } }
+@keyframes gathering-right { 0% { opacity:0; transform:translateX(28px); } 55% { opacity:1; } 100% { opacity:0; transform:translateX(-44px); } }
+
+/* Keep the recognisable orbital composition, rendered as flat ink and wash. */
+.atmosphere { display:block; background:none !important; }
+.atmosphere::before {
+  border-color:color-mix(in srgb,var(--accent) 18%,transparent);
+  box-shadow:none;
+  opacity:.72;
+}
+.atmosphere::after { opacity:.012; }
+.profile-panel::before { display:block; border-color:color-mix(in srgb,var(--accent) 18%,transparent); }
+.profile-panel::after { display:block; background:color-mix(in srgb,var(--accent) 6%,transparent); }
+.page-share,
+.portrait-core,
+.social-card,
+.link-card { box-shadow:none; }
+.page-share:hover,
+.social-card:hover,
+.link-card:hover { box-shadow:none; }
+.profile-portrait,
+.social-card,
+.page-share { background:var(--surface); }
+:root[data-color-mode='dark'] .page-share,
+:root[data-color-mode='dark'] .theme-toggle,
+:root[data-color-mode='dark'] .profile-portrait,
+:root[data-color-mode='dark'] .social-card,
+:root[data-color-mode='dark'] .link-card,
+:root[data-color-mode='dark'] .state,
+:root[data-color-mode='dark'] .skeleton {
+  box-shadow:none;
+  background:var(--surface);
+  backdrop-filter:none;
+}
+@media (hover:hover) and (pointer:fine) {
+  :root[data-color-mode='dark'] .page-share:hover,
+  :root[data-color-mode='dark'] .social-card:hover,
+  :root[data-color-mode='dark'] .link-card:hover {
+    transform:none;
+    border-color:var(--accent);
+    box-shadow:none;
+  }
 }
 
 @keyframes reveal {

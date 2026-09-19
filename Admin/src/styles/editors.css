@@ -516,13 +516,7 @@
   border-radius: 10px;
   padding: 0 24px 20px;
 }
-.settings-navigation {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-}
+.settings-navigation { flex-wrap: nowrap; }
 .settings-navigation button {
   padding: 9px 12px;
   border: 0;
@@ -605,7 +599,7 @@
 .pp-settings-actions {
   margin: 8px -8px 0;
   padding: 12px;
-  background: #f5f8f1;
+  background: var(--bg-alt);
 }
 .pp-type-style-list {
   display: grid;
@@ -628,11 +622,7 @@
   padding-top: 14px;
   animation: page-enter 220ms var(--ease);
 }
-.pp-type-style-tabs {
-  align-self: flex-start;
-  border-radius: 8px;
-  padding: 4px;
-}
+.pp-type-style-tabs { align-self: flex-start; }
 .pp-type-style-tabs button {
   border-radius: 5px;
   font-size: 12px;
@@ -706,4 +696,18 @@
   .pp-settings-actions .pp-btn {
     flex: 1;
   }
+}
+
+.pp-type-style-editor-shell {
+  display:grid;
+  grid-template-rows:0fr;
+  opacity:0;
+  transition:grid-template-rows 240ms var(--ease), opacity 180ms ease;
+}
+.pp-type-style-editor-shell[data-open="true"] { grid-template-rows:1fr; opacity:1; }
+.pp-type-style-editor-shell > .pp-type-style-editor { min-height:0; overflow:hidden; }
+:root[data-admin-theme="dark"] .pp-settings-actions { background:var(--bg-inset); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-type-style-editor-shell { transition:none; }
 }

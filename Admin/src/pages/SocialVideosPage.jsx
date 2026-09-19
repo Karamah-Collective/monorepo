@@ -2,6 +2,7 @@ import { LoadingState } from "../components/QueryState.jsx";
 import { useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import DataTable from "../components/DataTable.jsx";
+import ManageActions from "../components/ManageActions.jsx";
 import {
   useAdminPlaces,
   useAdminSocialVideos,
@@ -106,23 +107,26 @@ export default function SocialVideosPage() {
         header: "",
         enableColumnFilter: false,
         cell: (info) => (
-          <button
-            type="button"
-            className="pp-btn pp-btn-reject"
-            disabled={deleteVideo.isPending}
-            onClick={() => {
-              if (!window.confirm("Remove this video from Discover?")) return;
-              deleteVideo.mutate(
-                { videoId: info.row.original.id },
-                {
-                  onSuccess: () => showToast("Video removed"),
-                  onError: (e) => showToast(e.message, "error"),
-                },
-              );
-            }}
-          >
-            Delete
-          </button>
+          <ManageActions disabled={deleteVideo.isPending}>
+            {({ close }) => <button
+              type="button"
+              role="menuitem"
+              className="pp-manage-action pp-manage-action-danger"
+              onClick={() => {
+                close();
+                if (!window.confirm("Remove this video from Discover?")) return;
+                deleteVideo.mutate(
+                  { videoId: info.row.original.id },
+                  {
+                    onSuccess: () => showToast("Video removed"),
+                    onError: (e) => showToast(e.message, "error"),
+                  },
+                );
+              }}
+            >
+              <span>Delete video</span><small>Remove it from Discover</small>
+            </button>}
+          </ManageActions>
         ),
       }),
     ],

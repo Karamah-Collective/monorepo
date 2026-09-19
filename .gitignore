@@ -120,4 +120,7 @@ desktop.ini
 .gitkeep
 *.pid
 
+# Generated from the canonical root logo by tooling/dev.mjs.
+Website/assets/images/karamah-logo.svg
+
 

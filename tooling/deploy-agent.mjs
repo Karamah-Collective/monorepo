@@ -14,7 +14,7 @@ const APP_SCOPES = {
   },
   website: {
     label: "Website",
-    paths: ["Website/", "shared/", "package.json", "package-lock.json"],
+    paths: ["Website/", "tooling/build-version.mjs", "shared/", "package.json", "package-lock.json"],
     checks: [
       "npm run build:website",
       "npm run test:website",
@@ -29,6 +29,7 @@ const APP_SCOPES = {
       "Maps/src/app-controls-schema.js",
       "Website/assets/",
       "Website/assets/js/content-schema.mjs",
+      "tooling/build-version.mjs",
       "shared/",
       "package.json",
       "package-lock.json",
@@ -37,7 +38,7 @@ const APP_SCOPES = {
   },
   links: {
     label: "Links",
-    paths: ["Links/", "Maps/functions/_link-hub.js", "Maps/functions/api/admin.js", "Maps/migrations/0011_link_hub.sql", "Maps/migrations/0012_link_hub_content.sql", "Maps/migrations/0013_link_hub_card_overrides.sql", "Maps/migrations/0014_link_hub_optional_copy.sql", "Maps/migrations/0015_link_hub_socials.sql", "package.json", "package-lock.json"],
+    paths: ["Links/", "tooling/build-version.mjs", "shared/", "Maps/functions/_link-hub.js", "Maps/functions/api/admin.js", "Maps/migrations/0011_link_hub.sql", "Maps/migrations/0012_link_hub_content.sql", "Maps/migrations/0013_link_hub_card_overrides.sql", "Maps/migrations/0014_link_hub_optional_copy.sql", "Maps/migrations/0015_link_hub_socials.sql", "package.json", "package-lock.json"],
     checks: ["npm run build:links", "npm run test:links"],
   },
 };
@@ -47,6 +48,7 @@ const SHARED_CHECKS = ["npm run check"];
 const DEPLOY_FILES = [
   "package.json",
   "package-lock.json",
+  "shared/brand/karamah-logo.svg",
   "Maps/package.json",
   "Maps/index.html",
   "Maps/manifest.json",
@@ -85,6 +87,7 @@ const DEPLOY_FILES = [
   "Links/_routes.json",
   "Links/functions",
   "Links/scripts/build.mjs",
+  "tooling/build-version.mjs",
   "shared",
 ];
 

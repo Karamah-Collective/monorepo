@@ -30,7 +30,7 @@ for (const viewport of [
 test("link editor keeps its actions visible while its content scrolls", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/links");
-  await page.getByRole("button", { name: "Add link", exact: true }).first().click();
+  await page.getByRole("button", { name: "Add item", exact: true }).first().click();
   const dialog = page.getByRole("dialog", { name: "Add a new link" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Save link" })).toBeVisible();

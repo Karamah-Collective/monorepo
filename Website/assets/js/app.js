@@ -1206,16 +1206,31 @@ async function inlineSvgInto(el, url) {
 }
 
 function initLogoMeaning() {
+  const signalLogoComplete = () => {
+    if (document.documentElement.dataset.heroLogoComplete === 'true') return;
+    document.documentElement.dataset.heroLogoComplete = 'true';
+    window.dispatchEvent(new CustomEvent('kc:hero-logo-complete'));
+  };
   const root = qs("[data-logo-meaning]");
-  if (!root) return;
+  if (!root) {
+    signalLogoComplete();
+    return;
+  }
 
   const trigger = qs("[data-logo-trigger]", root);
   const panel = qs("[data-logo-panel]", root);
-  if (!trigger || !panel) return;
+  if (!trigger || !panel) {
+    signalLogoComplete();
+    return;
+  }
 
   const obj = qs("[data-inline-svg]", trigger);
   const svgUrl = obj?.getAttribute("data") || obj?.getAttribute("data-src");
-  if (obj && svgUrl) inlineSvgInto(obj, svgUrl);
+  const logoMount = obj && svgUrl ? inlineSvgInto(obj, svgUrl) : Promise.resolve(null);
+  logoMount.finally(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(signalLogoComplete, reduce ? 0 : 4400);
+  });
 
   let open = false;
   let closeTimer = 0;
@@ -1294,7 +1309,7 @@ function initLogoMeaning() {
   trigger.addEventListener("mouseenter", earlyInteract, { once: true });
 
   /* Wait for logo reveal (delay 90ms) + SVG draw animation (~1.2s) */
-  const PEEK_DELAY = 1400;
+  const PEEK_DELAY = 5000;
   const PEEK_DURATION = 2000;
 
   setTimeout(() => {
@@ -2093,7 +2108,30 @@ function isValidPhone(phone) {
   return /^\+\d{7,15}$/.test(n);
 }
 
+function initStartupScreen() {
+  const screen = document.querySelector('[data-startup-screen]');
+  const complete = () => {
+    document.documentElement.dataset.startupComplete = 'true';
+    window.dispatchEvent(new CustomEvent('kc:startup-complete'));
+  };
+  if (!screen) {
+    complete();
+    return;
+  }
+  requestAnimationFrame(() => screen.classList.add('is-running'));
+  const minimum = Math.max(0, 980 - performance.now());
+  window.setTimeout(() => {
+    screen.classList.add('is-closing');
+    screen.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => {
+      screen.remove();
+      complete();
+    }, 260);
+  }, minimum);
+}
+
 function init() {
+  initStartupScreen();
   initScrollRestoration();
   initYear();
   initLucide();
@@ -2101,11 +2139,15 @@ function init() {
   initBrandMeasure();
 
   initTopBar();
-  initReveal();
   initHeroMotion();
   initHeroAuroraScene();
 
-  initLogoMeaning();
+  const beginPageReveals = () => {
+    initReveal();
+    initLogoMeaning();
+  };
+  if (document.documentElement.dataset.startupComplete === 'true') beginPageReveals();
+  else window.addEventListener('kc:startup-complete', beginPageReveals, { once: true });
 
   /* Defer non-critical initializations to after first paint */
   requestAnimationFrame(() => {
