@@ -8,3 +8,7 @@ compatibility_date = "2026-08-04"
 binding = "DB"
 database_name = "halal-finder-db"
 database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "manarah-media"

@@ -15,6 +15,7 @@
 import { allowedOrigin, json } from "../_shared.js";
 import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
+import { getReviewImageMap } from "../_review-images.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 
@@ -65,10 +66,22 @@ async function getPromoMap(db) {
   return promosByPlace;
 }
 
+async function _getMapsLinkMap(db) {
+  const links = new Map();
+  try {
+    const { results } = await db.prepare(
+      "SELECT app_place_id, maps_link FROM new_places WHERE app_place_id != '' AND maps_link != '' ORDER BY id"
+    ).all();
+    for (const row of results) links.set((row.app_place_id || "").toString(), (row.maps_link || "").toString());
+  } catch { /* Older data remains usable without optional Maps links. */ }
+  return links;
+}
+
 // Code.gs:608 getPlacesJSON
 async function getPlaces(db) {
   const labelToId = await buildLabelToIdMap(db);
   const promoMap = await getPromoMap(db);
+  const mapsLinkMap = await _getMapsLinkMap(db);
   const { results } = await db.prepare("SELECT * FROM places").all();
   const places = [];
 
@@ -117,6 +130,7 @@ async function getPlaces(db) {
         if (gi.about) place.about = gi.about;
       } catch { /* malformed, omit */ }
     }
+    if (!place.mapsUrl && mapsLinkMap.has(place.id)) place.mapsUrl = mapsLinkMap.get(place.id);
 
     const sponsorTier = (row.sponsor_tier || "").toString().trim().toLowerCase();
     if (!row.boycott && sponsorTier && SPONSOR_TIERS.includes(sponsorTier) && isSponsorActiveForDate(row.sponsor_start_date, row.sponsor_end_date)) {
@@ -190,6 +204,7 @@ async function getEvents(db) {
 // Code.gs:4378 getReviewsJSON — the `reviews` key of ?action=all
 async function getReviewsSummary(db) {
   const { results } = await db.prepare("SELECT * FROM reviews").all();
+  const imageMap = await getReviewImageMap(db);
   const grouped = {};
   const ensure = (pid) => {
     if (!grouped[pid]) grouped[pid] = { total: 0, sum: 0, items: [], googleReviewRaw: "", googleRatingRaw: "", googleRatingCountRaw: "" };
@@ -204,7 +219,7 @@ async function getReviewsSummary(db) {
       const g = ensure(placeId);
       g.total++;
       g.sum += rating;
-      g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community" });
+      g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community", images: imageMap.get(String(row.id)) || [] });
     }
     if (placeId) {
       const g = ensure(placeId);

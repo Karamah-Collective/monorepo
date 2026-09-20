@@ -6,7 +6,7 @@ import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
-import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
+import { getPlaceRating, getPlaceReviewImages, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
 import { EVT } from "./events.js";
 
 export let placesData = [];
@@ -1906,6 +1906,16 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
 
+  // Media is non-critical and only requested after the user opens a place.
+  const mediaHost = document.createElement("div");
+  mediaHost.className = "pp-media-host";
+  inner.appendChild(mediaHost);
+  let mediaController = null;
+  import("./place-media.js").then(({ mountPlaceMedia }) => {
+    if (!mediaHost.isConnected) return;
+    mediaController = mountPlaceMedia(mediaHost, place, getPlaceReviewImages(place.id));
+  }).catch(() => { /* Photos are optional; place details remain complete. */ });
+
   // Tap-to-show tooltip on mobile for the Featured badge
   const featBadge = hdr.querySelector(".pp-sponsor-badge");
   if (featBadge) {
@@ -1961,6 +1971,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   // Re-render reviews section when data arrives after the sheet is already open
   const _onReviewsLoaded = () => {
     _renderPlaceSheetReviews(reviewsSection, place.id, place.name, getPlaceRating(place.id));
+    mediaController?.setCommunityImages(getPlaceReviewImages(place.id));
   };
   window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
   _activePlaceSheetReviewsListener = _onReviewsLoaded;

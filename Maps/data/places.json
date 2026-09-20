@@ -70,11 +70,10 @@
     "lng": 25.012677196646568,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -431,11 +430,10 @@
     "lng": 25.082330579947936,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "Alanya Market inside the Itis/Puhos complex; address adjusted to the main mall address.",
     "hours": {
@@ -483,11 +481,10 @@
     "lng": 25.081753003963986,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "Beno's main Helsinki branch near Itis metro.",
     "hours": {
@@ -513,11 +510,10 @@
     "lng": 25.1471,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "Yalla branch in Columbus mall, Vuosaari – fresh butcher counter and ethnic groceries. Phone: 041 3122479.",
     "hours": {
@@ -1068,12 +1064,10 @@
     "lng": 25.0088526,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -1099,7 +1093,6 @@
     "lng": 25.0084111,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "service_type_grocery": true
@@ -1127,7 +1120,6 @@
     "lng": 25.0066934,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true,
       "asian_products": true,
       "service_type_grocery": true
     },
@@ -1154,10 +1146,8 @@
     "lng": 25.0095205,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -1342,12 +1332,10 @@
     "lng": 25.0625794,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -1374,12 +1362,10 @@
     "lng": 25.030705,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -1405,7 +1391,6 @@
     "lng": 25.0821358,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true,
       "service_type_grocery": true
     },
     "notes": "",
@@ -1765,9 +1750,7 @@
     "lng": 25.0802901,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -1792,8 +1775,7 @@
     "lng": 25.0803733,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "mapsUrl": "https://maps.google.com/?cid=1041204205650331764"
@@ -2107,12 +2089,10 @@
     "lng": 24.85353054238982,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -2333,7 +2313,6 @@
     "lng": 24.7465642,
     "tags": {
       "halal_meat": true,
-      "halal_groceries": true,
       "service_type_grocery": true
     },
     "notes": "Has halal frozen chicken, beef and lamb. Also has other halal frozen items, such as meatballs, kebabs and halal candy.",
@@ -2470,13 +2449,11 @@
     "lng": 22.3596601,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
       "halal_certified": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -2502,13 +2479,11 @@
     "lng": 22.3594573,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
       "asian_products": true,
       "african_products": true,
       "arab_products": true,
       "halal_certified": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {
@@ -5149,9 +5124,7 @@
     "lng": 25.0424742,
     "tags": {
       "halal_meat": true,
-      "halal_butchery": true,
-      "halal_groceries": true,
-      "service_type_grocery": true
+      "service_type_butchery": true
     },
     "notes": "",
     "hours": {

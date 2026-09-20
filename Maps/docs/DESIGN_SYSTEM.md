@@ -257,12 +257,25 @@ internal alignment while shrinking proportionally.
 
 ### Component Sizing
 
+Place media uses `--place-media-card-w`/`--place-media-card-h` for the snap
+gallery, `--review-media-size` for published review thumbnails,
+`--review-preview-size` for selected-upload previews, and
+`--review-media-remove-size` for the preview's icon-only remove control.
+`.pp-media-credit`/`.pp-media-provider`, `.rv-image-picker`, and
+`.rv-image-remove` are shared media primitives; gallery and form layout remains
+in `styles.css`.
+
 | Token | Value | Use |
 |---|---|---|
 | `--h-submit` | `44px` | Submit/CTA button height |
 | `--h-field` | `46px` | Direction / date input row height |
 | `--h-search` | `48px` | Search box height |
 | `--places-refine-max-h` | `360px` | Upper bound for animating the phone Places refine bar open/closed |
+| `--place-media-card-w` | `190px` | Horizontal place-gallery card width |
+| `--place-media-card-h` | `128px` | Horizontal place-gallery card height |
+| `--review-media-size` | `88px` | Published review thumbnail size |
+| `--review-preview-size` | `88px` | Selected review-upload preview size |
+| `--review-media-remove-size` | `44px` | Touch-safe preview remove control |
 
 **Correction (2026-08-02):** this table previously listed a `--h-input: 44px` token ("Minimum touch-friendly height for form inputs") and `--h-submit: 48px`/`--h-field: 42px` — none of which matched `design-tokens.css`. `--h-input` was never actually defined anywhere in the stylesheet (any `var(--h-input)` reference silently resolved to the browser's initial `height` value, `auto`), and `--h-submit`/`--h-field`'s real values are `44px`/`46px`, not `48px`/`42px`. Found the hard way: a `.btn-google` height override referencing the phantom `--h-input` silently collapsed that button to ~20px, caught by an automated Playwright bounding-box assertion, not by visual review (see `docs/PREFERENCE_LOG.md`'s 2026-08-02 entry for the full incident). Corrected the table to match the actual CSS and added the previously-undocumented `--h-search`. If you need a 44px "safe minimum touch target" height for a new form control that isn't literally a submit button, `--h-submit` is the closest existing 44px token — introduce a new dedicated token rather than reintroducing a bare `--h-input` name with an assumed value.
 

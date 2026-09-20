@@ -16,6 +16,7 @@ import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
 import { readAppSettings } from "../_app-settings.js";
+import { getReviewImageMap } from "../_review-images.js";
 
 const MAX_BODY_SIZE = 4096;
 const MAX_TEXT_LEN = 500;
@@ -52,6 +53,7 @@ export async function onRequestGet(context) {
 
   try {
     const { results } = await env.DB.prepare("SELECT * FROM reviews").all();
+    const imageMap = await getReviewImageMap(env.DB);
     const grouped = {};
     const ensure = (pid) => {
       if (!grouped[pid]) grouped[pid] = { total: 0, sum: 0, items: [], googleReviewRaw: "", googleRatingRaw: "", googleRatingCountRaw: "" };
@@ -65,7 +67,7 @@ export async function onRequestGet(context) {
         const g = ensure(placeId);
         g.total++;
         g.sum += rating;
-        g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community" });
+        g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community", images: imageMap.get(String(row.id)) || [] });
       }
       if (placeId) {
         const g = ensure(placeId);
@@ -195,7 +197,19 @@ export async function onRequestPost(context) {
     const identity = await resolveFirebaseIdentity(body.idToken);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
+    const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).first();
+    let objectKeys = [];
+    if (existing) {
+      try {
+        const { results } = await db.prepare("SELECT object_key FROM review_images WHERE review_id = ?").bind(existing.id).all();
+        objectKeys = results.map((row) => row.object_key).filter(Boolean);
+        await db.prepare("DELETE FROM review_images WHERE review_id = ?").bind(existing.id).run();
+      } catch { objectKeys = []; }
+    }
     const { meta } = await db.prepare("DELETE FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).run();
+    if (objectKeys.length && env.MEDIA) {
+      try { await env.MEDIA.delete(objectKeys); } catch { /* Deleted metadata keeps orphaned media inaccessible. */ }
+    }
     return json(meta.rows_written > 0 ? { success: true } : { error: "not_found" }, meta.rows_written > 0 ? 200 : 400, headers);
   }
 

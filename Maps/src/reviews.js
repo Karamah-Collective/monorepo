@@ -36,6 +36,9 @@ const PASSWORD_MIN_LENGTH = 6; // mirrors Firebase Auth's own minimum — checke
 // constraint here, this is just sane UI debounce. Mirrors this app's
 // existing 60s submission-cooldown convention elsewhere.
 const VERIFY_RESEND_COOLDOWN_MS = 60_000;
+const MAX_REVIEW_IMAGES = 3;
+const MAX_REVIEW_IMAGE_BYTES = 5 * 1024 * 1024;
+const REVIEW_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 // auth.js is dynamically imported (never a static top-level import) so the
 // heavy Firebase CDN modules it pulls in stay lazy — only fetched the first
@@ -226,6 +229,15 @@ export function getPlaceReviews(placeId) {
   return data?.items || [];
 }
 
+/**
+ * Return approved community images for a place's detail gallery.
+ * @param {string} placeId - Stable six-character app place ID.
+ * @returns {Array<object>} Public community image descriptors.
+ */
+export function getPlaceReviewImages(placeId) {
+  return getPlaceReviews(placeId).flatMap((review) => (review.source === "google" ? [] : (review.images || []).map((image) => ({ ...image, source: "community" }))));
+}
+
 // ─── Review Submission ───────────────────────────────────────────────────────
 
 /**
@@ -246,9 +258,10 @@ async function _resolveReviewIdentity() {
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
- * @returns {Promise<{success: boolean, status?: string, error?: string}>}
+ * @param {File[]} [images=[]] - optional community photos selected for upload
+ * @returns {Promise<{success: boolean, status?: string, error?: string, uploaded?: number, imageError?: string}>}
  */
-export async function submitReview(placeId, rating, text) {
+export async function submitReview(placeId, rating, text, images = []) {
   const identity = await _resolveReviewIdentity();
   if (!identity) return { success: false, error: "invalid_token" };
 
@@ -272,7 +285,22 @@ export async function submitReview(placeId, rating, text) {
       window.dispatchEvent(new CustomEvent(EVT.MY_REVIEW_SUBMITTED, {
         detail: { placeId, rating, text, status: result.status },
       }));
-      return { success: true, status: result.status };
+      let uploaded = 0;
+      let imageError = "";
+      for (const image of images.slice(0, MAX_REVIEW_IMAGES)) {
+        const form = new FormData();
+        form.append("placeId", placeId);
+        form.append("idToken", identity.idToken);
+        form.append("image", image, image.name);
+        try {
+          const uploadResponse = await fetch("/api/review-image", { method: "POST", body: form });
+          const uploadResult = await uploadResponse.json();
+          if (!uploadResult.success) { imageError = uploadResult.error || "upload_failed"; break; }
+          uploaded++;
+        } catch { imageError = "network_error"; break; }
+      }
+      if (uploaded) _fetchReviews();
+      return { success: true, status: result.status, uploaded, imageError };
     }
     return { success: false, error: result.error };
   } catch {
@@ -605,8 +633,8 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
   const communityCount = Number(ratingData?.sources?.community?.count ?? communityCountFallback);
   const googleCountFromSources = Number(ratingData?.sources?.google?.count || 0);
   const googleCount = googleCountFromSources > 0 ? googleCountFromSources : Math.max(0, count - communityCount);
-  const textReviews = reviews
-    .filter((r) => _getReviewText(r).length > 0)
+  const displayReviews = reviews
+    .filter((r) => _getReviewText(r).length > 0 || (Array.isArray(r.images) && r.images.length > 0))
     .sort(_compareReviewPriority);
   const ratedReviews = reviews.filter((r) => _getReviewRating(r) >= 1 && _getReviewRating(r) <= 5);
   const distribution = _calcDistribution(ratedReviews);
@@ -644,9 +672,9 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
         </div>
       </div>` : "";
 
-  const reviewCards = textReviews.length
-    ? `<div class="rv-list">${textReviews.map((r) => _buildReviewCard(r)).join("")}</div>`
-    : `<div class="rv-list"><div class="rv-empty"><p class="rv-empty-text">No text reviews yet</p></div></div>`;
+  const reviewCards = displayReviews.length
+    ? `<div class="rv-list">${displayReviews.map((r) => _buildReviewCard(r)).join("")}</div>`
+    : `<div class="rv-list"><div class="rv-empty"><p class="rv-empty-text">No written reviews or photos yet</p></div></div>`;
 
   return `<div class="rv-overlay-card">
     <div class="rv-sheet-drag sheet-drag"><span></span></div>
@@ -674,6 +702,9 @@ function _buildReviewCard(review) {
     ? `<span class="rv-source-chip rv-source-google">Google</span>`
     : `<span class="rv-source-chip rv-source-community">Community</span>`;
   const author = isGoogle && review.authorName ? `<span class="rv-review-author">${esc(review.authorName)}</span>` : "";
+  const images = !isGoogle && Array.isArray(review.images) && review.images.length
+    ? `<div class="rv-review-images">${review.images.map((image, index) => `<a class="rv-review-image" href="${esc(image.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open review photo ${index + 1}"><img src="${esc(image.url)}" alt="Community photo for this review" loading="lazy" decoding="async"></a>`).join("")}</div>`
+    : "";
   return `<div class="rv-review-card">
     <div class="rv-review-body">
       <div class="rv-review-meta">
@@ -684,6 +715,7 @@ function _buildReviewCard(review) {
         <span class="rv-review-time">${esc(timeAgo)}</span>
       </div>
       ${text ? `<p class="rv-review-text">${esc(text)}</p>` : ""}
+      ${images}
     </div>
   </div>`;
 }
@@ -1500,6 +1532,61 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
   textGroup.appendChild(charCounter);
   form.appendChild(textGroup);
 
+  const imageGroup = document.createElement("div");
+  imageGroup.className = "rv-image-group";
+  const imageInput = document.createElement("input");
+  imageInput.className = "rv-image-input";
+  imageInput.type = "file";
+  imageInput.accept = "image/jpeg,image/png,image/webp";
+  imageInput.multiple = true;
+  const imagePicker = document.createElement("label");
+  imagePicker.className = "rv-image-picker btn-secondary";
+  imagePicker.textContent = "Add photos";
+  imagePicker.appendChild(imageInput);
+  const imageHint = document.createElement("span");
+  imageHint.className = "rv-image-hint";
+  imageHint.textContent = `Up to ${MAX_REVIEW_IMAGES} JPG, PNG or WebP photos`;
+  const imagePreview = document.createElement("div");
+  imagePreview.className = "rv-image-preview";
+  let selectedImages = [];
+
+  const renderImagePreview = () => {
+    imagePreview.innerHTML = "";
+    selectedImages.forEach((file, index) => {
+      const item = document.createElement("div");
+      item.className = "rv-image-preview-item";
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      img.alt = `Selected review photo ${index + 1}`;
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const remove = document.createElement("button");
+      remove.className = "rv-image-remove";
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Remove photo ${index + 1}`);
+      remove.textContent = "×";
+      remove.addEventListener("click", () => {
+        selectedImages.splice(index, 1);
+        renderImagePreview();
+      });
+      item.append(img, remove);
+      imagePreview.appendChild(item);
+    });
+    imagePicker.classList.toggle("hide", selectedImages.length >= MAX_REVIEW_IMAGES);
+  };
+
+  imageInput.addEventListener("change", () => {
+    const incoming = [...(imageInput.files || [])];
+    for (const file of incoming) {
+      if (!REVIEW_IMAGE_TYPES.has(file.type)) { showToast("Unsupported photo", "error", "Use JPG, PNG or WebP"); continue; }
+      if (file.size > MAX_REVIEW_IMAGE_BYTES) { showToast("Photo is too large", "error", "Maximum 5 MB per photo"); continue; }
+      if (selectedImages.length < MAX_REVIEW_IMAGES) selectedImages.push(file);
+    }
+    imageInput.value = "";
+    renderImagePreview();
+  });
+  imageGroup.append(imagePicker, imageHint, imagePreview);
+  form.appendChild(imageGroup);
+
   const submitBtn = document.createElement("button");
   submitBtn.className = "rv-submit-btn btn-primary";
   submitBtn.type = "button";
@@ -1533,17 +1620,17 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     closeReviewsOverlay();
     showToast(existing ? "Updating review…" : "Submitting review…", "check");
 
-    const result = await submitReview(placeId, ratingAtSubmit, text);
+    const result = await submitReview(placeId, ratingAtSubmit, text, selectedImages);
 
     if (result.success) {
       if (result.status === "updated") {
-        showToast("Review updated", "check");
+        showToast("Review updated", "check", result.imageError ? "Review saved; some photos could not upload" : "");
       } else if (result.status === "pending") {
         showToast("Review submitted", "check", "Will appear after moderation");
       } else if (!result.status) {
         showToast("Review submitted", "check", "Will appear after moderation");
       } else {
-        showToast("Review published", "check");
+        showToast("Review published", "check", result.imageError ? "Some photos could not upload" : (result.uploaded ? `${result.uploaded} photo${result.uploaded === 1 ? "" : "s"} added` : ""));
       }
       return;
     }

@@ -4889,3 +4889,67 @@ passed four Playwright checks; the Admin Link Hub passed five focused checks,
 including no horizontal overflow, blank optional copy, and a scrollable mobile
 editor with visible actions. Both production builds and the repository layout
 check passed.
+
+## 2026-09-20 - Lazy place galleries and review-photo uploads
+
+**User preference:** place photography must remain demand-driven. Never warm or
+bulk-populate Google media for the full directory; a place that nobody opens
+must create no Google photo request. Google retrieval must also have an Admin
+kill switch and start disabled, so community media can ship before a Google
+Places budget is enabled.
+
+**Architecture decision:** community review photos use private R2 object storage
+(`MEDIA`) with ownership/status metadata in D1 (`review_images`). Public reads
+join through an approved review; signed-in uploads are limited to three
+JPG/PNG/WebP files of five MB each, validated by declared type and magic bytes.
+Delivery is `private, no-store` so a rejected or deleted review cannot remain
+visible from an immutable browser/CDN cache.
+Deleting a review/place or rejecting a review removes its metadata and attempts
+to delete the corresponding R2 objects. Google photo names and bytes are not
+persisted: the current non-EEA Places terms permit long-lived place-ID storage
+but not a general 30-day photo cache. `place_google_ids` therefore stores only
+the policy-exempt stable ID. The server-side `googlePlacePhotosEnabled` setting
+is checked before any Google request and defaults to false.
+
+**Design decision:** place details use a compact edge-to-edge horizontal snap
+rail, preserving the existing Premium Utility sheet rather than introducing a
+separate modal or card style. Community and Google media share one rail but
+retain explicit source labels; Google photos also preserve author/source links.
+Review cards show their own compact photo strip, and the review form uses a
+text-only Add photos control with removable local previews. No-photo places
+remove the media section and its spacing entirely. New media sizing tokens and
+shared credit/picker/remove primitives live in `design-tokens.css`.
+
+**Cloudflare setup:** added migration `0016_place_media.sql`, the `MEDIA` R2
+binding, and `docs/PLACE_MEDIA_SETUP.md` with separate Production/Preview bucket,
+migration, Google API, and Admin-toggle instructions. Privacy copy now covers
+public review photos and private R2 storage.
+
+**Verification:** targeted `node --check` and `git diff --check` were run. No
+Playwright or browser tests were run, honoring the standing preference.
+
+### 2026-09-20 — Review image Functions build correction
+
+Corrected the PNG magic-signature entry in `functions/api/review-image.js`,
+which closed its object with a bracket and prevented Wrangler from compiling
+Pages Functions. Verified the file with `node --check` and compiled the complete
+Functions bundle successfully with Wrangler. No browser tests were run.
+
+### 2026-09-20 — Active taxonomy deduplication and production rollout
+
+Audited all 209 production places and the full tag lookup against the three
+active top-level types. Consolidated `halal_butchery` into the Butchery service
+subtype (which takes precedence when a legacy place also said Groceries), and
+removed `halal_groceries` where the Grocery subtype already carries that
+meaning. Preserved adjacent concepts such as Halal Meat, Wudu versus Wudu
+Facility, and Eid Prayer versus Eid Prayer Place because they distinguish an
+offered feature from a place subtype. Normalized one label-keyed `Quran
+Available` value to `quran_available`, and removed the unused legacy `shop`,
+`mosque`, and `prayer_room` lookup groups. Migration:
+`0017_taxonomy_dedup.sql`; bundled fallback JSON was updated to match.
+
+Before the production D1 migration, exported a recoverable database backup to
+`.local-backups/taxonomy/`. Production verification found 18 Butchery services,
+10 Grocery services, and no remaining duplicate/malformed keys or obsolete
+lookup rows. No Playwright or browser tests were run, honoring the standing
+preference.

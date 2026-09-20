@@ -22,6 +22,7 @@ export const APP_CONTROL_FIELDS = {
   showRatings: toggle("Ratings on place cards", "Search & discovery"),
   showHours: toggle("Opening hours on place cards", "Search & discovery"),
   showTags: toggle("Tags on place cards", "Search & discovery"),
+  googlePlacePhotosEnabled: toggle("Google place photos", "Search & discovery", false, "Disabled by default. When enabled, opening an eligible place requests live photos from Google Places."),
   searchSynonyms: text("Search synonyms", "Search & discovery", "", 2000, "One equivalent pair per line, for example masjid=mosque. Both directions are matched."),
   emptyPlacesText: text("Empty directory message", "Search & discovery", "No places found", 120),
   discoverEnabled: toggle("Discover shortcut", "Navigation"),

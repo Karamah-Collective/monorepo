@@ -277,6 +277,30 @@ CREATE TABLE reviews (
 CREATE INDEX idx_reviews_place_id ON reviews(place_id);
 CREATE INDEX idx_reviews_email_hash ON reviews(email_hash);
 
+-- Community review photos live in R2; D1 stores ownership and object metadata.
+CREATE TABLE review_images (
+  id           TEXT PRIMARY KEY,
+  review_id    INTEGER NOT NULL,
+  place_id     TEXT NOT NULL,
+  object_key   TEXT NOT NULL UNIQUE,
+  content_type TEXT NOT NULL,
+  size_bytes   INTEGER NOT NULL,
+  created_at   TEXT NOT NULL,
+  FOREIGN KEY(review_id) REFERENCES reviews(id) ON DELETE CASCADE,
+  FOREIGN KEY(place_id) REFERENCES places(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_review_images_review_id ON review_images(review_id);
+CREATE INDEX idx_review_images_place_id ON review_images(place_id);
+
+-- Google place IDs are exempt from Places caching restrictions. Photo
+-- references and image bytes are deliberately not persisted here.
+CREATE TABLE place_google_ids (
+  place_id        TEXT PRIMARY KEY,
+  google_place_id TEXT NOT NULL,
+  resolved_at     TEXT NOT NULL,
+  FOREIGN KEY(place_id) REFERENCES places(id) ON DELETE CASCADE
+);
+
 -- 13. SavedPlaces — cross-device favorites/pins/home/visited.
 -- Deviation: partial unique indexes enforce "at most one home row per user"
 -- and idempotent favorite/visited inserts at the DB level, on top of the

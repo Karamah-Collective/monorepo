@@ -674,12 +674,18 @@ async function refreshPlaceInfo(db, placeId, env) {
   return { success: true, coordinates: { lat, lng } };
 }
 
-async function deletePlace(db, placeId) {
+async function deletePlace(db, placeId, env) {
   if (!placeId) return { error: "Missing placeId" };
   const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
   if (!place) return { error: `Place not found: ${placeId}` };
 
+  let mediaKeys = [];
+  try {
+    const { results } = await db.prepare("SELECT object_key FROM review_images WHERE place_id = ?").bind(placeId).all();
+    mediaKeys = results.map((row) => row.object_key).filter(Boolean);
+  } catch { mediaKeys = []; }
   const statements = [
+    db.prepare("DELETE FROM review_images WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM reviews WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM saved_places WHERE place_id = ?").bind(placeId),
     db.prepare("DELETE FROM events WHERE place_id = ?").bind(placeId),
@@ -695,6 +701,9 @@ async function deletePlace(db, placeId) {
   }
   statements.push(db.prepare("DELETE FROM places WHERE id = ?").bind(placeId));
   await db.batch(statements);
+  if (mediaKeys.length && env.MEDIA) {
+    try { await env.MEDIA.delete(mediaKeys); } catch { /* D1 deletion remains authoritative. */ }
+  }
   return { success: true };
 }
 
@@ -893,10 +902,20 @@ async function rejectEventEdit(db, rowId, reason) {
   return meta.rows_written > 0 ? { success: true } : { error: "Event edit not found (may already be processed)" };
 }
 
-async function updateReviewStatus(db, rowIndex, newStatus) {
+async function updateReviewStatus(db, rowIndex, newStatus, env) {
   const rowNum = parseInt(rowIndex, 10);
   if (!rowNum) return { error: "Invalid row index" };
   const { meta } = await db.prepare("UPDATE reviews SET status = ? WHERE id = ?").bind(newStatus, rowNum).run();
+  if (meta.rows_written > 0 && newStatus === "no") {
+    try {
+      const { results } = await db.prepare("SELECT object_key FROM review_images WHERE review_id = ?").bind(rowNum).all();
+      await db.prepare("DELETE FROM review_images WHERE review_id = ?").bind(rowNum).run();
+      const keys = results.map((row) => row.object_key).filter(Boolean);
+      if (keys.length && env.MEDIA) {
+        try { await env.MEDIA.delete(keys); } catch { /* Rejected media is already inaccessible via D1. */ }
+      }
+    } catch { /* migration may not be applied yet */ }
+  }
   return meta.rows_written > 0 ? { success: true } : { error: "Row not found" };
 }
 
@@ -941,7 +960,7 @@ const POST_ACTIONS = {
   "update-place-disabled": (db, data) => updatePlaceDisabled(db, data.placeId, data.disabled),
   "update-place-coordinates": (db, data) => updatePlaceCoordinates(db, data),
   "refresh-place-info": (db, data, env) => refreshPlaceInfo(db, data.placeId, env),
-  "delete-place": (db, data) => deletePlace(db, data.placeId),
+  "delete-place": (db, data, env) => deletePlace(db, data.placeId, env),
   "update-sponsor": (db, data) => updateSponsor(db, data),
   "update-type-style": (db, data) => updateTypeStyle(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
@@ -952,8 +971,8 @@ const POST_ACTIONS = {
   "delete-event": (db, data) => deleteEvent(db, data.eventId),
   "approve-event-edit": (db, data, env) => approveEventEdit(db, data.rowId, env),
   "reject-event-edit": (db, data) => rejectEventEdit(db, data.rowId, data.reason || ""),
-  "approve-review": (db, data) => updateReviewStatus(db, data.rowIndex, "yes"),
-  "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no"),
+  "approve-review": (db, data, env) => updateReviewStatus(db, data.rowIndex, "yes", env),
+  "reject-review": (db, data, env) => updateReviewStatus(db, data.rowIndex, "no", env),
   "approve-eid": (db, data) => approveEid(db, data.rowId),
   "reject-eid": (db, data) => rejectEid(db, data.rowId),
   "upsert-social-video": (db, data) => upsertSocialVideo(db, data.video || data),

@@ -324,6 +324,15 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --h-submit: 44px; /* form submit button               */
   --h-search: 48px; /* search box                       */
   --places-refine-max-h: 360px;
+  --place-media-card-w: 190px;
+  --place-media-card-h: 128px;
+  --review-media-size: 88px;
+  --review-preview-size: 88px;
+  --review-media-remove-size: 44px;
+  --media-credit-bg: color-mix(in srgb, var(--text) 72%, transparent);
+  --media-remove-bg: color-mix(in srgb, var(--text) 76%, transparent);
+  --media-credit-hover-opacity: 0.82;
+  --media-hover-filter: brightness(0.92);
 
   /* — puck shape system — */
   --puck-r: 50% 50% 50% 8px;     /* asymmetric puck border-radius       */
@@ -2245,6 +2254,43 @@ html.reduce-motion *::after {
 .skel-line {
   height: 12px;
   border-radius: var(--r-xs);
+}
+
+/* Place/review media primitives. */
+.pp-media-credit,
+.pp-media-provider {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-pill);
+  background: var(--media-credit-bg);
+  color: var(--on-accent);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-regular);
+  text-decoration: none;
+  transition: opacity var(--t-fast);
+}
+@media (hover: hover) {
+  a.pp-media-credit:hover,
+  a.pp-media-provider:hover { opacity: var(--media-credit-hover-opacity); }
+}
+.rv-image-picker {
+  min-height: var(--h-submit);
+  font-size: var(--txt-sm);
+  cursor: pointer;
+}
+.rv-image-picker:focus-within { box-shadow: var(--focus-ring); }
+.rv-image-remove {
+  width: var(--review-media-remove-size);
+  height: var(--review-media-remove-size);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--media-remove-bg);
+  color: var(--on-accent);
+  font-size: var(--txt-lg);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .rv-image-remove:hover { background: var(--danger); }
 }
 
 /* ─── Place list card ───────────────────────────────────────────────────────── */
