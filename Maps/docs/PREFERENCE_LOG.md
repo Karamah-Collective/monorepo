@@ -5063,13 +5063,12 @@ uses descriptive text.
 ### 2026-09-21 — Smooth concurrent startup and review moderation controls
 
 **Startup preference:** the welcome screen must remain visually smooth while the
-real map application loads underneath it. Avoid per-path SVG drawing and runtime
-geometry measurement during startup; they compete with map initialization on the
-main thread. The logo now uses compositor-friendly opacity/transform motion, is
-preloaded from the document head, and the initialization sequence yields between
-work batches. The overlay alone fades away after both its minimum display window
-and the essential map/place startup work settle; the MapLibre app itself is not
-scaled or animated during handoff.
+real map application loads underneath it. Preserve the stroke-then-fill drawing,
+but avoid runtime path-geometry measurement during startup; it competes with map
+initialization on the main thread. The logo is preloaded from the document head,
+and the initialization sequence yields between work batches. The overlay alone
+fades away after the complete logo cycle and essential map/place startup work
+settle; the MapLibre app itself is not scaled or animated during handoff.
 
 **Moderation preference:** Reviews rows expose one standard **Manage** action.
 The shared native admin dialog handles review publication state, independent image
@@ -5093,11 +5092,12 @@ before deploying the updated Admin controls and Functions.
 
 ### 2026-09-21 — Visible loader motion and Admin dark-mode action gold
 
-**User correction:** the Maps startup state must read as actively loading, not
-as a nearly static logo. Keep the compositor-friendly logo breathing motion, but
-make its range perceptible and pair it with a continuously sweeping gold progress
-rule. Both use transform and opacity only; reduced-motion mode presents a stable
-logo and centered rule.
+**User correction:** the Maps startup state must retain the established Manarah
+stroke-then-fill logo sequence; performance work must not replace that visual
+concept. The optimized implementation normalizes each cloned SVG trace with
+`pathLength="1"`, avoiding per-path `getTotalLength()` layout work while retaining
+the original outline, fill, and hold choreography. Startup waits for the complete
+1.55-second logo cycle while the application continues loading underneath.
 
 **Admin brand alignment:** the workspace scope reads “Maps, website & links.” In
 dark mode, filled primary and affirmative buttons use the Website's warm gold and

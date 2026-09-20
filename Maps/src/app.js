@@ -40,6 +40,7 @@ import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
 
 const WELCOME_LOGO_URL = "/LOGO%20-%20Manarah.svg";
+const WELCOME_LOGO_CYCLE_MS = 1550;
 const WELCOME_REVEAL_SETTLE_MS = 180;
 const WELCOME_OVERLAY_EXIT_MS = 420;
 const SOFT_CITY_START_BUDGET_MS = 900;
@@ -47,6 +48,16 @@ const WELCOME_LOGO_TIMEOUT_MS = 2000;
 const WELCOME_MIN_VISIBLE_MS = 1100;
 const TUTORIAL_DELAY_MS = 800;
 const _welcomeStartedAt = performance.now();
+
+function _addWelcomeLogoTrace(path, className) {
+  const trace = path.cloneNode(false);
+  trace.removeAttribute("fill");
+  trace.removeAttribute("fill-opacity");
+  trace.setAttribute("pathLength", "1");
+  trace.classList.add("welcome-logo-trace", className);
+  path.before(trace);
+  path.classList.add("welcome-logo-final");
+}
 
 function _getWelcomeLogoPathFill(path) {
   return (path.getAttribute("fill") || path.closest("[fill]")?.getAttribute("fill") || "").trim().toLowerCase();
@@ -70,6 +81,7 @@ function _prepareWelcomeLogo(svg) {
   art.querySelectorAll("path").forEach((path) => {
     const isGoldPath = _getWelcomeLogoPathFill(path) === "#b19761";
     path.classList.add(isGoldPath ? "welcome-logo-gold" : "welcome-logo-word");
+    _addWelcomeLogoTrace(path, isGoldPath ? "welcome-logo-trace-gold" : "welcome-logo-trace-word");
   });
 
   return svg;
@@ -97,7 +109,12 @@ function _startWelcomeLogo() {
 
 async function _prepareWelcomeScreen() {
   const logoReady = _withSoftTimeout(_loadWelcomeLogo().catch(() => false), WELCOME_LOGO_TIMEOUT_MS)
-    .then((loaded) => loaded && _startWelcomeLogo());
+    .then(async (loaded) => {
+      if (!loaded) return false;
+      _startWelcomeLogo();
+      await new Promise((resolve) => setTimeout(resolve, WELCOME_LOGO_CYCLE_MS));
+      return true;
+    });
   const settings = await appSettingsReady;
   if (!settings.welcomeEnabled) {
     await _hideWelcomeScreen();

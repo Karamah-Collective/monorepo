@@ -179,31 +179,7 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
   width: min(var(--welcome-logo-vw), var(--welcome-logo-max-w));
   max-width: 100%;
   place-items: center;
-  contain: layout style;
-}
-
-.welcome-logo-stage::before,
-.welcome-logo-stage::after {
-  content: "";
-  position: absolute;
-  top: calc(100% + var(--sp-8));
-  left: 50%;
-  height: 2px;
-  border-radius: var(--r-pill);
-}
-
-.welcome-logo-stage::before {
-  width: var(--welcome-progress-w);
-  background: color-mix(in srgb, var(--gold) 24%, transparent);
-  transform: translateX(-50%);
-}
-
-.welcome-logo-stage::after {
-  width: var(--welcome-progress-segment-w);
-  margin-left: calc(var(--welcome-progress-w) / -2);
-  background: var(--gold);
-  opacity: 0;
-  will-change: opacity, transform;
+  contain: layout paint style;
 }
 
 .welcome-logo-stage svg,
@@ -219,19 +195,17 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
 .welcome-logo {
   color: var(--logo-word);
   opacity: 0;
-  will-change: opacity;
 }
 
 .welcome-logo .welcome-logo-art,
 .welcome-logo .welcome-logo-gold,
-.welcome-logo .welcome-logo-word {
+.welcome-logo .welcome-logo-word,
+.welcome-logo .welcome-logo-trace {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-.welcome-logo .welcome-logo-art {
-  will-change: opacity, transform;
-}
+.welcome-logo .welcome-logo-art { will-change: transform; }
 
 .welcome-logo .welcome-logo-gold {
   fill: var(--gold);
@@ -241,33 +215,57 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
   fill: var(--logo-word);
 }
 
+.welcome-logo .welcome-logo-trace {
+  fill: none;
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.welcome-logo .welcome-logo-trace-gold {
+  stroke: var(--gold);
+  stroke-width: var(--welcome-logo-trace-gold-w);
+}
+.welcome-logo .welcome-logo-trace-word {
+  stroke: var(--logo-word);
+  stroke-width: var(--welcome-logo-trace-word-w);
+}
+.welcome-logo .welcome-logo-final { fill-opacity: 0; }
+
 #welcome-screen.is-running .welcome-logo {
-  animation: welcomeLogoEnter var(--t-welcome-logo-enter) both;
+  opacity: 1;
 }
 
 #welcome-screen.is-running .welcome-logo .welcome-logo-art {
-  animation: welcomeLogoBreathe var(--t-welcome-logo-breathe) infinite alternate;
+  animation: welcomeLogoHold var(--t-welcome-logo-draw) both;
 }
 
-#welcome-screen.is-running .welcome-logo-stage::after {
-  animation: welcomeProgressSweep var(--t-welcome-progress) infinite;
+#welcome-screen.is-running .welcome-logo .welcome-logo-trace {
+  opacity: var(--welcome-logo-trace-opacity);
+  animation: welcomeLogoDraw var(--t-welcome-logo-draw) both;
 }
 
-@keyframes welcomeLogoEnter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+#welcome-screen.is-running .welcome-logo .welcome-logo-final {
+  animation: welcomeLogoFill var(--t-welcome-logo-draw) both;
 }
 
-@keyframes welcomeLogoBreathe {
-  from { opacity: var(--welcome-logo-rest-opacity); transform: translateY(3px) scale(var(--welcome-logo-rest-scale)); }
-  to { opacity: 1; transform: translateY(-2px) scale(1); }
+@keyframes welcomeLogoDraw {
+  0% { stroke-dashoffset: 1; }
+  58%, 100% { stroke-dashoffset: 0; }
 }
 
-@keyframes welcomeProgressSweep {
-  0% { opacity: 0; transform: translate3d(0, 0, 0) scaleX(.72); }
-  16% { opacity: 1; }
-  84% { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(calc(var(--welcome-progress-w) - var(--welcome-progress-segment-w)), 0, 0) scaleX(1); }
+@keyframes welcomeLogoFill {
+  0%, 34% { fill-opacity: 0; }
+  58%, 82% { fill-opacity: 1; }
+  100% { fill-opacity: var(--welcome-logo-fill-rest-opacity); }
+}
+
+@keyframes welcomeLogoHold {
+  0% { transform: scale(var(--welcome-logo-start-scale)); }
+  52%, 82% { transform: scale(1); }
+  100% { transform: scale(var(--welcome-logo-end-scale)); }
 }
 
 @keyframes welcomeOverlayExit {
@@ -300,6 +298,10 @@ body.dark-mode .welcome-logo .welcome-logo-word {
   fill: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
 }
 
+body.dark-mode .welcome-logo .welcome-logo-trace-word {
+  stroke: color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
+}
+
 @media (max-width: 768px) {
   .welcome-logo-stage {
     width: min(var(--welcome-logo-tablet-vw), var(--welcome-logo-tablet-max-w));
@@ -312,19 +314,17 @@ body.dark-mode .welcome-logo .welcome-logo-word {
   }
 }
 
-html.reduce-motion .welcome-logo,
 html.reduce-motion .welcome-logo .welcome-logo-art,
-html.reduce-motion .welcome-logo-stage::after {
+html.reduce-motion .welcome-logo .welcome-logo-trace,
+html.reduce-motion .welcome-logo .welcome-logo-final {
   animation: none !important;
 }
 
+html.reduce-motion .welcome-logo .welcome-logo-trace { opacity: 0; }
+html.reduce-motion .welcome-logo .welcome-logo-final { fill-opacity: 1; }
+
 html.reduce-motion #welcome-screen.is-running .welcome-logo {
   opacity: 1;
-}
-
-html.reduce-motion #welcome-screen.is-running .welcome-logo-stage::after {
-  opacity: 1;
-  transform: translate3d(26px, 0, 0);
 }
 
 html.reduce-motion #welcome-screen.is-closing,

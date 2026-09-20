@@ -240,9 +240,7 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --t-phone-chrome-compact: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar: 0.52s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar-collapse: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-  --t-welcome-logo-enter: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-  --t-welcome-logo-breathe: 1.3s cubic-bezier(0.16, 1, 0.3, 1);
-  --t-welcome-progress: 1.05s cubic-bezier(0.65, 0, 0.35, 1);
+  --t-welcome-logo-draw: 1.55s cubic-bezier(0.65, 0, 0.35, 1);
   --t-welcome-overlay-exit: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
@@ -259,10 +257,12 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --welcome-logo-tablet-max-w: 360px;
   --welcome-logo-phone-vw: 82vw;
   --welcome-logo-phone-max-w: 320px;
-  --welcome-logo-rest-scale: 0.975;
-  --welcome-logo-rest-opacity: 0.9;
-  --welcome-progress-w: 76px;
-  --welcome-progress-segment-w: 24px;
+  --welcome-logo-start-scale: 0.992;
+  --welcome-logo-end-scale: 0.998;
+  --welcome-logo-trace-opacity: 0.72;
+  --welcome-logo-fill-rest-opacity: 0.92;
+  --welcome-logo-trace-gold-w: 5;
+  --welcome-logo-trace-word-w: 1.45;
 
   /* card inner spacing — uniform across all card types */
   --card-pad: var(--sp-7);

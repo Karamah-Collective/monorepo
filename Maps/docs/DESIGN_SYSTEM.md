@@ -223,9 +223,7 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-phone-chrome-compact` | `.42s cubic-bezier(.16,1,.3,1)` | Phone map-interaction visual scaling |
 | `--t-phone-refine-bar` | `.52s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar reveal |
 | `--t-phone-refine-bar-collapse` | `.38s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar tuck |
-| `--t-welcome-logo-enter` | `.38s cubic-bezier(.16,1,.3,1)` | Compositor-only welcome-logo opacity entrance |
-| `--t-welcome-logo-breathe` | `1.3s cubic-bezier(.16,1,.3,1)` | Clearly perceptible compositor-only logo breathing while startup work continues |
-| `--t-welcome-progress` | `1.05s cubic-bezier(.65,0,.35,1)` | Continuous gold progress-rule sweep during startup |
+| `--t-welcome-logo-draw` | `1.55s cubic-bezier(.65,0,.35,1)` | Welcome logo stroke-then-fill sequence |
 | `--t-welcome-overlay-exit` | `.42s cubic-bezier(.16,1,.3,1)` | Welcome overlay fade-out during the logo-to-map handoff |
 
 ### Scale Tokens
@@ -240,10 +238,12 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--welcome-logo-tablet-max-w` | `360px` | Tablet/phone welcome logo maximum width |
 | `--welcome-logo-phone-vw` | `82vw` | Narrow-phone welcome logo viewport-relative width |
 | `--welcome-logo-phone-max-w` | `320px` | Narrow-phone welcome logo maximum width |
-| `--welcome-logo-rest-scale` | `.975` | Lower bound of the loading-state logo scale |
-| `--welcome-logo-rest-opacity` | `.9` | Lower bound of the loading-state logo opacity |
-| `--welcome-progress-w` | `76px` | Welcome progress-rule track width |
-| `--welcome-progress-segment-w` | `24px` | Moving welcome progress segment width |
+| `--welcome-logo-start-scale` | `.992` | Opening scale for the welcome logo drawing sequence |
+| `--welcome-logo-end-scale` | `.998` | Resting scale after the welcome logo fills |
+| `--welcome-logo-trace-opacity` | `.72` | Opacity of the temporary outline paths |
+| `--welcome-logo-fill-rest-opacity` | `.92` | Resting fill opacity after the drawing sequence |
+| `--welcome-logo-trace-gold-w` | `5` | Gold emblem outline width |
+| `--welcome-logo-trace-word-w` | `1.45` | Wordmark outline width |
 
 Phone map-interaction scaling is applied to runtime-created zone wrappers
 (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,
