@@ -5,10 +5,27 @@
  */
 
 export const ALLOWED_ORIGINS = ["https://maps.karamahcollective.com"];
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function allowedOrigin(request) {
   const origin = request.headers.get("Origin") || "";
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
+/**
+ * Return true only when both the request URL and browser origin are loopback.
+ * @param {Request} request - Incoming Pages Functions request.
+ * @returns {boolean} Whether this is a browser request to the local dev server.
+ */
+export function isLoopbackRequest(request) {
+  try {
+    const requestHost = new URL(request.url).hostname;
+    const origin = request.headers.get("Origin") || "";
+    const originHost = origin ? new URL(origin).hostname : "";
+    return LOOPBACK_HOSTS.has(requestHost) && LOOPBACK_HOSTS.has(originHost);
+  } catch {
+    return false;
+  }
 }
 
 export function truncate(str, max) {

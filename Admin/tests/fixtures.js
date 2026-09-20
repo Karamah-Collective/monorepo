@@ -208,6 +208,7 @@ export async function mockAdmin(page, overrides = {}, signedIn = true) {
       body: `
     const responses = ${JSON.stringify({ ...responses, ...overrides })};
     export async function apiGet(action) { return responses[action] ?? []; }
+    export async function apiGetBlob() { return new Blob(); }
     export async function apiPost(action, body) { window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; return {success: true}; }
     export async function logAuthEvent() {}
   `,

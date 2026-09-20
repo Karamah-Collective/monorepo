@@ -40,22 +40,13 @@ import { initMenuAccount, initMenuPreferences } from "./menu.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
 
 const WELCOME_LOGO_URL = "/LOGO%20-%20Manarah.svg";
-const WELCOME_LOGO_END_ANIMATION = "welcomeLogoHold";
-const WELCOME_APP_REVEAL_CLASS = "welcome-revealing";
 const WELCOME_REVEAL_SETTLE_MS = 180;
 const WELCOME_OVERLAY_EXIT_MS = 420;
 const SOFT_CITY_START_BUDGET_MS = 900;
-const WELCOME_LOGO_TIMEOUT_MS = 8000;
+const WELCOME_LOGO_TIMEOUT_MS = 2000;
+const WELCOME_MIN_VISIBLE_MS = 1100;
 const TUTORIAL_DELAY_MS = 800;
-
-function _addWelcomeLogoTrace(path, className) {
-  const trace = path.cloneNode(false);
-  trace.removeAttribute("fill");
-  trace.removeAttribute("fill-opacity");
-  trace.classList.add("welcome-logo-trace", className);
-  path.before(trace);
-  path.classList.add("welcome-logo-final");
-}
+const _welcomeStartedAt = performance.now();
 
 function _getWelcomeLogoPathFill(path) {
   return (path.getAttribute("fill") || path.closest("[fill]")?.getAttribute("fill") || "").trim().toLowerCase();
@@ -79,19 +70,9 @@ function _prepareWelcomeLogo(svg) {
   art.querySelectorAll("path").forEach((path) => {
     const isGoldPath = _getWelcomeLogoPathFill(path) === "#b19761";
     path.classList.add(isGoldPath ? "welcome-logo-gold" : "welcome-logo-word");
-    _addWelcomeLogoTrace(path, isGoldPath ? "welcome-logo-trace-gold" : "welcome-logo-trace-word");
   });
 
   return svg;
-}
-
-function _primeWelcomeLogoTraceLengths(logo) {
-  logo.querySelectorAll(".welcome-logo-trace").forEach((trace) => {
-    try {
-      const length = Math.ceil(trace.getTotalLength());
-      trace.style.setProperty("--welcome-logo-path-length", length);
-    } catch (_) {}
-  });
 }
 
 async function _loadWelcomeLogo() {
@@ -104,57 +85,34 @@ async function _loadWelcomeLogo() {
   const logo = _prepareWelcomeLogo(template.content.querySelector("svg"));
   if (!logo) return false;
   stage.replaceChildren(logo);
-  _primeWelcomeLogoTraceLengths(logo);
   return true;
 }
 
-function _waitForWelcomeLogoEnd() {
-  const logoArt = document.querySelector(".welcome-logo .welcome-logo-art");
-  if (!logoArt) return Promise.resolve();
-  return new Promise((resolve) => {
-    const done = (event) => {
-      if (event && (event.target !== logoArt || event.animationName !== WELCOME_LOGO_END_ANIMATION)) return;
-      clearTimeout(timer);
-      logoArt.removeEventListener("animationend", done);
-      resolve();
-    };
-    const timer = setTimeout(() => done(), WELCOME_LOGO_TIMEOUT_MS);
-    logoArt.addEventListener("animationend", done);
-  });
-}
-
-async function _runWelcomeLogoCycle() {
+function _startWelcomeLogo() {
   const welcome = document.getElementById("welcome-screen");
-  if (!welcome || welcome.hidden) return;
-  if (isReduceMotionActive()) {
-    welcome.classList.add("is-running");
-    return;
-  }
-  welcome.classList.remove("is-running");
-  void welcome.offsetWidth;
-  const logoEnd = _waitForWelcomeLogoEnd();
+  if (!welcome || welcome.hidden) return false;
   welcome.classList.add("is-running");
-  await logoEnd;
+  return true;
 }
 
-async function _runWelcomeOnce() {
-  const logoReady = _withSoftTimeout(_loadWelcomeLogo().catch(() => false), WELCOME_LOGO_TIMEOUT_MS);
+async function _prepareWelcomeScreen() {
+  const logoReady = _withSoftTimeout(_loadWelcomeLogo().catch(() => false), WELCOME_LOGO_TIMEOUT_MS)
+    .then((loaded) => loaded && _startWelcomeLogo());
   const settings = await appSettingsReady;
-  if (settings.welcomeEnabled && await logoReady) {
-    await _runWelcomeLogoCycle();
+  if (!settings.welcomeEnabled) {
+    await _hideWelcomeScreen();
+    return false;
   }
-  await _hideWelcomeScreen();
+  await logoReady;
+  const remaining = Math.max(0, WELCOME_MIN_VISIBLE_MS - (performance.now() - _welcomeStartedAt));
+  if (remaining) await new Promise((resolve) => setTimeout(resolve, remaining));
+  return true;
 }
 
 function _hideWelcomeScreen() {
   const welcome = document.getElementById("welcome-screen");
   if (!welcome || welcome.hidden) return Promise.resolve();
-  document.body.classList.add(WELCOME_APP_REVEAL_CLASS);
-  document.getElementById("app")?.addEventListener("animationend", () => {
-    document.body.classList.remove(WELCOME_APP_REVEAL_CLASS);
-  }, { once: true });
   if (isReduceMotionActive()) {
-    document.body.classList.remove(WELCOME_APP_REVEAL_CLASS);
     welcome.hidden = true;
     welcome.remove();
     return Promise.resolve();
@@ -168,12 +126,13 @@ function _hideWelcomeScreen() {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      welcome.removeEventListener("animationend", finish);
       welcome.hidden = true;
       welcome.remove();
       resolve();
     };
     const timer = setTimeout(finish, WELCOME_OVERLAY_EXIT_MS);
-    welcome.addEventListener("animationend", finish, { once: true });
+    welcome.addEventListener("animationend", finish);
   });
 }
 
@@ -188,7 +147,7 @@ function _afterWelcomeIdle() {
 
 // Fetch real startup data while tiles and the welcome animation are loading.
 preloadPlacesData();
-const welcomeReady = _runWelcomeOnce();
+const welcomeReady = _prepareWelcomeScreen();
 void _prepareStartupView();
 
 function _withSoftTimeout(promise, timeoutMs) {
@@ -243,16 +202,20 @@ async function _loadStartupModules() {
     import("./profile.js"),
   ]);
 
+  await _yieldStartupFrame();
   loadTransitCache();
   initPhoneMapChromeCompact(collapsePrayerForMapInteraction);
+  await _yieldStartupFrame();
   initPrayerTimes();
   initStyleEditor();
   initEidPrayers();
+  await _yieldStartupFrame();
   initWishlist();
   preloadWishes();
   initGpsSim(); // DEV-ONLY - comment out before deploying, restore after
   initTrafficOverlay();
   checkGeoNotice();
+  await _yieldStartupFrame();
   // Account sign-in (Firebase) - non-critical, so it's wired here rather than
   // eagerly, same as the other lazy-loaded modules above.
   initMenuAccount();
@@ -267,6 +230,10 @@ async function _loadStartupModules() {
   // this dynamic import resolves it's almost certainly already cached; this
   // call is what actually wires up its own listeners/state.
   initProfile();
+}
+
+function _yieldStartupFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
 
 function hasIncomingSharedState() {
@@ -506,12 +473,12 @@ map.on("load", async () => {
     _loadStartupModules(),
   ]);
 
-  await welcomeReady;
-  await _afterWelcomeIdle();
-  const startupResults = await appLoadingReady;
+  const [welcomeEnabled, startupResults] = await Promise.all([welcomeReady, appLoadingReady]);
   if (startupResults.some((result) => result.status === "rejected")) {
     console.warn("Some optional app features could not be initialized.");
   }
+  if (welcomeEnabled) await _hideWelcomeScreen();
+  await _afterWelcomeIdle();
 
   // Admins can pause onboarding; the tutorial still honors its first-run flag.
   const settings = await appSettingsReady;

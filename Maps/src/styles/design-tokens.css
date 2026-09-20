@@ -240,8 +240,9 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --t-phone-chrome-compact: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar: 0.52s cubic-bezier(0.16, 1, 0.3, 1);
   --t-phone-refine-bar-collapse: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-  --t-welcome-logo-draw: 1.55s cubic-bezier(0.65, 0, 0.35, 1);
-  --t-welcome-app-reveal: 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-welcome-logo-enter: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-welcome-logo-breathe: 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-welcome-progress: 1.05s cubic-bezier(0.65, 0, 0.35, 1);
   --t-welcome-overlay-exit: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
@@ -258,15 +259,10 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --welcome-logo-tablet-max-w: 360px;
   --welcome-logo-phone-vw: 82vw;
   --welcome-logo-phone-max-w: 320px;
-  --welcome-logo-start-scale: 0.992;
-  --welcome-logo-end-scale: 0.998;
-  --welcome-logo-trace-length: 2000;
-  --welcome-logo-trace-opacity: 0.72;
-  --welcome-logo-fill-rest-opacity: 0.92;
-  --welcome-logo-trace-gold-w: 5;
-  --welcome-logo-trace-word-w: 1.45;
-  --welcome-app-reveal-start-opacity: 0.92;
-  --welcome-app-reveal-start-scale: 1;
+  --welcome-logo-rest-scale: 0.975;
+  --welcome-logo-rest-opacity: 0.9;
+  --welcome-progress-w: 76px;
+  --welcome-progress-segment-w: 24px;
 
   /* card inner spacing — uniform across all card types */
   --card-pad: var(--sp-7);
@@ -324,11 +320,20 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --h-submit: 44px; /* form submit button               */
   --h-search: 48px; /* search box                       */
   --places-refine-max-h: 360px;
-  --place-media-card-w: 190px;
-  --place-media-card-h: 128px;
+  --place-media-card-w: 154px;
+  --place-media-card-h: 102px;
+  --place-media-card-w-phone: 132px;
+  --place-media-card-h-phone: 88px;
+  --place-media-nav-size: 30px;
+  --photo-viewer-window-w: 420px;
+  --photo-viewer-window-h: min(620px, 85dvh);
+  --photo-viewer-enter-scale: 0.98;
+  --photo-viewer-stage-bg: oklch(0.17 0.01 155);
   --review-media-size: 88px;
   --review-preview-size: 88px;
   --review-media-remove-size: 44px;
+  --review-compose-min-h: 76px;
+  --count-badge-min-w: 22px;
   --media-credit-bg: color-mix(in srgb, var(--text) 72%, transparent);
   --media-remove-bg: color-mix(in srgb, var(--text) 76%, transparent);
   --media-credit-hover-opacity: 0.82;
@@ -2257,6 +2262,16 @@ html.reduce-motion *::after {
 }
 
 /* Place/review media primitives. */
+.count-badge,
+.pl-city-count,
+.pp-media-count {
+  min-width: var(--count-badge-min-w);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-3);
+  text-align: center;
+}
 .pp-media-credit,
 .pp-media-provider {
   padding: var(--sp-1) var(--sp-3);
@@ -2277,7 +2292,10 @@ html.reduce-motion *::after {
   font-size: var(--txt-sm);
   cursor: pointer;
 }
-.rv-image-picker:focus-within { box-shadow: var(--focus-ring); }
+.rv-image-picker:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring-inset);
+}
 .rv-image-remove {
   width: var(--review-media-remove-size);
   height: var(--review-media-remove-size);

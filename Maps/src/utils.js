@@ -1171,11 +1171,26 @@ export function animateSheetHeight(sheet, changeFn, { force = false } = {}) {
   sheet._animCleanup = setTimeout(cleanup, 400); // safety fallback
 }
 
-export function initSheetDrag(sheet, closeFn) {
+/**
+ * Attach mobile drag/snap behavior to a bottom sheet.
+ * @param {HTMLElement} sheet - Sheet element with drag/header handles.
+ * @param {function(): void} closeFn - Close callback used by dismiss gestures.
+ * @param {{contentBoundedExpansion?: boolean, maxHeightRatio?: number}} [options={}] - Optional content-aware expansion cap.
+ * @returns {object} Sheet open, close, measurement, and cleanup controller.
+ */
+export function initSheetDrag(sheet, closeFn, {
+  contentBoundedExpansion = false,
+  maxHeightRatio = 1,
+} = {}) {
   const isMobile = () => window.innerWidth <= 768;
   const SHEET_STATE_OPENING = "opening";
   const SHEET_STATE_OPEN = "open";
   const SHEET_STATE_CLOSING = "closing";
+  const HALF_HEIGHT_RATIO = 0.5;
+  const THREE_QUARTER_HEIGHT_RATIO = 0.75;
+  const DISMISS_HEIGHT_RATIO = 0.25;
+  const FULL_SNAP_RATIO = 0.76;
+  const SNAP_DEDUP_TOLERANCE = 1;
   let startY = 0, startH = 0, dragging = false;
   let cached = null;                               // snap-mode cache (survives tab switches)
 
@@ -1197,10 +1212,17 @@ export function initSheetDrag(sheet, closeFn) {
   function freshCalc() {
     const vh = window.innerHeight;
     const ch = contentHeight();
+    if (contentBoundedExpansion) {
+      const cap = Math.min(ch, vh * maxHeightRatio);
+      const r = cap / vh;
+      if (r < HALF_HEIGHT_RATIO) return { mode: "small", initial: cap, cap };
+      if (r < THREE_QUARTER_HEIGHT_RATIO) return { mode: "medium", initial: cap, cap };
+      return { mode: "large", initial: vh * THREE_QUARTER_HEIGHT_RATIO, cap };
+    }
     const r  = ch / vh;
-    if (r < 0.5)  return { mode: "small",  initial: ch,         cap: ch };
-    if (r < 0.75) return { mode: "medium", initial: ch,         cap: ch };
-    /*   large  */ return { mode: "large",  initial: vh * 0.75,  cap: vh };
+    if (r < HALF_HEIGHT_RATIO) return { mode: "small", initial: ch, cap: ch };
+    if (r < THREE_QUARTER_HEIGHT_RATIO) return { mode: "medium", initial: ch, cap: ch };
+    return { mode: "large", initial: vh * THREE_QUARTER_HEIGHT_RATIO, cap: vh };
   }
 
   /* ── pick snap target from current height ── */
@@ -1208,25 +1230,44 @@ export function initSheetDrag(sheet, closeFn) {
     const vh = window.innerHeight;
     const r  = currentH / vh;
 
+    if (contentBoundedExpansion) {
+      if (r < DISMISS_HEIGHT_RATIO) return 0;
+
+      const candidates = [
+        vh * HALF_HEIGHT_RATIO,
+        vh * THREE_QUARTER_HEIGHT_RATIO,
+        cap,
+      ].filter((height, index, stops) => (
+        height <= cap + SNAP_DEDUP_TOLERANCE
+        && stops.findIndex((stop) => Math.abs(stop - height) <= SNAP_DEDUP_TOLERANCE) === index
+      ));
+
+      return candidates.reduce((nearest, height) => (
+        Math.abs(height - currentH) < Math.abs(nearest - currentH) ? height : nearest
+      ), cap);
+    }
+
     if (mode === "small") {
-      if (r < 0.25) return 0;              // dismiss
+      if (r < DISMISS_HEIGHT_RATIO) return 0;              // dismiss
       // snap to content height or 50 %, whichever is closer
-      const mid = (cap + vh * 0.5) / 2;
-      return currentH >= mid ? vh * 0.5 : cap;
+      const mid = (cap + vh * HALF_HEIGHT_RATIO) / 2;
+      return currentH >= mid ? vh * HALF_HEIGHT_RATIO : cap;
     }
 
     if (mode === "medium") {
-      if (r < 0.25) return 0;              // dismiss
+      if (r < DISMISS_HEIGHT_RATIO) return 0;              // dismiss
       // midpoint between 50 % and the content cap
-      const mid = (vh * 0.5 + cap) / 2;
-      return currentH >= mid ? cap : vh * 0.5;
+      const mid = (vh * HALF_HEIGHT_RATIO + cap) / 2;
+      return currentH >= mid ? cap : vh * HALF_HEIGHT_RATIO;
     }
 
     // large
-    if (r < 0.25) return 0;                // dismiss
-    if (r >= 0.76) return "full";           // 100 %
+    if (r < DISMISS_HEIGHT_RATIO) return 0;                // dismiss
+    if (r >= FULL_SNAP_RATIO) return "full";               // 100 %
     // midpoint between 50 % and 75 %
-    return r >= 0.625 ? vh * 0.75 : vh * 0.5;
+    return r >= (HALF_HEIGHT_RATIO + THREE_QUARTER_HEIGHT_RATIO) / 2
+      ? vh * THREE_QUARTER_HEIGHT_RATIO
+      : vh * HALF_HEIGHT_RATIO;
   }
 
   /* ── drag handlers ── */
@@ -1362,11 +1403,12 @@ export function initSheetDrag(sheet, closeFn) {
      *    3. Pin back to startH  → reflow  (no paint at auto)
      *    4. Restore transition → set target  (smooth CSS animation)
      */
-    remeasure() {
+    remeasure({ preserveExpansion = false } = {}) {
       if (!isMobile() || sheet.classList.contains("shut")) return;
 
       // 1. Current visual height
       const startH = sheet.offsetHeight;
+      const wasFull = sheet.classList.contains("full");
 
       // 2. Suppress transitions, remove .full, measure at natural height
       sheet.style.transition = "none";
@@ -1385,7 +1427,14 @@ export function initSheetDrag(sheet, closeFn) {
       // Always snap to the natural initial for the *new* content.
       // Using startH would keep the panel at a stale size (e.g. 100 vh
       // from route-focused) even though content changed.
-      const target = snapTarget(cached.initial, cached.mode, cached.cap);
+      const wasExpandedPastContent = startH > cached.initial + 2;
+      const target = preserveExpansion && wasFull
+        ? "full"
+        : preserveExpansion && wasExpandedPastContent
+          ? Math.min(startH, cached.cap)
+          : contentBoundedExpansion
+            ? cached.initial
+            : snapTarget(cached.initial, cached.mode, cached.cap);
 
       if (target === "full") {
         sheet.classList.add("full");

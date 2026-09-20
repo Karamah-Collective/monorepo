@@ -223,8 +223,9 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--t-phone-chrome-compact` | `.42s cubic-bezier(.16,1,.3,1)` | Phone map-interaction visual scaling |
 | `--t-phone-refine-bar` | `.52s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar reveal |
 | `--t-phone-refine-bar-collapse` | `.38s cubic-bezier(.16,1,.3,1)` | Phone Places list-focus refine-bar tuck |
-| `--t-welcome-logo-draw` | `1.55s cubic-bezier(.65,0,.35,1)` | Welcome screen one-shot logo stroke-draw/fill pass |
-| `--t-welcome-app-reveal` | `.24s cubic-bezier(.16,1,.3,1)` | Non-blocking app reveal while the welcome overlay fades out |
+| `--t-welcome-logo-enter` | `.38s cubic-bezier(.16,1,.3,1)` | Compositor-only welcome-logo opacity entrance |
+| `--t-welcome-logo-breathe` | `1.3s cubic-bezier(.16,1,.3,1)` | Clearly perceptible compositor-only logo breathing while startup work continues |
+| `--t-welcome-progress` | `1.05s cubic-bezier(.65,0,.35,1)` | Continuous gold progress-rule sweep during startup |
 | `--t-welcome-overlay-exit` | `.42s cubic-bezier(.16,1,.3,1)` | Welcome overlay fade-out during the logo-to-map handoff |
 
 ### Scale Tokens
@@ -239,15 +240,10 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--welcome-logo-tablet-max-w` | `360px` | Tablet/phone welcome logo maximum width |
 | `--welcome-logo-phone-vw` | `82vw` | Narrow-phone welcome logo viewport-relative width |
 | `--welcome-logo-phone-max-w` | `320px` | Narrow-phone welcome logo maximum width |
-| `--welcome-logo-start-scale` | `.992` | Opening scale for the welcome logo draw animation |
-| `--welcome-logo-end-scale` | `.998` | Resting scale for the welcome logo draw animation loop |
-| `--welcome-logo-trace-length` | `2000` | SVG dash length used by the welcome logo trace paths |
-| `--welcome-logo-trace-opacity` | `.72` | Opacity for the drawn trace paths before final fill settles |
-| `--welcome-logo-fill-rest-opacity` | `.92` | Resting fill opacity at the end of each draw/fill loop |
-| `--welcome-logo-trace-gold-w` | `5` | SVG stroke width for the welcome logo's gold emblem trace |
-| `--welcome-logo-trace-word-w` | `1.45` | SVG stroke width for the welcome logo's wordmark trace |
-| `--welcome-app-reveal-start-opacity` | `.92` | Starting opacity for the app reveal while the welcome overlay fades out |
-| `--welcome-app-reveal-start-scale` | `1` | Starting scale for the app reveal; kept neutral so MapLibre dimensions do not shift |
+| `--welcome-logo-rest-scale` | `.975` | Lower bound of the loading-state logo scale |
+| `--welcome-logo-rest-opacity` | `.9` | Lower bound of the loading-state logo opacity |
+| `--welcome-progress-w` | `76px` | Welcome progress-rule track width |
+| `--welcome-progress-segment-w` | `24px` | Moving welcome progress segment width |
 
 Phone map-interaction scaling is applied to runtime-created zone wrappers
 (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,
@@ -257,25 +253,58 @@ internal alignment while shrinking proportionally.
 
 ### Component Sizing
 
-Place media uses `--place-media-card-w`/`--place-media-card-h` for the snap
-gallery, `--review-media-size` for published review thumbnails,
-`--review-preview-size` for selected-upload previews, and
-`--review-media-remove-size` for the preview's icon-only remove control.
+Place media uses `--place-media-card-w`/`--place-media-card-h` for the compact
+snap gallery, `--place-media-nav-size` for desktop overflow controls, and
+`--photo-viewer-window-w`/`--photo-viewer-window-h`/
+`--photo-viewer-stage-bg` for the in-app expanded viewer. The gallery belongs
+directly after place tags and before
+hours. Its image buttons open the viewer inside `#app`; the viewer keeps
+previous/next controls, arrow-key navigation, an Escape close action, focus
+return, touch-swipe navigation, and a live position count. Place-gallery and
+review-photo expansion now use the same standard 420px centered form-window
+width on desktop and become the same edge-to-edge safe-area viewer on phones.
+Opening and closing fade the scrim while the viewer stage fades and moves with
+the shared motion tokens. Gallery counts and the place sheet's compact review
+count reuse the filled `.count-badge`/`.pl-city-count` treatment; the full
+reviews overlay retains its descriptive “N reviews” summary text.
+`--review-media-size` sizes published review thumbnails,
+`--review-preview-size` sizes selected-upload previews, and
+`--review-media-remove-size` sizes the preview's icon-only remove control.
+`--review-compose-min-h` keeps the review textarea compact while preserving a
+comfortable three-line writing area. The review composer aligns label/counter
+and photo-control/file guidance into paired rows instead of stacking each
+supporting label on a separate line.
 `.pp-media-credit`/`.pp-media-provider`, `.rv-image-picker`, and
 `.rv-image-remove` are shared media primitives; gallery and form layout remains
 in `styles.css`.
+
+On phones, the place-detail sheet uses content-bounded snap points. Its maximum
+height is `min(natural content height, 90dvh)`. The shared 50% and 75% stops are
+included only when they fit below that cap, and the measured cap is always the
+final stop. For example, a 40%-tall place has only a 40% stop, while a place
+taller than 90% has 50%, 75%, and 90% stops. This prevents expansion into empty
+space while keeping long place details progressively expandable.
 
 | Token | Value | Use |
 |---|---|---|
 | `--h-submit` | `44px` | Submit/CTA button height |
 | `--h-field` | `46px` | Direction / date input row height |
+| `--place-media-card-w` | `154px` | Compact place-gallery thumbnail width |
+| `--place-media-card-h` | `102px` | Compact place-gallery thumbnail height |
+| `--place-media-card-w-phone` | `132px` | Phone place-gallery thumbnail width |
+| `--place-media-card-h-phone` | `88px` | Phone place-gallery thumbnail height |
+| `--place-media-nav-size` | `30px` | Fine-pointer gallery rail controls |
+| `--photo-viewer-stage-bg` | `oklch(0.17 0.01 155)` | Neutral dark image-containment surface |
+| `--photo-viewer-window-w` | `420px` | Shared desktop place/review photo-window width |
+| `--photo-viewer-window-h` | `min(620px, 85dvh)` | Shared desktop place/review photo-window height |
+| `--photo-viewer-enter-scale` | `0.98` | Shared photo-viewer opening/closing scale |
+| `--count-badge-min-w` | `22px` | Shared filled numeric-count badge width |
 | `--h-search` | `48px` | Search box height |
 | `--places-refine-max-h` | `360px` | Upper bound for animating the phone Places refine bar open/closed |
-| `--place-media-card-w` | `190px` | Horizontal place-gallery card width |
-| `--place-media-card-h` | `128px` | Horizontal place-gallery card height |
 | `--review-media-size` | `88px` | Published review thumbnail size |
 | `--review-preview-size` | `88px` | Selected review-upload preview size |
 | `--review-media-remove-size` | `44px` | Touch-safe preview remove control |
+| `--review-compose-min-h` | `76px` | Compact review textarea minimum height |
 
 **Correction (2026-08-02):** this table previously listed a `--h-input: 44px` token ("Minimum touch-friendly height for form inputs") and `--h-submit: 48px`/`--h-field: 42px` — none of which matched `design-tokens.css`. `--h-input` was never actually defined anywhere in the stylesheet (any `var(--h-input)` reference silently resolved to the browser's initial `height` value, `auto`), and `--h-submit`/`--h-field`'s real values are `44px`/`46px`, not `48px`/`42px`. Found the hard way: a `.btn-google` height override referencing the phantom `--h-input` silently collapsed that button to ~20px, caught by an automated Playwright bounding-box assertion, not by visual review (see `docs/PREFERENCE_LOG.md`'s 2026-08-02 entry for the full incident). Corrected the table to match the actual CSS and added the previously-undocumented `--h-search`. If you need a 44px "safe minimum touch target" height for a new form control that isn't literally a submit button, `--h-submit` is the closest existing 44px token — introduce a new dedicated token rather than reintroducing a bare `--h-input` name with an assumed value.
 

@@ -48,6 +48,10 @@ export const EVT = {
    *  without re-fetching on every unrelated `hf:reviews-loaded` firing.
    *  detail: { placeId: string, rating: number, text: string, status?: string } */
   MY_REVIEW_SUBMITTED: "hf:my-review-submitted",
+  /** Fired after one or more review photos are uploaded for a place so an
+   *  already-open detail gallery can invalidate and lazily refetch its manifest.
+   *  detail: { placeId: string } */
+  PLACE_MEDIA_CHANGED: "hf:place-media-changed",
   /** Fired by src/account-sync.js's _handleSignIn() once it has determined
    *  whether the signed-in account has any prior server-side data (saved
    *  places/pins/home, or an already-resolved local-import decision) —

@@ -272,6 +272,7 @@ CREATE TABLE reviews (
   google_review       TEXT NOT NULL DEFAULT '',
   google_rating       REAL,
   google_rating_count  INTEGER,
+  moderation_reason   TEXT NOT NULL DEFAULT '',
   UNIQUE(place_id, email_hash)
 );
 CREATE INDEX idx_reviews_place_id ON reviews(place_id);
@@ -286,11 +287,22 @@ CREATE TABLE review_images (
   content_type TEXT NOT NULL,
   size_bytes   INTEGER NOT NULL,
   created_at   TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'yes' CHECK(status IN ('yes','no')),
+  moderation_reason TEXT NOT NULL DEFAULT '',
   FOREIGN KEY(review_id) REFERENCES reviews(id) ON DELETE CASCADE,
   FOREIGN KEY(place_id) REFERENCES places(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_review_images_review_id ON review_images(review_id);
 CREATE INDEX idx_review_images_place_id ON review_images(place_id);
+
+-- Review bans are keyed by the same one-way identity hash used by reviews.
+-- Unbanning does not automatically republish previously hidden reviews.
+CREATE TABLE reviewer_bans (
+  email_hash TEXT PRIMARY KEY,
+  reason     TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL DEFAULT ''
+);
 
 -- Google place IDs are exempt from Places caching restrictions. Photo
 -- references and image bytes are deliberately not persisted here.

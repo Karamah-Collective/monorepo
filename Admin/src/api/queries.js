@@ -55,6 +55,10 @@ export const useApproveEventEdit = () => useAdminMutation("approve-event-edit", 
 export const useRejectEventEdit = () => useAdminMutation("reject-event-edit", ["pending-event-edits", "admin-stats"]);
 export const useApproveReview = () => useAdminMutation("approve-review", ["admin-reviews"]);
 export const useRejectReview = () => useAdminMutation("reject-review", ["admin-reviews"]);
+export const useSetReviewStatus = () => useAdminMutation("set-review-status", ["admin-reviews"]);
+export const useSetReviewImageStatus = () => useAdminMutation("set-review-image-status", ["admin-reviews"]);
+export const useBanReviewer = () => useAdminMutation("ban-reviewer", ["admin-reviews"]);
+export const useUnbanReviewer = () => useAdminMutation("unban-reviewer", ["admin-reviews"]);
 export const useApproveEid = () => useAdminMutation("approve-eid", ["pending-eid", "admin-eid-prayers", "admin-stats"]);
 export const useRejectEid = () => useAdminMutation("reject-eid", ["pending-eid", "admin-stats"]);
 export const useUpsertSocialVideo = () => useAdminMutation("upsert-social-video", ["admin-social-videos"]);

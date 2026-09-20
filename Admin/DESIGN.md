@@ -7,6 +7,10 @@ muted green accents, self-hosted Geist and Geist Mono, and Phosphor icons.
 Color signals state; avoid ornamental gradients, artificial analytics, or continuous
 animation that competes with moderation work.
 
+In dark mode, filled primary and affirmative action buttons use the Collective's
+warm gold with deep-teal text, matching the public Website. Green remains available
+for semantic success indicators and quieter navigation/focus states.
+
 ## Composition and navigation
 
 - Desktop: grouped sidebar with the Website logo, a visible collapse/expand control,
@@ -21,6 +25,10 @@ animation that competes with moderation work.
   activity, and workspace shortcuts. Counts come from the existing admin API.
 - Collections: optional column filters, keyboard sorting, row density, local table
   scrolling, always-visible pagination, and actionable empty results.
+- Review moderation: keep the collection row compact and route review publication,
+  individual image visibility, and reviewer access into the shared native editor
+  dialog. Visibility changes are reversible; account bans require confirmation and
+  never silently republish content when removed.
 - Settings: section navigation preserves the full draft across sections. Saving,
   validation, and revision conflict detection retain the existing API contract.
 

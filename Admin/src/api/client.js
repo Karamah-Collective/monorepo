@@ -50,6 +50,18 @@ export async function apiPost(action, body = {}) {
   return parseResponse(res);
 }
 
+export async function apiGetBlob(action, params = {}) {
+  const headers = await authHeader();
+  const url = new URL(apiBase(), window.location.origin);
+  url.searchParams.set("action", action);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value);
+  }
+  const response = await request(url.toString(), { headers });
+  if (!response.ok) await parseResponse(response);
+  return response.blob();
+}
+
 async function request(url, options) {
   try {
     const response = await fetch(url, options);

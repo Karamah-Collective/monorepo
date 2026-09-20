@@ -15,7 +15,7 @@
 import { allowedOrigin, json } from "../_shared.js";
 import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
-import { getReviewImageMap } from "../_review-images.js";
+import { getPlaceIdsWithReviewImages } from "../_review-images.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 
@@ -82,6 +82,7 @@ async function getPlaces(db) {
   const labelToId = await buildLabelToIdMap(db);
   const promoMap = await getPromoMap(db);
   const mapsLinkMap = await _getMapsLinkMap(db);
+  const placesWithImages = await getPlaceIdsWithReviewImages(db);
   const { results } = await db.prepare("SELECT * FROM places").all();
   const places = [];
 
@@ -104,6 +105,7 @@ async function getPlaces(db) {
     }
 
     const place = { id: (row.id || "").toString().trim(), name, type, address, city: extractCityFromAddress(address), lat, lng, tags, notes: (row.notes || "").toString().trim() };
+    place.hasImages = placesWithImages.has(place.id);
     if (row.boycott) place.boycott = true;
 
     const hoursRaw = (row.opening_hours || "").toString().trim();
@@ -204,7 +206,6 @@ async function getEvents(db) {
 // Code.gs:4378 getReviewsJSON — the `reviews` key of ?action=all
 async function getReviewsSummary(db) {
   const { results } = await db.prepare("SELECT * FROM reviews").all();
-  const imageMap = await getReviewImageMap(db);
   const grouped = {};
   const ensure = (pid) => {
     if (!grouped[pid]) grouped[pid] = { total: 0, sum: 0, items: [], googleReviewRaw: "", googleRatingRaw: "", googleRatingCountRaw: "" };
@@ -219,7 +220,7 @@ async function getReviewsSummary(db) {
       const g = ensure(placeId);
       g.total++;
       g.sum += rating;
-      g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community", images: imageMap.get(String(row.id)) || [] });
+      g.items.push({ id: String(row.id), rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community" });
     }
     if (placeId) {
       const g = ensure(placeId);

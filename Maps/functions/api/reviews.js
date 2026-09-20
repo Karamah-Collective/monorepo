@@ -13,29 +13,36 @@
  *   DB – D1 database binding
  */
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
-import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
+import { allowedOrigin, isLoopbackRequest, truncate, sha256, json } from "../_shared.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
 import { readAppSettings } from "../_app-settings.js";
-import { getReviewImageMap } from "../_review-images.js";
 
 const MAX_BODY_SIZE = 4096;
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
 const MAX_PLACE_ID_LEN = 6;
 const MAX_ID_TOKEN_LEN = 2048;
+const LOCAL_REVIEW_IDENTITY = "local-reviewer@loopback.invalid";
 
 // isUnverifiedPassword mirrors src/auth.js's isCurrentUserUnverifiedPassword()
 // server-side, from the token's own (unspoofable, since it's inside the
 // signature-verified JWT) claims rather than trusting anything the client
 // sent — the client-side gate in src/reviews.js is UX only; this is the
 // actual security boundary per this project's standing rule.
-async function resolveFirebaseIdentity(idToken) {
+async function resolveFirebaseIdentity(idToken, request, localReview = false) {
+  if (localReview === true && isLoopbackRequest(request)) {
+    return { emailHash: await sha256(LOCAL_REVIEW_IDENTITY), isUnverifiedPassword: false };
+  }
   const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;
   const isUnverifiedPassword = verified.signInProvider === "password" && !verified.emailVerified;
   return { emailHash: await sha256(verified.email.trim().toLowerCase()), isUnverifiedPassword };
+}
+
+async function isReviewerBanned(db, emailHash) {
+  return Boolean(await db.prepare("SELECT 1 FROM reviewer_bans WHERE email_hash = ?").bind(emailHash).first());
 }
 
 // ── GET: list all live reviews, grouped by placeId (Code.gs:4378 getReviewsJSON) ──
@@ -53,7 +60,6 @@ export async function onRequestGet(context) {
 
   try {
     const { results } = await env.DB.prepare("SELECT * FROM reviews").all();
-    const imageMap = await getReviewImageMap(env.DB);
     const grouped = {};
     const ensure = (pid) => {
       if (!grouped[pid]) grouped[pid] = { total: 0, sum: 0, items: [], googleReviewRaw: "", googleRatingRaw: "", googleRatingCountRaw: "" };
@@ -67,7 +73,7 @@ export async function onRequestGet(context) {
         const g = ensure(placeId);
         g.total++;
         g.sum += rating;
-        g.items.push({ rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community", images: imageMap.get(String(row.id)) || [] });
+        g.items.push({ id: String(row.id), rating, text: status === "yes" ? (row.text || "").toString() : "", timestamp: (row.timestamp || "").toString(), source: "community" });
       }
       if (placeId) {
         const g = ensure(placeId);
@@ -131,8 +137,8 @@ export async function onRequestPost(context) {
   // ── check: has the caller already reviewed this place? ──
   if (action === "check") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
-    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!placeId) return json({ error: "Missing required fields" }, 400, headers);
+    const identity = await resolveFirebaseIdentity(body.idToken, request, body.localReview === true);
     if (!identity) return json({ reviewed: false }, 200, headers);
     const row = await db.prepare("SELECT rating FROM reviews WHERE place_id = ? AND email_hash = ? AND status != 'no'").bind(placeId, identity.emailHash).first();
     return json(row ? { reviewed: true, rating: Number(row.rating) } : { reviewed: false }, 200, headers);
@@ -144,7 +150,7 @@ export async function onRequestPost(context) {
     try { settings = (await readAppSettings(db)).settings; } catch { settings = null; }
     if (settings && !settings.reviewSubmissionsEnabled) return json({ error: "reviews_paused" }, 403, headers);
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
+    if (!placeId) return json({ error: "Missing required fields" }, 400, headers);
 
     const rating = parseInt(body.rating, 10);
     if (!rating || rating < 1 || rating > 5) return json({ error: "invalid_rating" }, 400, headers);
@@ -152,19 +158,20 @@ export async function onRequestPost(context) {
     let text = truncate((body.text || "").trim(), MAX_TEXT_LEN);
     if (text && text.length < MIN_TEXT_LEN) return json({ error: "text_too_short" }, 400, headers);
 
-    const identity = await resolveFirebaseIdentity(body.idToken);
+    const identity = await resolveFirebaseIdentity(body.idToken, request, body.localReview === true);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
     // Hard block — reviews have no anonymous variant, so an unverified
     // password account can't be let through with its identity silently
     // stripped the way the optional-identity /api/submit forms are; there's
     // nothing left to fall back to but rejecting outright.
     if (identity.isUnverifiedPassword) return json({ error: "email_not_verified" }, 403, headers);
+    if (await isReviewerBanned(db, identity.emailHash)) return json({ error: "reviewer_banned" }, 403, headers);
 
     const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
     if (!place) return json({ error: "invalid_place" }, 400, headers);
 
     const now = new Date().toISOString();
-    const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ? AND status != 'no'").bind(placeId, identity.emailHash).first();
+    const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).first();
 
     if (existing) {
       // Rating/timestamp always update; text/status only touched when new
@@ -193,8 +200,8 @@ export async function onRequestPost(context) {
   // ── delete: remove the caller's own review for a place ──
   if (action === "delete") {
     const placeId = truncate((body.placeId || "").trim(), MAX_PLACE_ID_LEN);
-    if (!placeId || !body.idToken) return json({ error: "Missing required fields" }, 400, headers);
-    const identity = await resolveFirebaseIdentity(body.idToken);
+    if (!placeId) return json({ error: "Missing required fields" }, 400, headers);
+    const identity = await resolveFirebaseIdentity(body.idToken, request, body.localReview === true);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
     const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).first();
@@ -215,8 +222,7 @@ export async function onRequestPost(context) {
 
   // ── my-reviews: list the caller's own live reviews, newest first ──
   if (action === "my-reviews") {
-    if (!body.idToken) return json({ error: "Missing required fields" }, 400, headers);
-    const identity = await resolveFirebaseIdentity(body.idToken);
+    const identity = await resolveFirebaseIdentity(body.idToken, request, body.localReview === true);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
     const { results } = await db.prepare("SELECT r.place_id, r.rating, r.text, r.timestamp, p.name FROM reviews r LEFT JOIN places p ON p.id = r.place_id WHERE r.email_hash = ? AND r.status != 'no' ORDER BY r.timestamp DESC")

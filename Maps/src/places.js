@@ -6,7 +6,7 @@ import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
-import { getPlaceRating, getPlaceReviewImages, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews } from "./reviews.js";
+import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
 import { EVT } from "./events.js";
 
 export let placesData = [];
@@ -156,6 +156,7 @@ function sortSubtags() {
 }
 let _activePlaceSheetId = null;
 let _activePlaceSheetReviewsListener = null;
+let _activePlaceSheetMediaListener = null;
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 
@@ -259,6 +260,10 @@ export function closePlaceSheet() {
   if (_activePlaceSheetReviewsListener) {
     window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
     _activePlaceSheetReviewsListener = null;
+  }
+  if (_activePlaceSheetMediaListener) {
+    window.removeEventListener(EVT.PLACE_MEDIA_CHANGED, _activePlaceSheetMediaListener);
+    _activePlaceSheetMediaListener = null;
   }
   _activePlaceSheetId = null;
   _placeSheetFromListScrollTop = null;
@@ -1504,6 +1509,7 @@ const CLUSTER_ZOOM = 10;
 // already at or past this zoom, clicking just pans/recenters, it never
 // zooms in further.
 const PLACE_CLICK_ZOOM = 14;
+const PLACE_SHEET_MAX_HEIGHT_RATIO = 0.9;
 let _clusterLayersReady = false;
 
 function _buildPlacesGeoJSON(places) {
@@ -1847,7 +1853,7 @@ function _renderPopupRating(container, placeId, placeName, ratingData) {
   const _chevronSVG = `<svg class="pp-rating-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
   if (ratingData) {
     ratingEl.className = "pp-rating";
-    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count">${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}</span>${_chevronSVG}`;
+    ratingEl.innerHTML = `<span class="pp-rating-avg">${ratingData.avg.toFixed(1)}</span><span class="pp-rating-stars">${buildStarDisplay(ratingData.avg, "14")}</span><span class="pp-rating-count count-badge" aria-label="${ratingData.count} review${ratingData.count !== 1 ? "s" : ""}">${ratingData.count}</span>${_chevronSVG}`;
     ratingEl.title = "View reviews";
   } else {
     ratingEl.className = "pp-rating pp-rating--empty";
@@ -1884,7 +1890,12 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
     _activePlaceSheetReviewsListener = null;
   }
+  if (_activePlaceSheetMediaListener) {
+    window.removeEventListener(EVT.PLACE_MEDIA_CHANGED, _activePlaceSheetMediaListener);
+    _activePlaceSheetMediaListener = null;
+  }
   trackRecentlyViewed(place.id);
+  if (typeof place.hasImages === "boolean") registerPlaceMediaAvailability(place.id, place.hasImages);
   const visual = _placeVisual(place);
   const cssColor = visual.color;
   const specificTypeLabel = _placeSpecificTypeLabel(place);
@@ -1905,16 +1916,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${esc(specificTypeLabel)}</span>` +
     (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
   inner.appendChild(hdr);
-
-  // Media is non-critical and only requested after the user opens a place.
-  const mediaHost = document.createElement("div");
-  mediaHost.className = "pp-media-host";
-  inner.appendChild(mediaHost);
-  let mediaController = null;
-  import("./place-media.js").then(({ mountPlaceMedia }) => {
-    if (!mediaHost.isConnected) return;
-    mediaController = mountPlaceMedia(mediaHost, place, getPlaceReviewImages(place.id));
-  }).catch(() => { /* Photos are optional; place details remain complete. */ });
 
   // Tap-to-show tooltip on mobile for the Featured badge
   const featBadge = hdr.querySelector(".pp-sponsor-badge");
@@ -1971,7 +1972,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   // Re-render reviews section when data arrives after the sheet is already open
   const _onReviewsLoaded = () => {
     _renderPlaceSheetReviews(reviewsSection, place.id, place.name, getPlaceRating(place.id));
-    mediaController?.setCommunityImages(getPlaceReviewImages(place.id));
   };
   window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
   _activePlaceSheetReviewsListener = _onReviewsLoaded;
@@ -1999,6 +1999,26 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     tagsEl.innerHTML = allChips;
     inner.appendChild(tagsEl);
   }
+
+  // Photos sit directly after the tags and before the hours/details below.
+  // Media is non-critical and only requested after the user opens a place.
+  const mediaHost = document.createElement("div");
+  mediaHost.className = "pp-media-host";
+  inner.appendChild(mediaHost);
+  let mediaController = null;
+  import("./place-media.js").then(({ mountPlaceMedia }) => {
+    if (!mediaHost.isConnected) return;
+    mediaController = mountPlaceMedia(mediaHost, place, {
+      onLayoutChange: () => placeSheetSnap.remeasure({ preserveExpansion: true }),
+    });
+  }).catch(() => { /* Photos are optional; place details remain complete. */ });
+  const _onPlaceMediaChanged = (event) => {
+    if (String(event.detail?.placeId || "") !== String(place.id)) return;
+    place.hasImages = true;
+    mediaController?.refresh();
+  };
+  window.addEventListener(EVT.PLACE_MEDIA_CHANGED, _onPlaceMediaChanged);
+  _activePlaceSheetMediaListener = _onPlaceMediaChanged;
 
   if (place.boycott) {
     const callout = document.createElement("div");
@@ -2500,7 +2520,10 @@ document.getElementById("places-btn").addEventListener("click", () =>
 document.getElementById("places-close").addEventListener("click", closePlacesSheet);
 
 const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
-const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet);
+const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, {
+  contentBoundedExpansion: true,
+  maxHeightRatio: PLACE_SHEET_MAX_HEIGHT_RATIO,
+});
 
 let _placesDirty = false;
 

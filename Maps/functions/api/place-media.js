@@ -6,6 +6,7 @@
 import { allowedOrigin, json } from "../_shared.js";
 import { findPlaceIdFromText } from "../_google-maps.js";
 import { readAppSettings } from "../_app-settings.js";
+import { getPlaceReviewImages } from "../_review-images.js";
 
 const MAX_PHOTOS = 4;
 const PHOTO_MAX_WIDTH = 1200;
@@ -67,11 +68,15 @@ export async function onRequestGet({ request, env }) {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
   };
   try {
-    if (!env.DB || !env.MAPS_API_KEY) return json({ photos: [] }, 200, headers);
-    const { settings } = await readAppSettings(env.DB);
-    if (!settings.googlePlacePhotosEnabled) return json({ photos: [], disabled: true }, 200, headers);
-    const placeId = new URL(request.url).searchParams.get("placeId") || "";
+    if (!env.DB) return json({ communityPhotos: [], googlePhotos: [] }, 200, headers);
+    const requestUrl = new URL(request.url);
+    const placeId = requestUrl.searchParams.get("placeId") || "";
+    const communityOnly = requestUrl.searchParams.get("communityOnly") === "1";
     if (!PLACE_ID_RE.test(placeId)) return json({ error: "Invalid place" }, 400, headers);
+    const communityPhotos = await getPlaceReviewImages(env.DB, placeId);
+    if (communityOnly || !env.MAPS_API_KEY) return json({ communityPhotos, googlePhotos: [] }, 200, headers);
+    const { settings } = await readAppSettings(env.DB);
+    if (!settings.googlePlacePhotosEnabled) return json({ communityPhotos, googlePhotos: [], disabled: true }, 200, headers);
 
     const place = await env.DB.prepare("SELECT id, name, address, lat, lng, google_info FROM places WHERE id = ? AND disabled = 0").bind(placeId).first();
     if (!place) return json({ error: "Place not found" }, 404, headers);
@@ -83,22 +88,22 @@ export async function onRequestGet({ request, env }) {
       ).bind(placeId).first();
       mapsUrl = link?.maps_link || "";
     }
-    if (!mapsUrl) return json({ photos: [] }, 200, headers);
+    if (!mapsUrl) return json({ communityPhotos, googlePhotos: [] }, 200, headers);
 
     const googlePlaceId = await _resolveGooglePlaceId(env.DB, env, place);
-    if (!googlePlaceId) return json({ photos: [] }, 200, headers);
+    if (!googlePlaceId) return json({ communityPhotos, googlePhotos: [] }, 200, headers);
     const details = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(googlePlaceId)}`, {
       headers: {
         "X-Goog-Api-Key": env.MAPS_API_KEY,
         "X-Goog-FieldMask": "photos",
       },
     });
-    if (!details.ok) return json({ photos: [] }, 200, headers);
+    if (!details.ok) return json({ communityPhotos, googlePhotos: [] }, 200, headers);
     const payload = await details.json();
-    const photos = (await Promise.all((payload.photos || []).slice(0, MAX_PHOTOS).map((photo) => _fetchPhoto(photo, env.MAPS_API_KEY)))).filter(Boolean);
-    return json({ photos, mapsUrl }, 200, headers);
+    const googlePhotos = (await Promise.all((payload.photos || []).slice(0, MAX_PHOTOS).map((photo) => _fetchPhoto(photo, env.MAPS_API_KEY)))).filter(Boolean);
+    return json({ communityPhotos, googlePhotos, mapsUrl }, 200, headers);
   } catch {
-    return json({ photos: [] }, 200, headers);
+    return json({ communityPhotos: [], googlePhotos: [] }, 200, headers);
   }
 }
 

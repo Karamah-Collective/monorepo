@@ -61,6 +61,10 @@ function adminAllowedOrigin(request, env = {}) {
 
 const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com"; // leading "@" is load-bearing — endsWith("karamahcollective.com") without it would let "user@evilkaramahcollective.com" through
 const MAX_ID_TOKEN_LEN = 2048;
+const MAX_MODERATION_REASON_LEN = 300;
+const REVIEW_STATUSES = new Set(["yes", "no", "pending"]);
+const IMAGE_STATUSES = new Set(["yes", "no"]);
+const REVIEW_IMAGE_ID_RE = /^[0-9a-f-]{36}$/i;
 
 async function authenticateAdmin(request, env) {
   const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
@@ -76,7 +80,7 @@ async function authenticateAdmin(request, env) {
 
 // ── Audit log ────────────────────────────────────────────────────────────
 
-const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "rowIndex", "videoId", "id"];
+const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "imageId", "rowIndex", "videoId", "id"];
 function extractTargetId(data) {
   for (const f of TARGET_ID_FIELDS) {
     if (data[f] !== undefined && data[f] !== null && data[f] !== "") return String(data[f]);
@@ -287,11 +291,56 @@ async function getPendingEventEdits(db) {
 }
 
 async function getAdminReviews(db) {
-  const { results } = await db.prepare("SELECT * FROM reviews ORDER BY id").all();
-  return results.map((r) => ({
-    rowIndex: String(r.id), placeId: r.place_id, rating: Number(r.rating), text: r.text || "", email: r.email || "",
-    timestamp: r.timestamp, status: r.status || "", emailHash: (r.email_hash || "").substring(0, 8) + "…",
+  const [reviewRows, imageRows] = await Promise.all([
+    db.prepare(
+      `SELECT r.*, p.name AS place_name, b.reason AS ban_reason
+       FROM reviews r
+       LEFT JOIN places p ON p.id = r.place_id
+       LEFT JOIN reviewer_bans b ON b.email_hash = r.email_hash
+       WHERE r.email_hash != ''
+       ORDER BY r.id DESC`
+    ).all(),
+    db.prepare(
+      `SELECT id, review_id, status, moderation_reason, content_type, size_bytes, created_at
+       FROM review_images ORDER BY created_at, id`
+    ).all(),
+  ]);
+  const imagesByReview = new Map();
+  for (const image of imageRows.results) {
+    const reviewId = String(image.review_id);
+    if (!imagesByReview.has(reviewId)) imagesByReview.set(reviewId, []);
+    imagesByReview.get(reviewId).push({
+      id: image.id,
+      status: image.status || "yes",
+      moderationReason: image.moderation_reason || "",
+      contentType: image.content_type || "",
+      sizeBytes: Number(image.size_bytes || 0),
+      createdAt: image.created_at || "",
+    });
+  }
+  return reviewRows.results.map((r) => ({
+    rowIndex: String(r.id), placeId: r.place_id, placeName: r.place_name || "",
+    rating: Number(r.rating), text: r.text || "", timestamp: r.timestamp,
+    status: r.status || "", moderationReason: r.moderation_reason || "",
+    emailHash: `${(r.email_hash || "").substring(0, 8)}…`,
+    banned: r.ban_reason != null, banReason: r.ban_reason || "",
+    images: imagesByReview.get(String(r.id)) || [],
   }));
+}
+
+async function getAdminReviewImage(db, env, imageId, headers) {
+  if (!env.MEDIA || !REVIEW_IMAGE_ID_RE.test(imageId)) return json({ error: "Image not found" }, 404, headers);
+  const row = await db.prepare("SELECT object_key, content_type FROM review_images WHERE id = ?").bind(imageId).first();
+  if (!row) return json({ error: "Image not found" }, 404, headers);
+  const object = await env.MEDIA.get(row.object_key);
+  if (!object) return json({ error: "Image not found" }, 404, headers);
+  const responseHeaders = new Headers(headers);
+  responseHeaders.delete("Content-Type");
+  object.writeHttpMetadata(responseHeaders);
+  responseHeaders.set("Content-Type", row.content_type);
+  responseHeaders.set("Cache-Control", "private, no-store");
+  responseHeaders.set("X-Content-Type-Options", "nosniff");
+  return new Response(object.body, { headers: responseHeaders });
 }
 
 async function getPendingEid(db) {
@@ -375,12 +424,14 @@ export async function onRequestGet(context) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "";
   const handler = GET_ACTIONS[action];
-  if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
+  const isReviewImage = action === "admin-review-image";
+  if (!handler && !isReviewImage) return json({ error: "Unknown admin action" }, 400, headers);
 
   const auth = await authenticateAdmin(request, env);
   if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
 
   try {
+    if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
     return json(await handler(env.DB, url), 200, headers);
   } catch {
     return json({ error: "Service error" }, 502, headers);
@@ -902,21 +953,44 @@ async function rejectEventEdit(db, rowId, reason) {
   return meta.rows_written > 0 ? { success: true } : { error: "Event edit not found (may already be processed)" };
 }
 
-async function updateReviewStatus(db, rowIndex, newStatus, env) {
+async function updateReviewStatus(db, rowIndex, newStatus, reason = "") {
   const rowNum = parseInt(rowIndex, 10);
-  if (!rowNum) return { error: "Invalid row index" };
-  const { meta } = await db.prepare("UPDATE reviews SET status = ? WHERE id = ?").bind(newStatus, rowNum).run();
-  if (meta.rows_written > 0 && newStatus === "no") {
-    try {
-      const { results } = await db.prepare("SELECT object_key FROM review_images WHERE review_id = ?").bind(rowNum).all();
-      await db.prepare("DELETE FROM review_images WHERE review_id = ?").bind(rowNum).run();
-      const keys = results.map((row) => row.object_key).filter(Boolean);
-      if (keys.length && env.MEDIA) {
-        try { await env.MEDIA.delete(keys); } catch { /* Rejected media is already inaccessible via D1. */ }
-      }
-    } catch { /* migration may not be applied yet */ }
-  }
+  if (!rowNum || !REVIEW_STATUSES.has(newStatus)) return { error: "Invalid review status" };
+  const moderationReason = newStatus === "yes" ? "" : truncate((reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  const { meta } = await db.prepare("UPDATE reviews SET status = ?, moderation_reason = ? WHERE id = ? AND email_hash != ''")
+    .bind(newStatus, moderationReason, rowNum).run();
   return meta.rows_written > 0 ? { success: true } : { error: "Row not found" };
+}
+
+async function updateReviewImageStatus(db, data) {
+  const imageId = (data.imageId || "").toString();
+  const status = (data.status || "").toString();
+  if (!REVIEW_IMAGE_ID_RE.test(imageId) || !IMAGE_STATUSES.has(status)) return { error: "Invalid image status" };
+  const moderationReason = status === "yes" ? "" : truncate((data.reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  const { meta } = await db.prepare("UPDATE review_images SET status = ?, moderation_reason = ? WHERE id = ?")
+    .bind(status, moderationReason, imageId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Image not found" };
+}
+
+async function updateReviewerBan(db, data, actor, banned) {
+  const reviewId = parseInt(data.rowIndex, 10);
+  if (!reviewId) return { error: "Invalid review" };
+  const review = await db.prepare("SELECT email_hash FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId).first();
+  if (!review?.email_hash) return { error: "Reviewer not found" };
+  if (!banned) {
+    const { meta } = await db.prepare("DELETE FROM reviewer_bans WHERE email_hash = ?").bind(review.email_hash).run();
+    return meta.rows_written > 0 ? { success: true } : { error: "Reviewer is not banned" };
+  }
+  const reason = truncate((data.reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  await db.batch([
+    db.prepare(
+      `INSERT INTO reviewer_bans (email_hash, reason, created_at, created_by) VALUES (?,?,?,?)
+       ON CONFLICT(email_hash) DO UPDATE SET reason = excluded.reason, created_at = excluded.created_at, created_by = excluded.created_by`
+    ).bind(review.email_hash, reason, new Date().toISOString(), actor.email),
+    db.prepare("UPDATE reviews SET status = 'no', moderation_reason = ? WHERE email_hash = ?")
+      .bind(reason || "Reviewer banned", review.email_hash),
+  ]);
+  return { success: true };
 }
 
 // Code.gs:950 copyEidNewToEidPrayers
@@ -971,8 +1045,12 @@ const POST_ACTIONS = {
   "delete-event": (db, data) => deleteEvent(db, data.eventId),
   "approve-event-edit": (db, data, env) => approveEventEdit(db, data.rowId, env),
   "reject-event-edit": (db, data) => rejectEventEdit(db, data.rowId, data.reason || ""),
-  "approve-review": (db, data, env) => updateReviewStatus(db, data.rowIndex, "yes", env),
-  "reject-review": (db, data, env) => updateReviewStatus(db, data.rowIndex, "no", env),
+  "approve-review": (db, data) => updateReviewStatus(db, data.rowIndex, "yes"),
+  "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no", data.reason),
+  "set-review-status": (db, data) => updateReviewStatus(db, data.rowIndex, data.status, data.reason),
+  "set-review-image-status": (db, data) => updateReviewImageStatus(db, data),
+  "ban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, true),
+  "unban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, false),
   "approve-eid": (db, data) => approveEid(db, data.rowId),
   "reject-eid": (db, data) => rejectEid(db, data.rowId),
   "upsert-social-video": (db, data) => upsertSocialVideo(db, data.video || data),
@@ -1001,7 +1079,7 @@ export async function onRequestPost(context) {
 
   let result;
   try {
-    result = await handler(env.DB, data, env);
+    result = await handler(env.DB, data, env, auth.actor);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }

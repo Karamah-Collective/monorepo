@@ -46,7 +46,7 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
           <Icons.globe />
         </span>
         <span>
-          Collective workspace<small>Maps &amp; website</small>
+          Collective workspace<small>Maps, website &amp; links</small>
         </span>
         <span className="live-dot" />
       </div>

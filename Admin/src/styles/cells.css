@@ -117,14 +117,14 @@
 }
 
 .pp-btn-approve {
-  background: var(--success-bg);
-  color: var(--success);
+  background: var(--action-accent-soft);
+  color: var(--action-accent);
   border: 1px solid transparent;
 }
 
 .pp-btn-approve:hover {
-  background: var(--success);
-  color: #fff;
+  background: var(--action-accent);
+  color: var(--action-on-accent);
 }
 
 .pp-btn-reject {
@@ -145,9 +145,9 @@
 }
 
 .pp-btn-refresh:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--action-accent);
+  border-color: var(--action-accent);
+  color: var(--action-on-accent);
 }
 
 .pp-btn-delete {
@@ -321,9 +321,9 @@
 }
 
 .pp-icon-btn:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--action-accent);
+  border-color: var(--action-accent);
+  color: var(--action-on-accent);
 }
 
 .pp-icon-btn:disabled {
@@ -460,6 +460,43 @@
 .place-manager-dialog::backdrop { background:#17251e99; backdrop-filter:blur(3px); }
 :root[data-admin-theme="dark"] .place-manager-dialog::backdrop { background:#070d09b8; }
 
+.review-manager-dialog { width:min(720px,calc(100% - 24px)); overflow:hidden; }
+.review-manager-shell { display:flex; flex-direction:column; max-height:calc(100dvh - 32px); }
+.review-manager-dialog header p { margin:5px 0 0; color:var(--text-muted); font-size:12px; }
+.review-manager-body { min-height:0; overflow:auto; }
+.review-manager-section { padding:22px 24px; border-bottom:1px solid var(--border); }
+.review-manager-section:last-child { border-bottom:0; }
+.review-manager-section h3 { margin:0; font-size:14px; font-weight:600; letter-spacing:-.01em; }
+.review-manager-section p { margin:5px 0 0; color:var(--text-muted); font-size:12px; line-height:1.55; }
+.review-manager-summary { background:var(--bg-alt); }
+.review-manager-summary > p { margin:14px 0; color:var(--text); font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.review-manager-summary-head,.review-manager-section-head,.review-manager-actions,.review-manager-image footer { display:flex; align-items:center; gap:8px; }
+.review-manager-summary-head { flex-wrap:wrap; }
+.review-manager-rating { font-family:var(--font-mono); font-size:18px; font-weight:600; }
+.review-manager-summary dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0; }
+.review-manager-summary dl div { min-width:0; }
+.review-manager-summary dt { margin-bottom:3px; color:var(--text-faint); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+.review-manager-summary dd { margin:0; overflow:hidden; color:var(--text-muted); font-family:var(--font-mono); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.review-manager-section-head { align-items:flex-start; justify-content:space-between; gap:18px; }
+.review-manager-actions { justify-content:flex-end; flex-wrap:wrap; }
+.review-manager-note { display:grid; gap:7px; margin-top:16px; color:var(--text); font-size:12px; font-weight:500; }
+.review-manager-note textarea { width:100%; resize:vertical; padding:10px 12px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); line-height:1.5; }
+.review-manager-count { display:grid; min-width:24px; height:24px; place-items:center; border-radius:999px; background:var(--bg-inset); color:var(--text-muted); font-family:var(--font-mono); font-size:11px; }
+.review-manager-images { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:16px; }
+.review-manager-image { overflow:hidden; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); }
+.review-manager-image > img,.review-manager-image-fallback { width:100%; aspect-ratio:4/3; display:block; }
+.review-manager-image > img { object-fit:cover; }
+.review-manager-image-fallback { display:grid; place-items:center; padding:12px; color:var(--text-faint); font-size:11px; text-align:center; }
+.review-manager-image-fallback.is-loading { animation:manage-image-pulse 1.1s ease-in-out infinite alternate; }
+.review-manager-image footer { justify-content:space-between; padding:10px; border-top:1px solid var(--border); }
+.review-manager-image footer .pp-btn { min-height:30px; }
+.review-manager-empty { padding:16px 0 0; }
+.review-manager-account { display:flex; align-items:center; justify-content:space-between; gap:22px; background:color-mix(in srgb,var(--danger-bg) 42%,var(--bg)); }
+.review-manager-account > div { max-width:470px; }
+.review-manager-dialog > .review-manager-shell > footer { display:flex; align-items:center; gap:12px; padding:14px 24px; border-top:1px solid var(--border); background:var(--bg); }
+.review-manager-dialog > .review-manager-shell > footer p { flex:1; margin:0; color:var(--text-muted); font-size:11px; }
+@keyframes manage-image-pulse { from { opacity:.55; } to { opacity:1; } }
+
 @media (max-width:600px) {
   .place-manager-dialog,.place-manager-shell { width:calc(100vw - 12px); max-width:calc(100vw - 12px); max-height:calc(100dvh - 12px); margin:auto; }
   .place-action-section,.place-danger-zone { padding:18px; }
@@ -478,6 +515,20 @@
   .place-manager-dialog footer { padding:13px 18px; }
   .place-manager-dialog footer p { display:none; }
   .place-manager-dialog footer .pp-btn { width:100%; }
+  .review-manager-dialog,.review-manager-shell { width:calc(100vw - 12px); max-width:calc(100vw - 12px); max-height:calc(100dvh - 12px); margin:auto; }
+  .review-manager-section { padding:18px; }
+  .review-manager-section-head,.review-manager-account { align-items:stretch; flex-direction:column; }
+  .review-manager-actions { justify-content:flex-start; }
+  .review-manager-summary dl { grid-template-columns:1fr; }
+  .review-manager-images { grid-template-columns:1fr; }
+  .review-manager-account .pp-btn { width:100%; }
+  .review-manager-dialog > .review-manager-shell > footer { padding:13px 18px; }
+  .review-manager-dialog > .review-manager-shell > footer p { display:none; }
+  .review-manager-dialog > .review-manager-shell > footer .pp-btn { width:100%; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .review-manager-image-fallback.is-loading { animation:none; }
 }
 .pp-toast .icon-button {
   color: inherit;

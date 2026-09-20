@@ -463,9 +463,9 @@ kbd {
     transform 160ms var(--ease);
 }
 .pp-btn-primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: var(--action-accent);
+  color: var(--action-on-accent);
+  border-color: var(--action-accent);
 }
 .pp-btn-text {
   background: transparent;
@@ -816,8 +816,8 @@ kbd {
     border-color: var(--border-strong);
   }
   .pp-btn-primary:hover:not(:disabled) {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
+    background: var(--action-accent-hover);
+    border-color: var(--action-accent-hover);
   }
   .text-link:hover {
     color: var(--accent);

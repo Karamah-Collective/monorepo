@@ -9,7 +9,7 @@
  *
  * Data stored in Cloudflare D1, proxied via /api/reviews.
  */
-import { esc, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast } from "./utils.js";
+import { esc, escA, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast } from "./utils.js";
 import { EVT } from "./events.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
@@ -39,6 +39,7 @@ const VERIFY_RESEND_COOLDOWN_MS = 60_000;
 const MAX_REVIEW_IMAGES = 3;
 const MAX_REVIEW_IMAGE_BYTES = 5 * 1024 * 1024;
 const REVIEW_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const LOCAL_REVIEW_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 // auth.js is dynamically imported (never a static top-level import) so the
 // heavy Firebase CDN modules it pulls in stay lazy — only fetched the first
@@ -56,6 +57,9 @@ let _lastFetch = 0;
 let _activeOverlayPlaceId = null;
 let _activeOverlayPlaceName = "";
 let _overlayClearTimer = null;
+const _loadedReviewImagePlaces = new Set();
+const _loadingReviewImagePlaces = new Set();
+const _placeImageAvailability = new Map();
 
 // `.rv-overlay-card` can also be mid-flight in _insertReviewPanel()'s own
 // entrance-reveal height tween when this runs (e.g. the user taps the email/
@@ -162,6 +166,7 @@ function _withCacheBust(url) {
 
 function _hydrateMap(data) {
   _reviewsMap.clear();
+  _loadedReviewImagePlaces.clear();
   for (const [placeId, info] of Object.entries(data)) {
     _reviewsMap.set(placeId, info);
   }
@@ -230,22 +235,32 @@ export function getPlaceReviews(placeId) {
 }
 
 /**
- * Return approved community images for a place's detail gallery.
- * @param {string} placeId - Stable six-character app place ID.
- * @returns {Array<object>} Public community image descriptors.
+ * Record the D1-derived image-availability flag carried by a place record.
+ * @param {string} placeId - Stable app place ID.
+ * @param {boolean} hasImages - Whether an approved community image exists.
+ * @returns {void}
  */
-export function getPlaceReviewImages(placeId) {
-  return getPlaceReviews(placeId).flatMap((review) => (review.source === "google" ? [] : (review.images || []).map((image) => ({ ...image, source: "community" }))));
+export function registerPlaceMediaAvailability(placeId, hasImages) {
+  _placeImageAvailability.set(String(placeId), Boolean(hasImages));
 }
 
 // ─── Review Submission ───────────────────────────────────────────────────────
 
 /**
+ * Return whether reviews should use the loopback-only development identity.
+ * @returns {boolean} True only on a local browser hostname.
+ */
+function _isLocalReviewMode() {
+  return LOCAL_REVIEW_HOSTS.has(window.location.hostname);
+}
+
+/**
  * Resolve the current identity to attach to a reviews API call: a Firebase
- * ID token when signed in (see src/auth.js), or null when signed out.
- * @returns {Promise<{idToken: string}|null>}
+ * ID token when signed in, the loopback development marker locally, or null.
+ * @returns {Promise<{idToken: string, localReview?: boolean}|null>}
  */
 async function _resolveReviewIdentity() {
+  if (_isLocalReviewMode()) return { idToken: "", localReview: true };
   const auth = await _getAuthModule();
   if (!auth.getCachedAccount()) return null;
   const idToken = await auth.getIdToken();
@@ -291,6 +306,7 @@ export async function submitReview(placeId, rating, text, images = []) {
         const form = new FormData();
         form.append("placeId", placeId);
         form.append("idToken", identity.idToken);
+        if (identity.localReview) form.append("localReview", "true");
         form.append("image", image, image.name);
         try {
           const uploadResponse = await fetch("/api/review-image", { method: "POST", body: form });
@@ -299,7 +315,15 @@ export async function submitReview(placeId, rating, text, images = []) {
           uploaded++;
         } catch { imageError = "network_error"; break; }
       }
-      if (uploaded) _fetchReviews();
+      if (uploaded) {
+        _placeImageAvailability.set(String(placeId), true);
+        _loadedReviewImagePlaces.delete(placeId);
+        import("./place-media.js").then(({ invalidatePlaceMediaManifest }) => {
+          invalidatePlaceMediaManifest(placeId);
+        });
+        window.dispatchEvent(new CustomEvent(EVT.PLACE_MEDIA_CHANGED, { detail: { placeId } }));
+        _fetchReviews();
+      }
       return { success: true, status: result.status, uploaded, imageError };
     }
     return { success: false, error: result.error };
@@ -339,16 +363,14 @@ export async function checkExistingReview(placeId) {
  * @returns {Promise<{reviews: Array<{placeId: string, placeName: string, rating: number, text: string, timestamp: string}>}>}
  */
 export async function fetchMyReviews() {
-  const auth = await _getAuthModule();
-  if (!auth.getCachedAccount()) return { reviews: [] };
-  const idToken = await auth.getIdToken();
-  if (!idToken) return { reviews: [] };
+  const identity = await _resolveReviewIdentity();
+  if (!identity) return { reviews: [] };
 
   try {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "my-reviews", idToken }),
+      body: JSON.stringify({ action: "my-reviews", ...identity }),
     });
     const result = await res.json();
     return { reviews: Array.isArray(result.reviews) ? result.reviews : [] };
@@ -364,15 +386,14 @@ export async function fetchMyReviews() {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function deleteReview(placeId) {
-  const auth = await _getAuthModule();
-  const idToken = auth.getCachedAccount() ? await auth.getIdToken() : null;
-  if (!idToken) return { success: false, error: "invalid_token" };
+  const identity = await _resolveReviewIdentity();
+  if (!identity) return { success: false, error: "invalid_token" };
 
   try {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", placeId, idToken }),
+      body: JSON.stringify({ action: "delete", placeId, ...identity }),
     });
     const result = await res.json();
     if (result.success) _removeLocalReviewEntry(placeId);
@@ -401,8 +422,8 @@ export async function deleteReview(placeId) {
  * @returns {Promise<void>}
  */
 export async function openReviewsOverlayForEdit(placeId, placeName, existing) {
-  const auth = await _getAuthModule();
-  const blocked = await auth.isCurrentUserUnverifiedPassword();
+  const auth = _isLocalReviewMode() ? null : await _getAuthModule();
+  const blocked = auth ? await auth.isCurrentUserUnverifiedPassword() : false;
 
   openReviewsOverlay(placeId, placeName);
   const overlay = document.getElementById("reviews-overlay");
@@ -567,6 +588,39 @@ export function openReviewsOverlay(placeId, placeName) {
   _renderReviewsOverlayContent(overlay, placeId, placeName);
   overlay.offsetHeight;
   overlay.classList.remove("hide");
+  _loadReviewImages(placeId, placeName, overlay);
+}
+
+async function _loadReviewImages(placeId, placeName, overlay) {
+  if (_loadedReviewImagePlaces.has(placeId) || _loadingReviewImagePlaces.has(placeId)) return;
+  if (_placeImageAvailability.get(String(placeId)) === false) {
+    _loadedReviewImagePlaces.add(placeId);
+    return;
+  }
+  _loadingReviewImagePlaces.add(placeId);
+  try {
+    const { loadPlaceMediaManifest } = await import("./place-media.js");
+    const manifest = await loadPlaceMediaManifest(placeId, { communityOnly: true });
+    const imagesByReview = new Map();
+    (manifest.communityPhotos || []).forEach((image) => {
+      const reviewId = String(image.reviewId || "");
+      if (!imagesByReview.has(reviewId)) imagesByReview.set(reviewId, []);
+      imagesByReview.get(reviewId).push(image);
+    });
+    _placeImageAvailability.set(String(placeId), imagesByReview.size > 0);
+    const data = _reviewsMap.get(placeId);
+    (data?.items || []).forEach((review) => {
+      if (review.source !== "google") review.images = imagesByReview.get(String(review.id)) || [];
+    });
+    _loadedReviewImagePlaces.add(placeId);
+    if (_activeOverlayPlaceId === placeId && overlay.isConnected && !overlay.querySelector(".rv-form, .rv-verify-form")) {
+      _renderReviewsOverlayContent(overlay, placeId, placeName);
+    }
+  } catch {
+    // Review text and ratings remain complete when optional media is unavailable.
+  } finally {
+    _loadingReviewImagePlaces.delete(placeId);
+  }
 }
 
 export function closeReviewsOverlay() {
@@ -603,6 +657,21 @@ function _renderReviewsOverlayContent(overlay, placeId, placeName) {
 
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => {
     btn.addEventListener("click", () => _showReviewForm(placeId, overlay));
+  });
+  const photoButtons = [...overlay.querySelectorAll(".rv-review-image")];
+  photoButtons.forEach((button, index) => {
+    const image = button.querySelector("img");
+    const settleImage = () => button.classList.remove("skel-bone");
+    if (image?.complete) settleImage();
+    else {
+      image?.addEventListener("load", settleImage, { once: true });
+      image?.addEventListener("error", settleImage, { once: true });
+    }
+    button.addEventListener("click", async () => {
+      const { openPhotoViewer } = await import("./place-media.js");
+      const photos = photoButtons.map((item) => ({ url: item.dataset.photoUrl, source: "community" }));
+      openPhotoViewer(photos, placeName, index, button, { variant: "review" });
+    });
   });
 }
 
@@ -703,7 +772,7 @@ function _buildReviewCard(review) {
     : `<span class="rv-source-chip rv-source-community">Community</span>`;
   const author = isGoogle && review.authorName ? `<span class="rv-review-author">${esc(review.authorName)}</span>` : "";
   const images = !isGoogle && Array.isArray(review.images) && review.images.length
-    ? `<div class="rv-review-images">${review.images.map((image, index) => `<a class="rv-review-image" href="${esc(image.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open review photo ${index + 1}"><img src="${esc(image.url)}" alt="Community photo for this review" loading="lazy" decoding="async"></a>`).join("")}</div>`
+    ? `<div class="rv-review-images">${review.images.map((image, index) => `<button class="rv-review-image skel-bone" type="button" data-photo-url="${escA(image.url)}" aria-label="View review photo ${index + 1}"><img src="${escA(image.url)}" alt="Community photo for this review" loading="lazy" decoding="async"></button>`).join("")}</div>`
     : "";
   return `<div class="rv-review-card">
     <div class="rv-review-body">
@@ -813,6 +882,11 @@ async function _showReviewForm(placeId, overlay) {
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
 
   const list = overlay.querySelector(".rv-list");
+
+  if (_isLocalReviewMode()) {
+    _showRatingForm(placeId, overlay, list);
+    return;
+  }
 
   const auth = await _getAuthModule();
   if (!auth.getCachedAccount()) {
@@ -1641,6 +1715,7 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
       invalid_place: "Place not found",
       invalid_rating: "Invalid rating",
       invalid_token: "Session expired. Please sign in again.",
+      reviewer_banned: "This account can no longer submit reviews.",
       text_too_short: `Minimum ${MIN_TEXT_LEN} characters for text`,
       network_error: "Network error. Try again.",
     };

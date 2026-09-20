@@ -4953,3 +4953,153 @@ Before the production D1 migration, exported a recoverable database backup to
 10 Grocery services, and no remaining duplicate/malformed keys or obsolete
 lookup rows. No Playwright or browser tests were run, honoring the standing
 preference.
+
+### 2026-09-20 — Compact review composer alignment correction
+
+User rejected the first photo-enabled review form as poorly aligned and too
+empty. Root cause: the character count, photo picker, and photo guidance each
+occupied separate rows inside an already vertical form. The composer now pairs
+the review label with its counter, aligns Add photos with its format/limit
+guidance, uses a dedicated `--review-compose-min-h` textarea token, and tucks
+the publication note closer to the primary action. Preserve this compact,
+shared-row pattern for future metadata/actions in short forms instead of
+stacking every helper as a new full-width row. The photo picker's focus state
+uses the inset accent ring, avoiding the visually detached double-pill outline
+while preserving visible keyboard focus.
+
+### 2026-09-20 — Loopback-only review identity
+
+Local Maps development must allow the complete review workflow without a
+Firebase sign-in because authentication is unavailable locally. The client
+skips the review sign-in gate only on `localhost`, `127.0.0.1`, or `[::1]`, and
+the Functions API independently requires both its request URL and browser
+Origin to be loopback before accepting the deterministic local reviewer. This
+applies to submit/check/edit/delete/list and photo upload. Deployed hosts still
+require a verified Firebase ID token; a forged client flag or Origin alone
+cannot activate the bypass.
+
+### 2026-09-20 — Place photo carousel placement and in-app viewer
+
+**User preference:** place photos belong immediately after the tag chips and
+before hours/details. The inline place-sheet gallery should stay compact rather
+than dominating the window. Desktop galleries should expose explicit left/right
+controls only when the rail actually overflows.
+
+**Interaction decision:** clicking a gallery image no longer opens a browser
+tab. It opens a reusable viewer inside the main app with previous/next controls,
+wrapping arrow-key navigation, Escape/backdrop close, focus return, and a live
+photo count. Source/author credit links in the compact rail remain external
+links. Thumbnail sizing and viewer dimensions/background are tokenized in
+`design-tokens.css`; layout stays in `styles.css`.
+
+**Files modified:** `index.html`, `sw.js`, `src/places.js`, `src/place-media.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`,
+`docs/DESIGN_SYSTEM.md`, `docs/PREFERENCE_LOG.md`. Static syntax and diff checks
+only; no Playwright or browser tests were run per the standing preference.
+
+### 2026-09-21 — Lazy R2 manifests, unified review viewer, and content-aware place sheets
+
+**User preference:** photo counts should use the same filled numeric badge as
+city counts. Phone gallery thumbnails should be smaller than desktop thumbnails.
+Review photos must open inside the app, with a standard centered form-window
+scale on desktop and a full safe-area viewer on phones.
+
+The filled numeric review badge belongs in the compact place-detail rating row,
+where it matches the city and photo counts. The full reviews overlay keeps its
+descriptive "1 review" / "N reviews" summary text.
+
+**Media architecture:** `/api/places` now derives a lightweight `hasImages`
+boolean from approved D1 `review_images` rows. Global places/reviews payloads no
+longer include every image descriptor. Only after an eligible place or review
+surface opens does `/api/place-media` query that place's approved image metadata;
+R2 bytes remain behind `/api/review-image` and browser-native lazy image loading.
+Manifest and byte loading both use skeletons. The per-place manifest is cached
+for the browser session and invalidated after a successful upload. This uses D1
+as the source of truth without duplicating a `has_images` column that could drift
+when reviews are moderated or deleted.
+
+**Sheet behavior (corrected after user review):** place details never expand
+beyond useful content. Their cap is the smaller of measured natural content and
+90% of the viewport. Snap candidates are 50%, 75%, and that cap, with candidates
+above the cap discarded. A 40%-tall place therefore remains capped at 40%; a
+place reaching the 90% cap snaps at 50%, 75%, and 90%. Media skeleton insertion
+and loaded/empty results trigger remeasurement, so the cap includes the gallery
+rather than relying on the pre-media height.
+
+**Pattern to avoid:** do not treat "short sheets can expand" as permission to
+grow every sheet to full height. Expanding past measured content only creates
+dead space and is explicitly rejected.
+
+**Files modified:** `functions/_review-images.js`, `functions/api/place-media.js`,
+`functions/api/places.js`, `functions/api/reviews.js`, `src/events.js`,
+`src/place-media.js`, `src/places.js`, `src/reviews.js`, `src/utils.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`, `index.html`, `sw.js`,
+`docs/DESIGN_SYSTEM.md`, `docs/PLACE_MEDIA_SETUP.md`, and
+`docs/PREFERENCE_LOG.md`. Static checks only; no
+Playwright or browser tests were run per the standing preference.
+
+### 2026-09-21 — Photo-viewer size, motion, and review-count placement corrections
+
+**User correction:** place-gallery and review-photo expansion must use the same
+desktop window size, specifically the smaller standard-form size previously used
+only by review photos. The shared viewer is now 420px wide with the existing
+620px/85dvh height cap for both entry points; phones remain edge-to-edge.
+
+**Motion:** the shared viewer now fades its scrim and fades/translates/scales its
+stage on both open and close using `--t-med`, `--t-spring`, and the new
+`--photo-viewer-enter-scale` token. The DOM remains mounted until the closing
+opacity transition settles, so hiding no longer cuts the animation off.
+
+**Review-count placement correction:** the filled count badge belongs on the
+place sheet's compact rating row, not in the expanded reviews window. The review
+overlay's original "N reviews" text has been restored. Preserve this distinction:
+compact navigational summaries use numeric badges; the detailed review summary
+uses descriptive text.
+
+**Files modified:** `src/place-media.js`, `src/places.js`, `src/reviews.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`, `index.html`, `sw.js`,
+`docs/DESIGN_SYSTEM.md`, and `docs/PREFERENCE_LOG.md`.
+
+### 2026-09-21 — Smooth concurrent startup and review moderation controls
+
+**Startup preference:** the welcome screen must remain visually smooth while the
+real map application loads underneath it. Avoid per-path SVG drawing and runtime
+geometry measurement during startup; they compete with map initialization on the
+main thread. The logo now uses compositor-friendly opacity/transform motion, is
+preloaded from the document head, and the initialization sequence yields between
+work batches. The overlay alone fades away after both its minimum display window
+and the essential map/place startup work settle; the MapLibre app itself is not
+scaled or animated during handoff.
+
+**Moderation preference:** Reviews rows expose one standard **Manage** action.
+The shared native admin dialog handles review publication state, independent image
+visibility, internal moderation notes, and reviewer access. Hiding is reversible
+and retains R2 objects. A reviewer ban is keyed to the existing one-way email hash,
+hides all matching reviews, and blocks later review submissions/uploads; removing
+the ban does not automatically republish previously hidden content. Image previews
+use an authenticated admin endpoint so hidden media never needs a public URL.
+
+**Deployment requirement:** apply `migrations/0018_review_moderation.sql` to D1
+before deploying the updated Admin controls and Functions.
+
+**Files modified:** `Admin/src/api/client.js`, `Admin/src/api/queries.js`,
+`Admin/src/components/StatusBadge.jsx`, `Admin/src/pages/ReviewsPage.jsx`,
+`Admin/src/styles/cells.css`, `Admin/tests/fixtures.js`, `Admin/DESIGN.md`,
+`Maps/functions/_review-images.js`, `Maps/functions/api/admin.js`,
+`Maps/functions/api/review-image.js`, `Maps/functions/api/reviews.js`,
+`Maps/migrations/0018_review_moderation.sql`, `Maps/schema.sql`, `Maps/src/app.js`,
+`Maps/src/reviews.js`, `Maps/src/styles/design-tokens.css`,
+`Maps/src/styles/styles.css`, `Maps/index.html`, `Maps/sw.js`, and supporting docs.
+
+### 2026-09-21 — Visible loader motion and Admin dark-mode action gold
+
+**User correction:** the Maps startup state must read as actively loading, not
+as a nearly static logo. Keep the compositor-friendly logo breathing motion, but
+make its range perceptible and pair it with a continuously sweeping gold progress
+rule. Both use transform and opacity only; reduced-motion mode presents a stable
+logo and centered rule.
+
+**Admin brand alignment:** the workspace scope reads “Maps, website & links.” In
+dark mode, filled primary and affirmative buttons use the Website's warm gold and
+deep-teal foreground. Green remains the semantic success/navigation color rather
+than the dominant filled-action color.
