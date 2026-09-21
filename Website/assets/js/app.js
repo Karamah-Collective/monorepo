@@ -2346,6 +2346,7 @@ function initPrivacyOverlay() {
       loaded = true;
       bindCloseButtons();
       _renderLucideIcons(overlay);
+      window.dispatchEvent(new CustomEvent('karamah:privacy-loaded'));
     } catch (e) {
       loading = false;
     }

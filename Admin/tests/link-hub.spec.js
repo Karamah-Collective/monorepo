@@ -45,7 +45,7 @@ test("link editor keeps its actions visible while its content scrolls", async ({
 
 test("blank optional content remains blank when settings are published", async ({ page }) => {
   await page.goto("/links");
-  await page.getByRole("button", { name: /Page content/ }).click();
+  await page.getByRole("tab", { name: /Page content/ }).click();
   await expect(page.getByLabel("Eyebrow (optional)").first()).toHaveValue("");
   await page.getByLabel("Profile description (optional)").fill("A Helsinki-based collective.");
   await page.getByRole("button", { name: "Publish changes" }).click();

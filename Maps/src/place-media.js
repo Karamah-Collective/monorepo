@@ -4,12 +4,22 @@ import { photoTagLabel } from "./photo-tags.js";
 const GALLERY_SCROLL_RATIO = 0.82;
 const GALLERY_EDGE_TOLERANCE_PX = 2;
 const VIEWER_SWIPE_THRESHOLD_PX = 48;
+const VIEWER_MAX_SCALE = 5;
+const VIEWER_ZOOM_STEP = 0.5;
+const VIEWER_DOUBLE_CLICK_SCALE = 2.5;
+const VIEWER_WHEEL_SENSITIVITY = 0.002;
+const VIEWER_PUSH_FALLBACK_MS = 400;
+const VIEWER_ZOOM_ANIMATION_MS = 180;
 
 const _fullManifestPromises = new Map();
 const _communityManifestPromises = new Map();
 
 let _viewer = null;
 let _viewerImage = null;
+let _viewerStandbyImage = null;
+let _viewerViewport = null;
+let _viewerActiveSlide = null;
+let _viewerStandbySlide = null;
 let _viewerCount = null;
 let _viewerCaption = null;
 let _viewerPrevious = null;
@@ -21,6 +31,59 @@ let _viewerPlaceName = "";
 let _viewerReturnFocus = null;
 let _viewerTouchStartX = 0;
 let _viewerTouchStartY = 0;
+let _viewerScale = 1;
+let _viewerTranslateX = 0;
+let _viewerTranslateY = 0;
+let _viewerPinchStartDistance = 0;
+let _viewerPinchStartScale = 1;
+let _viewerPanStart = null;
+let _viewerSwitchTimer = null;
+let _viewerIsSwitching = false;
+
+function _clampViewerPan() {
+  if (!_viewerViewport) return;
+  if (_viewerScale <= 1) {
+    _viewerTranslateX = 0;
+    _viewerTranslateY = 0;
+    return;
+  }
+  const maxX = (_viewerViewport.clientWidth * (_viewerScale - 1)) / (2 * _viewerScale);
+  const maxY = (_viewerViewport.clientHeight * (_viewerScale - 1)) / (2 * _viewerScale);
+  _viewerTranslateX = Math.max(-maxX, Math.min(maxX, _viewerTranslateX));
+  _viewerTranslateY = Math.max(-maxY, Math.min(maxY, _viewerTranslateY));
+}
+
+function _applyViewerTransform({ animate = false } = {}) {
+  if (!_viewerImage || !_viewerViewport) return;
+  _clampViewerPan();
+  _viewerImage.classList.toggle("is-zoomed", _viewerScale > 1);
+  _viewerImage.classList.toggle("is-zoom-animating", animate);
+  _viewerImage.style.transform = `scale(${_viewerScale}) translate(${_viewerTranslateX}px, ${_viewerTranslateY}px)`;
+  _viewerViewport.setAttribute("aria-label", _viewerScale > 1 ? `Zoomed to ${Math.round(_viewerScale * 100)} percent` : "Photo, scroll or pinch to zoom");
+  if (animate) window.setTimeout(() => _viewerImage?.classList.remove("is-zoom-animating"), VIEWER_ZOOM_ANIMATION_MS);
+}
+
+function _resetViewerZoom() {
+  _viewerScale = 1;
+  _viewerTranslateX = 0;
+  _viewerTranslateY = 0;
+  _applyViewerTransform();
+}
+
+function _setViewerScale(nextScale, clientX, clientY, animate = false) {
+  if (!_viewerViewport) return;
+  const previousScale = _viewerScale;
+  const rect = _viewerViewport.getBoundingClientRect();
+  const next = Math.max(1, Math.min(VIEWER_MAX_SCALE, nextScale));
+  if (clientX != null && clientY != null && next !== previousScale) {
+    const offsetX = clientX - rect.left - rect.width / 2;
+    const offsetY = clientY - rect.top - rect.height / 2;
+    _viewerTranslateX -= offsetX * (1 / previousScale - 1 / next);
+    _viewerTranslateY -= offsetY * (1 / previousScale - 1 / next);
+  }
+  _viewerScale = next;
+  _applyViewerTransform({ animate });
+}
 
 function _safeMediaUrl(value) {
   try {
@@ -81,24 +144,121 @@ function _viewerPhotoLabel(photo) {
   return photo.source === "google" ? "Google Maps photo" : photoTagLabel(photo.photoTag);
 }
 
-function _renderViewerPhoto() {
-  const photo = _viewerPhotos[_viewerIndex];
-  if (!photo || !_viewerImage) return;
-  _viewerImage.closest(".photo-viewer__stage")?.classList.add("skel-bone");
-  _viewerImage.classList.add("is-loading");
-  _viewerImage.src = _safeMediaUrl(photo.src || photo.url);
-  _viewerImage.alt = `${_viewerPlaceName} photo ${_viewerIndex + 1} of ${_viewerPhotos.length}`;
-  _viewerCount.textContent = `${_viewerIndex + 1} / ${_viewerPhotos.length}`;
+function _setViewerMetadata(index) {
+  const photo = _viewerPhotos[index];
+  if (!photo) return;
+  _viewerCount.textContent = `${index + 1} / ${_viewerPhotos.length}`;
   _viewerCaption.textContent = _viewerPhotoLabel(photo);
   const hasMultiple = _viewerPhotos.length > 1;
   _viewerPrevious.hidden = !hasMultiple;
   _viewerNext.hidden = !hasMultiple;
 }
 
-function _stepViewer(direction) {
+async function _prepareViewerImage(image, index) {
+  const photo = _viewerPhotos[index];
+  if (!photo || !image) return false;
+  const src = _safeMediaUrl(photo.src || photo.url);
+  if (!src) return false;
+  image.classList.add("is-loading");
+  image.alt = `${_viewerPlaceName} photo ${index + 1} of ${_viewerPhotos.length}`;
+  if (image.getAttribute("src") !== src || !image.complete) {
+    const loaded = await new Promise((resolve) => {
+      const finish = (isLoaded) => {
+        image.removeEventListener("load", handleLoad);
+        image.removeEventListener("error", handleError);
+        resolve(isLoaded);
+      };
+      const handleLoad = () => finish(true);
+      const handleError = () => finish(false);
+      image.addEventListener("load", handleLoad);
+      image.addEventListener("error", handleError);
+      image.src = src;
+    });
+    if (!loaded) {
+      image.classList.remove("is-loading");
+      return false;
+    }
+  }
+  try {
+    await image.decode();
+  } catch {
+    // A completed image can still reject decode in some browsers; naturalWidth is authoritative.
+  }
+  const isReady = image.complete && image.naturalWidth > 0;
+  image.classList.remove("is-loading");
+  return isReady;
+}
+
+function _renderViewerPhoto() {
+  if (!_viewerPhotos[_viewerIndex] || !_viewerImage) return;
+  _viewerImage.closest(".photo-viewer__stage")?.classList.add("skel-bone");
+  _prepareViewerImage(_viewerImage, _viewerIndex);
+  _setViewerMetadata(_viewerIndex);
+}
+
+async function _stepViewer(direction) {
   if (_viewerPhotos.length < 2) return;
-  _viewerIndex = (_viewerIndex + direction + _viewerPhotos.length) % _viewerPhotos.length;
-  _renderViewerPhoto();
+  if (_viewerIsSwitching) return;
+  const reduceMotion = document.documentElement.classList.contains("reduce-motion");
+  const nextIndex = (_viewerIndex + direction + _viewerPhotos.length) % _viewerPhotos.length;
+  _resetViewerZoom();
+  if (!_viewerActiveSlide || !_viewerStandbySlide) {
+    _viewerIndex = nextIndex;
+    _renderViewerPhoto();
+    return;
+  }
+  _viewerIsSwitching = true;
+  const isReady = await _prepareViewerImage(_viewerStandbyImage, nextIndex);
+  if (!isReady) {
+    _viewerIsSwitching = false;
+    return;
+  }
+  const outgoingSlide = _viewerActiveSlide;
+  const incomingSlide = _viewerStandbySlide;
+  incomingSlide.hidden = false;
+  incomingSlide.classList.remove("is-pushing");
+  if (reduceMotion) {
+    outgoingSlide.hidden = true;
+    outgoingSlide.style.transform = "translateX(0)";
+    incomingSlide.style.transform = "translateX(0)";
+    _viewerIndex = nextIndex;
+    _viewerActiveSlide = incomingSlide;
+    _viewerStandbySlide = outgoingSlide;
+    _viewerImage = _viewerStandbyImage;
+    _viewerStandbyImage = outgoingSlide.querySelector(".photo-viewer__image");
+    _viewerIsSwitching = false;
+    _setViewerMetadata(_viewerIndex);
+    return;
+  }
+  incomingSlide.style.transform = `translateX(${direction * 100}%)`;
+  outgoingSlide.classList.remove("is-pushing");
+  outgoingSlide.style.transform = "translateX(0)";
+  void incomingSlide.offsetWidth;
+  incomingSlide.classList.add("is-pushing");
+  outgoingSlide.classList.add("is-pushing");
+
+  const finish = () => {
+    if (!_viewerIsSwitching) return;
+    window.clearTimeout(_viewerSwitchTimer);
+    _viewerSwitchTimer = null;
+    _viewerIndex = nextIndex;
+    outgoingSlide.hidden = true;
+    outgoingSlide.classList.remove("is-pushing");
+    incomingSlide.classList.remove("is-pushing");
+    incomingSlide.style.transform = "translateX(0)";
+    _viewerActiveSlide = incomingSlide;
+    _viewerStandbySlide = outgoingSlide;
+    _viewerImage = _viewerStandbyImage;
+    _viewerStandbyImage = outgoingSlide.querySelector(".photo-viewer__image");
+    _viewerIsSwitching = false;
+    _setViewerMetadata(_viewerIndex);
+  };
+  incomingSlide.addEventListener("transitionend", finish, { once: true });
+  requestAnimationFrame(() => {
+    outgoingSlide.style.transform = `translateX(${-direction * 100}%)`;
+    incomingSlide.style.transform = "translateX(0)";
+  });
+  _viewerSwitchTimer = window.setTimeout(finish, VIEWER_PUSH_FALLBACK_MS);
 }
 
 function _finishViewerClose() {
@@ -119,6 +279,9 @@ function _handleViewerKeydown(event) {
   if (event.key === "Escape") _closeViewer();
   if (event.key === "ArrowLeft") _stepViewer(-1);
   if (event.key === "ArrowRight") _stepViewer(1);
+  if (event.key === "+" || event.key === "=") _setViewerScale(_viewerScale + VIEWER_ZOOM_STEP, null, null, true);
+  if (event.key === "-") _setViewerScale(_viewerScale - VIEWER_ZOOM_STEP, null, null, true);
+  if (event.key === "0") _setViewerScale(1, null, null, true);
   if (event.key === "Tab" && _viewer) {
     const controls = [..._viewer.querySelectorAll("button:not([hidden])")];
     const first = controls[0];
@@ -149,7 +312,14 @@ function _ensureViewer() {
       <button class="photo-viewer__nav photo-viewer__nav--previous btn-roundel" type="button" aria-label="Previous photo">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      <img class="photo-viewer__image" alt="">
+      <div class="photo-viewer__viewport" tabindex="0" aria-label="Photo, scroll or pinch to zoom">
+        <div class="photo-viewer__slide">
+          <img class="photo-viewer__image" alt="" draggable="false">
+        </div>
+        <div class="photo-viewer__slide" hidden>
+          <img class="photo-viewer__image" alt="" draggable="false">
+        </div>
+      </div>
       <button class="photo-viewer__nav photo-viewer__nav--next btn-roundel" type="button" aria-label="Next photo">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
@@ -158,18 +328,24 @@ function _ensureViewer() {
         <span class="photo-viewer__count" aria-live="polite"></span>
       </div>
     </div>`;
-  _viewerImage = _viewer.querySelector(".photo-viewer__image");
+  _viewerViewport = _viewer.querySelector(".photo-viewer__viewport");
+  [_viewerActiveSlide, _viewerStandbySlide] = _viewer.querySelectorAll(".photo-viewer__slide");
+  _viewerImage = _viewerActiveSlide.querySelector(".photo-viewer__image");
+  _viewerStandbyImage = _viewerStandbySlide.querySelector(".photo-viewer__image");
   _viewerCount = _viewer.querySelector(".photo-viewer__count");
   _viewerCaption = _viewer.querySelector(".photo-viewer__caption");
   _viewerPrevious = _viewer.querySelector(".photo-viewer__nav--previous");
   _viewerNext = _viewer.querySelector(".photo-viewer__nav--next");
   _viewerClose = _viewer.querySelector(".photo-viewer__close");
-  const settleViewerImage = () => {
-    _viewerImage.closest(".photo-viewer__stage")?.classList.remove("skel-bone");
-    _viewerImage.classList.remove("is-loading");
+  const settleViewerImage = (event) => {
+    const image = event.currentTarget;
+    image.closest(".photo-viewer__stage")?.classList.remove("skel-bone");
+    image.classList.remove("is-loading");
   };
-  _viewerImage.addEventListener("load", settleViewerImage);
-  _viewerImage.addEventListener("error", settleViewerImage);
+  _viewer.querySelectorAll(".photo-viewer__image").forEach((image) => {
+    image.addEventListener("load", settleViewerImage);
+    image.addEventListener("error", settleViewerImage);
+  });
   _viewerClose.addEventListener("click", _closeViewer);
   _viewerPrevious.addEventListener("click", () => _stepViewer(-1));
   _viewerNext.addEventListener("click", () => _stepViewer(1));
@@ -181,10 +357,48 @@ function _ensureViewer() {
   });
   const stage = _viewer.querySelector(".photo-viewer__stage");
   stage.addEventListener("touchstart", (event) => {
+    if (event.touches.length === 2) {
+      event.preventDefault();
+      _viewerPinchStartDistance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY,
+      );
+      _viewerPinchStartScale = _viewerScale;
+      _viewerPanStart = null;
+      return;
+    }
     _viewerTouchStartX = event.touches[0]?.clientX || 0;
     _viewerTouchStartY = event.touches[0]?.clientY || 0;
-  }, { passive: true });
+    _viewerPanStart = _viewerScale > 1 ? {
+      x: _viewerTouchStartX,
+      y: _viewerTouchStartY,
+      translateX: _viewerTranslateX,
+      translateY: _viewerTranslateY,
+    } : null;
+  }, { passive: false });
+  stage.addEventListener("touchmove", (event) => {
+    if (event.touches.length === 2 && _viewerPinchStartDistance) {
+      event.preventDefault();
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY,
+      );
+      const midpointX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+      const midpointY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+      _setViewerScale(_viewerPinchStartScale * (distance / _viewerPinchStartDistance), midpointX, midpointY);
+    } else if (event.touches.length === 1 && _viewerPanStart && _viewerScale > 1) {
+      event.preventDefault();
+      _viewerTranslateX = _viewerPanStart.translateX + (event.touches[0].clientX - _viewerPanStart.x) / _viewerScale;
+      _viewerTranslateY = _viewerPanStart.translateY + (event.touches[0].clientY - _viewerPanStart.y) / _viewerScale;
+      _applyViewerTransform();
+    }
+  }, { passive: false });
   stage.addEventListener("touchend", (event) => {
+    if (_viewerScale > 1 || _viewerPinchStartDistance) {
+      if (event.touches.length < 2) _viewerPinchStartDistance = 0;
+      if (!event.touches.length) _viewerPanStart = null;
+      return;
+    }
     const touch = event.changedTouches[0];
     if (!touch) return;
     const deltaX = touch.clientX - _viewerTouchStartX;
@@ -192,6 +406,15 @@ function _ensureViewer() {
     if (Math.abs(deltaX) < VIEWER_SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) return;
     _stepViewer(deltaX < 0 ? 1 : -1);
   }, { passive: true });
+  _viewerViewport.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const factor = Math.exp(-event.deltaY * VIEWER_WHEEL_SENSITIVITY);
+    _setViewerScale(_viewerScale * factor, event.clientX, event.clientY);
+  }, { passive: false });
+  _viewerViewport.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    _setViewerScale(_viewerScale > 1 ? 1 : VIEWER_DOUBLE_CLICK_SCALE, event.clientX, event.clientY, true);
+  });
   document.getElementById("app")?.appendChild(_viewer);
 }
 
@@ -212,6 +435,7 @@ export function openPhotoViewer(photos, placeName, index, returnFocus = null, { 
   _viewerPlaceName = placeName;
   _viewerIndex = index;
   _viewerReturnFocus = returnFocus;
+  _resetViewerZoom();
   _renderViewerPhoto();
   _viewer.hidden = false;
   _viewer.removeAttribute("aria-hidden");

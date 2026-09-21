@@ -16,7 +16,7 @@ test("overview uses API totals and links to the review queue", async ({
   await expect(page).toHaveURL(/submissions\/new/);
   await page.getByRole("button", { name: "Manage", exact: true }).first().click();
   await expect(
-    page.getByRole("button", { name: "Approve", exact: true }),
+    page.getByRole("menuitem", { name: "Approve", exact: true }),
   ).toBeVisible();
 });
 
@@ -84,14 +84,14 @@ test("moderation still calls the existing actions and shows feedback", async ({
   await mockAdmin(page);
   await page.goto("/submissions/new");
   await page.getByRole("button", { name: "Manage", exact: true }).first().click();
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Approve", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Approved");
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({
     action: "approve-new",
     body: { rowId: "1" },
   });
   await page.getByRole("button", { name: "Manage", exact: true }).first().click();
-  await page.getByRole("button", { name: "Reject", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Reject", exact: true }).click();
   await page.getByPlaceholder("Reason (optional)").fill("Duplicate place");
   await page.getByRole("button", { name: "Confirm reject" }).click();
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({
@@ -105,11 +105,11 @@ test("settings section switching preserves drafts and saves the full settings", 
 }) => {
   await mockAdmin(page);
   await page.goto("/app-settings");
-  await page.getByRole("button", { name: "Startup", exact: true }).click();
+  await page.getByRole("tab", { name: "Startup", exact: true }).click();
   const checkbox = page.locator("#setting-welcomeEnabled");
   await checkbox.uncheck();
-  await page.getByRole("button", { name: "Appearance", exact: true }).click();
-  await page.getByRole("button", { name: "Startup", exact: true }).click();
+  await page.getByRole("tab", { name: "Appearance", exact: true }).click();
+  await page.getByRole("tab", { name: "Startup", exact: true }).click();
   await expect(checkbox).not.toBeChecked();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(
@@ -119,6 +119,18 @@ test("settings section switching preserves drafts and saves the full settings", 
     (await page.evaluate(() => window.__lastMutation)).body.settings
       .welcomeEnabled,
   ).toBe(false);
+});
+
+test("review deletion requires confirmation and uses the audited admin action", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/reviews");
+  await page.getByRole("button", { name: "Manage", exact: true }).click();
+  await page.getByRole("button", { name: "Delete review", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm permanent deletion", exact: true }).click();
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "delete-review",
+    body: { rowIndex: "42", reason: "" },
+  });
 });
 
 test("custom event locations are visible during approval", async ({ page }) => {
@@ -138,7 +150,7 @@ test("events can be permanently deleted from the admin table", async ({ page }) 
   await page.goto("/events");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Manage", exact: true }).first().click();
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({
     action: "delete-event",
     body: { eventId: "event-custom-1" },
@@ -149,7 +161,7 @@ test("events can be permanently deleted from the admin table", async ({ page }) 
 test("page search honors the unsaved settings guard", async ({ page }) => {
   await mockAdmin(page);
   await page.goto("/app-settings");
-  await page.getByRole("button", { name: "Startup", exact: true }).click();
+  await page.getByRole("tab", { name: "Startup", exact: true }).click();
   await page.locator("#setting-welcomeEnabled").uncheck();
   await page.keyboard.press("Control+k");
   await page.getByRole("textbox", { name: "Find a page" }).fill("places");
@@ -248,13 +260,7 @@ test("empty dashboard remains useful and reduced motion is respected", async ({
 });
 
 test("dashboard failure presents an actionable retry", async ({ page }) => {
-  await mockAdmin(page);
-  await page.route("**/src/api/client.js*", (route) =>
-    route.fulfill({
-      contentType: "text/javascript",
-      body: `export async function apiGet() { throw new Error('Service unavailable'); } export async function apiPost() {} export async function logAuthEvent() {}`,
-    }),
-  );
+  await mockAdmin(page, {}, true, "Service unavailable");
   await page.goto("/");
   await expect(page.getByText("Overview could not be loaded")).toBeVisible();
   await expect(

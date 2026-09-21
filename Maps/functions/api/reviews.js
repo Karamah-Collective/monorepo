@@ -174,16 +174,11 @@ export async function onRequestPost(context) {
     const existing = await db.prepare("SELECT id FROM reviews WHERE place_id = ? AND email_hash = ?").bind(placeId, identity.emailHash).first();
 
     if (existing) {
-      // Rating/timestamp always update; text/status only touched when new
-      // text was actually provided — same "editing rating alone keeps your
-      // existing text" behavior Code.gs had.
+      // Editing has full replacement semantics, including intentionally
+      // clearing previously written text.
       const status = settings?.moderateReviews ? "pending" : "yes";
-      if (text) {
-        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, text = ?, status = ? WHERE id = ?").bind(rating, now, text, status, existing.id).run();
-      } else {
-        await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, status = ? WHERE id = ?").bind(rating, now, status, existing.id).run();
-      }
-      return json({ success: true, status }, 200, headers);
+      await db.prepare("UPDATE reviews SET rating = ?, timestamp = ?, text = ?, status = ? WHERE id = ?").bind(rating, now, text, status, existing.id).run();
+      return json({ success: true, status, updated: true }, 200, headers);
     }
 
     const status = settings?.moderateReviews ? "pending" : "yes";
@@ -225,9 +220,29 @@ export async function onRequestPost(context) {
     const identity = await resolveFirebaseIdentity(body.idToken, request, body.localReview === true);
     if (!identity) return json({ error: "invalid_token" }, 401, headers);
 
-    const { results } = await db.prepare("SELECT r.place_id, r.rating, r.text, r.timestamp, p.name FROM reviews r LEFT JOIN places p ON p.id = r.place_id WHERE r.email_hash = ? AND r.status != 'no' ORDER BY r.timestamp DESC")
+    const { results } = await db.prepare("SELECT r.id, r.place_id, r.rating, r.text, r.timestamp, p.name FROM reviews r LEFT JOIN places p ON p.id = r.place_id WHERE r.email_hash = ? AND r.status != 'no' ORDER BY r.timestamp DESC")
       .bind(identity.emailHash).all();
-    const reviews = results.map((row) => ({ placeId: row.place_id, placeName: row.name || "", rating: Number(row.rating), text: row.text || "", timestamp: row.timestamp || "" }));
+    const reviewIds = results.map((row) => Number(row.id)).filter(Boolean);
+    const imagesByReview = new Map();
+    if (reviewIds.length) {
+      const placeholders = reviewIds.map(() => "?").join(",");
+      const imageRows = await db.prepare(
+        `SELECT id, review_id, photo_tag, status FROM review_images WHERE review_id IN (${placeholders}) ORDER BY created_at, id`
+      ).bind(...reviewIds).all();
+      for (const image of imageRows.results || []) {
+        const key = String(image.review_id);
+        if (!imagesByReview.has(key)) imagesByReview.set(key, []);
+        imagesByReview.get(key).push({ id: image.id, photoTag: image.photo_tag || "", status: image.status || "yes" });
+      }
+    }
+    const reviews = results.map((row) => ({
+      placeId: row.place_id,
+      placeName: row.name || "",
+      rating: Number(row.rating),
+      text: row.text || "",
+      timestamp: row.timestamp || "",
+      images: imagesByReview.get(String(row.id)) || [],
+    }));
     return json({ success: true, reviews }, 200, headers);
   }
 

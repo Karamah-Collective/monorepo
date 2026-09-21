@@ -195,7 +195,9 @@
       aria-label="Ticket announcement"
     >
       <button class="kc-ticket-toast-close" type="button" data-ticket-toast-close aria-label="Dismiss ticket announcement">
-        &times;
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <path d="M5 5l10 10M15 5L5 15" />
+        </svg>
       </button>
       <button class="kc-ticket-toast-copy" type="button" data-ticket-toast-toggle aria-expanded="false">
         <strong data-ticket-toast-title></strong>
@@ -1578,12 +1580,18 @@
               decoding="async"
               data-theme-logo
             />
-            <div>
-              <div class="kc-footer-name">Karamah Collective</div>
-              <p class="kc-footer-copy">
-                © <span id="year"></span> ·
-                <button type="button" data-open-privacy class="kc-link-privacy">Privacy Policy</button>
+            <div class="kc-footer-identity">
+              <p class="kc-footer-heading">
+                <span class="kc-footer-name" data-site-organization-name>Karamah Collective ry</span>
+                <span class="kc-footer-separator" aria-hidden="true">·</span>
+                <span class="kc-footer-year">© <span id="year"></span></span>
               </p>
+              <address class="kc-footer-registration">
+                <span>FO: <span data-site-organization-number>3649490-3</span></span>
+                <span class="kc-footer-separator" aria-hidden="true">·</span>
+                <span data-site-organization-address>Kuurinkallio 11 D 22, 02750 Espoo</span>
+              </address>
+              <button type="button" data-open-privacy class="kc-footer-privacy">Privacy Policy</button>
             </div>
           </div>
         </div>

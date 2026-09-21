@@ -8,7 +8,8 @@
 [data-site-contact-intro] { white-space: pre-line; }
 .kc-ticket-toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 1600; width: min(720px, calc(100vw - 28px)); max-height: calc(100svh - 32px); overflow: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .85rem; transform: translateX(-50%); padding: .8rem .95rem; border: 1px solid rgba(11, 60, 73, .16); border-radius: 18px; background: color-mix(in srgb, var(--kc-surface) 92%, white); box-shadow: 0 20px 70px rgba(11, 60, 73, .18); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); animation: kcTicketToastIn 280ms cubic-bezier(.2,.9,.2,1) both; overscroll-behavior: contain; }
 .kc-ticket-toast[hidden] { display: none !important; }
-.kc-ticket-toast-close { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--kc-border); border-radius: 999px; background: transparent; color: var(--kc-ink-soft); font-size: 1.15rem; line-height: 0; padding: 0 0 2px; }
+.kc-ticket-toast-close { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--kc-border); border-radius: 999px; background: transparent; color: var(--kc-ink-soft); line-height: 1; padding: 0; }
+.kc-ticket-toast-close svg { display: block; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .kc-ticket-toast-copy { min-width: 0; display: grid; gap: .15rem; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; }
 .kc-ticket-toast-copy strong { color: var(--kc-ink); font-size: .93rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kc-ticket-toast-copy span { color: var(--kc-ink-soft); font-size: .82rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

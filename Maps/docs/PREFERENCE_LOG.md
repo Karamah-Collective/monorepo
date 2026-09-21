@@ -5136,3 +5136,36 @@ the original outline, fill, and hold choreography. Startup waits for the complet
 dark mode, filled primary and affirmative buttons use the Website's warm gold and
 deep-teal foreground. Green remains the semantic success/navigation color rather
 than the dominant filled-action color.
+
+### 2026-09-21 - Registered footer refinement and directional photo viewer
+
+**Footer preference:** show the registered name only once. The public footer uses
+three restrained rows: `Karamah Collective ry` with the current year, FO number
+with the registered address, then the Privacy Policy action. Keep the rows compact
+and visually cohesive: one shared metadata size, color, and line-height, with only
+the registered name receiving modest emphasis. Privacy must not look like an
+unrelated underlined text style. Do not stack the trading name and registered name
+as separate headings.
+
+**Viewer correction:** a one-image fade does not communicate carousel direction.
+Expanded photos now use a two-slide push: next moves the current image left while
+the incoming image enters from the right; previous mirrors that motion. Close,
+previous, next, and metadata explicitly sit on `--z-sub-ui` above the viewport.
+This fixes the DOM paint-order bug where close and previous appeared before the
+viewport and were covered, while next happened to work because it appeared after
+the viewport. Zoom remains scoped to the active image and resets between photos.
+
+**Viewer loading correction:** the push begins only after the incoming bitmap is
+loaded and decoded. Each slide clears its own loading state rather than referring
+to the mutable active-image variable, which previously left the incoming image at
+zero opacity and exposed the black stage after navigation. Failed image loads do
+not replace the visible slide.
+
+**Toast control:** use a centered inline SVG for the circular dismiss control.
+Do not vertically compensate a text `×` with padding because font baselines vary
+and make the icon appear off-center.
+
+**Files modified:** `Website/index.html`, `Website/assets/css/styles.css`,
+`Website/assets/css/site-content.css`, `Maps/src/place-media.js`, `Maps/src/styles/styles.css`,
+`Maps/tests/05-animations.spec.js`, `Maps/docs/DESIGN_SYSTEM.md`, and this log.
+No browser or Playwright tests were run, following the standing preference.

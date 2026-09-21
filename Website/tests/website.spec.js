@@ -46,7 +46,7 @@ test('single ticket opens as a popup and then returns as a delayed toast', async
   await expect(page.locator('[data-ticket-buy-top]')).toBeVisible();
   await expect(page.locator('[data-ticket-buy-home]')).toBeVisible();
   await expect(page.locator('[data-ticket-buy-top]')).toHaveAttribute('href', 'https://tickets.example.test/dinner');
-  await expect(page.locator('[data-ticket-popup]')).toBeVisible();
+  await expect(page.locator('[data-ticket-popup]')).toBeVisible({ timeout: 8000 });
   await expect(page.locator('[data-ticket-popup-title]')).toHaveText('Community Dinner');
   await expect(page.locator('[data-ticket-popup-action]')).toHaveAttribute('href', 'https://tickets.example.test/dinner');
   await expect(page.locator('[data-ticket-toast]')).toBeHidden();

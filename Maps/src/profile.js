@@ -83,6 +83,14 @@ let _submittedPlacesCache = [];
 let _submittedEditsCache = [];
 let _accountMetaCache = { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
 
+function _revokeReviewImageUrls(reviews) {
+  for (const review of reviews || []) {
+    for (const image of review.images || []) {
+      if (typeof image.src === "string" && image.src.startsWith("blob:")) URL.revokeObjectURL(image.src);
+    }
+  }
+}
+
 // Whether _accountMetaCache above holds a REAL server response yet, as opposed
 // to the all-zeroes initial value. _renderCard() needs this to tell "this
 // account has no activity" apart from "this account's activity hasn't arrived
@@ -120,6 +128,8 @@ export async function initProfile() {
   _account = _auth.getCachedAccount();
 
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
+    _revokeReviewImageUrls(_reviewsCache);
+    _reviewsCache = [];
     _account = e.detail?.account || null;
     // Whatever meta is cached belongs to the account that just went away —
     // never to whoever signs in next (see _accountMetaLoaded's declaration).
@@ -202,6 +212,7 @@ export async function loadProfileContent() {
   // or hand a signed-out account's data to a subsequent viewer.
   if (!_account || menuSheetEl.classList.contains("shut")) return;
 
+  _revokeReviewImageUrls(_reviewsCache);
   _reviewsCache = reviewsResult.reviews;
   _submittedPlacesCache = placesResult.submissions;
   _submittedEditsCache = editsResult.submissions;
@@ -516,6 +527,11 @@ function _renderMyReviews() {
 
 function _buildMyReviewRow(r) {
   const rating = Number(r.rating) || 0;
+  const images = Array.isArray(r.images) && r.images.length
+    ? `<div class="acc-review-images">${r.images.map((image, index) => image.src
+      ? `<img src="${escA(image.src)}" alt="Review photo ${index + 1}" loading="lazy">`
+      : `<span class="acc-review-image-unavailable" aria-label="Review photo unavailable"></span>`).join("")}</div>`
+    : "";
   return `<div class="rv-review-card acc-review-row" data-place-id="${esc(r.placeId)}">
     <div class="rv-review-body">
       <div class="rv-review-meta">
@@ -525,6 +541,7 @@ function _buildMyReviewRow(r) {
       </div>
       <button class="acc-review-place-name" type="button" data-place-id="${esc(r.placeId)}">${esc(r.placeName || "Unknown place")}</button>
       ${r.text ? `<p class="rv-review-text">${esc(r.text)}</p>` : ""}
+      ${images}
     </div>
     <div class="acc-review-actions">
       <button class="btn-roundel acc-review-edit" type="button" data-place-id="${esc(r.placeId)}" aria-label="Edit review" title="Edit review">
@@ -555,7 +572,7 @@ function _wireMyReviewRows(list, reviews) {
       if (!r) return;
       const place = placesData.find((p) => p.id === r.placeId);
       _closeAccountSheet();
-      openReviewsOverlayForEdit(r.placeId, place?.name || r.placeName, { rating: r.rating, text: r.text }, place);
+      openReviewsOverlayForEdit(r.placeId, place?.name || r.placeName, { rating: r.rating, text: r.text, images: r.images || [] }, place);
     });
   });
 

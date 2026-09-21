@@ -2049,20 +2049,59 @@ select:focus-visible {
   color: var(--kc-ink);
 }
 
-.kc-footer-copy {
-  font-size: 0.9375rem;
-  color: var(--kc-ink-faint);
+.kc-footer-identity {
+  min-width: 0;
+  display: grid;
+  gap: 0.0625rem;
 }
 
-.kc-footer-copy button {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-  transition: color 180ms ease;
-}
-
-.kc-footer-copy button:hover {
+.kc-footer-heading,
+.kc-footer-registration {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
   color: var(--kc-ink-soft);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.kc-footer-year {
+  color: inherit;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.kc-footer-registration {
+  font-style: normal;
+}
+
+.kc-footer-separator {
+  color: currentColor;
+  opacity: 0.45;
+}
+
+.kc-footer-privacy {
+  display: inline-flex;
+  justify-self: start;
+  margin: 0;
+  color: var(--kc-ink-soft);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 180ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.kc-footer-privacy:hover {
+  color: var(--kc-ink);
+}
+
+.kc-footer-privacy:active {
+  transform: translateY(1px);
 }
 
 /* ── Feature card "in dev" badge ──────────────────────────── */

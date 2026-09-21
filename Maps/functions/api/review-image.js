@@ -34,6 +34,21 @@ async function _identityHash(token, request, localReview = false) {
   return sha256(verified.email.trim().toLowerCase());
 }
 
+async function _requestIdentityHash(request) {
+  const authorization = request.headers.get("Authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  return _identityHash(token, request, request.headers.get("X-Local-Review") === "true");
+}
+
+async function _ownedImage(db, imageId, emailHash) {
+  if (!IMAGE_ID_RE.test(imageId) || !emailHash) return null;
+  return db.prepare(
+    `SELECT ri.id, ri.object_key, ri.content_type, ri.photo_tag, ri.place_id
+     FROM review_images ri INNER JOIN reviews r ON r.id = ri.review_id
+     WHERE ri.id = ? AND r.email_hash = ?`
+  ).bind(imageId, emailHash).first();
+}
+
 function _photoTagType(placeType) {
   if (placeType === "restaurant") return "restaurant";
   if (["service", "shop"].includes(placeType)) return "service";
@@ -52,11 +67,12 @@ export async function onRequestGet({ request, env }) {
     if (!env.DB || !env.MEDIA) return json({ error: "Service temporarily unavailable" }, 503, headers);
     const id = new URL(request.url).searchParams.get("id") || "";
     if (!IMAGE_ID_RE.test(id)) return json({ error: "Not found" }, 404, headers);
-    const row = await env.DB.prepare(
+    let row = await env.DB.prepare(
       `SELECT ri.object_key, ri.content_type
        FROM review_images ri INNER JOIN reviews r ON r.id = ri.review_id
        WHERE ri.id = ? AND r.status = 'yes' AND ri.status = 'yes'`
     ).bind(id).first();
+    if (!row) row = await _ownedImage(env.DB, id, await _requestIdentityHash(request));
     if (!row) return json({ error: "Not found" }, 404, headers);
     const object = await env.MEDIA.get(row.object_key);
     if (!object) return json({ error: "Not found" }, 404, headers);
@@ -134,6 +150,54 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
+async function _readMutation(request) {
+  let body;
+  try { body = await request.json(); } catch { return null; }
+  const emailHash = await _identityHash(body.idToken, request, body.localReview === true);
+  return emailHash ? { body, emailHash } : null;
+}
+
+/** Update a tag on an image owned by the authenticated reviewer. */
+export async function onRequestPatch({ request, env }) {
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
+  try {
+    if (!env.DB) return json({ error: "media_unavailable" }, 503, headers);
+    const mutation = await _readMutation(request);
+    if (!mutation) return json({ error: "invalid_token" }, 401, headers);
+    const imageId = (mutation.body.imageId || "").toString();
+    const image = await _ownedImage(env.DB, imageId, mutation.emailHash);
+    if (!image) return json({ error: "image_not_found" }, 404, headers);
+    const place = await env.DB.prepare("SELECT type FROM places WHERE id = ?").bind(image.place_id).first();
+    const photoTag = truncate((mutation.body.photoTag || "").toString().trim(), MAX_PHOTO_TAG_LEN);
+    const allowedPhotoTags = PHOTO_TAGS_BY_TYPE[_photoTagType(place?.type || "")];
+    if (photoTag && !allowedPhotoTags.has(photoTag)) return json({ error: "invalid_photo_tag" }, 400, headers);
+    await env.DB.prepare("UPDATE review_images SET photo_tag = ? WHERE id = ?").bind(photoTag, imageId).run();
+    return json({ success: true, image: { id: imageId, photoTag } }, 200, headers);
+  } catch {
+    return json({ error: "update_failed" }, 502, headers);
+  }
+}
+
+/** Permanently delete an image owned by the authenticated reviewer. */
+export async function onRequestDelete({ request, env }) {
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
+  try {
+    if (!env.DB) return json({ error: "media_unavailable" }, 503, headers);
+    const mutation = await _readMutation(request);
+    if (!mutation) return json({ error: "invalid_token" }, 401, headers);
+    const imageId = (mutation.body.imageId || "").toString();
+    const image = await _ownedImage(env.DB, imageId, mutation.emailHash);
+    if (!image) return json({ error: "image_not_found" }, 404, headers);
+    await env.DB.prepare("DELETE FROM review_images WHERE id = ?").bind(imageId).run();
+    if (env.MEDIA && image.object_key) {
+      try { await env.MEDIA.delete(image.object_key); } catch { /* Metadata deletion keeps it inaccessible. */ }
+    }
+    return json({ success: true, imageId }, 200, headers);
+  } catch {
+    return json({ error: "delete_failed" }, 502, headers);
+  }
+}
+
 /**
  * Answer CORS preflight requests.
  * @param {{request: Request}} context - Pages Function context.
@@ -142,8 +206,8 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestOptions({ request }) {
   return new Response(null, { status: 204, headers: {
     "Access-Control-Allow-Origin": allowedOrigin(request),
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Local-Review",
     "Access-Control-Max-Age": "86400",
   } });
 }

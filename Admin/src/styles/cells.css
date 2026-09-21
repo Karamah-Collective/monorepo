@@ -493,6 +493,8 @@
 .review-manager-empty { padding:16px 0 0; }
 .review-manager-account { display:flex; align-items:center; justify-content:space-between; gap:22px; background:color-mix(in srgb,var(--danger-bg) 42%,var(--bg)); }
 .review-manager-account > div { max-width:470px; }
+.review-manager-delete { display:flex; align-items:center; justify-content:space-between; gap:22px; }
+.review-manager-delete > div { max-width:470px; }
 .review-manager-dialog > .review-manager-shell > footer { display:flex; align-items:center; gap:12px; padding:14px 24px; border-top:1px solid var(--border); background:var(--bg); }
 .review-manager-dialog > .review-manager-shell > footer p { flex:1; margin:0; color:var(--text-muted); font-size:11px; }
 @keyframes manage-image-pulse { from { opacity:.55; } to { opacity:1; } }
@@ -517,7 +519,7 @@
   .place-manager-dialog footer .pp-btn { width:100%; }
   .review-manager-dialog,.review-manager-shell { width:calc(100vw - 12px); max-width:calc(100vw - 12px); max-height:calc(100dvh - 12px); margin:auto; }
   .review-manager-section { padding:18px; }
-  .review-manager-section-head,.review-manager-account { align-items:stretch; flex-direction:column; }
+  .review-manager-section-head,.review-manager-account,.review-manager-delete { align-items:stretch; flex-direction:column; }
   .review-manager-actions { justify-content:flex-start; }
   .review-manager-summary dl { grid-template-columns:1fr; }
   .review-manager-images { grid-template-columns:1fr; }

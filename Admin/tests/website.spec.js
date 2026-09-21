@@ -27,7 +27,7 @@ test('team editor saves to the website API and keeps visibility/order fields', a
   await page.goto('/website/team');
   await expect(page.getByRole('heading', { name: 'Amina Hassan' })).toBeVisible();
   await page.getByRole('button', { name: 'Manage', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Short biography').fill('Organizing our community gatherings.');
   await page.getByLabel('Website visibility').selectOption('inactive');
@@ -62,7 +62,7 @@ test('team editor can add and remove people from the website API', async ({ page
   page.once('dialog', dialog => dialog.accept());
   const newPerson = page.locator('.website-person-card').filter({ hasText: 'New Person' });
   await newPerson.getByRole('button', { name: 'Manage', exact: true }).click();
-  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Remove', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'New Person' })).toHaveCount(0);
   expect(await page.evaluate(() => window.__websiteMutation)).toMatchObject({ action: 'delete-person', body: { id: 'new-person', revision: 1 } });
 });
@@ -85,13 +85,13 @@ test('content drafts survive section changes and publish with the loaded revisio
   await mockWebsite(page);
   await page.goto('/website/content');
   await page.getByLabel('Main headline').fill('Together, we make room.');
-  await page.getByRole('button', { name: 'Programs', exact: true }).click();
+  await page.getByRole('tab', { name: 'Programs', exact: true }).click();
   await page.getByRole('button', { name: 'Add card' }).click();
   await page.locator('.website-content-card-editor').last().getByLabel('Title').fill('Community kitchen');
   await page.locator('.website-content-card-editor').last().getByLabel('Body').fill('Shared meals and practical food support.');
-  await page.getByRole('button', { name: 'About', exact: true }).click();
+  await page.getByRole('tab', { name: 'About', exact: true }).click();
   await page.getByLabel('Show the About section').uncheck();
-  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
   await expect(page.getByLabel('Main headline')).toHaveValue('Together, we make room.');
   await page.getByRole('button', { name: 'Publish changes' }).click();
   await expect(page.getByText('All changes published')).toBeVisible();
@@ -102,7 +102,7 @@ test('content drafts survive section changes and publish with the loaded revisio
 test('single ticket controls publish from the content editor', async ({ page }) => {
   await mockWebsite(page);
   await page.goto('/website/content');
-  await page.getByRole('button', { name: 'Tickets', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tickets', exact: true }).click();
   await page.getByLabel('Show ticket popup and buy buttons').check();
   await page.getByLabel('Ticket title').fill('Community Dinner');
   await page.getByLabel('Ticket description').fill('Reserve a seat for the next gathering.');
@@ -130,8 +130,8 @@ test('signup exports omit unsubscribed people and unsubscribe persists', async (
   expect(csv).not.toContain('former@example.test');
   expect(csv).toContain("'+35812345");
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Manage', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Unsubscribe', exact: true }).click();
+  await page.locator('tbody tr').filter({ hasText: 'Test Supporter' }).getByRole('button', { name: 'Manage', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Unsubscribe', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Export subscribed CSV' })).toBeDisabled();
 });
 
@@ -146,13 +146,13 @@ test('website controls fit a narrow viewport and keep the editor usable', async 
   await page.setViewportSize({ width: 390, height: 844 });
   await mockWebsite(page);
   await page.goto('/website/content');
-  await page.getByRole('button', { name: 'Announcement', exact: true }).click();
+  await page.getByRole('tab', { name: 'Announcement', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Announcement', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/website-content-mobile.png', fullPage: true });
   await page.goto('/website/team');
   await page.getByRole('button', { name: 'Manage', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save team member' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

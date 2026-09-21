@@ -57,6 +57,7 @@ export const useApproveReview = () => useAdminMutation("approve-review", ["admin
 export const useRejectReview = () => useAdminMutation("reject-review", ["admin-reviews"]);
 export const useSetReviewStatus = () => useAdminMutation("set-review-status", ["admin-reviews"]);
 export const useSetReviewImageStatus = () => useAdminMutation("set-review-image-status", ["admin-reviews"]);
+export const useDeleteReview = () => useAdminMutation("delete-review", ["admin-reviews", "admin-stats"]);
 export const useBanReviewer = () => useAdminMutation("ban-reviewer", ["admin-reviews"]);
 export const useUnbanReviewer = () => useAdminMutation("unban-reviewer", ["admin-reviews"]);
 export const useApproveEid = () => useAdminMutation("approve-eid", ["pending-eid", "admin-eid-prayers", "admin-stats"]);

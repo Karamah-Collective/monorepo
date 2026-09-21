@@ -271,6 +271,29 @@ async function _resolveReviewIdentity() {
   return idToken ? { idToken } : null;
 }
 
+async function _changeOwnedReviewImage(method, imageId, photoTag, identity) {
+  try {
+    const response = await fetch("/api/review-image", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageId, photoTag, ...identity }),
+    });
+    const result = await response.json();
+    return response.ok && result.success;
+  } catch { return false; }
+}
+
+async function _loadOwnedReviewImage(image, identity) {
+  try {
+    const headers = identity.localReview
+      ? { "X-Local-Review": "true" }
+      : { Authorization: `Bearer ${identity.idToken}` };
+    const response = await fetch(`/api/review-image?id=${encodeURIComponent(image.id)}`, { headers });
+    if (!response.ok) return { ...image, loadFailed: true };
+    return { ...image, src: URL.createObjectURL(await response.blob()), originalPhotoTag: image.photoTag || "" };
+  } catch { return { ...image, loadFailed: true }; }
+}
+
 /**
  * Submit a review for a place. Requires the caller to be signed in (Google or
  * email magic link).
@@ -295,18 +318,31 @@ export async function submitReview(placeId, rating, text, images = []) {
 
     const result = await res.json();
     if (result.success) {
-      _updateLocalReview(placeId, rating, text, result.status);
+      if (result.updated) _fetchReviews();
+      else _updateLocalReview(placeId, rating, text, result.status);
       // Narrower than the generic hf:reviews-loaded (dispatched inside
       // _updateLocalReview() below for the currently-open place sheet) —
       // this one specifically tells the account menu's "Your reviews" list
       // (src/menu.js) that THIS user's own review set changed, so it can
       // refetch without reacting to every unrelated rating-cache hydration.
-      window.dispatchEvent(new CustomEvent(EVT.MY_REVIEW_SUBMITTED, {
-        detail: { placeId, rating, text, status: result.status },
-      }));
       let uploaded = 0;
+      let imageChanged = false;
       let imageError = "";
-      for (const image of images.slice(0, MAX_REVIEW_IMAGES)) {
+      const removedImages = images.filter((image) => image.id && image.removed);
+      const retainedImages = images.filter((image) => image.id && !image.removed);
+      const newImages = images.filter((image) => image.file && !image.removed).slice(0, MAX_REVIEW_IMAGES - retainedImages.length);
+      for (const image of removedImages) {
+        const changed = await _changeOwnedReviewImage("DELETE", image.id, "", identity);
+        imageChanged ||= changed;
+        if (!changed) imageError = "delete_failed";
+      }
+      for (const image of retainedImages) {
+        if ((image.photoTag || "") === (image.originalPhotoTag || "")) continue;
+        const changed = await _changeOwnedReviewImage("PATCH", image.id, image.photoTag || "", identity);
+        imageChanged ||= changed;
+        if (!changed) imageError = "update_failed";
+      }
+      for (const image of newImages) {
         const file = image.file || image;
         const form = new FormData();
         form.append("placeId", placeId);
@@ -319,10 +355,11 @@ export async function submitReview(placeId, rating, text, images = []) {
           const uploadResult = await uploadResponse.json();
           if (!uploadResult.success) { imageError = uploadResult.error || "upload_failed"; break; }
           uploaded++;
+          imageChanged = true;
         } catch { imageError = "network_error"; break; }
       }
-      if (uploaded) {
-        _placeImageAvailability.set(String(placeId), true);
+      if (imageChanged) {
+        _placeImageAvailability.set(String(placeId), retainedImages.length + uploaded > 0);
         _loadedReviewImagePlaces.delete(placeId);
         import("./place-media.js").then(({ invalidatePlaceMediaManifest }) => {
           invalidatePlaceMediaManifest(placeId);
@@ -330,7 +367,10 @@ export async function submitReview(placeId, rating, text, images = []) {
         window.dispatchEvent(new CustomEvent(EVT.PLACE_MEDIA_CHANGED, { detail: { placeId } }));
         _fetchReviews();
       }
-      return { success: true, status: result.status, uploaded, imageError };
+      window.dispatchEvent(new CustomEvent(EVT.MY_REVIEW_SUBMITTED, {
+        detail: { placeId, rating, text, status: result.status },
+      }));
+      return { success: true, status: result.status, updated: result.updated === true, uploaded, imageError };
     }
     return { success: false, error: result.error };
   } catch {
@@ -379,7 +419,11 @@ export async function fetchMyReviews() {
       body: JSON.stringify({ action: "my-reviews", ...identity }),
     });
     const result = await res.json();
-    return { reviews: Array.isArray(result.reviews) ? result.reviews : [] };
+    const reviews = Array.isArray(result.reviews) ? result.reviews : [];
+    await Promise.all(reviews.flatMap((review) => (review.images || []).map(async (image, index) => {
+      review.images[index] = await _loadOwnedReviewImage(image, identity);
+    })));
+    return { reviews };
   } catch {
     return { reviews: [] };
   }
@@ -424,7 +468,7 @@ export async function deleteReview(placeId) {
  * skipping straight to the form.
  * @param {string} placeId
  * @param {string} placeName
- * @param {{rating: number, text: string}} existing
+ * @param {{rating: number, text: string, images?: Array<object>}} existing
  * @param {{type?: string, tags?: object}|null} [placeContext=null] - Category context for photo tags.
  * @returns {Promise<void>}
  */
@@ -1640,25 +1684,29 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
   const imagePreview = document.createElement("div");
   imagePreview.className = "rv-image-preview";
   const photoTagOptions = getPhotoTagOptions(_placePhotoContexts.get(String(placeId)));
-  let selectedImages = [];
+  let selectedImages = Array.isArray(existing?.images)
+    ? existing.images.map((image) => ({ ...image, originalPhotoTag: image.originalPhotoTag ?? image.photoTag ?? "", removed: false }))
+    : [];
 
   const renderImagePreview = () => {
     imagePreview.innerHTML = "";
-    selectedImages.forEach((selection, index) => {
+    const visibleImages = selectedImages.filter((selection) => !selection.removed);
+    visibleImages.forEach((selection, index) => {
       const item = document.createElement("div");
       item.className = "rv-image-preview-item";
       const visual = document.createElement("div");
       visual.className = "rv-image-preview-visual";
       const img = document.createElement("img");
-      img.src = URL.createObjectURL(selection.file);
+      img.src = selection.file ? URL.createObjectURL(selection.file) : (selection.src || selection.url || "");
       img.alt = `Selected review photo ${index + 1}`;
-      img.onload = () => URL.revokeObjectURL(img.src);
+      if (selection.file) img.onload = () => URL.revokeObjectURL(img.src);
       const remove = document.createElement("button");
       remove.className = "rv-image-remove";
       remove.type = "button";
       remove.setAttribute("aria-label", `Remove photo ${index + 1}`);
       remove.addEventListener("click", () => {
-        selectedImages.splice(index, 1);
+        if (selection.id) selection.removed = true;
+        else selectedImages = selectedImages.filter((image) => image !== selection);
         renderImagePreview();
       });
       const details = document.createElement("div");
@@ -1700,7 +1748,8 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
       item.append(visual, details);
       imagePreview.appendChild(item);
     });
-    imagePicker.classList.toggle("hide", selectedImages.length >= MAX_REVIEW_IMAGES);
+    imagePicker.classList.toggle("hide", visibleImages.length >= MAX_REVIEW_IMAGES);
+    imageHint.textContent = `${visibleImages.length} of ${MAX_REVIEW_IMAGES} photos · JPG, PNG or WebP`;
   };
 
   imageInput.addEventListener("change", () => {
@@ -1708,13 +1757,14 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     for (const file of incoming) {
       if (!REVIEW_IMAGE_TYPES.has(file.type)) { showToast("Unsupported photo", "error", "Use JPG, PNG or WebP"); continue; }
       if (file.size > MAX_REVIEW_IMAGE_BYTES) { showToast("Photo is too large", "error", "Maximum 5 MB per photo"); continue; }
-      if (selectedImages.length < MAX_REVIEW_IMAGES) selectedImages.push({ file, photoTag: "" });
+      if (selectedImages.filter((image) => !image.removed).length < MAX_REVIEW_IMAGES) selectedImages.push({ file, photoTag: "" });
     }
     imageInput.value = "";
     renderImagePreview();
   });
   imageGroup.append(imagePicker, imageHint, imagePreview);
   form.appendChild(imageGroup);
+  renderImagePreview();
 
   const submitBtn = document.createElement("button");
   submitBtn.className = "rv-submit-btn btn-primary";
@@ -1752,7 +1802,7 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     const result = await submitReview(placeId, ratingAtSubmit, text, selectedImages);
 
     if (result.success) {
-      if (result.status === "updated") {
+      if (result.updated) {
         showToast("Review updated", "check", result.imageError ? "Review saved; some photos could not upload" : "");
       } else if (result.status === "pending") {
         showToast("Review submitted", "check", "Will appear after moderation");
@@ -1781,7 +1831,7 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
       openReviewsOverlay(placeId, reopenPlaceName);
       return;
     }
-    openReviewsOverlayForEdit(placeId, reopenPlaceName, { rating: ratingAtSubmit, text });
+    openReviewsOverlayForEdit(placeId, reopenPlaceName, { rating: ratingAtSubmit, text, images: selectedImages });
   });
 
   form.appendChild(submitBtn);

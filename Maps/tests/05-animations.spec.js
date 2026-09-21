@@ -190,3 +190,33 @@ test.describe("Toast Notifications", () => {
     await expect(page.locator("#share-toast")).toBeHidden({ timeout: 4000 });
   });
 });
+
+test.describe("Photo Viewer Interaction", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const { openPhotoViewer } = await import("/src/place-media.js");
+      openPhotoViewer([
+        { url: "/data/thumbs/default.png", source: "community", photoTag: "interior" },
+        { url: "/data/thumbs/satellite.jpg", source: "community", photoTag: "exterior" },
+      ], "Test place", 0);
+    });
+  });
+
+  test("mouse-wheel zoom stays inside the image viewport", async ({ page }) => {
+    const viewport = page.locator(".photo-viewer__viewport");
+    await expect(viewport).toBeVisible();
+    await viewport.hover();
+    await page.mouse.wheel(0, -500);
+    await expect(page.locator(".photo-viewer__image")).toHaveClass(/is-zoomed/);
+    await expect(viewport).toHaveCSS("touch-action", "none");
+  });
+
+  test("next and previous photos use the directional transition", async ({ page }) => {
+    await page.locator(".photo-viewer__nav--next").click();
+    await expect(page.locator(".photo-viewer__slide.is-pushing")).toHaveCount(2);
+    await expect(page.locator(".photo-viewer__count")).toHaveText("2 / 2");
+    await page.locator(".photo-viewer__nav--previous").click();
+    await expect(page.locator(".photo-viewer__count")).toHaveText("1 / 2");
+  });
+});

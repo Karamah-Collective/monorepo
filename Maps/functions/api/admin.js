@@ -973,6 +973,23 @@ async function updateReviewImageStatus(db, data) {
   return meta.rows_written > 0 ? { success: true } : { error: "Image not found" };
 }
 
+async function deleteReview(db, data, env) {
+  const reviewId = parseInt(data.rowIndex, 10);
+  if (!reviewId) return { error: "Invalid review" };
+  const review = await db.prepare("SELECT id FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId).first();
+  if (!review) return { error: "Review not found" };
+  const { results } = await db.prepare("SELECT object_key FROM review_images WHERE review_id = ?").bind(reviewId).all();
+  await db.batch([
+    db.prepare("DELETE FROM review_images WHERE review_id = ?").bind(reviewId),
+    db.prepare("DELETE FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId),
+  ]);
+  const objectKeys = (results || []).map((row) => row.object_key).filter(Boolean);
+  if (objectKeys.length && env.MEDIA) {
+    try { await env.MEDIA.delete(objectKeys); } catch { /* Deleted metadata keeps orphaned media inaccessible. */ }
+  }
+  return { success: true, deletedImages: objectKeys.length };
+}
+
 async function updateReviewerBan(db, data, actor, banned) {
   const reviewId = parseInt(data.rowIndex, 10);
   if (!reviewId) return { error: "Invalid review" };
@@ -1050,6 +1067,7 @@ const POST_ACTIONS = {
   "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no", data.reason),
   "set-review-status": (db, data) => updateReviewStatus(db, data.rowIndex, data.status, data.reason),
   "set-review-image-status": (db, data) => updateReviewImageStatus(db, data),
+  "delete-review": (db, data, env) => deleteReview(db, data, env),
   "ban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, true),
   "unban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, false),
   "approve-eid": (db, data) => approveEid(db, data.rowId),

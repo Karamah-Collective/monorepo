@@ -189,10 +189,24 @@ export const responses = {
     },
   ],
   "admin-contact": { unreplied: [], replied: [] },
+  "admin-reviews": [
+    {
+      rowIndex: "42",
+      placeId: "place-0",
+      placeName: "Hakaniemi Market",
+      rating: 4,
+      text: "A useful community review with enough detail.",
+      timestamp: "2026-09-20T12:00:00Z",
+      status: "yes",
+      emailHash: "abcd1234…",
+      banned: false,
+      images: [],
+    },
+  ],
 };
 
 // Browser-only module interception: production authentication and API code stay intact.
-export async function mockAdmin(page, overrides = {}, signedIn = true) {
+export async function mockAdmin(page, overrides = {}, signedIn = true, clientError = "") {
   await page.route("**/src/auth/AuthContext.jsx*", (route) =>
     route.fulfill({
       contentType: "text/javascript",
@@ -207,7 +221,7 @@ export async function mockAdmin(page, overrides = {}, signedIn = true) {
       contentType: "text/javascript",
       body: `
     const responses = ${JSON.stringify({ ...responses, ...overrides })};
-    export async function apiGet(action) { return responses[action] ?? []; }
+    export async function apiGet(action) { ${clientError ? `throw new Error(${JSON.stringify(clientError)});` : ""} return responses[action] ?? []; }
     export async function apiGetBlob() { return new Blob(); }
     export async function apiPost(action, body) { window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; return {success: true}; }
     export async function logAuthEvent() {}

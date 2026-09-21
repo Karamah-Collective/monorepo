@@ -5,6 +5,7 @@ import { apiGetBlob } from "../api/client.js";
 import {
   useAdminReviews,
   useBanReviewer,
+  useDeleteReview,
   useSetReviewImageStatus,
   useSetReviewStatus,
   useUnbanReviewer,
@@ -54,6 +55,7 @@ function ReviewManager({ review, close, mutations, toast }) {
   const images = Array.isArray(review.images) ? review.images : [];
   const [reason, setReason] = useState(review.moderationReason || review.banReason || "");
   const [banArmed, setBanArmed] = useState(false);
+  const [deleteArmed, setDeleteArmed] = useState(false);
   useEffect(() => { dialog.current?.showModal(); return () => dialog.current?.close(); }, []);
   const busy = Object.values(mutations).some((mutation) => mutation.isPending);
   const run = (mutation, body, success) => mutation.mutate(body, {
@@ -88,6 +90,16 @@ function ReviewManager({ review, close, mutations, toast }) {
           <div><h3>Reviewer access</h3><p>{review.banned ? "This reviewer cannot submit or upload reviews. Hidden reviews stay hidden after access is restored." : "Ban this reviewer and hide all reviews associated with the same protected identity hash."}</p></div>
           {review.banned ? <button type="button" className="pp-btn pp-btn-approve" disabled={busy} onClick={() => run(mutations.unban, { rowIndex: review.rowIndex }, "Reviewer access restored")}>Unban reviewer</button> : <button type="button" className="pp-btn pp-btn-delete" disabled={busy} onClick={() => banArmed ? run(mutations.ban, { rowIndex: review.rowIndex, reason }, "Reviewer banned and reviews hidden") : setBanArmed(true)}>{banArmed ? "Confirm ban and hide reviews" : "Ban reviewer"}</button>}
         </section>
+        <section className="review-manager-section review-manager-delete">
+          <div><h3>Delete review</h3><p>Permanently removes the review and all attached images. The admin action remains in the activity log.</p></div>
+          <button type="button" className="pp-btn pp-btn-delete" disabled={busy} onClick={() => {
+            if (!deleteArmed) { setDeleteArmed(true); return; }
+            mutations.remove.mutate({ rowIndex: review.rowIndex, reason }, {
+              onSuccess: () => { toast("Review deleted and logged"); close(); },
+              onError: (error) => toast(error.message, "error"),
+            });
+          }}>{deleteArmed ? "Confirm permanent deletion" : "Delete review"}</button>
+        </section>
       </div>
       <footer><p>Moderation changes are applied immediately and recorded in the admin log.</p><button type="button" className="pp-btn" disabled={busy} onClick={close}>Done</button></footer>
     </div>
@@ -100,6 +112,7 @@ export default function ReviewsPage() {
   const image = useSetReviewImageStatus();
   const ban = useBanReviewer();
   const unban = useUnbanReviewer();
+  const remove = useDeleteReview();
   const showToast = useToast();
   const [managedReviewId, setManagedReviewId] = useState(null);
   const managedReview = data?.find((review) => review.rowIndex === managedReviewId) || null;
@@ -112,7 +125,7 @@ export default function ReviewsPage() {
     columnHelper.accessor("status", { header: "Status", meta: { filterVariant: "select", options: STATUS_OPTIONS }, filterFn: (row, id, value) => (row.getValue(id) || "pending") === value, cell: (info) => <StatusBadge status={info.getValue()} labels={REVIEW_STATUS_LABELS} /> }),
     columnHelper.display({ id: "actions", header: "Actions", cell: (info) => <button type="button" className="pp-btn pp-btn-refresh" onClick={() => setManagedReviewId(info.row.original.rowIndex)}><Icons.settings size={14} />Manage</button> }),
   ], []);
-  const mutations = { status, image, ban, unban };
+  const mutations = { status, image, ban, unban, remove };
 
   return <div className="pp-page">
     <h1 className="pp-page-title">Reviews</h1>

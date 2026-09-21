@@ -305,6 +305,7 @@ function renderTicketToast(ticket) {
 
 export function applyWebsiteContent(raw) {
   const content = publicWebsiteContent(raw);
+  window.__KARAMAH_WEBSITE_CONTENT__ = content;
   for (const [key, field] of Object.entries(WEBSITE_FIELDS)) {
     if (field.legacy || !field.selector || field.type !== "text") continue;
     if (!content[key] && key !== "contactIntro" && key !== "noticeText") continue;
@@ -360,6 +361,9 @@ export function applyWebsiteContent(raw) {
   }
   refreshDynamicUi();
 }
+window.addEventListener("karamah:privacy-loaded", () => {
+  if (window.__KARAMAH_WEBSITE_CONTENT__) applyWebsiteContent(window.__KARAMAH_WEBSITE_CONTENT__);
+});
 async function load() {
   try {
     const response = await fetch("/api/content", { signal: AbortSignal.timeout(12000) });

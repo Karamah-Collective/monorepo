@@ -294,6 +294,15 @@ phone widths without horizontal overflow.
 Existing images fall back to Location. Future Google photos use the Google G mark
 on the image rather than a text provider badge. Photo viewer images stay hidden
 while the requested source loads so a previously displayed bitmap cannot flash.
+The expanded viewer uses two absolutely stacked slide slots for navigation.
+Both slides translate together in opposite directions, so next pushes left and
+previous pushes right without fading. Viewer controls and metadata sit on
+`--z-sub-ui` inside the stage; this keeps close and both navigation buttons
+clickable above zoomed or moving images regardless of DOM paint order.
+The incoming slide must not move until its image has loaded and decoded. Loading
+and error handlers always clear state on their own image element, never on the
+mutable active-image reference; a failed incoming image leaves the current slide
+in place instead of revealing the stage background.
 
 On phones, the place-detail sheet uses content-bounded snap points. Its maximum
 height is `min(natural content height, 90dvh)`. The shared 50% and 75% stops are
