@@ -9,6 +9,9 @@
   --action-accent-hover: var(--accent-dark);
   --action-accent-soft: var(--accent-bg);
   --action-on-accent: #f7faf7;
+  --interactive-accent: var(--accent);
+  --interactive-accent-hover: var(--accent-dark);
+  --interactive-accent-soft: var(--accent-bg);
   --success: #28684f;
   --success-bg: #eaf3ee;
   --danger: #ae473d;
@@ -22,12 +25,26 @@
   --text: #262d2a;
   --text-muted: #6a736d;
   --text-faint: #6b756c;
-  --border: #e4e8e3;
-  --border-strong: #cbd3cc;
-  --bg: #fff;
-  --bg-alt: #f5f7f4;
-  --bg-inset: #edf1ec;
-  --bg-nav: #202923;
+  --border: #e8e0cf;
+  --border-strong: #d3c5a5;
+  --bg: #fffdf8;
+  --bg-alt: #faf7ee;
+  --bg-inset: #f3eddf;
+  --bg-nav: #f7f1e2;
+  --nav-text: #46504a;
+  --nav-text-muted: #737d76;
+  --nav-text-strong: #202923;
+  --nav-icon: #647169;
+  --nav-border: #745f2e1c;
+  --nav-hover: #2b745c0a;
+  --nav-active-bg: var(--action-accent);
+  --nav-active-text: var(--action-on-accent);
+  --nav-active-icon: var(--action-on-accent);
+  --nav-count-bg: #eee6d3;
+  --nav-count-border: #745f2e1a;
+  --nav-avatar-bg: #2b745c;
+  --nav-avatar-border: #205b48;
+  --nav-avatar-text: #f7faf7;
   --radius-sm: 7px;
   --radius: 10px;
   --radius-lg: 14px;
@@ -62,7 +79,10 @@
   --action-accent: #f2c879;
   --action-accent-hover: #f6d99f;
   --action-accent-soft: #3e3421;
-  --action-on-accent: #0b3c49;
+  --action-on-accent: #19211d;
+  --interactive-accent: var(--action-accent);
+  --interactive-accent-hover: var(--action-accent-hover);
+  --interactive-accent-soft: var(--action-accent-soft);
   --success: #79bea3;
   --success-bg: #1d382f;
   --danger: #e0968d;
@@ -82,6 +102,20 @@
   --bg-alt: #121915;
   --bg-inset: #222d27;
   --bg-nav: #0f1612;
+  --nav-text: #b4c0b7;
+  --nav-text-muted: #8d9c90;
+  --nav-text-strong: #f4f7f2;
+  --nav-icon: #95a699;
+  --nav-border: #ffffff14;
+  --nav-hover: #ffffff09;
+  --nav-active-bg: var(--action-accent);
+  --nav-active-text: var(--action-on-accent);
+  --nav-active-icon: var(--action-on-accent);
+  --nav-count-bg: #ffffff0b;
+  --nav-count-border: #ffffff0e;
+  --nav-avatar-bg: #51634e;
+  --nav-avatar-border: #74866b;
+  --nav-avatar-text: #eff3e9;
   --shadow-sm: 0 1px 2px #07100a55;
   --shadow: 0 8px 20px #07100a2e;
   --shadow-lg: 0 20px 52px #07100a80;
@@ -129,13 +163,13 @@ button:disabled {
   opacity: 0.5;
 }
 a {
-  color: var(--accent);
+  color: var(--interactive-accent);
 }
 svg {
   flex-shrink: 0;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--interactive-accent);
   outline-offset: 3px;
 }
 ::selection {
@@ -143,8 +177,8 @@ svg {
   color: #202923;
 }
 :root[data-admin-theme="dark"] ::selection {
-  background: #315f50;
-  color: #f5f7f4;
+  background: var(--interactive-accent-soft);
+  color: var(--text);
 }
 .pp-scroll {
   scrollbar-width: thin;
@@ -189,12 +223,12 @@ svg {
   min-height: 100dvh;
   padding: 32px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-alt);
   opacity: 1;
   transform: translateZ(0);
   transition: opacity 240ms var(--ease);
 }
-:root[data-admin-theme="dark"] .pp-brand-loader { background: #101713; }
+:root[data-admin-theme="dark"] .pp-brand-loader { background: var(--bg-alt); }
 
 /* One section-navigation language for every Admin editor. */
 .pp-section-tabs {
@@ -233,7 +267,7 @@ svg {
   bottom: -1px;
   left: 12px;
   height: 2px;
-  background: var(--accent);
+  background: var(--interactive-accent);
   opacity: 0;
   transform: scaleX(.45);
   transition: opacity 180ms ease, transform 220ms var(--ease);
@@ -241,7 +275,7 @@ svg {
 .pp-section-tabs button:hover { color: var(--text); background: var(--bg-alt); }
 .pp-section-tabs button:active { transform: scale(.98); }
 .pp-section-tabs button:is(.active, .is-active, [aria-selected="true"], [aria-pressed="true"], [aria-current]) {
-  color: var(--accent-dark);
+  color: var(--interactive-accent-hover);
   background: transparent;
   font-weight: 650;
   box-shadow: none;

@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Muslims and community members in Finland use Karamah Maps on phones and
+Muslims and community members in Finland use Manarah on phones and
 desktop browsers while looking for halal food, prayer spaces, services,
 events, transit directions, and trustworthy community knowledge. Contributors
 also add places, corrections, ratings, reviews, and photos in short focused
@@ -14,7 +14,7 @@ workflows.
 
 ## Product Purpose
 
-Karamah Maps is a spatial community utility that makes Muslim-friendly places
+Manarah is a spatial community utility that makes Muslim-friendly places
 and services easy to discover, evaluate, reach, and improve collaboratively.
 Success means the map stays primary, information is quickly scannable, and a
 visitor can complete the next task without navigating ornamental interface.

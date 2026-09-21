@@ -59,7 +59,7 @@
   bottom: -1px;
   left: 12px;
   height: 2px;
-  background: var(--accent);
+  background: var(--interactive-accent);
   opacity: 0;
   transform: scaleX(.45);
   transition: opacity 180ms ease, transform 220ms var(--ease);
@@ -67,7 +67,7 @@
 .pp-section-tabs > button:hover { color: var(--text); background: var(--bg-alt); }
 .pp-section-tabs > button:active { transform: scale(.98); }
 .pp-section-tabs > button:is(.active, .is-active, [aria-selected="true"], [aria-pressed="true"], [aria-current]) {
-  color: var(--accent-dark);
+  color: var(--interactive-accent-hover);
   background: transparent;
   box-shadow: none;
   font-weight: 650;

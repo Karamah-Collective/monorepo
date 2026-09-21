@@ -70,7 +70,7 @@ export const WEBSITE_FIELDS = {
   programsVisible: toggle("Show Programs", "Programs"),
   programCards: cards("Program cards", "Programs", { title: shortText, body: bodyText, icon: shortText, url: urlText, linkLabel: shortText }, [
     { title: "Janazah Initiative", body: "Faith-aligned end-of-life guidance and support, practical resources for families, and advocacy for essential infrastructure across Finland.", icon: "shield-check", url: "", linkLabel: "" },
-    { title: "Halal Finder", body: "Explore Muslim-relevant services, mosques, and community resources across Finland on our interactive map.", icon: "map-pin", url: "https://maps.karamahcollective.com", linkLabel: "Open Halal Finder" },
+    { title: "Manarah", body: "Explore Muslim-relevant services, mosques, and community resources across Finland on our interactive map.", icon: "map-pin", url: "https://maps.karamahcollective.com", linkLabel: "Open Manarah" },
     { title: "Fajr Journal Club", body: "Low-threshold Islamic book club for self-improvement, aimed at busy women; expanding to events, collaborations, and a subscription-based membership open to all.", icon: "book-open", url: "", linkLabel: "" },
     { title: "Neurodiverse Muslims", body: "Surveying, assessing, and showcasing neurodivergent voices through workshops, outreach, and resources.", icon: "brain", url: "", linkLabel: "" },
   ], 12, { rowMax: 2, rowHint: "Desktop/tablet: up to 2 program cards per row. New cards fill the current row, then wrap. Phone: 1 per row.", cardTemplates: [
@@ -128,7 +128,7 @@ export const WEBSITE_FIELDS = {
   ]),
   janazahDisclaimer: text("Service note", "Janazah", "#janazah .kc-disclaimer-text", 900, "We offer community information and coordination support. We do not provide legal services or official religious rulings. For medical emergencies, contact emergency services."),
 
-  mapsTitle: text("Section title", "Maps", "#maps .kc-section-title", 100, "Halal Finder"),
+  mapsTitle: text("Section title", "Maps", "#maps .kc-section-title", 100, "Manarah"),
   mapsSubtitle: text("Short introduction", "Maps", "#maps .kc-section-sub", 250, "Discover · Navigate · Connect"),
   mapsVisible: toggle("Show the Maps section", "Maps"),
   mapsPillars: cards("Feature cards", "Maps", { label: shortText, body: bodyText }, [
@@ -137,7 +137,7 @@ export const WEBSITE_FIELDS = {
     { label: "Connect", body: "Community-verified listings you can search, filter, and suggest edits to - built by and for the community." },
   ]),
   mapsCallouts: cards("Statement cards", "Maps", { body: bodyText }, [
-    { body: "Halal Finder is our open, community-powered map covering the Helsinki metropolitan area and expanding across Finland. It helps Muslims and newcomers locate mosques, halal food, and essential services - all verified by the community." },
+    { body: "Manarah is our open, community-powered map covering the Helsinki metropolitan area and expanding across Finland. It helps Muslims and newcomers locate mosques, halal food, and essential services - all verified by the community." },
   ]),
   mapsLists: cards("Flexible cards", "Maps", flexibleCardFields, [
     { kind: "list", label: "What you can find", title: "", body: "", items: ["Mosques & prayer spaces with service details", "Halal restaurants, cafés, and grocery stores", "Islamic centres & community organisations", "Halal-friendly businesses and services"], url: "", linkLabel: "", imageUrl: "" },
@@ -149,7 +149,7 @@ export const WEBSITE_FIELDS = {
     { body: "Get directions with transit schedules or walking routes" },
     { body: "Suggest edits or new places via the built-in form" },
   ]),
-  mapsDisclaimer: text("Map disclaimer", "Maps", "#maps .kc-disclaimer-text", 900, "Halal Finder relies on community contributions. Listings are informational and may not always be up to date. Always verify details directly with the business."),
+  mapsDisclaimer: text("Map disclaimer", "Maps", "#maps .kc-disclaimer-text", 900, "Manarah relies on community contributions. Listings are informational and may not always be up to date. Always verify details directly with the business."),
 
   teamTitle: text("Section title", "Team", "#team .kc-section-title", 100, "Meet the Team"),
   teamVisible: toggle("Show the team", "Team"),

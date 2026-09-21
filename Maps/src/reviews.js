@@ -12,6 +12,7 @@
 import { esc, escA, showToast, animateElementHeight, crossFadeSwap, isReduceMotionActive, showWelcomeGreeting, emailPasswordErrorMessage, oauthSignInErrorToast, showLinkedProviderToast } from "./utils.js";
 import { EVT } from "./events.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
+import { getPhotoTagOptions, photoTagLabel } from "./photo-tags.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_REVIEWS = "hf_reviews_v1";
@@ -60,6 +61,7 @@ let _overlayClearTimer = null;
 const _loadedReviewImagePlaces = new Set();
 const _loadingReviewImagePlaces = new Set();
 const _placeImageAvailability = new Map();
+const _placePhotoContexts = new Map();
 
 // `.rv-overlay-card` can also be mid-flight in _insertReviewPanel()'s own
 // entrance-reveal height tween when this runs (e.g. the user taps the email/
@@ -237,11 +239,13 @@ export function getPlaceReviews(placeId) {
 /**
  * Record the D1-derived image-availability flag carried by a place record.
  * @param {string} placeId - Stable app place ID.
- * @param {boolean} hasImages - Whether an approved community image exists.
+ * @param {boolean|undefined} hasImages - Whether an approved community image exists.
+ * @param {{type?: string, tags?: object}|null} [placeContext=null] - Category context for photo tags.
  * @returns {void}
  */
-export function registerPlaceMediaAvailability(placeId, hasImages) {
-  _placeImageAvailability.set(String(placeId), Boolean(hasImages));
+export function registerPlaceMediaAvailability(placeId, hasImages, placeContext = null) {
+  if (typeof hasImages === "boolean") _placeImageAvailability.set(String(placeId), hasImages);
+  if (placeContext) _placePhotoContexts.set(String(placeId), placeContext);
 }
 
 // ─── Review Submission ───────────────────────────────────────────────────────
@@ -273,7 +277,7 @@ async function _resolveReviewIdentity() {
  * @param {string} placeId
  * @param {number} rating - 1 to 5
  * @param {string} text - optional review text
- * @param {File[]} [images=[]] - optional community photos selected for upload
+ * @param {Array<{file: File, photoTag: string}>} [images=[]] - optional tagged community photos selected for upload
  * @returns {Promise<{success: boolean, status?: string, error?: string, uploaded?: number, imageError?: string}>}
  */
 export async function submitReview(placeId, rating, text, images = []) {
@@ -303,11 +307,13 @@ export async function submitReview(placeId, rating, text, images = []) {
       let uploaded = 0;
       let imageError = "";
       for (const image of images.slice(0, MAX_REVIEW_IMAGES)) {
+        const file = image.file || image;
         const form = new FormData();
         form.append("placeId", placeId);
         form.append("idToken", identity.idToken);
         if (identity.localReview) form.append("localReview", "true");
-        form.append("image", image, image.name);
+        form.append("photoTag", image.photoTag || "");
+        form.append("image", file, file.name);
         try {
           const uploadResponse = await fetch("/api/review-image", { method: "POST", body: form });
           const uploadResult = await uploadResponse.json();
@@ -419,9 +425,11 @@ export async function deleteReview(placeId) {
  * @param {string} placeId
  * @param {string} placeName
  * @param {{rating: number, text: string}} existing
+ * @param {{type?: string, tags?: object}|null} [placeContext=null] - Category context for photo tags.
  * @returns {Promise<void>}
  */
-export async function openReviewsOverlayForEdit(placeId, placeName, existing) {
+export async function openReviewsOverlayForEdit(placeId, placeName, existing, placeContext = null) {
+  if (placeContext) _placePhotoContexts.set(String(placeId), placeContext);
   const auth = _isLocalReviewMode() ? null : await _getAuthModule();
   const blocked = auth ? await auth.isCurrentUserUnverifiedPassword() : false;
 
@@ -669,7 +677,11 @@ function _renderReviewsOverlayContent(overlay, placeId, placeName) {
     }
     button.addEventListener("click", async () => {
       const { openPhotoViewer } = await import("./place-media.js");
-      const photos = photoButtons.map((item) => ({ url: item.dataset.photoUrl, source: "community" }));
+      const photos = photoButtons.map((item) => ({
+        url: item.dataset.photoUrl,
+        photoTag: item.dataset.photoTag,
+        source: "community",
+      }));
       openPhotoViewer(photos, placeName, index, button, { variant: "review" });
     });
   });
@@ -772,7 +784,12 @@ function _buildReviewCard(review) {
     : `<span class="rv-source-chip rv-source-community">Community</span>`;
   const author = isGoogle && review.authorName ? `<span class="rv-review-author">${esc(review.authorName)}</span>` : "";
   const images = !isGoogle && Array.isArray(review.images) && review.images.length
-    ? `<div class="rv-review-images">${review.images.map((image, index) => `<button class="rv-review-image skel-bone" type="button" data-photo-url="${escA(image.url)}" aria-label="View review photo ${index + 1}"><img src="${escA(image.url)}" alt="Community photo for this review" loading="lazy" decoding="async"></button>`).join("")}</div>`
+    ? `<div class="rv-review-images">${review.images.map((image, index) => {
+      const tagLabel = photoTagLabel(image.photoTag);
+      const tagBadge = tagLabel ? `<span class="rv-review-image-tag">${esc(tagLabel)}</span>` : "";
+      const description = tagLabel ? `${tagLabel.toLowerCase()} ` : "";
+      return `<button class="rv-review-image skel-bone" type="button" data-photo-url="${escA(image.url)}" data-photo-tag="${escA(image.photoTag || "")}" aria-label="View ${escA(description)}photo ${index + 1}"><img src="${escA(image.url)}" alt="${escA(tagLabel || "Review")} photo for this review" loading="lazy" decoding="async">${tagBadge}</button>`;
+    }).join("")}</div>`
     : "";
   return `<div class="rv-review-card">
     <div class="rv-review-body">
@@ -1622,27 +1639,65 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
   imageHint.textContent = `Up to ${MAX_REVIEW_IMAGES} JPG, PNG or WebP photos`;
   const imagePreview = document.createElement("div");
   imagePreview.className = "rv-image-preview";
+  const photoTagOptions = getPhotoTagOptions(_placePhotoContexts.get(String(placeId)));
   let selectedImages = [];
 
   const renderImagePreview = () => {
     imagePreview.innerHTML = "";
-    selectedImages.forEach((file, index) => {
+    selectedImages.forEach((selection, index) => {
       const item = document.createElement("div");
       item.className = "rv-image-preview-item";
+      const visual = document.createElement("div");
+      visual.className = "rv-image-preview-visual";
       const img = document.createElement("img");
-      img.src = URL.createObjectURL(file);
+      img.src = URL.createObjectURL(selection.file);
       img.alt = `Selected review photo ${index + 1}`;
       img.onload = () => URL.revokeObjectURL(img.src);
       const remove = document.createElement("button");
       remove.className = "rv-image-remove";
       remove.type = "button";
       remove.setAttribute("aria-label", `Remove photo ${index + 1}`);
-      remove.textContent = "×";
       remove.addEventListener("click", () => {
         selectedImages.splice(index, 1);
         renderImagePreview();
       });
-      item.append(img, remove);
+      const details = document.createElement("div");
+      details.className = "rv-image-preview-details";
+      const tagHeader = document.createElement("div");
+      tagHeader.className = "rv-image-tag-header";
+      const tagLabel = document.createElement("span");
+      tagLabel.className = "rv-image-tag-label";
+      tagLabel.textContent = `Photo ${index + 1}`;
+      tagHeader.appendChild(tagLabel);
+      const tagOptions = document.createElement("div");
+      tagOptions.className = "rv-image-tag-options";
+      tagOptions.setAttribute("role", "group");
+      tagOptions.setAttribute("aria-label", `Label for photo ${index + 1}`);
+      photoTagOptions.forEach((option) => {
+        const tagButton = document.createElement("button");
+        tagButton.className = "rv-image-tag-option";
+        tagButton.type = "button";
+        tagButton.textContent = option.label;
+        const updateSelectedState = () => {
+          const selected = selection.photoTag === option.value;
+          tagButton.classList.toggle("is-selected", selected);
+          tagButton.setAttribute("aria-pressed", String(selected));
+        };
+        updateSelectedState();
+        tagButton.addEventListener("click", () => {
+          selection.photoTag = selection.photoTag === option.value ? "" : option.value;
+          tagOptions.querySelectorAll(".rv-image-tag-option").forEach((button) => {
+            const selected = button === tagButton && selection.photoTag === option.value;
+            button.classList.toggle("is-selected", selected);
+            button.setAttribute("aria-pressed", String(selected));
+          });
+        });
+        tagOptions.appendChild(tagButton);
+      });
+      details.append(tagHeader, tagOptions);
+      remove.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+      visual.append(img, remove);
+      item.append(visual, details);
       imagePreview.appendChild(item);
     });
     imagePicker.classList.toggle("hide", selectedImages.length >= MAX_REVIEW_IMAGES);
@@ -1653,7 +1708,7 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     for (const file of incoming) {
       if (!REVIEW_IMAGE_TYPES.has(file.type)) { showToast("Unsupported photo", "error", "Use JPG, PNG or WebP"); continue; }
       if (file.size > MAX_REVIEW_IMAGE_BYTES) { showToast("Photo is too large", "error", "Maximum 5 MB per photo"); continue; }
-      if (selectedImages.length < MAX_REVIEW_IMAGES) selectedImages.push(file);
+      if (selectedImages.length < MAX_REVIEW_IMAGES) selectedImages.push({ file, photoTag: "" });
     }
     imageInput.value = "";
     renderImagePreview();

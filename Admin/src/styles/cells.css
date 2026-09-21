@@ -13,7 +13,7 @@
 .pp-select-cell:focus,
 .pp-dropdown-cell:focus {
   background: var(--bg);
-  border-color: var(--accent);
+  border-color: var(--interactive-accent);
   outline: none;
 }
 
@@ -140,7 +140,7 @@
 
 .pp-btn-refresh {
   background: var(--bg-inset);
-  color: var(--accent);
+  color: var(--interactive-accent);
   border: 1px solid var(--border);
 }
 
@@ -294,8 +294,8 @@
 
 .pp-sponsor-promo-row textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
 }
 
 .pp-sponsor-remove {
@@ -371,7 +371,7 @@
 }
 
 .pp-switch-on {
-  background: var(--accent);
+  background: var(--interactive-accent);
 }
 .pp-switch-danger.pp-switch-on {
   background: var(--danger);

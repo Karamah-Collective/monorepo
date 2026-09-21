@@ -2,14 +2,20 @@
 
 ## Direction
 
-A compact community operations workspace. Charcoal navigation, mineral surfaces,
-muted green accents, self-hosted Geist and Geist Mono, and Phosphor icons.
+A compact community operations workspace. Light mode uses a very pale golden
+ivory canvas and navigation with green actions. Dark mode reverses
+the emphasis with deep green-charcoal surfaces and warm gold actions. The type
+system remains self-hosted Geist and Geist Mono with Phosphor icons.
 Color signals state; avoid ornamental gradients, artificial analytics, or continuous
 animation that competes with moderation work.
 
-In dark mode, filled primary and affirmative action buttons use the Collective's
-warm gold with deep-teal text, matching the public Website. Green remains available
-for semantic success indicators and quieter navigation/focus states.
+In light mode, barely-golden ivory and quiet warm neutrals own the environment while green
+owns interactive actions, focus, active editor tabs, selected controls, and
+links. The gold cast must be perceptible but very light, never saturated.
+In dark mode, deep green
+owns the environment while warm gold owns those same interactive roles. Filled
+controls always use a neutral high-contrast foreground, never green text on gold.
+Semantic danger, warning, and success roles remain independent of this inversion.
 
 ## Composition and navigation
 

@@ -197,8 +197,13 @@ states, not marketing-style decoration.
 ### Visual language
 
 - Geist plus Geist Mono.
-- Charcoal navigation rail, mineral working canvas, white editor surfaces.
-- Muted green selection and action color.
+- Light mode uses a very pale golden-ivory canvas and navigation rail with
+  quiet warm surfaces and muted green actions, focus, editor selection, and
+  links. It must read as softly golden rather than white, without becoming
+  saturated or visually heavy.
+- Dark mode reverses that hierarchy: deep green-charcoal surfaces with warm gold
+  actions, focus, editor selection, and links. Filled gold controls use charcoal
+  foregrounds; semantic success remains green.
 - 7–14 px radii and almost imperceptible shadows.
 - Dense collection rows separated by rules; cards are reserved for distinct
   work areas or previews.

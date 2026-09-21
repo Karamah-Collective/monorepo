@@ -31,7 +31,7 @@
   transition: border-color 180ms ease, background-color 180ms ease, transform 180ms var(--ease);
 }
 .table-search-wrap:focus-within {
-  border-color: var(--accent);
+  border-color: var(--interactive-accent);
   background: var(--bg);
   transform: translateY(-1px);
 }
@@ -56,9 +56,9 @@
   margin-left: auto;
 }
 .table-toolbar-actions .pp-btn[aria-pressed="true"] {
-  background: var(--accent-bg);
-  border-color: var(--accent-light);
-  color: var(--accent);
+  background: var(--interactive-accent-soft);
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
   transform: translateY(-1px);
 }
 .table-toolbar-actions .pp-btn {
@@ -129,7 +129,7 @@
   width: 100%;
 }
 .pp-th-sorted {
-  color: var(--accent) !important;
+  color: var(--interactive-accent) !important;
 }
 .pp-th-label:disabled {
   opacity: 1;
@@ -167,7 +167,7 @@
 .log-detail summary {
   width: fit-content;
   cursor: pointer;
-  color: var(--accent);
+  color: var(--interactive-accent);
   font-size: 12px;
   font-weight: 600;
 }
@@ -212,7 +212,7 @@
   transition: border-color 160ms ease, background-color 160ms ease, transform 160ms var(--ease), opacity 160ms ease;
 }
 .pp-col-filter:focus {
-  border-color: var(--accent);
+  border-color: var(--interactive-accent);
   outline: 0;
   transform: translateY(-1px);
 }

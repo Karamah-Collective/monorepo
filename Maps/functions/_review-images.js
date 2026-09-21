@@ -23,16 +23,30 @@ export async function getPlaceIdsWithReviewImages(db) {
  */
 export async function getPlaceReviewImages(db, placeId) {
   try {
-    const { results } = await db.prepare(
-      `SELECT ri.id, ri.review_id
-       FROM review_images ri
-       INNER JOIN reviews r ON r.id = ri.review_id
-       WHERE ri.place_id = ? AND r.status = 'yes' AND ri.status = 'yes'
-       ORDER BY ri.created_at, ri.id`
-    ).bind(placeId).all();
+    let results;
+    try {
+      ({ results } = await db.prepare(
+        `SELECT ri.id, ri.review_id, ri.photo_tag
+         FROM review_images ri
+         INNER JOIN reviews r ON r.id = ri.review_id
+         WHERE ri.place_id = ? AND r.status = 'yes' AND ri.status = 'yes'
+         ORDER BY ri.created_at, ri.id`
+      ).bind(placeId).all());
+    } catch {
+      // Keep existing local media visible while a developer applies the
+      // additive photo-tag migration. New uploads still require 0019.
+      ({ results } = await db.prepare(
+        `SELECT ri.id, ri.review_id, 'location' AS photo_tag
+         FROM review_images ri
+         INNER JOIN reviews r ON r.id = ri.review_id
+         WHERE ri.place_id = ? AND r.status = 'yes' AND ri.status = 'yes'
+         ORDER BY ri.created_at, ri.id`
+      ).bind(placeId).all());
+    }
     return results.map((row) => ({
       id: row.id,
       reviewId: String(row.review_id),
+      photoTag: row.photo_tag == null ? "location" : row.photo_tag,
       url: `/api/review-image?id=${encodeURIComponent(row.id)}`,
       source: "community",
     }));

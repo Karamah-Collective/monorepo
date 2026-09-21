@@ -1,4 +1,5 @@
-import { getAppSettings } from "./app-settings.js";
+import { GOOGLE_G_LOGO_SVG } from "./icons.js";
+import { photoTagLabel } from "./photo-tags.js";
 
 const GALLERY_SCROLL_RATIO = 0.82;
 const GALLERY_EDGE_TOLERANCE_PX = 2;
@@ -34,7 +35,8 @@ function _photoCard(photo, placeName, index, openViewer) {
   const link = document.createElement("button");
   link.type = "button";
   link.className = "pp-media-link";
-  link.setAttribute("aria-label", `View ${photo.source === "google" ? "Google Maps" : "community"} photo ${index + 1}`);
+  const tagLabel = photoTagLabel(photo.photoTag);
+  link.setAttribute("aria-label", `View ${photo.source === "google" ? "Google Maps " : tagLabel ? `${tagLabel.toLowerCase()} ` : ""}photo ${index + 1}`);
   const image = document.createElement("img");
   image.src = _safeMediaUrl(photo.src || photo.url);
   image.alt = `${placeName} photo`;
@@ -48,10 +50,10 @@ function _photoCard(photo, placeName, index, openViewer) {
   link.addEventListener("click", () => openViewer(index, link));
   item.appendChild(link);
 
-  if (photo.source !== "google" || photo.author?.name) {
+  if ((photo.source !== "google" && tagLabel) || photo.author?.name) {
     const credit = document.createElement(photo.author?.url ? "a" : "span");
     credit.className = "pp-media-credit";
-    credit.textContent = photo.source === "google" ? photo.author.name : "Community";
+    credit.textContent = photo.source === "google" ? photo.author.name : tagLabel;
     if (photo.author?.url) {
       credit.href = _safeMediaUrl(photo.author.url);
       credit.target = "_blank";
@@ -66,7 +68,9 @@ function _photoCard(photo, placeName, index, openViewer) {
     provider.target = "_blank";
     provider.rel = "noopener noreferrer";
     provider.translate = false;
-    provider.textContent = "Google Maps";
+    provider.setAttribute("aria-label", "View on Google Maps");
+    provider.title = "Google Maps";
+    provider.innerHTML = GOOGLE_G_LOGO_SVG;
     item.appendChild(provider);
   }
   return item;
@@ -74,13 +78,14 @@ function _photoCard(photo, placeName, index, openViewer) {
 
 function _viewerPhotoLabel(photo) {
   if (photo.source === "google" && photo.author?.name) return `Photo by ${photo.author.name}`;
-  return photo.source === "google" ? "Google Maps photo" : "Community photo";
+  return photo.source === "google" ? "Google Maps photo" : photoTagLabel(photo.photoTag);
 }
 
 function _renderViewerPhoto() {
   const photo = _viewerPhotos[_viewerIndex];
   if (!photo || !_viewerImage) return;
   _viewerImage.closest(".photo-viewer__stage")?.classList.add("skel-bone");
+  _viewerImage.classList.add("is-loading");
   _viewerImage.src = _safeMediaUrl(photo.src || photo.url);
   _viewerImage.alt = `${_viewerPlaceName} photo ${_viewerIndex + 1} of ${_viewerPhotos.length}`;
   _viewerCount.textContent = `${_viewerIndex + 1} / ${_viewerPhotos.length}`;
@@ -159,7 +164,10 @@ function _ensureViewer() {
   _viewerPrevious = _viewer.querySelector(".photo-viewer__nav--previous");
   _viewerNext = _viewer.querySelector(".photo-viewer__nav--next");
   _viewerClose = _viewer.querySelector(".photo-viewer__close");
-  const settleViewerImage = () => _viewerImage.closest(".photo-viewer__stage")?.classList.remove("skel-bone");
+  const settleViewerImage = () => {
+    _viewerImage.closest(".photo-viewer__stage")?.classList.remove("skel-bone");
+    _viewerImage.classList.remove("is-loading");
+  };
   _viewerImage.addEventListener("load", settleViewerImage);
   _viewerImage.addEventListener("error", settleViewerImage);
   _viewerClose.addEventListener("click", _closeViewer);
@@ -295,8 +303,9 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   let community = [];
   let google = [];
-  const googleEnabled = Boolean(place.mapsUrl && getAppSettings().googlePlacePhotosEnabled);
-  const shouldLoad = Boolean(place.hasImages || googleEnabled);
+  // The summary flag is only an optimization hint and may be stale in local
+  // development. An opened place always gets one lightweight manifest check.
+  const shouldLoad = true;
   let loading = shouldLoad;
 
   const render = () => {

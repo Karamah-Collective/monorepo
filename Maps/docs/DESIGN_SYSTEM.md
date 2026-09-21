@@ -278,6 +278,23 @@ supporting label on a separate line.
 `.rv-image-remove` are shared media primitives; gallery and form layout remains
 in `styles.css`.
 
+Community photos may carry one normalized descriptive tag instead of a
+redundant source badge. Tagging is optional; tapping the selected chip again
+clears it. The available single-select taxonomy is derived from the
+place category: food places may use Food/Menu, services may use Products,
+religious spaces may use Prayer area/Wudu, cemeteries may use Grounds, and every
+category retains Location/Interior/Exterior/Entrance where applicable. The API
+validates the category allow-list and stores the tag in `review_images.photo_tag`.
+Selected uploads use one bounded media row per image: thumbnail and icon-only
+remove control on the left, then a wrapping optional single-choice chip group.
+Do not use a native select for this small visual taxonomy; the available choices
+should remain visible and the selected label should use the shared accent-soft
+state. Do not add explanatory “choose one” copy. The row collapses naturally at
+phone widths without horizontal overflow.
+Existing images fall back to Location. Future Google photos use the Google G mark
+on the image rather than a text provider badge. Photo viewer images stay hidden
+while the requested source loads so a previously displayed bitmap cannot flash.
+
 On phones, the place-detail sheet uses content-bounded snap points. Its maximum
 height is `min(natural content height, 90dvh)`. The shared 50% and 75% stops are
 included only when they fit below that cap, and the measured cap is always the

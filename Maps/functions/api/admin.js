@@ -301,7 +301,7 @@ async function getAdminReviews(db) {
        ORDER BY r.id DESC`
     ).all(),
     db.prepare(
-      `SELECT id, review_id, status, moderation_reason, content_type, size_bytes, created_at
+      `SELECT id, review_id, status, moderation_reason, content_type, size_bytes, created_at, photo_tag
        FROM review_images ORDER BY created_at, id`
     ).all(),
   ]);
@@ -316,6 +316,7 @@ async function getAdminReviews(db) {
       contentType: image.content_type || "",
       sizeBytes: Number(image.size_bytes || 0),
       createdAt: image.created_at || "",
+      photoTag: image.photo_tag == null ? "location" : image.photo_tag,
     });
   }
   return reviewRows.results.map((r) => ({

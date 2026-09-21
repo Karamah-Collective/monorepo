@@ -14,7 +14,7 @@ const payload = {
     error_description: 'We could not load these links just now.', retry_label: 'Try again', background_style: 'paper', image_style: 'cover',
   },
   links: [
-    { id: 'maps', url: 'https://maps.karamahcollective.com', title: 'Find halal places near you', description: 'Mosques, restaurants, services and community spaces across Finland.', imageUrl: '/assets/karamah-logo.webp', siteName: 'Karamah Maps', faviconUrl: '/assets/favicon.ico', featured: true },
+    { id: 'maps', url: 'https://maps.karamahcollective.com', title: 'Find halal places near you', description: 'Mosques, restaurants, services and community spaces across Finland.', imageUrl: '/assets/karamah-logo.webp', siteName: 'Manarah', faviconUrl: '/assets/favicon.ico', featured: true },
     { id: 'collective', url: 'https://karamahcollective.com', title: 'Karamah Collective', description: 'Our work, community and current initiatives.', imageUrl: '/assets/karamah-logo.webp', siteName: 'karamahcollective.com', faviconUrl: '/assets/favicon.ico', featured: false },
     { id: 'updates', url: 'https://karamahcollective.com/#updates', title: 'Get community updates', description: 'Join the private updates list.', imageUrl: '/assets/karamah-logo.webp', siteName: 'Karamah Collective', faviconUrl: '/assets/favicon.ico', featured: false },
   ],

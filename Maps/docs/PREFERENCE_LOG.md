@@ -53,6 +53,23 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+- **2026-09-21 - Photo tags are optional.** Uploading a review image must not force a label. Tag chips begin unselected and the active chip can be tapped again to clear it. Do not add “Choose one label” helper copy; the single-choice interaction is self-evident. Untagged photos show no replacement badge.
+- **2026-09-21 - Closed hours copy is upright.** The plain Closed value inside the Hours schedule must not be italic because the slanted final glyph can be visually clipped by its row boundary.
+
+### 2026-09-21 - Local photo visibility and upload-tag refinement
+
+- Traced the missing localhost Photos section to a local D1 schema that had six images but no `review_images.photo_tag` column; the manifest query therefore failed closed and returned no photos.
+- Applied migration `0019_review_image_tags.sql` to local D1 and added a read-only compatibility fallback that labels pre-migration images as Location.
+- Made the opened-place manifest check authoritative instead of suppressing it from a possibly stale `hasImages` summary hint.
+- Replaced each upload preview's native tag dropdown with an app-native, category-aware single-choice chip group beside the thumbnail.
+- Corrected Admin light mode to very pale golden ivory, kept dark mode predominantly deep green with gold interaction contrast, and switched the light-mode Karamah logo to its black artwork.
+
+- **2026-09-21 - Admin light mode is very light golden ivory.** Light Admin must not be pure white or strongly gold: use a barely-golden ivory canvas and navigation with green buttons and interaction states. Dark Admin remains predominantly deep green-charcoal, using warm gold as its contrasting interactive hue; filled gold uses charcoal text. The Karamah logo uses its black artwork in light mode and white artwork in dark mode.
+- **2026-09-21 - The Maps product is Manarah on the public Website.** Replace every visitor-facing “Halal Finder” Website reference with “Manarah,” including program cards, map section copy, calls to action, feedback topics, schema defaults, and already-authored D1 content.
+
+- **2026-09-21 - Photo taxonomy and source-label cleanup.** Community is the only current photo source, so repeating “Community” on every image adds no value. Each uploaded image may carry one optional category-aware tag, with restaurant-only Menu/Food, space-only Prayer area/Wudu, service-only Products, cemetery-only Grounds, and shared location/physical-view options. Existing images use Location; new images begin untagged. Future Google images use the Google G mark rather than a text badge. The place Photos heading uses sentence case and the same hierarchy/top spacing as Hours.
+- **2026-09-21 - Admin dark-mode gold is an interaction system, not a button-only swap.** Warm gold now owns primary/affirmative actions, focus, active editor tabs, selected controls, and links in dark mode. Filled gold controls use charcoal foregrounds, never green-on-gold. Green remains for semantic success and quiet navigation.
+
 - **2026-08-11 - Menu tab active indicator parity.** User noticed Places and Routes show the active tab indicator while Menu did not. Menu sheet open/close now uses the shared `setActiveTab("menu-pill")` / clear pattern so the existing tab-bar indicator appears for Menu as well. Keep tab open-state indicators centralized through `setActiveTab()` instead of styling one-off active classes.
 - **2026-08-11 - Map marker/traffic visual correction, round 2.** User rejected the prior marker thumbnails as still ugly at actual scale: the map texture plus small pin shapes made them noisy and cramped, and "Compact" truncated badly. Marker thumbnails should be designed at their rendered size, with clean mini-map plates, simplified upright pin silhouettes, and readable labels. The internal mode remains `markers-compact`, but the visible label is shortened to "Small" so it fits without tiny text. User also clarified traffic-sign data should be treated as long-lived infrastructure, not 24-hour freshness data. Traffic cache is now snapped-area based, 5-year TTL, 160-key cap, so small pans and revisits avoid repeated Overpass calls. Pedestrian crossing icons should use a modern zebra-crossing symbol rather than a person glyph.
 - **2026-08-11 - Marker thumbnail correction, round 3.** User clarified marker thumbnails should look like the actual markers used in the app, not generic upright pin icons, and the thumbnail background should remain the standard light map preview even while the app is in dark mode. Marker thumbnails now mirror the real `.place-mk`/`.custom-mk` puck shape with `--puck-r`, `--puck-border`, and `rotate(-45deg)`, scaled to fit the tiny thumbnail; the background is forced to `data/thumbs/default.png` with no dark-mode surface tint.
@@ -338,6 +355,22 @@ what you like, what you've decided, and how you want things done.
 > Short notes from individual sessions for continuity.
 
 <!-- Append new entries below this line -->
+
+### 2026-09-21 - Admin theme inversion and Website Manarah rename
+
+- Reworked Admin semantic theme tokens so light mode uses very pale golden-ivory canvas/navigation with green controls, while dark mode uses predominantly deep green surfaces with gold controls.
+- Replaced sidebar hardcoded colors with theme-owned navigation roles so active, hover, count, avatar, and authentication states remain legible in both modes.
+- Updated every Website “Halal Finder” fallback/default to “Manarah” and added `0020_website_manarah_name.sql` to update existing authored D1 content.
+- Updated Admin and cross-app design documentation. Static syntax/diff checks were used; automated/browser tests were not run per standing preference.
+
+### 2026-09-21 - Tagged place photos, direct viewer targeting, and Admin dark gold
+
+- Added one optional, server-validated, category-aware tag per uploaded review image through migration `0019_review_image_tags.sql`; existing images fall back to Location while new images may remain untagged.
+- Replaced repeated Community image badges with descriptive tags and reserved a compact Google G mark for future Google-sourced images.
+- Restyled the place Photos header to sentence case with the same hierarchy and top spacing as Hours.
+- Prevented the shared viewer from painting its previous bitmap while the requested image loads, so review thumbnails open directly on the selected image.
+- Extended Admin dark mode's gold from filled actions into focus, links, active editor tabs, and selected controls; filled gold buttons now use charcoal foregrounds.
+- Modified Maps media/review client code, upload and manifest functions, Admin review metadata, Maps/Admin tokens and layout styles, design documentation, service-worker precache/versioning, and the new migration. Static `node --check` and `git diff --check` passed; automated/browser tests were not run per standing preference.
 
 ### 2026-05-09 — Premium UI polish sweep
 

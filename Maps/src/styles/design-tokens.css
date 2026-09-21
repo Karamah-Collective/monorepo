@@ -2273,7 +2273,8 @@ html.reduce-motion *::after {
   text-align: center;
 }
 .pp-media-credit,
-.pp-media-provider {
+.pp-media-provider,
+.rv-review-image-tag {
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-pill);
   background: var(--media-credit-bg);
@@ -2282,6 +2283,36 @@ html.reduce-motion *::after {
   font-weight: var(--fw-regular);
   text-decoration: none;
   transition: opacity var(--t-fast);
+}
+.rv-image-tag-option {
+  min-height: 30px;
+  padding: var(--sp-1) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background-color var(--t-fast);
+}
+.rv-image-tag-option.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+.rv-image-tag-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring-inset);
+}
+@media (hover: hover) {
+  .rv-image-tag-option:not(.is-selected):hover {
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 @media (hover: hover) {
   a.pp-media-credit:hover,

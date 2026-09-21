@@ -1895,7 +1895,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     _activePlaceSheetMediaListener = null;
   }
   trackRecentlyViewed(place.id);
-  if (typeof place.hasImages === "boolean") registerPlaceMediaAvailability(place.id, place.hasImages);
+  registerPlaceMediaAvailability(place.id, place.hasImages, place);
   const visual = _placeVisual(place);
   const cssColor = visual.color;
   const specificTypeLabel = _placeSpecificTypeLabel(place);

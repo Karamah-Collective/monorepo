@@ -139,7 +139,7 @@ export const responses = {
         image_url: "",
         metadata_image_url: "https://picsum.photos/seed/karamah-map-finland/800/600",
         custom_site_name: "",
-        site_name: "Karamah Maps",
+        site_name: "Manarah",
         custom_favicon_url: "",
         favicon_url: "",
         metadata_status: "ready",

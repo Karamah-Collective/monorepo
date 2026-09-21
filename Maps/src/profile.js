@@ -555,7 +555,7 @@ function _wireMyReviewRows(list, reviews) {
       if (!r) return;
       const place = placesData.find((p) => p.id === r.placeId);
       _closeAccountSheet();
-      openReviewsOverlayForEdit(r.placeId, place?.name || r.placeName, { rating: r.rating, text: r.text });
+      openReviewsOverlayForEdit(r.placeId, place?.name || r.placeName, { rating: r.rating, text: r.text }, place);
     });
   });
 

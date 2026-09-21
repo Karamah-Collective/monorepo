@@ -3,13 +3,15 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { useAdminStats } from "../api/queries.js";
 import { Icons, CloseIcon } from "../icons.jsx";
 import { NAV_GROUPS } from "./navigation.js";
+import logoLightUrl from "../../../Website/assets/images/kc_logo_small.webp";
 import logoDarkUrl from "../../../Website/assets/images/kc_logo_small_dark.webp";
 
 export function Brand() {
   return (
     <>
       <span className="brand-mark">
-        <img src={logoDarkUrl} alt="" />
+        <img className="brand-logo brand-logo--light" src={logoLightUrl} alt="" />
+        <img className="brand-logo brand-logo--dark" src={logoDarkUrl} alt="" />
       </span>
       <span className="brand-copy">
         Karamah Collective<span>ADMIN</span>
