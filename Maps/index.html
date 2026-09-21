@@ -1,0 +1,2206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#1A73B8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Manarah</title>
+    <meta name="description" content="Find halal food, services, and prayer spaces across Finland." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Manarah" />
+    <meta property="og:description" content="Find halal food, services, and prayer spaces across Finland." />
+    <meta property="og:image" content="https://maps.karamahcollective.com/data/manarah-link-preview.png" />
+    <meta property="og:image:secure_url" content="https://maps.karamahcollective.com/data/manarah-link-preview.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="2000" />
+    <meta property="og:image:height" content="2000" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Manarah" />
+    <meta name="twitter:description" content="Find halal food, services, and prayer spaces across Finland." />
+    <meta name="twitter:image" content="https://maps.karamahcollective.com/data/manarah-link-preview.png" />
+    <link rel="icon" type="image/png" href="/data/icons/favicon.png" sizes="512x512" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" href="src/styles/fonts/PlusJakartaSans-Variable-Latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/LOGO%20-%20Manarah.svg" as="fetch" type="image/svg+xml" crossorigin />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="preconnect" href="https://api.digitransit.fi" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.transitous.org" />
+    <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://api.aladhan.com" />
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+    <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+      integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20260921-7" />
+  </head>
+  <body>
+    <a href="#map" class="skip-link">Skip to map</a>
+    <div id="welcome-screen" role="status" aria-label="Loading Manarah">
+      <div id="welcome-logo-stage" class="welcome-logo-stage"></div>
+    </div>
+    <div id="app">
+      <div id="map"></div>
+
+      <div id="search-card" class="pill-expand collapsed">
+        <button
+          id="search-pill"
+          class="btn-icon pill-expand-icon"
+          aria-label="Search"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </button>
+        <div id="search-expanded" class="pill-expand-body">
+          <div id="search-box">
+            <svg
+              class="sb-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search places…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="clear-input" class="clear-btn hide" aria-label="Clear">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div id="search-drop" class="hide">
+            <ul id="results-list"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Zoom Pill (bottom-right, always visible) ─── -->
+      <div id="zoom-pill">
+        <button id="zoomin-btn" class="btn-icon" aria-label="Zoom in">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        <div class="zp-div"></div>
+        <button id="zoomout-btn" class="btn-icon" aria-label="Zoom out">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          >
+            <path d="M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- ─── Tab Bar + Zoom ─── -->
+      <nav id="tab-bar">
+        <button id="home-btn" class="tab btn-tab" aria-label="Home">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8" />
+            <path
+              d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button id="places-btn" class="tab btn-tab" aria-label="Places">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+            />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
+          <span>Places</span>
+          <span id="places-badge" class="badge hide">0</span>
+        </button>
+        <button id="dir-btn" class="tab btn-tab" aria-label="Directions">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 4l6 6-6 6" />
+            <path d="M4 20v-6a4 4 0 0 1 4-4h12" />
+          </svg>
+          <span>Routes</span>
+        </button>
+        <button id="menu-pill" class="tab btn-tab" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          <span>Menu</span>
+        </button>
+      </nav>
+
+      <!-- ─── Location Pill (right side, above search) ─── -->
+      <div id="locate-pill-wrap">
+        <button id="locate-btn" class="btn-icon-card" aria-label="My location">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 11l19-9-9 19-2-8-8-2z" />
+            <line x1="6" y1="3" x2="22" y2="18" stroke-width="2" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- OSM Copyright link -->
+      <a id="osm-link" href="https://www.openstreetmap.org/copyright" target="_blank" aria-label="OpenStreetMap contributors">© OpenStreetMap</a>
+
+      <!-- ─── Directions Sheet (bottom) ─── -->
+      <div id="dir-panel" class="sheet shut">
+        <div id="dir-drag" class="sheet-drag"><span></span></div>
+        <div id="dir-head" class="sheet-head">
+          <h2>Directions</h2>
+          <button
+            id="dir-share-route"
+            class="dir-share-btn btn-roundel hide"
+            aria-label="Share route"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          </button>
+          <button
+            id="dir-clear-route"
+            class="dir-clear-btn btn-roundel-danger hide"
+            aria-label="Clear route"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+          </button>
+          <button id="dir-close" class="sheet-x btn-roundel" aria-label="Close">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Compact route summary (shown when search is collapsed on mobile) -->
+        <div id="dir-summary" class="hide">
+          <div class="dir-sum-route">
+            <span class="dir-dot origin"></span>
+            <span id="dir-sum-from" class="dir-sum-text">Origin</span>
+            <svg
+              class="dir-sum-arrow"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            <span class="dir-dot dest"></span>
+            <span id="dir-sum-to" class="dir-sum-text">Destination</span>
+          </div>
+          <button
+            id="dir-sum-edit"
+            class="btn-primary"
+            aria-label="Edit search"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit
+          </button>
+        </div>
+
+        <!-- Focused route header (shown in focus mode) -->
+        <div id="dir-focused-head">
+          <div class="focused-top-row">
+            <button
+              id="dir-focused-back"
+              class="btn-roundel"
+              aria-label="Back to results"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="focused-od">
+              <span class="dir-dot origin"></span>
+              <span id="focused-origin" class="focused-od-text">Origin</span>
+              <svg
+                class="focused-od-arrow"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+              <span class="dir-dot dest"></span>
+              <span id="focused-dest" class="focused-od-text">Destination</span>
+            </div>
+            <button
+              id="dir-focused-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="focused-info-bar">
+            <div id="focused-chain" class="itin-chain"></div>
+            <div id="focused-meta" class="focused-meta"></div>
+          </div>
+        </div>
+
+        <div id="dir-inputs">
+          <div class="dir-fields-col">
+            <div class="dir-field-wrap">
+              <div class="dir-field" id="dir-field-from">
+                <span class="dir-dot origin"></span>
+                <input
+                  id="dir-from"
+                  type="text"
+                  placeholder="Origin — tap map or type"
+                  autocomplete="off"
+                />
+                <button
+                  class="dir-field-btn dir-my-loc"
+                  title="Use my location"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                  >
+                    <path d="M3 11l19-9-9 19-2-8-8-2z" />
+                  </svg>
+                </button>
+              </div>
+              <ul id="dir-from-suggest" class="dir-suggest hide"></ul>
+            </div>
+            <div id="dir-waypoints"></div>
+            <div class="dir-field-wrap">
+              <div class="dir-field" id="dir-field-to">
+                <span class="dir-dot dest"></span>
+                <input
+                  id="dir-to"
+                  type="text"
+                  placeholder="Destination — tap map or type"
+                  autocomplete="off"
+                />
+                <button
+                  class="dir-field-btn dir-mosque-dest"
+                  title="Nearest mosque"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                  >
+                    <path
+                      d="M12 3l-4 6H4v11h16V9h-4L12 3zM8 18H6v-2h2v2zm0-4H6v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2z"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <ul id="dir-to-suggest" class="dir-suggest hide"></ul>
+            </div>
+          </div>
+          <div class="dir-side-controls">
+            <button id="dir-swap" title="Swap origin &amp; destination">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 16V4M7 4l-4 4M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4" />
+              </svg>
+            </button>
+            <button id="dir-add-stop" class="dir-add-stop" type="button" aria-label="Add stop" title="Add stop">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ─── Transport Mode Selector ─── -->
+        <div id="dir-mode-bar">
+          <div id="dir-mode-toggle">
+            <button class="mode-opt btn-segment active" data-mode="drive">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M3 17V12.5l2.5-6h13l2.5 6V17a1 1 0 01-1 1H4a1 1 0 01-1-1z"
+                />
+                <circle cx="7.5" cy="17.5" r="2.5" />
+                <circle cx="16.5" cy="17.5" r="2.5" />
+                <path d="M3 13h18" />
+              </svg>
+              Drive
+            </button>
+            <button class="mode-opt btn-segment" data-mode="transit">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="3" width="16" height="17" rx="3" />
+                <path d="M4 11h16" />
+                <circle
+                  cx="8.5"
+                  cy="16"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx="15.5"
+                  cy="16"
+                  r="1.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <path d="M7 20v2M17 20v2" />
+              </svg>
+              Transit
+            </button>
+            <button class="mode-opt btn-segment" data-mode="cycle">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5.5" cy="17.5" r="3" />
+                <circle cx="18.5" cy="17.5" r="3" />
+                <path d="M5.5 17.5L9 10h5.5l3.5 7.5M9 10l3.5 7.5" />
+                <circle
+                  cx="13.5"
+                  cy="7"
+                  r="1.8"
+                  fill="currentColor"
+                  stroke="none"
+                />
+              </svg>
+              Cycle
+            </button>
+            <button class="mode-opt btn-segment" data-mode="walk">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="13" cy="4.5" r="2.5" stroke-width="1.8" />
+                <path d="M7 21l3-9M16 21l-2-3-2.5-4 3.5-4" />
+                <path d="M10 14l-1.5-5.5 4-1" />
+              </svg>
+              Walk
+            </button>
+          </div>
+        </div>
+
+        <div id="dir-time-bar">
+          <div class="time-bar-inner">
+          <div class="time-row">
+            <div id="dir-time-toggle">
+              <button class="time-opt btn-segment active" data-mode="depart">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                Depart
+              </button>
+              <button class="time-opt btn-segment" data-mode="arrive">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+                Arrive
+              </button>
+            </div>
+            <button id="dir-time-now" class="time-chip btn-chip active">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Now
+            </button>
+          </div>
+          <div id="dir-custom-time-row">
+            <div class="custom-time-inner">
+            <button class="custom-datetime-trigger" id="datetime-trigger" type="button">
+              <svg
+                class="field-icon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              <span class="dt-label" id="dir-datetime-label"></span>
+            </button>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        <button id="dir-go" class="btn-primary" disabled>
+          Find Routes
+        </button>
+
+        <div id="dir-results">
+          <div id="dir-empty"></div>
+          <div id="dir-loading" class="hide"></div>
+          <div id="dir-error" class="hide"></div>
+          <div id="dir-itineraries"></div>
+        </div>
+      </div>
+
+      <!-- ─── Places Sheet (bottom) ─── -->
+      <div id="places-sheet" class="sheet shut">
+        <div id="places-drag" class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2>Places</h2>
+          <span id="places-ct"></span>
+          <button
+            id="suggest-place-btn"
+            class="sheet-action-btn btn-roundel-accent"
+            aria-label="Suggest a place"
+            title="Suggest a place"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+          <button
+            id="places-list-focus"
+            class="sheet-action-btn btn-roundel"
+            aria-label="Focus list"
+            title="Focus list"
+            aria-pressed="false"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 6h13" />
+              <path d="M8 12h13" />
+              <path d="M8 18h13" />
+              <path d="M3 6h.01" />
+              <path d="M3 12h.01" />
+              <path d="M3 18h.01" />
+            </svg>
+          </button>
+          <button
+            id="places-clear-filters"
+            class="sheet-action-btn btn-roundel-danger hide"
+            aria-label="Clear filters"
+            title="Clear filters & sort"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+          </button>
+          <button
+            id="places-close"
+            class="sheet-x btn-roundel"
+            aria-label="Close"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="places-filters">
+          <div id="places-type-chips">
+            <button class="pf-chip active" data-type="all">
+              <span class="pf-icon" style="--pf-c: var(--accent)">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">All</span>
+            </button>
+            <button class="pf-chip" data-type="space">
+              <span class="pf-icon" style="--pf-c: var(--hsl-ferry)">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Spaces</span>
+            </button>
+            <button class="pf-chip" data-type="restaurant">
+              <span class="pf-icon" style="--pf-c: var(--hsl-trunk)">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Food</span>
+            </button>
+            <button class="pf-chip" data-type="service">
+              <span class="pf-icon" style="--pf-c: var(--hsl-rail)">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Services</span>
+            </button>
+            <button class="pf-chip" data-type="saved">
+              <span class="pf-icon" style="--pf-c: #f59e0b">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                  />
+                </svg>
+              </span>
+              <span class="pf-label">Saved</span>
+            </button>
+          </div>
+          <div id="tf-row">
+            <button id="tf-toggle" class="btn-chip hide">
+              <span class="btn-chip-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+              </span>
+              <span class="tf-btn-label">Filter</span><span id="tf-count" class="hide">0</span>
+              <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+            <div id="sort-wrap">
+              <button id="sort-toggle" class="btn-chip">
+                <span class="btn-chip-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+                </span>
+                <span id="sort-label" class="tf-btn-label">Most Relevant</span>
+                <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+              </button>
+              <div id="sort-dropdown" class="sort-dropdown shut">
+                <div class="sort-section-label">Sort by</div>
+                <button class="sort-opt active" data-sort-field="default">Most Relevant</button>
+                <button class="sort-opt" data-sort-field="name">Name</button>
+                <button class="sort-opt" data-sort-field="distance">Distance</button>
+                <button class="sort-opt" data-sort-field="date">Date added</button>
+                <button class="sort-opt" data-sort-field="rating">Rating</button>
+                <div class="sort-divider"></div>
+                <div class="sort-section-label">Order</div>
+                <button class="sort-opt active" data-sort-dir="asc">Ascending</button>
+                <button class="sort-opt" data-sort-dir="desc">Descending</button>
+              </div>
+            </div>
+            <div id="pl-search-wrap" class="pl-search-wrap">
+              <input id="pl-search-input" type="text" placeholder="Search places…" autocomplete="off" maxlength="100">
+            </div>
+            <button id="pl-search-icn-btn" class="pl-search-icn" type="button" aria-label="Search places">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+          <div id="tag-filter-chips" class="shut"></div>
+        </div>
+        <div id="places-scroll">
+          <ul id="places-list"></ul>
+          <div id="places-empty" class="pl-card hide">
+            <div class="empty-anim">
+              <svg
+                class="empty-pin"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                />
+                <circle cx="12" cy="9" r="2.5" />
+              </svg>
+              <div class="empty-ping"></div>
+            </div>
+            <div class="empty-text">
+              <span class="empty-title">No places found</span>
+              <span class="empty-sub"
+                >Try different filters ·
+                <button
+                  id="suggest-place-btn-empty"
+                  class="empty-suggest btn-inline"
+                >
+                  Suggest one
+                </button></span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Place Detail Sheet ─── -->
+      <div id="place-sheet" class="sheet shut" hidden>
+        <div id="place-drag" class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2 id="place-sheet-title"></h2>
+          <button
+            id="place-sheet-close"
+            class="sheet-x btn-roundel"
+            aria-label="Close"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="place-sheet-body" class="t-scroll"></div>
+        <div id="place-sheet-actions" class="pp-actions"></div>
+      </div>
+
+      <!-- ─── Menu/Profile Sheet: one physical sheet, two internal panes ───
+           Menu (Account summary / Map View / Support / Preferences) and Profile
+           (identity card, stats, submissions, reviews, data actions) used to be
+           two independent .sheet elements coordinated by swapSheetsHorizontally()
+           (src/utils.js) — visually smoother than a plain close/open, but each
+           sheet still auto-sized to ITS OWN content height (Profile is much
+           taller than Menu), so the coordinated swap still "wobbled" via a
+           height reflow underneath the slide. Now there is exactly ONE .sheet
+           (one initSheetDrag() lifecycle, opened/closed only here) with two
+           pane containers, #menu-sheet-body and #profile-sheet-body (ids kept
+           from the old per-sheet bodies so every existing getElementById lookup
+           in menu.js/profile.js still resolves), riding side-by-side inside
+           #mp-pane-track.
+
+           A 2nd iteration (same-day, superseded) relied on flexbox's un-set
+           `align-items: stretch` default to make #mp-pane-track's own height
+           always equal the TALLER pane's natural height, force-stretching the
+           shorter one to match — this eliminated the wobble, but left a
+           permanent block of dead white space below whichever pane was
+           actually shorter (e.g. Profile before its real data loads), since
+           the row's own height never changed to fit whichever pane was
+           actually showing.
+
+           A 3rd iteration let #mp-pane-track's children size to their own
+           real content (`align-items: flex-start`) and animated #mp-scroll's
+           own height to match the active pane directly, pinning
+           #mp-pane-track to exactly 100% of it. This looked right but broke
+           scrolling entirely: #mp-scroll never had flex:1/min-height:0 (so it
+           couldn't shrink to fit whatever .sheet actually had available), and
+           since its one child was always clamped to match it exactly,
+           #mp-scroll.scrollHeight could never exceed its own clientHeight —
+           overflow-y: auto had nothing to ever scroll (Menu/Profile became
+           unscrollable on phone, live-reported production bug).
+
+           This (4th) iteration adds a dedicated #mp-height-wrap between
+           #mp-scroll and #mp-pane-track specifically so three separate
+           concerns never collide on one element: #mp-scroll (flex: 1;
+           min-height: 0; overflow-y: auto) shrinks to fit whatever .sheet
+           actually allows; #mp-height-wrap is the one src/menu.js's
+           `_syncPaneHeight()` animates to the ACTIVE pane's true content
+           height (and CAN legitimately exceed #mp-scroll's own rendered
+           size, restoring genuine scrollable overflow); #mp-pane-track
+           mirrors #mp-height-wrap via a now-safe `height: 100%` and keeps
+           its own transform transition completely untouched by the height
+           animation (an interim fix that animated #mp-pane-track's height
+           directly instead of introducing this wrapper hit the same
+           animateElementHeight()-disables-all-transitions-on-its-target
+           issue this design has always avoided — pane switches stopped
+           sliding and snapped instantly). See docs/DESIGN_SYSTEM.md's
+           "Menu/Profile merged sheet" entry and docs/PREFERENCE_LOG.md for
+           the complete history across all four rounds. -->
+      <div id="menu-sheet" class="sheet shut" hidden>
+        <div id="mp-sheet-drag" class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2 id="mp-sheet-title">Menu</h2>
+          <button id="mp-sheet-close" class="sheet-x btn-roundel" aria-label="Close">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="mp-scroll" class="t-scroll mp-scroll">
+          <div id="mp-height-wrap" class="mp-height-wrap">
+          <div id="mp-pane-track" class="mp-pane-track">
+            <div id="menu-sheet-body" class="mp-pane">
+              <section id="app-notice" class="app-notice" aria-label="Community notice" hidden>
+                <p id="app-notice-text"></p>
+                <a id="app-notice-link" target="_blank" rel="noopener noreferrer" hidden></a>
+              </section>
+              <div class="menu-section">
+                <div class="menu-section-label">Account</div>
+                <div id="menu-account-body">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Map View</div>
+                <div id="style-panel">
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Theme</div>
+                    <div class="style-group-row">
+                      <button class="style-opt active" data-style="light">
+                        <div class="style-thumb thumb-light"></div>
+                        <span>Light</span>
+                      </button>
+                      <button class="style-opt" data-style="dark">
+                        <div class="style-thumb thumb-dark"></div>
+                        <span>Dark</span>
+                      </button>
+                      <button class="style-opt" data-style="auto">
+                        <div class="style-thumb thumb-auto"></div>
+                        <span>Auto</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Overlay</div>
+                    <div class="style-group-row">
+                      <button class="style-opt" data-style="satellite">
+                        <div class="style-thumb thumb-satellite"></div>
+                        <span>Satellite</span>
+                      </button>
+                      <button class="style-opt" data-style="hybrid">
+                        <div class="style-thumb thumb-hybrid"></div>
+                        <span>Hybrid</span>
+                      </button>
+                      <button class="style-opt" data-style="heatmap">
+                        <div class="style-thumb thumb-heatmap"></div>
+                        <span>Heatmap</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Detail</div>
+                    <div class="style-group-row">
+                      <button class="style-opt" data-style="detail-clean">
+                        <div class="style-thumb thumb-detail-clean"></div>
+                        <span>Clean</span>
+                      </button>
+                      <button class="style-opt active" data-style="detail-standard">
+                        <div class="style-thumb thumb-detail-standard"></div>
+                        <span>Standard</span>
+                      </button>
+                      <button class="style-opt" data-style="detail-detailed">
+                        <div class="style-thumb thumb-detail-detailed"></div>
+                        <span>Detailed</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="style-group">
+                    <div class="style-group-label t-micro-label">Markers</div>
+                    <div class="style-group-row">
+                      <button class="style-opt active" data-style="markers-default">
+                        <div class="style-thumb thumb-markers-default"></div>
+                        <span>Default</span>
+                      </button>
+                      <button class="style-opt" data-style="markers-compact">
+                        <div class="style-thumb thumb-markers-compact"></div>
+                        <span>Small</span>
+                      </button>
+                      <button class="style-opt" data-style="markers-bold">
+                        <div class="style-thumb thumb-markers-bold"></div>
+                        <span>Bold</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="menu-section">
+                <div class="menu-section-label">Support</div>
+                <div class="menu-row-pair">
+                  <button id="contact-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <span>Contact us</span>
+                  </button>
+                  <button id="wish-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
+                    </svg>
+                    <span>Wishlist</span>
+                  </button>
+                  <button id="menu-privacy-pill" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span>Privacy</span>
+                  </button>
+                </div>
+              </div>
+              <div class="menu-section">
+                <div class="menu-section-label">Preferences</div>
+                <div class="menu-pref-panel">
+                  <div class="rv-field">
+                    <label class="rv-field-label" for="pref-prayer-method">Prayer calculation method</label>
+                    <select id="pref-prayer-method" class="rv-input rv-select"></select>
+                  </div>
+                  <div class="rv-field">
+                    <label class="rv-field-label" for="pref-prayer-school">Asr calculation (madhab)</label>
+                    <select id="pref-prayer-school" class="rv-input rv-select">
+                      <option value="0">Standard (Shafi, Maliki, Hanbali)</option>
+                      <option value="1">Hanafi</option>
+                    </select>
+                  </div>
+                  <div class="menu-pref-toggle-row">
+                    <div class="menu-pref-toggle-text">
+                      <span class="menu-pref-toggle-label">12-hour prayer times</span>
+                      <span class="menu-pref-toggle-sub">Show times like 5:12 PM instead of 17:12</span>
+                    </div>
+                    <button
+                      id="pref-time-format-toggle"
+                      class="pref-switch"
+                      type="button"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="12-hour prayer times"
+                    >
+                      <span class="pref-switch-thumb"></span>
+                    </button>
+                  </div>
+                  <div class="menu-pref-toggle-row">
+                    <div class="menu-pref-toggle-text">
+                      <span class="menu-pref-toggle-label">Reduce motion</span>
+                      <span class="menu-pref-toggle-sub">Dampen sheet, marker, and toast animations</span>
+                    </div>
+                    <button
+                      id="pref-reduce-motion-toggle"
+                      class="pref-switch"
+                      type="button"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Reduce motion"
+                    >
+                      <span class="pref-switch-thumb"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── Profile pane: identity, stats, submissions, reviews, data actions ───
+                 Always entered from the Menu pane's signed-in "Profile →" row — never
+                 any other origin — so the shared header's close button permanently
+                 shows the back-arrow convention while this pane is active (see
+                 src/menu.js's _updateHeaderForPane(), which mirrors src/places.js's
+                 _setPlaceSheetCloseAsBack()/_resetPlaceSheetCloseButton() for
+                 #place-sheet). Kept mounted (not re-created) while the Menu pane is
+                 showing — only `inert`/aria-hidden and its off-screen slide position
+                 change, so it stays measurable (src/menu.js's `_syncPaneHeight()`
+                 reads its real `offsetHeight` on every switch to that pane) even while
+                 it isn't the visible one; #mp-pane-track's `overflow: hidden` (see
+                 styles.css) hard-clips it out of view/reach while Menu is active
+                 instead of it stretching the shared row taller (that was the
+                 now-superseded 2nd iteration's approach — see index.html's #menu-sheet
+                 header comment). -->
+
+            <div id="profile-sheet-body" class="mp-pane" inert aria-hidden="true">
+              <div class="menu-section">
+                <div id="profile-card-body" class="menu-account-panel">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your activity</div>
+                <div id="profile-stats-grid" class="pf-stat-grid">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your submitted places</div>
+                <!-- pf-scroll-list + t-scroll: this list caps its own height and
+                     scrolls internally rather than growing the Profile pane (and
+                     with it the whole sheet) without bound — see .pf-scroll-list
+                     in styles.css. Same for "submitted edits"/"reviews" below. -->
+                <div id="profile-submitted-places" class="pf-submission-list pf-scroll-list t-scroll">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your submitted edits</div>
+                <div id="profile-submitted-edits" class="pf-submission-list pf-scroll-list t-scroll">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your reviews</div>
+                <div id="profile-my-reviews" class="rv-list pf-scroll-list t-scroll">
+                  <p class="menu-placeholder">Loading…</p>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
+              <div class="menu-section">
+                <div class="menu-section-label">Your data</div>
+                <div class="menu-row-pair">
+                  <button id="profile-export-btn" class="menu-row" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Export your data</span>
+                  </button>
+                  <button id="profile-erase-btn" class="menu-row menu-row--danger" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/>
+                    </svg>
+                    <span>Erase my data</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Suggest Place Overlay ─── -->
+      <div id="suggest-overlay" class="hide">
+        <div id="suggest-card">
+          <div class="suggest-head">
+            <h3>Suggest a Place</h3>
+            <button
+              id="suggest-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form id="suggest-form" autocomplete="off" novalidate>
+            <label class="sg-label"
+              ><span>Place Name <span id="sg-name-req" class="sg-req hide">*</span></span>
+              <input
+                id="sg-name"
+                type="text"
+                placeholder="e.g. Halal Kitchen"
+                maxlength="200"
+              />
+            </label>
+            <div id="sg-pin-badge" class="sg-pin-badge hide">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Location set from pin</span>
+              <button type="button" id="sg-pin-clear" class="sg-pin-clear" aria-label="Clear pin location">&times;</button>
+            </div>
+            <input type="hidden" id="sg-lat" />
+            <input type="hidden" id="sg-lng" />
+            <label class="sg-label"
+              ><span>Google Maps Link <span id="sg-gmaps-req" class="sg-req">*</span></span>
+              <input
+                id="sg-gmaps"
+                type="url"
+                required
+                placeholder="https://maps.google.com/…"
+                maxlength="500"
+              />
+            </label>
+            <label class="sg-label"
+              ><span>Category <span class="sg-req">*</span></span>
+              <select id="sg-type" required>
+                <option value="" disabled selected>Select a category…</option>
+                <option value="space">Spaces</option>
+                <option value="restaurant">Food</option>
+                <option value="service">Services</option>
+              </select>
+            </label>
+            <div id="sg-type-tags-section" class="sg-label hide">
+              <span>Type <span id="sg-type-tags-req" class="sg-req">*</span></span>
+              <div id="sg-type-tags" class="sg-tags"></div>
+              <span class="sg-hint">choose one</span>
+            </div>
+            <div id="sg-eid-fields" class="sg-eid-fields hide">
+              <label class="sg-label"
+                ><span>Organizer(s)</span>
+                <div id="sg-eid-org-chips" class="sg-eid-org-chips"></div>
+                <select id="sg-eid-org-select">
+                  <option value="" disabled selected>Select a mosque…</option>
+                </select>
+                <div class="sg-eid-org-custom-row">
+                  <input id="sg-eid-org-input" type="text" placeholder="Or type an organizer…" maxlength="200" />
+                  <button type="button" id="sg-eid-org-add" class="sg-eid-org-add-btn">Add</button>
+                </div>
+              </label>
+              <label class="sg-label"
+                ><span>Eid Date <span class="sg-req">*</span></span>
+                <input id="sg-eid-date" type="date" />
+              </label>
+              <label class="sg-label"
+                ><span>Jamaat Times (comma-separated)</span>
+                <input id="sg-eid-jamaats" type="text" placeholder="e.g. 07:00, 08:30, 10:00" maxlength="200" />
+              </label>
+            </div>
+            <div id="sg-tags-section" class="sg-label">
+              <span>Tags</span>
+              <div id="sg-tags" class="sg-tags"></div>
+              <span class="sg-hint"
+                >tap to confirm · tap again to mark as missing</span
+              >
+            </div>
+            <label class="sg-label"
+              >Address
+              <input id="sg-address" type="text" placeholder="Street, city" maxlength="300" />
+            </label>
+            <label class="sg-label"
+              >Website
+              <input id="sg-website" type="url" placeholder="https://…" maxlength="300" />
+            </label>
+            <label class="sg-label"
+              >Phone
+              <input id="sg-phone" type="tel" placeholder="+358…" maxlength="30" />
+            </label>
+            <label class="sg-label"
+              >Additional Notes
+              <textarea
+                id="sg-notes"
+                rows="3"
+                placeholder="Any details about this place…"
+                maxlength="2000"
+              ></textarea>
+            </label>
+            <div id="sg-hours-section" class="sg-label sg-hours-section">
+              <span>Opening Hours</span>
+              <div id="sg-hours-container"></div>
+            </div>
+            <button type="submit" id="sg-submit" class="btn-primary">
+              Submit Suggestion
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Submit Event Overlay ─── -->
+      <div id="event-overlay" class="hide">
+        <div id="event-card">
+          <div class="suggest-head">
+            <h3 id="ev-heading">Submit Event</h3>
+            <button
+              id="event-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form id="event-form" autocomplete="off" novalidate>
+            <input type="hidden" id="ev-edit-id" />
+            <div class="sg-label">
+              <span>Location <span class="sg-req">*</span></span>
+              <div class="dir-field-wrap">
+                <input
+                  id="ev-loc-search"
+                  type="text"
+                  placeholder="Search or add a location…"
+                  autocomplete="off"
+                />
+                <ul id="ev-loc-suggest" class="dir-suggest hide"></ul>
+              </div>
+            </div>
+            <div id="ev-loc-custom-fields" class="hide">
+              <label class="sg-label">
+                <span>Google Maps Link <span class="sg-req">*</span></span>
+                <input
+                  id="ev-location-gmaps"
+                  type="url"
+                  placeholder="https://maps.google.com/…"
+                  maxlength="500"
+                />
+              </label>
+              <label class="sg-label">
+                <span>Location Name</span>
+                <input
+                  id="ev-location-name"
+                  type="text"
+                  placeholder="Optional — e.g. Rented Hall"
+                  maxlength="200"
+                />
+              </label>
+            </div>
+            <label class="sg-label">
+              <span>Event Title <span class="sg-req">*</span></span>
+              <input
+                id="ev-title"
+                type="text"
+                required
+                placeholder="e.g. Quran Circle"
+                maxlength="200"
+              />
+            </label>
+            <label class="sg-label">
+              <span>Description</span>
+              <textarea
+                id="ev-desc"
+                placeholder="Brief description of the event…"
+                maxlength="1000"
+                rows="3"
+              ></textarea>
+            </label>
+            <label class="sg-label">
+              <span>Organizer</span>
+              <div class="dir-field-wrap">
+                <input
+                  id="ev-org-search"
+                  type="text"
+                  placeholder="Search or add an organizer…"
+                  autocomplete="off"
+                />
+                <ul id="ev-org-suggest" class="dir-suggest hide"></ul>
+              </div>
+            </label>
+            <div class="sg-label">
+              <span>Schedule</span>
+              <div class="ev-schedule-chips">
+                <button type="button" class="ev-sched-chip active" data-value="oneTime">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span>One-time</span>
+                </button>
+                <button type="button" class="ev-sched-chip" data-value="recurring">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                  <span>Recurring</span>
+                </button>
+              </div>
+            </div>
+            <!-- One-time: date is mandatory -->
+            <div id="ev-onetime-fields">
+              <label class="sg-label">
+                <span>Date <span class="sg-req">*</span></span>
+                <input id="ev-date" type="date" required />
+              </label>
+            </div>
+            <!-- Recurring: structured frequency selector -->
+            <div id="ev-recurring-fields" class="hide">
+              <!-- Frequency segmented control -->
+              <div class="sg-label">
+                <span>Frequency <span class="sg-req">*</span></span>
+                <div id="ev-freq-chips" class="ev-seg-bar"></div>
+              </div>
+              <!-- Day picker (weekly / biweekly) -->
+              <div id="ev-day-picker" class="sg-label hide">
+                <span>Days</span>
+                <div class="ev-day-ring"></div>
+              </div>
+              <!-- Biweekly anchor -->
+              <label id="ev-biweekly-anchor" class="sg-label hide">
+                <span>Starting from</span>
+                <input id="ev-anchor-date" type="date" />
+              </label>
+              <!-- Monthly sub-type -->
+              <div id="ev-monthly-opts" class="hide">
+                <div class="ev-monthly-toggle">
+                  <button type="button" class="ev-mtog active" data-value="date">Date</button>
+                  <button type="button" class="ev-mtog" data-value="day">Day</button>
+                </div>
+                <!-- Monthly date (1-31) -->
+                <div id="ev-monthly-date-picker">
+                  <div class="ev-mdate-grid"></div>
+                </div>
+                <!-- Monthly ordinal + day -->
+                <div id="ev-monthly-day-picker" class="hide">
+                  <div class="ev-ord-row"></div>
+                  <div class="ev-day-ring ev-monthly-day-dow"></div>
+                </div>
+              </div>
+              <!-- Preview -->
+              <div id="ev-recurrence-preview" class="ev-recurrence-preview hide"></div>
+            </div>
+            <div class="ev-time-row">
+              <label class="sg-label ev-time-field">
+                <span>Start Time</span>
+                <input id="ev-time" type="time" />
+              </label>
+              <label class="sg-label ev-time-field">
+                <span>End Time</span>
+                <input id="ev-end-time" type="time" />
+              </label>
+            </div>
+            <label class="sg-label">
+              <span>Registration / Event Link</span>
+              <input
+                id="ev-url"
+                type="url"
+                placeholder="https://…"
+                maxlength="500"
+              />
+            </label>
+            <button id="ev-submit" type="submit" class="btn-primary">
+              Submit Event
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Suggest Edit Overlay ─── -->
+      <div id="edit-overlay" class="hide">
+        <div id="edit-card">
+          <div class="suggest-head">
+            <h3>Suggest Edit</h3>
+            <button
+              id="edit-close"
+              class="sheet-x btn-roundel"
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form id="edit-form" autocomplete="off" novalidate>
+            <input type="hidden" id="ed-place-id" />
+            <label class="sg-label"
+              >Place Name
+              <input
+                id="ed-name"
+                type="text"
+                placeholder="e.g. Halal Kitchen"
+                maxlength="200"
+              />
+            </label>
+            <label class="sg-label"
+              >Category
+              <select id="ed-type">
+                <option value="space">Spaces</option>
+                <option value="restaurant">Food</option>
+                <option value="service">Services</option>
+              </select>
+            </label>
+            <div id="ed-type-tags-section" class="sg-label hide">
+              <span>Type <span id="ed-type-tags-req" class="sg-req">*</span></span>
+              <div id="ed-type-tags" class="sg-tags"></div>
+              <span class="sg-hint">choose one</span>
+            </div>
+            <div id="ed-tags-section" class="sg-label">
+              <span>Tags</span>
+              <div id="ed-tags" class="sg-tags"></div>
+              <span class="sg-hint"
+                >tap to confirm · tap again to mark as missing</span
+              >
+            </div>
+            <label class="sg-label"
+              >Address
+              <input id="ed-address" type="text" placeholder="Street, city" maxlength="300" />
+            </label>
+            <label class="sg-label"
+              >Google Maps Link
+              <input
+                id="ed-gmaps"
+                type="url"
+                placeholder="https://maps.google.com/…"
+                maxlength="500"
+              />
+            </label>
+            <label class="sg-label"
+              >Website
+              <input id="ed-website" type="url" placeholder="https://…" maxlength="300" />
+            </label>
+            <label class="sg-label"
+              >Phone
+              <input id="ed-phone" type="tel" placeholder="+358…" maxlength="30" />
+            </label>
+            <label class="sg-label"
+              >Additional Notes
+              <textarea
+                id="ed-notes"
+                rows="3"
+                placeholder="Any details about this place…"
+                maxlength="2000"
+              ></textarea>
+            </label>
+            <div id="ed-hours-section" class="sg-label sg-hours-section">
+              <span>Opening Hours</span>
+              <div id="ed-hours-container"></div>
+            </div>
+            <button type="submit" id="ed-submit" class="btn-primary">
+              Submit Edit Suggestion
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Navigation HUD ─── -->
+      <div id="nav-hud" class="hide">
+        <div id="nav-progress-bar" class="nav-progress-bar"><div id="nav-progress-fill" class="nav-progress-fill"></div></div>
+        <div class="nav-hud-body">
+          <div class="nav-hud-row1">
+            <div id="nav-maneuver-icon" class="nav-maneuver-icon"></div>
+            <div class="nav-hud-col">
+              <span id="nav-instruction" class="nav-instruction"></span>
+              <span id="nav-next-info" class="nav-detail hide"></span>
+            </div>
+            <button id="nav-exit" class="btn-roundel" aria-label="Exit navigation" title="Exit navigation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="nav-hud-row2">
+            <div id="nav-tags" class="nav-tags">
+              <span id="nav-turn-chip" class="nav-chip nav-chip-turn"></span>
+              <span id="nav-dist-chip" class="nav-chip nav-chip-dist"></span>
+              <span id="nav-eta-chip" class="nav-chip nav-chip-eta"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Navigation Speedometer ─── -->
+      <div id="nav-speed" class="nav-speed hide" aria-label="Current speed">
+        <span id="nav-speed-val" class="nav-speed-val">0</span>
+        <span class="nav-speed-unit">km/h</span>
+      </div>
+
+      <!-- ─── Navigation Recenter Button ─── -->
+      <button id="nav-recenter" class="nav-recenter hide" aria-label="Re-center on location" title="Re-center on location">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+        </svg>
+      </button>
+
+      <!-- ─── Navigation Overview Button ─── -->
+      <button id="nav-overview" class="nav-overview hide" aria-label="Route overview" title="Route overview">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>
+        </svg>
+      </button>
+
+      <!-- ─── Route Snackbar ─── -->
+      <div id="route-snackbar" class="hide">
+        <div class="snack-icon snack-icon--info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4l6 6-6 6"/>
+            <path d="M4 20v-6a4 4 0 0 1 4-4h12"/>
+          </svg>
+        </div>
+        <div class="snack-body">
+          <div id="snackbar-title">
+            <span id="snackbar-from"></span><span class="snack-arrow"> → </span><span id="snackbar-to"></span>
+          </div>
+          <div id="snack-tags" class="snack-tags"></div>
+        </div>
+        <div class="snack-btns">
+          <button id="snackbar-nav" class="snack-nav-btn" aria-label="Start navigation" title="Start navigation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button id="snackbar-close" class="snack-close-btn" aria-label="Clear route">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Prayer Times Card ─── -->
+      <div id="prayer-snack" class="pill-expand collapsed">
+        <button
+          id="prayer-pill"
+          class="btn-icon pill-expand-icon"
+          aria-label="Prayer times"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </button>
+        <div id="prayer-expanded-wrap">
+          <div id="prayer-expanded" class="pill-expand-body">
+            <div id="prayer-header" class="prayer-snack-clickable">
+              <div class="prayer-hdr-text">
+                <div id="prayer-snack-title"></div>
+              </div>
+              <button
+                class="prayer-hdr-btn btn-roundel"
+                id="prayer-chevron"
+                aria-label="Show prayer times"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="prayer-times-list">
+              <div id="prayer-times-inner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ramadan card: separate floating card just below the prayer dropdown -->
+        <div id="ramadan-card">
+          <div id="ramadan-inner">
+            <div class="ramadan-header">
+              <svg
+                class="ramadan-moon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              <span class="ramadan-title">Ramadan Kareem</span>
+            </div>
+            <div class="ramadan-row">
+              <span class="ramadan-label">Suhoor ends</span>
+              <span id="ramadan-suhoor" class="ramadan-time">--:--</span>
+            </div>
+            <div class="ramadan-row">
+              <span class="ramadan-label">Iftar</span>
+              <span id="ramadan-iftar" class="ramadan-time">--:--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Eid Prayer Locations (temporary) ─── -->
+      <button id="eid-pill" class="btn-icon-card hide" aria-label="Eid prayer locations">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <div id="eid-overlay" class="hide">
+        <div id="eid-card">
+          <div class="overlay-drag"><span></span></div>
+          <div class="suggest-head">
+            <h3>
+              <svg class="eid-heading-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              Eid Prayers
+            </h3>
+            <button id="eid-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="eid-list"></div>
+        </div>
+      </div>
+
+      <!-- ─── Events Button + Overlay ─── -->
+      <button id="events-pill" class="btn-icon-card hide" aria-label="Events">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </button>
+      <div id="events-overlay" class="hide">
+        <div id="events-card">
+          <div class="overlay-drag"><span></span></div>
+          <div class="suggest-head">
+            <h3>
+              <svg class="events-heading-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Events
+            </h3>
+            <button id="events-add-btn" class="sheet-action-btn btn-roundel-accent" type="button" title="Submit an event" aria-label="Submit event">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button id="events-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="events-list">
+            <!-- Filter bar -->
+            <div id="ev-filter-bar" class="ev-filter-bar">
+              <div class="ev-filter-row">
+                <button type="button" class="ev-filter-chip active" data-filter="upcoming">Upcoming</button>
+                <button type="button" class="ev-filter-chip" data-filter="today">Today</button>
+                <button type="button" class="ev-filter-chip" data-filter="this-week">This week</button>
+                <button type="button" class="ev-filter-chip" data-filter="this-month">This month</button>
+                <button type="button" class="ev-filter-chip" data-filter="all">All</button>
+              </div>
+              <div class="ev-filter-row">
+                <button type="button" class="ev-filter-chip ev-filter-proximity" data-filter="nearby" title="Sort by distance">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span>Nearby</span>
+                </button>
+                <select id="ev-mosque-filter" class="ev-mosque-filter">
+                  <option value="">All locations</option>
+                </select>
+              </div>
+            </div>
+            <div id="ev-filtered-list"></div>
+            <p id="ev-empty-state" class="ev-empty-state hide">No events match your filters.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Promos Button + Overlay ─── -->
+      <button id="promos-pill" class="btn-icon-card hide" aria-label="Promotions">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+      </button>
+      <div id="promos-overlay" class="hide">
+        <div id="promos-card">
+          <div class="overlay-drag"><span></span></div>
+          <div class="suggest-head">
+            <h3>
+              <svg class="promos-heading-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Promos
+            </h3>
+            <button id="promos-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="promos-list"></div>
+        </div>
+      </div>
+
+      <!-- ─── Qibla Compass Overlay (mobile only) ─── -->
+      <div id="qibla-overlay" class="hide">
+        <div id="qibla-card">
+          <button id="qibla-close" class="sheet-x btn-roundel" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+
+          <div id="qibla-body">
+            <!-- Bearing info above compass -->
+            <div id="qibla-info">
+              <div id="qibla-bearing-row">
+                <span id="qibla-bearing-value">--</span><span id="qibla-bearing-deg">°</span>
+              </div>
+              <div id="qibla-bearing-unit">FROM NORTH</div>
+            </div>
+
+            <div id="qibla-compass">
+              <!-- Outer decorative ring -->
+              <div id="qibla-outer-ring"></div>
+              <!-- Main rotating compass dial -->
+              <div id="qibla-ring">
+                <!-- SVG compass face: ticks + cardinal labels -->
+                <svg class="qibla-face" viewBox="0 0 240 240" fill="none">
+                  <!-- Inner circle track -->
+                  <circle cx="120" cy="120" r="88" stroke="var(--border-light)" stroke-width="0.5" fill="none"/>
+
+                  <!-- Major ticks at cardinal directions -->
+                  <!-- 0/N (red) -->
+                  <line x1="120" y1="14" x2="120" y2="34" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"/>
+                  <!-- 90/E -->
+                  <line x1="226" y1="120" x2="206" y2="120" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round"/>
+                  <!-- 180/S -->
+                  <line x1="120" y1="226" x2="120" y2="206" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round"/>
+                  <!-- 270/W -->
+                  <line x1="14" y1="120" x2="34" y2="120" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round"/>
+
+                  <!-- Intermediate ticks (30° intervals) -->
+                  <line x1="172" y1="28.5" x2="165.5" y2="42" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="211.5" y1="68" x2="198" y2="74.5" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="211.5" y1="172" x2="198" y2="165.5" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="172" y1="211.5" x2="165.5" y2="198" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="68" y1="211.5" x2="74.5" y2="198" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="28.5" y1="172" x2="42" y2="165.5" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="28.5" y1="68" x2="42" y2="74.5" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+                  <line x1="68" y1="28.5" x2="74.5" y2="42" stroke="var(--text-3)" stroke-width="1.2" stroke-linecap="round"/>
+
+                  <!-- Minor ticks (every 10°, excluding majors/intermediates) -->
+                  <line x1="138" y1="17" x2="136" y2="25" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="155" y1="20.5" x2="152" y2="28.5" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="188" y1="45" x2="183" y2="52" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="199" y1="57" x2="193" y2="63" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="223" y1="102" x2="215" y2="104" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="219.5" y1="85" x2="211.5" y2="88" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="223" y1="138" x2="215" y2="136" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="219.5" y1="155" x2="211.5" y2="152" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="195" y1="188" x2="189" y2="183" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="183" y1="195" x2="177" y2="189" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="138" y1="223" x2="136" y2="215" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="155" y1="219.5" x2="152" y2="211.5" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="102" y1="223" x2="104" y2="215" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="85" y1="219.5" x2="88" y2="211.5" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="45" y1="188" x2="52" y2="183" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="57" y1="195" x2="63" y2="189" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="17" y1="138" x2="25" y2="136" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="20.5" y1="155" x2="28.5" y2="152" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="17" y1="102" x2="25" y2="104" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="20.5" y1="85" x2="28.5" y2="88" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="45" y1="52" x2="52" y2="57" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="57" y1="45" x2="63" y2="52" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="85" y1="20.5" x2="88" y2="28.5" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+                  <line x1="102" y1="17" x2="104" y2="25" stroke="var(--border)" stroke-width="0.75" stroke-linecap="round"/>
+
+                  <!-- Cardinal labels -->
+                  <text x="120" y="50" text-anchor="middle" fill="var(--danger)" font-size="12" font-weight="600" font-family="inherit">N</text>
+                  <text x="196" y="124" text-anchor="middle" fill="var(--text-3)" font-size="11" font-weight="500" font-family="inherit">E</text>
+                  <text x="120" y="202" text-anchor="middle" fill="var(--text-3)" font-size="11" font-weight="500" font-family="inherit">S</text>
+                  <text x="44" y="124" text-anchor="middle" fill="var(--text-3)" font-size="11" font-weight="500" font-family="inherit">W</text>
+                </svg>
+
+                <!-- Qibla direction indicator on the ring edge -->
+                <div id="qibla-kaaba">
+                  <div class="qibla-kaaba-dot"></div>
+                  <div class="qibla-kaaba-pulse"></div>
+                </div>
+              </div>
+
+              <!-- Fixed center puck (does not rotate) -->
+              <div id="qibla-pointer">
+                <div class="qibla-center-puck"></div>
+              </div>
+            </div>
+
+            <div id="qibla-status">Point your phone towards the Qibla</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Privacy Overlay ─── -->
+      <div id="privacy-overlay" class="hide">
+        <div id="privacy-card">
+          <div class="suggest-head">
+            <h3>Privacy Policy</h3>
+            <button id="privacy-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="privacy-body">
+            <p class="privacy-updated">Last updated: August 2026</p>
+
+            <h4>1. Who We Are</h4>
+            <p><strong>Manarah</strong> is a service by <a href="https://karamahcollective.com" target="_blank" rel="noopener">Karamah Collective</a>, a community organisation supporting Finnish Muslims through practical guidance and compassionate connections. This policy explains how we handle your information when you use this app.</p>
+
+            <h4>2. Information We Collect</h4>
+            <p>We collect information only when you voluntarily submit it, sign in, or choose to save/sync items:</p>
+            <p><strong>Suggest a Place / Suggest Edit forms:</strong></p>
+            <ul>
+              <li>Place name, type, address, Google Maps link, and tags</li>
+              <li>Additional notes you choose to include</li>
+            </ul>
+            <p><strong>Contact form:</strong></p>
+            <ul>
+              <li>Your name and email address (required)</li>
+              <li>Phone number (optional)</li>
+              <li>Your message</li>
+            </ul>
+            <p><strong>Signing in, ratings, reviews &amp; saved places:</strong></p>
+            <ul>
+              <li>Writing a review, or syncing your favourites, saved pins, visited places, and home location across devices, requires signing in through Firebase Authentication with Google, Microsoft, Facebook, or email/password</li>
+              <li>For email/password accounts, Firebase handles sign-up, sign-in, password resets, and email verification. We never see or store your password</li>
+              <li>Your rating (1 to 5), optional review text, and any review photos you choose to upload</li>
+              <li>Saved place IDs, saved pin coordinates/names, visited-place IDs, and home location coordinates/name that you choose to sync</li>
+              <li>A one-way cryptographic hash of your verified email address — never the email address itself — used to link your reviews and synced saved data to your account and to prevent duplicate or abusive submissions</li>
+            </ul>
+            <p>Place suggestions are anonymous. Reviews and their uploaded photos are shown publicly without displaying your email address or any other sign-in detail.</p>
+
+            <h4>3. What We Don't Do</h4>
+            <ul>
+              <li>No cookies or advertising pixels</li>
+              <li>No behavioural tracking, ad targeting, or user profiling</li>
+              <li>No live location tracking or current-position storage — your current position is used only in your browser for the map and is never sent to our servers. If you set a home location or save a custom pin, that chosen location is stored locally while signed out and synced to your account while signed in</li>
+              <li>We use Cloudflare's approximate IP-based country/city signal only to show the correct regional context, such as a better first map view. It is not stored as your home location.</li>
+              <li>We will never sell personal information or share it for advertising</li>
+              <li>Contact details (name, email, phone, and message) are used solely to respond to your enquiry. They are sent by email through Brevo, so email delivery and SMTP processing are handled by Brevo rather than by us</li>
+              <li>We do not store your email address for reviews or account sync — only a one-way hash, used solely to link them to your account. No plaintext email data is retained from any new review.</li>
+            </ul>
+
+            <h4>4. Cloudflare Web Analytics</h4>
+            <p>We use <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener">Cloudflare Web Analytics</a> to count visitors and understand general usage patterns. It is privacy-first by design:</p>
+            <ul>
+              <li>No cookies are set</li>
+              <li>No personal data is collected or stored</li>
+              <li>No cross-site tracking or fingerprinting</li>
+              <li>Data is processed by Cloudflare, who already handles all traffic to this site</li>
+            </ul>
+            <p>Cloudflare's privacy practices are described in the <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare Privacy Policy</a>.</p>
+
+            <h4>5. Google reCAPTCHA</h4>
+            <p>We use Google reCAPTCHA v3 to protect forms from automated abuse. This service may collect hardware and software information. It is governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a>.</p>
+
+            <h4>6. Third-Party Services</h4>
+            <p>Manarah relies on the following external services. Each handles its own data independently:</p>
+            <ul>
+              <li><strong><a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransit (HSL &amp; Waltti)</a></strong> — Our primary routing and geocoding API. The HSL endpoint, provided by Helsinki Regional Transport Authority (HSL), covers the Greater Helsinki area. The Waltti endpoint covers the Turku / F&ouml;li region. Both are used to calculate public transport routes and to search for addresses in Finland. Governed by the <a href="https://digitransit.fi/en/developers/apis/1-routing-api/0-graphql/" target="_blank" rel="noopener">Digitransit API terms</a>.</li>
+              <li><strong><a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a></strong> — Open-source community transit routing, used as a fallback when Digitransit is unavailable. Data sourced from GTFS feeds under open licences.</li>
+              <li><strong><a href="https://routing.openstreetmap.de" target="_blank" rel="noopener">OSRM (OpenStreetMap Routing Machine)</a></strong> — Fallback routing service for walking, cycling, and driving, used when Digitransit is unavailable. Powered by OpenStreetMap data under the <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL licence</a>.</li>
+              <li><strong><a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim / OpenStreetMap</a></strong> — Address search and reverse geocoding fallback. Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> under ODbL.</li>
+              <li><strong><a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a></strong> — Provides the map tiles and fonts powering the base map. Built on <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> and OpenStreetMap data.</li>
+              <li><strong><a href="https://services.arcgisonline.com" target="_blank" rel="noopener">Esri / ArcGIS</a></strong> — Satellite imagery layer, provided by Esri. Subject to <a href="https://www.esri.com/en-us/legal/terms/full-master-agreement" target="_blank" rel="noopener">Esri's terms of use</a>.</li>
+              <li><strong><a href="https://aladhan.com/prayer-times-api" target="_blank" rel="noopener">AlAdhan API</a></strong> — Prayer time calculations based on your device's location (using the Muslim World League method). No personal data is stored by this service.</li>
+              <li><strong><a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></strong> — Open-source map rendering library used to display the map.</li>
+              <li><strong><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Authentication</a></strong> — Handles signing in with Google, Microsoft, Facebook, or email/password. We never see or store your password; Firebase issues a verified identity token, which we reduce to a one-way hash before storing synced account data. Governed by Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and additionally by Microsoft's <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Privacy Statement</a> when signing in with a Microsoft account and Meta's <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener">Privacy Policy</a> when signing in with Facebook.</li>
+              <li><strong><a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener">Brevo</a></strong> — Sends Manarah contact form messages to maps@karamahcollective.com by email. Brevo handles the email delivery and SMTP processing for those messages under Brevo's own privacy policy. Contact form messages from new submissions are not stored in our D1 database.</li>
+            </ul>
+
+            <h4>7. Data Storage &amp; Security</h4>
+            <p>Place suggestions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to maps@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+
+            <h4>8. Your Rights (GDPR)</h4>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
+            <p>Contact: <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
+
+            <h4>9. Children's Privacy</h4>
+            <p>This service is not directed at children under 16. We do not knowingly collect personal data from anyone under 16.</p>
+
+            <h4>10. Featured Places</h4>
+            <p>Some places in the app are marked as <strong>Featured</strong>. These are sponsored placements — businesses that support Manarah in exchange for increased visibility. Sponsored places are shown in the app as "Featured" for full transparency.</p>
+            <p>What this means in practice:</p>
+            <ul>
+              <li>Featured places appear in a highlighted carousel and receive a slight boost in list and search relevance</li>
+              <li>All listings — featured or not — are community-sourced and subject to the same review process</li>
+              <li>Being featured has no effect on a place's halal verification status or tags</li>
+              <li>We do not sell, share, or monetise any user data — featuring is the only form of promotion on this platform</li>
+              <li>We do not guarantee the accuracy of any listing, including featured ones</li>
+              <li>Featured places are clearly labelled in-app so users are always aware</li>
+            </ul>
+
+            <h4>11. Changes to This Policy</h4>
+            <p>We may update this policy from time to time. The "Last updated" date above will be revised accordingly.</p>
+
+            <h4>12. Contact</h4>
+            <p>Questions about this policy? Reach us at <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
+            <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Wishlist Overlay ─── -->
+      <div id="wish-overlay" class="hide">
+        <div id="wish-card">
+          <div class="overlay-drag"><span></span></div>
+          <div class="suggest-head">
+            <h3>Wishlist</h3>
+            <button id="wish-add-btn" class="btn-roundel-accent" aria-label="Make a wish" style="margin-left:auto;margin-right:var(--sp-3)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            <button id="wish-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div id="wish-list" class="wish-list"></div>
+        </div>
+      </div>
+
+      <!-- ─── Make a Wish Overlay ─── -->
+      <div id="wish-form-overlay" class="hide">
+        <div id="wish-form-card">
+          <div class="suggest-head">
+            <h3>Make a Wish</h3>
+            <button id="wish-form-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <form id="wish-form" autocomplete="off" novalidate>
+            <label class="sg-label">
+              <span>Title <span class="sg-req">*</span></span>
+              <input id="wish-title" type="text" required placeholder="e.g. Add filtering by city" maxlength="120"/>
+            </label>
+            <label class="sg-label">
+              Description
+              <textarea id="wish-desc" rows="4" placeholder="Describe your idea in detail…" maxlength="1000"></textarea>
+            </label>
+            <p class="form-section-note">We will notify you if your wish is implemented</p>
+            <label class="sg-label">
+              Name
+              <input id="wish-name" type="text" placeholder="Your name" maxlength="100"/>
+            </label>
+            <label class="sg-label">
+              Email
+              <input id="wish-email" type="email" placeholder="your@email.com" maxlength="254"/>
+            </label>
+            <button type="submit" id="wish-submit" class="btn-primary">
+              Submit Wish
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Contact Overlay ─── -->
+      <div id="contact-overlay" class="hide">
+        <div id="contact-card">
+          <div class="suggest-head">
+            <h3>Contact Us</h3>
+            <button id="contact-close" class="sheet-x btn-roundel" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <form id="contact-form" autocomplete="off" novalidate>
+            <label class="sg-label">
+              <span>Name <span class="sg-req">*</span></span>
+              <input id="ct-name" type="text" required placeholder="Your name" maxlength="200"/>
+            </label>
+            <label class="sg-label">
+              <span>Email <span class="sg-req">*</span></span>
+              <input id="ct-email" type="email" required placeholder="you@example.com" maxlength="254"/>
+            </label>
+            <label class="sg-label">
+              Phone
+              <input id="ct-phone" type="tel" placeholder="Optional" maxlength="30"/>
+            </label>
+            <label class="sg-label">
+              <span>Message <span class="sg-req">*</span></span>
+              <textarea id="ct-message" rows="4" required placeholder="How can we help?" maxlength="2000"></textarea>
+            </label>
+            <button type="submit" id="ct-submit" class="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              Send Message
+            </button>
+            <p class="form-legal">Protected by reCAPTCHA · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── Reviews Overlay ─── -->
+      <div id="reviews-overlay" class="hide"></div>
+
+      <!-- Scrim -->
+      <div id="scrim" class="hide"></div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js" integrity="sha384-3WUbXI7T+/GIrWP/5MDMjhzLyHQ+0utF3PnJ7ozD7UeN1/bbZ96Hk+Vvd024VYfW" crossorigin="anonymous"></script>
+    <!-- Firebase Auth (identity layer only — Google/Microsoft sign-in,
+         email/password, and email magic link; no Firestore). Same "external CDN, ES module, no bundler" convention as
+         MapLibre GL above; src/auth.js imports from these exact URLs and reuses
+         the browser's module cache instead of re-fetching. -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js" integrity="sha384-i0zzttS0DrmuyFYClWAyyh8l1VnpjvLDGuVh663dTTs+XODoYi5+zuyNGdmNMbNX" crossorigin="anonymous"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js" integrity="sha384-DGc4lggg/1gDaMlmU2qLiSn+4CNr61/JtBLq2Ts8hPJZ8vBDJzh4vGdkyhmTilX4" crossorigin="anonymous"></script>
+    <script type="module" src="src/app.js"></script>
+    <!-- Cloudflare Web Analytics -->
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "44eb9d044b1e45f49922b7f0aa59ff36"}'></script>
+    <!-- End Cloudflare Web Analytics -->
+  </body>
+</html>

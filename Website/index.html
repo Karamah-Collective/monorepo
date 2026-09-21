@@ -1,0 +1,1629 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+
+    <title>Karamah Collective</title>
+
+    <link rel="icon" type="image/x-icon" href="./assets/images/kc_logo_small_icon.ico" />
+    <link rel="canonical" href="https://karamahcollective.com/" />
+
+    <meta
+      name="description"
+      content="Community-powered support for Muslims in Finland — clear information, practical guidance, and compassionate connections."
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://karamahcollective.com/" />
+    <meta property="og:title" content="Karamah Collective" />
+    <meta
+      property="og:description"
+      content="Community-powered support for Muslims in Finland — clear information, practical guidance, and compassionate connections."
+    />
+    <meta
+      property="og:image"
+      content="https://karamahcollective.com/assets/images/kc_logo_small_site_preview.webp"
+    />
+    <meta
+      property="og:image:secure_url"
+      content="https://karamahcollective.com/assets/images/kc_logo_small_site_preview.webp"
+    />
+    <meta property="og:image:type" content="image/webp" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:site_name" content="Karamah Collective" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Karamah Collective" />
+    <meta
+      name="twitter:description"
+      content="Community-powered support for Muslims in Finland — clear information, practical guidance, and compassionate connections."
+    />
+    <meta
+      name="twitter:image"
+      content="https://karamahcollective.com/assets/images/kc_logo_small_site_preview.webp"
+    />
+
+    <!-- Security meta tags -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="karamah-build-version" content="__KARAMAH_BUILD_VERSION__" />
+
+    <link rel="preload" href="./assets/images/kc_logo_big.inline.svg" as="fetch" crossorigin />
+    <link rel="preload" href="./assets/images/karamah-logo.svg" as="image" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" /></noscript>
+
+    <link rel="stylesheet" href="./assets/css/tailwind.css?v=20260823.1625" />
+    <link rel="stylesheet" href="./assets/css/styles.css?v=20260823.1625" />
+    <link rel="stylesheet" href="./assets/css/dark-mode.css?v=20260823.1625" />
+    <link rel="stylesheet" href="./assets/css/site-content.css?v=initial" />
+
+    <script>
+      window.KARAMAH_BUILD_VERSION = "__KARAMAH_BUILD_VERSION__";
+      /* Dark mode: apply saved preference instantly (FOUC prevention).
+         Desktop  ? localStorage shared across tabs; resets on new browser session.
+         Mobile   ? localStorage (persists) or system default. */
+      (function () {
+        try {
+          var mobile = window.innerWidth < 768;
+          if (mobile) {
+            var t = localStorage.getItem('kc-theme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark');
+            }
+          } else {
+            /* New browser session detection: sessionStorage sentinel is per-tab
+               but kc-tab-count in localStorage tracks live tabs. */
+            var isNewTab = !sessionStorage.getItem('kc-session');
+            if (isNewTab) {
+              sessionStorage.setItem('kc-session', '1');
+              var count = parseInt(localStorage.getItem('kc-tab-count'), 10) || 0;
+              if (count <= 0) {
+                /* No sibling tabs ? new browser session ? clear desktop override */
+                localStorage.removeItem('kc-theme-desktop');
+              }
+              localStorage.setItem('kc-tab-count', String(count + 1));
+            }
+            var s = localStorage.getItem('kc-theme-desktop');
+            if (s === 'dark' || (!s && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="kc-startup-screen" data-startup-screen role="status" aria-label="Loading Karamah Collective">
+      <div class="kc-startup-mark kc-loader-guiding">
+        <img src="assets/images/karamah-logo.svg" alt="Karamah Collective" />
+        <span aria-hidden="true"></span>
+      </div>
+    </div>
+    <noscript><style>.kc-startup-screen{display:none}</style></noscript>
+    <header id="topbar">
+      <div>
+        <div class="kc-topbar-inner">
+          <a
+            href="#home"
+            class="kc-brand-link"
+            data-scrollto="home"
+            aria-label="Karamah Collective"
+          >
+            <img
+              src="assets/images/kc_logo_small.webp"
+              alt="Karamah Collective logo"
+              class="kc-brand-logo"
+              width="32"
+              height="32"
+              decoding="async"
+              data-theme-logo
+            />
+            <div class="kc-brand-wrap">
+              <span class="kc-brand-text">Karamah Collective</span>
+            </div>
+          </a>
+
+          <div class="kc-nav-actions">
+            <nav
+              class="scrollbar-none"
+              style="-webkit-overflow-scrolling: touch"
+              aria-label="Primary"
+            >
+              <button class="kc-navbtn" data-nav="home" type="button">Home</button>
+              <button class="kc-navbtn" data-nav="about" type="button">About</button>
+              <button class="kc-navbtn" data-nav="programs" type="button">Programs</button>
+              <button class="kc-navbtn" data-nav="janazah" type="button">JI</button>
+              <button class="kc-navbtn" data-nav="maps" type="button">Map</button>
+              <button class="kc-navbtn" data-nav="team" type="button">Team</button>
+              <button class="kc-navbtn kc-navbtn-contact" data-nav="contact" type="button">Contact</button>
+            </nav>
+            <a
+              class="kc-ticket-topbar-btn"
+              data-ticket-buy-top
+              href="#"
+              hidden
+            >
+              Buy ticket
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="snackbar-root">
+      <div
+        id="snackbar"
+        class="kc-snackbar"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        hidden
+      >
+        <div class="kc-snackbar-card">
+          <div class="kc-dot" data-snackbar-dot></div>
+          <div class="kc-snackbar-msg" data-snackbar-message></div>
+          <button
+            type="button"
+            class="kc-x"
+            aria-label="Dismiss"
+            data-snackbar-close
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="kc-site-notice" data-site-notice hidden aria-label="Announcement"></aside>
+    <aside
+      class="kc-ticket-toast"
+      data-ticket-toast
+      hidden
+      aria-label="Ticket announcement"
+    >
+      <button class="kc-ticket-toast-close" type="button" data-ticket-toast-close aria-label="Dismiss ticket announcement">
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <path d="M5 5l10 10M15 5L5 15" />
+        </svg>
+      </button>
+      <button class="kc-ticket-toast-copy" type="button" data-ticket-toast-toggle aria-expanded="false">
+        <strong data-ticket-toast-title></strong>
+        <span data-ticket-toast-description></span>
+      </button>
+      <a class="kc-ticket-toast-action" data-ticket-toast-action href="#">Buy ticket</a>
+    </aside>
+    <aside
+      class="kc-ticket-popup"
+      data-ticket-popup
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ticket-popup-title"
+      aria-describedby="ticket-popup-description"
+    >
+      <div class="kc-ticket-popup-backdrop" data-ticket-popup-close></div>
+      <article class="kc-ticket-popup-panel" data-ticket-popup-panel>
+        <button class="kc-ticket-popup-close" type="button" data-ticket-popup-close aria-label="Close ticket popup">
+          &times;
+        </button>
+        <div class="kc-ticket-popup-image" data-ticket-popup-image role="img" hidden></div>
+        <div class="kc-ticket-popup-copy">
+          <div class="kc-section-label">Tickets</div>
+          <h2 id="ticket-popup-title" data-ticket-popup-title>Tickets available</h2>
+          <p id="ticket-popup-description" data-ticket-popup-description></p>
+          <a class="kc-ticket-popup-action" data-ticket-popup-action href="#" target="_blank" rel="noopener noreferrer">Buy ticket</a>
+        </div>
+      </article>
+    </aside>
+    <main id="app">
+      <section id="home" class="kc-hero kc-hero-aurora" data-hero-wrapper>
+        <div class="kc-hero-layers">
+          <div
+            class="kc-hero-bg"
+            data-hero-bg
+            aria-hidden="true"
+          >
+            <div
+              class="kc-aurora-northern-light"
+              data-us-project-src="./assets/vendor/aurora-northern-light/project.json"
+              data-us-dpi="1"
+              data-us-scale="1"
+              data-us-fps="60"
+              data-us-alttext="Aurora northern light background"
+              data-us-arialabel="Aurora northern light background"
+              aria-hidden="true"
+            ></div>
+          </div>
+        </div>
+
+        <div class="kc-hero-viewport">
+          <div class="kc-hero-inner">
+            <div class="kc-hero-tilt" data-hero-tilt>
+              <div class="kc-hero-content">
+                <div
+                  class="kc-reveal kc-reveal-hero"
+                  data-reveal
+                  data-delay="0"
+                >
+                  <span class="kc-hero-badge">
+                    Honour · Dignity · Respect · Nobility
+                  </span>
+                </div>
+
+                <div
+                  class="kc-reveal kc-reveal-hero"
+                  data-reveal
+                  data-delay="90"
+                  style="margin-top: 1.5rem"
+                >
+                  <div class="kc-logo-meaning" data-logo-meaning>
+                    <button
+                      type="button"
+                      class="kc-logo-trigger"
+                      data-logo-trigger
+                      aria-expanded="false"
+                    >
+                      <object
+                        data-src="assets/images/kc_logo_big.inline.svg"
+                        type="image/svg+xml"
+                        class="kc-hero-logo"
+                        aria-label="Karamah (Arabic logo)"
+                        data-inline-svg
+                      ></object>
+                      <span class="kc-sr-only">Show meaning of Karamah</span>
+                    </button>
+
+                    <div
+                      class="kc-logo-panel"
+                      data-logo-panel
+                      aria-hidden="true"
+                    >
+                      <div class="kc-logo-panel-inner">
+                        <blockquote class="kc-blockquote">
+                          <figcaption class="kc-blockquote-cite" style="margin-bottom: 0.5rem">
+                            Karāmah — <span dir="rtl" lang="ar">كرامة</span>
+                          </figcaption>
+                          <p class="kc-blockquote-text">
+                            Human dignity, or Karamah in Arabic, is central to
+                            Islamic bioethics. Derived from
+                            <span class="kc-not-italic">karuma</span> (to be
+                            noble), Karamah appears in both infinitive (maṣdar)
+                            and noun (ism al-maṣdar) forms, signifying honour,
+                            dignity, respect, and nobility.
+                          </p>
+                          <figcaption class="kc-blockquote-cite">
+                            Wehr, p. 822
+                          </figcaption>
+                        </blockquote>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  class="kc-reveal kc-reveal-hero"
+                  data-reveal
+                  data-delay="180"
+                >
+                  <h1
+                    class="kc-hero-h1 kc-headline-reveal"
+                  >
+                    Community-powered support for Muslims in Finland.
+                  </h1>
+
+                  <p class="kc-hero-sub">
+                    Clear information, practical guidance, and compassionate
+                    connections.
+                  </p>
+
+                  <div class="kc-hero-quote">
+                    <blockquote
+                      class="kc-blockquote"
+                    >
+                      <p
+                        class="kc-blockquote-text"
+                      >
+                        Indeed, We have dignified the children of Adam.
+                      </p>
+                      <figcaption
+                        class="kc-blockquote-cite"
+                      >
+                        Qur'an 17:70
+                      </figcaption>
+                    </blockquote>
+                  </div>
+                </div>
+
+                <div
+                  class="kc-reveal kc-reveal-hero"
+                  data-reveal
+                  data-delay="300"
+                >
+                  <div class="kc-hero-actions">
+                    <button class="kc-btn kc-btn-lg" type="button" data-scrollto="programs">
+                      Explore Programs
+                      <i data-lucide="arrow-right" class="kc-icon-sm kc-icon-after"></i>
+                    </button>
+                    <button class="kc-btn kc-btn-lg kc-btn-primary" type="button" data-scrollto="contact">
+                      Contact
+                    </button>
+                    <a class="kc-btn kc-btn-lg kc-hero-ticket-btn" data-ticket-buy-home href="#" hidden>
+                      Buy ticket
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="kc-section alt" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              KARAMAH COLLECTIVE
+            </div>
+            <h2
+              class="kc-section-title"
+            >
+              About
+            </h2>
+            <p class="kc-section-sub">
+              Who we are · Why we exist · How we work
+            </p>
+          </div>
+
+          <div
+            class="kc-reveal"
+            data-reveal
+            data-delay="60"
+          >
+            <div
+              class="kc-card"
+              data-variant="callout"
+            >
+              <p>
+                <strong>Karamah Collective</strong> supports Muslims in Finland
+                through clear information, practical guidance, and compassionate
+                connections. We focus on removing barriers to key life events
+                and community needs, while cultivating spaces that honour,
+                faith, and dignity.
+              </p>
+            </div>
+          </div>
+
+          <div class="kc-mt-10 kc-grid-3">
+            <div class="kc-reveal" data-reveal data-delay="80">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Divine Guidance
+                </div>
+                <p class="kc-pillar-text">
+                  Ensuring all activities align with Islamic principles.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="130">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Sustainable Growth
+                </div>
+                <p class="kc-pillar-text">
+                  Building systems that create lasting positive impact.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="180">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Eternal Perspective
+                </div>
+                <p class="kc-pillar-text">
+                  Focusing on long-term spiritual and community benefits.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-10 kc-grid-1">
+            <div class="kc-reveal" data-reveal data-delay="120">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <p class="kc-callout-text">
+                  Providing Muslims in Finland with the knowledge,
+                  support, and tools to be informed, empowered, and connected in
+                  matters of faith and society.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="170">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <p class="kc-callout-text">
+                  We bridge the knowledge gap in the Muslim community with
+                  tangible solutions and outreach, while staying true to our
+                  Islamic values.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-10 kc-grid-2">
+            <div class="kc-reveal" data-reveal data-delay="110">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Focus areas
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Multilingual guidance and education.</li>
+                  <li>Partnerships and community ecosystems across Finland.</li>
+                  <li>Facility and process mapping for key services.</li>
+                  <li>
+                    Advocacy and outreach with communities and authorities.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="160">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  How we work
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Community engagement and listening first.</li>
+                  <li>Knowledge creation and open resource sharing.</li>
+                  <li>Collaboration and partnership over silos.</li>
+                  <li>Faith-driven initiatives anchored in dignity.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="programs" class="kc-section" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              WHAT WE ARE BUILDING
+            </div>
+            <h2
+              class="kc-section-title"
+            >
+              Programs
+            </h2>
+          </div>
+
+          <div class="kc-grid-programs" data-programs>
+            <article
+              class="kc-callout kc-card kc-programcard kc-reveal"
+              data-reveal
+              data-programcard
+              tabindex="0"
+              role="article"
+              aria-expanded="false"
+            >
+              <div class="kc-program-row">
+                <div
+                  class="kc-program-icon"
+                >
+                  <i data-lucide="shield-check" class="kc-icon-md"></i>
+                </div>
+
+                <div class="kc-flex-body">
+                  <div class="kc-program-header">
+                    <h3 class="kc-program-title">
+                      Janazah Initiative
+                    </h3>
+                    <span
+                      class="kc-program-chevron"
+                      aria-hidden="true"
+                    >
+                      <i data-lucide="chevron-down" class="kc-icon-md"></i>
+                    </span>
+                  </div>
+
+                  <div class="kc-program-body">
+                    <p class="kc-program-body-text">
+                      Faith-aligned end-of-life guidance and support, practical
+                      resources for families, and advocacy for essential
+                      infrastructure across Finland.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="kc-callout kc-card kc-programcard kc-reveal"
+              data-reveal
+              data-delay="80"
+              data-programcard
+              data-programcard-link="https://maps.karamahcollective.com"
+              tabindex="0"
+              role="article"
+              aria-expanded="false"
+            >
+              <div class="kc-program-row">
+                <div
+                  class="kc-program-icon"
+                >
+                  <i data-lucide="map-pin" class="kc-icon-md"></i>
+                </div>
+
+                <div class="kc-flex-body">
+                  <div class="kc-program-header">
+                    <h3 class="kc-program-title">
+                      Manarah
+                    </h3>
+                    <span
+                      class="kc-program-chevron"
+                      aria-hidden="true"
+                    >
+                      <i data-lucide="chevron-down" class="kc-icon-md"></i>
+                    </span>
+                  </div>
+
+                  <div class="kc-program-body">
+                    <p class="kc-program-body-text">
+                      Explore Muslim-relevant services, mosques, and community
+                      resources across Finland on our interactive map.
+                    </p>
+                    <div class="kc-program-link-card">
+                      <div class="kc-program-link-inner">
+                        <div class="kc-program-link-box">
+                          <a
+                            href="https://maps.karamahcollective.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="kc-program-link-box-link"
+                          >
+                            Open Manarah
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;flex-shrink:0"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="kc-callout kc-card kc-programcard kc-reveal"
+              data-reveal
+              data-delay="160"
+              data-programcard
+              tabindex="0"
+              role="article"
+              aria-expanded="false"
+            >
+              <div class="kc-program-row">
+                <div
+                  class="kc-program-icon"
+                >
+                  <i data-lucide="book-open" class="kc-icon-md"></i>
+                </div>
+
+                <div class="kc-flex-body">
+                  <div class="kc-program-header">
+                    <h3 class="kc-program-title">
+                      Fajr Journal Club
+                    </h3>
+                    <span
+                      class="kc-program-chevron"
+                      aria-hidden="true"
+                    >
+                      <i data-lucide="chevron-down" class="kc-icon-md"></i>
+                    </span>
+                  </div>
+
+                  <div class="kc-program-body">
+                    <p class="kc-program-body-text">
+                      Low-threshold Islamic book club for self-improvement,
+                      aimed at busy women; expanding to events, collaborations,
+                      and a subscription-based membership open to all.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="kc-callout kc-card kc-programcard kc-reveal"
+              data-reveal
+              data-delay="240"
+              data-programcard
+              tabindex="0"
+              role="article"
+              aria-expanded="false"
+            >
+              <div class="kc-program-row">
+                <div
+                  class="kc-program-icon"
+                >
+                  <i data-lucide="brain" class="kc-icon-md"></i>
+                </div>
+
+                <div class="kc-flex-body">
+                  <div class="kc-program-header">
+                    <h3 class="kc-program-title">
+                      Neurodiverse Muslims
+                    </h3>
+                    <span
+                      class="kc-program-chevron"
+                      aria-hidden="true"
+                    >
+                      <i data-lucide="chevron-down" class="kc-icon-md"></i>
+                    </span>
+                  </div>
+
+                  <div class="kc-program-body">
+                    <p class="kc-program-body-text">
+                      Surveying, assessing, and showcasing neurodivergent voices
+                      through workshops, outreach, and resources.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="janazah" class="kc-section alt" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              FLAGSHIP PROGRAM
+            </div>
+            <h2
+              class="kc-section-title"
+            >
+              Janazah Initiative
+            </h2>
+            <p class="kc-section-sub">
+              Vision · Mission · Approach
+            </p>
+          </div>
+
+          <div class="kc-grid-3">
+            <div class="kc-reveal" data-reveal data-delay="80">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Vision
+                </div>
+                <p class="kc-pillar-text">
+                  Establish comprehensive and accessible Islamic end-of-life
+                  services across Finland.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="130">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Mission
+                </div>
+                <p class="kc-pillar-text">
+                  Support bereaved families, develop facilities, secure funding,
+                  and grow participation in Islamic burial services.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="180">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Approach
+                </div>
+                <p class="kc-pillar-text">
+                  Community research, knowledge development, resource creation,
+                  and infrastructure support.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-8 kc-grid-1">
+            <div class="kc-reveal" data-reveal data-delay="140">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <p class="kc-callout-text">
+                  Muslim population in Finland is estimated at 120,000+. Only
+                  22,260 were registered as Muslims (2022). Many are therefore
+                  not registered as Muslims, which can affect how authorities
+                  process end-of-life burial arrangements.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-8 kc-grid-2">
+            <div class="kc-reveal" data-reveal data-delay="120">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Why this work matters
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Lack of centralised information</li>
+                  <li>
+                    Limited infrastructure (washing spaces, equipment, access)
+                  </li>
+                  <li>
+                    Economic burden: Death is an expensive affair in Finland
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="160">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Success metrics
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Families assisted &amp; quality of service</li>
+                  <li>Community engagement &amp; resource accessibility</li>
+                  <li>Infrastructure development progress</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-8 kc-grid-2">
+            <div class="kc-reveal" data-reveal data-delay="120">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Short-term goals
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Distribute comprehensive information packets</li>
+                  <li>
+                    Create educational material about Islamic burial practices
+                  </li>
+                  <li>Establish initial community partnerships</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="160">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Long-term goals
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Secure sustainable funding streams</li>
+                  <li>Develop dedicated Islamic burial infrastructure</li>
+                  <li>Build relationships with relevant authorities</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-10 kc-grid-3-feat">
+            <div class="kc-feat-main kc-reveal" data-reveal data-delay="140">
+              <div
+                class="kc-card kc-card-full kc-card-no-accent"
+                data-variant="callout"
+              >
+                <div
+                  class="kc-feat-header"
+                >
+                  <div
+                    class="kc-section-label"
+                  >
+                    What we aim to provide
+                  </div>
+                  <span
+                    class="kc-badge-dev"
+                    >In development</span
+                  >
+                </div>
+
+                <ul
+                  class="kc-mt-6 kc-checklist"
+                >
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Immediate next-steps checklist and coordination
+                      guidance</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Orientation to local processes in Finland (where to
+                      start, who to contact)</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Community connections for practical help and
+                      volunteering</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Advocacy and infrastructure work for long-term
+                      improvement</span
+                    >
+                  </li>
+                </ul>
+
+                <div
+                  class="kc-mt-6 kc-disclaimer-box"
+                >
+                  <p class="kc-disclaimer-text">
+                    We offer community information and coordination support. We
+                    do not provide legal services or official religious rulings.
+                    For medical emergencies, contact emergency services.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="180">
+              <div
+                class="kc-card kc-card-full kc-card-no-accent"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Request Janazah support
+                </div>
+                <p class="kc-card-desc">
+                  Use the contact form and choose
+                  <span class="kc-text-strong"
+                    >“Request Janazah support”</span
+                  >
+                  under Topic. If you’re reaching out to volunteer, choose
+                  <span class="kc-text-strong">“Volunteer”</span>.
+                  If possible, include your city, preferred language, and any
+                  immediate needs.
+                </p>
+
+                <div class="kc-mt-6 kc-btn-stack">
+                  <button
+                    class="kc-btn kc-btn-primary"
+                    type="button"
+                    data-scrollto="contact"
+                    data-topic="Request Janazah support"
+                  >
+                    Request Support
+                    <i data-lucide="arrow-right" class="kc-icon-sm kc-icon-after"></i>
+                  </button>
+                  <button
+                    class="kc-btn kc-btn-outline"
+                    type="button"
+                    data-scrollto="contact"
+                    data-topic="Volunteer"
+                  >
+                    Volunteer for Janazah
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="maps" class="kc-section" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              COMMUNITY TOOL
+            </div>
+            <h2
+              class="kc-section-title"
+            >
+              Manarah
+            </h2>
+            <p class="kc-section-sub">
+              Discover · Navigate · Connect
+            </p>
+          </div>
+
+          <div class="kc-grid-3">
+            <div class="kc-reveal" data-reveal data-delay="80">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Discover
+                </div>
+                <p class="kc-pillar-text">
+                  Find mosques, halal restaurants, grocery stores, and
+                  community services across Finland on an interactive map.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="130">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Navigate
+                </div>
+                <p class="kc-pillar-text">
+                  Get directions via public transit, walking, or cycling
+                  with real-time schedules and prayer time integration.
+                </p>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="180">
+              <div
+                class="kc-card kc-card-full"
+                data-variant="pillar"
+              >
+                <div class="kc-section-label">
+                  Connect
+                </div>
+                <p class="kc-pillar-text">
+                  Community-verified listings you can search, filter, and
+                  suggest edits to — built by and for the community.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-8 kc-grid-1">
+            <div class="kc-reveal" data-reveal data-delay="140">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <p class="kc-callout-text">
+                  Manarah is our open, community-powered map covering
+                  the Helsinki metropolitan area and expanding across Finland.
+                  It helps Muslims and newcomers locate mosques, halal food,
+                  and essential services — all verified by the community.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-8 kc-grid-2">
+            <div class="kc-reveal" data-reveal data-delay="120">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  What you can find
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Mosques &amp; prayer spaces with service details</li>
+                  <li>Halal restaurants, cafés, and grocery stores</li>
+                  <li>Islamic centres &amp; community organisations</li>
+                  <li>Halal-friendly businesses and services</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="160">
+              <div
+                class="kc-card"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Features
+                </div>
+                <ul class="kc-callout-list">
+                  <li>Search &amp; filter by category and tags</li>
+                  <li>Public transit &amp; walking directions</li>
+                  <li>Daily prayer times for your location</li>
+                  <li>Suggest edits &amp; add new places</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="kc-mt-10 kc-grid-3-feat">
+            <div class="kc-feat-main kc-reveal" data-reveal data-delay="140">
+              <div
+                class="kc-card kc-card-full kc-card-no-accent"
+                data-variant="callout"
+              >
+                <div
+                  class="kc-feat-header"
+                >
+                  <div
+                    class="kc-section-label"
+                  >
+                    How it works
+                  </div>
+                </div>
+
+                <ul
+                  class="kc-mt-6 kc-checklist"
+                >
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Browse the map or search for a specific place or
+                      category</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Filter by tags like daily prayers, Jummah, sisters
+                      section, and more</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Get directions with transit schedules or walking
+                      routes</span
+                    >
+                  </li>
+                  <li class="kc-check-item">
+                    <i
+                      data-lucide="check"
+                      class="kc-icon-sm kc-icon-check"
+                    ></i>
+                    <span
+                      >Suggest edits or new places via the built-in
+                      form</span
+                    >
+                  </li>
+                </ul>
+
+                <div
+                  class="kc-mt-6 kc-disclaimer-box"
+                >
+                  <p class="kc-disclaimer-text">
+                    Manarah relies on community contributions. Listings
+                    are informational and may not always be up to date.
+                    Always verify details directly with the business.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="kc-reveal" data-reveal data-delay="180">
+              <div
+                class="kc-card kc-card-full kc-card-no-accent"
+                data-variant="callout"
+              >
+                <div class="kc-section-label">
+                  Open the map
+                </div>
+                <p class="kc-card-desc">
+                  Manarah is a free, standalone web app. Tap below to
+                  explore the interactive map, search for places, and get
+                  directions.
+                </p>
+
+                <div class="kc-mt-6 kc-btn-stack">
+                  <a
+                    href="https://maps.karamahcollective.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="kc-btn kc-btn-primary"
+                  >
+                    Open Manarah
+                    <i data-lucide="external-link" class="kc-icon-sm kc-icon-after"></i>
+                  </a>
+                  <button
+                    class="kc-btn kc-btn-outline"
+                    type="button"
+                    data-scrollto="contact"
+                    data-topic="Manarah feedback"
+                  >
+                    Suggest a Place
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="team" class="kc-section alt" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              WHO WE ARE
+            </div>
+            <h2
+              class="kc-section-title"
+            >
+              Meet the Team
+            </h2>
+          </div>
+
+          <div
+            class="kc-team-region"
+            data-team-region
+            aria-live="polite"
+          >
+            <ul
+              class="kc-grid-team kc-team-loader kc-reveal"
+              data-team-loader
+              data-reveal
+              role="status"
+              aria-label="Loading team members"
+            >
+              <li aria-hidden="true">
+                <div class="kc-card kc-team-card kc-team-skeleton-card">
+                  <div class="kc-avatar-wrap">
+                    <span class="kc-team-skeleton-avatar"></span>
+                  </div>
+                  <div class="kc-min-w0 kc-team-skeleton-copy">
+                    <span class="kc-team-skeleton-line kc-team-skeleton-name"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-role"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-email"></span>
+                  </div>
+                </div>
+              </li>
+              <li aria-hidden="true">
+                <div class="kc-card kc-team-card kc-team-skeleton-card">
+                  <div class="kc-avatar-wrap">
+                    <span class="kc-team-skeleton-avatar"></span>
+                  </div>
+                  <div class="kc-min-w0 kc-team-skeleton-copy">
+                    <span class="kc-team-skeleton-line kc-team-skeleton-name"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-role"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-email"></span>
+                  </div>
+                </div>
+              </li>
+              <li aria-hidden="true">
+                <div class="kc-card kc-team-card kc-team-skeleton-card">
+                  <div class="kc-avatar-wrap">
+                    <span class="kc-team-skeleton-avatar"></span>
+                  </div>
+                  <div class="kc-min-w0 kc-team-skeleton-copy">
+                    <span class="kc-team-skeleton-line kc-team-skeleton-name"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-role"></span>
+                    <span class="kc-team-skeleton-line kc-team-skeleton-email"></span>
+                  </div>
+                </div>
+              </li>
+            </ul>
+            <ul
+              class="kc-grid-team"
+              data-team-list
+              hidden
+            ></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" class="kc-section alt" data-section>
+        <div
+          class="kc-section-inner"
+        >
+          <div class="kc-section-header kc-reveal" data-reveal>
+            <div class="kc-section-label">
+              REACH OUT
+            </div>
+            <h2 class="kc-section-title">Contact Us</h2>
+            <p class="kc-section-sub" data-site-contact-intro hidden></p>
+          </div>
+
+          <div
+            class="kc-grid-contact"
+            data-contact-grid
+          >
+            <div
+              class="kc-card kc-feat-main kc-reveal"
+              data-contact-form-card
+              data-reveal
+              data-delay="80"
+            >
+              <form
+                id="contact-form"
+                name="contact"
+                class="kc-form-grid"
+                novalidate
+              >
+                <input type="hidden" name="kc_started_at" id="kc_started_at" />
+
+                <div class="kc-form-row">
+                  <div>
+                    <label class="kc-form-label" for="name"
+                      >Full name</label
+                    >
+                    <input
+                      id="name"
+                      name="name"
+                      required
+                      placeholder="Full name"
+                      aria-label="Full name"
+                      class="kc-input"
+                      autocomplete="name"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="kc-form-label" for="email"
+                      >Email</label
+                    >
+                    <input
+                      id="email"
+                      name="email"
+                      required
+                      type="email"
+                      placeholder="you@example.com"
+                      aria-label="Email"
+                      class="kc-input"
+                      autocomplete="email"
+                      inputmode="email"
+                    />
+                  </div>
+                </div>
+
+                <div class="kc-form-row">
+                  <div>
+                    <label class="kc-form-label" for="phone"
+                      >Phone (optional)</label
+                    >
+                    <input
+                      id="phone"
+                      name="phone"
+                      placeholder="+358 40 123 4567"
+                      aria-label="Phone"
+                      class="kc-input"
+                      autocomplete="tel"
+                      inputmode="tel"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="kc-form-label" for="topic"
+                      >Topic</label
+                    >
+                    <select
+                      id="topic"
+                      name="topic"
+                      aria-label="Topic"
+                      class="kc-select"
+                    >
+                      <option>General question</option>
+                      <option>Program inquiry</option>
+                      <option>Request Janazah support</option>
+                      <option>Volunteer</option>
+                      <option>Donate</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="kc-form-label" for="message"
+                    >Message</label
+                  >
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    placeholder="Please describe how we can help you"
+                    aria-label="Message"
+                    rows="4"
+                    class="kc-textarea"
+                  ></textarea>
+                </div>
+
+                <div
+                  class="kc-form-actions"
+                >
+                  <label
+                    class="kc-checkbox-label"
+                  >
+                    <input
+                      type="checkbox"
+
+                      name="updates"
+                      value="yes"
+                    />
+                    <span>Keep me updated about programs, events, and news</span>
+                  </label>
+
+                  <button
+                    id="contact-submit"
+                    type="submit"
+                    class="kc-btn kc-btn-primary"
+                  >
+                    Send message
+                  </button>
+                </div>
+
+                <p class="kc-form-fine-print">
+                  By contacting us, you agree to our
+                  <button type="button" data-open-privacy class="kc-link-privacy">privacy policy</button>
+                  and consent to being contacted about your request.
+                </p>
+              </form>
+            </div>
+
+            <div
+              class="kc-card kc-contact-info kc-reveal"
+              data-reveal
+              data-delay="140"
+              data-contact-info-card
+            >
+              <div class="kc-contact-sections">
+                <div class="kc-contact-rows">
+                  <div class="kc-contact-row">
+                    <i data-lucide="mail" class="kc-icon-sm"></i>
+                    <a
+                      href="mailto:contact@karamahcollective.com"
+                      class="kc-link-hover"
+                      data-site-contact-email
+                      >contact@karamahcollective.com</a
+                    >
+                  </div>
+                  <div class="kc-contact-row">
+                    <i data-lucide="map-pin" class="kc-icon-sm"></i>
+                    <span data-site-contact-location>Helsinki, Finland</span>
+                  </div>
+                </div>
+
+                <div class="kc-contact-divider">
+                  <div
+                    class="kc-section-label"
+                  >
+                    Explore
+                  </div>
+                  <div class="kc-explore-grid">
+                    <a
+                      class="kc-explore-link"
+                      href="#home"
+                      data-scrollto="home"
+                      >Home</a
+                    >
+                    <a
+                      class="kc-explore-link"
+                      href="#about"
+                      data-scrollto="about"
+                      >About</a
+                    >
+                    <a
+                      class="kc-explore-link"
+                      href="#programs"
+                      data-scrollto="programs"
+                      >Programs</a
+                    >
+                    <a
+                      class="kc-explore-link"
+                      href="#janazah"
+                      data-scrollto="janazah"
+                      >JI</a
+                    >
+                    <a
+                      class="kc-explore-link"
+                      href="#team"
+                      data-scrollto="team"
+                      >Team</a
+                    >
+                    <a
+                      class="kc-explore-link"
+                      href="#contact"
+                      data-scrollto="contact"
+                      >Contact</a
+                    >
+                  </div>
+                </div>
+
+                <div class="kc-contact-divider">
+                  <div
+                    class="kc-section-label"
+                  >
+                    Social
+                  </div>
+                  <div class="kc-social-links">
+                    <a
+                      href="https://www.instagram.com/karamah.collective/"
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="Instagram"
+                      class="kc-social-btn"
+                    >
+                      <i data-lucide="instagram" class="kc-icon-md"></i>
+                    </a>
+
+                    <a
+                      href="https://www.linkedin.com/company/karamah-collective/"
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="LinkedIn"
+                      class="kc-social-btn"
+                    >
+                      <i data-lucide="linkedin" class="kc-icon-md"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="kc-contact-footer">
+                <div class="kc-disclaimer-box">
+                  <div class="kc-disclaimer-text">
+                    Karamah Collective provides community information and
+                    connections. We do not offer legal services. For legal
+                    matters, consult a qualified professional.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="kc-footer">
+        <div
+          class="kc-footer-inner"
+        >
+          <!-- Quote (now first) -->
+          <div class="kc-footer-quote">
+            <blockquote class="kc-blockquote">
+              <p
+                class="kc-blockquote-text"
+              >
+                Allah created Adam in His image.
+              </p>
+              <figcaption
+                class="kc-blockquote-cite"
+              >
+                Bukhari 6227 · Muslim 2841
+              </figcaption>
+            </blockquote>
+          </div>
+
+          <!-- Logo + copyright (now second) -->
+          <div class="kc-footer-brand">
+            <img
+              src="assets/images/kc_logo_small.webp"
+              alt="Karamah Collective logo"
+              class="kc-footer-logo"
+              width="36"
+              height="36"
+              decoding="async"
+              data-theme-logo
+            />
+            <div class="kc-footer-identity">
+              <p class="kc-footer-heading">
+                <span class="kc-footer-name" data-site-organization-name>Karamah Collective ry</span>
+                <span class="kc-footer-separator" aria-hidden="true">·</span>
+                <span class="kc-footer-year">© <span id="year"></span></span>
+              </p>
+              <address class="kc-footer-registration">
+                <span>FO: <span data-site-organization-number>3649490-3</span></span>
+                <span class="kc-footer-separator" aria-hidden="true">·</span>
+                <span data-site-organization-address>Kuurinkallio 11 D 22, 02750 Espoo</span>
+              </address>
+              <button type="button" data-open-privacy class="kc-footer-privacy">Privacy Policy</button>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      <!-- Privacy Policy Overlay (content loaded from privacy-policy.html) -->
+      <div id="privacy-overlay" class="kc-privacy-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Privacy Policy">
+        <div class="kc-privacy-backdrop" data-close-privacy></div>
+      </div>
+
+      <button
+        id="theme-toggle"
+        aria-label="Toggle dark mode"
+        title="Toggle dark mode"
+        class="kc-theme-toggle"
+        type="button"
+      >
+        <svg class="kc-icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg class="kc-icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
+
+      <button
+        id="scrolltop"
+        aria-label="Scroll to top"
+        class="kc-btn kc-btn-icon"
+        type="button"
+      >
+        <i data-lucide="arrow-up" class="kc-icon-sm"></i>
+      </button>
+    </main>
+
+    <script type="module" src="./assets/js/site-content.js?v=initial"></script>
+    <script src="./assets/js/app.js?v=20260823.1625" defer></script>
+  </body>
+</html>

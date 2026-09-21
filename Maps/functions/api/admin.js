@@ -1,0 +1,1127 @@
+/**
+ * Cloudflare Pages Function – /api/admin
+ *
+ * D1-backed admin API consumed by the React admin dashboard in /admin
+ * (deployed as its own Cloudflare Pages project on a different domain —
+ * see docs for the current architecture). Every action's request/response
+ * shape traces back to Code.gs's original admin contract (see
+ * docs/D1_MIGRATION_PLAN.md), though auth has since moved off the original
+ * shared-secret `adminKey` scheme.
+ *
+ * `rowId` fields are D1 integer primary keys, stringified — an improvement
+ * over Code.gs's `makeRowId(timestamp, name)` hash (collision-prone), but
+ * still just an opaque round-trip token from the dashboard's point of view.
+ *
+ * Auth: every request must carry `Authorization: Bearer <Firebase ID token>`
+ * for an account whose email ends in `@karamahcollective.com` AND has a
+ * verified email (see `authenticateAdmin` below — the emailVerified check
+ * matters because anyone can self-register any email string at signup;
+ * only Firebase's verification-link flow actually proves mailbox
+ * ownership). CORS is restricted to `ADMIN_ALLOWED_ORIGINS`, since the
+ * dashboard runs cross-origin from this endpoint's own domain.
+ *
+ * Every successful write action is recorded in `audit_log` (see
+ * `logAdminAction`) — viewable by any authenticated colleague via the
+ * `admin-log` action. This intentionally stores the actor's real
+ * email/name in plaintext: that's the whole point of an internal audit
+ * trail and is a deliberate, scoped exception to this schema's usual
+ * emailHash-only rule (which protects *public map visitors'* privacy, not
+ * co-workers' identities from each other in a trusted internal tool).
+ *
+ * Required Cloudflare Pages Environment Variables:
+ *   DB – D1 database binding
+ * (FIREBASE_PROJECT_ID is optional — only needed if the admin dashboard
+ * ever authenticates against a different Firebase project than the public
+ * site's `halal-map-karamah`.)
+ */
+import { json, helsinkiTimestamp, truncate } from "../_shared.js";
+import { verifyFirebaseIdToken } from "../_firebase-verify.js";
+import { normaliseAddress, parseTagString, isSponsorActiveForDate, extractCityFromAddress, generateId } from "../_gas-compat.js";
+import { upsertPlaceAppLinks } from "../_app-links.js";
+import {
+  deleteSocialVideo,
+  listAllSocialVideos,
+  upsertSocialVideo,
+} from "../_place-videos.js";
+import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
+import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
+import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
+
+const ADMIN_ALLOWED_ORIGINS = [
+  "https://admin.karamahcollective.com",
+  "https://admin.maps.karamahcollective.com",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+function adminAllowedOrigin(request, env = {}) {
+  const origin = request.headers.get("Origin") || "";
+  const allowed = [...ADMIN_ALLOWED_ORIGINS, ...(env.ADMIN_ALLOWED_ORIGINS || "").split(",").map(value => value.trim()).filter(value => /^https:\/\/[^/]+$/.test(value))];
+  return allowed.includes(origin) ? origin : ADMIN_ALLOWED_ORIGINS[0];
+}
+
+const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com"; // leading "@" is load-bearing — endsWith("karamahcollective.com") without it would let "user@evilkaramahcollective.com" through
+const MAX_ID_TOKEN_LEN = 2048;
+const MAX_MODERATION_REASON_LEN = 300;
+const REVIEW_STATUSES = new Set(["yes", "no", "pending"]);
+const IMAGE_STATUSES = new Set(["yes", "no"]);
+const REVIEW_IMAGE_ID_RE = /^[0-9a-f-]{36}$/i;
+
+async function authenticateAdmin(request, env) {
+  const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
+  if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
+
+  const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
+  if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
+  if (!verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
+  if (!verified.email.endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for admin access" };
+
+  return { ok: true, actor: { uid: verified.uid, email: verified.email, name: verified.name || "" } };
+}
+
+// ── Audit log ────────────────────────────────────────────────────────────
+
+const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "imageId", "rowIndex", "videoId", "id"];
+function extractTargetId(data) {
+  for (const f of TARGET_ID_FIELDS) {
+    if (data[f] !== undefined && data[f] !== null && data[f] !== "") return String(data[f]);
+  }
+  return "";
+}
+
+const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action"]);
+function buildAuditDetail(data) {
+  const rest = {};
+  for (const k of Object.keys(data)) {
+    if (AUDIT_DETAIL_NOISE_FIELDS.has(k)) continue;
+    if (k === "link" && data.link?.image_url?.startsWith("data:image/")) {
+      rest[k] = { ...data.link, image_url: `[uploaded image: ${data.link.image_url.length} characters]` };
+    } else rest[k] = data[k];
+  }
+  return JSON.stringify(rest);
+}
+
+async function logAdminAction(db, { action, actor, targetId, detail, success }) {
+  await db.prepare(
+    "INSERT INTO audit_log (created_at, created_at_epoch, action, actor_uid, actor_email, actor_name, target_id, detail, success) VALUES (?,?,?,?,?,?,?,?,?)"
+  ).bind(
+    helsinkiTimestamp(), Date.now(), action, actor.uid, actor.email, actor.name || "", targetId || "", detail || "", success ? 1 : 0
+  ).run();
+}
+
+const AUTH_EVENT_TYPES = new Set(["login", "signup"]);
+const AUTH_EVENT_DEDUP_WINDOW_MS = 30_000; // absorbs onAuthStateChanged double-fires — a sanity guard, not a security control
+
+async function handleLogAuthEvent(db, actor, data) {
+  const eventType = (data.event || "").toString().trim().toLowerCase();
+  if (!AUTH_EVENT_TYPES.has(eventType)) return { error: "Invalid event type" };
+
+  const recent = await db.prepare(
+    "SELECT id FROM audit_log WHERE actor_uid = ? AND action = ? AND created_at_epoch > ? ORDER BY id DESC LIMIT 1"
+  ).bind(actor.uid, eventType, Date.now() - AUTH_EVENT_DEDUP_WINDOW_MS).first();
+
+  if (!recent) {
+    await logAdminAction(db, { action: eventType, actor, targetId: "", detail: "", success: true });
+  }
+  return { success: true };
+}
+
+async function getAdminLog(db, url) {
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "100", 10) || 100, 1), 200);
+  const beforeRaw = parseInt(url.searchParams.get("before") || "", 10);
+  const hasBefore = Number.isFinite(beforeRaw) && beforeRaw > 0;
+
+  const { results } = await db.prepare(
+    `SELECT * FROM audit_log ${hasBefore ? "WHERE id < ?" : ""} ORDER BY id DESC LIMIT ?`
+  ).bind(...(hasBefore ? [beforeRaw, limit] : [limit])).all();
+
+  return {
+    entries: results.map((r) => ({
+      id: r.id, createdAt: r.created_at, action: r.action,
+      actorUid: r.actor_uid, actorEmail: r.actor_email, actorName: r.actor_name,
+      targetId: r.target_id, detail: r.detail ? JSON.parse(r.detail) : null, success: !!r.success,
+    })),
+    nextBefore: results.length === limit ? results[results.length - 1].id : null,
+  };
+}
+
+// ── GET actions ────────────────────────────────────────────────────────────
+
+async function getAdminStats(db) {
+  const [pendingNew, pendingEdits, places, unreplied, wishesTotal, pendingWishes, pendingEvents, pendingEventEdits] = await Promise.all([
+    db.prepare("SELECT COUNT(*) n FROM new_places WHERE status = 'pending'").first(),
+    db.prepare("SELECT COUNT(*) n FROM edits WHERE status = 'pending'").first(),
+    db.prepare("SELECT type, COUNT(*) n FROM places GROUP BY type").all(),
+    db.prepare("SELECT COUNT(*) n FROM contacts WHERE replied != 'Yes'").first(),
+    db.prepare("SELECT COUNT(*) n FROM wishes").first(),
+    db.prepare("SELECT COUNT(*) n FROM wishes WHERE approved NOT IN ('Yes','No')").first(),
+    db.prepare("SELECT COUNT(*) n FROM events WHERE status = 'pending'").first(),
+    db.prepare("SELECT COUNT(*) n FROM event_edits WHERE status = 'pending'").first(),
+  ]);
+  const byType = { space: 0, restaurant: 0, service: 0 };
+  let totalPlaces = 0;
+  for (const row of places.results) {
+    totalPlaces += row.n;
+    const type = ["mosque", "prayer_room", "cemetery"].includes(row.type)
+      ? "space"
+      : row.type === "shop"
+        ? "service"
+        : row.type;
+    if (Object.prototype.hasOwnProperty.call(byType, type)) byType[type] += row.n;
+  }
+  return {
+    pendingNew: pendingNew.n, pendingEdits: pendingEdits.n, totalPlaces, unrepliedContacts: unreplied.n,
+    byType, totalWishes: wishesTotal.n, pendingWishes: pendingWishes.n, pendingEvents: pendingEvents.n, pendingEventEdits: pendingEventEdits.n,
+  };
+}
+
+async function getPendingNew(db) {
+  const { results } = await db.prepare("SELECT * FROM new_places WHERE status = 'pending' ORDER BY id").all();
+  return results.map((r) => ({
+    rowId: String(r.id), timestamp: r.timestamp, name: r.name || r.google_name, type: r.type, address: r.address || r.google_address, tags: r.tags,
+    gmaps: r.maps_link, notes: r.notes, score: r.score, googleName: r.google_name, googleAddress: r.google_address,
+    lat: r.lat ?? "", lng: r.lng ?? "", placeId: r.place_id, website: r.website, enrichedAt: r.enriched_at, openingHours: r.opening_hours,
+  }));
+}
+
+async function getPendingEdits(db) {
+  const { results } = await db.prepare("SELECT * FROM edits WHERE status = 'pending' ORDER BY id").all();
+  const out = [];
+  for (const r of results) {
+    let current = null;
+    if (r.place_id) {
+      const p = await db.prepare("SELECT name, type, address, tags, notes FROM places WHERE id = ?").bind(r.place_id).first();
+      if (p) current = p;
+    }
+    out.push({
+      rowId: String(r.id), timestamp: r.timestamp, placeId: r.place_id, name: r.name, type: r.type, address: r.address,
+      tags: r.tags, gmaps: r.maps_link, notes: r.notes, score: r.score, changesSummary: r.changes_summary, current,
+    });
+  }
+  return out;
+}
+
+async function getAdminPlaces(db) {
+  const promosByPlace = new Map();
+  try {
+    const { results: promoRows } = await db.prepare(
+      "SELECT place_id, code, description, start_date, end_date FROM place_promos ORDER BY place_id, sort_order, id"
+    ).all();
+    for (const row of promoRows) {
+      const placeId = (row.place_id || "").toString().trim();
+      if (!placeId) continue;
+      if (!promosByPlace.has(placeId)) promosByPlace.set(placeId, []);
+      promosByPlace.get(placeId).push({
+        code: row.code || "",
+        description: row.description || "",
+        startDate: row.start_date || "",
+        endDate: row.end_date || "",
+      });
+    }
+  } catch {
+    // Existing databases may not have the new place_promos table yet. The row
+    // mapper below falls back to legacy sponsor_promo fields until migrated.
+  }
+  const { results } = await db.prepare("SELECT * FROM places ORDER BY name").all();
+  return results.filter((r) => r.name).map((r) => ({
+    id: r.id, name: r.name, type: (r.type || "").toLowerCase(), address: normaliseAddress(r.address), city: extractCityFromAddress(r.address),
+    lat: r.lat ?? "", lng: r.lng ?? "", tags: r.tags, notes: r.notes, boycott: !!r.boycott, disabled: !!r.disabled,
+    sponsorTier: (r.sponsor_tier || "").toLowerCase(), sponsorPromo: r.sponsor_promo, sponsorPromoText: r.sponsor_promo_text,
+    sponsorStartDate: r.sponsor_start_date, sponsorEndDate: r.sponsor_end_date,
+    promos: promosByPlace.has(r.id)
+      ? promosByPlace.get(r.id)
+      : [legacyPromoFromPlaceRow(r)].filter(Boolean),
+  }));
+}
+
+async function getAdminContacts(db) {
+  const { results } = await db.prepare("SELECT * FROM contacts ORDER BY id DESC").all();
+  const unreplied = [], replied = [];
+  for (const r of results) {
+    if (!r.name && !r.email && !r.message) continue;
+    const entry = { rowId: String(r.id), timestamp: r.timestamp, name: r.name, email: r.email, phone: r.phone, message: r.message, score: r.score, replied: r.replied === "Yes", repliedStatus: r.replied || "No" };
+    (entry.replied ? replied : unreplied).push(entry);
+  }
+  return { unreplied, replied };
+}
+
+async function getAdminWishes(db) {
+  const { results } = await db.prepare("SELECT * FROM wishes ORDER BY id DESC").all();
+  return results.filter((r) => r.id && r.title).map((r) => ({
+    wishId: r.id, title: r.title, description: r.description, votes: r.votes || 0, created: r.created,
+    name: r.name, email: r.email, approved: r.approved || "", implemented: r.implemented || "",
+  }));
+}
+
+async function getPendingEvents(db) {
+  const { results } = await db.prepare("SELECT * FROM events WHERE status = 'pending' ORDER BY id").all();
+  const out = [];
+  for (const r of results) {
+    const place = r.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(r.place_id).first() : null;
+    out.push({
+      eventId: r.id, placeId: r.place_id, placeName: (place && place.name) || "", title: r.title, description: r.description,
+      eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time, recurring: !!r.recurring,
+      recurrencePattern: r.recurrence_pattern, url: r.url, createdAt: r.created_at,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
+    });
+  }
+  return out;
+}
+
+async function getPendingEventEdits(db) {
+  const { results } = await db.prepare("SELECT * FROM event_edits WHERE status = 'pending' ORDER BY id").all();
+  const out = [];
+  for (const r of results) {
+    const place = r.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(r.place_id).first() : null;
+    const current = r.event_id ? await db.prepare("SELECT place_id, title, description, event_date, event_time, end_time, recurring, recurrence_pattern, url, location_name, location_address, location_lat, location_lng, location_gmaps_link, organizer_name, organizer_place_id FROM events WHERE id = ?").bind(r.event_id).first() : null;
+    const currentPlace = current && !place && current.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(current.place_id).first() : null;
+    out.push({
+      rowId: String(r.id), timestamp: r.timestamp, eventId: r.event_id, placeId: r.place_id,
+      placeName: (place && place.name) || (currentPlace && currentPlace.name) || "",
+      title: r.title, description: r.description, eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time,
+      recurring: !!r.recurring, recurrencePattern: r.recurrence_pattern, url: r.url, changesSummary: r.changes_summary,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
+      current: current || {},
+    });
+  }
+  return out;
+}
+
+async function getAdminReviews(db) {
+  const [reviewRows, imageRows] = await Promise.all([
+    db.prepare(
+      `SELECT r.*, p.name AS place_name, b.reason AS ban_reason
+       FROM reviews r
+       LEFT JOIN places p ON p.id = r.place_id
+       LEFT JOIN reviewer_bans b ON b.email_hash = r.email_hash
+       WHERE r.email_hash != ''
+       ORDER BY r.id DESC`
+    ).all(),
+    db.prepare(
+      `SELECT id, review_id, status, moderation_reason, content_type, size_bytes, created_at, photo_tag
+       FROM review_images ORDER BY created_at, id`
+    ).all(),
+  ]);
+  const imagesByReview = new Map();
+  for (const image of imageRows.results) {
+    const reviewId = String(image.review_id);
+    if (!imagesByReview.has(reviewId)) imagesByReview.set(reviewId, []);
+    imagesByReview.get(reviewId).push({
+      id: image.id,
+      status: image.status || "yes",
+      moderationReason: image.moderation_reason || "",
+      contentType: image.content_type || "",
+      sizeBytes: Number(image.size_bytes || 0),
+      createdAt: image.created_at || "",
+      photoTag: image.photo_tag == null ? "location" : image.photo_tag,
+    });
+  }
+  return reviewRows.results.map((r) => ({
+    rowIndex: String(r.id), placeId: r.place_id, placeName: r.place_name || "",
+    rating: Number(r.rating), text: r.text || "", timestamp: r.timestamp,
+    status: r.status || "", moderationReason: r.moderation_reason || "",
+    emailHash: `${(r.email_hash || "").substring(0, 8)}…`,
+    banned: r.ban_reason != null, banReason: r.ban_reason || "",
+    images: imagesByReview.get(String(r.id)) || [],
+  }));
+}
+
+async function getAdminReviewImage(db, env, imageId, headers) {
+  if (!env.MEDIA || !REVIEW_IMAGE_ID_RE.test(imageId)) return json({ error: "Image not found" }, 404, headers);
+  const row = await db.prepare("SELECT object_key, content_type FROM review_images WHERE id = ?").bind(imageId).first();
+  if (!row) return json({ error: "Image not found" }, 404, headers);
+  const object = await env.MEDIA.get(row.object_key);
+  if (!object) return json({ error: "Image not found" }, 404, headers);
+  const responseHeaders = new Headers(headers);
+  responseHeaders.delete("Content-Type");
+  object.writeHttpMetadata(responseHeaders);
+  responseHeaders.set("Content-Type", row.content_type);
+  responseHeaders.set("Cache-Control", "private, no-store");
+  responseHeaders.set("X-Content-Type-Options", "nosniff");
+  return new Response(object.body, { headers: responseHeaders });
+}
+
+async function getPendingEid(db) {
+  const { results } = await db.prepare("SELECT * FROM eid_new WHERE status = 'pending' ORDER BY id").all();
+  return results.map((r) => ({
+    rowId: String(r.id), timestamp: r.timestamp, name: r.name, address: r.address, mapsLink: r.maps_link,
+    organizer: r.organizer, jamaats: r.jamaats, date: r.date, notes: r.notes, score: r.score,
+    googleName: r.google_name, googleAddress: r.google_address, lat: r.lat ?? "", lng: r.lng ?? "", placeId: r.place_id, enrichedAt: r.enriched_at,
+  }));
+}
+
+// Full (not just pending) listings, so the dashboard can browse every dataset it holds, not only approval queues.
+async function getAdminEvents(db) {
+  const { results } = await db.prepare("SELECT * FROM events ORDER BY event_date DESC, id DESC").all();
+  const out = [];
+  for (const r of results) {
+    const place = r.place_id ? await db.prepare("SELECT name FROM places WHERE id = ?").bind(r.place_id).first() : null;
+    out.push({
+      eventId: r.id, placeId: r.place_id, placeName: (place && place.name) || "", title: r.title, description: r.description,
+      eventDate: r.event_date, eventTime: r.event_time, endTime: r.end_time, recurring: !!r.recurring,
+      recurrencePattern: r.recurrence_pattern, url: r.url, createdAt: r.created_at,
+      locationName: r.location_name || "", locationAddress: r.location_address || "",
+      locationLat: r.location_lat, locationLng: r.location_lng, locationGmapsLink: r.location_gmaps_link || "",
+      organizerName: r.organizer_name || "", organizerPlaceId: r.organizer_place_id || "",
+      status: r.status || "", rejectReason: r.reject_reason || "",
+    });
+  }
+  return out;
+}
+
+async function getAdminEidPrayers(db) {
+  const { results } = await db.prepare("SELECT * FROM eid_prayers ORDER BY name").all();
+  return results.map((r) => ({
+    id: r.id, name: r.name, address: r.address, lat: r.lat ?? "", lng: r.lng ?? "",
+    organizer: r.organizer, jamaats: r.jamaats, notes: r.notes, date: r.date,
+  }));
+}
+
+const TYPE_STYLE_GROUPS = new Set(["restaurant_restaurant_type", "service_service_type", "space_space_type"]);
+
+async function getAdminTypeStyles(db) {
+  const { results } = await db.prepare(
+    "SELECT type, tag_id, label, icon, color FROM tags WHERE type IN ('restaurant_restaurant_type','service_service_type','space_space_type') ORDER BY type, label"
+  ).all();
+  return {
+    types: results.map((r) => ({
+      category: r.type,
+      tagId: r.tag_id,
+      label: r.label,
+      icon: r.icon || "",
+      color: r.color || "",
+    })),
+  };
+}
+
+const GET_ACTIONS = {
+  "admin-link-hub": (db) => getAdminLinkHub(db),
+  "admin-app-settings": (db) => readAdminAppSettings(db),
+  "admin-stats": (db) => getAdminStats(db),
+  "pending-new": (db) => getPendingNew(db),
+  "pending-edits": (db) => getPendingEdits(db),
+  "admin-places": (db) => getAdminPlaces(db),
+  "admin-contact": (db) => getAdminContacts(db),
+  "admin-wishes": (db) => getAdminWishes(db),
+  "pending-events": (db) => getPendingEvents(db),
+  "pending-event-edits": (db) => getPendingEventEdits(db),
+  "admin-reviews": (db) => getAdminReviews(db),
+  "pending-eid": (db) => getPendingEid(db),
+  "admin-events": (db) => getAdminEvents(db),
+  "admin-eid-prayers": (db) => getAdminEidPrayers(db),
+  "admin-log": (db, url) => getAdminLog(db, url),
+  "admin-social-videos": (db) => listAllSocialVideos(db),
+  "admin-type-styles": (db) => getAdminTypeStyles(db),
+};
+
+export async function onRequestGet(context) {
+  const { env, request } = context;
+  const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Vary": "Origin", "Access-Control-Allow-Origin": adminAllowedOrigin(request, env) };
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
+
+  const url = new URL(request.url);
+  const action = url.searchParams.get("action") || "";
+  const handler = GET_ACTIONS[action];
+  const isReviewImage = action === "admin-review-image";
+  if (!handler && !isReviewImage) return json({ error: "Unknown admin action" }, 400, headers);
+
+  const auth = await authenticateAdmin(request, env);
+  if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
+
+  try {
+    if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
+    return json(await handler(env.DB, url), 200, headers);
+  } catch {
+    return json({ error: "Service error" }, 502, headers);
+  }
+}
+
+// ── POST (write) actions ───────────────────────────────────────────────────
+
+// Code.gs:2382 copyNewRowToPlaces, folded into one atomic batch.
+async function approveNew(db, rowId, env) {
+  const row = await db.prepare("SELECT * FROM new_places WHERE id = ?").bind(rowId).first();
+  if (!row) return { error: "Row not found (may already be processed)" };
+
+  let name = row.google_name || row.name || "";
+  const type = (row.type || "").toString().trim().toLowerCase();
+  let address = normaliseAddress(row.google_address || row.address || "");
+  let lat = row.lat;
+  let lng = row.lng;
+  let website = row.website || "";
+  let phone = row.phone || "";
+  let openingHours = row.opening_hours || "";
+  let googleReview = row.google_review || "";
+  let googleRating = row.google_rating ?? null;
+  let googleRatingCount = row.google_rating_count ?? null;
+  let googleInfoRaw = row.google_info || "";
+  const mapsLink = (row.maps_link || "").toString().trim();
+  let googleDetailsFound = !!(openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw);
+
+  // Approval is the last chance to repair a link-only submission before it
+  // becomes live. Fetch rich Details again so bad parsed path names (for
+  // example /maps/place/data=... share blobs) cannot outrank Google truth.
+  if (env) {
+    if (mapsLink) {
+      try {
+        const enriched = await enrichFromMapsLink(env, {
+          mapsUrl: mapsLink,
+          userName: row.name || "",
+          userAddress: row.address || "",
+          userType: type,
+          website,
+          phone,
+          rich: true,
+        });
+        if (enriched.hasData) {
+          if (enriched.googleName) name = enriched.googleName;
+          if (enriched.googleAddress) address = normaliseAddress(enriched.googleAddress);
+          if (enriched.lat != null) lat = enriched.lat;
+          if (enriched.lng != null) lng = enriched.lng;
+          if (enriched.website) website = enriched.website;
+          if (enriched.phone) phone = enriched.phone;
+          if (enriched.openingHours) openingHours = enriched.openingHours;
+          if (enriched.googleReview) googleReview = enriched.googleReview;
+          if (enriched.googleRating != null) googleRating = enriched.googleRating;
+          if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
+          if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
+          googleDetailsFound = !!enriched.detailsFound;
+        }
+      } catch { /* best-effort */ }
+    }
+    if ((lat == null || lng == null) && (row.name || row.address)) {
+      try {
+        const geo = await forwardGeocode([row.name, row.address].filter(Boolean).join(", "), env);
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+          if (!address && geo.address) address = normaliseAddress(geo.address);
+        }
+      } catch { /* best-effort */ }
+    }
+    if (lat != null && lng != null) {
+      await db.prepare(
+        `UPDATE new_places
+         SET lat = ?, lng = ?, google_name = COALESCE(NULLIF(?, ''), google_name),
+             google_address = COALESCE(NULLIF(?, ''), google_address),
+             website = COALESCE(NULLIF(?, ''), website), phone = COALESCE(NULLIF(?, ''), phone),
+             opening_hours = COALESCE(NULLIF(?, ''), opening_hours),
+             google_review = COALESCE(NULLIF(?, ''), google_review),
+             google_rating = COALESCE(?, google_rating),
+             google_rating_count = COALESCE(?, google_rating_count),
+             google_info = COALESCE(NULLIF(?, ''), google_info)
+         WHERE id = ?`
+      ).bind(lat, lng, name || "", address || "", website || "", phone || "", openingHours || "", googleReview || "", googleRating, googleRatingCount, googleInfoRaw || "", rowId).run();
+    }
+  }
+
+  if (mapsLink && !googleDetailsFound) {
+    return { error: "Google Place Details could not verify this Maps link; place was not approved" };
+  }
+
+  if (!name || lat == null || lng == null) {
+    await db.prepare("UPDATE new_places SET status = 'yes' WHERE id = ?").bind(rowId).run();
+    return { success: true, warning: "Approved without map coordinates — place was not added to the live map." };
+  }
+
+  const tags = parseTagString((row.tags || "").toString().trim());
+  let googleInfo = {};
+  try { googleInfo = googleInfoRaw ? JSON.parse(googleInfoRaw) : {}; } catch { googleInfo = {}; }
+  if (googleInfo.servesAlcohol && !tags.hasOwnProperty("no_alcohol")) tags.no_alcohol = false;
+  delete googleInfo.servesAlcohol;
+
+  const newId = await generateId(db, "places", 6);
+  const statements = [
+    db.prepare("UPDATE new_places SET status = 'yes', app_place_id = ?, lat = ?, lng = ? WHERE id = ?").bind(newId, lat, lng, rowId),
+    db.prepare(
+      "INSERT INTO places (id, name, type, address, lat, lng, tags, notes, opening_hours, website, phone, google_info, google_info_enriched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    ).bind(newId, name, type, address, lat, lng, JSON.stringify(tags), row.notes || "", openingHours || "", website || "", phone || "", Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : "", Object.keys(googleInfo).length ? helsinkiTimestamp() : ""),
+  ];
+  await db.batch(statements);
+
+  if (googleReview) {
+    await db.prepare("INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash, google_review, google_rating, google_rating_count) VALUES (?,'','','',?,'yes','',?,?,?)")
+      .bind(newId, new Date().toISOString(), googleReview, googleRating, googleRatingCount).run();
+  }
+  await upsertPlaceAppLinks(db, newId, row.app_links);
+  return { success: true, placeId: newId };
+}
+
+async function rejectNew(db, rowId, reason) {
+  const { meta } = await db.prepare("UPDATE new_places SET status = 'no', reject_reason = ? WHERE id = ?").bind(reason || "", rowId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Row not found (may already be processed)" };
+}
+
+// Code.gs:2452 applyEditToPlaces
+async function approveEdit(db, rowId) {
+  const row = await db.prepare("SELECT * FROM edits WHERE id = ?").bind(rowId).first();
+  if (!row) return { error: "Row not found (may already be processed)" };
+  if (!row.place_id) {
+    await db.prepare("UPDATE edits SET status = 'yes' WHERE id = ?").bind(rowId).run();
+    return { success: true };
+  }
+
+  const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(row.place_id).first();
+  const statements = [db.prepare("UPDATE edits SET status = 'yes' WHERE id = ?").bind(rowId)];
+  if (place) {
+    const sets = [], binds = [];
+    if (row.name) { sets.push("name = ?"); binds.push(row.name); }
+    if (row.type) { sets.push("type = ?"); binds.push(row.type.toLowerCase()); }
+    if (row.address) { sets.push("address = ?"); binds.push(normaliseAddress(row.address)); }
+    if (row.tags) { sets.push("tags = ?"); binds.push(JSON.stringify(parseTagString(row.tags))); }
+    if (row.notes) { sets.push("notes = ?"); binds.push(row.notes); }
+    if (row.opening_hours) { sets.push("opening_hours = ?"); binds.push(row.opening_hours); }
+    if (row.website) { sets.push("website = ?"); binds.push(row.website); }
+    if (row.phone) { sets.push("phone = ?"); binds.push(row.phone); }
+    if (sets.length) statements.push(db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id = ?`).bind(...binds, row.place_id));
+  }
+  await db.batch(statements);
+  if (place) await upsertPlaceAppLinks(db, row.place_id, row.app_links);
+  return { success: true };
+}
+
+async function rejectEdit(db, rowId, reason) {
+  const { meta } = await db.prepare("UPDATE edits SET status = 'no', reject_reason = ? WHERE id = ?").bind(reason || "", rowId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Row not found (may already be processed)" };
+}
+
+async function updateContactReplied(db, rowId, replied) {
+  const status = (replied || "").toString().trim().toLowerCase();
+  if (status !== "yes" && status !== "no") return { error: "Invalid replied status" };
+  const { meta } = await db.prepare("UPDATE contacts SET replied = ? WHERE id = ?").bind(status === "yes" ? "Yes" : "No", rowId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Contact entry not found" };
+}
+
+const VALID_WISH_IMPL = ["Yes", "Inprogress", "Out of Scope", ""];
+
+async function updateWishApproved(db, wishId, value) {
+  if (!wishId) return { error: "Missing wishId" };
+  const status = (value || "").toString().trim();
+  if (status !== "Yes" && status !== "No") return { error: "Invalid value (must be Yes or No)" };
+  const { meta } = await db.prepare("UPDATE wishes SET approved = ? WHERE id = ?").bind(status, wishId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Wish not found" };
+}
+
+async function updateWishImplemented(db, wishId, value) {
+  if (!wishId) return { error: "Missing wishId" };
+  const status = (value || "").toString().trim();
+  if (!VALID_WISH_IMPL.includes(status)) return { error: "Invalid value" };
+  const { meta } = await db.prepare("UPDATE wishes SET implemented = ? WHERE id = ?").bind(status, wishId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Wish not found" };
+}
+
+async function updateBoycott(db, placeId, boycott) {
+  if (!placeId) return { error: "Missing placeId" };
+  const { meta } = await db.prepare("UPDATE places SET boycott = ? WHERE id = ?").bind(boycott === "Yes" || boycott === true ? 1 : 0, placeId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
+}
+
+async function updatePlaceDisabled(db, placeId, disabled) {
+  if (!placeId) return { error: "Missing placeId" };
+  const { meta } = await db.prepare("UPDATE places SET disabled = ? WHERE id = ?").bind(disabled === "Yes" || disabled === true ? 1 : 0, placeId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: `Place not found: ${placeId}` };
+}
+
+async function updatePlaceCoordinates(db, data) {
+  const placeId = (data.placeId || "").toString().trim();
+  if (!placeId) return { error: "Missing placeId" };
+
+  const hasBothCoordinates = data.lat != null && data.lng != null
+    && String(data.lat).trim() !== "" && String(data.lng).trim() !== "";
+  const lat = Number(data.lat);
+  const lng = Number(data.lng);
+  if (!hasBothCoordinates || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { error: "Latitude and longitude must both be valid numbers" };
+  }
+  if (lat < -90 || lat > 90) return { error: "Latitude must be between -90 and 90" };
+  if (lng < -180 || lng > 180) return { error: "Longitude must be between -180 and 180" };
+
+  const { meta } = await db.prepare(
+    "UPDATE places SET lat = ?, lng = ? WHERE id = ?"
+  ).bind(lat, lng, placeId).run();
+  return meta.rows_written > 0
+    ? { success: true, coordinates: { lat, lng } }
+    : { error: `Place not found: ${placeId}` };
+}
+
+async function refreshPlaceInfo(db, placeId, env) {
+  if (!placeId) return { error: "Missing placeId" };
+  const place = await db.prepare("SELECT * FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  const source = await db.prepare(
+    "SELECT maps_link, name, address FROM new_places WHERE app_place_id = ? AND maps_link != '' ORDER BY id DESC LIMIT 1"
+  ).bind(placeId).first();
+
+  let mapsUrl = (source && source.maps_link) || "";
+  if (!mapsUrl && place.google_info) {
+    try { mapsUrl = JSON.parse(place.google_info).mapsUrl || ""; } catch { mapsUrl = ""; }
+  }
+  if (!mapsUrl) return { error: "No Google Maps link found for this place" };
+
+  const enriched = await enrichFromMapsLink(env, {
+    mapsUrl,
+    userName: (source && source.name) || place.name || "",
+    userAddress: (source && source.address) || place.address || "",
+    userType: place.type || "",
+    website: place.website || "",
+    phone: place.phone || "",
+    rich: true,
+  });
+  if (!enriched.hasData) return { error: "Could not refresh this Google Maps link" };
+  if (!enriched.detailsFound) return { error: "Google Place Details could not verify this Maps link" };
+
+  const googleInfo = enriched.googleInfo || {};
+  delete googleInfo.servesAlcohol;
+
+  const name = enriched.googleName || place.name || "";
+  const address = normaliseAddress(enriched.googleAddress || place.address || "");
+  const hasGoogleCoordinates = enriched.lat != null && enriched.lng != null
+    && String(enriched.lat).trim() !== "" && String(enriched.lng).trim() !== "";
+  const lat = Number(enriched.lat);
+  const lng = Number(enriched.lng);
+  if (!hasGoogleCoordinates || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return { error: "Google Place Details did not return valid coordinates" };
+  }
+  const googleInfoRaw = Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : place.google_info || "";
+
+  await db.prepare(
+    `UPDATE places
+     SET name = ?, address = ?, lat = ?, lng = ?,
+         opening_hours = ?, website = ?, phone = ?,
+         google_info = ?, google_info_enriched_at = ?
+     WHERE id = ?`
+  ).bind(
+    name, address, lat, lng,
+    enriched.openingHours || place.opening_hours || "",
+    enriched.website || place.website || "",
+    enriched.phone || place.phone || "",
+    googleInfoRaw,
+    googleInfoRaw ? helsinkiTimestamp() : place.google_info_enriched_at || "",
+    placeId
+  ).run();
+
+  if (enriched.googleReview || enriched.googleRating != null || enriched.googleRatingCount != null) {
+    await db.prepare(
+      `INSERT INTO reviews (place_id, rating, text, email, timestamp, status, email_hash, google_review, google_rating, google_rating_count)
+       VALUES (?,'','','',?,'yes','',?,?,?)
+       ON CONFLICT(place_id, email_hash) DO UPDATE SET
+         timestamp = excluded.timestamp,
+         status = 'yes',
+         google_review = excluded.google_review,
+         google_rating = excluded.google_rating,
+         google_rating_count = excluded.google_rating_count`
+    ).bind(
+      placeId,
+      new Date().toISOString(),
+      enriched.googleReview || "",
+      enriched.googleRating ?? null,
+      enriched.googleRatingCount ?? null
+    ).run();
+  }
+
+  return { success: true, coordinates: { lat, lng } };
+}
+
+async function deletePlace(db, placeId, env) {
+  if (!placeId) return { error: "Missing placeId" };
+  const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  let mediaKeys = [];
+  try {
+    const { results } = await db.prepare("SELECT object_key FROM review_images WHERE place_id = ?").bind(placeId).all();
+    mediaKeys = results.map((row) => row.object_key).filter(Boolean);
+  } catch { mediaKeys = []; }
+  const statements = [
+    db.prepare("DELETE FROM review_images WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM reviews WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM saved_places WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM events WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM event_edits WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM place_app_links WHERE place_id = ?").bind(placeId),
+    db.prepare("DELETE FROM place_social_videos WHERE place_id = ?").bind(placeId),
+  ];
+  try {
+    await db.prepare("SELECT id FROM place_promos LIMIT 1").first();
+    statements.push(db.prepare("DELETE FROM place_promos WHERE place_id = ?").bind(placeId));
+  } catch {
+    // Database has not run the promo migration yet.
+  }
+  statements.push(db.prepare("DELETE FROM places WHERE id = ?").bind(placeId));
+  await db.batch(statements);
+  if (mediaKeys.length && env.MEDIA) {
+    try { await env.MEDIA.delete(mediaKeys); } catch { /* D1 deletion remains authoritative. */ }
+  }
+  return { success: true };
+}
+
+const VALID_SPONSOR_TIERS = ["", "basic", "featured", "spotlight"];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_PROMOS_PER_PLACE = 12;
+const MAX_PROMO_CODE_LEN = 80;
+const MAX_PROMO_DESC_LEN = 240;
+const TYPE_STYLE_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const TYPE_STYLE_BUILTIN_RE = /^[a-z0-9_-]{1,40}$/;
+const TYPE_STYLE_DATA_ICON_RE = /^data:image\/(?:svg\+xml|png|webp|jpeg|jpg|gif|avif|bmp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]{1,65000}$/;
+
+async function updateTypeStyle(db, data) {
+  const category = (data.category || "").toString().trim().toLowerCase();
+  const tagId = (data.tagId || "").toString().trim();
+  const icon = (data.icon || "").toString().trim();
+  const color = (data.color || "").toString().trim();
+  if (!TYPE_STYLE_GROUPS.has(category)) return { error: "Invalid type category" };
+  if (!tagId || tagId.length > 80) return { error: "Invalid type id" };
+  if (icon && !TYPE_STYLE_BUILTIN_RE.test(icon) && !TYPE_STYLE_DATA_ICON_RE.test(icon)) return { error: "Invalid icon" };
+  if (color && !TYPE_STYLE_COLOR_RE.test(color)) return { error: "Invalid color" };
+
+  const { meta } = await db.prepare("UPDATE tags SET icon = ?, color = ? WHERE type = ? AND tag_id = ?")
+    .bind(icon, color, category, tagId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Type not found" };
+}
+
+function legacyPromoFromPlaceRow(row) {
+  const code = (row.sponsor_promo || "").toString().trim();
+  const description = (row.sponsor_promo_text || "").toString().trim();
+  const usableCode = ["true", "false"].includes(code.toLowerCase()) ? "" : code;
+  if (!usableCode && !description) return null;
+  return {
+    code: usableCode,
+    description,
+    startDate: row.sponsor_start_date || "",
+    endDate: row.sponsor_end_date || "",
+  };
+}
+
+function normalizePromoRows(rawPromos) {
+  const raw = Array.isArray(rawPromos) ? rawPromos : [];
+  if (raw.length > MAX_PROMOS_PER_PLACE) return { error: `A place can have at most ${MAX_PROMOS_PER_PLACE} promos` };
+
+  const promos = [];
+  for (const row of raw) {
+    const code = (row?.code || "").toString().trim();
+    const description = (row?.description || "").toString().trim();
+    const startDate = (row?.startDate || "").toString().trim();
+    const endDate = (row?.endDate || "").toString().trim();
+    if (!code && !description && !startDate && !endDate) continue;
+    if (!code && !description) return { error: "Each promo needs a code, a description, or both" };
+    if (code.length > MAX_PROMO_CODE_LEN) return { error: "Promo code is too long" };
+    if (description.length > MAX_PROMO_DESC_LEN) return { error: "Promo description is too long" };
+    if (startDate && !DATE_RE.test(startDate)) return { error: "Invalid promo start date format (use YYYY-MM-DD)" };
+    if (endDate && !DATE_RE.test(endDate)) return { error: "Invalid promo end date format (use YYYY-MM-DD)" };
+    promos.push({ code, description, startDate, endDate });
+  }
+  return { promos };
+}
+
+async function updateSponsor(db, data) {
+  const placeId = data.placeId;
+  if (!placeId) return { error: "Missing placeId" };
+  const tier = (data.sponsorTier || "").toString().trim().toLowerCase();
+  if (!VALID_SPONSOR_TIERS.includes(tier)) return { error: "Invalid sponsor tier" };
+  const startDate = (data.sponsorStartDate || "").toString().trim();
+  const endDate = (data.sponsorEndDate || "").toString().trim();
+  if (startDate && !DATE_RE.test(startDate)) return { error: "Invalid start date format (use YYYY-MM-DD)" };
+  if (endDate && !DATE_RE.test(endDate)) return { error: "Invalid end date format (use YYYY-MM-DD)" };
+  const normalized = normalizePromoRows(data.promos);
+  if (normalized.error) return { error: normalized.error };
+
+  const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(placeId).first();
+  if (!place) return { error: `Place not found: ${placeId}` };
+
+  const firstPromo = normalized.promos[0] || { code: "", description: "" };
+  const statements = [
+    db.prepare("UPDATE places SET sponsor_tier = ?, sponsor_promo = ?, sponsor_promo_text = ?, sponsor_start_date = ?, sponsor_end_date = ? WHERE id = ?")
+      .bind(tier, firstPromo.code, firstPromo.description, startDate, endDate, placeId),
+  ];
+  try {
+    await db.prepare("SELECT id FROM place_promos LIMIT 1").first();
+    statements.push(db.prepare("DELETE FROM place_promos WHERE place_id = ?").bind(placeId));
+    normalized.promos.forEach((promo, index) => {
+      statements.push(
+        db.prepare("INSERT INTO place_promos (place_id, code, description, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?)")
+          .bind(placeId, promo.code, promo.description, promo.startDate, promo.endDate, index)
+      );
+    });
+  } catch {
+    if (normalized.promos.length > 1) return { error: "Promo table missing. Run the place_promos migration before saving multiple promos." };
+  }
+  await db.batch(statements);
+  return { success: true };
+}
+
+async function approveEvent(db, eventId, env) {
+  const event = await db.prepare("SELECT * FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) return { error: "Event not found (may already be processed)" };
+  if (!event.place_id && (event.location_lat == null || event.location_lng == null) && event.location_gmaps_link) {
+    const enriched = await enrichFromMapsLink(env, {
+      mapsUrl: event.location_gmaps_link,
+      userName: event.location_name || "",
+      userAddress: event.location_address || "",
+      website: "",
+      phone: "",
+      rich: false,
+    });
+    if (enriched.hasData) {
+      await db.prepare("UPDATE events SET location_name = ?, location_address = ?, location_lat = ?, location_lng = ? WHERE id = ?")
+        .bind(event.location_name || enriched.googleName || "", event.location_address || enriched.googleAddress || "", enriched.lat, enriched.lng, eventId).run();
+      event.location_lat = enriched.lat;
+      event.location_lng = enriched.lng;
+    }
+  }
+  if (!event.place_id && (event.location_lat == null || event.location_lng == null)) {
+    return { error: "Custom location could not be resolved. Check its Google Maps link before approval." };
+  }
+  const { meta } = await db.prepare("UPDATE events SET status = 'yes' WHERE id = ?").bind(eventId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Event not found (may already be processed)" };
+}
+
+async function rejectEvent(db, eventId, reason) {
+  const { meta } = await db.prepare("UPDATE events SET status = 'no', reject_reason = ? WHERE id = ?").bind(reason || "", eventId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Event not found (may already be processed)" };
+}
+
+async function deleteEvent(db, eventId) {
+  const event = await db.prepare("SELECT id FROM events WHERE id = ?").bind(eventId).first();
+  if (!event) return { error: "Event not found" };
+  await db.batch([
+    db.prepare("DELETE FROM event_edits WHERE event_id = ?").bind(eventId),
+    db.prepare("DELETE FROM events WHERE id = ?").bind(eventId),
+  ]);
+  return { success: true };
+}
+
+// Code.gs:1372 applyEventEditToEvents — only overwrites non-empty edit fields.
+async function approveEventEdit(db, rowId, env) {
+  const row = await db.prepare("SELECT * FROM event_edits WHERE id = ?").bind(rowId).first();
+  if (!row) return { error: "Event edit not found (may already be processed)" };
+
+  if (!row.place_id && row.location_gmaps_link && (row.location_lat == null || row.location_lng == null)) {
+    const enriched = await enrichFromMapsLink(env, {
+      mapsUrl: row.location_gmaps_link,
+      userName: row.location_name || "",
+      userAddress: row.location_address || "",
+      website: "",
+      phone: "",
+      rich: false,
+    });
+    if (!enriched.hasData || enriched.lat == null || enriched.lng == null) {
+      return { error: "Custom location could not be resolved. Check its Google Maps link before approval." };
+    }
+    row.location_name = row.location_name || enriched.googleName || "";
+    row.location_address = row.location_address || enriched.googleAddress || "";
+    row.location_lat = enriched.lat;
+    row.location_lng = enriched.lng;
+  }
+
+  const statements = [db.prepare("UPDATE event_edits SET status = 'yes' WHERE id = ?").bind(rowId)];
+  if (row.event_id) {
+    const fieldMap = [["title", row.title], ["description", row.description], ["event_date", row.event_date], ["event_time", row.event_time], ["end_time", row.end_time], ["recurrence_pattern", row.recurrence_pattern], ["url", row.url]];
+    const sets = [], binds = [];
+    for (const [col, val] of fieldMap) {
+      if (val) { sets.push(`${col} = ?`); binds.push(val); }
+    }
+    if (row.recurring) { sets.push("recurring = 1"); }
+    const locationChanged = row.place_id || row.location_name || row.location_gmaps_link || (row.location_lat != null && row.location_lng != null);
+    if (locationChanged) {
+      for (const [col, val] of [
+        ["place_id", row.place_id || ""],
+        ["location_name", row.location_name || ""],
+        ["location_address", row.location_address || ""],
+        ["location_lat", row.location_lat],
+        ["location_lng", row.location_lng],
+        ["location_gmaps_link", row.location_gmaps_link || ""],
+      ]) {
+        sets.push(`${col} = ?`);
+        binds.push(val);
+      }
+    }
+    if (row.organizer_name || row.organizer_place_id) {
+      sets.push("organizer_name = ?", "organizer_place_id = ?");
+      binds.push(row.organizer_name || "", row.organizer_place_id || "");
+    }
+    if (sets.length) statements.push(db.prepare(`UPDATE events SET ${sets.join(", ")} WHERE id = ?`).bind(...binds, row.event_id));
+  }
+  await db.batch(statements);
+  return { success: true };
+}
+
+async function rejectEventEdit(db, rowId, reason) {
+  const { meta } = await db.prepare("UPDATE event_edits SET status = 'no', reject_reason = ? WHERE id = ?").bind(reason || "", rowId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Event edit not found (may already be processed)" };
+}
+
+async function updateReviewStatus(db, rowIndex, newStatus, reason = "") {
+  const rowNum = parseInt(rowIndex, 10);
+  if (!rowNum || !REVIEW_STATUSES.has(newStatus)) return { error: "Invalid review status" };
+  const moderationReason = newStatus === "yes" ? "" : truncate((reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  const { meta } = await db.prepare("UPDATE reviews SET status = ?, moderation_reason = ? WHERE id = ? AND email_hash != ''")
+    .bind(newStatus, moderationReason, rowNum).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Row not found" };
+}
+
+async function updateReviewImageStatus(db, data) {
+  const imageId = (data.imageId || "").toString();
+  const status = (data.status || "").toString();
+  if (!REVIEW_IMAGE_ID_RE.test(imageId) || !IMAGE_STATUSES.has(status)) return { error: "Invalid image status" };
+  const moderationReason = status === "yes" ? "" : truncate((data.reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  const { meta } = await db.prepare("UPDATE review_images SET status = ?, moderation_reason = ? WHERE id = ?")
+    .bind(status, moderationReason, imageId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Image not found" };
+}
+
+async function deleteReview(db, data, env) {
+  const reviewId = parseInt(data.rowIndex, 10);
+  if (!reviewId) return { error: "Invalid review" };
+  const review = await db.prepare("SELECT id FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId).first();
+  if (!review) return { error: "Review not found" };
+  const { results } = await db.prepare("SELECT object_key FROM review_images WHERE review_id = ?").bind(reviewId).all();
+  await db.batch([
+    db.prepare("DELETE FROM review_images WHERE review_id = ?").bind(reviewId),
+    db.prepare("DELETE FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId),
+  ]);
+  const objectKeys = (results || []).map((row) => row.object_key).filter(Boolean);
+  if (objectKeys.length && env.MEDIA) {
+    try { await env.MEDIA.delete(objectKeys); } catch { /* Deleted metadata keeps orphaned media inaccessible. */ }
+  }
+  return { success: true, deletedImages: objectKeys.length };
+}
+
+async function updateReviewerBan(db, data, actor, banned) {
+  const reviewId = parseInt(data.rowIndex, 10);
+  if (!reviewId) return { error: "Invalid review" };
+  const review = await db.prepare("SELECT email_hash FROM reviews WHERE id = ? AND email_hash != ''").bind(reviewId).first();
+  if (!review?.email_hash) return { error: "Reviewer not found" };
+  if (!banned) {
+    const { meta } = await db.prepare("DELETE FROM reviewer_bans WHERE email_hash = ?").bind(review.email_hash).run();
+    return meta.rows_written > 0 ? { success: true } : { error: "Reviewer is not banned" };
+  }
+  const reason = truncate((data.reason || "").toString().trim(), MAX_MODERATION_REASON_LEN);
+  await db.batch([
+    db.prepare(
+      `INSERT INTO reviewer_bans (email_hash, reason, created_at, created_by) VALUES (?,?,?,?)
+       ON CONFLICT(email_hash) DO UPDATE SET reason = excluded.reason, created_at = excluded.created_at, created_by = excluded.created_by`
+    ).bind(review.email_hash, reason, new Date().toISOString(), actor.email),
+    db.prepare("UPDATE reviews SET status = 'no', moderation_reason = ? WHERE email_hash = ?")
+      .bind(reason || "Reviewer banned", review.email_hash),
+  ]);
+  return { success: true };
+}
+
+// Code.gs:950 copyEidNewToEidPrayers
+async function approveEid(db, rowId) {
+  const row = await db.prepare("SELECT * FROM eid_new WHERE id = ?").bind(rowId).first();
+  if (!row) return { error: "Row not found (may already be processed)" };
+
+  const name = row.google_name || row.name || "";
+  const address = normaliseAddress(row.google_address || row.address || "");
+  const lat = row.lat, lng = row.lng;
+  if (!name || lat == null || lng == null) {
+    await db.prepare("UPDATE eid_new SET status = 'yes' WHERE id = ?").bind(rowId).run();
+    return { success: true };
+  }
+
+  const newId = await generateId(db, "eid_prayers", 6);
+  await db.batch([
+    db.prepare("UPDATE eid_new SET status = 'yes' WHERE id = ?").bind(rowId),
+    db.prepare("INSERT INTO eid_prayers (id, name, address, lat, lng, organizer, jamaats, notes, date) VALUES (?,?,?,?,?,?,'',?,?)")
+      .bind(newId, name, address, lat, lng, row.organizer || "", row.notes || "", row.date || ""),
+  ]);
+  return { success: true };
+}
+
+async function rejectEid(db, rowId) {
+  // Code.gs's adminRejectEid discards its reason argument too — matched here for parity.
+  const { meta } = await db.prepare("UPDATE eid_new SET status = 'no' WHERE id = ?").bind(rowId).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Row not found (may already be processed)" };
+}
+
+const POST_ACTIONS = {
+  "save-link-hub-settings": (db, data) => saveLinkHubSettings(db, data),
+  "save-link-hub-link": (db, data) => saveLinkHubLink(db, data),
+  "delete-link-hub-link": (db, data) => deleteLinkHubLink(db, data),
+  "update-app-settings": (db, data) => saveAppSettings(db, data),
+  "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
+  "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),
+  "approve-edit": (db, data) => approveEdit(db, data.rowId),
+  "reject-edit": (db, data) => rejectEdit(db, data.rowId, data.reason || ""),
+  "update-boycott": (db, data) => updateBoycott(db, data.placeId, data.boycott),
+  "update-place-disabled": (db, data) => updatePlaceDisabled(db, data.placeId, data.disabled),
+  "update-place-coordinates": (db, data) => updatePlaceCoordinates(db, data),
+  "refresh-place-info": (db, data, env) => refreshPlaceInfo(db, data.placeId, env),
+  "delete-place": (db, data, env) => deletePlace(db, data.placeId, env),
+  "update-sponsor": (db, data) => updateSponsor(db, data),
+  "update-type-style": (db, data) => updateTypeStyle(db, data),
+  "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
+  "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
+  "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),
+  "approve-event": (db, data, env) => approveEvent(db, data.eventId, env),
+  "reject-event": (db, data) => rejectEvent(db, data.eventId, data.reason || ""),
+  "delete-event": (db, data) => deleteEvent(db, data.eventId),
+  "approve-event-edit": (db, data, env) => approveEventEdit(db, data.rowId, env),
+  "reject-event-edit": (db, data) => rejectEventEdit(db, data.rowId, data.reason || ""),
+  "approve-review": (db, data) => updateReviewStatus(db, data.rowIndex, "yes"),
+  "reject-review": (db, data) => updateReviewStatus(db, data.rowIndex, "no", data.reason),
+  "set-review-status": (db, data) => updateReviewStatus(db, data.rowIndex, data.status, data.reason),
+  "set-review-image-status": (db, data) => updateReviewImageStatus(db, data),
+  "delete-review": (db, data, env) => deleteReview(db, data, env),
+  "ban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, true),
+  "unban-reviewer": (db, data, _env, actor) => updateReviewerBan(db, data, actor, false),
+  "approve-eid": (db, data) => approveEid(db, data.rowId),
+  "reject-eid": (db, data) => rejectEid(db, data.rowId),
+  "upsert-social-video": (db, data) => upsertSocialVideo(db, data.video || data),
+  "delete-social-video": (db, data) => deleteSocialVideo(db, data.videoId || data.id),
+};
+
+export async function onRequestPost(context) {
+  const { env, request } = context;
+  const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Vary": "Origin", "Access-Control-Allow-Origin": adminAllowedOrigin(request, env) };
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
+
+  let data;
+  try { data = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
+
+  if (data.action === "log-auth-event") {
+    const auth = await authenticateAdmin(request, env);
+    if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
+    return json(await handleLogAuthEvent(env.DB, auth.actor, data), 200, headers);
+  }
+
+  const handler = POST_ACTIONS[data.action];
+  if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
+
+  const auth = await authenticateAdmin(request, env);
+  if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
+
+  let result;
+  try {
+    result = await handler(env.DB, data, env, auth.actor);
+  } catch {
+    return json({ error: "Service error" }, 502, headers);
+  }
+
+  try {
+    await logAdminAction(env.DB, {
+      action: data.action, actor: auth.actor,
+      targetId: extractTargetId(data), detail: buildAuditDetail(data), success: !!result.success,
+    });
+  } catch { /* audit-log failure must never mask the real response */ }
+
+  return json(result, 200, headers);
+}
+
+export async function onRequestOptions(context) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": adminAllowedOrigin(context.request, context.env),
+      "Vary": "Origin",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}

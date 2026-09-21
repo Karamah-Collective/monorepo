@@ -1,0 +1,82 @@
+/* Loaded last so individual editors cannot drift from the shared tab system. */
+.pp-section-tabs,
+.settings-navigation.pp-section-tabs,
+.map-settings-tabs.pp-section-tabs,
+.website-content-tabs.pp-section-tabs,
+.hub-workspace-tabs.pp-section-tabs,
+.pp-type-style-tabs.pp-section-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  max-width: none;
+  min-height: 43px;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pp-section-tabs::-webkit-scrollbar { display: none; }
+.pp-section-tabs > button,
+.settings-navigation.pp-section-tabs > button,
+.map-settings-tabs.pp-section-tabs > button,
+.website-content-tabs.pp-section-tabs > button,
+.hub-workspace-tabs.pp-section-tabs > button,
+.pp-type-style-tabs.pp-section-tabs > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  width: auto;
+  min-height: 42px;
+  margin: 0;
+  padding: 9px 13px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  transition: color 170ms ease, background-color 170ms ease, transform 140ms var(--ease);
+}
+.pp-section-tabs > button b { font: inherit; }
+.pp-section-tabs > button small { display: none; }
+.pp-section-tabs > button::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 2px;
+  background: var(--interactive-accent);
+  opacity: 0;
+  transform: scaleX(.45);
+  transition: opacity 180ms ease, transform 220ms var(--ease);
+}
+.pp-section-tabs > button:hover { color: var(--text); background: var(--bg-alt); }
+.pp-section-tabs > button:active { transform: scale(.98); }
+.pp-section-tabs > button:is(.active, .is-active, [aria-selected="true"], [aria-pressed="true"], [aria-current]) {
+  color: var(--interactive-accent-hover);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 650;
+}
+.pp-section-tabs > button:is(.active, .is-active, [aria-selected="true"], [aria-pressed="true"], [aria-current])::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-section-tabs > button,
+  .pp-section-tabs > button::after { transition: none; }
+}

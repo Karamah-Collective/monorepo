@@ -1,0 +1,2908 @@
+/* ── Plus Jakarta Sans — self-hosted variable font (SIL Open Font License 1.1) ── */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./fonts/PlusJakartaSans-Variable-LatinExt.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./fonts/PlusJakartaSans-Variable-Latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.app-notice {
+  padding: var(--sp-7);
+  margin: var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--txt-base);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+.app-notice p { margin: 0; white-space: pre-line; }
+.app-notice a { color: var(--accent); }
+.app-notice a:not([hidden]) { display: inline-block; margin-top: var(--sp-3); }
+body.promos-disabled .pp-promo-btn { display: none; }
+
+:root {
+  --accent: #08705B;
+  --accent-soft: #e6f2ef;
+  --accent-muted: #4a9a88;
+
+  --gold: #b89030;
+  --gold-soft: #fdf6e8;
+  --logo-word: #352359;
+
+  --review: #d97706;
+  --review-soft: #fef3c7;
+
+  /* sponsor aliases — always reference these, not --gold directly */
+  --sponsor: var(--gold);
+  --sponsor-soft: var(--gold-soft);
+
+  /* Promos are independent of paid sponsorship. */
+  --promo: var(--accent);
+
+  --success: #1fa86a;
+  --success-soft: #e8f6ee;
+
+  --home: #0d9488;
+  --home-soft: #ccfbf1;
+  --cemetery: #475569;
+
+  --danger: #d64545;
+  --danger-vivid: #c62828;
+  --danger-soft: #fce8e8;
+
+  /* Warning/amber status color — alias onto --review rather than a new hex,
+     since it's the same amber hue already shipped (star-rating chip) and
+     already carries a tested dark-mode override at that definition. Found
+     while adding the "opening/closing soon" hours badge: --warning was
+     referenced in a couple of places (.nav-chip-turn, dark-mode chip tint)
+     but never actually defined anywhere — a latent bug where those rules
+     silently fell back to inherited text color. Fixed here rather than left. */
+  --warning: var(--review);
+  --warning-soft: var(--review-soft);
+
+  /* Badge LEVEL colors (src/profile.js's Profile "Your badges" grid) — these
+     are deliberately NEW and NOT aliased to any existing semantic color
+     (--success/--danger/--warning/--gold/--home): badge tier is conveyed by
+     the icon's own fill/ring/accent treatment, not color, so these 3 colors
+     mean ONLY "level I/II/III" and are reused identically across every tier
+     (Bronze through Legend) — see account-profile.js's computeBadges() doc
+     comment for the full tier/level design. */
+  --badge-lvl-1: #6b7280; /* level I — muted slate */
+  --badge-lvl-2: #3b6fd1; /* level II — clear blue */
+  --badge-lvl-3: #7c3aed; /* level III — vivid violet */
+
+  /* Google brand — "Sign in with Google" button, per Google's official
+     branding guidelines (developers.google.com/identity/branding-guidelines).
+     These are fixed brand colors, not app palette — do not derive from
+     --accent/--surface tokens, and the G-logo colors never change with
+     theme (light/dark override only the button chrome, never the logo). */
+  --google-btn-bg: #ffffff;
+  --google-btn-border: #747775;
+  --google-btn-text: #1f1f1f;
+  --google-g-blue: #4285f4;
+  --google-g-green: #34a853;
+  --google-g-yellow: #fbbc05;
+  --google-g-red: #ea4335;
+
+  /* Microsoft four-square logomark — fixed brand colors, unchanged since the
+     2012 rebrand, never derived from the app palette. Button chrome reuses
+     the same white/neutral tokens as .btn-google — both brands' official
+     "sign in with" guidelines converge on the same white-button style, so
+     one shared neutral chrome (not the logo colors) across every OAuth
+     provider button in this app is intentional, not an oversight. */
+  --ms-red: #f25022;
+  --ms-green: #7fba00;
+  --ms-blue: #00a4ef;
+  --ms-yellow: #ffb900;
+
+  /* Facebook brand — "Continue with Facebook" button, per Meta's official
+     button spec (a solid Facebook-blue fill with a white wordmark + label,
+     not the neutral white chrome Google/Microsoft share). This blue never
+     changes with the app's own light/dark theme — same "fixed brand color,
+     not derived from the app palette" rule as the Google/Microsoft tokens
+     above, just with no light/dark variant of its own since Meta's spec
+     doesn't define one. */
+  --facebook-btn-bg: #1877f2;
+  --facebook-btn-text: #ffffff;
+
+  /* Apple brand — "Sign in with Apple" button, per Apple's Human Interface
+     Guidelines: a solid black button with a white glyph+label in a light
+     context, and — unlike Google/Microsoft/Facebook, whose chrome is either
+     always neutral or always brand-colored — a fully inverted white
+     button/black glyph+label variant is REQUIRED (not optional) whenever the
+     surrounding UI is in dark mode. The dark-mode override lives in
+     styles.css's `body.dark-mode` variable block, alongside every other
+     theme-dependent token swap in this app. */
+  --apple-btn-bg: #000000;
+  --apple-btn-text: #ffffff;
+  --apple-btn-border: transparent;
+
+  --hsl-bus: #1a73b8;
+  --hsl-trunk: #ff6319;
+  --hsl-tram: #1fa86a;
+  --hsl-metro: #ff6319;
+  --hsl-rail: #8c4799;
+  --hsl-ferry: #00b9e4;
+  --hsl-foli: #008161;
+
+  --walk: #52525b;
+  --funicular: #71717a;
+
+  --canvas: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f2f2f0;
+  --surface-3: #e4e4e1;
+
+  --text: #111111;
+  --text-2: #525252;
+  --text-3: #8c8c8c;
+
+  --border: #e2e2e2;
+  --border-light: #f0f0f0;
+
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+  --r-2xl: 28px;
+  --r-3xl: 32px;
+  --r-pill: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.07), 0 1px 6px rgba(0, 0, 0, 0.03);
+  /* multi-layer elevated shadow — popups, modals */
+  --shadow-xl: 0 12px 32px -8px rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+  /* wide diffused shadow — premium floating UI (tab bar, sheets) */
+  --shadow-float: 0 16px 56px -12px rgba(0, 0, 0, 0.10), 0 6px 16px -4px rgba(0, 0, 0, 0.04);
+
+  /* tinted shadows — subtle brand-tinted depth for interactive elements */
+  --shadow-accent-sm: 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  --shadow-accent-md: 0 4px 12px color-mix(in srgb, var(--accent) 10%, transparent);
+
+  /* focus ring */
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
+  --focus-ring-inset: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+
+  --txt-xs: 12.5px;
+  --txt-sm: 13px;
+  --txt-base: 14px;
+  --txt-md: 15px;
+  --txt-lg: 16px;
+  --txt-xl: 17px;
+  --txt-2xl: 18px;
+  --txt-3xl: 20px;
+  --txt-4xl: 22px;
+  --txt-display: 24px;
+
+  /* line heights */
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --ls-tight: -0.025em;
+  --ls-normal: 0;
+  --ls-wide: 0.015em;
+  --ls-caps: 0.06em;
+
+  --sp-0: 2px;
+  --sp-0h: 3px;
+  --sp-1: 4px;
+  --sp-1h: 5px;
+  --sp-2: 6px;
+  --sp-2h: 7px;
+  --sp-3: 8px;
+  --sp-3h: 9px;
+  --sp-4: 10px;
+  --sp-4h: 11px;
+  --sp-5: 12px;
+  --sp-6: 14px;
+  --sp-7: 16px;
+  --sp-7h: 18px;
+  --sp-8: 20px;
+  --sp-9: 24px;
+  --sp-10: 28px;
+  --sp-11: 36px;
+
+  --on-accent: #fff; /* text/icons on accent or colored backgrounds */
+
+  --t-fast: 0.15s ease;
+  --t-med: 0.25s ease;
+  --t-spring: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  --t-collapse: 0.25s cubic-bezier(0.4, 0, 1, 1);
+  --t-slow: 0.4s ease;
+  --t-x-slow: 0.5s ease;
+  --t-phone-chrome-slide: 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  --t-phone-chrome-compact: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-phone-refine-bar: 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-phone-refine-bar-collapse: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  --t-welcome-logo-draw: 1.55s cubic-bezier(0.65, 0, 0.35, 1);
+  --t-welcome-overlay-exit: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Aggressive deceleration — modern "materialize" feel for sheets & panels */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Slight overshoot — playful spring-pop for small elements (pills, chips) */
+  --ease-spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Stagger delay unit — used with CSS custom property --i for sequential reveal */
+  --stagger-unit: 30ms;
+  --scale-phone-mainbar-compact: 0.84;
+  --scale-phone-chrome-compact: 0.82;
+  --welcome-logo-vw: 58vw;
+  --welcome-logo-max-w: 430px;
+  --welcome-logo-tablet-vw: 76vw;
+  --welcome-logo-tablet-max-w: 360px;
+  --welcome-logo-phone-vw: 82vw;
+  --welcome-logo-phone-max-w: 320px;
+  --welcome-logo-start-scale: 0.992;
+  --welcome-logo-end-scale: 0.998;
+  --welcome-logo-trace-opacity: 0.72;
+  --welcome-logo-fill-rest-opacity: 0.92;
+  --welcome-logo-trace-gold-w: 5;
+  --welcome-logo-trace-word-w: 1.45;
+
+  /* card inner spacing — uniform across all card types */
+  --card-pad: var(--sp-7);
+  --card-pad-lg: var(--sp-9);
+
+  --btn-icon-size: 42px;
+  --btn-roundel-size: 32px;
+  --btn-roundel-sm-size: 30px;
+  --switch-w: 44px;
+  --switch-h: 24px;
+  --switch-thumb-size: 18px;
+  --tab-h: 56px;
+  --nav-turn-marker-size: 36px;
+  --nav-turn-icon-size: 20px;
+  --nav-turn-pointer-size: 8px;
+  --nav-turn-highlight: var(--on-accent);
+  --nav-turn-arrow-edge: color-mix(in srgb, var(--accent) 52%, var(--surface) 48%);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+
+  /* — z-index layer system — */
+  --z-map: 0;
+  --z-sticky: 2; /* sticky headers inside scroll containers */
+  --z-ctrl-lo: 5;
+  --z-ctrl-mid: 6;
+  --z-prayer: 9;
+  --z-bar: 10;
+  --z-nav-hud: 10; /* navigation HUD — same level as bar */
+  --z-float: 20; /* floating dropdown within a panel */
+  --z-scrim: 11;
+  --z-sheet: 12;
+  --z-overlay: 100;
+  --z-picker: 999;
+  --z-sub-ui: 9998;
+  --z-top: 9999;
+
+  /* — overlay / scrim — */
+  --overlay-bg: rgba(9, 9, 11, 0.4);
+  --overlay-dim: rgba(
+    9,
+    9,
+    11,
+    0.55
+  ); /* stronger focus overlay (tutorial, modals) */
+  --scrim-bg: rgba(9, 9, 11, 0.12);
+
+  /* — border-radius extensions — */
+  --r-2xs: 4px; /* micro: inline badges, code chips */
+  --r-inner: 8px; /* inner icon / thumbnail containers */
+
+  /* — icon & component sizes — */
+  --icon-md: 38px; /* medium content-icon container    */
+  --h-field: 46px; /* direction / date input row       */
+  --h-submit: 44px; /* form submit button               */
+  --h-search: 48px; /* search box                       */
+  --places-refine-max-h: 360px;
+  --place-media-card-w: 154px;
+  --place-media-card-h: 102px;
+  --place-media-card-w-phone: 132px;
+  --place-media-card-h-phone: 88px;
+  --place-media-nav-size: 30px;
+  --photo-viewer-window-w: 420px;
+  --photo-viewer-window-h: min(620px, 85dvh);
+  --photo-viewer-enter-scale: 0.98;
+  --photo-viewer-stage-bg: oklch(0.17 0.01 155);
+  --review-media-size: 88px;
+  --review-preview-size: 88px;
+  --review-media-remove-size: 44px;
+  --review-compose-min-h: 76px;
+  --count-badge-min-w: 22px;
+  --media-credit-bg: color-mix(in srgb, var(--text) 72%, transparent);
+  --media-remove-bg: color-mix(in srgb, var(--text) 76%, transparent);
+  --media-credit-hover-opacity: 0.82;
+  --media-hover-filter: brightness(0.92);
+
+  /* — puck shape system — */
+  --puck-r: 50% 50% 50% 8px;     /* asymmetric puck border-radius       */
+  --puck-r-sm: 50% 50% 50% 7px;  /* smaller puck (location indicator)   */
+  --puck-border: 2.5px solid #fff;
+  --puck-border-sm: 2.5px solid #fff;
+
+  /* — popup tip — */
+  --popup-tip-w: 30px;
+  --popup-tip-h: 12px;
+  --popup-tip-offset: -11px;
+  --popup-tip-clip-down: path('M 0,0 C 0,0 4,0 8,6 C 11,10 13,12 15,12 C 17,12 19,10 22,6 C 26,0 30,0 30,0 Z');
+  --popup-tip-clip-up:   path('M 0,12 C 0,12 4,12 8,6 C 11,2 13,0 15,0 C 17,0 19,2 22,6 C 26,12 30,12 30,12 Z');
+  --popup-tip-clip-left: path('M 12,0 C 12,0 12,4 6,8 C 2,11 0,13 0,15 C 0,17 2,19 6,22 C 12,26 12,30 12,30 Z');
+  --popup-tip-clip-right:path('M 0,0 C 0,0 0,4 6,8 C 10,11 12,13 12,15 C 12,17 10,19 6,22 C 0,26 0,30 0,30 Z');
+
+  /* — layout — */
+  --map-edge: 12px; /* map-control inset from viewport edges */
+  --sheet-h: 55vh; /* default bottom-sheet height           */
+
+  font-family:
+    'Plus Jakarta Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
+
+:root[data-accent-palette="blue"] {
+  --accent: #1a73b8;
+  --accent-soft: #e7f0fb;
+  --accent-muted: #4f8fc2;
+  --promo: var(--accent);
+}
+
+:root[data-accent-palette="indigo"] {
+  --accent: #4f46a5;
+  --accent-soft: #ecebfa;
+  --accent-muted: #756eb8;
+  --promo: var(--accent);
+}
+
+:root[data-accent-palette="rose"] {
+  --accent: #b73d65;
+  --accent-soft: #f8e9ef;
+  --accent-muted: #c56b89;
+  --promo: var(--accent);
+}
+
+:root[data-accent-palette="slate"] {
+  --accent: #475569;
+  --accent-soft: #eceff2;
+  --accent-muted: #64748b;
+  --promo: var(--accent);
+}
+
+:root[data-density="compact"] {
+  --sp-5: 10px;
+  --sp-6: 12px;
+  --sp-7: 14px;
+  --sp-8: 16px;
+  --sp-9: 20px;
+}
+
+:root[data-corner-style="soft"] {
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 20px;
+  --r-3xl: 24px;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+button {
+  border: none;
+  outline: none;
+  background: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  font-family: inherit;
+  cursor: pointer;
+}
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: var(--txt-xs);
+}
+
+/* Eliminate 300ms double-tap-zoom delay on all interactive elements */
+button,
+a,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"],
+[tabindex] {
+  touch-action: manipulation;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--canvas);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+  scroll-behavior: smooth;
+}
+html.dark-mode,
+html.dark-mode body {
+  background: var(--canvas);
+  --cemetery: #94a3b8;
+}
+
+/* ─── Selection styling ─── */
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--text);
+}
+
+/* ─── Focus-visible ring: accessible keyboard indicator ─── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: var(--focus-ring-inset);
+}
+
+/* ─── Skip to content link (hidden until focused) ─── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--sp-3);
+  padding: var(--sp-3) var(--sp-7);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-sm);
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  z-index: var(--z-top);
+  text-decoration: none;
+  transition: top var(--t-fast);
+}
+.skip-link:focus {
+  top: var(--sp-3);
+}
+
+/* ─── Reduced motion: respect user preference ───
+   Driven entirely by html.reduce-motion, applied by utils.js's
+   isReduceMotionActive()/setReduceMotionOverride() — a single mechanism, not
+   a bare `@media (prefers-reduced-motion: reduce)` block competing with a
+   separate in-app toggle. The class is set on load from the OS-level media
+   feature and re-applied whenever the user flips the explicit override in
+   the Menu sheet's Preferences section, so the in-app toggle can force
+   reduced motion on even when the OS doesn't report the preference, or force
+   it off even when the OS does. */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.btn-icon {
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-icon:hover {
+    color: var(--text-2);
+  }
+}
+.btn-icon:active {
+  color: var(--accent);
+}
+.btn-icon:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.btn-icon-card {
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+  color: var(--text-3);
+  transition:
+    color var(--t-fast),
+    background var(--t-fast),
+    box-shadow var(--t-med);
+}
+@media (hover: hover) {
+  .btn-icon-card:hover {
+    color: var(--text-2);
+  }
+}
+.btn-icon-card:active {
+  color: var(--text-2);
+}
+.btn-icon-card:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.btn-icon-card.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-primary,
+.pp-dir-btn,
+.sp-dir-btn,
+.eid-dir-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-9);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-tight);
+  transition: filter var(--t-fast), box-shadow var(--t-med);
+}
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled),
+  .pp-dir-btn:hover,
+  .sp-dir-btn:hover,
+  .eid-dir-btn:hover {
+    filter: brightness(1.12);
+    box-shadow: var(--shadow-accent-md);
+  }
+}
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-secondary,
+.pp-home-btn,
+.pp-contact-btn,
+.pp-share-btn,
+.pp-edit-btn,
+.pp-add-event-btn,
+.sp-share-btn,
+.sp-close-btn,
+.eid-share-btn,
+.eid-close-popup-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-5);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  transition:
+    border-color var(--t-fast),
+    color var(--t-fast),
+    box-shadow var(--t-med);
+}
+@media (hover: hover) {
+  .btn-secondary:hover,
+  .pp-home-btn:hover,
+  .pp-contact-btn:hover,
+  .pp-share-btn:hover,
+  .pp-edit-btn:hover,
+  .pp-add-event-btn:hover,
+  .sp-share-btn:hover,
+  .sp-close-btn:hover,
+  .eid-share-btn:hover,
+  .eid-close-popup-btn:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+    box-shadow: var(--shadow-xs);
+  }
+}
+/* "Sign in with Google" button — deliberately diverges from this app's own
+   filled-accent CTA look. Google's branding guidelines require the standard
+   white/neutral (or dark-theme) button chrome with an unaltered "G" logo;
+   recoloring it to match --accent would look like an unofficial knockoff and
+   undermine the exact trust signal the button exists to provide. Combine
+   with `.rv-action-btn` for shared sizing (width/height/radius) with the
+   email sign-in button beside it. */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--google-btn-bg);
+  color: var(--google-btn-text);
+  border: 1px solid var(--google-btn-border);
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-google:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-google:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-google-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-google-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-email-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-email-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "Sign in with Microsoft" button — same reasoning as .btn-google above
+   (unaltered third-party logo, brand-neutral chrome over this app's own
+   accent palette). Reuses the identical --google-btn-* chrome tokens
+   deliberately (see the token comment) rather than duplicating them under a
+   --ms-btn-* name. */
+.btn-microsoft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--google-btn-bg);
+  color: var(--google-btn-text);
+  border: 1px solid var(--google-btn-border);
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-microsoft:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-microsoft:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-microsoft:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-microsoft-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-microsoft-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "Continue with Facebook" button — brand-blue fill per Meta's own button
+   spec (unlike Google/Microsoft's shared neutral chrome above), so this
+   does NOT reuse --google-btn-*. Same interaction-state shape as the other
+   two OAuth buttons otherwise (hover shadow, active brightness dip, disabled
+   opacity). */
+.btn-facebook {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--facebook-btn-bg);
+  color: var(--facebook-btn-text);
+  border: none;
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-facebook:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-facebook:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-facebook:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-facebook-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-facebook-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "Sign in with Apple" button — solid black/white fill per Apple's Human
+   Interface Guidelines, inverting fully in dark mode (--apple-btn-* tokens
+   swap in styles.css's body.dark-mode block) rather than staying fixed like
+   Facebook's blue above — Apple's own guidelines mandate the light/dark
+   variant, it isn't a design choice made in this app. */
+.btn-apple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--apple-btn-bg);
+  color: var(--apple-btn-text);
+  border: 1px solid var(--apple-btn-border);
+  font-weight: var(--fw-medium);
+  transition: box-shadow var(--t-fast), filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-apple:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+.btn-apple:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-apple:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-apple-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.btn-apple-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-danger-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-6);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1.5px solid var(--danger);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-danger-pill:hover {
+    color: var(--danger);
+    opacity: 0.75;
+  }
+}
+
+.btn-secondary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-6);
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-secondary-pill:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+  }
+}
+
+.btn-danger-filled,
+.pp-rm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2h) var(--sp-6);
+  background: var(--danger);
+  color: var(--on-accent);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-bold);
+  transition: filter var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-danger-filled:hover,
+  .pp-rm-btn:hover {
+    filter: brightness(1.12);
+  }
+}
+
+.btn-success-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-2) var(--sp-5);
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1.5px solid var(--success);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-success-pill:hover {
+    background: var(--success);
+    color: var(--on-accent);
+  }
+}
+@media (hover: hover) {
+  .btn-success-pill:hover svg {
+    stroke: var(--on-accent);
+  }
+}
+.btn-success-pill svg {
+  transition: stroke var(--t-fast);
+}
+
+.btn-roundel {
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-roundel:hover {
+    color: var(--text-2);
+  }
+}
+.btn-roundel:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.btn-roundel-danger {
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--danger-soft);
+  border-radius: 50%;
+  color: var(--danger);
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-roundel-danger:hover {
+    color: var(--danger-vivid);
+  }
+}
+
+.btn-roundel-accent,
+.pp-add-place-btn {
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  border-radius: 50%;
+  color: var(--on-accent);
+  transition: filter var(--t-fast);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  .btn-roundel-accent:hover,
+  .pp-add-place-btn:hover {
+    filter: brightness(1.12);
+  }
+}
+
+.btn-roundel-subtle {
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--text-2);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-roundel-subtle:hover {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+}
+
+.btn-roundel-sm,
+#dir-focused-back {
+  width: var(--btn-roundel-sm-size);
+  height: var(--btn-roundel-sm-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-roundel-sm:hover,
+  #dir-focused-back:hover {
+    color: var(--text-2);
+  }
+}
+
+.btn-segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-3h) var(--sp-1);
+  border-radius: calc(var(--r-sm) - 2px);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  transition: color var(--t-fast);
+}
+.btn-segment svg {
+  flex-shrink: 0;
+}
+@media (hover: hover) {
+  .btn-segment:hover:not(.active) {
+    color: var(--text-2);
+  }
+}
+.btn-segment.active {
+  color: var(--text);
+  /* background + shadow now on .seg-pill */
+}
+
+.btn-chip,
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-1h) var(--sp-4h);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  color: var(--text-2);
+  white-space: nowrap;
+  transition:
+    color var(--t-fast),
+    border-color var(--t-fast),
+    background-color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-chip:hover,
+  .tf-chip:hover {
+    color: var(--text);
+    border-color: var(--surface-3);
+  }
+}
+.btn-chip.active,
+.tf-chip.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+/* ─── Toggle switch ───────────────────────────────────────────────────────────
+   New pattern — no on/off switch existed anywhere else in this app before the
+   Menu sheet's Preferences → "Reduce motion" control. A <button role="switch"
+   aria-checked> rather than a native checkbox, matching this app's existing
+   button-driven state-toggle convention (.btn-chip.active, .sort-opt.active)
+   instead of mixing in a native form control that would need its own separate
+   styling system. */
+.pref-switch {
+  position: relative;
+  width: var(--switch-w);
+  height: var(--switch-h);
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  cursor: pointer;
+  transition: background-color var(--t-fast);
+}
+.pref-switch.on {
+  background: var(--accent);
+}
+.pref-switch:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.pref-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
+  border-radius: 50%;
+  background: var(--on-accent);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--t-fast);
+}
+.pref-switch.on .pref-switch-thumb {
+  transform: translateX(calc(var(--switch-w) - var(--switch-thumb-size) - 6px));
+}
+
+/* ─── Filter bar: expandable subtag groups ─── */
+.tf-group-toggle {
+  gap: var(--sp-1);
+  cursor: pointer;
+  border-color: var(--border);
+}
+.tf-group-toggle.open {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.tf-group-toggle.open svg {
+  stroke: var(--on-accent);
+}
+.tf-group-toggle.has-active:not(.open) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tf-group-toggle.has-active:not(.open) svg {
+  stroke: var(--accent);
+}
+.tf-group-arrow {
+  transition: transform var(--t-fast);
+  margin-left: 1px;
+  flex-shrink: 0;
+}
+.tf-group-toggle.open .tf-group-arrow {
+  transform: rotate(180deg);
+}
+.tf-group-count {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-normal);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-pill);
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-1) 1px;
+  margin-left: var(--sp-0);
+  line-height: 1;
+}
+.tf-group-toggle.open .tf-group-count {
+  background: var(--surface);
+  color: var(--accent);
+}
+.tf-group-count.hide {
+  display: none;
+}
+.tf-group-chips {
+  flex-basis: 100%;
+  order: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  will-change: height;
+  transition: height var(--t-spring);
+}
+.tf-group-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1h);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--border);
+}
+.tf-group-chips.shut {
+  height: 0 !important;
+  overflow-y: hidden;
+  pointer-events: none;
+  display: none;
+}
+
+.btn-inline,
+.empty-suggest {
+  display: inline;
+
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color var(--t-fast);
+}
+@media (hover: hover) {
+  .btn-inline:hover,
+  .empty-suggest:hover {
+    text-decoration-color: var(--accent);
+  }
+}
+
+.btn-tab {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-7);
+  position: relative;
+  color: var(--text-3);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--t-fast);
+}
+.btn-tab svg {
+  width: 20px;
+  height: 20px;
+}
+@media (hover: hover) {
+  .btn-tab:hover {
+    color: var(--text-2);
+  }
+}
+.btn-tab:active,
+.btn-tab:focus {
+  color: var(--text);
+  outline: none;
+  box-shadow: none;
+}
+.btn-tab:focus-visible {
+  color: var(--text);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.btn-tab.active-tab {
+  color: var(--text);
+}
+.btn-tab::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 24px;
+  height: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+  transform: scaleX(0);
+  transition: transform 0.35s var(--ease-spring-pop);
+}
+.btn-tab.active-tab::after {
+  transform: scaleX(1);
+}
+
+.btn-tab.tracking {
+  color: var(--text);
+  animation: tab-track-pulse 2s ease-in-out infinite;
+}
+.btn-tab.route-active {
+  color: var(--text);
+}
+@keyframes tab-track-pulse {
+  0%,
+  100% {
+    color: var(--text);
+  }
+  50% {
+    color: var(--text-2);
+  }
+}
+
+.t-panel-heading {
+  font-size: var(--txt-3xl);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+  text-wrap: balance;
+}
+
+.t-item-title,
+.r-name,
+.pl-name,
+.ds-name {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-item-sub,
+.r-addr,
+.pl-addr,
+.ds-addr {
+  font-size: var(--txt-sm);
+  color: var(--text-3);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Trailing "add custom / use as typed" option in search-combo dropdowns */
+.ev-combo-add-label {
+  color: var(--accent);
+}
+
+.t-micro-label,
+.itin-zones-label {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+}
+
+.t-caption {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-3);
+  letter-spacing: var(--ls-wide);
+  line-height: var(--lh-normal);
+}
+
+.t-body-sm {
+  font-size: var(--txt-base);
+  color: var(--text-2);
+  line-height: var(--lh-normal);
+}
+
+.t-tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.t-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color var(--t-fast), box-shadow var(--t-med);
+}
+.t-field-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+@media (hover: hover) {
+  .t-field-wrap:hover:not(:focus-within) {
+    border-color: var(--surface-3);
+  }
+}
+
+.t-field-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+
+  font-family: inherit;
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+.t-field-input::placeholder {
+  color: var(--text-3);
+  font-weight: var(--fw-regular);
+}
+
+/* .pp-visit-chip (src/places.js's "Mark as visited"/"Visited" toggle,
+   place-detail sheet) is a Component Alias of this same tri-state chip —
+   only ever uses the "yes" state (binary, no "no" state needed), and its
+   label TEXT also swaps ("Mark as visited" → "Visited"), unlike a tag-chip's
+   fixed label — everything else (shape, icon-visibility mechanism, colour)
+   is identical, driven by the same data-state attribute. */
+.tag-chip,
+.sg-tag,
+.pp-visit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1h) var(--sp-5);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    background-color var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast);
+}
+@media (hover: hover) {
+  .tag-chip:hover,
+  .sg-tag:hover,
+  .pp-visit-chip:hover {
+    border-color: var(--surface-3);
+  }
+}
+
+.tag-chip .tag-icon,
+.sg-tag .sg-tag-icon,
+.pp-visit-chip .pp-visit-icon {
+  display: none;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.tag-chip[data-state="yes"],
+.sg-tag[data-state="yes"],
+.pp-visit-chip[data-state="yes"] {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+.tag-chip[data-state="yes"] .tag-icon.tag-yes,
+.sg-tag[data-state="yes"] .sg-tag-icon.sg-yes,
+.pp-visit-chip[data-state="yes"] .pp-visit-icon {
+  display: inline-block;
+}
+
+.tag-chip[data-state="no"],
+.sg-tag[data-state="no"] {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.tag-chip[data-state="no"] .tag-icon.tag-no,
+.sg-tag[data-state="no"] .sg-tag-icon.sg-no {
+  display: inline-block;
+}
+
+/* ── Expandable subtag groups (Cuisine picker) ────────────────────────── */
+
+.sg-tag-expand {
+  cursor: pointer;
+}
+.sg-tag-expand .sg-expand-arrow {
+  transition: transform var(--t-fast);
+  flex-shrink: 0;
+}
+.sg-tag-expand.open .sg-expand-arrow {
+  transform: rotate(180deg);
+}
+
+.sg-subtags {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--t-spring), margin var(--t-spring), flex-basis var(--t-spring);
+  flex-basis: 100%;
+  order: 1;
+  margin-top: 2px;
+  min-width: 0;
+}
+.sg-subtags.shut {
+  grid-template-rows: 0fr;
+  flex-basis: 0;
+  margin: 0;
+  transition: grid-template-rows var(--t-collapse), margin var(--t-collapse), flex-basis var(--t-collapse);
+}
+
+.sg-subtags-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+  transition: padding var(--t-spring), border-color var(--t-spring);
+  min-width: 0;
+}
+.sg-subtags.shut .sg-subtags-inner {
+  padding-top: 0;
+  padding-bottom: 0;
+  border-color: transparent;
+  transition: padding var(--t-collapse), border-color var(--t-collapse);
+}
+
+.sg-subtag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1h);
+}
+
+.sg-subtag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-0h) var(--sp-4);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    background-color var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast);
+}
+@media (hover: hover) {
+  .sg-subtag:hover {
+    border-color: var(--surface-3);
+  }
+}
+.sg-subtag.active {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.sg-cuisine-add-row {
+  display: flex;
+  gap: var(--sp-1h);
+  align-items: center;
+}
+.sg-cuisine-add-row .sg-cuisine-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  transition: border-color var(--t-fast);
+}
+.sg-cuisine-add-row .sg-cuisine-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.sg-cuisine-add-row .sg-cuisine-input::placeholder {
+  color: var(--text-3);
+}
+.sg-cuisine-add-btn {
+  padding: var(--sp-1) var(--sp-4);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--t-fast);
+}
+@media (hover: hover) {
+  .sg-cuisine-add-btn:hover {
+    opacity: 0.85;
+  }
+}
+
+.pill-expand {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+  width: 44px;
+  transition:
+    width var(--t-spring),
+    border-radius var(--t-spring),
+    box-shadow var(--t-spring);
+}
+.pill-expand:not(.collapsed) {
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.pill-expand-icon {
+  transition:
+    color var(--t-fast),
+    opacity var(--t-fast);
+}
+.pill-expand:not(.collapsed) .pill-expand-icon {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.pill-expand-body {
+  opacity: 1;
+  transition: opacity var(--t-fast) 0.05s;
+}
+.pill-expand.collapsed .pill-expand-body {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  transition: opacity var(--t-fast);
+}
+
+.snack {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-5) var(--sp-7);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.snack-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.snack-icon--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.snack-icon--error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.snack-icon--clock {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.snack-icon--info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.snack-icon--warn {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+/* ── Generic Yes/No Confirm Dialog (showConfirmDialog(), src/utils.js) ──
+   The one confirm-before-destructive/state-changing-action component in
+   this app — reused for review delete and account sign-out (replaces the
+   earlier press-twice-to-confirm pattern for review delete specifically;
+   see docs/DESIGN_SYSTEM.md). Built and torn down entirely in JS per call
+   (matching .share-toast's create-on-demand convention), so these are
+   reusable classes rather than one static named overlay/card like
+   #promos-overlay/#promos-card — the fixed-centered-overlay shell itself is
+   the same pattern as that one, just expressed as classes since this is
+   spawned on demand from anywhere in the app. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  padding: var(--sp-8);
+  transition: opacity var(--t-med);
+}
+.confirm-overlay.hide {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.confirm-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-9) var(--sp-8) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-2);
+  transform: scale(1);
+  transition: transform var(--t-med);
+}
+.confirm-overlay.hide .confirm-card {
+  transform: scale(0.96);
+}
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: var(--sp-2);
+}
+.confirm-icon--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.confirm-title {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  margin: 0;
+  letter-spacing: var(--ls-tight);
+}
+.confirm-desc {
+  font-size: var(--txt-sm);
+  color: var(--text-2);
+  margin: 0;
+  line-height: var(--lh-normal);
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--sp-4);
+  width: 100%;
+  margin-top: var(--sp-5);
+}
+.confirm-actions button {
+  flex: 1;
+  height: var(--h-submit);
+}
+
+/* ── Eid banner icon (crescent moon, gold theme) ─── */
+.eid-banner-icon {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+/* ── Eid time chip (jamaat time badge) ─── */
+.eid-time-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-0h) var(--sp-4);
+  border-radius: var(--r-pill);
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+/* ── Chip (display badge, non-interactive) ─────────────────────────────────── */
+/* Set --chip-c to control the tint. .chip-yes / .chip-no are semantic aliases. */
+/* .pp-chip and .sp-chip are component aliases — add new ones here, don't copy.  */
+/* .pf-badge-pill (src/profile.js's identity-card "flair" pill — the
+   account's single highest badge across all 4 categories, see
+   account-profile.js's computeTopBadge()) is also a Component Alias here —
+   its tint is driven by LEVEL (--badge-lvl-1/2/3), not by any of the
+   semantic --chip-c values above, since a badge's color means "level",
+   never "positive/negative/sponsor" the way every other chip's does. */
+.chip,
+.pp-chip,
+.sp-chip,
+.pf-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-0h);
+  padding: var(--sp-0h) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--chip-c, var(--accent));
+  background: color-mix(in srgb, var(--chip-c, var(--accent)) 14%, transparent);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.chip-yes,
+.pp-chip-yes {
+  --chip-c: var(--success);
+}
+
+.chip-no,
+.pp-chip-no {
+  --chip-c: var(--danger);
+}
+
+.chip-warn,
+.pp-chip-warn {
+  --chip-c: var(--gold);
+}
+
+/* ── Sponsor chip / badge ──────────────────────────────────────────────────── */
+.chip-sponsor,
+.pp-chip-sponsor,
+.pl-sponsor-chip {
+  --chip-c: var(--sponsor);
+}
+
+/* ── Badge flair pill level tints (.pf-badge-pill, above) ───────────────────── */
+.pf-badge-pill--lvl1 {
+  --chip-c: var(--badge-lvl-1);
+}
+.pf-badge-pill--lvl2 {
+  --chip-c: var(--badge-lvl-2);
+}
+.pf-badge-pill--lvl3 {
+  --chip-c: var(--badge-lvl-3);
+}
+
+/* ── Neutral info chip (price level, accessibility, service options) ───────── */
+/* Distinct blue tint so Google-sourced amenity facts don't read as halal-status
+   yes/no tags, which already use green/red/gold. */
+.pp-info-chip {
+  --chip-c: var(--hsl-bus);
+}
+
+/* ── Open / Closed inline badges ───────────────────────────────────────────── */
+/* .status-pill--live / .status-pill--rejected / .status-pill--pending
+   (src/profile.js's submitted-places/edits status pills) are component
+   aliases of these same three shapes — same success/danger/warning tints,
+   just a generic name for a generic "moderation status" concept rather than
+   "opening hours" specifically. Add new aliases here, don't copy the rule. */
+.pl-open-chip,
+.pp-hours-open,
+.status-pill--live {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: var(--sp-0h) var(--sp-2);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.pl-closed-chip,
+.pp-hours-shut,
+.status-pill--rejected {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: var(--sp-0h) var(--sp-2);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+/* "Opening soon" / "closing soon" — same shape as open/closed, warning tint */
+.pp-hours-soon,
+.status-pill--pending {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: var(--sp-0h) var(--sp-2);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+/* A rejected submission with a reject reason gets a native title= tooltip
+   (see src/profile.js's _buildSubmissionRow()) — cursor:help signals that
+   affordance, matching .pp-sponsor-badge's identical cursor:help precedent
+   for its own title= tooltip. */
+.status-pill--rejected[title] {
+  cursor: help;
+}
+
+/* Shared "Sponsored" inline badge — reuse chip sizing but with gold tint */
+.sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-0h);
+  padding: var(--sp-0) var(--sp-2h);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--sponsor);
+  background: color-mix(in srgb, var(--sponsor) 14%, transparent);
+  white-space: nowrap;
+}
+
+/* Sponsor glow ring for map markers — featured + spotlight */
+@keyframes sponsorPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px var(--sponsor),
+      0 0 12px 4px color-mix(in srgb, var(--sponsor) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px var(--sponsor),
+      0 0 20px 8px color-mix(in srgb, var(--sponsor) 30%, transparent);
+  }
+}
+
+/* Sponsor pin movement — tier-differentiated, GPU-composited (transform only) */
+@keyframes sponsorFloat {
+  0%, 100% { transform: translateY(0) rotate(-45deg); }
+  50%      { transform: translateY(-1.5px) rotate(-45deg); }
+}
+@keyframes sponsorBounce {
+  0%, 100% { transform: translateY(0) rotate(-45deg); }
+  50%      { transform: translateY(-3px) rotate(-45deg); }
+}
+@keyframes sponsorBounceScale {
+  0%, 100% { transform: translateY(0) rotate(-45deg) scale(1); }
+  50%      { transform: translateY(-4px) rotate(-45deg) scale(1.06); }
+}
+
+/* ── Event chip (inline badge on place list card) ──────────────────────────── */
+.pl-event-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--sp-2);
+  vertical-align: middle;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* ── Event card (popup inline event entry) ─────────────────────────────────── */
+.pp-ev-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-1h) var(--sp-3) var(--sp-1h) var(--sp-4);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  transition: border-color var(--t-fast);
+}
+@media (hover: hover) {
+  .pp-ev-card:hover {
+    border-left-color: var(--accent);
+  }
+}
+.pp-ev-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.pp-ev-title {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-ev-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+}
+.pp-ev-recur-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.pp-ev-organizer {
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-ev-link,
+.pp-ev-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  background: none;
+  flex-shrink: 0;
+  transition: background var(--t-fast), color var(--t-fast);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .pp-ev-link:hover {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .pp-ev-edit-btn:hover {
+    color: var(--text-1);
+    background: color-mix(in srgb, var(--text-1) 12%, transparent);
+  }
+}
+
+/* ── Event list card (events tab full-width entry) ─────────────────────────── */
+/* ── Event badge tokens (reused in popup + events overlay) ─────────────────── */
+.ev-recur-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0h) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ev-date-badge,
+.ev-time-badge {
+  font-size: var(--txt-xs);
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+
+/* ── Event distance badge ─────────────────────────────────────────────────── */
+.ev-dist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0h) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--hsl-bus);
+  background: color-mix(in srgb, var(--hsl-bus) 12%, transparent);
+}
+
+/* ── Pill count badge (superscript number on icon-card buttons) ────────────── */
+.pill-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--sp-1h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+}
+
+/* ── Event filter chip (events overlay filter bar) ─────────────────────────── */
+.ev-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-1h) var(--sp-4h);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.ev-filter-chip.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@media (hover: hover) {
+  .ev-filter-chip:not(.active):hover {
+    border-color: var(--surface-3);
+    background: var(--surface-2);
+  }
+}
+
+/* ── Recurrence preview label ──────────────────────────────────────────────── */
+.ev-recurrence-preview {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  line-height: 1.4;
+}
+
+/* ── Eid location card (panel list item) ─── */
+.eid-loc-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-5) var(--sp-7);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.eid-loc-card + .eid-loc-card {
+  border-top: 1px solid var(--border-light);
+}
+@media (hover: hover) {
+  .eid-loc-card:hover {
+    background: var(--surface-2);
+  }
+}
+.eid-loc-card:active {
+  background: var(--surface-3);
+}
+
+.snack-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.snack-label {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  line-height: 1.3;
+}
+.snack-sub {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+.t-scroll,
+#places-scroll,
+#dir-results,
+#suggest-form,
+#edit-form,
+.wish-list,
+.sp-routes {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.t-scroll::-webkit-scrollbar,
+#places-scroll::-webkit-scrollbar,
+#dir-results::-webkit-scrollbar,
+#suggest-form::-webkit-scrollbar,
+#edit-form::-webkit-scrollbar,
+.wish-list::-webkit-scrollbar,
+.sp-routes::-webkit-scrollbar {
+  width: 5px;
+}
+
+.t-scroll::-webkit-scrollbar-track,
+#places-scroll::-webkit-scrollbar-track,
+#dir-results::-webkit-scrollbar-track,
+#suggest-form::-webkit-scrollbar-track,
+#edit-form::-webkit-scrollbar-track,
+.wish-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.t-scroll::-webkit-scrollbar-thumb,
+#places-scroll::-webkit-scrollbar-thumb,
+#dir-results::-webkit-scrollbar-thumb,
+#suggest-form::-webkit-scrollbar-thumb,
+#edit-form::-webkit-scrollbar-thumb,
+.wish-list::-webkit-scrollbar-thumb,
+.sp-routes::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+}
+
+/* ─── Step / Stepper Progress Dots ─────────────────────────────────────────── */
+/* Reusable in any multi-step flow: tutorial, wizards, onboarding cards.        */
+.step-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  transition:
+    background var(--t-med),
+    width var(--t-spring);
+}
+.step-dot.active {
+  background: var(--accent);
+  width: 18px;
+  border-radius: var(--r-pill);
+}
+
+/* ─── Skeleton Loading ──────────────────────────────────────────────────────── */
+/* Reusable shimmer placeholders for any loading state.                         */
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+.skel-bone {
+  background: linear-gradient(
+    105deg,
+    var(--surface-2) 30%,
+    color-mix(in srgb, var(--surface-3) 50%, var(--surface-2)) 50%,
+    var(--surface-2) 70%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--r-xs);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skel-line {
+  height: 12px;
+  border-radius: var(--r-xs);
+}
+
+/* Place/review media primitives. */
+.count-badge,
+.pl-city-count,
+.pp-media-count {
+  min-width: var(--count-badge-min-w);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-3);
+  text-align: center;
+}
+.pp-media-credit,
+.pp-media-provider,
+.rv-review-image-tag {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-pill);
+  background: var(--media-credit-bg);
+  color: var(--on-accent);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-regular);
+  text-decoration: none;
+  transition: opacity var(--t-fast);
+}
+.rv-image-tag-option {
+  min-height: 30px;
+  padding: var(--sp-1) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background-color var(--t-fast);
+}
+.rv-image-tag-option.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+.rv-image-tag-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring-inset);
+}
+@media (hover: hover) {
+  .rv-image-tag-option:not(.is-selected):hover {
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+@media (hover: hover) {
+  a.pp-media-credit:hover,
+  a.pp-media-provider:hover { opacity: var(--media-credit-hover-opacity); }
+}
+.rv-image-picker {
+  min-height: var(--h-submit);
+  font-size: var(--txt-sm);
+  cursor: pointer;
+}
+.rv-image-picker:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring-inset);
+}
+.rv-image-remove {
+  width: var(--review-media-remove-size);
+  height: var(--review-media-remove-size);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--media-remove-bg);
+  color: var(--on-accent);
+  font-size: var(--txt-lg);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .rv-image-remove:hover { background: var(--danger); }
+}
+
+/* ─── Place list card ───────────────────────────────────────────────────────── */
+/* Shared base for every card in the places list: regular li AND the empty state */
+.pl-card {
+  padding: var(--card-pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  /* Font-size tokens used by both row types so they stay in sync */
+  --pl-row1: var(--txt-base); /* name row  / empty title */
+  --pl-row2: var(--txt-sm); /* addr row  / empty sub   */
+  transition: border-color var(--t-med), box-shadow var(--t-med);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .pl-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+}
+
+
+/* ─── Drum picker ───────────────────────────────────────────────────────────── */
+/* Depth tiers — JS sets data-tier="0|1|2|3" on each cell */
+.drum-cell {
+  font-family: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-regular);
+  color: var(--text-3);
+  opacity: .22;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  transition: none;
+}
+.drum-cell[data-tier="2"] {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  opacity: .4;
+}
+.drum-cell[data-tier="1"] {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+  opacity: .7;
+  color: var(--text-2);
+}
+.drum-cell[data-tier="0"] {
+  font-size: var(--txt-xl);
+  font-weight: var(--fw-bold);
+  opacity: 1;
+  color: var(--text);
+}
+.drum-cell.past {
+  opacity: .15 !important;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+  pointer-events: none;
+}
+
+.drum-sep {
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+}
+.drum-toast {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--danger);
+}
+
+/* ─── Puck Map Marker ──────────────────────────────────────────────────────── */
+/* Upward teardrop with rounded asymmetric corner — the app's marker shape.    */
+/* Use --place-c or --c to override the fill colour per-type.                  */
+.puck-mk,
+.place-mk,
+.search-mk,
+.custom-mk,
+.home-mk,
+.eid-mk,
+.event-mk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  border: var(--puck-border);
+  border-radius: var(--puck-r);
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.puck-mk svg,
+.place-mk svg,
+.search-mk svg,
+.custom-mk svg,
+.home-mk svg,
+.eid-mk svg,
+.event-mk svg {
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+/* ─── Puck Location Indicator ──────────────────────────────────────────────── */
+/* Smaller puck pointing backward (-135deg) for "you are here".                */
+.puck-loc,
+.loc-puck {
+  border: var(--puck-border-sm);
+  border-radius: var(--puck-r-sm);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* ─── Curvy Popup Tip ──────────────────────────────────────────────────────── */
+/* Replaces MapLibre's default border-triangle with a concave S-curve.         */
+/* Applied via ::after on .maplibregl-popup-content.                           */
+.popup-tip-base {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--popup-tip-w);
+  height: var(--popup-tip-h);
+  pointer-events: none;
+}
+
+/* ─── Navigation HUD templates (E1 — Clean Baseline) ───────────────────────── */
+
+.nav-maneuver-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--on-accent);
+}
+.nav-maneuver-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nav-instruction {
+  font-size: var(--txt-xl);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  letter-spacing: var(--ls-tight);
+  line-height: 1.2;
+}
+
+.nav-detail {
+  font-size: var(--txt-base);
+  color: var(--text-3);
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nav-next-label {
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+  font-size: var(--txt-xs);
+}
+
+.nav-progress-bar {
+  position: relative;
+  height: 2px;
+  background: var(--surface-2);
+}
+.nav-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 var(--r-pill) var(--r-pill) 0;
+  transition: width var(--t-med);
+  width: 0%;
+}
+
+.nav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-xs);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  line-height: 1;
+  white-space: nowrap;
+}
+.nav-chip-dist {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.nav-chip-eta {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.nav-chip-turn {
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning);
+}
+.nav-chip-icon {
+  display: inline-flex;
+  align-items: center;
+}
+.nav-chip-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nav-route-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-0) var(--sp-2);
+  border-radius: var(--r-xs);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--on-accent);
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.nav-stop-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  flex-shrink: 0;
+}
+
+.nav-ctrl-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.nav-ctrl-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* ─── Navigation HUD dark mode ──────────────────────────────────────────────── */
+html.dark-mode #nav-hud {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html.dark-mode .nav-maneuver-icon {
+  background: var(--accent);
+}
+html.dark-mode .nav-chip-dist {
+  background: rgba(8, 112, 91, 0.2);
+  color: #5ac8ad;
+}
+html.dark-mode .nav-chip-eta {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+html.dark-mode .nav-chip-turn {
+  background: rgba(255, 159, 10, 0.15);
+  color: #ffb340;
+}
+html.dark-mode .nav-ctrl-btn {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+html.dark-mode .nav-ctrl-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+html.dark-mode .nav-progress-bar {
+  background: var(--surface-2);
+}
+
+/* ─── Navigation Speedometer ────────────────────────────────────────────────── */
+.nav-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+.nav-speed-val {
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  letter-spacing: var(--ls-tight);
+}
+.nav-speed-unit {
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  letter-spacing: var(--ls-wide);
+  margin-top: 1px;
+}
+html.dark-mode .nav-speed {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* ─── Navigation Recenter / Overview Button ─────────────────────────────────── */
+.nav-recenter,
+.nav-overview {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: filter var(--t-fast), opacity var(--t-fast);
+}
+@media (hover: hover) {
+  .nav-recenter:hover,
+  .nav-overview:hover {
+    filter: brightness(1.1);
+  }
+}
+.nav-recenter:active,
+.nav-overview:active {
+  opacity: 0.75;
+}
+html.dark-mode .nav-recenter,
+html.dark-mode .nav-overview {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+/* ─── Navigation Turn Overlay (side label with pointer) ─────────────────────── */
+/* Wrapper is the MapLibre Marker element — flex row so the pointer triangle
+   is part of the layout box.  anchor: "right" places the right edge (pointer
+   tip) exactly at the turn coordinate with zero manual offset. */
+.nav-turn-overlay-wrap {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.nav-turn-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nav-turn-marker-size);
+  height: var(--nav-turn-marker-size);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+}
+/* Triangular pointer — in flex flow so it contributes to the marker's
+   measured width.  The tip (rightmost pixel) IS the anchor point. */
+.nav-turn-ptr {
+  width: 0;
+  height: 0;
+  border-top: var(--sp-2) solid transparent;
+  border-bottom: var(--sp-2) solid transparent;
+  border-left: var(--nav-turn-pointer-size) solid var(--accent);
+  flex-shrink: 0;
+}
+.nav-turn-overlay svg {
+  width: var(--nav-turn-icon-size);
+  height: var(--nav-turn-icon-size);
+  stroke: var(--on-accent);
+}
+html.dark-mode .nav-turn-overlay {
+  background: var(--accent);
+}
+html.dark-mode .nav-turn-ptr {
+  border-left-color: var(--accent);
+}
+
+/* ─── Wishlist Templates ──────────────────────────────────────────────────── */
+.wish-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-7);
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--t-fast);
+}
+@media (hover: hover) {
+  .wish-card:hover { background: var(--surface-2); }
+}
+
+.wish-title {
+  font-size: var(--txt-md);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  letter-spacing: var(--ls-normal);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.wish-desc {
+  font-size: var(--txt-sm);
+  color: var(--text-2);
+  line-height: 1.45;
+  margin: var(--sp-1) 0 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.wish-desc--open {
+  display: block;
+  overflow: visible;
+  line-clamp: unset;
+  -webkit-line-clamp: unset;
+}
+
+.wish-expand {
+  background: none;
+  border: none;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  margin-top: var(--sp-1);
+  letter-spacing: var(--ls-wide);
+}
+.wish-expand:hover { text-decoration: underline; }
+
+.wish-vote {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-roundel-size);
+  height: var(--btn-roundel-size);
+  background: var(--surface-2);
+  border: none;
+  border-radius: 50%;
+  color: var(--text-3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+@media (hover: hover) {
+  .wish-vote:hover:not(:disabled) {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  }
+}
+.wish-vote--voted {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.wish-vote--locked {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.wish-status-badge {
+  margin-top: var(--sp-1);
+}
+
+.wish-vote-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
+}
+.wish-vote-count[data-count="0"] {
+  display: none;
+}
+
+.wish-loading,
+.wish-empty {
+  padding: var(--sp-11) var(--sp-7);
+  text-align: center;
+  font-size: var(--txt-base);
+  color: var(--text-3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Staggered List Entry Animation ────────────────────────────────────── */
+/* Apply .stagger-in to a container; children get sequential reveal.        */
+/* JS sets --i on each child (0, 1, 2…) for delay calculation.             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes staggerFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-in > * {
+  animation: staggerFadeUp 0.3s var(--ease-expo) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger-unit));
+}
+
+/* ─── Card Hover Elevation ──────────────────────────────────────────────── */
+/* Apply .t-card-hover to any card that should lift on hover.               */
+.t-card-hover {
+  transition: box-shadow var(--t-med);
+}
+@media (hover: hover) {
+  .t-card-hover:hover {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* ─── Input Focus Glow (standalone inputs not in t-field-wrap) ──────────── */
+.t-input-glow {
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.t-input-glow:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent-sm);
+  outline: none;
+}
+
+/* ─── Tab Indicator Spring ──────────────────────────────────────────────── */
+/* Override the default scaleX transition with a spring-pop feel            */
+.btn-tab::after {
+  transition: transform 0.35s var(--ease-spring-pop);
+}
