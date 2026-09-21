@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "Force specific routes through Functions (middleware) instead of static asset serving",
+  "include": [
+    "/",
+    "/index.html",
+    "/api/*",
+    "/data/places.json",
+    "/data/tags.json",
+    "/src/*"
+  ],
+  "exclude": []
+}

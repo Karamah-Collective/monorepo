@@ -1,0 +1,15 @@
+{
+  "name": "karamah-website",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node ../tooling/dev.mjs website",
+    "build:css": "node scripts/build.mjs --css-only"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "tailwindcss": "^3.4.19"
+  }
+}

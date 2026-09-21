@@ -1,0 +1,42 @@
+# Cloudflare Pages – response headers
+# ═══════════════════════════════════════════════════════════════════════
+
+# ─── Global security headers (apply to every response) ────────────────
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), autoplay=(), encrypted-media=(), picture-in-picture=(), geolocation=(self)
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-F3Dqoggm0mf6x/HEbxwUWAVwMjmFRyw7jhl3KqOQR8Y=' https://unpkg.com/maplibre-gl@3.6.2/ https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.gstatic.com/firebasejs/10.13.0/ https://apis.google.com https://static.cloudflareinsights.com; style-src 'self' https://unpkg.com/maplibre-gl@3.6.2/ 'unsafe-inline'; connect-src 'self' https://unpkg.com/maplibre-gl@3.6.2/ https://api.digitransit.fi https://api.transitous.org https://nominatim.openstreetmap.org https://routing.openstreetmap.de https://tiles.openfreemap.org https://s3.amazonaws.com/elevation-tiles-prod/ https://api.aladhan.com https://www.google.com/recaptcha/ https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://server.arcgisonline.com https://cloudflareinsights.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://halal-map-karamah.firebaseapp.com https://graph.microsoft.com; img-src 'self' data: blob: https://server.arcgisonline.com https://lh3.googleusercontent.com; font-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-src https://www.google.com/recaptcha/ https://halal-map-karamah.firebaseapp.com https://apis.google.com; base-uri 'self'; form-action 'self'; object-src 'none'
+
+# ─── Service worker — never cache ─────────────────────────────────────
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Service-Worker-Allowed: /
+
+# ─── HTML entry point — always revalidate ────────────────────────────
+# Must never be served stale — the VERSION param in index.html is what
+# drives SW cache invalidation. If old index.html is cached, users stay
+# on stale JS indefinitely even after re-deploy.
+/index.html
+  Cache-Control: no-cache, must-revalidate
+/manifest.json
+  Cache-Control: no-cache, must-revalidate
+
+# ─── Static assets — long cache with version-busted URLs ──────────────
+# cache:'reload' in sw.js install bypasses these for SW pre-caching, so
+# the browser HTTP cache here only affects direct browser requests.
+/src/*
+  Cache-Control: no-cache, must-revalidate
+/data/places.json
+  Cache-Control: private, no-store
+/data/tags.json
+  Cache-Control: private, no-store
+/data/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+/data/thumbs/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/data/manarah-link-preview.png
+  Cache-Control: public, max-age=604800
