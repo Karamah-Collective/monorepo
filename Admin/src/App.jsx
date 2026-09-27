@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import AuthGuard from "./auth/AuthGuard.jsx";
 import AppLayout from "./layout/AppLayout.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -23,6 +23,9 @@ import WebsiteSubscribersPage from "./pages/WebsiteSubscribersPage.jsx";
 import WebsiteContentPage from "./pages/WebsiteContentPage.jsx";
 import LinkHubPage from "./pages/LinkHubPage.jsx";
 import AdminPreferencesPage from "./pages/AdminPreferencesPage.jsx";
+import FormsPage from "./pages/FormsPage.jsx";
+import FormEditorPage from "./pages/FormEditorPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export default function App() {
   return (
@@ -53,10 +56,12 @@ export default function App() {
             <Route path="/website/subscribers" element={<WebsiteSubscribersPage />} />
             <Route path="/website/content" element={<WebsiteContentPage />} />
             <Route path="/links" element={<LinkHubPage />} />
+            <Route path="/forms" element={<FormsPage />} />
+            <Route path="/forms/:id" element={<FormEditorPage />} />
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

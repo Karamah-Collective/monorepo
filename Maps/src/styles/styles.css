@@ -3147,6 +3147,25 @@ body.dark-mode .sp-tip {
 #menu-sheet-body {
   padding: 0 0 var(--sp-7);
 }
+/* Why the merged sheet's headline line comes from a *pane* divider instead of
+   this element's own default `border-bottom` (the 1px var(--border-light) every
+   other sheet's .sheet-head still draws, see above): the divider under both
+   "Menu" and "Profile" is a `.sort-divider` sitting as the first thing inside
+   whichever pane is showing — for Menu that's `#menu-sheet-body`'s lone
+   .sort-divider, which src/app-settings.js's `_applyMenuOrder()` (introduced
+   alongside this rule, 2026-09-17) hoists to the top of the pane when it
+   re-appends every reorderable .menu-section; for Profile it's the equivalent
+   divider now declared explicitly as `#profile-sheet-body`'s first child
+   (index.html), since Profile's sections are never reordered and so nothing
+   there would ever float to the top on its own. Re-enabling this border would
+   draw a SECOND line 4px above the Menu pane's divider. Keeping it zeroed is
+   also what lets the divider inherit each pane's own horizontal padding
+   behaviour and scroll away with the content, like every other section divider
+   in these panes. `#profile-sheet-body`'s top padding was dropped to match
+   `#menu-sheet-body`'s pre-existing `padding: 0 0 var(--sp-7)` — so Profile's
+   divider now sits 4px below the shared header too, a gap its own
+   `margin: 4px 0` supplies; the section below it is spaced by that divider's
+   bottom margin, not by an extra pre-divider gap. */
 #menu-sheet .sheet-head { border-bottom: 0; }
 #menu-sheet #mp-scroll,
 #menu-sheet #mp-height-wrap,
@@ -3663,8 +3682,25 @@ body.dark-mode .sp-tip {
    Account section used) rather than a new card class; .pf-card-avatar just
    bumps the avatar up from Menu's compact 36px to a more prominent 56px for
    Profile's own full identity card. */
+/* `padding: 0 0 var(--sp-7)` (no top value), not the `var(--sp-3) 0 var(--sp-7)`
+   this carried while it was still its own standalone sheet: #profile-sheet-body's
+   first child is now its own .sort-divider (index.html), and that divider's own
+   `margin: 4px 0` is what supplies the gap between it and both the shared
+   `.sheet-head` above it and the first section below it — exactly the role
+   #menu-sheet-body's identical `padding: 0 0 var(--sp-7)` plays for the divider
+   that src/app-settings.js's `_applyMenuOrder()` hoists to the top of THAT pane
+   (see index.html's comment on the two dividers, and the note on
+   `#menu-sheet .sheet-head { border-bottom: 0; }` above for why the merged
+   sheet's headline line comes from a pane divider at all rather than from
+   .sheet-head's own default border-bottom). Keeping a top padding here would
+   stack an extra 8px on top of those 4px margins and drop Profile's line ~12px
+   below "Profile" while Menu's stays 4px below "Menu". Net effect of the swap
+   is nil for the content itself: the removed 8px pane padding is replaced
+   almost exactly by the new divider's 4px + 1px + 4px, so #profile-card-body's
+   identity card lands where it always did — only a divider line now sits in
+   that space. */
 #profile-sheet-body {
-  padding: var(--sp-3) 0 var(--sp-7);
+  padding: 0 0 var(--sp-7);
 }
 .pf-card-avatar {
   width: 56px;

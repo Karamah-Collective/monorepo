@@ -12,7 +12,7 @@ if (!process.argv.includes('--css-only')) {
   const output=path.join(root,'dist');
   if (path.dirname(output) !== path.resolve(root)) throw new Error('Invalid build destination');
   await rm(output,{recursive:true,force:true}); await mkdir(output,{recursive:true});
-  for (const item of ['index.html','privacy-policy.html','robots.txt','_headers','_routes.json','assets']) await cp(path.join(root,item),path.join(output,item),{recursive:true,filter: source => !/\.(bak|backup|tmp)$/.test(source)});
+  for (const item of ['index.html','404.html','privacy-policy.html','robots.txt','_headers','_routes.json','assets']) await cp(path.join(root,item),path.join(output,item),{recursive:true,filter: source => !/\.(bak|backup|tmp)$/.test(source)});
   await cp(path.resolve(root, '../shared/brand/karamah-logo.svg'), path.join(output, 'assets/images/karamah-logo.svg'));
   let html=await readFile(path.join(output,'index.html'),'utf8');
   const matches=[...html.matchAll(/(?:\.\/)?(assets\/[^"'?]+)\?v=[^"']+/g)];

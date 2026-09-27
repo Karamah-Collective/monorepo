@@ -2,7 +2,7 @@
 
 ## 1. Cloudflare build settings
 
-Use **four separate Cloudflare Pages projects connected to this same GitHub repository**. Each project builds its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
+Use **five separate Cloudflare Pages projects connected to this same GitHub repository**. Each project builds its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
 
 Branch policy:
 
@@ -25,14 +25,14 @@ Add `--push` to the sync commands when you are ready to publish the generated br
 
 In **Workers & Pages → your project → Settings → Builds & deployments / Build configuration**, use:
 
-| Setting | Maps project | Website project | Admin project | Links project |
-| --- | --- | --- | --- | --- |
-| Framework preset | None | None | Vite / None | None |
-| Root directory | `Maps` | `Website` | `Admin` | `Links` |
-| Build command | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` |
-| Build output directory | `dist` | `dist` | `dist` | `dist` |
-| Environment variable | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` |
-| Environment variable | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` |
+| Setting | Maps project | Website project | Admin project | Links project | Forms project |
+| --- | --- | --- | --- | --- | --- |
+| Framework preset | None | None | Vite / None | None | None |
+| Root directory | `Maps` | `Website` | `Admin` | `Links` | `Forms` |
+| Build command | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` | `npm ci --prefix .. && npm run build` |
+| Build output directory | `dist` | `dist` | `dist` | `dist` | `dist` |
+| Environment variable | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` | `NODE_VERSION=22` |
+| Environment variable | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` | `SKIP_DEPENDENCY_INSTALL=true` |
 
 The explicit install uses the shared root lockfile. Set those environment variables for both Production and Preview. Cloudflare documents the root/output settings in [build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/) and the install override in [build image configuration](https://developers.cloudflare.com/pages/configuration/build-image/).
 
@@ -89,6 +89,30 @@ database as Maps, and use the preview database for preview deployments. Apply
 `Maps/migrations/0015_link_hub_socials.sql` before the first deployment. The public
 project only reads published links and records aggregate open counts; all
 editing remains behind the existing Firebase-protected Maps admin API.
+
+### Forms: create the shared D1/R2 project
+
+Create a fifth Pages project with root directory `Forms`, then use the Forms
+column in the build-settings table above. Connect Production to `deploy` and
+Preview to `preview`; these generated branches now include Forms source,
+Functions, its static 404/preview documents, and every shared dependency it
+needs to build.
+
+In **Settings → Bindings**, bind `DB` to the same D1 database as Maps and
+`MEDIA` to the same private R2 bucket. Use the matching preview database and
+preview bucket for Preview deployments so test responses and uploads never
+touch production. Apply `Maps/migrations/0021_forms.sql` to both environments
+before the first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
+environment uses a Firebase project other than `halal-map-karamah`.
+
+First verify the Forms `pages.dev` hostname: publish one test form in Admin,
+open its public URL, complete a conditional path and an upload, then inspect
+the response, CSV export, analytics, version history, and Admin preview.
+After that, attach `forms.karamahcollective.com`, set `VITE_FORMS_ORIGIN` to
+that exact HTTPS origin in the Admin Pages project, and redeploy Admin. The
+Forms project exposes only published schemas, validated submissions, and
+non-guessable presentation assets; Maps retains the Firebase-protected form
+management and cover-asset endpoints. Respondent uploads remain private.
 
 ## 2. Move the Website deployment to this repository
 
@@ -193,6 +217,7 @@ Under each Pages project's **Build watch paths**, include:
 | Website | `Website/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Admin | `Admin/*`, `Maps/src/app-settings-schema.js`, `Maps/src/app-controls-schema.js`, `Website/assets/js/content-schema.mjs`, `package.json`, `package-lock.json` |
 | Links | `Links/*`, `Maps/migrations/0011_link_hub.sql`, `Maps/migrations/0012_link_hub_content.sql`, `Maps/migrations/0013_link_hub_card_overrides.sql`, `Maps/migrations/0014_link_hub_optional_copy.sql`, `Maps/migrations/0015_link_hub_socials.sql`, `package.json`, `package-lock.json` |
+| Forms | `Forms/*`, `shared/forms-domain.mjs`, `shared/firebase-verify.mjs`, `Maps/migrations/0021_forms.sql`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 

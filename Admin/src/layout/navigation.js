@@ -92,6 +92,12 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: "Forms",
+    links: [
+      { to: "/forms", label: "Forms", icon: "forms", description: "Build, publish, and review community forms." },
+    ],
+  },
+  {
     label: "Maps / configuration",
     links: [
       {

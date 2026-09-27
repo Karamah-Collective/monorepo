@@ -8,7 +8,7 @@ const output = path.join(root, 'dist');
 if (path.dirname(output) !== path.resolve(root)) throw new Error('Invalid build destination');
 await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, 'assets'), { recursive: true });
-for (const item of ['index.html', 'styles.css', 'app.js', '_headers', '_routes.json', 'robots.txt']) {
+for (const item of ['index.html', '404.html', 'styles.css', 'app.js', '_headers', '_routes.json', 'robots.txt']) {
   await cp(path.join(root, item), path.join(output, item));
 }
 await cp(path.join(root, '../Website/assets/images/kc_logo_small.webp'), path.join(output, 'assets/karamah-logo.webp'));

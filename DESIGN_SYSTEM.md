@@ -282,7 +282,50 @@ Karamah without turning the directory into an editorial landing page.
   `Maps/migrations/0014_link_hub_optional_copy.sql`, plus
   `Maps/migrations/0015_link_hub_socials.sql`
 
-## 7. Selecting the right expression for a new app
+## 7. Forms application
+
+### Purpose and tone
+
+Forms is a focused public workflow paired with an internal authoring surface.
+Respondents should feel guided and unhurried; administrators should feel the
+same calm precision as the rest of Admin, with comfortable working text. The dominant public object is one
+question at a time within a clearly bounded section.
+
+### Visual language
+
+- Public Forms uses General Sans, warm paper canvas, warm-white nested form
+  surfaces, charcoal copy, and the single muted green family accent.
+- Long-form hierarchy comes from measured spacing, rules, and question labels,
+  not a stack of decorative cards.
+- Progress is quiet and honest. Conditional paths use a proportion of the
+  currently reachable sections rather than claiming a fixed journey.
+- Admin authoring uses the existing Geist tokens, shared tabs, fields, buttons,
+  query states, toasts, navigation shell, and sticky save-state vocabulary.
+
+### Composition
+
+- Desktop respondent forms use a narrow editorial column with one tactile
+  section surface and persistent brand context.
+- Phone forms retain the same reading order, increase control reachability,
+  and never rely on hover.
+- The desktop builder uses a wide canvas and a single supporting column for
+  outline and contextual settings; phone makes each region sequential.
+- Admin working text is 14–19 px, with 44 px primary controls. Respondent
+  labels are 18 px, body text 16 px, and primary controls at least 50 px tall.
+- Admin preview uses the actual public renderer in an isolated frame; preview
+  submissions and uploads never write data.
+- Response tables may scroll horizontally because their column structure is
+  semantically tabular; the builder and public form must not overflow.
+
+### Source of truth
+
+- Shared form rules and validation: `shared/forms-domain.mjs`
+- Public rendering: `Forms/app.js` and `Forms/styles.css`
+- Admin authoring: `Admin/src/pages/FormEditorPage.jsx` and
+  `Admin/src/styles/forms.css`
+- Persistence: `Maps/migrations/0021_forms.sql`
+
+## 8. Selecting the right expression for a new app
 
 Before coding, answer these questions:
 
@@ -297,7 +340,7 @@ Then choose one composition and document it. Do not merge the Maps floating
 chrome, Website cinematic hero, Admin sidebar, and Links editorial cards into
 one hybrid.
 
-## 8. Implementation checklist for the next app
+## 9. Implementation checklist for the next app
 
 - Reuse an existing family font and palette unless there is a documented reason
   not to.
@@ -313,7 +356,7 @@ one hybrid.
 - Update this document when a new app establishes a reusable pattern.
 - For Maps work, also update `Maps/docs/PREFERENCE_LOG.md`.
 
-## 9. Anti-patterns
+## 10. Anti-patterns
 
 - A settings page that is one uninterrupted wall of fields.
 - A public link page made from identical full-width buttons.

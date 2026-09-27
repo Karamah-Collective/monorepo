@@ -1,6 +1,6 @@
 # Karamah Collective
 
-One repository, four independently deployed applications.
+One repository, five independently deployed applications.
 
 | Folder | Application | Data |
 | --- | --- | --- |
@@ -8,6 +8,7 @@ One repository, four independently deployed applications.
 | [Website](Website/) | Collective website, contact form and website API | Existing Google Sheets via Apps Script |
 | [Admin](Admin/) | Shared administration for Maps and Website | Authenticated calls to each application's API |
 | [Links](Links/) | Public Karamah link hub and read-only API | Existing Cloudflare D1 database |
+| [Forms](Forms/) | Public form respondent experience and submission API | Existing Cloudflare D1 database and R2 media bucket |
 | [shared](shared/) | Firebase token verification used by both APIs | No credentials |
 | [tooling](tooling/) | Local servers and monorepo validation | Local only |
 
@@ -26,6 +27,7 @@ npm run dev
 | Website | http://127.0.0.1:8789 | `npm run dev:website` |
 | Admin | http://127.0.0.1:5173 | `npm run dev:admin` (starts both APIs too) |
 | Links | http://127.0.0.1:8790 | `npm run dev:links` |
+| Forms | http://127.0.0.1:8791 | `npm run dev:forms` |
 
 The Maps server prepares a local D1 database. Existing local database state moved to `Maps/.wrangler`. Local map secrets moved to `Maps/.dev.vars` and `Maps/src/config.local.js`. Website's old `.env.local` remains in its folder; Wrangler uses `Website/.dev.vars` for local secrets. Run `npm run setup:website` to create local Website keys without printing them.
 
@@ -40,6 +42,8 @@ npm run test:website
 npm run test:website:ui
 npm run test:admin
 npm run test:links
+npm run test:forms
+npm run test:forms:ui
 ```
 
 Install browsers once with `npx playwright install chromium`. Maps has its existing browser suites under `Maps/tests`; run `npm run test:maps`, or select tests/projects using the scripts in `Maps/package.json`. Those map integration tests also load external map services.
@@ -67,6 +71,17 @@ Apply `Maps/migrations/0011_link_hub.sql`, `0012_link_hub_content.sql`, and
 `0013_link_hub_card_overrides.sql` in that order before deploying it. See
 `Links/README.md` for exact local and remote commands.
 
+## Forms administration
+
+Admin's **Forms** workspace creates drafts, builds sections and questions,
+tests conditional logic in the real respondent preview, publishes immutable
+versions, reviews responses, exports CSV, and inspects aggregate analytics.
+The public Forms app serves only published schemas and validated submissions.
+Apply [Maps/migrations/0021_forms.sql](Maps/migrations/0021_forms.sql) to the
+matching D1 environment before first use. See [Forms/README.md](Forms/README.md)
+for the bindings, Cloudflare Pages deployment sequence, and manual rollout
+checklist.
+
 ## Deployment
 
 `main` is the full collaboration branch. `preview` and `deploy` are generated deployment branches containing only the files Cloudflare Pages needs.
@@ -80,6 +95,6 @@ npm run deploy:agent -- sync preview
 npm run deploy:agent -- sync deploy
 ```
 
-Add `--push` to the two sync commands when publishing the generated branches. Follow [DEPLOYMENT.md](DEPLOYMENT.md) for Cloudflare project roots, variables, Apps Script setup and domain cutover.
+Add `--push` to the two sync commands when publishing the generated branches. Follow [DEPLOYMENT.md](DEPLOYMENT.md) for Cloudflare project roots, variables, Apps Script setup, Forms bindings, and domain cutover.
 
 The copied Website Git history is preserved locally in `.local-backups/website-git-original`. It is excluded from this repository. Previous nested lockfiles and dependencies are also archived under `.local-backups/workspace-migration`. Keep those backups if you need the original Website history.

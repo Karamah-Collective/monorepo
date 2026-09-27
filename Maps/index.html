@@ -1185,6 +1185,22 @@
                  header comment). -->
 
             <div id="profile-sheet-body" class="mp-pane" inert aria-hidden="true">
+              <!-- Header divider, matching the Menu pane's own: there, `#menu-sheet-body`'s
+                   lone .sort-divider (the one declared between its "Account" and "Map
+                   View" sections) ends up hoisted to the very top of the pane by
+                   src/app-settings.js's `_applyMenuOrder()` — that function appends every
+                   reorderable .menu-section to the parent, so any non-section sibling
+                   interleaved among them (here: that divider) is left in front of all of
+                   them. The Menu pane's headline line is therefore this divider, not
+                   `.sheet-head`'s own border-bottom, which styles.css deliberately zeroes
+                   for #menu-sheet (see that rule's own comment in styles.css for why, and
+                   the note on `#profile-sheet-body` there for the matching padding
+                   treatment). Profile's sections are never touched by
+                   `_applyMenuOrder()` (its labels aren't in its key map), so its dividers
+                   stay put between sections and nothing ever reaches the top — this one
+                   is declared explicitly so both panes show the same line under their
+                   shared headline. -->
+              <div class="sort-divider"></div>
               <div class="menu-section">
                 <div id="profile-card-body" class="menu-account-panel">
                   <p class="menu-placeholder">Loading…</p>

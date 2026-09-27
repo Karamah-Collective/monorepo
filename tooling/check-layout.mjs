@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'));
-for (const app of ['Maps', 'Website', 'Admin', 'Links']) assert(Object.hasOwn(lock.packages, app), `Lockfile must use exact workspace casing: ${app}`);
+for (const app of ['Maps', 'Website', 'Admin', 'Links', 'Forms']) assert(Object.hasOwn(lock.packages, app), `Lockfile must use exact workspace casing: ${app}`);
 assert.equal(lock.packages['node_modules/halal-finder-admin'].resolved, 'Admin');
 const exists = async file => { try { await access(file); return true; } catch { return false; } };
 async function walk(folder) {
@@ -16,7 +16,7 @@ async function walk(folder) {
   }
   return files;
 }
-for (const app of ['Maps', 'Website', 'Admin', 'Links']) {
+for (const app of ['Maps', 'Website', 'Admin', 'Links', 'Forms']) {
   const folder = path.join(root, app);
   assert(await exists(path.join(folder, 'package.json')), `${app} workspace missing`);
   assert(!await exists(path.join(folder, '.git')), `${app} contains a nested Git repository`);
@@ -25,7 +25,7 @@ for (const app of ['Maps', 'Website', 'Admin', 'Links']) {
     if (!/\.(js|jsx|mjs|cjs)$/.test(file) || file.includes(`${path.sep}tests${path.sep}`)) continue;
     const source = await readFile(file, 'utf8');
     for (const [, relative] of source.matchAll(/(?:from\s*|import\s*)["'](\.[^"']+)["']/g)) {
-      assert(await exists(path.resolve(path.dirname(file), relative)), `${path.relative(root, file)} imports missing ${relative}`);
+      assert(await exists(path.resolve(path.dirname(file), relative.split(/[?#]/)[0])), `${path.relative(root, file)} imports missing ${relative}`);
     }
   }
   const output = path.join(folder, 'dist');

@@ -19,6 +19,7 @@ import "./styles/dashboard.css";
 import "./styles/website.css";
 import "./styles/links.css";
 import "./styles/section-tabs.css";
+import "./styles/forms.css";
 import faviconUrl from "../../Website/assets/images/kc_logo_small_icon.ico";
 
 const appVersion = __APP_VERSION__;

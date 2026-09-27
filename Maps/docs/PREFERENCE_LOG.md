@@ -53,6 +53,54 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-09-27 — Forms deployment and repository-hygiene completion pass
+
+**Deployment correction:** the central deployment guide described a Forms Pages
+project, but the generated `preview`/`deploy` branch allow-list omitted Forms
+entirely. The deploy agent now includes Forms source, Functions, its build
+script, public preview/404 documents, and the new public 404 assets for the
+other applications. Forms can therefore build from generated deployment
+branches just like Maps, Website, Admin, and Links.
+
+**Repository hygiene:** Forms' generated `dist/` and local `.wrangler/` state
+are explicitly ignored (in addition to the existing global patterns). Forms
+source, `README.md`, `_headers`, Functions, migrations, preview page, and 404
+page remain intentionally trackable. The root README now describes Forms
+administration, its migration, verification commands, and its deployment guide.
+
+**Deployment handoff:** do not sync/push `preview` or `deploy` until the Forms
+implementation changes are committed: the deployment agent deliberately builds
+its generated branch from committed `HEAD`, excluding dirty working-tree files.
+
+### 2026-09-27 — Forms preview, loading, motion, and not-found completion pass
+
+**Preview fix:** the Admin preview previously attempted to execute a generated
+`data:` JavaScript module in an `srcDoc` iframe. Production Admin CSP correctly
+blocks that source, leaving the preview blank. The preview now uses the Forms
+app's real `/preview.html` runtime in a sandboxed cross-origin iframe; Admin
+sends a structured-cloned draft by `postMessage`. This preserves the actual
+Forms renderer and avoids weakening Admin CSP.
+
+**Forms experience:** Forms now opens with the established Links-style branded
+loader, including the restrained logo/progress animation and reduced-motion
+fallback. The loader closes after the form resolves, not on an arbitrary short
+timer. Existing input, choice, progress, and button transitions remain scoped
+to color, opacity, and transform for smooth interaction without layout motion.
+
+**404 coverage:** added branded static `404.html` fallbacks to Maps, Website,
+Links, and Forms; their custom build scripts copy the pages into deployment
+output. Admin now shows an in-app not-found route and carries a static fallback
+for an asset-level 404. Forms deployment guidance is maintained in
+`Forms/README.md`.
+
+### 2026-09-27 — Forms implementation handoff: version-history completion pass
+
+**Current Forms scope:** Forms now has a public respondent surface, shared schema/rule/answer validation, Firebase-aware access, private R2 uploads, versioned D1 persistence, and an Admin builder with preview, response ledger, CSV export, and analytics. Apply `Maps/migrations/0021_forms.sql` before deploying Forms or its related Admin/Maps endpoints.
+
+**This pass:** the Admin Settings tab now surfaces immutable published snapshots. It marks the live version and loads a read-only schema summary with section, question, and rule counts plus the historical question inventory. Inspection cannot alter the active draft; restore remains an explicit future workflow.
+
+**Maintenance status:** use static syntax and diff checks only. Do not run Playwright or automated tests unless the user asks. The next manual verification after the migration is: publish a form, exercise a conditional path and file upload, then inspect its response, analytics, CSV export, and historical snapshot in Admin.
+
 - **2026-09-21 - Photo tags are optional.** Uploading a review image must not force a label. Tag chips begin unselected and the active chip can be tapped again to clear it. Do not add “Choose one label” helper copy; the single-choice interaction is self-evident. Untagged photos show no replacement badge.
 - **2026-09-21 - Closed hours copy is upright.** The plain Closed value inside the Hours schedule must not be italic because the slanted final glyph can be visually clipped by its row boundary.
 
@@ -356,6 +404,12 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-09-27 - Profile pane headline divider
+
+- Fixed a reported inconsistency: every window shows a divider line under its headline, but the Profile pane showed none under "Profile".
+- Traced the real cause rather than assuming the header's own border: `.sheet-head`'s `border-bottom` is deliberately zeroed for the merged Menu/Profile sheet, so Menu's line actually comes from a `.sort-divider` that `src/app-settings.js`'s `_applyMenuOrder()` strands at the top of `#menu-sheet-body` when it re-appends the pane's sections. Profile's sections are never reordered, so nothing ever reached the top of that pane.
+- Added the matching leading `.sort-divider` to `#profile-sheet-body` and dropped that pane's now-redundant top padding, so the divider's own margin supplies the same 4px offset Menu uses (keeping the old padding would have dropped the line ~12px below "Profile" instead of 4px).
+- Verified by pixel-scanning the rendered header strip in both pane states (a single 1px `#f0f0f0` row exactly 4px below the header in each). Beyond that targeted diagnostic no suites were run, per standing preference; the unrelated failures visible in other suites (`#menu-signout` selectors, style-option assertions) were confirmed pre-existing by re-running them against the unmodified files.
 ### 2026-09-21 - Admin theme inversion and Website Manarah rename
 
 - Reworked Admin semantic theme tokens so light mode uses very pale golden-ivory canvas/navigation with green controls, while dark mode uses predominantly deep green surfaces with gold controls.

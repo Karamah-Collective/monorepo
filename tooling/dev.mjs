@@ -26,15 +26,23 @@ async function waitUntilReady(port,child,label) {
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
 try {
   const target=process.argv[2]||'all';
-  if(!['all','admin','maps','website','links'].includes(target))throw new Error('Use maps, website, links, or admin.');
+  if(!['all','admin','maps','website','links','forms'].includes(target))throw new Error('Use maps, website, links, forms, or admin.');
   if(target!=='maps') await copyFile(path.join(root,'shared','brand','karamah-logo.svg'),path.join(root,'Website','assets','images','karamah-logo.svg'));
-  if(target!=='website' && !await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const child=launch(wrangler,['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
-  if(target!=='maps' && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
-  if(target!=='maps' && target!=='website' && !await busy(8790)) {
+  if(['all','admin','maps'].includes(target) && !await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const child=launch(wrangler,['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
+  if(['all','admin','website'].includes(target) && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
+  if(['all','admin','links'].includes(target) && !await busy(8790)) {
+    await setupLocalDatabase();
     console.log('Building Links assets for local Pages...');
     await import('../Links/scripts/build.mjs');
     const child=launch(wrangler,['pages','dev','dist', '--port','8790','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Links'));
     await waitUntilReady(8790,child,'Links');
+  }
+  if(['all','admin','forms'].includes(target) && !await busy(8791)) {
+    await setupLocalDatabase();
+    console.log('Building Forms assets for local Pages...');
+    await import('../Forms/scripts/build.mjs');
+    const child=launch(wrangler,['pages','dev','dist', '--port','8791','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Forms'));
+    await waitUntilReady(8791,child,'Forms');
   }
   if(['all','admin'].includes(target) && !await busy(5173)) {
     const adminRequire=createRequire(path.join(root,'Admin/package.json'));
@@ -42,5 +50,5 @@ try {
     const child=launch(vite,['--host','127.0.0.1','--strictPort'],path.join(root,'Admin'));
     await waitUntilReady(5173,child,'Admin');
   }
-  console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Admin: http://127.0.0.1:5173');
+  console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Forms: http://127.0.0.1:8791 · Admin: http://127.0.0.1:5173');
 } catch(error) {console.error(error.message);stop(1);}

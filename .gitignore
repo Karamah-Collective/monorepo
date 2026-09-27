@@ -22,6 +22,10 @@ Maps/scripts/local-backups/
 # D1 migration (see docs/D1_MIGRATION_PLAN.md) — local dev state and
 # generated one-time migration SQL, never committed
 .wrangler/
+# Forms uses the same local Wrangler state and generated Pages output. Keep
+# source, migrations, functions, public assets, and Forms/README.md tracked.
+Forms/.wrangler/
+Forms/dist/
 Maps/scripts/migrate-to-d1/generated/
 Website/.local/
 

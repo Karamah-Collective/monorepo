@@ -46,6 +46,11 @@ import {
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
+import {
+  createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
+  formAnalytics, getForm, getVersion, listForms, listSubmissions, publishForm,
+  saveForm, setFormStatus,
+} from "../_forms-admin.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
@@ -88,7 +93,7 @@ function extractTargetId(data) {
   return "";
 }
 
-const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action"]);
+const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action", "schema"]);
 function buildAuditDetail(data) {
   const rest = {};
   for (const k of Object.keys(data)) {
@@ -398,6 +403,12 @@ async function getAdminTypeStyles(db) {
 }
 
 const GET_ACTIONS = {
+  "forms-list": (db, url) => listForms(db, url),
+  "forms-get": (db, url) => getForm(db, url),
+  "forms-version": (db, url) => getVersion(db, url),
+  "forms-submissions": (db, url) => listSubmissions(db, url),
+  "forms-analytics": (db, url) => formAnalytics(db, url),
+  "forms-export": (db, url) => exportResponses(db, url),
   "admin-link-hub": (db) => getAdminLinkHub(db),
   "admin-app-settings": (db) => readAdminAppSettings(db),
   "admin-stats": (db) => getAdminStats(db),
@@ -1040,6 +1051,13 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
+  "forms-create": (db, data, _env, actor) => createForm(db, data, actor),
+  "forms-save": (db, data, _env, actor) => saveForm(db, data, actor),
+  "forms-publish": (db, data, _env, actor) => publishForm(db, data, actor),
+  "forms-status": (db, data, _env, actor) => setFormStatus(db, data, actor),
+  "forms-duplicate": (db, data, _env, actor) => duplicateForm(db, data, actor),
+  "forms-delete": (db, data, _env, actor) => deleteForm(db, data, actor),
+  "forms-delete-submission": (db, data, env) => deleteSubmission(db, data, env),
   "save-link-hub-settings": (db, data) => saveLinkHubSettings(db, data),
   "save-link-hub-link": (db, data) => saveLinkHubLink(db, data),
   "delete-link-hub-link": (db, data) => deleteLinkHubLink(db, data),
