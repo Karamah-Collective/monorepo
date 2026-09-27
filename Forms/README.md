@@ -1,4 +1,4 @@
-# Karamah Forms
+# Karamah Collective Forms
 
 Public respondent application for versioned forms authored in Admin. The app is static JavaScript plus Cloudflare Pages Functions, matching the Links and Maps deployment pattern.
 

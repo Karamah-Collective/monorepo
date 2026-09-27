@@ -53,6 +53,26 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-09-27 — Forms responsive release and public-route repair
+
+**Responsive verification:** Forms now has browser coverage at 360px phone,
+768px tablet, and 1440px desktop widths. Each viewport loads an actual public
+`/forms/:slug` route, renders the respondent shell, and asserts that no
+horizontal overflow is introduced. The test server uses Cloudflare Pages
+Functions instead of a generic static server, so it exercises deployment-like
+routing rather than masking route issues.
+
+**Public-route repair:** a custom Pages 404 document had disabled the implicit
+SPA fallback, causing all public form links to return 404. A scoped
+`/forms/*` Pages Function now serves the public shell while unrelated paths
+retain the dedicated 404 page. The Forms wordmark, document titles, loading
+copy, and identity guidance now consistently say **Karamah Collective**.
+
+**Database state:** migration `Maps/migrations/0021_forms.sql` has been
+applied to both `halal-finder-db-preview` and `halal-finder-db`. No additional
+SQL is required for this release; rerunning that idempotent migration is the
+safe recovery step if a new environment is provisioned.
+
 ### 2026-09-27 — Forms deployment and repository-hygiene completion pass
 
 **Deployment correction:** the central deployment guide described a Forms Pages

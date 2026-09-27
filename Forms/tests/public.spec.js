@@ -45,3 +45,18 @@ test("respondent form fits a 360px viewport and reports required errors", async 
   await expect(page.getByText("This question is required.").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
+
+for (const [name, viewport] of Object.entries({
+  phone: { width: 360, height: 780 },
+  tablet: { width: 768, height: 1024 },
+  desktop: { width: 1440, height: 960 },
+})) {
+  test(`respondent shell is responsive on ${name}`, async ({ page }) => {
+    await mockRuntime(page);
+    await page.setViewportSize(viewport);
+    await page.goto("/forms/community-supper");
+    await expect(page.getByRole("heading", { name: "Community supper" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await expect(page.locator(".section-card")).toBeVisible();
+  });
+}

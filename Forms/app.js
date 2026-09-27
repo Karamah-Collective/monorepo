@@ -196,7 +196,7 @@ async function load() {
     }
     form = data;
     schema = data.schema;
-    document.title = `${schema.title} — Karamah Forms`;
+    document.title = `${schema.title} — Karamah Collective Forms`;
     try {
       answers = JSON.parse(localStorage.getItem(storageKey())) || {};
       submissionKey =
@@ -769,7 +769,7 @@ function render() {
   if (schema.settings.requiresAuth && !user && !previewSchema) {
     stateView(
       "Sign in to continue",
-      "This form requires a Karamah account. Your answers stay on this device until you submit.",
+      "This form requires a Karamah Collective account. Your answers stay on this device until you submit.",
       "info",
       { label: "Sign in", onClick: () => authDialog.showModal() },
     );
