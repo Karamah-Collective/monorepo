@@ -9,9 +9,15 @@ const slugPattern = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const tokenPattern = /^[a-z]+_[0-9a-f-]{36}$/i;
 const allowedFileTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf", "text/plain", "text/csv"]);
 
-async function currentForm(db, slug) {
-  return db.prepare(`SELECT f.id,f.slug,f.status,f.active_version_id,v.version_number,v.schema_json
-    FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id WHERE f.slug=? AND f.status!='deleted'`).bind(slug).first();
+async function currentForm(db, key, isCode = false) {
+  return db.prepare(`SELECT f.id,f.slug,f.share_code,f.status,f.active_version_id,v.version_number,v.schema_json
+    FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id WHERE ${isCode ? "f.share_code" : "f.slug"}=? AND f.status!='deleted'`).bind(key).first();
+}
+
+function formKey(url) {
+  const code = url.searchParams.get("code") || "", slug = url.searchParams.get("slug") || "";
+  if (code) return /^[A-Za-z0-9_-]{22,32}$/.test(code) ? { value: code, code: true } : null;
+  return slugPattern.test(slug) ? { value: slug, code: false } : null;
 }
 
 function availability(form, schema, responseCount = 0) {
@@ -31,23 +37,24 @@ async function userFromRequest(request, env) {
 
 export async function onRequestGet({ env, request }) {
   if (!env.DB) return json({ error: "Forms are temporarily unavailable." }, 503);
-  const url = new URL(request.url), slug = url.searchParams.get("slug") || "";
-  if (!slugPattern.test(slug)) return json({ error: "Form not found." }, 404);
+  const url = new URL(request.url), key = formKey(url);
+  if (!key) return json({ error: "Form not found." }, 404);
   try {
-    const form = await currentForm(env.DB, slug);
+    const form = await currentForm(env.DB, key.value, key.code);
     if (!form) return json({ error: "Form not found." }, 404);
     const schema = publicSchema(safeJson(form.schema_json));
     const count = await env.DB.prepare("SELECT COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid'").bind(form.id).first();
     const available = availability(form, schema, count?.count || 0);
     if (available.state === "not_found") return json({ error: available.message, state: available.state }, 404);
-    return json({ id: form.id, slug: form.slug, versionId: form.active_version_id, version: form.version_number, status: available, schema }, 200, { "Cache-Control": available.state === "open" ? "public, max-age=30, stale-while-revalidate=120" : "no-store" });
+    return json({ id: form.id, slug: form.slug, shareCode: form.share_code, versionId: form.active_version_id, version: form.version_number, status: available, schema }, 200, { "Cache-Control": available.state === "open" ? "public, max-age=30, stale-while-revalidate=120" : "no-store" });
   } catch { return json({ error: "The form could not be loaded. Please try again." }, 502); }
 }
 
 async function receiveUpload(env, request, url) {
   if (!env.MEDIA) return json({ error: "File uploads are temporarily unavailable." }, 503);
-  const slug = url.searchParams.get("slug") || "", questionId = url.searchParams.get("questionId") || "";
-  const form = await currentForm(env.DB, slug);
+  const lookup = formKey(url), questionId = url.searchParams.get("questionId") || "";
+  if (!lookup) return json({ error: "Form not found." }, 404);
+  const form = await currentForm(env.DB, lookup.value, lookup.code);
   if (!form) return json({ error: "Form not found." }, 404);
   const schema = publicSchema(safeJson(form.schema_json)), open = availability(form, schema);
   if (open.state !== "open") return json({ error: open.message }, 409);
@@ -80,7 +87,8 @@ async function receiveUpload(env, request, url) {
 async function submit(env, request, url) {
   let data; try { data = await request.json(); } catch { return json({ error: "Invalid submission." }, 400); }
   if (!data || typeof data !== 'object' || !data.answers || typeof data.answers !== 'object' || Array.isArray(data.answers)) return json({error:"Invalid answers."},400);
-  const slug = url.searchParams.get("slug") || "", form = await currentForm(env.DB, slug);
+  const key = formKey(url); if (!key) return json({ error: "Form not found." }, 404);
+  const form = await currentForm(env.DB, key.value, key.code);
   if (!form) return json({ error: "Form not found." }, 404);
   const schema = publicSchema(safeJson(form.schema_json)), count = await env.DB.prepare("SELECT COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid'").bind(form.id).first();
   const user = await userFromRequest(request, env);

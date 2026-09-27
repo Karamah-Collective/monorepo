@@ -5,8 +5,11 @@ import { readFile } from "node:fs/promises";
 test("built public shell keeps respondent and administration boundaries separate", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
   const script = await readFile(new URL("../dist/app.js", import.meta.url), "utf8");
-  assert.match(html, /Karamah Collective <b>Forms<\/b>/);
-  assert.match(script, /\/api\/form\?slug=/);
+  assert.match(html, /<span>Forms<\/span>/);
+  assert.match(html, /data-provider="facebook"/);
+  assert.match(html, /data-email-mode="signup"/);
+  assert.match(script, /const formQuery/);
+  assert.match(script, /\/api\/form\?\$\{formQuery\(\)\}/);
   assert.doesNotMatch(script, /forms-(?:create|save|publish|delete)/);
   assert.doesNotMatch(html, /innerHTML/);
 });

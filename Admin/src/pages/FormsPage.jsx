@@ -60,8 +60,8 @@ export default function FormsPage() {
     navigate(`/forms/${result.id}`);
   }
   async function copyLink(form) {
-    await navigator.clipboard.writeText(formPublicUrl(form.slug));
-    toast("Public form link copied");
+    await navigator.clipboard.writeText(formPublicUrl(form.shareCode));
+    toast("Private share link copied");
   }
   async function deleteForm(form) {
     if (
@@ -222,7 +222,7 @@ export default function FormsPage() {
                   className="icon-button"
                   title="Copy public link"
                   aria-label={`Copy link for ${form.title}`}
-                  disabled={!form.activeVersionId}
+                  disabled={!form.activeVersionId || !form.shareCode}
                   onClick={() => copyLink(form)}
                 >
                   <Copy size={16} />
@@ -232,7 +232,7 @@ export default function FormsPage() {
                     className="icon-button"
                     title="Open public form"
                     aria-label={`Open ${form.title}`}
-                    href={formPublicUrl(form.slug)}
+                    href={formPublicUrl(form.shareCode)}
                     target="_blank"
                     rel="noreferrer"
                   >

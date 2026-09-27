@@ -240,7 +240,7 @@ function FormEditor() {
           {form.activeVersionId && (
             <a
               className="pp-btn"
-              href={formPublicUrl(slug)}
+              href={formPublicUrl(form.shareCode)}
               target="_blank"
               rel="noreferrer"
             >
@@ -317,7 +317,7 @@ function FormEditor() {
       )}
       {tab === "responses" && <Responses formId={id} schema={draft} />}
       {tab === "analytics" && <Analytics formId={id} />}
-      <div className={`form-save-dock is-${saveState}`}>
+      {saveState !== "saved" && <div className={`form-save-dock is-${saveState}`}>
         <span>
           {saveState === "saving" ? (
             <FloppyDisk size={15} />
@@ -346,7 +346,7 @@ function FormEditor() {
             Try again
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -1180,17 +1180,8 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
               }
             />
           </Field>
-          <Field
-            label="Share identifier"
-            hint="Changing this changes the public URL."
-          >
-            <input
-              value={slug}
-              pattern="[a-z0-9-]+"
-              onChange={(e) =>
-                setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
-              }
-            />
+          <Field label="Share link" hint="Private, unguessable address generated for this form.">
+            <input readOnly value={form.shareCode ? formPublicUrl(form.shareCode) : "Available after the share-code migration"} onFocus={(event) => event.currentTarget.select()} />
           </Field>
           <Field label="Subtitle">
             <input
@@ -1258,7 +1249,13 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
       <section>
         <p className="page-eyebrow">ACCESS & AVAILABILITY</p>
         <h2>Who can respond</h2>
-        <div className="settings-grid">
+        <div className="settings-grid access-settings-grid">
+          <Field label="Homepage visibility" hint="Link-only forms stay off the Forms homepage; share their unique URL directly with invitees.">
+            <select value={s.visibility || "public"} onChange={(e) => update((x) => { x.settings.visibility = e.target.value; })}>
+              <option value="public">Public — list on Forms home</option>
+              <option value="link">Link-only — invite via unique link</option>
+            </select>
+          </Field>
           <Field label="Access">
             <select
               value={s.requiresAuth ? "authenticated" : "public"}
@@ -1528,55 +1525,10 @@ function Responses({ formId, schema }) {
           <h2>No responses yet</h2>
           <p>Publish and share this form. New submissions will appear here.</p>
         </div>
-      ) : (
-        <div className="response-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Submitted</th>
-                <th>Identity</th>
-                <th>Version</th>
-                {questions.map((q) => (
-                  <th key={q.id}>{q.label}</th>
-                ))}
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((s) => (
-                <tr key={s.id}>
-                  <td>{new Date(s.submittedAt).toLocaleString()}</td>
-                  <td>{s.respondentEmail || "Anonymous"}</td>
-                  <td>v{s.version}</td>
-                  {questions.map((q) => (
-                    <td key={q.id}>{formatAnswer(s.answers[q.id], q)}</td>
-                  ))}
-                  <td>
-                    <button
-                      className="icon-button danger"
-                      onClick={async () => {
-                        if (
-                          confirm(
-                            "Delete this response and its uploaded files?",
-                          )
-                        ) {
-                          await remove.mutateAsync({
-                            id: formId,
-                            submissionId: s.id,
-                          });
-                          toast("Response deleted");
-                        }
-                      }}
-                    >
-                      <Trash size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      ) : <div className="response-cards">{submissions.map((s) => <details className="response-card" key={s.id}>
+        <summary><span><b>{s.respondentEmail || "Anonymous response"}</b><small>{new Date(s.submittedAt).toLocaleString()} · Version {s.version}</small></span><span className="response-card-count">{questions.filter(q => s.answers[q.id] != null && s.answers[q.id] !== "").length} answers</span></summary>
+        <div className="response-card-body"><dl>{questions.map(q => <div key={q.id}><dt>{q.label}</dt><dd>{formatAnswer(s.answers[q.id], q)}</dd></div>)}</dl><button className="icon-button danger" aria-label="Delete response" onClick={async () => { if (confirm("Delete this response and its uploaded files?")) { await remove.mutateAsync({ id: formId, submissionId: s.id }); toast("Response deleted"); } }}><Trash size={14} /></button></div>
+      </details>)}</div>}
     </div>
   );
 }

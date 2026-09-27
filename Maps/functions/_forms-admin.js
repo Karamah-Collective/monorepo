@@ -8,12 +8,23 @@ const FORM_STATUSES = new Set(["draft", "published", "closed", "archived"]);
 
 function serializeForm(row) {
   return {
-    id: row.id, slug: row.slug, title: row.title, status: row.status,
+    id: row.id, slug: row.slug, shareCode: row.share_code || null, title: row.title, status: row.status,
     revision: row.draft_revision, activeVersionId: row.active_version_id || null,
     createdBy: row.created_by, updatedBy: row.updated_by, createdAt: row.created_at, updatedAt: row.updated_at,
     archivedAt: row.archived_at || null, responseCount: row.response_count || 0,
     lastResponseAt: row.last_response_at || null,
   };
+}
+
+async function uniqueShareCode(db) {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const code = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    const found = await db.prepare("SELECT id FROM forms WHERE share_code=?").bind(code).first();
+    if (!found) return code;
+  }
+  throw new Error("Could not create a unique share code");
 }
 
 async function uniqueSlug(db, source, exceptId = "") {
@@ -49,11 +60,11 @@ export async function getForm(db, url) {
 
 export async function createForm(db, data, actor) {
   const title = String(data.title || "Untitled form").trim().slice(0, 180) || "Untitled form";
-  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, data.slug || title);
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, data.slug || title), shareCode = await uniqueShareCode(db);
   const schema = createFormSchema(title);
-  await db.prepare("INSERT INTO forms (id,slug,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(formId, slug, title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
-  return { success: true, id: formId, slug, revision: 0 };
+  await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(formId, slug, shareCode, title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
+  return { success: true, id: formId, slug, shareCode, revision: 0 };
 }
 
 export async function saveForm(db, data, actor) {
@@ -123,10 +134,10 @@ export async function duplicateForm(db, data, actor) {
   const source = await db.prepare("SELECT * FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
   if (!source) return { error: "Form not found" };
   const schema = freshenSchema(safeJson(source.draft_schema_json)); schema.title = `${schema.title} copy`.slice(0, 180);
-  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, schema.title);
-  await db.prepare("INSERT INTO forms (id,slug,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(formId, slug, schema.title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
-  return { success: true, id: formId, slug };
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, schema.title), shareCode = await uniqueShareCode(db);
+  await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(formId, slug, shareCode, schema.title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
+  return { success: true, id: formId, slug, shareCode };
 }
 
 export async function deleteForm(db, data, actor) {

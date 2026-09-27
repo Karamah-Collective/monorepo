@@ -3,7 +3,7 @@ import { apiGet, apiPost } from "./client.js";
 import { auth } from "../firebase.js";
 
 export const formsOrigin = (import.meta.env.VITE_FORMS_ORIGIN || (import.meta.env.DEV ? "http://127.0.0.1:8791" : "https://forms.karamahcollective.com")).replace(/\/$/, "");
-export const formPublicUrl = slug => `${formsOrigin}/forms/${encodeURIComponent(slug)}`;
+export const formPublicUrl = shareCode => `${formsOrigin}/f/${encodeURIComponent(shareCode)}`;
 export const formAssetUrl = assetId => `${formsOrigin}/api/media?id=${encodeURIComponent(assetId)}`;
 export async function uploadFormCover(formId, file, alt = "") {
   if (!auth.currentUser) throw new Error("Not signed in");

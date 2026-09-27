@@ -53,10 +53,11 @@ preview. The `404.html` page should appear for an unknown static address.
 
 ## Routes
 
-- `/forms/:slug` — stable public respondent route;
-- `GET /api/form?slug=:slug` — published schema and availability;
-- `POST /api/form?slug=:slug` — validated, idempotent submission;
-- multipart `POST /api/form?slug=:slug&questionId=:id` — respondent file upload;
+- `/f/:shareCode` — short, opaque 128-bit public respondent route;
+- `/forms/:slug` — legacy respondent route retained for previously shared links;
+- `GET /api/form?code=:shareCode` — published schema and availability;
+- `POST /api/form?code=:shareCode` — validated, idempotent submission;
+- multipart `POST /api/form?code=:shareCode&questionId=:id` — respondent file upload;
 - `GET /api/media?id=:assetId` — immutable public presentation image.
 
 Respondent uploads are never exposed through the public media route. Only presentation assets in `form_assets` can be read there.
@@ -69,4 +70,4 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Before deployment, apply `Maps/migrations/0021_forms.sql` to both Preview and Production D1 databases using the same migration process as the other Maps-backed applications.
+Before deployment, apply `Maps/migrations/0021_forms.sql` and `Maps/migrations/0022_form_share_codes.sql` to both Preview and Production D1 databases using the same migration process as the other Maps-backed applications.

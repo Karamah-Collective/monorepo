@@ -12,12 +12,19 @@ const app = document.querySelector("#app"),
   accountSlot = document.querySelector("#account-slot"),
   authDialog = document.querySelector("#auth-dialog"),
   authError = document.querySelector("#auth-error");
-let previewSchema = JSON.parse(document.querySelector('#forms-preview-data')?.textContent || 'null');
-const previewMode = new URLSearchParams(location.search).has('preview');
-const slug = (() => {
-  const parts = location.pathname.split("/").filter(Boolean);
-  return parts[0] === "forms" ? parts[1] : parts[0];
+let previewSchema = (() => {
+  const inline = document.querySelector('#forms-preview-data')?.textContent;
+  const encoded = new URLSearchParams(location.search).get("schema");
+  try { return inline ? JSON.parse(inline) : encoded ? JSON.parse(decodeURIComponent(escape(atob(encoded)))) : null; } catch { return null; }
 })();
+const previewMode = new URLSearchParams(location.search).has('preview');
+const route = (() => {
+  const parts = location.pathname.split("/").filter(Boolean);
+  if (parts[0] === "f") return { code: parts[1] || "" };
+  if (parts[0] === "forms") return { slug: parts[1] || "" };
+  return {};
+})();
+const formQuery = () => route.code ? `code=${encodeURIComponent(route.code)}` : `slug=${encodeURIComponent(route.slug || "")}`;
 let form = null,
   schema = null,
   answers = {},
@@ -28,7 +35,9 @@ let form = null,
   uploading = 0,
   saveTimer = 0,
   questionNumber = 0,
-  submissionKey = "";
+  submissionKey = "",
+  sectionMotion = "",
+  hasRenderedForm = false;
 const startupStartedAt = performance.now();
 function finishStartup() {
   const screen = document.querySelector("#startup-screen");
@@ -96,6 +105,29 @@ watchAuth((next) => {
 document
   .querySelector("[data-close-auth]")
   ?.addEventListener("click", () => authDialog.close());
+const privacyOverlay = document.querySelector("#privacy-overlay");
+async function openPrivacy() {
+  if (!privacyOverlay) return;
+  if (!privacyOverlay.dataset.loaded) {
+    const response = await fetch("/content/privacy.html");
+    if (response.ok) privacyOverlay.insertAdjacentHTML("beforeend", await response.text());
+    privacyOverlay.dataset.loaded = "true";
+  }
+  privacyOverlay.classList.add("is-open"); privacyOverlay.setAttribute("aria-hidden", "false");
+}
+function closePrivacy() { privacyOverlay?.classList.remove("is-open"); privacyOverlay?.setAttribute("aria-hidden", "true"); }
+document.querySelectorAll("[data-open-privacy]").forEach(button => button.addEventListener("click", openPrivacy));
+privacyOverlay?.addEventListener("click", event => { if (event.target.closest("[data-close-privacy]")) closePrivacy(); });
+window.addEventListener("keydown", event => { if (event.key === "Escape") closePrivacy(); });
+let emailMode = "signin";
+document.querySelectorAll("[data-email-mode]").forEach(button => button.addEventListener("click", () => {
+  emailMode = button.dataset.emailMode;
+  document.querySelectorAll("[data-email-mode]").forEach(item => item.classList.toggle("active", item === button));
+  const password = document.querySelector("#email-auth input[name=password]");
+  if (password) password.autocomplete = emailMode === "signup" ? "new-password" : "current-password";
+  const submit = document.querySelector("#email-auth button[type=submit]");
+  if (submit) submit.textContent = emailMode === "signup" ? "Create account" : "Sign in with email";
+}));
 document.querySelectorAll("[data-provider]").forEach((button) =>
   button.addEventListener("click", async () => {
     authError.textContent = "";
@@ -119,7 +151,7 @@ document
     submit.disabled = true;
     const data = new FormData(event.currentTarget);
     try {
-      await signInEmail(data.get("email"), data.get("password"));
+      await signInEmail(data.get("email"), data.get("password"), emailMode === "signup");
       authDialog.close();
     } catch (error) {
       authError.textContent = friendlyAuthError(error);
@@ -174,17 +206,13 @@ async function load() {
     return;
   }
   if (previewMode) return;
-  if (!slug) {
-    stateView(
-      "Form not found",
-      "Check the address or ask the form owner for a new link.",
-      "error",
-    );
+  if (!route.code && !route.slug) {
+    await renderHome();
     finishStartup();
     return;
   }
   try {
-    const response = await fetch(`/api/form?slug=${encodeURIComponent(slug)}`),
+    const response = await fetch(`/api/form?${formQuery()}`),
       data = await response.json();
     if (!response.ok) {
       stateView(
@@ -227,6 +255,35 @@ async function load() {
   }
 }
 
+async function renderHome() {
+  clear(app);
+  const shell = node("section", { class: "forms-home" }, [
+    node("div", { class: "home-intro" }, [node("p", { class: "eyebrow", text: "KARAMAH COLLECTIVE" }), node("h1", { text: "Community forms, open to you." })]),
+    node("section", { class: "public-forms", "aria-live": "polite" }, [node("p", { class: "eyebrow", text: "OPEN FORMS" }), node("h2", { text: "Take part" }), node("p", { class: "home-loading", text: "Finding available forms…" })]),
+  ]);
+  app.append(shell);
+  try {
+    const response = await fetch("/api/forms"), data = await response.json();
+    const area = shell.querySelector(".public-forms"); clear(area);
+    area.append(node("p", { class: "eyebrow", text: "OPEN FORMS" }), node("h2", { text: "Take part" }));
+    const forms = data.forms || [];
+    if (!response.ok || !forms.length) {
+      area.append(node("p", { class: "home-empty", text: "There are no public forms open right now. Please check back soon." }));
+      return;
+    }
+    const grid = node("div", { class: "public-form-grid" });
+    forms.forEach(item => {
+      const card = node("a", { class: "public-form-card", href: `/f/${encodeURIComponent(item.shareCode)}` });
+      if (item.coverImage?.assetId) card.append(node("img", { src: `/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, alt: item.coverImage.alt || "" }));
+      const copy = node("div", {}, [node("h3", { text: item.title }), item.subtitle ? node("p", { class: "card-subtitle", text: item.subtitle }) : null, item.description ? node("p", { text: item.description.slice(0, 180) }) : null, node("span", { text: "Open form →" })]);
+      card.append(copy); grid.append(card);
+    });
+    area.append(grid);
+  } catch {
+    shell.querySelector(".home-loading").textContent = "Forms could not be loaded. Please try again shortly.";
+  }
+}
+
 if (previewMode) {
   window.addEventListener("message", event => {
     const next = event.data?.type === "karamah-forms-preview" ? event.data.schema : null;
@@ -238,8 +295,12 @@ if (previewMode) {
     form = { id: "preview", versionId: "preview" };
     schema = previewSchema;
     render();
+    window.parent?.postMessage({ type: "karamah-forms-preview-applied" }, "*");
     finishStartup();
   });
+  // The parent can now reliably send the schema even when its first message
+  // raced the iframe module booting.
+  window.parent?.postMessage({ type: "karamah-forms-preview-ready" }, "*");
 }
 
 function visibleSections() {
@@ -480,7 +541,7 @@ async function upload(question, input, status) {
       const body = new FormData();
       body.set("file", file);
       const response = await fetch(
-        `/api/form?slug=${encodeURIComponent(slug)}&questionId=${encodeURIComponent(question.id)}`,
+        `/api/form?${formQuery()}&questionId=${encodeURIComponent(question.id)}`,
         { method: "POST", body, headers: { Authorization: `Bearer ${await getToken()}` } },
       );
       const data = await response.json();
@@ -790,7 +851,7 @@ function render() {
       (block) => block.kind === "question" && block.type !== "hidden",
     ).length;
   const state = evaluateRules(schema, answers),
-    shell = node("div", { class: "form-shell" });
+    shell = node("div", { class: `form-shell${hasRenderedForm ? "" : " is-entering"}` });
   if (schema.coverImage?.assetId || schema.coverImage?.url)
     shell.append(
       node("img", {
@@ -848,7 +909,7 @@ function render() {
     card = node(
       "section",
       {
-        class: "section-card",
+        class: `section-card${sectionMotion ? ` ${sectionMotion}` : ""}`,
         "aria-labelledby": section.title ? `section-${section.id}` : null,
       },
       heading,
@@ -867,7 +928,7 @@ function render() {
         type: "button",
         text: "Back",
         onClick: () => {
-          page--;
+          page--; sectionMotion = "slide-from-left";
           errors = {};
           render();
           scrollTo({ top: 0, behavior: "smooth" });
@@ -886,7 +947,7 @@ function render() {
         if (!validateCurrent(sections)) return;
         if (isLast) await submit();
         else {
-          page = nextPageIndex(sections, page, state);
+          page = nextPageIndex(sections, page, state); sectionMotion = "slide-from-right";
           errors = {};
           render();
           scrollTo({ top: 0, behavior: "smooth" });
@@ -904,6 +965,8 @@ function render() {
   );
   clear(app);
   app.append(shell);
+  hasRenderedForm = true;
+  sectionMotion = "";
 }
 async function submit() {
   if (pending) return;
@@ -941,7 +1004,7 @@ async function submit() {
   } catch {}
   try {
     const token = await getToken(),
-      response = await fetch(`/api/form?slug=${encodeURIComponent(slug)}`, {
+      response = await fetch(`/api/form?${formQuery()}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

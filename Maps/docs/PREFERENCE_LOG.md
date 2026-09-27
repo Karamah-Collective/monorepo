@@ -53,6 +53,24 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-09-27 — Forms refinement direction
+
+- Forms must match the Links shell structurally: a compact shared masthead and a restrained atmospheric background, while retaining its own visual motif rather than copying Links exactly.
+- Avoid wordy home-page introductions. Public Forms should lead with a short, well-composed message and make the available forms the focus.
+- Privacy belongs in the established Website-style overlay pattern, not as a standalone document route.
+- Motion is a product requirement: root reveals, respondent-section changes, and authentication dialogs need purposeful transform/opacity transitions with reduced-motion support.
+- Admin response data must be read as expandable response records, never as a horizontal all-questions spreadsheet table.
+- Public Form addresses must be opaque, random capability links rather than human-readable title slugs. `0022_form_share_codes.sql` backfills existing records and new share routes use `/f/:shareCode`.
+
+### 2026-09-27 — Forms responsive motion and privacy refinement
+
+- Provider authentication should use recognisable, icon-first brand controls, matching Maps rather than repeating “Continue with …” labels.
+- The saved state of a draft is not a notification and should not occupy persistent UI; show the save dock only while saving or if action is required.
+- Form-page motion should leave the form header stable and animate only the changing section horizontally, in the direction of navigation.
+- Privacy must be a centered modal overlay using the formal Karamah Collective GDPR policy structure, not a casual product explainer or a bottom sheet.
+- Responsive Forms layouts must preserve a single-line desktop hero headline where there is available width, then reflow naturally on smaller screens.
+- Response records begin collapsed; an administrator opens only the one they need to read.
+
 ### 2026-09-27 — Forms responsive release and public-route repair
 
 **Responsive verification:** Forms now has browser coverage at 360px phone,

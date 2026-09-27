@@ -104,6 +104,9 @@ export function createFormSchema(title = "Untitled form") {
       closesAt: null,
       allowAnother: true,
       redirectUrl: "",
+      // Public forms appear on the Forms home page. Link-only forms are
+      // intentionally omitted there and can be shared with invitees.
+      visibility: "public",
     },
     sections: [
       {
