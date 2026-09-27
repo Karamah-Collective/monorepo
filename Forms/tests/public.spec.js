@@ -15,9 +15,10 @@ const schema = {
   rules: [{ id: "rule-1", when: { all: [{ questionId: "q-attend", operator: "equals", value: "yes" }] }, actions: [{ type: "show", targetId: "q-guests" }, { type: "set_required", targetId: "q-guests", value: true }] }],
 };
 
-async function mockRuntime(page) {
+async function mockRuntime(page, options = {}) {
+  const signedInUser = options.signedIn ? `{email:"amina@example.test",displayName:"Amina Hassan"}` : "null";
   await page.route("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js", route => route.fulfill({ contentType: "text/javascript", body: "export const initializeApp = value => value;" }));
-  await page.route("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js", route => route.fulfill({ contentType: "text/javascript", body: `export const getAuth=()=>({currentUser:null});export class GoogleAuthProvider{};export class FacebookAuthProvider{};export class OAuthProvider{addScope(){}};export const signInWithPopup=async()=>({});export const signInWithEmailAndPassword=async()=>({});export const createUserWithEmailAndPassword=async()=>({user:{}});export const sendEmailVerification=async()=>{};export const onAuthStateChanged=(_a,cb)=>{cb(null);return()=>{}};export const signOut=async()=>{};` }));
+  await page.route("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js", route => route.fulfill({ contentType: "text/javascript", body: `const signedInUser=${signedInUser};globalThis.__signOutCalls=0;export const getAuth=()=>({currentUser:signedInUser});export class GoogleAuthProvider{};export class FacebookAuthProvider{};export class OAuthProvider{addScope(){}};export const signInWithPopup=async()=>({});export const signInWithEmailAndPassword=async()=>({});export const createUserWithEmailAndPassword=async()=>({user:{}});export const sendEmailVerification=async()=>{};export const sendPasswordResetEmail=async()=>{};export const onAuthStateChanged=(_a,cb)=>{cb(signedInUser);return()=>{}};export const signOut=async()=>{globalThis.__signOutCalls++};` }));
   await page.route("**/api/form?slug=community-supper", async route => {
     if (route.request().method() === "GET") return route.fulfill({ contentType: "application/json", body: JSON.stringify({ id: "form-1", slug: "community-supper", versionId: "version-1", version: 1, status: { state: "open" }, schema }) });
     const request = route.request().postDataJSON();
@@ -44,6 +45,27 @@ test("respondent form fits a 360px viewport and reports required errors", async 
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("This question is required.").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test("admin full preview is clearly marked and can advance without required answers", async ({ page }) => {
+  await mockRuntime(page);
+  const encoded = Buffer.from(JSON.stringify(schema), "utf8").toString("base64");
+  await page.goto(`/?preview=1#schema=${encoded}`);
+  await expect(page.getByText("Preview", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Community supper" })).toBeVisible();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Guests", { exact: true })).toBeVisible();
+});
+
+test("signed-in account button opens account dialog without signing out", async ({ page }) => {
+  await mockRuntime(page, { signedIn: true });
+  await page.goto("/forms/community-supper");
+  await page.getByRole("button", { name: /Amina Hassan/ }).click();
+  await expect(page.getByRole("heading", { name: "Signed in" })).toBeVisible();
+  await expect(page.getByText("amina@example.test")).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__signOutCalls)).toBe(0);
+  await page.getByRole("button", { name: "Stay signed in" }).click();
+  await expect(page.getByRole("button", { name: /Amina Hassan/ })).toBeVisible();
 });
 
 for (const [name, viewport] of Object.entries({

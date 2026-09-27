@@ -5,21 +5,25 @@ import { readFile } from "node:fs/promises";
 test("built public shell keeps respondent and administration boundaries separate", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
   const script = await readFile(new URL("../dist/app.js", import.meta.url), "utf8");
-  assert.match(html, /<span>Forms<\/span>/);
+  assert.match(html, /<span>Karamah Collective<\/span><small>Forms<\/small>/);
+  assert.match(html, /data-auth-eyebrow>SIGN IN/);
   assert.match(html, /data-provider="facebook"/);
   assert.match(html, /data-email-mode="signup"/);
+  assert.match(html, /data-reset-password/);
+  assert.match(html, /id="account-dialog"/);
   assert.match(script, /const formQuery/);
   assert.match(script, /\/api\/form\?\$\{formQuery\(\)\}/);
   assert.doesNotMatch(script, /forms-(?:create|save|publish|delete)/);
   assert.doesNotMatch(html, /innerHTML/);
 });
 
-test("public security headers allow Firebase, deny framing, and make only the Admin preview embeddable", async () => {
+test("public security headers allow Firebase auth and deny framing", async () => {
   const headers = await readFile(new URL("../_headers", import.meta.url), "utf8");
   assert.match(headers, /\/\*\n[\s\S]*frame-ancestors 'none'/);
-  assert.match(headers, /\/preview\.html[\s\S]*frame-ancestors https:\/\/admin\.karamahcollective\.com/);
+  assert.doesNotMatch(headers, /frame-ancestors https:\/\/admin\.karamahcollective\.com/);
   assert.match(headers, /object-src 'none'/);
   assert.match(headers, /identitytoolkit\.googleapis\.com/);
+  assert.match(headers, /apis\.google\.com/);
 });
 
 test("respondent uploads have no public download endpoint", async () => {

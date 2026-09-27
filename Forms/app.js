@@ -2,6 +2,7 @@ import { evaluateRules, validateAnswers } from "/forms-domain.mjs";
 import {
   currentUser,
   getToken,
+  resetPassword,
   signInEmail,
   signInProvider,
   signOutUser,
@@ -11,11 +12,42 @@ import {
 const app = document.querySelector("#app"),
   accountSlot = document.querySelector("#account-slot"),
   authDialog = document.querySelector("#auth-dialog"),
+  accountDialog = document.querySelector("#account-dialog"),
   authError = document.querySelector("#auth-error");
+const colorSchemeQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+function savedColorMode() {
+  try {
+    const saved = localStorage.getItem("kc-forms-theme");
+    return saved === "dark" || saved === "light" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+function preferredColorMode() {
+  return savedColorMode() || (colorSchemeQuery?.matches ? "dark" : "light");
+}
+function setColorMode(mode, persist = false) {
+  const dark = mode === "dark";
+  document.documentElement.dataset.colorMode = dark ? "dark" : "light";
+  document.documentElement.dataset.theme = savedColorMode() || "system";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#151d19" : "#f2f1eb");
+  document.querySelector("#theme-toggle")?.setAttribute("aria-label", dark ? "Use light mode" : "Use dark mode");
+  if (persist) {
+    try { localStorage.setItem("kc-forms-theme", dark ? "dark" : "light"); } catch {}
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }
+}
+setColorMode(preferredColorMode());
+colorSchemeQuery?.addEventListener?.("change", () => { if (!savedColorMode()) setColorMode(preferredColorMode()); });
+document.querySelector("#theme-toggle")?.addEventListener("click", () => {
+  setColorMode(document.documentElement.dataset.colorMode === "dark" ? "light" : "dark", true);
+});
 let previewSchema = (() => {
   const inline = document.querySelector('#forms-preview-data')?.textContent;
   const encoded = new URLSearchParams(location.search).get("schema");
-  try { return inline ? JSON.parse(inline) : encoded ? JSON.parse(decodeURIComponent(escape(atob(encoded)))) : null; } catch { return null; }
+  const hashEncoded = new URLSearchParams(location.hash.replace(/^#/, "")).get("schema");
+  const decode = value => JSON.parse(decodeURIComponent(escape(atob(value))));
+  try { return inline ? JSON.parse(inline) : encoded ? decode(encoded) : hashEncoded ? decode(hashEncoded) : null; } catch { return null; }
 })();
 const previewMode = new URLSearchParams(location.search).has('preview');
 const route = (() => {
@@ -80,12 +112,16 @@ const clear = (element) => element.replaceChildren();
 
 function renderAccount() {
   clear(accountSlot);
+  if (previewMode || previewSchema) {
+    accountSlot.append(node("span", { class: "preview-badge", text: "Preview" }));
+    return;
+  }
   const button = node(
     "button",
     {
       class: "account-button",
       type: "button",
-      onClick: () => (user ? signOutUser() : authDialog.showModal()),
+      onClick: () => (user ? openAccountDialog() : openAuthDialog(false)),
     },
     [
       node("span", { class: "account-dot" }),
@@ -97,6 +133,42 @@ function renderAccount() {
   accountSlot.append(button);
 }
 
+function showDialog(dialog) {
+  if (!dialog) return;
+  dialog.classList.remove("is-closing");
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeDialog(dialog) {
+  if (!dialog?.open || dialog.classList.contains("is-closing")) return;
+  dialog.classList.add("is-closing");
+  window.setTimeout(() => {
+    dialog.classList.remove("is-closing");
+    dialog.close();
+  }, 220);
+}
+
+function openAuthDialog(required = false) {
+  if (!authDialog) return;
+  const eyebrow = authDialog.querySelector("[data-auth-eyebrow]");
+  const title = authDialog.querySelector("[data-auth-title]");
+  const copy = authDialog.querySelector("[data-auth-copy]");
+  if (eyebrow) eyebrow.textContent = required ? "IDENTITY REQUIRED" : "SIGN IN";
+  if (title) title.textContent = required ? "Sign in to continue" : "Sign in";
+  if (copy) copy.textContent = required
+    ? "This form uses your Karamah Collective account to manage response limits. Your identity is recorded only when the form says so."
+    : "Use your Karamah Collective account to continue. Your identity is recorded only when a form says so.";
+  setAuthMessage("");
+  showDialog(authDialog);
+}
+
+function openAccountDialog() {
+  if (!accountDialog || !user) return;
+  const email = accountDialog.querySelector("[data-account-email]");
+  if (email) email.textContent = user.email || user.displayName || "You are signed in.";
+  showDialog(accountDialog);
+}
+
 watchAuth((next) => {
   user = next;
   renderAccount();
@@ -104,7 +176,30 @@ watchAuth((next) => {
 });
 document
   .querySelector("[data-close-auth]")
-  ?.addEventListener("click", () => authDialog.close());
+  ?.addEventListener("click", () => closeDialog(authDialog));
+document
+  .querySelectorAll("[data-close-account]")
+  .forEach((button) => button.addEventListener("click", () => closeDialog(accountDialog)));
+document
+  .querySelector("[data-account-signout]")
+  ?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    try {
+      await signOutUser();
+      closeDialog(accountDialog);
+    } finally {
+      event.currentTarget.disabled = false;
+    }
+  });
+for (const dialog of [authDialog, accountDialog]) {
+  dialog?.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeDialog(dialog);
+  });
+  dialog?.addEventListener("click", (event) => {
+    if (event.target === dialog) closeDialog(dialog);
+  });
+}
 const privacyOverlay = document.querySelector("#privacy-overlay");
 async function openPrivacy() {
   if (!privacyOverlay) return;
@@ -120,23 +215,29 @@ document.querySelectorAll("[data-open-privacy]").forEach(button => button.addEve
 privacyOverlay?.addEventListener("click", event => { if (event.target.closest("[data-close-privacy]")) closePrivacy(); });
 window.addEventListener("keydown", event => { if (event.key === "Escape") closePrivacy(); });
 let emailMode = "signin";
+function setAuthMessage(message = "", kind = "error") {
+  authError.textContent = message;
+  authError.classList.toggle("is-success", kind === "success");
+}
 document.querySelectorAll("[data-email-mode]").forEach(button => button.addEventListener("click", () => {
   emailMode = button.dataset.emailMode;
+  setAuthMessage("");
   document.querySelectorAll("[data-email-mode]").forEach(item => item.classList.toggle("active", item === button));
   const password = document.querySelector("#email-auth input[name=password]");
   if (password) password.autocomplete = emailMode === "signup" ? "new-password" : "current-password";
   const submit = document.querySelector("#email-auth button[type=submit]");
   if (submit) submit.textContent = emailMode === "signup" ? "Create account" : "Sign in with email";
+  document.querySelector("[data-reset-password]")?.classList.toggle("hide", emailMode !== "signin");
 }));
 document.querySelectorAll("[data-provider]").forEach((button) =>
   button.addEventListener("click", async () => {
-    authError.textContent = "";
+    setAuthMessage("");
     button.disabled = true;
     try {
       await signInProvider(button.dataset.provider);
       authDialog.close();
     } catch (error) {
-      authError.textContent = friendlyAuthError(error);
+      setAuthMessage(friendlyAuthError(error));
     } finally {
       button.disabled = false;
     }
@@ -146,27 +247,59 @@ document
   .querySelector("#email-auth")
   ?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    authError.textContent = "";
-    const submit = event.currentTarget.querySelector("button");
+    setAuthMessage("");
+    const submit = event.currentTarget.querySelector("button[type=submit]");
     submit.disabled = true;
     const data = new FormData(event.currentTarget);
     try {
       await signInEmail(data.get("email"), data.get("password"), emailMode === "signup");
       authDialog.close();
     } catch (error) {
-      authError.textContent = friendlyAuthError(error);
+      setAuthMessage(friendlyAuthError(error));
     } finally {
       submit.disabled = false;
     }
   });
+document
+  .querySelector("[data-reset-password]")
+  ?.addEventListener("click", async (event) => {
+    setAuthMessage("");
+    const form = document.querySelector("#email-auth");
+    const email = form?.elements?.email?.value?.trim();
+    if (!email) {
+      setAuthMessage("Enter your email address first, then request a reset link.");
+      form?.elements?.email?.focus();
+      return;
+    }
+    event.currentTarget.disabled = true;
+    try {
+      await resetPassword(email);
+      setAuthMessage("If an account exists for that email, a reset link is on its way.", "success");
+    } catch (error) {
+      setAuthMessage(friendlyAuthError(error));
+    } finally {
+      event.currentTarget.disabled = false;
+    }
+  });
 function friendlyAuthError(error) {
+  const code = error?.code ? ` (${error.code})` : "";
   return error?.code === "auth/popup-closed-by-user"
     ? "The sign-in window was closed."
+    : error?.code === "auth/unauthorized-domain"
+      ? `This domain is not authorized in Firebase Authentication${code}.`
+      : error?.code === "auth/operation-not-allowed"
+        ? `This sign-in provider is not enabled in Firebase Authentication${code}.`
+        : error?.code === "auth/api-key-not-valid" || error?.code === "auth/invalid-api-key"
+          ? `Firebase rejected the API key. Check Google Cloud API key restrictions for this domain${code}.`
+          : error?.code === "auth/configuration-not-found"
+            ? `Firebase Authentication is not configured for this project or provider${code}.`
+            : error?.code === "auth/internal-error"
+              ? `Firebase could not complete this sign-in. Check that this provider is enabled, its OAuth settings are valid, and this domain is authorized${code}.`
     : error?.code === "auth/weak-password"
       ? "Use a password with at least 6 characters."
       : error?.code === "auth/verification-sent"
         ? "Account created. Open the verification email we sent, then sign in here."
-        : "Sign-in did not work. Check your details and try again.";
+        : `Sign-in did not work. Check your details and try again${code}.`;
 }
 
 function stateView(title, message, kind = "info", action = null) {
@@ -804,6 +937,10 @@ function nextPageIndex(sections, current, ruleState) {
   return Math.min(current + 1, sections.length - 1);
 }
 function validateCurrent(sections) {
+  if (previewSchema) {
+    errors = {};
+    return true;
+  }
   const section = sections[page],
     checked = validateAnswers(schema, answers);
   errors = {};
@@ -832,7 +969,7 @@ function render() {
       "Sign in to continue",
       "This form requires a Karamah Collective account. Your answers stay on this device until you submit.",
       "info",
-      { label: "Sign in", onClick: () => authDialog.showModal() },
+      { label: "Sign in", onClick: () => openAuthDialog(true) },
     );
     return;
   }
@@ -942,7 +1079,7 @@ function render() {
       class: "btn primary",
       type: "button",
       disabled: pending,
-      text: isLast ? (pending ? "Submitting…" : "Submit response") : "Continue",
+      text: isLast ? (previewSchema ? "Finish preview" : pending ? "Submitting…" : "Submit response") : "Continue",
       onClick: async () => {
         if (!validateCurrent(sections)) return;
         if (isLast) await submit();
@@ -970,6 +1107,9 @@ function render() {
 }
 async function submit() {
   if (pending) return;
+  if (previewSchema) {
+    return stateView('Preview complete', schema.confirmationMessage || 'This is where respondents see the confirmation message.', 'success', {label:'Start again',onClick:()=>{answers={};errors={};page=0;render();}});
+  }
   if (uploading) {
     const note = document.querySelector('.draft-note');
     if (note) { note.setAttribute('role','alert'); note.textContent = 'Please wait for your files to finish uploading.'; }
@@ -989,9 +1129,6 @@ async function submit() {
       0,
     );
     return;
-  }
-  if (previewSchema) {
-    return stateView('Preview complete', checked.state.completionMessage || schema.confirmationMessage, 'success', {label:'Start again',onClick:()=>{answers={};errors={};page=0;render();}});
   }
   pending = true;
   render();
@@ -1019,7 +1156,7 @@ async function submit() {
       }),
       data = await response.json();
     if (!response.ok) {
-      if (data.state === "auth_required") authDialog.showModal();
+      if (data.state === "auth_required") openAuthDialog(true);
       if (data.fieldErrors) {
         errors = data.fieldErrors;
         render();
