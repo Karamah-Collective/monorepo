@@ -2,7 +2,7 @@ import { verifyFirebaseIdToken } from "../../../shared/firebase-verify.mjs";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
   formAnalytics, getForm, getVersion, listForms, listSubmissions,
-  publishForm, saveForm, setFormStatus,
+  publishForm, saveForm, setFormStatus, sendFormInvites,
 } from "../../../Maps/functions/_forms-admin.js";
 
 const json = (data, status = 200, headers = {}) => Response.json(data, { status, headers: { "Cache-Control": "no-store", ...headers } });
@@ -26,6 +26,7 @@ const posts = {
   "forms-status": setFormStatus,
   "forms-duplicate": duplicateForm,
   "forms-delete": deleteForm,
+  "forms-invite": (db, data, user, env) => sendFormInvites(db, data, env, user),
   "forms-delete-submission": (db, data, _actor, env) => deleteSubmission(db, data, env),
 };
 export async function onRequestOptions({ request }) { const origin = allowedOrigin(request); return new Response(null, { headers: { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", Vary: "Origin" } }); }
@@ -38,5 +39,6 @@ export async function onRequestPost({ request, env }) {
   const headers = { "Access-Control-Allow-Origin": allowedOrigin(request), Vary: "Origin" }; const user = await actor(request, env); if (!user) return json({ error: "Not authorized." }, 403, headers);
   let data; try { data = await request.json(); } catch { return json({ error: "Invalid request." }, 400, headers); }
   const handler = posts[data?.action]; if (!handler) return json({ error: "Unknown action." }, 404, headers);
+  if (!user.emailVerified || !user.email.endsWith("@karamahcollective.com")) return json({ error: "A verified Karamah team account is required." }, 403, headers);
   try { return json(await handler(env.DB, data, user, env), 200, headers); } catch (error) { console.error("Forms admin request failed", error); return json({ error: isLoopback(request) ? `Forms service error: ${error?.message || "Unknown local error"}` : "Forms service error." }, 502, headers); }
 }

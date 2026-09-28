@@ -43,4 +43,5 @@ export const useSetFormStatus = mutation("forms-status");
 export const useDuplicateForm = mutation("forms-duplicate");
 export const useDeleteForm = mutation("forms-delete");
 export const useDeleteSubmission = mutation("forms-delete-submission");
+export const useSendFormInvites = mutation("forms-invite");
 export const exportFormResponses = id => formsRequest("forms-export", { id });

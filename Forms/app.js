@@ -430,9 +430,15 @@ async function renderHome() {
     }
     const grid = node("div", { class: "public-form-grid" });
     forms.forEach(item => {
+      let submitted = false;
+      try { submitted = !!localStorage.getItem(`karamah-form-submitted:${item.id}`); } catch {}
       const card = node("a", { class: "public-form-card", href: `/f/${encodeURIComponent(item.shareCode)}` });
       if (item.coverImage?.assetId) card.append(node("div", { class: "public-form-cover", role: "img", "aria-label": item.coverImage.alt || "", style: coverStyle(`/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, item.coverImage.crop) }));
       const copy = node("div", {}, [node("h3", { text: item.title }), item.subtitle ? node("p", { class: "card-subtitle", text: item.subtitle }) : null, item.description ? node("p", { text: item.description.slice(0, 180) }) : null, node("span", { text: "Open form →" })]);
+      if (submitted) {
+        copy.querySelector("h3")?.after(node("p", { class: "form-submitted-note", text: "Submitted before on this device" }));
+        const action = copy.querySelector("span"); if (action) action.textContent = "Respond again →";
+      }
       card.append(copy); grid.append(card);
     });
     area.append(grid);
@@ -1194,6 +1200,7 @@ async function submit() {
     try {
       localStorage.removeItem(storageKey());
       sessionStorage.removeItem(`${storageKey()}:submission`);
+      localStorage.setItem(`karamah-form-submitted:${form.id}`, new Date().toISOString());
     } catch {}
     stateView(
       "Response received",
@@ -1201,12 +1208,6 @@ async function submit() {
       "success",
     );
     const shell = app.querySelector(".state-shell");
-    shell.append(
-      node("div", {
-        class: "reference",
-        text: `Reference ${data.submissionId}`,
-      }),
-    );
     if (data.allowAnother)
       shell.append(
         node("button", {

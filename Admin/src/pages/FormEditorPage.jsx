@@ -40,6 +40,7 @@ import {
   usePublishForm,
   useSaveForm,
   useSetFormStatus,
+  useSendFormInvites,
 } from "../api/forms.js";
 
 const TYPE_LABELS = {
@@ -1431,9 +1432,33 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
           </button>
         </div>
       </section>
+      <InvitePanel form={form} />
       <VersionHistory formId={form.id} versions={versions} activeVersionId={form.activeVersionId} />
     </div>
   );
+}
+
+function InvitePanel({ form }) {
+  const invite = useSendFormInvites(), toast = useToast();
+  const [recipients, setRecipients] = useState(""), [subject, setSubject] = useState("You are invited: {{formTitle}}"), [body, setBody] = useState("Hello,\n\nYou are invited to complete {{formTitle}}.\n\nOpen the form: {{formUrl}}\n\nThank you,"), [delivery, setDelivery] = useState("individual");
+  const addresses = [...new Set(recipients.split(/[\s,;]+/).map(value => value.trim().toLowerCase()).filter(Boolean))];
+  async function send() {
+    try {
+      const result = await invite.mutateAsync({ id: form.id, recipients: addresses, subject, body, delivery });
+      if (result.error) throw new Error(result.error);
+      toast(`${result.sent} invitation${result.sent === 1 ? "" : "s"} sent`); setRecipients("");
+    } catch (error) { toast(error.message, "error"); }
+  }
+  return <section className="form-invites">
+    <p className="page-eyebrow">INVITE RESPONDENTS</p><h2>Send a form invitation</h2>
+    <p>Use commas, spaces, or new lines for up to 100 email addresses. <code>{"{{formTitle}}"}</code> and <code>{"{{formUrl}}"}</code> are filled automatically.</p>
+    <label>Recipients<textarea rows="4" value={recipients} onChange={event => setRecipients(event.target.value)} placeholder="person@example.com, another@example.com" /></label>
+    <small>{addresses.length} unique recipient{addresses.length === 1 ? "" : "s"}</small>
+    <label>Subject<input value={subject} maxLength="180" onChange={event => setSubject(event.target.value)} /></label>
+    <label>Message<textarea rows="8" value={body} maxLength="10000" onChange={event => setBody(event.target.value)} /></label>
+    <fieldset><legend>Delivery</legend><label><input type="radio" checked={delivery === "individual"} onChange={() => setDelivery("individual")} /> Send individually (private, recommended)</label><label><input type="radio" checked={delivery === "group"} onChange={() => setDelivery("group")} /> One group email (recipients can see each other)</label></fieldset>
+    <button className="pp-btn pp-btn-primary" disabled={!form.activeVersionId || !addresses.length || invite.isPending} onClick={send}>{invite.isPending ? "Sending…" : "Send invitations"}</button>
+  </section>;
 }
 
 function VersionHistory({ formId, versions, activeVersionId }) {
