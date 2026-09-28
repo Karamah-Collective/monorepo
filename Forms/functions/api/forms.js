@@ -8,11 +8,11 @@ const parse = value => { try { return JSON.parse(value); } catch { return null; 
 export async function onRequestGet({ env }) {
   if (!env.DB) return json({ forms: [] }, 503);
   try {
-    const { results = [] } = await env.DB.prepare(`SELECT f.share_code, f.updated_at, v.schema_json
-      FROM forms f JOIN form_versions v ON v.id=f.active_version_id
-      WHERE f.status='published' ORDER BY f.updated_at DESC LIMIT 100`).all();
+    const { results = [] } = await env.DB.prepare(`SELECT f.share_code, f.updated_at, f.draft_schema_json, v.schema_json
+      FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id
+      WHERE f.status='published' AND f.share_code IS NOT NULL AND f.share_code != '' ORDER BY f.updated_at DESC LIMIT 100`).all();
     // `visibility` belongs to the schema, so apply it after normalization.
-    const visible = results.map(row => ({ row, schema: publicSchema(parse(row.schema_json)) }))
+    const visible = results.map(row => ({ row, schema: publicSchema(parse(row.schema_json) || parse(row.draft_schema_json)) }))
       .filter(({ schema }) => schema.settings?.visibility !== "link")
       .map(({ row, schema }) => ({ shareCode: row.share_code, title: schema.title, subtitle: schema.subtitle || "", description: schema.description || "", coverImage: schema.coverImage || null, updatedAt: row.updated_at }));
     return json({ forms: visible });

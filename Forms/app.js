@@ -192,12 +192,21 @@ document
     }
   });
 for (const dialog of [authDialog, accountDialog]) {
+  let pointerOrigin = null;
+  dialog?.addEventListener("pointerdown", (event) => {
+    pointerOrigin = event.target;
+  });
   dialog?.addEventListener("cancel", (event) => {
     event.preventDefault();
     closeDialog(dialog);
   });
   dialog?.addEventListener("click", (event) => {
-    if (event.target === dialog) closeDialog(dialog);
+    // A drag that begins on dialog copy can finish on the backdrop and produce
+    // a click whose target is the dialog. Keep the dialog open in that case,
+    // so users can safely select and copy text such as an auth error.
+    const selection = window.getSelection();
+    if (event.target === dialog && pointerOrigin === dialog && selection?.isCollapsed) closeDialog(dialog);
+    pointerOrigin = null;
   });
 }
 const privacyOverlay = document.querySelector("#privacy-overlay");
@@ -299,6 +308,8 @@ function friendlyAuthError(error) {
       ? "Use a password with at least 6 characters."
       : error?.code === "auth/verification-sent"
         ? "Account created. Open the verification email we sent, then sign in here."
+      : error?.code === "auth/account-exists-with-different-credential"
+        ? "This email already has a Karamah account. Sign in with its existing method, then Facebook will be connected."
         : `Sign-in did not work. Check your details and try again${code}.`;
 }
 
@@ -391,7 +402,7 @@ async function load() {
 async function renderHome() {
   clear(app);
   const shell = node("section", { class: "forms-home" }, [
-    node("div", { class: "home-intro" }, [node("p", { class: "eyebrow", text: "KARAMAH COLLECTIVE" }), node("h1", { text: "Community forms, open to you." })]),
+    node("div", { class: "home-intro" }, [node("h1", { text: "Community forms, open to you." })]),
     node("section", { class: "public-forms", "aria-live": "polite" }, [node("p", { class: "eyebrow", text: "OPEN FORMS" }), node("h2", { text: "Take part" }), node("p", { class: "home-loading", text: "Finding available forms…" })]),
   ]);
   app.append(shell);

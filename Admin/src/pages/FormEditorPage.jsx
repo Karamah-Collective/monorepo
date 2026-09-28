@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
-const Preview = lazy(() => import('../components/FormPreview.jsx'));
+import { useEffect, useRef, useState } from "react";
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -11,7 +10,6 @@ import {
   Check,
   Copy,
   DownloadSimple,
-  Eye,
   FloppyDisk,
   Gear,
   ListBullets,
@@ -29,6 +27,7 @@ import {
 import { useToast } from "../components/Toast.jsx";
 import {
   exportFormResponses,
+  formsOrigin,
   formAssetUrl,
   formPublicUrl,
   uploadFormCover,
@@ -71,7 +70,6 @@ const TABS = [
   ["build", "Build", ListBullets],
   ["logic", "Logic", Warning],
   ["settings", "Settings", Gear],
-  ["preview", "Preview", Eye],
   ["responses", "Responses", UsersThree],
   ["analytics", "Analytics", ChartBar],
 ];
@@ -83,6 +81,7 @@ const move = (array, index, direction) => {
   [next[index], next[target]] = [next[target], next[index]];
   return next;
 };
+const previewUrl = schema => `${formsOrigin}/?preview=1#schema=${btoa(unescape(encodeURIComponent(JSON.stringify(schema))))}`;
 
 export default function FormEditorPage() {
   const { id } = useParams();
@@ -101,8 +100,7 @@ function FormEditor() {
     [slug, setSlug] = useState(""),
     [tab, setTab] = useState("build"),
     [selected, setSelected] = useState(null),
-    [saveState, setSaveState] = useState("saved"),
-    [previewMobile, setPreviewMobile] = useState(false);
+    [saveState, setSaveState] = useState("saved");
   useUnsavedChanges(saveState !== 'saved');
   const hydrated = useRef(false), saveTimer = useRef(0);
   const latest = useRef(null), revisionRef = useRef(0), generation = useRef(0), savedGeneration = useRef(0), saving = useRef(null);
@@ -250,7 +248,7 @@ function FormEditor() {
           <button
             className="pp-btn"
             onClick={() => {
-              setTab("preview");
+              window.open(previewUrl(draft), "_blank", "noopener,noreferrer");
             }}
           >
             Preview
@@ -306,13 +304,6 @@ function FormEditor() {
           setStatus={(next) =>
             status.mutateAsync({ id, status: next }).then(() => query.refetch())
           }
-        />
-      )}
-      {tab === "preview" && (
-        <Preview
-          schema={draft}
-          mobile={previewMobile}
-          setMobile={setPreviewMobile}
         />
       )}
       {tab === "responses" && <Responses formId={id} schema={draft} />}

@@ -428,6 +428,9 @@ const GET_ACTIONS = {
   "admin-type-styles": (db) => getAdminTypeStyles(db),
 };
 
+const isFormsAction = action => action.startsWith("forms-");
+const formsDb = env => env.FORMS_DB || env.DB;
+
 export async function onRequestGet(context) {
   const { env, request } = context;
   const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Vary": "Origin", "Access-Control-Allow-Origin": adminAllowedOrigin(request, env) };
@@ -444,7 +447,7 @@ export async function onRequestGet(context) {
 
   try {
     if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
-    return json(await handler(env.DB, url), 200, headers);
+    return json(await handler(isFormsAction(action) ? formsDb(env) : env.DB, url), 200, headers);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }
@@ -1116,7 +1119,7 @@ export async function onRequestPost(context) {
 
   let result;
   try {
-    result = await handler(env.DB, data, env, auth.actor);
+    result = await handler(isFormsAction(data.action) ? formsDb(env) : env.DB, data, env, auth.actor);
   } catch {
     return json({ error: "Service error" }, 502, headers);
   }

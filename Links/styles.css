@@ -719,3 +719,13 @@ svg {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
 }
+
+/* Shared public masthead: Forms establishes the family proportions while
+   Links keeps its own compact directory body below it. */
+.site-header.masthead{position:relative;z-index:1;width:min(1160px,calc(100% - 64px));min-height:76px;margin:0 auto;animation:reveal 420ms var(--ease-out) both}
+.site-header .brand{font-size:15px}.site-header .brand img{width:32px;height:32px}.site-header .masthead-actions{gap:8px}
+.site-header .brand small{padding-left:10px;border-left:1px solid var(--line-strong);font-size:14px;font-weight:450;color:var(--muted)}
+.theme-toggle{transition:background-color 180ms var(--ease-out),border-color 180ms var(--ease-out),color 180ms var(--ease-out)}.theme-toggle:active{transform:none}
+.page-share{transition:border-color 240ms var(--ease-out),background-color 240ms var(--ease-out),box-shadow 240ms var(--ease-out),color 240ms var(--ease-out)}.page-share:hover{transform:none;box-shadow:none}.page-share:hover i,.page-share:active{transform:none}
+.link-card:hover,.social-card:hover,.link-share:active,.state button:active{transform:none}
+@media(max-width:640px){.site-header.masthead{width:calc(100% - 32px);min-height:68px}.site-header .brand img{width:30px;height:30px}.site-header .brand span{display:inline}.site-header .brand small{font-size:13px}}

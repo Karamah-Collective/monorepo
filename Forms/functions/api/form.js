@@ -10,13 +10,13 @@ const tokenPattern = /^[a-z]+_[0-9a-f-]{36}$/i;
 const allowedFileTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf", "text/plain", "text/csv"]);
 
 async function currentForm(db, key, isCode = false) {
-  return db.prepare(`SELECT f.id,f.slug,f.share_code,f.status,f.active_version_id,v.version_number,v.schema_json
+  return db.prepare(`SELECT f.id,f.slug,f.share_code,f.status,f.active_version_id,f.draft_schema_json,v.version_number,v.schema_json
     FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id WHERE ${isCode ? "f.share_code" : "f.slug"}=? AND f.status!='deleted'`).bind(key).first();
 }
 
 function formKey(url) {
   const code = url.searchParams.get("code") || "", slug = url.searchParams.get("slug") || "";
-  if (code) return /^[A-Za-z0-9_-]{22,32}$/.test(code) ? { value: code, code: true } : null;
+  if (code) return /^[A-Za-z0-9_-]{8,32}$/.test(code) ? { value: code, code: true } : null;
   return slugPattern.test(slug) ? { value: slug, code: false } : null;
 }
 
@@ -42,7 +42,7 @@ export async function onRequestGet({ env, request }) {
   try {
     const form = await currentForm(env.DB, key.value, key.code);
     if (!form) return json({ error: "Form not found." }, 404);
-    const schema = publicSchema(safeJson(form.schema_json));
+    const schema = publicSchema(safeJson(form.schema_json) || safeJson(form.draft_schema_json));
     const count = await env.DB.prepare("SELECT COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid'").bind(form.id).first();
     const available = availability(form, schema, count?.count || 0);
     if (available.state === "not_found") return json({ error: available.message, state: available.state }, 404);
@@ -56,7 +56,7 @@ async function receiveUpload(env, request, url) {
   if (!lookup) return json({ error: "Form not found." }, 404);
   const form = await currentForm(env.DB, lookup.value, lookup.code);
   if (!form) return json({ error: "Form not found." }, 404);
-  const schema = publicSchema(safeJson(form.schema_json)), open = availability(form, schema);
+  const schema = publicSchema(safeJson(form.schema_json) || safeJson(form.draft_schema_json)), open = availability(form, schema);
   if (open.state !== "open") return json({ error: open.message }, 409);
   const question = schema.sections.flatMap(section => section.blocks || []).find(block => block.id === questionId && block.type === "file");
   if (!question) return json({ error: "This upload field is not available." }, 400);
@@ -90,7 +90,7 @@ async function submit(env, request, url) {
   const key = formKey(url); if (!key) return json({ error: "Form not found." }, 404);
   const form = await currentForm(env.DB, key.value, key.code);
   if (!form) return json({ error: "Form not found." }, 404);
-  const schema = publicSchema(safeJson(form.schema_json)), count = await env.DB.prepare("SELECT COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid'").bind(form.id).first();
+  const schema = publicSchema(safeJson(form.schema_json) || safeJson(form.draft_schema_json)), count = await env.DB.prepare("SELECT COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid'").bind(form.id).first();
   const user = await userFromRequest(request, env);
   if (schema.settings.requiresAuth && !user) return json({ error: "Sign in before submitting this form.", state: "auth_required" }, 401);
   if (user && user.signInProvider === "password" && !user.emailVerified) return json({ error: "Verify your email before submitting." }, 403);

@@ -23,6 +23,13 @@ npm run deploy:agent -- sync deploy
 
 Add `--push` to the sync commands when you are ready to publish the generated branches.
 
+### Release discipline
+
+Before syncing a release branch, commit the intended source changes on `main`
+with a concise, descriptive commit message. Do not sweep unrelated local work
+into a release commit; either leave it untouched or separate it into its own
+reviewed commit. Run the relevant build and tests before `sync --push`.
+
 In **Workers & Pages → your project → Settings → Builds & deployments / Build configuration**, use:
 
 | Setting | Maps project | Website project | Admin project | Links project | Forms project |
@@ -90,7 +97,7 @@ database as Maps, and use the preview database for preview deployments. Apply
 project only reads published links and records aggregate open counts; all
 editing remains behind the existing Firebase-protected Maps admin API.
 
-### Forms: create the shared D1/R2 project
+### Forms: create the dedicated D1/R2 project
 
 Create a fifth Pages project with root directory `Forms`, then use the Forms
 column in the build-settings table above. Connect Production to `deploy` and
@@ -98,12 +105,13 @@ Preview to `preview`; these generated branches now include Forms source,
 Functions, its static 404/preview documents, and every shared dependency it
 needs to build.
 
-In **Settings → Bindings**, bind `DB` to the same D1 database as Maps and
-`MEDIA` to the same private R2 bucket. Use the matching preview database and
-preview bucket for Preview deployments so test responses and uploads never
-touch production. Apply `Maps/migrations/0021_forms.sql` and
-`Maps/migrations/0022_form_share_codes.sql` to both environments before the
-first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
+In the Forms project bindings, bind `DB` to the dedicated `forms-db` D1
+database and `MEDIA` to the dedicated private `forms-media` R2 bucket. Use
+dedicated preview storage for Preview deployments so test responses and uploads
+never touch production. Apply `Maps/migrations/0021_forms.sql`,
+`Maps/migrations/0022_form_share_codes.sql`, and
+`Maps/migrations/0023_shorten_form_share_codes.sql` to both environments
+before the first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
 environment uses a Firebase project other than `halal-map-karamah`.
 
 First verify the Forms `pages.dev` hostname: publish one test form in Admin,

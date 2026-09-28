@@ -9,7 +9,7 @@ if (path.dirname(output) !== path.resolve(root)) throw new Error("Invalid build 
 await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, "assets"), { recursive: true });
 await mkdir(path.join(output, "content"), { recursive: true });
-for (const item of ["index.html", "preview.html", "404.html", "styles.css", "app.js", "auth.js", "_headers", "_routes.json", "robots.txt"]) await cp(path.join(root, item), path.join(output, item));
+for (const item of ["index.html", "404.html", "styles.css", "app.js", "auth.js", "_headers", "_routes.json", "robots.txt"]) await cp(path.join(root, item), path.join(output, item));
 await cp(path.join(root, "../shared/forms-domain.mjs"), path.join(output, "forms-domain.mjs"));
 await cp(path.join(root, "../shared/forms-logic.mjs"), path.join(output, "forms-logic.mjs"));
 await cp(path.join(root, "../shared/brand/karamah-logo.svg"), path.join(output, "assets/karamah-logo.svg"));

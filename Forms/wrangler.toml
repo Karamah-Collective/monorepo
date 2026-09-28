@@ -3,9 +3,9 @@ compatibility_date = "2026-08-04"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "halal-finder-db"
-database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
+database_name = "forms-db"
+database_id = "3237f544-7c01-41cb-802b-20e1d1c1ad0a"
 
 [[r2_buckets]]
 binding = "MEDIA"
-bucket_name = "manarah-media"
+bucket_name = "forms-media"

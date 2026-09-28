@@ -14,13 +14,16 @@ The public app runs at `http://127.0.0.1:8791`. Admin development also starts Fo
 
 ## Cloudflare bindings
 
-Configure the Forms Pages project with:
+Configure the Forms Pages project with its dedicated data stores:
 
-- `DB`: the same D1 database used by Maps and Links;
-- `MEDIA`: the same private R2 bucket used by Maps;
+- `DB`: `forms-db` (`3237f544-7c01-41cb-802b-20e1d1c1ad0a`);
+- `MEDIA`: the private `forms-media` bucket;
 - `FIREBASE_PROJECT_ID` only if it differs from `halal-map-karamah`.
 
-The Maps Pages project also needs its existing `DB` and `MEDIA` bindings because authenticated form management and cover-image uploads are served from its admin API.
+The Maps Pages project keeps its existing `DB` and `MEDIA` bindings for Maps,
+and additionally needs `FORMS_DB` bound to `forms-db` plus `FORMS_MEDIA` bound
+to `forms-media`. Authenticated form management and cover-image uploads run
+through its admin API and use those dedicated bindings.
 
 ## Deploy to Cloudflare Pages
 
@@ -28,10 +31,9 @@ The Maps Pages project also needs its existing `DB` and `MEDIA` bindings because
    `Forms` root directory, build command `npm ci --prefix .. && npm run build`,
    and build output directory `dist`. Set `NODE_VERSION=22` and
    `SKIP_DEPENDENCY_INSTALL=true` for both Preview and Production.
-2. Create or select the same D1 database already bound to Maps. Add it to the
-   Forms project as `DB`. Create or select the same private R2 bucket used by
-   Maps and add it as `MEDIA`. Do this independently for Preview and Production
-   so preview submissions cannot enter production data.
+2. Bind `forms-db` as `DB` and `forms-media` as `MEDIA` for Production. Use
+   separate preview-only stores for Preview so test submissions cannot enter
+   production data.
 3. Apply `Maps/migrations/0021_forms.sql` to the matching D1 database before
    the first deploy. The Forms API intentionally fails closed while `DB` or
    `MEDIA` are missing.
@@ -70,4 +72,4 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Before deployment, apply `Maps/migrations/0021_forms.sql` and `Maps/migrations/0022_form_share_codes.sql` to both Preview and Production D1 databases using the same migration process as the other Maps-backed applications.
+Before deployment, apply `Maps/migrations/0021_forms.sql`, `Maps/migrations/0022_form_share_codes.sql`, and `Maps/migrations/0023_shorten_form_share_codes.sql` to the matching Forms D1 database. Migration `0023` changes existing `/f/:shareCode` URLs, so apply it only when Admin should show the new shorter links as canonical.

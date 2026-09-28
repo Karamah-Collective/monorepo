@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { onRequestPost } from '../functions/api/form.js';
+import { onRequestGet as listPublicForms } from '../functions/api/forms.js';
 import { createFormSchema } from '../../shared/forms-domain.mjs';
 
 function context({versionId='v1',existing=null,status='published',limit=null,count=0,fail=false,changes=1,answers={}}={}) {
@@ -38,4 +39,13 @@ test('malformed answer containers are rejected',async()=>{
 test('valid submissions create one response',async()=>{
   const ctx=context(),response=await onRequestPost(ctx);
   assert.equal(response.status,200);assert.equal((await response.json()).success,true);assert.equal(ctx.batches,1);
+});
+
+test('public form catalogue falls back to the draft schema for published rows with a missing version row',async()=>{
+  const schema=createFormSchema('Fallback form');schema.subtitle='Draft copy';
+  const ctx={env:{DB:{prepare(){return {async all(){return {results:[{share_code:'0123456789abcdef0123456789abcdef',updated_at:'2026-09-27T12:00:00Z',schema_json:null,draft_schema_json:JSON.stringify(schema)}]};}};}}}};
+  const response=await listPublicForms(ctx),data=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.forms.length,1);
+  assert.equal(data.forms[0].title,'Fallback form');
 });
