@@ -32,6 +32,7 @@ import {
   formsOrigin,
   formAssetUrl,
   formPublicUrl,
+  formShortUrl,
   uploadFormCover,
   useDeleteSubmission,
   useForm,
@@ -204,7 +205,7 @@ function FormEditor() {
         </button>
       </div>
     );
-  const form = query.data.form;
+  const form = query.data.form, canPublish = !form.activeVersionId || form.hasUnpublishedChanges || saveState === "dirty";
   return (
     <div className="form-editor-page">
       <header className="form-editor-header">
@@ -239,27 +240,20 @@ function FormEditor() {
         </div>
         <div className="form-editor-header-actions">
           {form.activeVersionId && (
-            <a
+            <button
               className="pp-btn"
-              href={formPublicUrl(form.shareCode)}
-              target="_blank"
-              rel="noreferrer"
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(formShortUrl(form.shortCode)); toast("Short link copied"); } catch { toast("Could not copy the short link", "error"); }
+                window.open(formPublicUrl(form.shareCode), "_blank", "noopener,noreferrer");
+              }}
             >
-              Open live <ArrowSquareOut size={14} />
-            </a>
+              Open & copy link <ArrowSquareOut size={14} />
+            </button>
           )}
-          <button
-            className="pp-btn"
-            onClick={() => {
-              window.open(previewUrl(draft), "_blank", "noopener,noreferrer");
-            }}
-          >
-            Preview
-          </button>
           <button
             className="pp-btn pp-btn-primary"
             onClick={publishNow}
-            disabled={publish.isPending || saveState === "conflict"}
+            disabled={!canPublish || publish.isPending || saveState === "conflict"}
           >
             {publish.isPending ? "Publishing…" : "Publish"}
           </button>

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ClipboardText,
-  Copy,
   DotsThree,
   Eye,
   MagnifyingGlass,
@@ -12,7 +11,6 @@ import {
 import { useToast } from "../components/Toast.jsx";
 import {
   formPublicUrl,
-  formShortUrl,
   useCreateForm,
   useDeleteForm,
   useDuplicateForm,
@@ -59,10 +57,6 @@ export default function FormsPage() {
   async function createNew() {
     const result = await create.mutateAsync({ title: "Untitled form" });
     navigate(`/forms/${result.id}`);
-  }
-  async function copyLink(form) {
-    await navigator.clipboard.writeText(formShortUrl(form.shortCode));
-    toast("Short link copied");
   }
   async function deleteForm(form) {
     if (
@@ -219,15 +213,6 @@ export default function FormsPage() {
                 {dateLabel(form.lastResponseAt)}
               </span>
               <div className="form-row-actions">
-                <button
-                  className="icon-button"
-                  title="Copy short link"
-                  aria-label={`Copy short link for ${form.title}`}
-                  disabled={!form.activeVersionId || !form.shortCode}
-                  onClick={() => copyLink(form)}
-                >
-                  <Copy size={16} />
-                </button>
                 {form.activeVersionId && (
                   <a
                     className="icon-button"

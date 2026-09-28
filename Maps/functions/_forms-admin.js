@@ -72,7 +72,10 @@ export async function getForm(db, url) {
   const form = await db.prepare("SELECT f.*, (SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f WHERE f.id = ? AND f.status != 'deleted'").bind(url.searchParams.get("id") || "").first();
   if (!form) return { error: "Form not found" };
   const { results: versions } = await db.prepare("SELECT id,version_number,created_by,created_at,published_at FROM form_versions WHERE form_id=? ORDER BY version_number DESC").bind(form.id).all();
-  return { form: serializeForm(form), schema: normalizeSchema(safeJson(form.draft_schema_json)), versions: versions.map(row => ({ id: row.id, number: row.version_number, createdBy: row.created_by, createdAt: row.created_at, publishedAt: row.published_at })) };
+  const draft = normalizeSchema(safeJson(form.draft_schema_json));
+  const active = form.active_version_id ? await db.prepare("SELECT schema_json FROM form_versions WHERE id=?").bind(form.active_version_id).first() : null;
+  const hasUnpublishedChanges = !active || JSON.stringify(publicSchema(draft)) !== JSON.stringify(safeJson(active.schema_json));
+  return { form: { ...serializeForm(form), hasUnpublishedChanges }, schema: draft, versions: versions.map(row => ({ id: row.id, number: row.version_number, createdBy: row.created_by, createdAt: row.created_at, publishedAt: row.published_at })) };
 }
 
 export async function createForm(db, data, actor) {
