@@ -187,7 +187,18 @@ export async function sendFormInvites(db, data, env, actor) {
   const common = { sender: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, subject, textContent: text, htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#24312a;white-space:pre-wrap">${escapeHtml(text)}</div>`, replyTo: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, tags: ["forms-invite", form.id] };
   const payload = data.delivery === "group" ? { ...common, to: recipients.map(email => ({ email })) } : { ...common, messageVersions: recipients.map(email => ({ to: [{ email }] })) };
   const response = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify(payload) });
-  if (!response.ok) { console.error("Brevo form invite failed", response.status, await response.text()); return { error: "Brevo could not send the invitations. Check the sender verification and API key." }; }
+  if (!response.ok) {
+    const details = await response.text();
+    const diagnosis = details.toLowerCase();
+    console.error("Brevo form invite failed", response.status, details);
+    if (diagnosis.includes("sender") || diagnosis.includes("from email")) {
+      return { error: "Brevo rejected forms@karamahcollective.com. Verify that sender (or the karamahcollective.com domain) in Brevo." };
+    }
+    if (response.status === 401 || response.status === 403 || diagnosis.includes("api key") || diagnosis.includes("authentication")) {
+      return { error: "Brevo rejected the API credentials. Put a Brevo API key in BREVO_API_KEY for the Forms Pages project." };
+    }
+    return { error: "Brevo could not send the invitations. Check the Brevo account status and available email credits." };
+  }
   const result = await response.json();
   console.log("Forms invitations sent", { formId: form.id, count: recipients.length, delivery: data.delivery === "group" ? "group" : "individual", actor: actor.email || actor.uid });
   return { success: true, sent: recipients.length, delivery: data.delivery === "group" ? "group" : "individual", messageIds: result.messageIds || (result.messageId ? [result.messageId] : []) };
