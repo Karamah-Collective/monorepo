@@ -98,6 +98,7 @@ const node = (tag, props = {}, children = []) => {
   for (const [key, value] of Object.entries(props)) {
     if (key === "class") element.className = value;
     else if (key === "text") element.textContent = value;
+    else if (key === "style") element.style.cssText = value;
     else if (key.startsWith("on"))
       element.addEventListener(key.slice(2).toLowerCase(), value);
     else if (value !== undefined && value !== null && value !== false)
@@ -109,6 +110,18 @@ const node = (tag, props = {}, children = []) => {
   return element;
 };
 const clear = (element) => element.replaceChildren();
+const coverStyle = (url, crop) => {
+  const values = String(crop || "").split(",").map(Number);
+  if (values.length < 4 || values.some(value => !Number.isFinite(value))) return `background-image:url(${JSON.stringify(url)});`;
+  const x = Math.max(0, Math.min(100, values[0])), y = Math.max(0, Math.min(100, values[1]));
+  const w = Math.max(1, Math.min(100 - x, values[2])), h = Math.max(1, Math.min(100 - y, values[3]));
+  const px = w >= 99 ? 50 : Math.max(0, Math.min(100, x / (100 - w) * 100)), py = h >= 99 ? 50 : Math.max(0, Math.min(100, y / (100 - h) * 100));
+  return `background-image:url(${JSON.stringify(url)});--cover-crop-size:${10000 / w}% ${10000 / h}%;--cover-crop-x:${px}%;--cover-crop-y:${py}%;`;
+};
+function descriptionNode(description) {
+  if (description.length <= 700) return node("p", { class: "form-description", text: description });
+  return node("div", { class: "form-description-expandable" }, [node("p", { class: "form-description", text: `${description.slice(0, 700).trimEnd()}…` }), node("details", {}, [node("summary", { text: "Read full description" }), node("div", { class: "form-description-full" }, [node("p", { text: description })])])]);
+}
 
 function renderAccount() {
   clear(accountSlot);
@@ -418,7 +431,7 @@ async function renderHome() {
     const grid = node("div", { class: "public-form-grid" });
     forms.forEach(item => {
       const card = node("a", { class: "public-form-card", href: `/f/${encodeURIComponent(item.shareCode)}` });
-      if (item.coverImage?.assetId) card.append(node("img", { src: `/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, alt: item.coverImage.alt || "" }));
+      if (item.coverImage?.assetId) card.append(node("div", { class: "public-form-cover", role: "img", "aria-label": item.coverImage.alt || "", style: coverStyle(`/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, item.coverImage.crop) }));
       const copy = node("div", {}, [node("h3", { text: item.title }), item.subtitle ? node("p", { class: "card-subtitle", text: item.subtitle }) : null, item.description ? node("p", { text: item.description.slice(0, 180) }) : null, node("span", { text: "Open form →" })]);
       card.append(copy); grid.append(card);
     });
@@ -1002,12 +1015,14 @@ function render() {
     shell = node("div", { class: `form-shell${hasRenderedForm ? "" : " is-entering"}` });
   if (schema.coverImage?.assetId || schema.coverImage?.url)
     shell.append(
-      node("img", {
+      node("div", {
         class: "cover",
-        src: schema.coverImage.assetId
+        role: "img",
+        "aria-label": schema.coverImage.alt || "",
+        style: coverStyle(schema.coverImage.assetId
           ? `/api/media?id=${encodeURIComponent(schema.coverImage.assetId)}`
           : schema.coverImage.url,
-        alt: schema.coverImage.alt || "",
+          schema.coverImage.crop),
       }),
     );
   shell.append(
@@ -1018,7 +1033,7 @@ function render() {
         ? node("p", { class: "form-subtitle", text: schema.subtitle })
         : null,
       schema.description
-        ? node("p", { class: "form-description", text: schema.description })
+        ? descriptionNode(schema.description)
         : null,
       schema.settings.collectIdentity
         ? node("p", {

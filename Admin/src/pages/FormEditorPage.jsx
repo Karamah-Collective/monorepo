@@ -25,6 +25,7 @@ import {
   validateSchema,
 } from "../../../shared/forms-domain.mjs";
 import { useToast } from "../components/Toast.jsx";
+import CoverCropEditor from "../components/CoverCropEditor.jsx";
 import {
   exportFormResponses,
   formsOrigin,
@@ -1194,14 +1195,11 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
                 })
               }
             />
+            <small>Long descriptions are supported. Visitors can expand them when needed.</small>
           </Field>
           <Field label="Cover image" wide>
             {draft.coverImage?.assetId && (
-              <img
-                className="settings-cover-preview"
-                src={formAssetUrl(draft.coverImage.assetId)}
-                alt={draft.coverImage.alt || ""}
-              />
+              <CoverCropEditor src={formAssetUrl(draft.coverImage.assetId)} cropValue={draft.coverImage.crop} onChange={(crop) => update((x) => { x.coverImage = { ...(x.coverImage || {}), crop }; })} />
             )}
             <input
               type="file"
@@ -1234,6 +1232,7 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
                 Remove cover
               </button>
             )}
+            {draft.coverImage?.assetId && <small>Drag the frame or its corners. The cover is always cropped for the 16:9 Forms layout.</small>}
           </Field>
         </div>
       </section>

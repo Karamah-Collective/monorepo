@@ -10,9 +10,10 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const wrangler=path.join(root,'node_modules/wrangler/bin/wrangler.js');
 const localState=path.join(root,'Maps','.wrangler','state');
 const children=new Set();
-let stopping=false;
-function stop(code=0) { if(stopping)return; stopping=true; for(const child of children)child.kill('SIGTERM'); process.exitCode=code; }
+let stopping=false, keepAlive;
+function stop(code=0) { if(stopping)return; stopping=true; for(const child of children)child.kill('SIGTERM'); if(keepAlive)clearInterval(keepAlive); process.exitCode=code; }
 function launch(script,args,cwd) { const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}); children.add(child); child.on('error',err=>{console.error(err.message);stop(1);});child.on('exit',code=>{children.delete(child);stop(code||0);}); return child; }
+function run(script,args,cwd,capture=false) { return new Promise((resolve,reject)=>{ const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:capture?'pipe':'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}), output=[]; if(capture){child.stdout.on('data',chunk=>output.push(chunk));child.stderr.on('data',chunk=>output.push(chunk));} child.on('error',reject); child.on('exit',code=>code ? reject(new Error(`Command failed: ${args.join(' ')}`)) : resolve(Buffer.concat(output).toString())); }); }
 function busy(port) { return new Promise(resolve=>{const socket=net.connect({host:'127.0.0.1',port});socket.once('connect',()=>{socket.destroy();resolve(true);});socket.once('error',()=>resolve(false));}); }
 async function waitUntilReady(port,child,label) {
   const deadline=Date.now()+30000;
@@ -38,7 +39,14 @@ try {
     await waitUntilReady(8790,child,'Links');
   }
   if(['all','admin','forms'].includes(target) && !await busy(8791)) {
-    await setupLocalDatabase();
+    // Forms Pages dev uses the shared local Wrangler state below. The base
+    // schema is re-runnable, but SQLite cannot re-add a column, so inspect
+    // the schema before applying that one incremental migration.
+    const formsCwd=path.join(root,'Forms'), migrationArgs=['d1','execute','forms-db','--local','--persist-to',localState];
+    await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0021_forms.sql')],formsCwd);
+    const columns=await run(wrangler,[...migrationArgs,'--command','PRAGMA table_info(forms)'],formsCwd,true);
+    if(!/\bshare_code\b/.test(columns)) await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0022_form_share_codes.sql')],formsCwd);
+    await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0023_shorten_form_share_codes.sql')],formsCwd);
     console.log('Building Forms assets for local Pages...');
     await import('../Forms/scripts/build.mjs');
     const child=launch(wrangler,['pages','dev','dist', '--port','8791','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Forms'));
@@ -51,4 +59,7 @@ try {
     await waitUntilReady(5173,child,'Admin');
   }
   console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Forms: http://127.0.0.1:8791 · Admin: http://127.0.0.1:5173');
+  // Keep `npm run dev` attached when every service was already running. Without
+  // this handle Node exits immediately because it has no child process to own.
+  keepAlive=setInterval(()=>{},60_000);
 } catch(error) {console.error(error.message);stop(1);}
