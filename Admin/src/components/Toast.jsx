@@ -27,7 +27,7 @@ export function ToastProvider({ children }) {
       {toast && (
         <div
           role={toast.type === "error" ? "alert" : "status"}
-          className={`pp-toast${toast.type === "error" ? " pp-toast-error" : ""}`}
+          className={`pp-toast pp-toast-${toast.type === "error" ? "error" : "success"}`}
         >
           {toast.type === "error" ? <Icons.warning size={18} /> : <Icons.check size={18} />}
           <span className="pp-toast-message">{toast.message}</span>

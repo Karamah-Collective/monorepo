@@ -166,8 +166,27 @@ const escapeHtml = value => String(value).replaceAll("&", "&amp;").replaceAll("<
 function inviteCopy(value, replacements) {
   return String(value || "").replace(/\{\{(formTitle|formUrl)\}\}/g, (_, key) => replacements[key]);
 }
+function inviteMessageHtml(text, formTitle) {
+  const safeText = escapeHtml(text);
+  const safeTitle = escapeHtml(formTitle);
+  const withTitleEmphasis = safeTitle
+    ? safeText.replaceAll(safeTitle, `<strong style="color:#173d2c;font-weight:700;">${safeTitle}</strong>`)
+    : safeText;
+  return withTitleEmphasis.split(/\r?\n\r?\n/).map((paragraph) =>
+    `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#26392e;">${paragraph.replaceAll(/\r?\n/g, "<br>")}</p>`
+  ).join("");
+}
+function formInviteEmail({ title, subtitle, text, formUrl, coverUrl, coverAlt }) {
+  const cover = coverUrl
+    ? `<tr><td><img src="${escapeHtml(coverUrl)}" alt="${escapeHtml(coverAlt || "")}" width="680" style="display:block;width:100%;max-width:680px;height:auto;border:0;outline:none;text-decoration:none;" /></td></tr>`
+    : "";
+  const subtitleHtml = subtitle
+    ? `<p style="margin:5px 0 0;font-size:15px;line-height:1.5;color:#496357;">${escapeHtml(subtitle)}</p>`
+    : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');</style></head><body style="margin:0;padding:0;background:#eef1eb;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#eef1eb;"><tr><td align="center" style="padding:24px 12px;"><table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:680px;background:#fffdf7;border:1px solid #d7ded5;border-radius:16px;overflow:hidden;font-family:'Plus Jakarta Sans',Arial,sans-serif;">${cover}<tr><td style="padding:42px 40px 38px;"><p style="margin:0 0 12px;color:#a68c4c;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;">An invitation from Karamah Collective</p><h1 style="margin:0;color:#173d2c;font-size:30px;line-height:1.14;font-weight:700;letter-spacing:-.04em;">You are invited</h1><p style="margin:12px 0 0;color:#173d2c;font-size:18px;line-height:1.35;font-weight:700;letter-spacing:-.025em;">${escapeHtml(title)}</p>${subtitleHtml}<div style="margin-top:28px;">${inviteMessageHtml(text, title)}</div><a href="${escapeHtml(formUrl)}" style="display:inline-block;margin-top:8px;padding:13px 19px;border-radius:7px;background:#173d2c;color:#fffdf7;font-size:14px;font-weight:800;line-height:1;text-decoration:none;">Open the form&nbsp; →</a></td></tr><tr><td style="padding:23px 40px 27px;border-top:1px solid #d7ded5;background:#f7f6ef;"><p style="margin:0 0 4px;color:#173d2c;font-size:12px;font-weight:700;line-height:1.5;">Karamah Collective Forms</p><p style="margin:0;max-width:410px;color:#647066;font-size:12px;line-height:1.55;">This invitation was sent because a Karamah Collective administrator shared this form with you. The form link is intended for you.</p></td></tr></table></td></tr></table></body></html>`;
+}
 export async function sendFormInvites(db, data, env, actor) {
-  const form = await db.prepare("SELECT f.id,f.title,f.status,f.active_version_id,(SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f WHERE f.id=? AND f.status != 'deleted'").bind(data.id || "").first();
+  const form = await db.prepare("SELECT f.id,f.title,f.status,f.active_version_id,v.schema_json,(SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id WHERE f.id=? AND f.status != 'deleted'").bind(data.id || "").first();
   if (!form?.active_version_id || form.status !== "published") return { error: "Publish the form before sending invitations." };
   const recipients = [...new Set((Array.isArray(data.recipients) ? data.recipients : []).map(value => String(value).trim().toLowerCase()).filter(value => emailPattern.test(value)))];
   if (!recipients.length) return { error: "Add at least one valid email address." };
@@ -181,10 +200,17 @@ export async function sendFormInvites(db, data, env, actor) {
   const origin = String(env.FORMS_ORIGIN || "https://forms.karamahcollective.com").replace(/\/$/, "");
   const formUrl = `${origin}/f/${encodeURIComponent(form.short_code || "")}`;
   if (!form.short_code) return { error: "This form does not yet have a short invitation link." };
-  const replacements = { formTitle: form.title, formUrl };
+  const schema = normalizeSchema(safeJson(form.schema_json));
+  const title = String(schema.title || form.title || "Untitled form").trim();
+  const subtitle = String(schema.subtitle || "").trim();
+  const cover = schema.coverImage?.assetId && /^asset_[0-9a-f-]{36}$/i.test(schema.coverImage.assetId)
+    ? { url: `${origin}/api/media?id=${encodeURIComponent(schema.coverImage.assetId)}`, alt: String(schema.coverImage.alt || "").slice(0, 300) }
+    : null;
+  const replacements = { formTitle: title, formUrl };
   const subject = inviteCopy(String(data.subject || "You are invited: {{formTitle}}").trim().slice(0, 180), replacements);
   const text = inviteCopy(String(data.body || "Hello,\n\nYou are invited to complete {{formTitle}}.\n\nOpen the form: {{formUrl}}\n\nThank you,").trim().slice(0, 10_000), replacements);
-  const common = { sender: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, subject, textContent: text, htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#24312a;white-space:pre-wrap">${escapeHtml(text)}</div>`, replyTo: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, tags: ["forms-invite", form.id] };
+  const htmlContent = formInviteEmail({ title, subtitle, text, formUrl, coverUrl: cover?.url, coverAlt: cover?.alt });
+  const common = { sender: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, subject, textContent: text, htmlContent, replyTo: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, tags: ["forms-invite", form.id] };
   const payload = data.delivery === "group" ? { ...common, to: recipients.map(email => ({ email })) } : { ...common, messageVersions: recipients.map(email => ({ to: [{ email }] })) };
   const response = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify(payload) });
   if (!response.ok) {

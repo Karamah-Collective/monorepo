@@ -511,8 +511,8 @@ kbd {
   max-width: calc(100vw - 32px);
   padding: 14px 18px;
   border-radius: 10px;
-  background: var(--bg-nav);
-  color: #f0f5ed;
+  background: var(--success);
+  color: var(--action-on-accent);
   box-shadow: var(--shadow-lg);
   font-size: 13px;
   animation: page-enter 220ms var(--ease);
@@ -529,6 +529,7 @@ kbd {
 }
 .pp-toast-error {
   background: var(--danger);
+  color: #fffaf7;
 }
 .loading-state {
   padding: 16px;

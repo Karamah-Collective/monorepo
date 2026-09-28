@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Karamah Forms · invitation email preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#173d2c; --ink-soft:#496357; --paper:#fffdf7; --canvas:#eef1eb; --line:#d7ded5; --olive:#758169; --gold:#a68c4c; --button:#173d2c; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--canvas); color:#17261e; font-family:"Plus Jakarta Sans",Arial,sans-serif; }
+    .page-head { max-width:1180px; margin:0 auto; padding:48px 28px 26px; display:flex; justify-content:space-between; gap:32px; align-items:end; }
+    .eyebrow { margin:0 0 10px; color:var(--olive); font-size:11px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; }
+    h1 { max-width:700px; margin:0; color:var(--ink); font-size:clamp(28px,4vw,44px); line-height:1.08; letter-spacing:-.045em; }
+    .page-head p:last-child { max-width:340px; margin:0; color:var(--ink-soft); font-size:13px; line-height:1.6; }
+    .controls { max-width:1180px; margin:0 auto; padding:0 28px 28px; display:flex; flex-wrap:wrap; gap:8px; }
+    .controls button { appearance:none; border:1px solid var(--line); border-radius:999px; padding:9px 13px; background:#f9faf6; color:var(--ink); font:700 12px/1 "Plus Jakarta Sans",Arial,sans-serif; cursor:pointer; }
+    .controls button[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:var(--paper); }
+    .stage { padding:48px 28px 76px; border-top:1px solid rgba(23,61,44,.12); background:linear-gradient(90deg,rgba(255,255,255,.3),transparent 35%,rgba(255,255,255,.3)); }
+    .email-wrap { width:min(100%,680px); margin:0 auto; }
+    .mail-chrome { display:flex; align-items:center; justify-content:space-between; padding:13px 18px; background:#f9faf6; border:1px solid var(--line); border-bottom:0; border-radius:16px 16px 0 0; color:#617067; font-size:12px; }
+    .mail-chrome b { color:var(--ink); }
+    .email { overflow:hidden; background:var(--paper); border:1px solid var(--line); border-radius:0 0 16px 16px; box-shadow:0 18px 45px rgba(31,57,40,.09); }
+    .cover { display:block; width:100%; height:230px; object-fit:cover; }
+    .cover[hidden] { display:none; }
+    .content { padding:42px 40px 38px; }
+    .content .eyebrow { margin-bottom:12px; color:var(--gold); font-size:12px; letter-spacing:.1em; }
+    h2 { margin:0; color:var(--ink); font-size:30px; line-height:1.14; letter-spacing:-.04em; }
+    .form-title { margin:12px 0 0; color:var(--ink); font-size:18px; font-weight:700; letter-spacing:-.025em; }
+    .form-subtitle { margin:5px 0 0; color:var(--ink-soft); font-size:15px; line-height:1.5; }
+    .message { margin:28px 0 0; color:#26392e; font-size:15px; line-height:1.7; white-space:pre-line; }
+    .button { display:inline-block; margin-top:28px; padding:13px 19px; border-radius:7px; background:var(--button); color:var(--paper); font-size:14px; font-weight:800; text-decoration:none; }
+    .button span { padding-left:8px; font-size:16px; }
+    .footer { padding:23px 40px 27px; border-top:1px solid var(--line); background:#f7f6ef; }
+    .footer p { max-width:410px; margin:0; color:#647066; font-size:12px; line-height:1.55; }
+    .footer strong { display:block; margin-bottom:4px; color:var(--ink); font-size:12px; }
+    .annotation { max-width:680px; margin:20px auto 0; color:#617067; font-size:13px; line-height:1.55; text-align:center; }
+    @media (max-width:600px) { .page-head { display:block; padding:34px 20px 22px; } .page-head p:last-child { margin-top:16px; } .controls { padding:0 20px 22px; } .stage { padding:28px 12px 52px; } .content,.footer { padding-left:24px; padding-right:24px; } .cover { height:178px; } h2 { font-size:28px; } }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <div><p class="eyebrow">Direction 1 · Editorial letter</p><h1>Forms invitation email</h1></div>
+    <p>A static preview of the proposed branded shell. The admin’s message remains the only editable email copy.</p>
+  </header>
+  <nav class="controls" aria-label="Preview scenarios">
+    <button type="button" data-cover="on" aria-pressed="true">Form has a cover image</button>
+    <button type="button" data-cover="off" aria-pressed="false">Form has no image</button>
+    <button type="button" data-message="short" aria-pressed="true">Sample message</button>
+    <button type="button" data-message="long" aria-pressed="false">Long message</button>
+  </nav>
+  <main class="stage">
+    <div class="email-wrap">
+      <div class="mail-chrome"><span><b>Karamah Collective Forms</b> · to recipient@example.com</span><span>Invitation</span></div>
+      <article class="email">
+        <img class="cover" src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1360&q=85" alt="Friends gathered around a shared table">
+        <section class="content">
+          <p class="eyebrow">An invitation from Karamah Collective</p>
+          <h2>You are invited</h2>
+          <p class="form-title">Community supper</p>
+          <p class="form-subtitle">A shared table for neighbours, stories, and good food.</p>
+          <p class="message" id="message">Hello,
+
+You are invited to complete <strong>Community supper</strong>. We would love to hear from you so we can make the evening feel welcoming for everyone.
+
+Please share your response by Friday.</p>
+          <a class="button" href="#">Open the form <span aria-hidden="true">→</span></a>
+        </section>
+        <footer class="footer"><strong>Karamah Collective Forms</strong><p>This invitation was sent because a Karamah Collective administrator shared this form with you. The form link is intended for you.</p></footer>
+      </article>
+    </div>
+    <p class="annotation">Cover image is present only when the form has one. Without it, the invitation starts directly with its message.</p>
+  </main>
+  <script>
+    const cover = document.querySelector('.cover');
+    const message = document.querySelector('#message');
+    const samples = {
+      short: `Hello,\n\nYou are invited to complete <strong>Community supper</strong>. We would love to hear from you so we can make the evening feel welcoming for everyone.\n\nPlease share your response by Friday.`,
+      long: `Assalamu alaikum,\n\nWe are preparing <strong>Community supper</strong> for neighbours and friends, and your response will help us plan a warm evening together. Please tell us whether you can join, and let us know about any dietary needs or accessibility requests.\n\nThe form takes only a few minutes. Thank you for helping us make space for everyone.\n\nWith appreciation,\nKaramah Collective`
+    };
+    document.querySelectorAll('[data-cover]').forEach((button) => button.addEventListener('click', () => {
+      const show = button.dataset.cover === 'on'; cover.hidden = !show;
+      document.querySelectorAll('[data-cover]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+    document.querySelectorAll('[data-message]').forEach((button) => button.addEventListener('click', () => {
+      message.innerHTML = samples[button.dataset.message];
+      document.querySelectorAll('[data-message]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+  </script>
+</body>
+</html>
