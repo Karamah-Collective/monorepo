@@ -507,6 +507,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: min(420px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   padding: 14px 18px;
   border-radius: 10px;
@@ -515,6 +516,16 @@ kbd {
   box-shadow: var(--shadow-lg);
   font-size: 13px;
   animation: page-enter 220ms var(--ease);
+}
+.pp-toast > svg,
+.pp-toast .icon-button {
+  flex: 0 0 auto;
+}
+.pp-toast-message {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 .pp-toast-error {
   background: var(--danger);
@@ -1010,8 +1021,18 @@ kbd {
     margin-top: 36px;
   }
   .pp-toast {
-    bottom: 16px;
     right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 767px) {
+  .pp-toast {
+    right: 16px;
+    left: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    padding: 13px 14px;
   }
 }
 @keyframes page-enter {

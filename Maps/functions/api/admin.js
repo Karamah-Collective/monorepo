@@ -152,15 +152,19 @@ async function getAdminLog(db, url) {
 // ── GET actions ────────────────────────────────────────────────────────────
 
 async function getAdminStats(db) {
-  const [pendingNew, pendingEdits, places, unreplied, wishesTotal, pendingWishes, pendingEvents, pendingEventEdits] = await Promise.all([
-    db.prepare("SELECT COUNT(*) n FROM new_places WHERE status = 'pending'").first(),
-    db.prepare("SELECT COUNT(*) n FROM edits WHERE status = 'pending'").first(),
+  // Keep this to two D1 operations. The old Promise.all issued eight queries
+  // at once; on Pages that can exhaust the per-request D1 connection limit,
+  // leaving just the overview unavailable while the rest of Admin still works.
+  const [counts, places] = await Promise.all([
+    db.prepare(`SELECT
+      (SELECT COUNT(*) FROM new_places WHERE status = 'pending') AS pending_new,
+      (SELECT COUNT(*) FROM edits WHERE status = 'pending') AS pending_edits,
+      (SELECT COUNT(*) FROM contacts WHERE replied != 'Yes') AS unreplied_contacts,
+      (SELECT COUNT(*) FROM wishes) AS total_wishes,
+      (SELECT COUNT(*) FROM wishes WHERE approved NOT IN ('Yes','No')) AS pending_wishes,
+      (SELECT COUNT(*) FROM events WHERE status = 'pending') AS pending_events,
+      (SELECT COUNT(*) FROM event_edits WHERE status = 'pending') AS pending_event_edits`).first(),
     db.prepare("SELECT type, COUNT(*) n FROM places GROUP BY type").all(),
-    db.prepare("SELECT COUNT(*) n FROM contacts WHERE replied != 'Yes'").first(),
-    db.prepare("SELECT COUNT(*) n FROM wishes").first(),
-    db.prepare("SELECT COUNT(*) n FROM wishes WHERE approved NOT IN ('Yes','No')").first(),
-    db.prepare("SELECT COUNT(*) n FROM events WHERE status = 'pending'").first(),
-    db.prepare("SELECT COUNT(*) n FROM event_edits WHERE status = 'pending'").first(),
   ]);
   const byType = { space: 0, restaurant: 0, service: 0 };
   let totalPlaces = 0;
@@ -174,8 +178,8 @@ async function getAdminStats(db) {
     if (Object.prototype.hasOwnProperty.call(byType, type)) byType[type] += row.n;
   }
   return {
-    pendingNew: pendingNew.n, pendingEdits: pendingEdits.n, totalPlaces, unrepliedContacts: unreplied.n,
-    byType, totalWishes: wishesTotal.n, pendingWishes: pendingWishes.n, pendingEvents: pendingEvents.n, pendingEventEdits: pendingEventEdits.n,
+    pendingNew: counts?.pending_new || 0, pendingEdits: counts?.pending_edits || 0, totalPlaces, unrepliedContacts: counts?.unreplied_contacts || 0,
+    byType, totalWishes: counts?.total_wishes || 0, pendingWishes: counts?.pending_wishes || 0, pendingEvents: counts?.pending_events || 0, pendingEventEdits: counts?.pending_event_edits || 0,
   };
 }
 

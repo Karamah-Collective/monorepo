@@ -46,6 +46,7 @@ import {
   TelegramLogo,
   SpotifyLogo,
   ClipboardText,
+  WarningCircle,
 } from "@phosphor-icons/react";
 
 const wrap = (Component) =>
@@ -101,6 +102,7 @@ export const Icons = Object.fromEntries(
     telegram: TelegramLogo,
     spotify: SpotifyLogo,
     forms: ClipboardText,
+    warning: WarningCircle,
   }).map(([key, component]) => [key, wrap(component)]),
 );
 export const CloseIcon = wrap(X);

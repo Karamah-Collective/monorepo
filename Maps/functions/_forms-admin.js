@@ -172,8 +172,12 @@ export async function sendFormInvites(db, data, env, actor) {
   const recipients = [...new Set((Array.isArray(data.recipients) ? data.recipients : []).map(value => String(value).trim().toLowerCase()).filter(value => emailPattern.test(value)))];
   if (!recipients.length) return { error: "Add at least one valid email address." };
   if (recipients.length > 100) return { error: "Send invitations to at most 100 recipients at once." };
-  const apiKey = env.BREVO_API_KEY;
+  const apiKey = String(env.BREVO_API_KEY || "").trim();
   if (!apiKey) return { error: "Email invitations are not configured. Add BREVO_API_KEY to the Forms Pages project secrets." };
+  if (/^xsmtpsib-/i.test(apiKey)) {
+    console.error("Brevo form invite failed: BREVO_API_KEY contains an SMTP key, not an HTTP API key");
+    return { error: "Email invitations need a Brevo API key, not an SMTP key. Update BREVO_API_KEY in the Forms Pages project." };
+  }
   const origin = String(env.FORMS_ORIGIN || "https://forms.karamahcollective.com").replace(/\/$/, "");
   const formUrl = `${origin}/f/${encodeURIComponent(form.short_code || "")}`;
   if (!form.short_code) return { error: "This form does not yet have a short invitation link." };

@@ -29,8 +29,8 @@ export function ToastProvider({ children }) {
           role={toast.type === "error" ? "alert" : "status"}
           className={`pp-toast${toast.type === "error" ? " pp-toast-error" : ""}`}
         >
-          <Icons.check size={18} />
-          {toast.message}
+          {toast.type === "error" ? <Icons.warning size={18} /> : <Icons.check size={18} />}
+          <span className="pp-toast-message">{toast.message}</span>
           <button
             className="icon-button"
             aria-label="Dismiss notification"
