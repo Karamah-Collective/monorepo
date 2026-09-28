@@ -14,6 +14,7 @@ import {
   Gear,
   ListBullets,
   Plus,
+  PaperPlaneTilt,
   Trash,
   UsersThree,
   Warning,
@@ -1450,14 +1451,14 @@ function InvitePanel({ form }) {
     } catch (error) { toast(error.message, "error"); }
   }
   return <section className="form-invites">
-    <p className="page-eyebrow">INVITE RESPONDENTS</p><h2>Send a form invitation</h2>
-    <p>Use commas, spaces, or new lines for up to 100 email addresses. <code>{"{{formTitle}}"}</code> and <code>{"{{formUrl}}"}</code> are filled automatically.</p>
-    <label>Recipients<textarea rows="4" value={recipients} onChange={event => setRecipients(event.target.value)} placeholder="person@example.com, another@example.com" /></label>
-    <small>{addresses.length} unique recipient{addresses.length === 1 ? "" : "s"}</small>
-    <label>Subject<input value={subject} maxLength="180" onChange={event => setSubject(event.target.value)} /></label>
-    <label>Message<textarea rows="8" value={body} maxLength="10000" onChange={event => setBody(event.target.value)} /></label>
-    <fieldset><legend>Delivery</legend><label><input type="radio" checked={delivery === "individual"} onChange={() => setDelivery("individual")} /> Send individually (private, recommended)</label><label><input type="radio" checked={delivery === "group"} onChange={() => setDelivery("group")} /> One group email (recipients can see each other)</label></fieldset>
-    <button className="pp-btn pp-btn-primary" disabled={!form.activeVersionId || !addresses.length || invite.isPending} onClick={send}>{invite.isPending ? "Sending…" : "Send invitations"}</button>
+    <div className="form-invite-heading"><div><p className="page-eyebrow">INVITE RESPONDENTS</p><h2>Send a form invitation</h2><p>Send the short redirect link with your own subject and message.</p></div><span className="form-invite-count">{addresses.length} recipient{addresses.length === 1 ? "" : "s"}</span></div>
+    <div className="settings-grid form-invite-grid">
+      <label className="wide">Recipients<textarea rows="4" value={recipients} onChange={event => setRecipients(event.target.value)} placeholder="person@example.com, another@example.com" /><small>Separate addresses with commas, spaces, or new lines. Up to 100 unique recipients.</small></label>
+      <label>Subject<input value={subject} maxLength="180" onChange={event => setSubject(event.target.value)} /></label>
+      <label>Delivery<select value={delivery} onChange={event => setDelivery(event.target.value)}><option value="individual">Individual emails — private</option><option value="group">One group email — visible recipients</option></select><small>Individual emails are the safer default.</small></label>
+      <label className="wide">Message<textarea rows="8" value={body} maxLength="10000" onChange={event => setBody(event.target.value)} /><small>Template tokens for the form title and link are inserted automatically.</small></label>
+    </div>
+    <div className="form-invite-footer"><p>{delivery === "individual" ? "Each recipient receives a separate email." : "Everyone will be included in the same email."}</p><button className="pp-btn pp-btn-primary" disabled={!form.activeVersionId || !addresses.length || invite.isPending} onClick={send}><PaperPlaneTilt size={16} />{invite.isPending ? "Sending…" : "Send invitations"}</button></div>
   </section>;
 }
 
