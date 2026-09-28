@@ -239,17 +239,14 @@ function FormEditor() {
           </span>
         </div>
         <div className="form-editor-header-actions">
-          {form.activeVersionId && (
-            <button
-              className="pp-btn"
-              onClick={async () => {
-                try { await navigator.clipboard.writeText(formShortUrl(form.shortCode)); toast("Short link copied"); } catch { toast("Could not copy the short link", "error"); }
-                window.open(formPublicUrl(form.shareCode), "_blank", "noopener,noreferrer");
-              }}
-            >
-              Open & copy link <ArrowSquareOut size={14} />
-            </button>
-          )}
+          {form.activeVersionId && <details className="form-share-menu">
+            <summary className="pp-btn">Share <CaretDown size={14} /></summary>
+            <div>
+              <a href={formPublicUrl(form.shareCode)} target="_blank" rel="noreferrer"><ArrowSquareOut size={15} /> Open live form</a>
+              <button onClick={async event => { try { await navigator.clipboard.writeText(formShortUrl(form.shortCode)); toast("Short link copied"); } catch { toast("Could not copy the short link", "error"); } event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={15} /> Copy short link</button>
+              <button onClick={event => { window.open(previewUrl(draft), "_blank", "noopener,noreferrer"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><ArrowSquareOut size={15} /> Preview draft</button>
+            </div>
+          </details>}
           <button
             className="pp-btn pp-btn-primary"
             onClick={publishNow}
@@ -1168,7 +1165,7 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
               }
             />
           </Field>
-          <Field label="Share link" hint="Private, unguessable address generated for this form.">
+          <Field label="Share link">
             <input readOnly value={form.shareCode ? formPublicUrl(form.shareCode) : "Available after the share-code migration"} onFocus={(event) => event.currentTarget.select()} />
           </Field>
           <Field label="Subtitle">
