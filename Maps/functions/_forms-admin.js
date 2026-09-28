@@ -18,9 +18,9 @@ function serializeForm(row) {
 
 async function uniqueShareCode(db) {
   for (let attempt = 0; attempt < 12; attempt++) {
-    const bytes = new Uint8Array(8);
+    const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
-    const code = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").slice(0, 10);
+    const code = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
     const found = await db.prepare("SELECT id FROM forms WHERE share_code=?").bind(code).first();
     if (!found) return code;
   }
@@ -162,8 +162,7 @@ export async function listSubmissions(db, url) {
 export async function deleteSubmission(db, data, env) {
   const { results: files } = await db.prepare("SELECT r2_key FROM form_files WHERE submission_id=?").bind(data.submissionId || "").all();
   await db.prepare("DELETE FROM form_submissions WHERE id=? AND form_id=?").bind(data.submissionId || "", data.id || "").run();
-  const media = env.FORMS_MEDIA || env.MEDIA;
-  if (media && files.length) await media.delete(files.map(file => file.r2_key));
+  if (env.MEDIA && files.length) await env.MEDIA.delete(files.map(file => file.r2_key));
   return { success: true };
 }
 

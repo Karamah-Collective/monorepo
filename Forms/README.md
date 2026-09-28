@@ -20,11 +20,6 @@ Configure the Forms Pages project with its dedicated data stores:
 - `MEDIA`: the private `forms-media` bucket;
 - `FIREBASE_PROJECT_ID` only if it differs from `halal-map-karamah`.
 
-The Maps Pages project keeps its existing `DB` and `MEDIA` bindings for Maps,
-and additionally needs `FORMS_DB` bound to `forms-db` plus `FORMS_MEDIA` bound
-to `forms-media`. Authenticated form management and cover-image uploads run
-through its admin API and use those dedicated bindings.
-
 ## Deploy to Cloudflare Pages
 
 1. In **Workers & Pages**, create a Pages project from this repository. Use the
@@ -44,10 +39,6 @@ through its admin API and use those dedicated bindings.
    then attach `forms.karamahcollective.com`. Set `VITE_FORMS_ORIGIN` in the
    Admin Pages project to that final HTTPS origin and redeploy Admin, so share
    links and live previews use the correct Forms host.
-6. Keep `DB` and `MEDIA` bindings on the Maps Pages project. It owns the
-   Firebase-protected authoring endpoints at `/api/admin` and `/api/form-asset`.
-   Forms owns only public published schemas, submissions, and presentation
-   images.
 
 Before announcing the domain, manually publish a test form and check its
 public link, conditional path, upload, response ledger, CSV export, and Admin

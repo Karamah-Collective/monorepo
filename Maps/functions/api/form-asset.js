@@ -10,20 +10,19 @@ const admin = async (request, env) => {
 };
 
 export async function onRequestPost({ request, env }) {
-  const db = env.FORMS_DB || env.DB, media = env.FORMS_MEDIA || env.MEDIA;
-  if (!db || !media) return json(request, { error: "Media storage is unavailable." }, 503);
+  if (!env.DB || !env.MEDIA) return json(request, { error: "Media storage is unavailable." }, 503);
   const user = await admin(request, env); if (!user) return json(request, { error: "Not authorized." }, 403);
   const data = await request.formData(), file = data.get("file"), formId = String(data.get("formId") || ""), alt = String(data.get("alt") || "").slice(0, 300);
-  const form = await db.prepare("SELECT id FROM forms WHERE id=? AND status!='deleted'").bind(formId).first();
+  const form = await env.DB.prepare("SELECT id FROM forms WHERE id=? AND status!='deleted'").bind(formId).first();
   if (!form) return json(request, { error: "Form not found." }, 404);
   if (!(file instanceof File) || !allowed.has(file.type) || file.size < 1 || file.size > 8 * 1024 * 1024) return json(request, { error: "Choose a JPEG, PNG, or WebP image smaller than 8 MB." }, 415);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const valid = file.type === "image/jpeg" ? bytes[0] === 0xff && bytes[1] === 0xd8 : file.type === "image/png" ? bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 : new TextDecoder().decode(bytes.slice(0,4)) === "RIFF" && new TextDecoder().decode(bytes.slice(8,12)) === "WEBP";
   if (!valid) return json(request, { error: "The image content does not match its file type." }, 415);
   const assetId = `asset_${crypto.randomUUID()}`, key = `forms/${formId}/assets/${crypto.randomUUID()}`;
-  await media.put(key, bytes, { httpMetadata: { contentType: file.type }, customMetadata: { formId, kind: "cover" } });
-  try { await db.prepare("INSERT INTO form_assets (id,form_id,asset_kind,r2_key,mime_type,size_bytes,alt_text,created_by,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(assetId,formId,"cover",key,file.type,file.size,alt,user.uid,new Date().toISOString()).run(); }
-  catch (error) { await media.delete(key); throw error; }
+  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: file.type }, customMetadata: { formId, kind: "cover" } });
+  try { await env.DB.prepare("INSERT INTO form_assets (id,form_id,asset_kind,r2_key,mime_type,size_bytes,alt_text,created_by,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(assetId,formId,"cover",key,file.type,file.size,alt,user.uid,new Date().toISOString()).run(); }
+  catch (error) { await env.MEDIA.delete(key); throw error; }
   return json(request, { success: true, assetId, alt });
 }
 
