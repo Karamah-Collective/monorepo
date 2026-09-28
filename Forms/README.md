@@ -46,7 +46,7 @@ preview. The `404.html` page should appear for an unknown static address.
 
 ## Routes
 
-- `/f/:shareCode` — short, opaque 128-bit public respondent route;
+- `/f/:shareCode` — long, opaque canonical respondent route; three-character short links redirect here;
 - `/forms/:slug` — legacy respondent route retained for previously shared links;
 - `GET /api/form?code=:shareCode` — published schema and availability;
 - `POST /api/form?code=:shareCode` — validated, idempotent submission;
@@ -63,4 +63,4 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Before deployment, apply `Maps/migrations/0021_forms.sql`, `Maps/migrations/0022_form_share_codes.sql`, and `Maps/migrations/0023_shorten_form_share_codes.sql` to the matching Forms D1 database. Migration `0023` changes existing `/f/:shareCode` URLs, so apply it only when Admin should show the new shorter links as canonical.
+Before deployment, apply `Maps/migrations/0021_forms.sql` through `Maps/migrations/0024_form_share_code_aliases.sql` to the matching Forms D1 database. Run `npm run migrate:form-links -- --remote` after applying `0024` to create three-character short links that redirect to the long canonical URLs.

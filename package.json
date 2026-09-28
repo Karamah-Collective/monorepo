@@ -16,6 +16,7 @@
     "dev:admin": "node tooling/dev.mjs admin",
     "dev:links": "node tooling/dev.mjs links",
     "dev:forms": "node tooling/dev.mjs forms",
+    "migrate:form-links": "node Forms/scripts/shorten-share-codes.mjs",
     "setup:website": "node tooling/setup-website-env.mjs",
     "deploy:agent": "node tooling/deploy-agent.mjs",
     "build": "npm run build --workspaces --if-present",

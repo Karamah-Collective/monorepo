@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { onRequestPost } from '../functions/api/form.js';
 import { onRequestGet as listPublicForms } from '../functions/api/forms.js';
+import { onRequest as shortLinkRedirect } from '../functions/f/[code].js';
+import { createForm } from '../../Maps/functions/_forms-admin.js';
 import { createFormSchema } from '../../shared/forms-domain.mjs';
 
 function context({versionId='v1',existing=null,status='published',limit=null,count=0,fail=false,changes=1,answers={}}={}) {
@@ -48,4 +50,26 @@ test('public form catalogue falls back to the draft schema for published rows wi
   assert.equal(response.status,200);
   assert.equal(data.forms.length,1);
   assert.equal(data.forms[0].title,'Fallback form');
+});
+
+test('new forms keep a long canonical code and create a three-character redirect code',async()=>{
+  let insert=[];
+  const db={prepare(sql){return {bind(...values){this.values=values;return this;},async first(){return null;},async run(){if(sql.startsWith('INSERT INTO forms')) insert=this.values;return {meta:{changes:1}};}};}};
+  const result=await createForm(db,{title:'Short link test'},{uid:'admin-user'});
+  assert.match(result.shareCode,/^[A-Za-z0-9_-]{22}$/);
+  assert.match(result.shortCode,/^(?=.*[a-z])[a-z1-9]{3}$/);
+  assert.equal(insert[2],result.shareCode);
+});
+
+test('three-character form links redirect to their long canonical URL',async()=>{
+  const context={
+    request:new Request('https://forms.test/f/avp'),
+    env:{
+      DB:{prepare(){return {bind(){return this;},async first(){return {share_code:'CxlyQttm8tpqo2OI-W9hKg'};}};}},
+      ASSETS:{fetch(){throw new Error('short link should redirect');}},
+    },
+  };
+  const response=await shortLinkRedirect(context);
+  assert.equal(response.status,302);
+  assert.equal(response.headers.get('location'),'https://forms.test/f/CxlyQttm8tpqo2OI-W9hKg');
 });

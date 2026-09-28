@@ -47,6 +47,7 @@ try {
     const columns=await run(wrangler,[...migrationArgs,'--command','PRAGMA table_info(forms)'],formsCwd,true);
     if(!/\bshare_code\b/.test(columns)) await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0022_form_share_codes.sql')],formsCwd);
     await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0023_shorten_form_share_codes.sql')],formsCwd);
+    await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0024_form_share_code_aliases.sql')],formsCwd);
     console.log('Building Forms assets for local Pages...');
     await import('../Forms/scripts/build.mjs');
     const child=launch(wrangler,['pages','dev','dist', '--port','8791','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Forms'));

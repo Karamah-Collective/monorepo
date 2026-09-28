@@ -16,6 +16,8 @@ async function currentForm(db, key, isCode = false) {
 
 function formKey(url) {
   const code = url.searchParams.get("code") || "", slug = url.searchParams.get("slug") || "";
+  // Three-character codes are the current canonical links. Keep accepting the
+  // previous 8–32-character aliases so links shared before the migration work.
   if (code) return /^[A-Za-z0-9_-]{8,32}$/.test(code) ? { value: code, code: true } : null;
   return slugPattern.test(slug) ? { value: slug, code: false } : null;
 }

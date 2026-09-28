@@ -12,6 +12,7 @@ import {
 import { useToast } from "../components/Toast.jsx";
 import {
   formPublicUrl,
+  formShortUrl,
   useCreateForm,
   useDeleteForm,
   useDuplicateForm,
@@ -60,8 +61,8 @@ export default function FormsPage() {
     navigate(`/forms/${result.id}`);
   }
   async function copyLink(form) {
-    await navigator.clipboard.writeText(formPublicUrl(form.shareCode));
-    toast("Private share link copied");
+    await navigator.clipboard.writeText(formShortUrl(form.shortCode));
+    toast("Short link copied");
   }
   async function deleteForm(form) {
     if (
@@ -220,9 +221,9 @@ export default function FormsPage() {
               <div className="form-row-actions">
                 <button
                   className="icon-button"
-                  title="Copy public link"
-                  aria-label={`Copy link for ${form.title}`}
-                  disabled={!form.activeVersionId || !form.shareCode}
+                  title="Copy short link"
+                  aria-label={`Copy short link for ${form.title}`}
+                  disabled={!form.activeVersionId || !form.shortCode}
                   onClick={() => copyLink(form)}
                 >
                   <Copy size={16} />

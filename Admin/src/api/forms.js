@@ -4,6 +4,7 @@ import { auth } from "../firebase.js";
 
 export const formsOrigin = (import.meta.env.VITE_FORMS_ORIGIN || (import.meta.env.DEV ? "http://127.0.0.1:8791" : "https://forms.karamahcollective.com")).replace(/\/$/, "");
 export const formPublicUrl = shareCode => `${formsOrigin}/f/${encodeURIComponent(shareCode)}`;
+export const formShortUrl = shortCode => `${formsOrigin}/f/${encodeURIComponent(shortCode)}`;
 export const formAssetUrl = assetId => `${formsOrigin}/api/media?id=${encodeURIComponent(assetId)}`;
 async function formsRequest(action, body, method = "GET") {
   if (!auth.currentUser) throw new Error("Not signed in");

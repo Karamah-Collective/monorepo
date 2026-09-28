@@ -5,10 +5,11 @@ const id = prefix => `${prefix}_${crypto.randomUUID()}`;
 const safeJson = value => { try { return JSON.parse(value); } catch { return null; } };
 const asInt = (value, fallback = 0) => Number.isSafeInteger(Number(value)) ? Number(value) : fallback;
 const FORM_STATUSES = new Set(["draft", "published", "closed", "archived"]);
+const SHORT_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz123456789";
 
 function serializeForm(row) {
   return {
-    id: row.id, slug: row.slug, shareCode: row.share_code || null, title: row.title, status: row.status,
+    id: row.id, slug: row.slug, shareCode: row.share_code || null, shortCode: row.short_code || null, title: row.title, status: row.status,
     revision: row.draft_revision, activeVersionId: row.active_version_id || null,
     createdBy: row.created_by, updatedBy: row.updated_by, createdAt: row.created_at, updatedAt: row.updated_at,
     archivedAt: row.archived_at || null, responseCount: row.response_count || 0,
@@ -25,6 +26,20 @@ async function uniqueShareCode(db) {
     if (!found) return code;
   }
   throw new Error("Could not create a unique share code");
+}
+
+async function uniqueShortCode(db) {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    let code = "";
+    while (code.length < 3) {
+      const byte = new Uint8Array(1); crypto.getRandomValues(byte);
+      if (byte[0] < 245) code += SHORT_CODE_ALPHABET[byte[0] % SHORT_CODE_ALPHABET.length];
+    }
+    if (!/[a-z]/.test(code)) continue;
+    const found = await db.prepare("SELECT form_id FROM form_share_code_aliases WHERE code=?").bind(code).first();
+    if (!found) return code;
+  }
+  throw new Error("Could not create a unique short link");
 }
 
 async function uniqueSlug(db, source, exceptId = "") {
@@ -45,14 +60,15 @@ export async function listForms(db, url) {
   const clauses = ["f.status != 'deleted'"]; const binds = [];
   if (FORM_STATUSES.has(status)) { clauses.push("f.status = ?"); binds.push(status); }
   if (search) { clauses.push("(f.title LIKE ? OR f.slug LIKE ?)"); binds.push(`%${search}%`, `%${search}%`); }
-  const { results } = await db.prepare(`SELECT f.*, COUNT(s.id) response_count, MAX(s.submitted_at) last_response_at
+  const { results } = await db.prepare(`SELECT f.*, MIN(link.code) short_code, COUNT(s.id) response_count, MAX(s.submitted_at) last_response_at
     FROM forms f LEFT JOIN form_submissions s ON s.form_id=f.id AND s.status='valid'
+    LEFT JOIN form_share_code_aliases link ON link.form_id=f.id AND length(link.code)=3
     WHERE ${clauses.join(" AND ")} GROUP BY f.id ORDER BY ${sort} ${direction}, f.updated_at DESC LIMIT 250`).bind(...binds).all();
   return { forms: results.map(serializeForm) };
 }
 
 export async function getForm(db, url) {
-  const form = await db.prepare("SELECT * FROM forms WHERE id = ? AND status != 'deleted'").bind(url.searchParams.get("id") || "").first();
+  const form = await db.prepare("SELECT f.*, (SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f WHERE f.id = ? AND f.status != 'deleted'").bind(url.searchParams.get("id") || "").first();
   if (!form) return { error: "Form not found" };
   const { results: versions } = await db.prepare("SELECT id,version_number,created_by,created_at,published_at FROM form_versions WHERE form_id=? ORDER BY version_number DESC").bind(form.id).all();
   return { form: serializeForm(form), schema: normalizeSchema(safeJson(form.draft_schema_json)), versions: versions.map(row => ({ id: row.id, number: row.version_number, createdBy: row.created_by, createdAt: row.created_at, publishedAt: row.published_at })) };
@@ -60,11 +76,12 @@ export async function getForm(db, url) {
 
 export async function createForm(db, data, actor) {
   const title = String(data.title || "Untitled form").trim().slice(0, 180) || "Untitled form";
-  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, data.slug || title), shareCode = await uniqueShareCode(db);
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, data.slug || title), shareCode = await uniqueShareCode(db), shortCode = await uniqueShortCode(db);
   const schema = createFormSchema(title);
   await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
     .bind(formId, slug, shareCode, title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
-  return { success: true, id: formId, slug, shareCode, revision: 0 };
+  await db.prepare("INSERT INTO form_share_code_aliases (code,form_id,created_at) VALUES (?,?,?)").bind(shortCode, formId, stamp).run();
+  return { success: true, id: formId, slug, shareCode, shortCode, revision: 0 };
 }
 
 export async function saveForm(db, data, actor) {
@@ -134,10 +151,11 @@ export async function duplicateForm(db, data, actor) {
   const source = await db.prepare("SELECT * FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
   if (!source) return { error: "Form not found" };
   const schema = freshenSchema(safeJson(source.draft_schema_json)); schema.title = `${schema.title} copy`.slice(0, 180);
-  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, schema.title), shareCode = await uniqueShareCode(db);
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, schema.title), shareCode = await uniqueShareCode(db), shortCode = await uniqueShortCode(db);
   await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
     .bind(formId, slug, shareCode, schema.title, "draft", JSON.stringify(schema), actor.uid, actor.uid, stamp, stamp).run();
-  return { success: true, id: formId, slug, shareCode };
+  await db.prepare("INSERT INTO form_share_code_aliases (code,form_id,created_at) VALUES (?,?,?)").bind(shortCode, formId, stamp).run();
+  return { success: true, id: formId, slug, shareCode, shortCode };
 }
 
 export async function deleteForm(db, data, actor) {

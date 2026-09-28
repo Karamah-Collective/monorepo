@@ -16,7 +16,18 @@ async function actor(request, env) {
   return match ? verifyFirebaseIdToken(match[1].slice(0, 4096), env) : null;
 }
 const gets = { "forms-list": listForms, "forms-get": getForm, "forms-version": getVersion, "forms-submissions": listSubmissions, "forms-analytics": formAnalytics, "forms-export": exportResponses };
-const posts = { "forms-create": createForm, "forms-save": saveForm, "forms-publish": publishForm, "forms-status": setFormStatus, "forms-duplicate": duplicateForm, "forms-delete": deleteForm, "forms-delete-submission": deleteSubmission };
+// All form mutations receive the authenticated actor as their third argument.
+// Deleting a submission is the exception: it needs the Pages environment to
+// remove any associated R2 files, so adapt it at the boundary.
+const posts = {
+  "forms-create": createForm,
+  "forms-save": saveForm,
+  "forms-publish": publishForm,
+  "forms-status": setFormStatus,
+  "forms-duplicate": duplicateForm,
+  "forms-delete": deleteForm,
+  "forms-delete-submission": (db, data, _actor, env) => deleteSubmission(db, data, env),
+};
 export async function onRequestOptions({ request }) { const origin = allowedOrigin(request); return new Response(null, { headers: { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", Vary: "Origin" } }); }
 export async function onRequestGet({ request, env }) {
   const headers = { "Access-Control-Allow-Origin": allowedOrigin(request), Vary: "Origin" }; const user = await actor(request, env); if (!user) return json({ error: "Not authorized." }, 403, headers);
@@ -27,5 +38,5 @@ export async function onRequestPost({ request, env }) {
   const headers = { "Access-Control-Allow-Origin": allowedOrigin(request), Vary: "Origin" }; const user = await actor(request, env); if (!user) return json({ error: "Not authorized." }, 403, headers);
   let data; try { data = await request.json(); } catch { return json({ error: "Invalid request." }, 400, headers); }
   const handler = posts[data?.action]; if (!handler) return json({ error: "Unknown action." }, 404, headers);
-  try { return json(await handler(env.DB, data, env, user), 200, headers); } catch (error) { console.error("Forms admin request failed", error); return json({ error: isLoopback(request) ? `Forms service error: ${error?.message || "Unknown local error"}` : "Forms service error." }, 502, headers); }
+  try { return json(await handler(env.DB, data, user, env), 200, headers); } catch (error) { console.error("Forms admin request failed", error); return json({ error: isLoopback(request) ? `Forms service error: ${error?.message || "Unknown local error"}` : "Forms service error." }, 502, headers); }
 }

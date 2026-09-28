@@ -110,9 +110,13 @@ database and `MEDIA` to the dedicated private `forms-media` R2 bucket. Use
 dedicated preview storage for Preview deployments so test responses and uploads
 never touch production. Apply `Maps/migrations/0021_forms.sql`,
 `Maps/migrations/0022_form_share_codes.sql`, and
-`Maps/migrations/0023_shorten_form_share_codes.sql` to both environments
+`Maps/migrations/0023_shorten_form_share_codes.sql`, and
+`Maps/migrations/0024_form_share_code_aliases.sql` to both environments
 before the first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
 environment uses a Firebase project other than `halal-map-karamah`.
+
+Run `npm run migrate:form-links -- --remote` to create three-character short
+links that redirect to the long canonical form URLs.
 
 First verify the Forms `pages.dev` hostname: publish one test form in Admin,
 open its public URL, complete a conditional path and an upload, then inspect
@@ -226,7 +230,7 @@ Under each Pages project's **Build watch paths**, include:
 | Website | `Website/*`, `shared/*`, `package.json`, `package-lock.json` |
 | Admin | `Admin/*`, `Maps/src/app-settings-schema.js`, `Maps/src/app-controls-schema.js`, `Website/assets/js/content-schema.mjs`, `package.json`, `package-lock.json` |
 | Links | `Links/*`, `Maps/migrations/0011_link_hub.sql`, `Maps/migrations/0012_link_hub_content.sql`, `Maps/migrations/0013_link_hub_card_overrides.sql`, `Maps/migrations/0014_link_hub_optional_copy.sql`, `Maps/migrations/0015_link_hub_socials.sql`, `package.json`, `package-lock.json` |
-| Forms | `Forms/*`, `shared/forms-domain.mjs`, `shared/firebase-verify.mjs`, `Maps/migrations/0021_forms.sql`, `Maps/migrations/0022_form_share_codes.sql`, `package.json`, `package-lock.json` |
+| Forms | `Forms/*`, `shared/forms-domain.mjs`, `shared/firebase-verify.mjs`, `Maps/functions/_forms-admin.js`, `Maps/migrations/0021_forms.sql`, `Maps/migrations/0022_form_share_codes.sql`, `Maps/migrations/0023_shorten_form_share_codes.sql`, `Maps/migrations/0024_form_share_code_aliases.sql`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 
