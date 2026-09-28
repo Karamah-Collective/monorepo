@@ -3,7 +3,7 @@ import { auth } from "../firebase.js";
 // The admin API lives on the public site's domain/Pages project — this app
 // calls it cross-origin (CORS is scoped to this app's origin server-side,
 // see functions/api/admin.js's ADMIN_ALLOWED_ORIGINS).
-const API_BASE = `${(import.meta.env.VITE_WEBSITE_ORIGIN || "https://karamahcollective.com").replace(/\/$/, "")}/api/maps-admin`;
+const API_BASE = `${(import.meta.env.VITE_WEBSITE_ORIGIN || "https://karamahcollective.com").replace(/\/$/, "")}/api/admin`;
 const LOCAL_API_BASE = "/api/admin";
 
 function apiBase() {
@@ -32,7 +32,8 @@ async function parseResponse(res) {
 export async function apiGet(action, params = {}) {
   const headers = await authHeader();
   const url = new URL(apiBase(), window.location.origin);
-  url.searchParams.set("action", action);
+  url.searchParams.set("action", import.meta.env.DEV ? action : "maps-admin");
+  if (!import.meta.env.DEV) url.searchParams.set("mapAction", action);
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
   }
@@ -45,7 +46,7 @@ export async function apiPost(action, body = {}) {
   const res = await request(apiBase(), {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...body }),
+    body: JSON.stringify(import.meta.env.DEV ? { action, ...body } : { action: "maps-admin", mapAction: action, payload: body }),
   });
   return parseResponse(res);
 }
