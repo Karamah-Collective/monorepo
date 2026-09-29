@@ -38,7 +38,7 @@ export async function onRequestGet(context) {
     NOMINATIM_REV:       env.NOMINATIM_REV       || 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1',
     NOMINATIM_VB:        env.NOMINATIM_VB        || '24.0,60.8,25.8,59.8',
     HF_TOKEN_KEY:        env.HF_TOKEN_KEY        || '',
-    TURNSTILE_SITE_KEY:  env.TURNSTILE_SITE_KEY  || '',
+    TURNSTILE_SITE_KEY:  env.TURNSTILE_SITE_KEY  || '0x4AAAAAAFIwqiUGSK74cVm5',
     // Database details intentionally omitted — clients use /api/* functions.
   };
 

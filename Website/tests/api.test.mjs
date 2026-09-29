@@ -114,8 +114,9 @@ test('local website preview injects a mock ticket without production env', async
 
 test('contact writes only explicit opt-ins and reports a failed database save honestly', async t => {
   const databaseState = {};
-  const contactEnv = { ...env, DB: createTestDb(databaseState) };
+  const contactEnv = { ...env, DB: createTestDb(databaseState), TURNSTILE_SECRET_KEY: 'test-turnstile-secret' };
   t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (String(url).includes('challenges.cloudflare.com/turnstile')) return Response.json({ success: true, action: 'contact' });
     if (String(url).includes('brevo.com')) return Response.json({ messageId: 'test-message' });
     throw new Error(`Unexpected fetch: ${url}`);
   });
@@ -123,7 +124,7 @@ test('contact writes only explicit opt-ins and reports a failed database save ho
   t.mock.method(console, 'error', () => {});
   const send = async updates => {
     const form = new FormData();
-    for (const [key, value] of Object.entries({ name: 'Test visitor', email: 'visitor@example.test', message: 'Hello', updates, _started: String(Date.now() - 3000) })) form.set(key, value);
+    for (const [key, value] of Object.entries({ name: 'Test visitor', email: 'visitor@example.test', message: 'Hello', updates, turnstileToken: 'test-turnstile-token', _started: String(Date.now() - 3000) })) form.set(key, value);
     return (await contactRequest({ env: contactEnv, request: new Request('https://website.test/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(form)) }) })).json();
   };
   assert.equal((await send('no')).sheetSaved, false);

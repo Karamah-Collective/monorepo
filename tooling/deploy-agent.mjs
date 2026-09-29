@@ -233,12 +233,23 @@ async function syncBranch(branch, push) {
 
   const tree = git(["write-tree"], { env });
   const source = git(["rev-parse", "--short", "HEAD"]);
-  const commit = git(["commit-tree", tree, "-m", `Prepare ${branch} deployment tree from ${source}`]);
+  const commit = git([
+    "commit-tree", tree,
+    "-m", `deploy(${branch}): prepare Pages release`,
+    "-m", `Generated deployment tree from source commit ${source}.\n\nContains only the files required by the Cloudflare Pages projects.`,
+  ]);
   git(["update-ref", `refs/heads/${branch}`, commit]);
   await rm(indexPath, { force: true });
 
   console.log(`${branch} now points to ${commit.slice(0, 7)} with ${files.length + 1} deployment files.`);
   if (push) git(["push", "-u", "origin", `+${branch}:${branch}`], { stdio: "inherit" });
+}
+
+function sourceCommit(subject, body) {
+  if (!subject || !body) throw new Error("commit requires --subject and --body");
+  if (subject.length > 72) throw new Error("commit subject must be 72 characters or fewer");
+  if (git(["diff", "--cached", "--name-only"]) === "") throw new Error("No staged source changes to commit");
+  git(["commit", "-m", subject, "-m", body]);
 }
 
 async function printPlan(base) {
@@ -265,6 +276,10 @@ async function validate(base) {
 
 const [command = "plan", branchOrBase, ...rest] = process.argv.slice(2);
 const push = rest.includes("--push") || process.argv.includes("--push");
+const optionValue = name => {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : "";
+};
 const base = branchOrBase && !["preview", "deploy"].includes(branchOrBase)
   ? branchOrBase
   : "main";
@@ -272,11 +287,13 @@ const base = branchOrBase && !["preview", "deploy"].includes(branchOrBase)
 if (command === "plan") await printPlan(branchOrBase || "main");
 else if (command === "validate") await validate(branchOrBase || "main");
 else if (command === "sync") await syncBranch(branchOrBase || "preview", push);
+else if (command === "commit") sourceCommit(optionValue("--subject"), optionValue("--body"));
 else {
   console.log("Usage:");
   console.log("  npm run deploy:agent -- plan [base]");
   console.log("  npm run deploy:agent -- validate [base]");
   console.log("  npm run deploy:agent -- sync preview [--push]");
   console.log("  npm run deploy:agent -- sync deploy [--push]");
+  console.log("  npm run deploy:agent -- commit --subject <subject> --body <body>");
   process.exitCode = 1;
 }

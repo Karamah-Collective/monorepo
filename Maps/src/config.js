@@ -28,7 +28,8 @@ export const DIGITRANSIT_REV_URL =
   _cfg.DIGITRANSIT_REV_URL || "https://api.digitransit.fi/geocoding/v1/reverse";
 export const NOMINATIM_VB = _cfg.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
 export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
-export const TURNSTILE_SITE_KEY = _cfg.TURNSTILE_SITE_KEY || "";
+// Public Cloudflare Turnstile site key. The matching secret remains a Pages secret.
+export const TURNSTILE_SITE_KEY = _cfg.TURNSTILE_SITE_KEY || "0x4AAAAAAFIwqiUGSK74cVm5";
 
 // Firebase Auth (identity layer only — no Firestore/Analytics/FCM). Not secret:
 // this is public client config baked into every Firebase web app's JS bundle

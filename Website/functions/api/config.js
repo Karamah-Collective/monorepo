@@ -12,7 +12,7 @@ export function onRequestGet(context) {
 
   const turnstileSiteKey = (
     env.TURNSTILE_SITE_KEY ||
-    ""
+    "0x4AAAAAAFIwqiUGSK74cVm5"
   ).replace(/^"|"$/g, "");
 
   return new Response(JSON.stringify({ turnstileSiteKey }), {

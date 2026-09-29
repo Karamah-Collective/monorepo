@@ -25,10 +25,19 @@ Add `--push` to the sync commands when you are ready to publish the generated br
 
 ### Release discipline
 
-Before syncing a release branch, commit the intended source changes on `main`
-with a concise, descriptive commit message. Do not sweep unrelated local work
-into a release commit; either leave it untouched or separate it into its own
-reviewed commit. Run the relevant build and tests before `sync --push`.
+Before syncing a release branch, stage only the intended source changes and
+create a structured source commit on `main`. Use the deploy agent so each
+commit has a concise subject plus an explanatory body:
+
+```sh
+git add <intended paths>
+npm run deploy:agent -- commit --subject "feat: concise release summary" --body "Explain the user-visible change and any operational setup required."
+```
+
+Do not sweep unrelated local work into a release commit; either leave it
+untouched or separate it into its own reviewed commit. Run the relevant build
+and tests before `sync --push`. Generated preview and production commits also
+include the source commit and release purpose in their message bodies.
 
 In **Workers & Pages → your project → Settings → Builds & deployments / Build configuration**, use:
 
