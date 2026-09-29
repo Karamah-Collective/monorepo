@@ -7,7 +7,7 @@
 
 :root {
   color-scheme: light;
-  --canvas-light: #f1efe7;
+  --canvas-light: #fdfcf8;
   --surface-light: #fffdf8;
   --ink-light: #202923;
   --canvas: var(--canvas-light);
@@ -37,8 +37,8 @@
 
 :root[data-color-mode='dark'] {
   color-scheme: dark;
-  --canvas: #151d19;
-  --surface: #202923;
+  --canvas: #0d1a1f;
+  --surface: #182a32;
   --ink: #f4f1e9;
   --accent: #e2b85b;
 }
