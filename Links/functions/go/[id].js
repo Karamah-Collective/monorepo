@@ -1,23 +1,128 @@
-const verify = async (env, token, request) => {
-  if (!token || !env.TURNSTILE_SECRET_KEY) return false;
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: request.headers.get("CF-Connecting-IP") || "" }) });
-  return (await response.json()).success === true;
-};
-const escape = value => String(value || "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
-async function link(env, id) { return env.DB?.prepare("SELECT id,url FROM link_hub_links WHERE id=? AND active=1").bind(id).first(); }
+const esc = value => String(value || "").replace(/[&<>"']/g, char => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+})[char]);
 
-export async function onRequestPost({ env, request, params }) {
-  const item = await link(env, params.id); if (!item) return Response.json({ error: "Link not found" }, { status: 404 });
-  let body; try { body = await request.json(); } catch { return Response.json({ error: "Invalid request" }, { status: 400 }); }
-  if (!(await verify(env, body.token, request))) return Response.json({ error: "Verification failed" }, { status: 403 });
-  await env.DB.prepare("UPDATE link_hub_links SET clicks=clicks+1 WHERE id=?").bind(item.id).run();
-  return Response.json({ url: item.url }, { headers: { "Cache-Control": "no-store" } });
+const getLink = async (env, id) => env.DB.prepare(
+  "SELECT id, url FROM link_hub_links WHERE id = ? AND active = 1"
+).bind(id).first();
+
+export async function onRequestPost({ request, env, params }) {
+  const link = await getLink(env, params.id);
+  if (!link) {
+    return Response.json({ error: "Link not found" }, { status: 404 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid request" }, { status: 400 });
+  }
+  const token = body.token;
+  if (!token || !env.TURNSTILE_SECRET_KEY) {
+    return Response.json({ error: "Verification required" }, { status: 400 });
+  }
+
+  const verification = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: new URLSearchParams({
+      secret: env.TURNSTILE_SECRET_KEY,
+      response: token,
+      remoteip: request.headers.get("CF-Connecting-IP") || ""
+    })
+  }).then(response => response.json());
+
+  if (!verification.success) {
+    return Response.json({ error: "Verification failed" }, { status: 403 });
+  }
+
+  await env.DB.prepare(
+    "UPDATE link_hub_links SET clicks = clicks + 1 WHERE id = ?"
+  ).bind(link.id).run();
+
+  return Response.json({ url: link.url }, {
+    headers: { "Cache-Control": "no-store" }
+  });
 }
 
 export async function onRequestGet({ env, params }) {
-  const item = await link(env, params.id); if (!item) return new Response("Not found", { status: 404 });
-  const key = escape(env.TURNSTILE_SITE_KEY || "0x4AAAAAAFIwqiUGSK74cVm5");
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>Opening destination — Karamah Collective</title><style>
-html{background:#fdfcf8!important}html[data-color-mode=dark]{background:#0d1a1f!important;color:#ede8df!important}body{height:100svh!important;min-height:100svh!important;overflow:hidden}.panel{position:relative;min-height:390px}.status{min-height:42px}.panel #ts{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}html[data-color-mode=dark] .panel{border-color:#32454d!important;background:#182a32!important}.loader{isolation:isolate;display:grid!important;place-items:center!important;width:280px!important;height:176px!important;margin:0 auto 14px!important;background:url('/assets/karamah-logo.svg') center/142px auto no-repeat!important;opacity:0;transform:scale(.94);animation:handoff-logo .7s cubic-bezier(.23,1,.32,1) forwards!important}.loader:before,.loader:after{content:""!important;position:absolute!important;inset:50% auto auto 50%!important;border:1px solid #2b745c55!important;border-radius:50%!important;background:transparent!important;transform:translate(-50%,-50%);animation:handoff-orbit 8s linear infinite!important}.loader:before{width:190px!important;height:82px!important}.loader:after{width:252px!important;height:128px!important;border-color:#d6a94766!important;animation-direction:reverse!important;animation-duration:11s!important}.loader i{position:absolute!important;z-index:2!important;width:8px!important;height:8px!important;border-radius:50%!important;background:#d6a947!important;box-shadow:0 0 0 7px #d6a94718!important;animation:handoff-pulse 2.8s ease-out infinite!important}@keyframes handoff-logo{to{opacity:1;transform:scale(1)}}@keyframes handoff-orbit{to{transform:translate(-50%,-50%) rotate(1turn)}}@keyframes handoff-pulse{0%{transform:scale(.55);opacity:.9}100%{transform:scale(1.6);opacity:0}}html[data-color-mode=dark] .loader{filter:brightness(0) invert(1)}html[data-color-mode=dark] .loader:before{border-color:#5cc4a855!important}html[data-color-mode=dark] .loader:after{border-color:#e2b85b66!important}
-*{box-sizing:border-box}html{background:#f1efe7;color:#202923}html[data-color-mode=dark]{background:#151d19;color:#f4f1e9}body{min-width:320px;min-height:100dvh;margin:0;display:grid;place-items:center;font:15px/1.5 "General Sans",system-ui,sans-serif;background:inherit;color:inherit;-webkit-font-smoothing:antialiased}.transfer{width:min(440px,calc(100% - 40px));padding:34px 0;text-align:center;transition:opacity .22s ease,transform .22s ease}.brand{display:inline-flex;align-items:center;gap:9px;margin-bottom:34px;color:inherit;font-size:13px;font-weight:700;text-decoration:none}.brand img{width:28px;height:28px}.panel{padding:34px 30px;border:1px solid #d7ddd4;border-radius:22px;background:#fffdf8}.loader{position:relative;display:grid;place-items:center;width:54px;height:54px;margin:0 auto 24px}.loader:before,.loader:after{content:"";position:absolute;border-radius:50%}.loader:before{inset:0;border:1px solid #b8cbbb}.loader:after{inset:9px;border:2px solid transparent;border-top-color:#2b745c;border-right-color:#2b745c;animation:spin .8s linear infinite}.loader i{width:7px;height:7px;border-radius:50%;background:#2b745c;animation:pulse 1.1s ease-in-out infinite}.eyebrow{margin:0 0 8px;color:#2b745c;font-size:10px;font-weight:750;letter-spacing:.13em}.panel h1{margin:0;font-size:28px;line-height:1.08;letter-spacing:-.045em}.panel p{max-width:29ch;margin:11px auto 0;color:#647168;font-size:14px}.status{min-height:21px;margin:22px 0 0;color:#7a877f;font-size:12px}.leaving{opacity:0;transform:translateY(-5px)}html[data-color-mode=dark] .panel{border-color:#37473d;background:#202923}html[data-color-mode=dark] .brand img{filter:brightness(0) invert(1)}html[data-color-mode=dark] .panel p{color:#b8c4bb}html[data-color-mode=dark] .status{color:#a8b6ac}html[data-color-mode=dark] .loader:before{border-color:#4c5c51}html[data-color-mode=dark] .loader:after{border-top-color:#e2b85b;border-right-color:#e2b85b}html[data-color-mode=dark] .loader i,.theme-dot{background:#e2b85b}@keyframes spin{to{transform:rotate(1turn)}}@keyframes pulse{50%{transform:scale(.68);opacity:.5}}@media(max-width:420px){.transfer{width:calc(100% - 32px);padding:24px 0}.brand{margin-bottom:24px}.panel{padding:28px 22px;border-radius:18px}.panel h1{font-size:25px}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style><script>(function(){try{var s=localStorage.getItem('kc-links-theme'),d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.colorMode=d?'dark':'light'}catch(e){document.documentElement.dataset.colorMode='light'}})()</script></head><body><main class="transfer" id="transfer"><a class="brand" href="/" aria-label="Karamah Collective links"><img src="/assets/karamah-logo.svg" alt=""><span>Karamah Collective</span></a><section class="panel" aria-live="polite"><div class="loader" aria-hidden="true"><i></i></div><p class="eyebrow">ONE MOMENT</p><h1>Opening your destination</h1><p>We’re making sure this link is ready for you.</p><p class="status" id="status">Checking this request…</p><div id="ts"></div></section></main><script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script><script>(function(){var status=document.getElementById('status'),transfer=document.getElementById('transfer');function fail(message){status.textContent=message}function run(){if(!window.turnstile)return setTimeout(run,50);turnstile.render('#ts',{sitekey:'${key}',size:'invisible',action:'link_redirect',callback:async function(token){try{var response=await fetch(location.pathname,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:token})}),data=await response.json();if(!data.url)throw Error();status.textContent='Taking you there…';transfer.classList.add('leaving');setTimeout(function(){location.replace(data.url)},180)}catch(e){fail('We could not verify this request. Please try again.')}},'error-callback':function(){fail('Verification could not load. Please try again.')},'timeout-callback':function(){fail('Verification timed out. Please try again.')}})}addEventListener('load',run)})()</script></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+  const link = await getLink(env, params.id);
+  if (!link) {
+    return new Response("Link not found", { status: 404 });
+  }
+
+  const siteKey = esc(env.TURNSTILE_SITE_KEY || "0x4AAAAAAFIwqiUGSK74cVm5");
+  const page = `<!doctype html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1a1f">
+<title>Opening your destination · Karamah</title>
+<script>try{var t=localStorage.getItem("kc-links-theme");document.documentElement.dataset.mode=t==="light"?"light":"dark"}catch(e){}</script>
+<style>
+*{box-sizing:border-box}html,body{width:100%;min-height:100%;margin:0;overflow:hidden}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}
+:root{--bg:#0d1a1f;--ink:#ede8df;--muted:#b5ada3;--card:rgba(24,42,50,.9);--border:rgba(181,212,198,.19);--orbit:rgba(117,188,161,.45);--orbit-soft:rgba(117,188,161,.26);--gold:#e2b85b;--logo-filter:invert(1) brightness(2)}
+[data-mode="light"]{--bg:#fdfcf8;--ink:#202923;--muted:#647168;--card:rgba(255,253,248,.9);--border:rgba(32,41,35,.15);--orbit:rgba(43,116,92,.38);--orbit-soft:rgba(43,116,92,.19);--gold:#b98217;--logo-filter:none}
+.stage{position:relative;isolation:isolate;width:100%;height:100svh;min-height:540px;overflow:hidden;background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--orbit-soft) 36%,transparent),transparent 48%)}
+.solar{position:absolute;z-index:-1;left:50%;top:50%;width:min(690px,92vw);height:min(530px,73svh);min-height:390px;transform:translate(-50%,-50%);overflow:visible;opacity:.85;pointer-events:none}
+.orbit{fill:none;stroke:var(--orbit-soft);stroke-width:1.3}.orbit.focus{stroke:var(--orbit);stroke-width:1.55}.planet{filter:drop-shadow(0 0 8px rgba(117,188,161,.28))}.planet.a{fill:#75bca1}.planet.b{fill:var(--gold)}.planet.c{fill:#e7e0d2}
+.brand{position:absolute;left:50%;top:calc(50% - 246px);z-index:2;width:66px;height:auto;transform:translateX(-50%);filter:var(--logo-filter);opacity:0;animation:brand-in .55s cubic-bezier(.2,.8,.2,1) .08s forwards}
+.card{position:absolute;left:50%;top:50%;z-index:1;width:min(510px,calc(100% - 40px));min-height:244px;transform:translate(-50%,-50%);display:grid;align-content:center;justify-items:center;padding:42px 42px 40px;text-align:center;background:var(--card);border:1px solid var(--border);border-radius:26px;box-shadow:0 28px 70px rgba(3,13,15,.18);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);animation:card-in .58s cubic-bezier(.2,.8,.2,1) both}
+h1{max-width:13ch;margin:0;font-size:clamp(2.25rem,5vw,3.15rem);line-height:.97;letter-spacing:-.07em;font-weight:780}p{max-width:30ch;margin:18px 0 0;color:var(--muted);font-size:1rem;line-height:1.45}.status{min-height:20px;margin:20px 0 0;color:var(--muted);font-size:.78rem;line-height:1.4}#ts{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;opacity:0}
+.leaving{animation:leave .18s ease-in forwards}@keyframes card-in{from{opacity:0;transform:translate(-50%,calc(-50% + 10px))}to{opacity:1;transform:translate(-50%,-50%)}}@keyframes brand-in{to{opacity:.92}}@keyframes leave{to{opacity:0;transform:translate(-50%,-50%) scale(.985)}}
+@media(max-width:560px){.stage{min-height:480px}.solar{width:118vw;height:56svh;min-height:350px;opacity:.74}.brand{top:calc(50% - 213px);width:56px}.card{width:calc(100% - 32px);min-height:214px;padding:35px 28px 32px;border-radius:22px}h1{font-size:clamp(2.05rem,10vw,2.65rem)}p{margin-top:15px;font-size:.94rem}.status{margin-top:17px}}
+@media(prefers-reduced-motion:reduce){.brand,.card{animation:none;opacity:1}}
+</style>
+</head>
+<body>
+<main class="stage">
+  <svg class="solar" viewBox="0 0 690 530" aria-hidden="true">
+    <defs>
+      <path id="orbit-a" d="M70,264 C70,150 620,150 620,264 C620,378 70,378 70,264Z"/>
+      <path id="orbit-b" d="M154,264 C154,83 536,83 536,264 C536,445 154,445 154,264Z"/>
+      <path id="orbit-c" d="M235,264 C235,182 455,182 455,264 C455,346 235,346 235,264Z"/>
+    </defs>
+    <use href="#orbit-a" class="orbit"/>
+    <use href="#orbit-b" class="orbit focus"/>
+    <use href="#orbit-c" class="orbit"/>
+    <circle cx="345" cy="264" r="7" fill="var(--gold)" opacity=".78"/>
+    <circle class="planet a" r="6"><animateMotion dur="12s" repeatCount="indefinite" keyTimes="0;.28;.6;1" keySplines=".42 0 .58 1;.24 .8 .3 1;.45 0 .55 1" calcMode="spline"><mpath href="#orbit-a"/></animateMotion></circle>
+    <circle class="planet b" r="5"><animateMotion dur="17s" repeatCount="indefinite" keyPoints=".53;.74;1" keyTimes="0;.47;1" keySplines=".18 .75 .25 1;.45 0 .55 1" calcMode="spline"><mpath href="#orbit-b"/></animateMotion></circle>
+    <circle class="planet c" r="4"><animateMotion dur="9s" repeatCount="indefinite"><mpath href="#orbit-c"/></animateMotion></circle>
+  </svg>
+  <img class="brand" src="/assets/karamah-logo.svg" alt="Karamah">
+  <section class="card" id="transfer" aria-live="polite">
+    <h1>Opening your destination</h1>
+    <p>We’re making sure this link is ready for you.</p>
+    <div class="status" id="status">Checking this request…</div>
+  </section>
+  <div id="ts"></div>
+</main>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script>
+const status=document.getElementById("status"),transfer=document.getElementById("transfer");
+function fail(message){status.textContent=message}
+function begin(){
+ if(!window.turnstile){setTimeout(begin,50);return}
+ turnstile.render("#ts",{sitekey:"KEY",size:"invisible",action:"link_redirect",callback:async token=>{
+   try{
+    const response=await fetch(location.pathname,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
+    const result=await response.json();
+    if(!response.ok||!result.url)throw new Error("redirect failed");
+    status.textContent="Taking you there…";transfer.classList.add("leaving");setTimeout(()=>location.replace(result.url),180);
+   }catch(error){fail("We couldn’t open this link. Please try again.")}
+ },"error-callback":()=>fail("Verification failed. Please refresh and try again."),"timeout-callback":()=>fail("Verification timed out. Please refresh and try again.")})
+}
+addEventListener("load",begin);
+</script>
+</body>
+</html>`.replace("KEY",siteKey);
+
+  return new Response(page, {
+    headers: {
+      "Content-Type": "text/html; charset=UTF-8",
+      "Cache-Control": "no-store"
+    }
+  });
 }

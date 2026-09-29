@@ -63,3 +63,7 @@
 .access-settings-grid>label{inline-size:100%;max-inline-size:100%}.access-settings-grid :is(input,select,textarea){inline-size:100%;max-inline-size:100%}
 @media(max-width:767px){.settings-workspace .access-settings-grid{grid-template-columns:minmax(0,1fr);gap:24px}.settings-workspace .access-settings-grid>label{grid-column:1/-1}}
 .admin-not-found{display:grid;align-content:center;min-height:60dvh;max-width:620px}.admin-not-found h1{margin:0;font-size:clamp(30px,4vw,46px);letter-spacing:-.04em}.admin-not-found>p:not(.page-eyebrow){margin:14px 0 22px;color:var(--text-muted);font-size:16px}.admin-not-found .pp-btn{justify-self:start}
+
+/* Native date controls have a large intrinsic width on iOS; never let that widen a form grid. */
+:is(.form-editor-page,.settings-workspace) :is(input[type="date"],input[type="time"],input[type="datetime-local"]){inline-size:100%;min-inline-size:0;max-inline-size:100%}
+@media(max-width:767px){.settings-workspace,.settings-workspace>section,.settings-grid>label{min-inline-size:0;max-inline-size:100%}.settings-grid>label{inline-size:100%}}
