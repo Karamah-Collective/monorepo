@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 const payload = {
   settings: {
@@ -45,4 +46,9 @@ test('exposes per-link sharing and accessible destinations', async ({ page }) =>
   const destination = page.getByRole('link', { name: /Find halal places near you/ });
   await expect(destination).toHaveAttribute('href', '/go/maps');
   await expect(destination).toHaveAttribute('target', '_blank');
+});
+
+test('routes tracked links through the redirect function', async () => {
+  const routes = JSON.parse(await readFile(new URL('../_routes.json', import.meta.url), 'utf8'));
+  expect(routes.include).toContain('/go/*');
 });
