@@ -143,8 +143,30 @@ const coverStyle = (url, crop) => {
   return `background-image:url(${JSON.stringify(url)});--cover-crop-size:${10000 / w}% ${10000 / h}%;--cover-crop-x:${px}%;--cover-crop-y:${py}%;`;
 };
 function descriptionNode(description) {
-  if (description.length <= 700) return node("p", { class: "form-description", text: description });
-  return node("div", { class: "form-description-expandable" }, [node("p", { class: "form-description", text: `${description.slice(0, 700).trimEnd()}…` }), node("details", {}, [node("summary", { text: "Read full description" }), node("div", { class: "form-description-full" }, [node("p", { text: description })])])]);
+  const root = node("div", { class: "form-description markdown-content" });
+  renderMarkdown(root, description);
+  return root;
+}
+
+function appendMarkdownInline(parent, source) {
+  const text = String(source || ""); let index = 0;
+  const token = /\[([^\]]+)\]\(([^\s)]+)\)|(\*\*|__)(.+?)\3|(~~)(.+?)\5|(`)(.+?)\7|(\*|_)([^*_\n]+?)\9/g;
+  for (let match; (match = token.exec(text));) {
+    parent.append(document.createTextNode(text.slice(index, match.index)));
+    if (match[1]) { const url = match[2].trim(); if (/^(https?:\/\/|mailto:)/i.test(url)) { const link = node("a", { href: url, target: "_blank", rel: "noopener noreferrer" }); appendMarkdownInline(link, match[1]); parent.append(link); } else parent.append(document.createTextNode(match[0])); }
+    else if (match[3]) { const strong = node("strong"); appendMarkdownInline(strong, match[4]); parent.append(strong); }
+    else if (match[5]) { const strike = node("s"); appendMarkdownInline(strike, match[6]); parent.append(strike); }
+    else if (match[7]) parent.append(node("code", { text: match[8] }));
+    else { const emphasis = node("em"); appendMarkdownInline(emphasis, match[10]); parent.append(emphasis); }
+    index = token.lastIndex;
+  }
+  parent.append(document.createTextNode(text.slice(index)));
+}
+function renderMarkdown(root, markdown) {
+  const lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n"); let paragraph = [], list = null;
+  const flushParagraph = () => { if (paragraph.length) { const element = node("p"); paragraph.forEach((line, index) => { if (index) element.append(node("br")); appendMarkdownInline(element, line); }); root.append(element); paragraph = []; } };
+  const flushList = () => { if (list) { root.append(list.element); list = null; } };
+  lines.forEach(line => { const unordered = line.match(/^\s*[-*+]\s+(.+)$/), ordered = line.match(/^\s*\d+[.)]\s+(.+)$/); if (unordered || ordered) { flushParagraph(); const tag = unordered ? "ul" : "ol"; if (!list || list.tag !== tag) { flushList(); list = { tag, element: node(tag) }; } const item = node("li"); appendMarkdownInline(item, (unordered || ordered)[1]); list.element.append(item); return; } flushList(); if (!line.trim()) { flushParagraph(); return; } if (/^\s*([-*_])\1\1+\s*$/.test(line)) { flushParagraph(); root.append(node("hr")); return; } const quote = line.match(/^\s*>\s?(.*)$/); if (quote) { flushParagraph(); const element = node("blockquote"); appendMarkdownInline(element, quote[1]); root.append(element); return; } paragraph.push(line); }); flushParagraph(); flushList();
 }
 
 function renderAccount() {

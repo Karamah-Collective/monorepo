@@ -220,6 +220,21 @@ export async function mockAdmin(page, overrides = {}, signedIn = true, clientErr
   `,
     }),
   );
+  await page.route("**/src/firebase.js*", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: `export const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com"; export const auth = { currentUser: ${signedIn ? '{ getIdToken: async () => "test-token" }' : "null"} };`,
+    }),
+  );
+  await page.route("**/api/admin**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const body = request.method() === "POST" ? request.postDataJSON() : null;
+    const action = body?.action || url.searchParams.get("action");
+    const data = { ...responses, ...overrides };
+    const result = data[action] || (action === "forms-save" ? { success: true, revision: (body?.revision || 0) + 1, slug: body?.slug } : action === "forms-publish" ? { success: true, versionNumber: 2 } : { success: true });
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(result) });
+  });
   await page.route("**/src/api/client.js*", (route) =>
     route.fulfill({
       contentType: "text/javascript",

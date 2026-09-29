@@ -27,6 +27,7 @@ import {
 } from "../../../shared/forms-domain.mjs";
 import { useToast } from "../components/Toast.jsx";
 import CoverCropEditor from "../components/CoverCropEditor.jsx";
+import RichDescriptionEditor from "../components/RichDescriptionEditor.jsx";
 import {
   exportFormResponses,
   formsOrigin,
@@ -1178,53 +1179,24 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
               }
             />
           </Field>
-          <Field label="Description" wide>
-            <textarea
-              rows="4"
+          <div className="settings-field wide">
+            <span id="form-description-label">Description</span>
+            <RichDescriptionEditor
               value={draft.description || ""}
-              onChange={(e) =>
+              ariaLabelledBy="form-description-label"
+              onChange={(description) =>
                 update((x) => {
-                  x.description = e.target.value;
+                  x.description = description;
                 })
               }
             />
             <small>Long descriptions are supported. Visitors can expand them when needed.</small>
-          </Field>
+          </div>
           <Field label="Cover image" wide>
-            {draft.coverImage?.assetId && (
-              <CoverCropEditor src={formAssetUrl(draft.coverImage.assetId)} cropValue={draft.coverImage.crop} onChange={(crop) => update((x) => { x.coverImage = { ...(x.coverImage || {}), crop }; })} />
-            )}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={uploading}
-              onChange={(e) => cover(e.target.files?.[0])}
-            />
-            <input
-              placeholder="Image description for accessibility"
-              value={draft.coverImage?.alt || ""}
-              onChange={(e) =>
-                update((x) => {
-                  x.coverImage = {
-                    ...(x.coverImage || {}),
-                    alt: e.target.value,
-                  };
-                })
-              }
-            />
-            {draft.coverImage && (
-              <button
-                type="button"
-                className="pp-btn"
-                onClick={() =>
-                  update((x) => {
-                    x.coverImage = null;
-                  })
-                }
-              >
-                Remove cover
-              </button>
-            )}
+            {draft.coverImage?.assetId && <CoverCropEditor src={formAssetUrl(draft.coverImage.assetId)} cropValue={draft.coverImage.crop} onChange={(crop) => update((x) => { x.coverImage = { ...(x.coverImage || {}), crop }; })} />}
+            <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(e) => cover(e.target.files?.[0])} />
+            <input placeholder="Image description for accessibility" value={draft.coverImage?.alt || ""} onChange={(e) => update((x) => { x.coverImage = { ...(x.coverImage || {}), alt: e.target.value }; })} />
+            {draft.coverImage && <button type="button" className="pp-btn" onClick={() => update((x) => { x.coverImage = null; })}>Remove cover</button>}
             {draft.coverImage?.assetId && <small>Drag the frame or its corners. The cover is always cropped for the 16:9 Forms layout.</small>}
           </Field>
         </div>

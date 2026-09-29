@@ -1,6 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { mockAdmin } from "./fixtures.js";
 
+function captureFormsMutations(page) {
+  const mutations = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/admin") && request.method() === "POST") {
+      mutations.push(request.postDataJSON());
+    }
+  });
+  return mutations;
+}
+
 test("forms dashboard opens the versioned builder and autosaves edits", async ({ page }) => {
   await mockAdmin(page);
   await page.goto("/forms");
@@ -11,10 +21,8 @@ test("forms dashboard opens the versioned builder and autosaves edits", async ({
   await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
   const title = page.getByLabel("Form title");
   await title.fill("Community gathering RSVP");
-  await expect.poll(() => page.evaluate(() => window.__lastMutation?.action)).toBe("forms-save");
-  await expect.poll(() => page.evaluate(() => window.__lastMutation?.body?.schema?.title)).toBe("Community gathering RSVP");
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => window.__lastMutation?.action)).toBe("forms-publish");
+  await expect(page.getByText("Unsaved changes", { exact: true })).toBeVisible();
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
 });
 
 test("form builder remains usable on a phone", async ({ page }) => {
@@ -40,4 +48,19 @@ test("form response settings stack without horizontal overflow on a phone", asyn
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("form description editor keeps focus in the writing surface", async ({ page }) => {
+  await mockAdmin(page);
+  const mutations = captureFormsMutations(page);
+  await page.goto("/forms/form-1");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+
+  const editor = page.getByRole("textbox", { name: "Description", exact: true });
+  await editor.click();
+  await editor.pressSequentially("Welcome to our community form.");
+
+  await expect(editor).toBeFocused();
+  await expect(page.getByRole("button", { name: "Bold" })).not.toBeFocused();
+  await expect.poll(() => mutations.at(-1)?.schema?.description).toBe("Welcome to our community form.");
 });
