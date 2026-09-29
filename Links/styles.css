@@ -755,3 +755,18 @@ svg {
 .link-share{width:30px;height:30px;right:12px;border-color:var(--line);background:transparent;color:var(--faint)}
 @media (hover:hover) and (pointer:fine){.link-card:hover{border-color:color-mix(in srgb,var(--accent) 38%,var(--line));background:var(--surface)}.link-card:hover .link-arrow{transform:translate(2px,-2px)}.link-share:hover{border-color:var(--accent);color:var(--accent);background:transparent}}
 @media(max-width:759px){.link-main{min-height:82px;grid-template-columns:54px minmax(0,1fr) 26px;padding:11px 12px;gap:12px}.link-media{width:54px;height:54px}.link-copy h3{font-size:15.5px}}
+
+/* A calm, useful recovery page that remains legible at every viewport. */
+.not-found-page{min-width:320px;min-height:100dvh;background:var(--canvas);color:var(--ink)}
+.not-found-shell{width:min(560px,calc(100% - 40px));min-height:100dvh;display:flex;flex-direction:column;justify-content:center;margin:0 auto;padding:40px 0 28px}
+.not-found-brand{display:inline-flex;align-items:center;align-self:flex-start;gap:10px;margin-bottom:30px;color:var(--ink);font-size:14px;font-weight:650;letter-spacing:-.015em;text-decoration:none}
+.not-found-brand img{width:30px;height:30px}.not-found-brand:focus-visible,.not-found-action:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.not-found-card{padding:clamp(28px,7vw,46px);border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:24px;background:var(--surface)}
+.not-found-code{margin:0 0 18px;color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.14em}
+.not-found-card h1{max-width:11ch;margin:0;color:var(--ink);font-size:clamp(32px,7vw,50px);font-weight:650;letter-spacing:-.058em;line-height:1.01;text-wrap:balance}
+.not-found-card>p:not(.not-found-code){max-width:36ch;margin:18px 0 0;color:var(--muted);font-size:15px;line-height:1.6}
+.not-found-action{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin-top:28px;padding:10px 0;border-bottom:1px solid var(--accent);color:var(--ink);font-size:14px;font-weight:700;text-decoration:none;transition:color 180ms var(--ease-out),border-color 180ms var(--ease-out)}
+.not-found-action span{color:var(--accent);font-size:18px;line-height:1}.not-found-action:hover{border-color:var(--ink);color:var(--accent)}
+.not-found-note{margin:24px 0 0;color:var(--faint);font-size:12px}
+:root[data-color-mode='dark'] .not-found-card{border-color:color-mix(in srgb,var(--ink) 13%,transparent);background:var(--surface)}
+@media(max-width:480px){.not-found-shell{width:calc(100% - 32px);padding-top:28px}.not-found-brand{margin-bottom:22px}.not-found-card{border-radius:19px}.not-found-card>p:not(.not-found-code){font-size:14px}.not-found-note{margin-top:18px}}
