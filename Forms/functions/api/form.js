@@ -1,5 +1,6 @@
 import { publicSchema, validateAnswers } from "../../../shared/forms-domain.mjs";
 import { verifyFirebaseIdToken } from "../../../shared/firebase-verify.mjs";
+import { verifyTurnstile } from "../../../Maps/functions/_turnstile.js";
 
 const json = (data, status = 200, headers = {}) => Response.json(data, { status, headers: { "Cache-Control": "no-store", ...headers } });
 const safeJson = value => { try { return JSON.parse(value); } catch { return null; } };
@@ -89,6 +90,8 @@ async function receiveUpload(env, request, url) {
 async function submit(env, request, url) {
   let data; try { data = await request.json(); } catch { return json({ error: "Invalid submission." }, 400); }
   if (!data || typeof data !== 'object' || !data.answers || typeof data.answers !== 'object' || Array.isArray(data.answers)) return json({error:"Invalid answers."},400);
+  const captcha = await verifyTurnstile(request, env, data.turnstileToken);
+  if (!captcha.success) return json({ error: `${captcha.error}. Please try again.` }, 403);
   const key = formKey(url); if (!key) return json({ error: "Form not found." }, 404);
   const form = await currentForm(env.DB, key.value, key.code);
   if (!form) return json({ error: "Form not found." }, 404);

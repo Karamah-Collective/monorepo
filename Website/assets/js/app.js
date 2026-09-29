@@ -10,7 +10,7 @@ try {
 
 const SETTINGS = {
   sections: ["home", "about", "programs", "janazah", "maps", "team", "contact"],
-  recaptchaSiteKey: "",
+  turnstileSiteKey: "",
   scrollOffset: 12,
   navMarkerExtra: 120,
   snackbarMs: 3200,
@@ -22,15 +22,14 @@ const SETTINGS = {
     if (!res.ok) throw new Error(`config ${res.status}`);
     const cfg = await res.json();
 
-    if (cfg.recaptchaSiteKey) {
-      SETTINGS.recaptchaSiteKey = cfg.recaptchaSiteKey;
-
-      if (!document.querySelector('script[src*="recaptcha/api.js"]')) {
+    if (cfg.turnstileSiteKey) {
+      SETTINGS.turnstileSiteKey = cfg.turnstileSiteKey;
+      if (!document.querySelector('script[src*="turnstile"]')) {
         const s = document.createElement("script");
-        s.src = `https://www.google.com/recaptcha/api.js?render=${cfg.recaptchaSiteKey}`;
+        s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
         s.defer = true;
         s.async = true;
-        s.onerror = () => console.warn("reCAPTCHA script failed to load");
+        s.onerror = () => console.warn("Turnstile script failed to load");
         document.head.appendChild(s);
       }
     }
@@ -42,6 +41,15 @@ const SETTINGS = {
 const qs = (s, r = document) => r.querySelector(s);
 const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+async function getTurnstileToken() {
+  if (!SETTINGS.turnstileSiteKey || !window.turnstile) throw new Error("Verification is unavailable");
+  return new Promise((resolve, reject) => {
+    const host = document.createElement("div"); host.className = "turnstile-host"; document.body.append(host);
+    let id; const done = (token, error) => { try { window.turnstile.remove(id); } catch {} host.remove(); error ? reject(error) : resolve(token); };
+    id = window.turnstile.render(host, { sitekey: SETTINGS.turnstileSiteKey, size: "invisible", action: "contact", callback: token => done(token), "error-callback": () => done(null, new Error("Verification failed")), "timeout-callback": () => done(null, new Error("Verification timed out")) });
+    window.turnstile.execute(id);
+  });
+}
 
 /* ── Inline Lucide icon renderer (replaces CDN) ── */
 const _LUCIDE_ICONS = {
@@ -1524,8 +1532,8 @@ async function submitContactForm(rawFd, stripKeys = []) {
     if (k === "updates") {
       payload.updates = String(v).trim() || "no";
     }
-    if (k === "g-recaptcha-response") {
-      payload["g-recaptcha-response"] = String(v).trim();
+    if (k === "turnstileToken") {
+      payload.turnstileToken = String(v).trim();
     }
   }
   // If updates checkbox was not checked, it won't be in FormData
@@ -1844,29 +1852,14 @@ function initContact(snackbar) {
     const stripKeys = ["kc_started_at", trapName];
 
     try {
-      // Get reCAPTCHA v3 token before submitting
-      // Note: If Google detects risk (especially on mobile), it may show a challenge popup
-      let recaptchaToken = "";
+      let turnstileToken = "";
       try {
-        recaptchaToken = await Promise.race([
-          new Promise((resolve, reject) => {
-            if (!window.grecaptcha) return resolve("");
-            window.grecaptcha.ready(() => {
-              window.grecaptcha
-                .execute(SETTINGS.recaptchaSiteKey, { action: "contact_submit" })
-                .then(resolve)
-                .catch(reject);
-            });
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("reCAPTCHA timeout")), 10000)
-          ),
-        ]);
+        turnstileToken = await getTurnstileToken();
       } catch (rcErr) {
-        console.warn("reCAPTCHA error (proceeding without token):", rcErr);
-        recaptchaToken = ""; // Continue without token if reCAPTCHA fails
+        console.warn("Turnstile error:", rcErr);
+        throw rcErr;
       }
-      rawSnapshot.set("g-recaptcha-response", recaptchaToken);
+      rawSnapshot.set("turnstileToken", turnstileToken);
 
       const contactRes = await submitContactForm(rawSnapshot, stripKeys);
 

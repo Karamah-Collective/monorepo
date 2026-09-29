@@ -1,5 +1,5 @@
-import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { showToast, loadRecaptcha } from "./utils.js";
+import { TURNSTILE_SITE_KEY } from "./config.js";
+import { showToast, getTurnstileToken } from "./utils.js";
 
 const DEV_CONTACT_TOKEN = "dev-local-contact";
 const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -12,15 +12,10 @@ function isLocalDevHost() {
   return LOCAL_DEV_HOSTS.has(window.location.hostname);
 }
 
-async function getContactRecaptchaToken() {
+async function getContactTurnstileToken() {
   if (isLocalDevHost()) return DEV_CONTACT_TOKEN;
 
-  await loadRecaptcha(RECAPTCHA_SITE_KEY);
-  return new Promise((resolve) =>
-    grecaptcha.ready(() =>
-      grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "contact" }).then(resolve),
-    ),
-  );
+  return getTurnstileToken(TURNSTILE_SITE_KEY, "contact");
 }
 
 // Open / close
@@ -60,7 +55,7 @@ form.addEventListener("submit", async (e) => {
   const message = document.getElementById("ct-message").value.trim();
 
   try {
-    const token = await getContactRecaptchaToken();
+    const token = await getContactTurnstileToken();
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -29,6 +29,11 @@ npm run dev
 | Links | http://127.0.0.1:8790 | `npm run dev:links` |
 | Forms | http://127.0.0.1:8791 | `npm run dev:forms` |
 
+Links and Forms are built into `dist/`. Their dev commands now watch source
+files and rebuild automatically; refresh the browser after a rebuild rather
+than restarting the dev command. Maps, Website, and Admin already serve source
+changes through their respective development servers.
+
 The Maps server prepares a local D1 database. Existing local database state moved to `Maps/.wrangler`. Local map secrets moved to `Maps/.dev.vars` and `Maps/src/config.local.js`. Website's old `.env.local` remains in its folder; Wrangler uses `Website/.dev.vars` for local secrets. Run `npm run setup:website` to create local Website keys without printing them.
 
 The root `package-lock.json` is the only dependency lockfile. Install at the repository root. Each workspace also supports `npm run build` from its own folder.

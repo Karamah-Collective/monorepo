@@ -55,15 +55,8 @@ function validateTiming(started) {
   return age >= MIN_SUBMIT_AGE_MS && age <= MAX_SUBMIT_AGE_MS;
 }
 
-async function verifyRecaptcha(token, env) {
-  const secret = envValue(env, [
-    "RECAPTCHA_SECRET",
-    "RECAPTCHA_SECRET_KEY",
-    "RECAPTCHA_V3_SECRET",
-    "GOOGLE_RECAPTCHA_SECRET",
-    "recaptchaSecret",
-    "recaptcha_secret",
-  ]);
+async function verifyTurnstile(token, env) {
+  const secret = envValue(env, ["TURNSTILE_SECRET_KEY"]);
 
   if (!token) {
     return { checked: false, success: false, score: -1, action: "", reason: "missing token" };
@@ -74,7 +67,7 @@ async function verifyRecaptcha(token, env) {
   }
 
   const body = new URLSearchParams({ secret, response: token });
-  const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -86,8 +79,8 @@ async function verifyRecaptcha(token, env) {
   return {
     checked: true,
     success: data.success === true,
-    score: Number(data.score || 0),
-    action: clean(data.action),
+    score: 1,
+    action: "",
     errors: data["error-codes"] || [],
     reason: "",
   };
@@ -163,7 +156,10 @@ export async function onRequestPost(context) {
     if (clean(data._hp)) return fakeSuccess();
     if (!validateTiming(data._started)) return fakeSuccess();
 
-    const recaptcha = await verifyRecaptcha(clean(data["g-recaptcha-response"]), env);
+    const recaptcha = await verifyTurnstile(clean(data.turnstileToken), env);
+    if (!recaptcha.success) {
+      return jsonResponse({ success: false, message: "We could not verify this submission. Please try again." }, 403);
+    }
     const threshold = Number(
       envValue(env, ["RECAPTCHA_SCORE_THRESHOLD", "recaptchaScoreThreshold"], DEFAULT_RECAPTCHA_THRESHOLD),
     );
@@ -182,10 +178,8 @@ export async function onRequestPost(context) {
       return jsonResponse({ success: false, message: "Invalid email" }, 400);
     }
 
-    const isPotentialSpam = recaptcha.checked && recaptcha.score < threshold;
-    const recaptchaScore = recaptcha.checked
-      ? recaptcha.score.toFixed(2)
-      : `not checked (${recaptcha.reason || "unknown"})`;
+    const isPotentialSpam = !recaptcha.success;
+    const recaptchaScore = recaptcha.success ? "verified" : `not verified (${recaptcha.reason || "unknown"})`;
 
     const now = new Date();
     const submission = {

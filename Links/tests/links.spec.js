@@ -31,7 +31,8 @@ test('renders metadata cards without horizontal overflow', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Karamah Collective' })).toBeVisible();
   await expect(page.locator('.directory-head')).toBeHidden();
-  await expect(page.locator('.site-footer')).toBeHidden();
+  await expect(page.locator('.site-footer')).toBeVisible();
+  await expect(page.locator('.site-footer')).toContainText('© Karamah Collective ry');
   await expect(page.locator('.link-card')).toHaveCount(3);
   await expect(page.getByText('Mosques, restaurants, services and community spaces across Finland.')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -42,6 +43,6 @@ test('exposes per-link sharing and accessible destinations', async ({ page }) =>
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Share: Find halal places near you' })).toBeVisible();
   const destination = page.getByRole('link', { name: /Find halal places near you/ });
-  await expect(destination).toHaveAttribute('href', 'https://maps.karamahcollective.com');
+  await expect(destination).toHaveAttribute('href', '/go/maps');
   await expect(destination).toHaveAttribute('target', '_blank');
 });

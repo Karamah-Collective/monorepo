@@ -13,7 +13,7 @@ const SETTINGS_DEFAULTS = {
   links_kicker: '', links_heading: '', links_description: '', count_suffix: '',
   socials_kicker: '', socials_heading: '', socials_description: '',
   featured_label: 'Featured', share_page_label: 'Share this page', share_link_label: 'Share', copy_success_text: 'Link copied',
-  footer_text: '', footer_link_label: '', footer_link_url: 'https://karamahcollective.com',
+  footer_text: '© Karamah Collective ry', footer_link_label: '', footer_link_url: 'https://karamahcollective.com',
   empty_title: 'Nothing published yet', empty_description: '', error_title: 'The directory is taking a pause',
   error_description: '', retry_label: 'Try again', seo_title: 'Karamah Collective — Links', seo_description: '',
   background_color: '#f1efe7', surface_color: '#fffdf8', text_color: '#202923', accent_color: '#2b745c',

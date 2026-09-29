@@ -211,7 +211,7 @@ export default function AppLayout() {
           </div>
           <footer className="workspace-footer">
             <span>
-              Karamah Collective <span className="footer-divider">/</span> Workspace
+              © Karamah Collective ry <span className="footer-divider">/</span> Workspace
               administration
             </span>
             <span>Built around community.</span>

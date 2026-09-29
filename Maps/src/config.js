@@ -28,7 +28,7 @@ export const DIGITRANSIT_REV_URL =
   _cfg.DIGITRANSIT_REV_URL || "https://api.digitransit.fi/geocoding/v1/reverse";
 export const NOMINATIM_VB = _cfg.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
 export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
-export const RECAPTCHA_SITE_KEY = "6LchtVwsAAAAAJDkdwYAom8tH6ttppAG2SX_bw2v";
+export const TURNSTILE_SITE_KEY = _cfg.TURNSTILE_SITE_KEY || "";
 
 // Firebase Auth (identity layer only — no Firestore/Analytics/FCM). Not secret:
 // this is public client config baked into every Firebase web app's JS bundle

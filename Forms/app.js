@@ -57,6 +57,30 @@ const route = (() => {
   return {};
 })();
 const formQuery = () => route.code ? `code=${encodeURIComponent(route.code)}` : `slug=${encodeURIComponent(route.slug || "")}`;
+let turnstileSiteKey = "", turnstileLoader;
+async function getTurnstileToken() {
+  if (["localhost", "127.0.0.1", "::1", "[::1]"].includes(location.hostname)) return "dev-local-turnstile";
+  if (!turnstileSiteKey) {
+    const response = await fetch("/api/config", { cache: "no-store" });
+    if (response.ok) turnstileSiteKey = (await response.json()).turnstileSiteKey || "";
+  }
+  if (!turnstileSiteKey) throw new Error("Verification is not configured. Please try again later.");
+  turnstileLoader ||= new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve(window.turnstile);
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true; script.defer = true;
+    script.onload = () => resolve(window.turnstile); script.onerror = () => reject(new Error("Verification could not load."));
+    document.head.append(script);
+  });
+  const turnstile = await turnstileLoader;
+  return new Promise((resolve, reject) => {
+    const host = document.createElement("div"); host.className = "turnstile-host"; document.body.append(host);
+    let id; const done = (value, error) => { try { turnstile.remove(id); } catch {} host.remove(); error ? reject(error) : resolve(value); };
+    id = turnstile.render(host, { sitekey: turnstileSiteKey, size: "invisible", action: "form_submit", callback: token => done(token), "error-callback": () => done(null, new Error("Verification failed.")), "timeout-callback": () => done(null, new Error("Verification timed out.")) });
+    turnstile.execute(id);
+  });
+}
 let form = null,
   schema = null,
   answers = {},
@@ -166,10 +190,10 @@ function openAuthDialog(required = false) {
   const eyebrow = authDialog.querySelector("[data-auth-eyebrow]");
   const title = authDialog.querySelector("[data-auth-title]");
   const copy = authDialog.querySelector("[data-auth-copy]");
-  if (eyebrow) eyebrow.textContent = required ? "IDENTITY REQUIRED" : "SIGN IN";
+  if (eyebrow) eyebrow.textContent = required ? "IDENTITY REQUIRED" : "";
   if (title) title.textContent = required ? "Sign in to continue" : "Sign in";
   if (copy) copy.textContent = required
-    ? "This form uses your Karamah Collective account to manage response limits. Your identity is recorded only when the form says so."
+    ? "This form needs your Karamah account."
     : "Use your Karamah Collective account to continue. Your identity is recorded only when a form says so.";
   setAuthMessage("");
   showDialog(authDialog);
@@ -227,7 +251,10 @@ async function openPrivacy() {
   if (!privacyOverlay) return;
   if (!privacyOverlay.dataset.loaded) {
     const response = await fetch("/content/privacy.html");
-    if (response.ok) privacyOverlay.insertAdjacentHTML("beforeend", await response.text());
+    if (response.ok) {
+      privacyOverlay.insertAdjacentHTML("beforeend", await response.text());
+      privacyOverlay.querySelector(".privacy-body")?.insertAdjacentHTML("beforeend", '<section><h3>Automated-abuse protection</h3><p>We use Cloudflare Turnstile to protect form submissions from automated abuse. It may process technical browser and network information under Cloudflare\'s <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener">Website Terms</a>.</p></section>');
+    }
     privacyOverlay.dataset.loaded = "true";
   }
   privacyOverlay.classList.add("is-open"); privacyOverlay.setAttribute("aria-hidden", "false");
@@ -237,20 +264,50 @@ document.querySelectorAll("[data-open-privacy]").forEach(button => button.addEve
 privacyOverlay?.addEventListener("click", event => { if (event.target.closest("[data-close-privacy]")) closePrivacy(); });
 window.addEventListener("keydown", event => { if (event.key === "Escape") closePrivacy(); });
 let emailMode = "signin";
-function setAuthMessage(message = "", kind = "error") {
+let authResizeTimer;
+function animateAuthDialogHeight(update) {
+  if (!authDialog?.open || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return update();
+  window.clearTimeout(authResizeTimer);
+  authDialog.classList.remove("is-resizing");
+  authDialog.style.height = "";
+  const before = authDialog.getBoundingClientRect().height;
+  update();
+  const after = authDialog.getBoundingClientRect().height;
+  if (Math.abs(after - before) < 1) return;
+  authDialog.style.height = `${before}px`;
+  void authDialog.offsetHeight;
+  authDialog.classList.add("is-resizing");
+  requestAnimationFrame(() => { authDialog.style.height = `${after}px`; });
+  authResizeTimer = window.setTimeout(() => {
+    authDialog.classList.remove("is-resizing");
+    authDialog.style.height = "";
+  }, 300);
+}
+function updateAuthMessage(message = "", kind = "error") {
   authError.textContent = message;
   authError.classList.toggle("is-success", kind === "success");
 }
-document.querySelectorAll("[data-email-mode]").forEach(button => button.addEventListener("click", () => {
-  emailMode = button.dataset.emailMode;
-  setAuthMessage("");
-  document.querySelectorAll("[data-email-mode]").forEach(item => item.classList.toggle("active", item === button));
-  const password = document.querySelector("#email-auth input[name=password]");
-  if (password) password.autocomplete = emailMode === "signup" ? "new-password" : "current-password";
-  const submit = document.querySelector("#email-auth button[type=submit]");
-  if (submit) submit.textContent = emailMode === "signup" ? "Create account" : "Sign in with email";
-  document.querySelector("[data-reset-password]")?.classList.toggle("hide", emailMode !== "signin");
-}));
+function setAuthMessage(message = "", kind = "error") { animateAuthDialogHeight(() => updateAuthMessage(message, kind)); }
+function setEmailMode(mode) {
+  if (emailMode === mode) return;
+  animateAuthDialogHeight(() => {
+    emailMode = mode;
+    updateAuthMessage("");
+    document.querySelectorAll("[data-email-mode]").forEach(item => item.classList.toggle("active", item.dataset.emailMode === mode));
+    const password = document.querySelector("#email-auth input[name=password]");
+    if (password) password.autocomplete = emailMode === "signup" ? "new-password" : "current-password";
+    const submit = document.querySelector("#email-auth button[type=submit]");
+    if (submit) submit.textContent = emailMode === "signup" ? "Create account" : "Continue";
+    const title = authDialog?.querySelector("[data-auth-title]");
+    const copy = authDialog?.querySelector("[data-auth-copy]");
+    if (title) title.textContent = emailMode === "signup" ? "Sign up" : "Sign in";
+    if (copy) copy.textContent = "Use your Karamah Collective account to continue. Your identity is recorded only when a form says so.";
+    document.querySelector("[data-reset-password]")?.classList.toggle("hide", emailMode !== "signin");
+    const emailForm = document.querySelector("#email-auth");
+    if (emailForm) { emailForm.classList.remove("is-switching"); void emailForm.offsetWidth; emailForm.classList.add("is-switching"); }
+  });
+}
+document.querySelectorAll("[data-email-mode]").forEach(button => button.addEventListener("click", () => setEmailMode(button.dataset.emailMode)));
 document.querySelectorAll("[data-provider]").forEach((button) =>
   button.addEventListener("click", async () => {
     setAuthMessage("");
@@ -1172,7 +1229,7 @@ async function submit() {
     sessionStorage.setItem(`${storageKey()}:submission`, key);
   } catch {}
   try {
-    const token = await getToken(),
+    const token = await getToken(), captchaToken = await getTurnstileToken(),
       response = await fetch(`/api/form?${formQuery()}`, {
         method: "POST",
         headers: {
@@ -1184,6 +1241,7 @@ async function submit() {
           idempotencyKey: key,
           versionId: form.versionId,
           locale: navigator.language,
+          turnstileToken: captchaToken,
         }),
       }),
       data = await response.json();

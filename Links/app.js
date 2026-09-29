@@ -141,11 +141,10 @@ function renderLink(link, index, settings) {
 
   const anchor = document.createElement('a');
   anchor.className = 'link-main';
-  anchor.href = link.url;
+  anchor.href = `/go/${encodeURIComponent(link.id)}`;
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
   anchor.setAttribute('aria-label', `${link.title}, opens in a new tab`);
-  anchor.addEventListener('click', () => trackOpen(link.id));
 
   const media = document.createElement('div');
   media.className = 'link-media';
@@ -194,12 +193,11 @@ function renderSocial(item, index) {
   const details = socialDetails(item);
   const anchor = document.createElement('a');
   anchor.className = 'social-card';
-  anchor.href = item.url;
+  anchor.href = `/go/${encodeURIComponent(item.id)}`;
   anchor.target = '_blank';
   anchor.rel = 'noopener noreferrer';
   anchor.style.setProperty('--index', index);
   anchor.setAttribute('aria-label', `${details.label}${details.handle ? `, @${details.handle}` : ''}, opens in a new tab`);
-  anchor.addEventListener('click', () => trackOpen(item.id));
   const icon = document.createElement('span');
   icon.className = 'social-icon';
   icon.innerHTML = details.icon;
@@ -233,7 +231,9 @@ function applySettings(settings, linkCount = 0) {
   root.style.setProperty('--canvas-light', settings.background_color);
   root.style.setProperty('--surface-light', settings.surface_color);
   root.style.setProperty('--ink-light', settings.text_color);
-  root.style.setProperty('--accent', settings.accent_color);
+  // Keep the configured green for light mode without overriding the dark-mode
+  // gold token, which is deliberately supplied by the stylesheet.
+  root.style.setProperty('--accent-light', settings.accent_color);
   root.style.setProperty('--content-width', `${settings.max_width}px`);
   root.dataset.theme = getSavedColorMode() || 'system';
   root.dataset.cards = settings.card_style;
@@ -253,14 +253,17 @@ function applySettings(settings, linkCount = 0) {
   setText('#socials-kicker', settings.socials_kicker);
   setText('#socials-heading', settings.socials_heading);
   setText('#socials-description', settings.socials_description);
-  setText('#footer-text', settings.footer_text);
+  const footerText = settings.footer_text === 'Karamah Collective'
+    ? '© Karamah Collective ry'
+    : settings.footer_text || '© Karamah Collective ry';
+  setText('#footer-text', footerText);
   setText('#footer-link-label', settings.footer_link_label);
   const pageShare = $('#profile-share');
   const pageShareLabel = 'Share';
   setText('#profile-share-label', pageShareLabel);
   pageShare?.setAttribute('aria-label', pageShareLabel);
   const destination = settings.footer_link_url || '';
-  $('.footer-mark').hidden = !settings.footer_text;
+  $('.footer-mark').hidden = !footerText;
   $('#footer-link').href = destination || location.href;
   $('#footer-link').hidden = !destination || !settings.footer_link_label;
   $('#brand-link').href = destination || location.href;
@@ -284,7 +287,7 @@ function applySettings(settings, linkCount = 0) {
   const hasSocialCopy = [settings.socials_kicker, settings.socials_heading, settings.socials_description]
     .some(value => String(value || '').trim());
   $('.socials-head').hidden = !hasSocialCopy;
-  $('.site-footer').hidden = ![settings.footer_text, settings.footer_link_label && destination]
+  $('.site-footer').hidden = ![footerText, settings.footer_link_label && destination]
     .some(value => String(value || '').trim());
 }
 

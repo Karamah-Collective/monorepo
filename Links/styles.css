@@ -13,13 +13,15 @@
   --canvas: var(--canvas-light);
   --surface: var(--surface-light);
   --ink: var(--ink-light);
-  --accent: #2b745c;
+  --accent-light: #2b745c;
+  --accent: var(--accent-light);
   --content-width: 680px;
   --muted: color-mix(in srgb, var(--ink) 62%, transparent);
   --faint: color-mix(in srgb, var(--ink) 44%, transparent);
   --line: color-mix(in srgb, var(--ink) 10%, transparent);
   --line-strong: color-mix(in srgb, var(--ink) 17%, transparent);
-  --accent-wash: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  /* Decorative surfaces stay neutral. Accent is reserved for state and links. */
+  --accent-wash: color-mix(in srgb, var(--ink) 5%, var(--surface));
   --radius-card: 16px;
   --radius-image: 11px;
   --ease-out: cubic-bezier(.23, 1, .32, 1);
@@ -38,7 +40,7 @@
   --canvas: #151d19;
   --surface: #202923;
   --ink: #f4f1e9;
-  --accent: #75b59f;
+  --accent: #e2b85b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -729,3 +731,27 @@ svg {
 .page-share{transition:border-color 240ms var(--ease-out),background-color 240ms var(--ease-out),box-shadow 240ms var(--ease-out),color 240ms var(--ease-out)}.page-share:hover{transform:none;box-shadow:none}.page-share:hover i,.page-share:active{transform:none}
 .link-card:hover,.social-card:hover,.link-share:active,.state button:active{transform:none}
 @media(max-width:640px){.site-header.masthead{width:calc(100% - 32px);min-height:68px}.site-header .brand img{width:30px;height:30px}.site-header .brand span{display:inline}.site-header .brand small{font-size:13px}}
+
+/* One neutral social-icon system: the glyph, not a coloured badge, carries
+   recognition. The existing atmosphere and logo accent remain the identity. */
+.social-icon{width:40px;height:40px;flex-basis:40px;background:transparent;color:var(--ink);box-shadow:none}
+.social-icon svg{width:21px;height:21px;stroke-width:1.85}
+:root[data-color-mode='dark'] .social-icon{background:transparent;color:#f4f1e9;box-shadow:none}
+:root[data-color-mode='dark'] .social-card:hover .social-icon{background:transparent;color:#fff}
+@media(max-width:759px){.social-card{width:52px;min-width:52px;min-height:52px;padding:6px}.social-icon{width:40px;height:40px;flex-basis:40px}.social-icon svg{width:21px;height:21px}}
+@media(max-width:420px){.social-card{width:50px;min-width:50px;min-height:50px}.social-icon{width:38px;height:38px;flex-basis:38px}.social-icon svg{width:20px;height:20px}}
+
+/* Link cards: quiet editorial surfaces with a single, deliberate outbound cue. */
+.links{gap:10px}
+.link-card{border-color:color-mix(in srgb,var(--ink) 11%,transparent);border-radius:calc(var(--radius-card) + 2px);background:color-mix(in srgb,var(--surface) 92%,transparent)}
+.link-card.featured{border-left:1px solid color-mix(in srgb,var(--ink) 11%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+.link-main{min-height:88px;grid-template-columns:56px minmax(0,1fr) 26px;gap:14px;padding:12px 13px}
+.link-media{width:56px;height:56px;border-color:color-mix(in srgb,var(--ink) 9%,transparent);background:color-mix(in srgb,var(--ink) 4%,var(--surface));border-radius:calc(var(--radius-image) - 1px)}
+.link-domain{margin-bottom:4px;color:var(--faint);font-size:10px;letter-spacing:.09em}
+.link-copy h3{font-size:16px;font-weight:650;letter-spacing:-.022em}
+.link-copy p{margin-top:5px;font-size:12px;line-height:1.45}
+.link-arrow{width:26px;height:26px;background:transparent;color:var(--accent)}
+.link-arrow svg{width:15px;height:15px;stroke-width:1.8}
+.link-share{width:30px;height:30px;right:12px;border-color:var(--line);background:transparent;color:var(--faint)}
+@media (hover:hover) and (pointer:fine){.link-card:hover{border-color:color-mix(in srgb,var(--accent) 38%,var(--line));background:var(--surface)}.link-card:hover .link-arrow{transform:translate(2px,-2px)}.link-share:hover{border-color:var(--accent);color:var(--accent);background:transparent}}
+@media(max-width:759px){.link-main{min-height:82px;grid-template-columns:54px minmax(0,1fr) 26px;padding:11px 12px;gap:12px}.link-media{width:54px;height:54px}.link-copy h3{font-size:15.5px}}

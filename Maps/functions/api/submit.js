@@ -20,6 +20,7 @@ import { isDuplicateInPlaces, isDuplicateInNew, namesMatch } from "../_gas-compa
 import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 import { readAppSettings } from "../_app-settings.js";
+import { verifyTurnstile } from "../_turnstile.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
@@ -426,7 +427,7 @@ export async function onRequestPost(context) {
 
   if (action) return await handleSubmitAction(action, formType, body, responseHeaders, env);
 
-  if (!token || typeof token !== "string") return json({ error: "Missing reCAPTCHA token" }, 400, responseHeaders);
+  if (!token || typeof token !== "string") return json({ error: "Missing verification token" }, 400, responseHeaders);
   if (!formType || !["new", "edit", "contact", "event", "event-edit", "eid"].includes(formType)) {
     return json({ error: "Invalid form type" }, 400, responseHeaders);
   }
@@ -492,26 +493,10 @@ export async function onRequestPost(context) {
     return json({ success: false, error: "Please use a valid Google Maps location link." }, 200, responseHeaders);
   }
 
-  let captcha;
-  if (formType === "contact" && token === DEV_CONTACT_TOKEN && isLocalDevRequest(request, env)) {
-    captcha = { success: true, score: 1 };
-  } else {
-    if (!env.RECAPTCHA_SECRET) return json({ error: "Service temporarily unavailable" }, 500, responseHeaders);
-    try {
-      const verifyRes = await fetch(RECAPTCHA_VERIFY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }),
-      });
-      captcha = await verifyRes.json();
-    } catch {
-      return json({ error: "Verification unavailable. Please try again." }, 502, responseHeaders);
-    }
-  }
-  if (!captcha.success) return json({ error: "Verification failed. Please try again." }, 403, responseHeaders);
-  if (captcha.score < MIN_SCORE) return json({ error: "We couldn't verify this submission. Please try again." }, 403, responseHeaders);
+  const captcha = await verifyTurnstile(request, env, token);
+  if (!captcha.success) return json({ error: `${captcha.error}. Please try again.` }, 403, responseHeaders);
 
-  const data = { ...formData, score: captcha.score };
+  const data = { ...formData };
 
   let emailHash = null;
   if (idToken) {

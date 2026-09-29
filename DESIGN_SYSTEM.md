@@ -110,6 +110,13 @@ Every reusable view needs:
 - disabled and pending states that preserve layout;
 - success feedback through a toast or local state message.
 
+### Dark mode and verification
+
+- Dark surfaces retain the deep green foundation, but interactive text, links, focus rings, selected controls, and primary actions use brand gold rather than a lighter green.
+- Third-party identity providers share one neutral control treatment. Keep a provider mark in its official colour, but never make one provider button a competing full-brand-colour CTA.
+- Authentication dialogs state the task once. Switching sign-in/sign-up uses a short opacity-and-transform transition and preserves focus.
+- Turnstile is invoked only at the protected action with `size: invisible`; no placeholder, badge, or layout jump is shown in ordinary use. If Turnstile requires a challenge, preserve its accessible iframe and use a concise local pending or error state rather than styling the challenge itself.
+
 ### Responsive behavior
 
 - Design desktop, tablet, and phone as distinct compositions.

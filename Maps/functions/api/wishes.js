@@ -10,6 +10,7 @@
  */
 import { allowedOrigin, truncate, json, helsinkiTimestamp } from "../_shared.js";
 import { readAppSettings } from "../_app-settings.js";
+import { verifyTurnstile } from "../_turnstile.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const MIN_SCORE = 0.5;
@@ -49,7 +50,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": allowedOrigin(request) };
 
-  if (!env.RECAPTCHA_SECRET || !env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
+  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
   if (contentLength > MAX_BODY_SIZE) return json({ error: "Payload too large" }, 413, headers);
@@ -60,14 +61,8 @@ export async function onRequestPost(context) {
   const { action, token } = body;
   if (!token || !["add", "vote"].includes(action)) return json({ error: "Invalid request" }, 400, headers);
 
-  let captcha;
-  try {
-    const res = await fetch(RECAPTCHA_VERIFY_URL, { method: "POST", body: new URLSearchParams({ secret: env.RECAPTCHA_SECRET, response: token }) });
-    captcha = await res.json();
-  } catch {
-    return json({ error: "Verification unavailable" }, 502, headers);
-  }
-  if (!captcha.success || captcha.score < MIN_SCORE) return json({ error: "Verification failed" }, 403, headers);
+  const captcha = await verifyTurnstile(request, env, token);
+  if (!captcha.success) return json({ error: `${captcha.error}. Please try again.` }, 403, headers);
 
   const db = env.DB;
 

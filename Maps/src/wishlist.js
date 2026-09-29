@@ -5,8 +5,8 @@
  * proxied through /api/wishes. Votes can be toggled
  * per device per wish (localStorage + server-side state).
  */
-import { RECAPTCHA_SITE_KEY } from "./config.js";
-import { animateSheetHeight, esc, showToast, loadRecaptcha, getDeviceId } from "./utils.js";
+import { TURNSTILE_SITE_KEY } from "./config.js";
+import { animateSheetHeight, esc, showToast, getTurnstileToken, getDeviceId } from "./utils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY_VOTED = "hf_wish_votes";
@@ -292,12 +292,7 @@ async function _handleVote(wishId) {
   _render();
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() =>
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "wish_vote" }).then(resolve)
-      )
-    );
+    const token = await getTurnstileToken(TURNSTILE_SITE_KEY, "wish_vote");
 
     const res = await fetch("/api/wishes", {
       method: "POST",
@@ -344,12 +339,7 @@ async function _handleSubmit(e) {
   submitBtn.innerHTML = '<span class="btn-spinner"></span><span>Submitting…</span>';
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() =>
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "wish_add" }).then(resolve)
-      )
-    );
+    const token = await getTurnstileToken(TURNSTILE_SITE_KEY, "wish_add");
 
     const res = await fetch("/api/wishes", {
       method: "POST",

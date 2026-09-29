@@ -10,13 +10,12 @@
 export function onRequestGet(context) {
   const { env } = context;
 
-  const recaptchaSiteKey = (
-    env.recaptchaSiteKey ||
-    env.RECAPTCHA_SITE_KEY ||
+  const turnstileSiteKey = (
+    env.TURNSTILE_SITE_KEY ||
     ""
   ).replace(/^"|"$/g, "");
 
-  return new Response(JSON.stringify({ recaptchaSiteKey }), {
+  return new Response(JSON.stringify({ turnstileSiteKey }), {
     status: 200,
     headers: {
       "Content-Type": "application/json",

@@ -3,17 +3,38 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { copyFile } from 'node:fs/promises';
+import { watch } from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { setupLocalDatabase } from '../Maps/scripts/local-db.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const wrangler=path.join(root,'node_modules/wrangler/bin/wrangler.js');
 const localState=path.join(root,'Maps','.wrangler','state');
-const children=new Set();
+const children=new Set(), watchers=new Set();
 let stopping=false, keepAlive;
-function stop(code=0) { if(stopping)return; stopping=true; for(const child of children)child.kill('SIGTERM'); if(keepAlive)clearInterval(keepAlive); process.exitCode=code; }
+function stop(code=0) { if(stopping)return; stopping=true; for(const watcher of watchers)watcher.close(); for(const child of children)child.kill('SIGTERM'); if(keepAlive)clearInterval(keepAlive); process.exitCode=code; }
 function launch(script,args,cwd) { const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}); children.add(child); child.on('error',err=>{console.error(err.message);stop(1);});child.on('exit',code=>{children.delete(child);stop(code||0);}); return child; }
 function run(script,args,cwd,capture=false) { return new Promise((resolve,reject)=>{ const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:capture?'pipe':'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}), output=[]; if(capture){child.stdout.on('data',chunk=>output.push(chunk));child.stderr.on('data',chunk=>output.push(chunk));} child.on('error',reject); child.on('exit',code=>code ? reject(new Error(`Command failed: ${args.join(' ')}`)) : resolve(Buffer.concat(output).toString())); }); }
+function watchBuild({ label, cwd, source, output, script }) {
+  let timer, building = false, queued = false;
+  const rebuild = async () => {
+    if (building) { queued = true; return; }
+    building = true;
+    try { console.log(`Rebuilding ${label}...`); await run(path.join(cwd, script), [], cwd); console.log(`${label} rebuilt.`); }
+    catch (error) { console.error(`${label} rebuild failed:`, error.message); }
+    finally { building = false; if (queued) { queued = false; rebuild(); } }
+  };
+  const watcher = watch(source, { recursive: true }, (_event, filename = '') => {
+    const changed = String(filename).replaceAll('\\', '/');
+    const outputName = path.basename(output);
+    // fs.watch can report the output directory itself (not only children) on
+    // Windows. Ignore both forms or a rebuild sees its own dist writes.
+    if (!changed || changed === outputName || changed.startsWith(`${outputName}/`) || changed.includes(`/${outputName}/`) || changed.includes('/node_modules/')) return;
+    clearTimeout(timer); timer = setTimeout(rebuild, 120);
+  });
+  watchers.add(watcher);
+  console.log(`Watching ${label} source changes.`);
+}
 function busy(port) { return new Promise(resolve=>{const socket=net.connect({host:'127.0.0.1',port});socket.once('connect',()=>{socket.destroy();resolve(true);});socket.once('error',()=>resolve(false));}); }
 async function waitUntilReady(port,child,label) {
   const deadline=Date.now()+30000;
@@ -35,6 +56,7 @@ try {
     await setupLocalDatabase();
     console.log('Building Links assets for local Pages...');
     await import('../Links/scripts/build.mjs');
+    watchBuild({ label:'Links', cwd:path.join(root,'Links'), source:path.join(root,'Links'), output:path.join(root,'Links','dist'), script:'scripts/build.mjs' });
     const child=launch(wrangler,['pages','dev','dist', '--port','8790','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Links'));
     await waitUntilReady(8790,child,'Links');
   }
@@ -50,6 +72,7 @@ try {
     await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0024_form_share_code_aliases.sql')],formsCwd);
     console.log('Building Forms assets for local Pages...');
     await import('../Forms/scripts/build.mjs');
+    watchBuild({ label:'Forms', cwd:formsCwd, source:formsCwd, output:path.join(formsCwd,'dist'), script:'scripts/build.mjs' });
     const child=launch(wrangler,['pages','dev','dist', '--port','8791','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Forms'));
     await waitUntilReady(8791,child,'Forms');
   }

@@ -1,8 +1,8 @@
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
 import { appSettingsReady, getAppSettings, getExpandedSearchTerms } from "./app-settings.js";
 import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, loadRecaptcha, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
-import { RECAPTCHA_SITE_KEY, isInsideFinland } from "./config.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
+import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
@@ -5244,10 +5244,7 @@ suggestForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "suggest_place" }).then(resolve)),
-    );
+    const token = await getTurnstileToken(TURNSTILE_SITE_KEY, "suggest_place");
     payload.token = token;
     // Optional identity, only when signed in — mirrors reviews.js's
     // _resolveReviewIdentity() exactly. Anonymous submission must stay
@@ -5549,10 +5546,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
   const editOpeningHours = _collectHoursFromForm(edHoursContainer, "ed");
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "edit_place" }).then(resolve)),
-    );
+    const token = await getTurnstileToken(TURNSTILE_SITE_KEY, "edit_place");
     const editPayload = { token, formType: "edit", placeId, name, type, address, tags: tagsStr, gmaps, notes, changesSummary, newCuisines: newCuisines.length ? newCuisines : undefined, newCustomTags: newCustomTags.length ? newCustomTags : undefined };
     if (website) editPayload.website = website;
     if (phone) editPayload.phone = phone;
@@ -6150,10 +6144,7 @@ _eventForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    await loadRecaptcha(RECAPTCHA_SITE_KEY);
-    const token = await new Promise((resolve) =>
-      grecaptcha.ready(() => grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: isEditMode ? "edit_event" : "submit_event" }).then(resolve)),
-    );
+    const token = await getTurnstileToken(TURNSTILE_SITE_KEY, isEditMode ? "edit_event" : "submit_event");
     payload.token = token;
     const res = await fetch("/api/submit", {
       method: "POST",

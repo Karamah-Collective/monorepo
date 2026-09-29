@@ -858,23 +858,28 @@ export function showBadgeNotice({ categoryLabel, tierName, levelRoman, glyph = "
   el.classList.add("badge-notice-show");
 }
 
-// --- Lazy reCAPTCHA loader ---
-
-let _recaptchaPromise = null;
-export function loadRecaptcha(siteKey) {
-  if (_recaptchaPromise) return _recaptchaPromise;
-  if (typeof grecaptcha !== "undefined") {
-    _recaptchaPromise = Promise.resolve();
-    return _recaptchaPromise;
-  }
-  _recaptchaPromise = new Promise((resolve) => {
+// --- Lazy Cloudflare Turnstile loader ---
+let _turnstilePromise = null;
+export function getTurnstileToken(siteKey, action = "submit") {
+  if (!siteKey) return Promise.reject(new Error("Turnstile is not configured"));
+  if (!_turnstilePromise) _turnstilePromise = new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve(window.turnstile);
     const s = document.createElement("script");
-    s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
-    s.async = true;
-    s.addEventListener("load", resolve);
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    s.async = true; s.defer = true;
+    s.addEventListener("load", () => resolve(window.turnstile));
+    s.addEventListener("error", () => reject(new Error("Turnstile failed to load")));
     document.head.appendChild(s);
   });
-  return _recaptchaPromise;
+  return _turnstilePromise.then(turnstile => new Promise((resolve, reject) => {
+    const host = document.createElement("div"); host.hidden = true; document.body.appendChild(host);
+    let widgetId;
+    const cleanup = () => { try { turnstile.remove(widgetId); } catch {} host.remove(); };
+    try {
+      widgetId = turnstile.render(host, { sitekey: siteKey, action, size: "invisible", callback: token => { cleanup(); resolve(token); }, "error-callback": () => { cleanup(); reject(new Error("Turnstile verification failed")); }, "timeout-callback": () => { cleanup(); reject(new Error("Turnstile timed out")); } });
+      turnstile.execute(widgetId);
+    } catch (error) { host.remove(); reject(error); }
+  }));
 }
 
 // --- Offline / online status banner ---

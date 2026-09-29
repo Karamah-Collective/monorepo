@@ -874,7 +874,7 @@ select.is-invalid {
 }
 
 /* ── reCAPTCHA ────────────────────────────────────────────── */
-.grecaptcha-badge {
+.turnstile-host {
   position: fixed !important;
   bottom: 1.5rem !important;
   left: 1.5rem !important;
