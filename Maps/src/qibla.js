@@ -4,6 +4,8 @@
  * Lazy-loaded from prayer.js when user taps the Qibla button.
  */
 
+import { getCurrentPosition, watchPosition, clearLocationWatch } from "./utils.js";
+
 // --- Constants ---
 const KAABA_LAT = 21.4225;
 const KAABA_LNG = 39.8262;
@@ -149,7 +151,7 @@ export async function openQibla() {
   let lat, lng;
   try {
     const pos = await new Promise((resolve, reject) =>
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
+      getCurrentPosition(resolve, reject, {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 60000,
@@ -186,7 +188,7 @@ export async function openQibla() {
   _orientationBound = _onOrientation;
   window.addEventListener("deviceorientation", _orientationBound, true);
 
-  _watchId = navigator.geolocation.watchPosition(
+  _watchId = watchPosition(
     (pos) => {
       _qiblaBearing = _calcQiblaBearing(pos.coords.latitude, pos.coords.longitude);
     },
@@ -215,7 +217,7 @@ export function closeQibla() {
     _orientationBound = null;
   }
   if (_watchId !== null) {
-    navigator.geolocation.clearWatch(_watchId);
+    clearLocationWatch(_watchId);
     _watchId = null;
   }
 

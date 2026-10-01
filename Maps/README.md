@@ -600,6 +600,38 @@ Tests are in the `tests/` directory. 12 spec files × multiple scenarios = 1 005
 
 ---
 
+## Native apps (Capacitor)
+
+Manarah ships as a PWA **and** as native iOS / Android apps wrapped in a
+Capacitor 8 shell (appId `com.karamahcollective.manarah`). The shell is
+`Maps/android/` + `Maps/ios/`; `capacitor.config.ts` points `webDir` at
+`dist/`, so the native app embeds the same static build Cloudflare serves.
+
+- **Status:** Android builds + runs on an emulator with the native plugins
+  wired (geolocation, share, deep links). iOS is scaffolded with a CI build
+  workflow (`.github/workflows/ios-build.yml`, macOS runner) but is **not yet
+  verified on Apple hardware** — that is gated on macOS CI + Apple credentials.
+  Tracked in `docs/CAPACITOR_PROGRESS.md`.
+- **Build & run (Android):**
+  ```bash
+  cd Maps
+  npm run build          # → dist/
+  npx cap sync android   # copies web build + plugins into the android shell
+  npx cap run android    # needs an emulator/booted device; JDK 21 required
+  ```
+- **Native-only code paths** are gated by `isNative()` from
+  `src/capacitor-bridge.js` (runtime `Capacitor` check, inert on web).
+- **Firebase:** the Android Firebase config (`android/app/google-services.json`)
+  holds live API keys and is **gitignored** — re-download it from the Firebase
+  console (Android SDK init) on each machine. iOS `GoogleService-Info.plist`
+  does **not** exist yet.
+- **Release guides:** `docs/PLAY_STORE_RELEASE.md` (Google Play) and
+  `docs/STORE_ASSETS.md` (store listings + privacy declarations). Web deploy
+  is unaffected — `android/`/`ios/` are kept out of the Cloudflare deploy
+  branches by the `DEPLOY_FILES` allowlist.
+
+---
+
 ## Configuration & Environment Variables
 
 All configuration is typed in `src/config.template.js`. Copy this to `src/config.local.js` for local development.

@@ -12,6 +12,18 @@ One repository, five independently deployed applications.
 | [shared](shared/) | Firebase token verification used by both APIs | No credentials |
 | [tooling](tooling/) | Local servers and monorepo validation | Local only |
 
+### Native shells (Maps)
+
+`Maps/android/` and `Maps/ios/` hold Capacitor 8 native shells around the
+Manarah PWA (appId `com.karamahcollective.manarah`). See
+[Maps/README.md](Maps/README.md) → *Native apps (Capacitor)* and
+`docs/CAPACITOR_PROGRESS.md` for status. These are committed to `main` but
+**excluded from the Cloudflare deploy branches** by the `DEPLOY_FILES`
+allowlist in `tooling/deploy-agent.mjs`; do not add them there. Build
+artifacts (`Maps/android/**/build`, `Maps/dist`, iOS `App/App/public`) are
+gitignored. `Maps/android/app/google-services.json` (Firebase Android config)
+is **not** committed — download it from the Firebase console per machine.
+
 ## Start locally
 
 Use Node.js 22 and run these commands from this repository's root:

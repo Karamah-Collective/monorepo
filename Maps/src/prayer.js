@@ -1,5 +1,5 @@
 import { map } from "./map-init.js";
-import { showToast, haversineDistance, requestLocation } from "./utils.js";
+import { showToast, haversineDistance, requestLocation, hasGeolocation, getCurrentPosition } from "./utils.js";
 import { dir, openDirPanel, placeOriginMarker, placeDestMarker, updateGoButton, reverseGeocode, setFindingNearestMosque } from "./directions.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 
@@ -428,9 +428,9 @@ export async function initPrayerTimes() {
   // directions) so it appears when the user actually expects it.
   try {
     const perm = await navigator.permissions.query({ name: "geolocation" });
-    if (perm.state === "granted" && navigator.geolocation) {
+    if (perm.state === "granted" && hasGeolocation()) {
       const pos = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 120000 }),
+        getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 120000 }),
       );
       lat = pos.coords.latitude; lng = pos.coords.longitude;
     }

@@ -1692,7 +1692,9 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
   border-radius: var(--r-sm);
   padding: var(--sp-1) var(--sp-1h);
   cursor: pointer;
-  transition: border-color var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    background-color var(--t-fast);
   min-width: 0;
 }
 @media (hover: hover) {
@@ -1701,7 +1703,12 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
   }
 }
 .style-opt.active {
+  background: var(--accent-soft);
   border-color: var(--accent);
+}
+.style-opt.active span {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
 }
 .style-opt span {
   font-size: var(--txt-xs);

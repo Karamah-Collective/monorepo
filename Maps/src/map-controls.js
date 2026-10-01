@@ -1,5 +1,6 @@
 import { focusMapPoint, map } from "./map-init.js";
 import { HELSINKI } from "./config.js";
+import { isNative } from "./capacitor-bridge.js";
 import {
   esc,
   getVisitorGeo,
@@ -15,6 +16,7 @@ import {
   setCurrentLocationState,
   getCurrentLocationState,
   clearCurrentLocationState,
+  clearLocationWatch,
 } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
@@ -359,7 +361,7 @@ export function showCurrentLocation() {
       }
     }
     // Position is on screen (or no fix) → turn off
-    navigator.geolocation.clearWatch(locWatchId);
+    clearLocationWatch(locWatchId);
     locWatchId = null;
     _stopHeadingWatch();
     _cancelLocLerp();
@@ -380,7 +382,10 @@ export function showCurrentLocation() {
   if (_geoPermState === "denied") {
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
-    showToast("Location is off", "loc", "Enable it in browser settings");
+    // The permission pre-check bails before requestLocation()'s native branch
+    // runs, so this pre-check must pick its own device-aware copy: in the
+    // WebView the knob lives in OS phone settings, not browser settings.
+    showToast("Location is off", "loc", isNative() ? "Enable location in phone settings" : "Enable it in browser settings");
     return;
   }
 

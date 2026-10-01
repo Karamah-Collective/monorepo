@@ -37,5 +37,17 @@
     "url": "https://github.com/moontasirsoumik/halal-finder/issues"
   },
   "homepage": "https://github.com/moontasirsoumik/halal-finder#readme",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/cli": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/geolocation": "^8.2.2",
+    "@capacitor/share": "^8.0.2"
+  }
 }

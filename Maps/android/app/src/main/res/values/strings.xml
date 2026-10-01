@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Manarah</string>
+    <string name="title_activity_main">Manarah</string>
+    <string name="package_name">com.karamahcollective.manarah</string>
+    <string name="custom_url_scheme">com.karamahcollective.manarah</string>
+</resources>

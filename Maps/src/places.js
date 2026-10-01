@@ -1,7 +1,8 @@
+import { isNative } from "./capacitor-bridge.js";
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
 import { appSettingsReady, getAppSettings, getExpandedSearchTerms } from "./app-settings.js";
 import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition } from "./utils.js";
 import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
@@ -864,14 +865,14 @@ function _resolveUserLocation() {
 async function tryGetUserLocation() {
   // Always refresh from live/home first
   _resolveUserLocation();
-  if (userLocLat !== null || !navigator.geolocation) return;
+  if (userLocLat !== null || !hasGeolocation()) return;
   // Only silently grab location if already granted — don't trigger a prompt
   // just for distance badges. The prompt should appear on explicit user actions.
   try {
     const perm = await navigator.permissions.query({ name: "geolocation" });
     if (perm.state !== "granted") return;
   } catch (_) { /* permissions API not supported — skip silent grab */ return; }
-  navigator.geolocation.getCurrentPosition(
+  getCurrentPosition(
     (pos) => {
       userLocLat = pos.coords.latitude;
       userLocLng = pos.coords.longitude;
@@ -1412,6 +1413,7 @@ export async function loadPlacesData() {
       renderPlacesList();
       updatePlacesBadge();
       checkShareUrl();
+      if (_pendingNativeDeepLink) { _pendingNativeDeepLink = false; checkShareUrl(); }
       renderEventsPill();
       renderPromosPill();
 
@@ -1458,6 +1460,7 @@ export async function loadPlacesData() {
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
+    if (_pendingNativeDeepLink) { _pendingNativeDeepLink = false; checkShareUrl(); }
     renderPromosPill();
     renderEventsPill();
 
@@ -2425,6 +2428,39 @@ export function checkShareUrl() {
     // Clear hash so the popup isn't re-opened on refresh
     history.replaceState(null, "", location.pathname + location.search);
   }
+}
+
+// ─── Native deep-link handling (Capacitor) ─────────────────────────────────
+// When the shell opens the app via a custom URL scheme (manarah://…) or a
+// universal link, feed the URL's query through the SAME parser as a cold start
+// (?r=/?p=/?place=…). history.replaceState swaps location.search without any
+// navigation, so checkShareUrl() below reads the deep-link params exactly as it
+// would on the web. Inert in the browser (isNative() false → no listener).
+let _pendingNativeDeepLink = false;
+function _routeNativeDeepLink(url) {
+  if (!url || typeof url !== "string") return;
+  const qIdx = url.indexOf("?");
+  if (qIdx < 0) return; // nothing to route
+  const query = url.slice(qIdx); // e.g. "?r=<token>"
+  // Only touch history when there are params the web app already understands.
+  if (!/[?&](r|p|place|route|lat|lng|eid)=/.test(query)) return;
+  history.replaceState(null, "", location.pathname + query);
+  // Cold start: the URL may arrive before places data is ready. The web calls
+  // checkShareUrl() after loadPlacesData() resolves, so defer to that same
+  // point instead of running the parser against an empty dataset.
+  if (placesLoaded) checkShareUrl();
+  else _pendingNativeDeepLink = true;
+}
+if (isNative() && window.Capacitor?.Plugins?.App?.addListener) {
+  // App opened/resumed while running.
+  window.Capacitor.Plugins.App.addListener("appUrlOpen", (data) => {
+    _routeNativeDeepLink(data?.url);
+  });
+  // Cold launch with a custom scheme / universal link — the listener above
+  // does not fire for the URL that started the process, so read it explicitly.
+  window.Capacitor.Plugins.App.getLaunchUrl?.().then((launch) => {
+    if (launch?.url) _routeNativeDeepLink(launch.url);
+  }).catch(() => {});
 }
 
 export function updatePlacesBadge() {

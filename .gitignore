@@ -128,3 +128,10 @@ desktop.ini
 Website/assets/images/karamah-logo.svg
 
 
+
+# ════════════════════════════════════════════════════════════════
+# CLAUDE CODE – LOCAL ONLY
+# ════════════════════════════════════════════════════════════════
+
+# Per-machine permission overrides (not for sharing)
+.claude/settings.local.json

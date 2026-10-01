@@ -1,4 +1,5 @@
 import { _CRYPTO_KEY } from "./config.js";
+import { isNative } from "./capacitor-bridge.js";
 import { map } from "./map-init.js";
 import { EVT } from "./events.js";
 
@@ -1612,6 +1613,19 @@ export function buildShareUrl(place) {
 // ─── Unified share helper ───────────────────────────────────────────────────
 
 export async function shareUrl(fullUrl, title, text) {
+  // Native shell: use @capacitor/share when present. navigator.share is absent
+  // in most WebViews, so this is native-first; the browser keeps its own path.
+  if (isNative() && window.Capacitor?.Plugins?.Share?.share) {
+    try {
+      await window.Capacitor.Plugins.Share.share({ title, text, url: fullUrl });
+      return; // shared — nothing else to do
+    } catch (err) {
+      // Android/iOS reject with "Share canceled" when the user dismisses the
+      // sheet — mirror the web's AbortError silence. Any other share error
+      // falls through to the clipboard path below, same as the browser.
+      if (typeof err?.message === "string" && /cancel/i.test(err.message)) return;
+    }
+  }
   if (navigator.share) {
     try {
       await navigator.share({ title, text, url: fullUrl });
@@ -1924,6 +1938,35 @@ export function decodeCompactPin(token) {
 // Options: { watch: false } for one-shot, { watch: true } returns watchId via onWatch callback.
 export function requestLocation({ watch = false, onPosition, onWatch } = {}) {
   return new Promise(async (resolve, reject) => {
+    // Capacitor native shell: use the injected Geolocation plugin when present.
+    // One-shot positions route through the plugin; watch mode keeps the
+    // browser path below (clearWatch/tracking are wired to navigator APIs).
+    if (!watch && isNative() && window.Capacitor?.Plugins?.Geolocation?.getCurrentPosition) {
+      try {
+        const pos = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 60000 });
+        if (pos?.coords) {
+          if (onPosition) onPosition(pos);
+          return resolve(pos);
+        }
+      } catch (err) {
+        if (err && err.code === 1) {
+          // Native permission surface: the device permission was denied. The
+          // plan requires a permission-status UI — keep it minimal, a one-line
+          // toast only (no settings screen). Runs ONLY in the native shell.
+          try {
+            const status = await window.Capacitor.Plugins.Geolocation.checkPermissions();
+            if (status?.location === "denied") {
+              showToast("Location permission denied", "error", "Enable location in phone settings");
+            } else if (typeof window.Capacitor.Plugins.Geolocation.requestPermissions === "function") {
+              showToast("Location permission needed", "error", "Enable location to use GPS features");
+            }
+          } catch { /* permission UI is best-effort — never block the flow */ }
+          return reject({ denied: true, message: "Enable it in app settings" });
+        }
+        return reject({ denied: false, message: "Try again in a moment" });
+      }
+    }
+
     if (!navigator.geolocation) {
       return reject({ denied: false, message: "Browser doesn't support location" });
     }
@@ -1992,4 +2035,59 @@ export function requestLocation({ watch = false, onPosition, onWatch } = {}) {
       });
     }
   });
+}
+
+// ── Raw geolocation API seam ─────────────────────────────────────────────
+// Thin pass-throughs so the handful of call sites that need navigator.geolocation's
+// raw surface (background teaser grabs, Compass/Qibla watch feeds, live-locate
+// clearWatch) never touch navigator.geolocation directly. Every navigator.
+// geolocation access is now confined to utils.js, so a Capacitor geolocation
+// branch (Phase 3) can be inserted in exactly one file. Browser behavior is
+// unchanged — these are direct call-throughs.
+
+/**
+ * Safari/Chrome 149+ gate for the W3C Geolocation API (guarded so the reference
+ * itself cannot throw where the API is entirely absent).
+ * @returns {boolean}
+ */
+export function hasGeolocation() {
+  try { return !!navigator.geolocation; } catch { return false; }
+}
+
+/**
+ * One-shot current position from navigator.geolocation. Use for silent,
+ * non-prompting reads (permission already granted elsewhere) — see
+ * places.js's `tryGetUserLocation()` for the quiet-grab pattern.
+ * @param {(pos: GeolocationPosition) => void} resolvePos
+ * @param {(err: {code: number}) => void} rejectErr
+ * @param {{ enableHighAccuracy?: boolean, timeout?: number, maximumAge?: number }} [opts]
+ * @returns {void}
+ */
+export function getCurrentPosition(ret, reject, opts = {}) {
+  if (!hasGeolocation()) return reject({ code: 2, message: "Geolocation unavailable" });
+  navigator.geolocation.getCurrentPosition(ret, reject, opts);
+}
+
+/**
+ * Continuous position feed. Returns a watchId that must be released with
+ * clearLocationWatch() (or navigator.geolocation.clearWatch directly) when
+ * tracking stops.
+ * @param {(pos: GeolocationPosition) => void} onPosition
+ * @param {(err: {code: number}) => void} onError
+ * @param {{ enableHighAccuracy?: boolean, timeout?: number, maximumAge?: number }} [opts]
+ * @returns {number}
+ */
+export function watchPosition(onPosition, onError, opts = {}) {
+  if (!hasGeolocation()) { onError?.({ code: 2, message: "Geolocation unavailable" }); return 0; }
+  return navigator.geolocation.watchPosition(onPosition, onError, opts);
+}
+
+/**
+ * Stop a watch started by watchPosition()/requestLocation({ watch: true }).
+ * @param {number} watchId
+ * @returns {void}
+ */
+export function clearLocationWatch(watchId) {
+  if (!hasGeolocation() || watchId == null) return;
+  try { navigator.geolocation.clearWatch(watchId); } catch { /* already stopped */ }
 }

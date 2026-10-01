@@ -1,0 +1,73 @@
+# iOS build — Manarah (Karamah Maps) Capacitor shell
+#
+# Purpose: build the iOS Capacitor app on a macOS runner so iOS can be
+# validated WITHOUT a Mac (the user's dev machine is Windows 11; Xcode and the
+# iOS Simulator are macOS-only). Produces a buildable artifact and simulator
+# install, not a signed store submission (that's a later Phase 4 step gated on
+# Apple credentials).
+#
+# Trigger: manual (workflow_dispatch) — iOS is not on the main→preview→deploy
+# path and must not gate web deploys. Add `pull_request:`/`push:` only if the
+# team later wants iOS gating.
+#
+# Note: Java version aligned to the host finding that Capacitor 8 Android needs
+# JDK 21; iOS also builds fine on 21. Keep in sync with docs/ENVIRONMENT_SETUP.md
+# and docs/CAPACITOR_PREFERENCE_LOG.md.
+
+name: iOS Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS (.app) + boot simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 21 (Capacitor 8 toolchain)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install deps (root)
+        run: npm ci
+        working-directory: .
+
+      - name: Build web (Maps/dist)
+        run: npm run build
+        working-directory: Maps
+
+      - name: Sync web → iOS shell
+        run: npx cap sync ios
+        working-directory: Maps
+
+      - name: Build iOS (Debug)
+        run: npx cap build ios -D
+        working-directory: Maps
+
+      - name: Upload iOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manarah-ios-build
+          path: |
+            Maps/ios/App/**/build/**/*.app
+            Maps/ios/App/**/build/**/*.xcodeproj
+            Maps/dist/
+          if-no-files-found: warn
