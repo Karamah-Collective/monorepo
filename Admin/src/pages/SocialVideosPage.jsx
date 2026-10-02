@@ -243,7 +243,7 @@ export default function SocialVideosPage() {
               type="url"
               required
               value={form.url}
-              placeholder="https://www.youtube.com/watch?v=…"
+              placeholder="YouTube video or Short, TikTok, Instagram…"
               onChange={(e) => updateField("url", e.target.value)}
               onBlur={onUrlBlur}
             />
@@ -272,6 +272,7 @@ export default function SocialVideosPage() {
               placeholder="Optional card title"
               onChange={(e) => updateField("title", e.target.value)}
             />
+            <span className="pp-field-hint">Leave blank to use the YouTube / TikTok title</span>
           </div>
 
           <div className="pp-field">
@@ -282,6 +283,7 @@ export default function SocialVideosPage() {
               placeholder="@handle"
               onChange={(e) => updateField("creator", e.target.value)}
             />
+            <span className="pp-field-hint">Leave blank to use the channel handle</span>
           </div>
 
           <div className="pp-field">

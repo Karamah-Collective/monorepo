@@ -36,7 +36,11 @@ export function youtubeThumbnailFromUrl(url) {
     } else if (host.endsWith("youtube.com")) {
       if (parsed.pathname.startsWith("/watch")) {
         id = parsed.searchParams.get("v") || "";
-      } else if (parsed.pathname.startsWith("/shorts/") || parsed.pathname.startsWith("/embed/")) {
+      } else if (
+        parsed.pathname.startsWith("/shorts/") ||
+        parsed.pathname.startsWith("/embed/") ||
+        parsed.pathname.startsWith("/live/")
+      ) {
         id = parsed.pathname.split("/").filter(Boolean)[1] || "";
       }
     }
@@ -44,6 +48,34 @@ export function youtubeThumbnailFromUrl(url) {
     return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
   } catch {
     return "";
+  }
+}
+
+const OEMBED_ENDPOINTS = {
+  YouTube: "https://www.youtube.com/oembed?format=json&url=",
+  TikTok: "https://www.tiktok.com/oembed?url=",
+};
+
+/**
+ * Public oEmbed lookup (no API key). Returns null on any failure so saving never blocks on it.
+ * TikTok oEmbed thumbnails are signed CDN URLs that expire, so only title/creator are used.
+ */
+export async function fetchVideoOEmbed(platform, url) {
+  const endpoint = OEMBED_ENDPOINTS[platform];
+  if (!endpoint || !url) return null;
+  try {
+    const res = await fetch(endpoint + encodeURIComponent(url), {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const handle = (json.author_url || "").match(/\/(@[^/?#]+)/)?.[1] || "";
+    return {
+      title: truncate(json.title, MAX_TEXT_LEN),
+      creator: truncate(handle || json.author_name, MAX_TEXT_LEN),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -149,6 +181,16 @@ export async function upsertSocialVideo(db, raw) {
 
   const place = await db.prepare("SELECT id FROM places WHERE id = ?").bind(video.placeId).first();
   if (!place) return { success: false, error: "Place not found" };
+
+  const givenTitle = truncate(raw.title, MAX_TEXT_LEN);
+  const givenCreator = truncate(raw.creator, MAX_TEXT_LEN);
+  if (!givenTitle || !givenCreator) {
+    const meta = await fetchVideoOEmbed(video.platform, video.url);
+    if (meta) {
+      if (!givenTitle && meta.title) video.title = meta.title;
+      if (!givenCreator && meta.creator) video.creator = meta.creator;
+    }
+  }
 
   await db
     .prepare(
