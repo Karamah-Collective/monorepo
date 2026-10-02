@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Same public, non-secret client config as the public site's src/config.js
 // (FIREBASE_CONFIG) — keep both in sync if the Firebase project ever rotates
@@ -15,3 +15,5 @@ export const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com";
 
 const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ hd: "karamahcollective.com", prompt: "select_account" });

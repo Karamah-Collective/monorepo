@@ -4,21 +4,25 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
   updateProfile,
 } from "firebase/auth";
-import { auth, ADMIN_EMAIL_DOMAIN } from "../firebase.js";
-import { logAuthEvent } from "../api/client.js";
+import { auth, ADMIN_EMAIL_DOMAIN, googleProvider } from "../firebase.js";
+import { apiGet, logAuthEvent } from "../api/client.js";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [access, setAccess] = useState(null);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (!u) { setAccess(null); setLoading(false); return; }
+      try { setAccess((await apiGet("admin-access")).access); } catch { setAccess(null); }
       setLoading(false);
     });
   }, []);
@@ -29,6 +33,16 @@ export function AuthProvider({ children }) {
 
   async function signIn(email, password) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    await logAuthEvent("login");
+    return cred.user;
+  }
+
+  async function signInWithGoogle() {
+    const cred = await signInWithPopup(auth, googleProvider);
+    if (!isAllowedEmail(cred.user.email)) {
+      await firebaseSignOut(auth);
+      throw new Error(`Use a ${ADMIN_EMAIL_DOMAIN} Google Workspace account.`);
+    }
     await logAuthEvent("login");
     return cred.user;
   }
@@ -45,6 +59,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    setAccess(null);
     await firebaseSignOut(auth);
   }
 
@@ -59,7 +74,7 @@ export function AuthProvider({ children }) {
     setUser({ ...auth.currentUser });
   }
 
-  const value = { user, loading, signIn, signUp, signOut, getIdToken, reloadUser, isAllowedEmail };
+  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, isAllowedEmail };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

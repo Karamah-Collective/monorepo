@@ -135,6 +135,7 @@ export const NAV_GROUPS = [
         icon: "settings",
         description: "Set your sidebar, table, and motion preferences for this browser.",
       },
+      { to: "/workspace/access", label: "Roles & access", icon: "shield", permission: "*", description: "Assign roles and control workspace access." },
     ],
   },
 ];

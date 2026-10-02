@@ -50,7 +50,7 @@
 :root[data-admin-theme="dark"] .brand-logo--light { display: none; }
 :root[data-admin-theme="dark"] .brand-logo--dark { display: block; }
 .brand-copy {
-  font-size: 16px;
+  font-size: 18px;
   letter-spacing: 0;
   font-weight: 600;
   line-height: 1;
@@ -380,11 +380,11 @@ kbd {
   margin: 0;
 }
 .pp-page-lead {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-muted);
   line-height: 1.6;
   margin: 8px 0 22px;
-  max-width: 65ch;
+  max-width: min(100%, 120ch);
 }
 .pp-page-title + .pp-page-lead,
 .website-page-heading .pp-page-title + .pp-page-lead,
@@ -404,6 +404,19 @@ kbd {
   font-size: 16px;
   font-weight: 600;
 }
+.access-heading { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:4px; color:var(--interactive-accent); }
+.access-heading h1 { color:var(--text); }
+.access-member-form { display:grid; grid-template-columns:1.5fr 1fr 1fr auto; gap:12px; align-items:end; }
+.access-member-form .pp-field { margin:0; }
+.access-member-form .pp-btn { min-height:42px; }
+.access-section-title { display:flex; justify-content:space-between; align-items:start; }
+.access-section-title p { margin:-11px 0 14px; font-size:12px; color:var(--text-muted); }
+.access-list { border-top:1px solid var(--border); }
+.access-row { display:grid; grid-template-columns:minmax(0,1fr) 150px auto; gap:14px; align-items:center; padding:12px 4px; border-bottom:1px solid var(--border); }
+.access-person strong,.access-person small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.access-person small { color:var(--text-muted); font-size:11px; margin-top:3px; }
+.access-role-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:9px; }.access-role { padding:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-alt); }.access-role>div { display:flex; justify-content:space-between; gap:8px; }.access-role span { color:var(--interactive-accent); font-size:10px; }.access-role p { min-height:34px; margin:8px 0; font-size:12px; color:var(--text-muted); line-height:1.45; }.access-role small { font-family:var(--font-mono); font-size:10px; color:var(--text-faint); }
+.access-role-form { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end; }.access-role-form .pp-field { margin:0; }.access-permissions { grid-column:1 / -1; display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); }.access-permissions label { display:flex; align-items:center; gap:6px; }
+@media(max-width:767px){.access-member-form,.access-role-form{grid-template-columns:1fr}.access-permissions{grid-column:auto}.access-row{grid-template-columns:minmax(0,1fr) auto}.access-row .pp-btn{grid-column:2}.access-heading>svg{display:none}}
 .pp-section-heading {
   font-size: 13px;
   margin: 20px 0 12px;
@@ -809,6 +822,10 @@ kbd {
   font-weight: 500;
   text-underline-offset: 3px;
 }
+.auth-divider { display:flex; align-items:center; gap:10px; margin:18px 0 0; color:var(--text-faint); font-size:11px; }
+.auth-divider::before,.auth-divider::after { content:""; height:1px; background:var(--border); flex:1; }
+.auth-google { width:100%; min-height:42px; margin-top:14px; border-color:var(--border); }
+.google-mark { font:600 16px/1 var(--font-mono); color:#4285f4; }
 .auth-form-footer {
   margin-top: 65px;
   font-size: 10px;
@@ -1093,3 +1110,17 @@ html[data-input-mode="keyboard"] .pp-reason-popover {
     scroll-behavior: auto !important;
   }
 }
+
+/* Reading floor: Admin is a working tool, never a microscopic dashboard. */
+#main-content .pp-page small { font-size:max(12px,.82em); }
+#main-content .pp-page .eyebrow { font-size:12px; }
+#main-content .pp-page .pp-btn { font-size:13px; }
+.auth-google { width:100%; min-height:46px; margin-top:4px; border-color:var(--border); font-size:13px; }
+.google-mark { width:19px; height:19px; }
+.access-panel-copy { max-width:80ch; margin:-8px 0 16px; color:var(--text-muted); font-size:14px; line-height:1.6; }
+.access-default { display:flex; align-items:center; gap:14px; }.access-default select{min-height:42px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm)}.access-default span{font-size:13px;color:var(--text-muted)}
+.access-section-title p{font-size:14px}.access-person small{font-size:13px}.access-role-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.access-role{padding:15px}.access-role span{font-size:12px}.access-role p{font-size:14px;line-height:1.5}.access-role small{font-size:12px}
+.access-permissions{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.access-permissions fieldset{margin:0;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm)}.access-permissions legend{padding:0 4px;color:var(--text);font-size:13px;font-weight:600}.access-permissions label{min-height:27px;font-size:13px}
+
+/* Permission builder: a dense, tactile working surface rather than a generic checkbox card. */
+#main-content .pp-page small{font-size:max(13px,.86em)}#main-content .pp-page .eyebrow{font-size:13px}#main-content .pp-page .pp-btn{font-size:14px}.access-panel-copy{max-width:92ch;font-size:16px;line-height:1.65}.access-role-builder{padding:0;overflow:hidden;background:var(--bg)}.access-builder-heading{display:flex;justify-content:space-between;gap:32px;padding:28px 28px 18px;background:var(--bg-alt);border-bottom:1px solid var(--border)}.access-builder-heading .pp-panel-title{margin:8px 0 10px;font-size:21px}.access-builder-heading .access-panel-copy{margin:0}.access-selection-count{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:128px;border-left:1px solid var(--border);padding-left:24px}.access-selection-count strong{font:500 30px/1 var(--font-mono);letter-spacing:-.08em;color:var(--interactive-accent)}.access-selection-count span{margin-top:5px;color:var(--text-muted);font-size:13px;text-align:right}.access-role-builder .access-role-form{padding:26px 28px 20px}.access-role-builder .access-permissions{grid-column:1/-1;display:grid;grid-template-columns:1.15fr 1.85fr;gap:0;border-top:1px solid var(--border);border-left:1px solid var(--border)}.access-role-builder .access-permissions fieldset{margin:0;padding:16px 18px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;background:var(--bg)}.access-role-builder .access-permissions fieldset:nth-child(4n+1),.access-role-builder .access-permissions fieldset:nth-child(4n+4){background:var(--bg-alt)}.access-permission-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.access-permission-heading legend{padding:0;color:var(--text);font-size:15px;font-weight:600}.access-permission-heading button{border:0;background:transparent;color:var(--interactive-accent);padding:3px 0;font:500 13px var(--font-mono);text-decoration:underline;text-underline-offset:3px}.access-role-builder .access-permissions fieldset>small{display:block;margin:4px 0 12px;color:var(--text-faint);font:12px var(--font-mono)}.access-permission-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:5px}.access-role-builder .access-permissions label{position:relative;display:flex;align-items:center;gap:8px;min-height:35px;padding:6px 8px;border-radius:6px;font-size:14px;color:var(--text-muted);transition:background 160ms ease,color 160ms ease}.access-role-builder .access-permissions label input{position:absolute;opacity:0;pointer-events:none}.access-role-builder .access-permissions label i{width:15px;height:15px;order:-1;border:1px solid var(--border-strong);border-radius:4px;background:var(--bg);transition:background 160ms ease,border-color 160ms ease,transform 160ms var(--ease)}.access-role-builder .access-permissions label.is-selected{color:var(--text);background:var(--interactive-accent-soft);font-weight:500}.access-role-builder .access-permissions label.is-selected i{background:var(--interactive-accent);border-color:var(--interactive-accent);box-shadow:inset 0 0 0 3px var(--interactive-accent-soft)}.access-role-builder .access-permissions label:active i{transform:scale(.88)}.access-builder-footer{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:18px;color:var(--text-muted);font-size:14px}.access-builder-footer .pp-btn{min-height:42px}@media(max-width:767px){.access-builder-heading{padding:22px 18px;display:block}.access-selection-count{display:none}.access-role-builder .access-role-form{padding:20px 18px}.access-role-builder .access-permissions{grid-template-columns:1fr}.access-role-builder .access-permissions fieldset{border-left:1px solid var(--border)}.access-builder-footer{align-items:stretch;flex-direction:column}.access-builder-footer .pp-btn{width:100%}}

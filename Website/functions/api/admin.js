@@ -6,6 +6,13 @@ const origins=['https://admin.karamahcollective.com','https://admin.maps.karamah
 const reads=new Set(['admin-team','admin-subscribers','admin-content','maps-admin']);
 const writes=new Set(['save-person','delete-person','unsubscribe','delete-subscriber','save-content','maps-admin']);
 const mapsAdminOrigin=env=>String(env.MAPS_ADMIN_ORIGIN||'https://maps.karamahcollective.com').replace(/\/$/,'');
+const initialAdminEmail='moontasir@karamahcollective.com';
+async function hasWebsiteAccess(env,actor){
+  if(actor.email?.toLowerCase()===initialAdminEmail)return true;
+  if(!env?.DB?.prepare)return false;
+  const row=await env.DB.prepare("SELECT r.permissions FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
+  try{const permissions=JSON.parse(row?.permissions||'[]');return permissions.includes('*')||permissions.includes('website.*')||permissions.some(value=>value.startsWith('website.'));}catch{return false;}
+}
 function allowedOrigins(env={}) {
   return [...origins,...(env.ADMIN_ALLOWED_ORIGINS||'').split(',').map(value=>value.trim()).filter(value=>/^https:\/\/[^/]+$/.test(value))];
 }
@@ -69,6 +76,7 @@ export async function onRequest(context) {
       if(action==='save-content')data.content=publicWebsiteContent(data.content);
     }
     if(action==='maps-admin')return proxyMapsAdmin(request,env,match[1],data);
+    if(!await hasWebsiteAccess(env,actor))return response(request,{error:'Your role does not allow website administration.'},403);
     const payload={id:data.id,revision:data.revision,person:data.person,content:data.content,actor:{email:actor.email,name:actor.name||''}};
     return response(request,await websiteDataRequest(env,action,payload));
   } catch(error) { return response(request,{error:error instanceof WebsiteDataError?error.message:'Website administration is temporarily unavailable.'},error instanceof WebsiteDataError?error.status:502); }

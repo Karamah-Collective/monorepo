@@ -131,7 +131,7 @@ body,
 }
 body {
   font-family: "Geist", sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text);
   background: var(--bg-alt);
   -webkit-font-smoothing: antialiased;
@@ -193,7 +193,7 @@ svg {
   white-space: nowrap;
 }
 .eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   letter-spacing: 0.13em;
   font-weight: 600;

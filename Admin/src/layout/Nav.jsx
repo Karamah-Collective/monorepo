@@ -1,8 +1,10 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useAdminStats } from "../api/queries.js";
 import { Icons, CloseIcon } from "../icons.jsx";
 import { NAV_GROUPS } from "./navigation.js";
+import { can, ROUTE_PERMISSION } from "../auth/permissions.js";
 import logoLightUrl from "../../../Website/assets/images/kc_logo_small.webp";
 import logoDarkUrl from "../../../Website/assets/images/kc_logo_small_dark.webp";
 
@@ -21,8 +23,10 @@ export function Brand() {
 }
 
 export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
-  const { user, signOut } = useAuth();
+  const { user, access, signOut } = useAuth();
   const { data } = useAdminStats();
+  const location = useLocation();
+  const [closedGroups, setClosedGroups] = useState(() => new Set(NAV_GROUPS.map(group => group.label)));
   const name = user?.displayName || user?.email || "Administrator";
   return (
     <aside
@@ -43,20 +47,16 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
           <CloseIcon />
         </button>
       </div>
-      <div className="workspace-label">
-        <span className="workspace-icon">
-          <Icons.globe />
-        </span>
-        <span>
-          Collective workspace<small>Maps, website &amp; links</small>
-        </span>
-        <span className="live-dot" />
-      </div>
       <nav className="pp-nav-links pp-scroll" aria-label="Main navigation">
-        {NAV_GROUPS.map((group) => (
-          <div className="nav-group" key={group.label}>
-            <div className="nav-group-label">{group.label}</div>
-            {group.links.map((link) => {
+        {NAV_GROUPS.map((group) => {
+          const links = group.links.filter(link => can(access, link.permission || ROUTE_PERMISSION[link.to] || "read"));
+          if (!links.length) return null;
+          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
+          const isClosed = closedGroups.has(group.label) && !active;
+          return (
+          <section className={`nav-group${isClosed ? " is-collapsed" : ""}`} key={group.label}>
+            <button className="nav-group-label" type="button" onClick={() => setClosedGroups(current => { const next = new Set(current); if (next.has(group.label)) next.delete(group.label); else next.add(group.label); return next; })} aria-expanded={!isClosed}><span>{group.label}</span><Icons.right size={13} /></button>
+            <div className="nav-group-links">{links.map((link) => {
               const Icon = Icons[link.icon];
               return (
                 <NavLink
@@ -76,22 +76,11 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
                   )}
                 </NavLink>
               );
-            })}
-          </div>
-        ))}
+            })}</div>
+          </section>
+        )})}
       </nav>
       <div className="nav-bottom">
-        <a
-          className="nav-public-link"
-          href="https://maps.karamahcollective.com"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Open public map"
-        >
-          <Icons.globe />
-          <span>Open public map</span>
-          <Icons.arrowUpRight />
-        </a>
         <button
           className="nav-collapse"
           onClick={onCollapse}
@@ -112,7 +101,7 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
           </span>
           <span className="user-details">
             <strong>{name}</strong>
-            <small>Administrator</small>
+            <small>{access?.roleName || "Workspace member"}</small>
           </span>
           <button
             className="icon-button"

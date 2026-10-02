@@ -1,0 +1,88 @@
+/* Navigation reduces visual load: sections disclose only when needed. */
+.nav-group-label { display:flex; width:100%; align-items:center; justify-content:space-between; border:0; background:transparent; padding:6px 12px 7px; text-align:left; cursor:pointer; }
+.nav-group-label svg { transition:transform 180ms var(--ease); }
+.nav-group:not(.is-collapsed) .nav-group-label svg { transform:rotate(90deg); }
+.nav-group-links { display:block; max-height:760px; overflow:hidden; opacity:1; transition:max-height 240ms var(--ease),opacity 170ms ease; }
+.nav-group.is-collapsed { margin-bottom:7px; }
+.nav-group.is-collapsed .nav-group-links { max-height:0; opacity:0; pointer-events:none; }
+.nav-group.is-collapsed .nav-group-label { margin-bottom:0; }
+.nav-bottom { padding-top:0; }
+.nav-public-link { display:none; }
+
+/* Dark mode mirrors the light builder's calm surface hierarchy. */
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset,
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset:nth-child(4n+1),
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset:nth-child(4n+4) { background:var(--bg); }
+:root[data-admin-theme="dark"] .access-builder-heading { background:var(--bg-alt); }
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions label.is-selected { background:var(--interactive-accent-soft); color:var(--text); }
+
+/* Capability tiles use an accent edge and surface change, never a checkbox icon. */
+.access-role-builder .access-permissions label i { display:none; }
+.access-role-builder .access-permissions label { padding-left:10px; border-left:2px solid transparent; }
+.access-role-builder .access-permissions label.is-selected { border-left-color:var(--interactive-accent); }
+
+/* Compact navigation: group labels are the navigation, not empty decoration. */
+.pp-nav-links { padding-top:4px; }
+.nav-group { margin-bottom:4px; }
+.nav-group-label { min-height:34px; padding:7px 11px; margin:0; border-radius:6px; font-size:11px; }
+.nav-group-label:hover { background:var(--nav-hover); color:var(--nav-text-strong); }
+.nav-group.is-collapsed { margin-bottom:4px; }
+.nav-group:not(.is-collapsed) { margin-bottom:10px; }
+.nav-group:not(.is-collapsed) .nav-group-label { color:var(--nav-text-strong); }
+.pp-nav-link { min-height:34px; margin:1px 0; }
+
+/* Existing roles read as concise Maps-style pills, not a second card grid. */
+.access-role-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.access-role { display:flex; align-items:center; gap:9px; min-height:38px; padding:6px 12px; border-radius:999px; background:var(--bg-alt); }
+.access-role > div { display:contents; }
+.access-role strong { font-size:14px; font-weight:600; }
+.access-role span { padding:2px 6px; border-radius:999px; background:var(--interactive-accent-soft); color:var(--interactive-accent); font:11px var(--font-mono); }
+.access-role p { display:none; }
+.access-role small { padding-left:9px; border-left:1px solid var(--border); font-size:11px; white-space:nowrap; }
+
+/* Compact heading preserves orientation without turning the builder into a hero. */
+.access-builder-heading { justify-content:space-between; min-height:0; padding:16px 24px 12px; }
+.access-builder-heading > div:first-child { display:block; }
+.access-builder-heading .eyebrow { display:none; }
+.access-builder-heading .pp-panel-title { margin:0 0 4px; font-size:17px; }
+.access-builder-heading .access-panel-copy { display:block; margin:0; max-width:64ch; font-size:13px; line-height:1.45; }
+.access-selection-count { min-width:0; flex-direction:row; align-items:baseline; gap:7px; border-left:0; padding-left:0; }
+.access-selection-count strong { font-size:18px; }
+.access-selection-count span { margin:0; font-size:12px; text-align:left; }
+
+@media (max-width:767px) {
+  .access-role { width:100%; justify-content:flex-start; }
+  .access-role small { overflow:hidden; text-overflow:ellipsis; }
+  .access-builder-heading { display:flex; padding:9px 18px; }
+}
+
+/* Compact, Maps-inspired pill controls: click once to select, again to clear. */
+.access-role-builder .access-permissions { display:flex; flex-wrap:wrap; gap:12px; border:0; padding:0; }
+.access-role-builder .access-permissions fieldset,
+.access-role-builder .access-permissions fieldset:nth-child(4n+1),
+.access-role-builder .access-permissions fieldset:nth-child(4n+4) { flex:1 1 260px; padding:0; border:0; background:transparent; }
+.access-permission-heading { margin-bottom:6px; }
+.access-role-builder .access-permissions fieldset > small { display:none; }
+.access-permission-options { display:flex; flex-wrap:wrap; gap:6px; }
+.access-role-builder .access-permissions label { min-height:30px; width:auto; padding:5px 10px; border:1px solid var(--border); border-radius:999px; background:var(--bg-alt); color:var(--text-muted); font-size:12px; line-height:1.2; cursor:pointer; }
+.access-role-builder .access-permissions label.is-selected { border-color:var(--interactive-accent); border-left-color:var(--interactive-accent); border-left-width:1px; background:var(--interactive-accent-soft); color:var(--interactive-accent); }
+.access-role-builder .access-permissions label:hover { border-color:var(--interactive-accent); color:var(--text); }
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset,
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset:nth-child(4n+1),
+:root[data-admin-theme="dark"] .access-role-builder .access-permissions fieldset:nth-child(4n+4) { background:transparent; }
+@media(max-width:767px){.access-role-builder .access-permissions fieldset{flex-basis:100%}.access-builder-heading .access-panel-copy{font-size:12px}}
+
+/* Four stable columns keep role capabilities compact and predictable. */
+.access-role-builder .access-permissions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; }
+.access-role-builder .access-permissions fieldset,
+.access-role-builder .access-permissions fieldset:nth-child(4n+1),
+.access-role-builder .access-permissions fieldset:nth-child(4n+4) { min-width:0; width:auto; flex:none; }
+.access-role-builder .access-permissions fieldset { padding:0 14px 0 0; border-right:1px solid var(--border); }
+.access-role-builder .access-permissions fieldset:last-child { padding-right:0; border-right:0; }
+.access-permission-options { display:flex; align-content:flex-start; min-height:70px; }
+.access-role-builder .access-permissions label { max-width:100%; white-space:nowrap; }
+.access-builder-heading .pp-panel-title { font-size:0; }
+.access-builder-heading .pp-panel-title::after { content:"Create custom role"; font-size:17px; }
+.access-builder-heading .access-panel-copy { display:none; }
+@media(max-width:980px){.access-role-builder .access-permissions{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.access-role-builder .access-permissions fieldset:nth-child(2n){padding-right:0;border-right:0}}
+@media(max-width:600px){.access-role-builder .access-permissions{grid-template-columns:1fr;gap:14px}.access-role-builder .access-permissions fieldset{padding:0 0 14px;border-right:0;border-bottom:1px solid var(--border)}.access-role-builder .access-permissions fieldset:last-child{padding-bottom:0;border-bottom:0}.access-permission-options{min-height:0}}

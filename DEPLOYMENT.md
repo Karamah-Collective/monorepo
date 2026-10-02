@@ -138,6 +138,19 @@ management and cover-asset endpoints. Respondent uploads remain private.
 
 ## 2. Move the Website deployment to this repository
 
+## Admin Google sign-in and roles
+
+Before deploying the role-aware Admin build, apply
+`Maps/migrations/0025_admin_roles.sql` and
+`Maps/migrations/0026_granular_admin_roles.sql` to both the production and Preview D1
+databases used by Maps. The Website Pages project must use the same `DB` D1
+binding so website-role checks can read these assignments. In Firebase
+Authentication, enable the **Google** provider and ensure
+`admin.karamahcollective.com` remains an authorized domain. The migration
+seeds `moontasir@karamahcollective.com` as Administrator; after deploying,
+sign in with that account and use **Workspace → Roles & access** to give other
+Workspace accounts a role.
+
 If the existing Website project uses the old repository, create a replacement Pages project connected to this monorepo. Cloudflare documents creating a new project when changing repositories in its [known issues](https://developers.cloudflare.com/pages/platform/known-issues/).
 
 1. In **Workers & Pages**, create a **Pages** application and import this GitHub repository. Use a new project name, for example `karamah-website-monorepo`.
