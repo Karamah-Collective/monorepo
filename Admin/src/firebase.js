@@ -6,7 +6,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // its web app config.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA8eOK1dL3hzz6cbQ2C73S4K4IQv9foMGU",
-  authDomain: "auth.karamahcollective.com",
+  authDomain: "halal-map-karamah.firebaseapp.com",
   projectId: "halal-map-karamah",
   appId: "1:372947925614:web:e4f700b0512e1aa25bc47f",
 };
