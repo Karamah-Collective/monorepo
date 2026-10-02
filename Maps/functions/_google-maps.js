@@ -600,7 +600,9 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
   }
 
   if (rich && (!out.placeId || !detailsFound)) {
-    const queryParts = [out.googleName, out.googleAddress].filter(Boolean);
+    // Coordinate-only links have no parsed name; searching the reverse-geocoded address alone
+    // returns whichever business shares it (e.g. another store in the same plaza).
+    const queryParts = [out.googleName || cleanUserName, out.googleAddress || userAddress].filter(Boolean);
     if (!queryParts.length) [cleanUserName, userAddress].filter(Boolean).forEach((v) => queryParts.push(v));
     let textFallbackFoundPlaceId = false;
     const found = await findPlaceIdFromText(apiKey, queryParts.join(", "), out.lat, out.lng);
