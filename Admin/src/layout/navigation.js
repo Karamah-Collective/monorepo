@@ -78,26 +78,6 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: "Website",
-    links: [
-      { to: "/website/content", label: "Website content", icon: "globe", description: "Publish website copy, announcements, links and visibility." },
-      { to: "/website/team", label: "Team directory", icon: "building", description: "Manage the people introduced on the website." },
-      { to: "/website/subscribers", label: "Update signups", icon: "mail", description: "Manage the private website updates list." },
-    ],
-  },
-  {
-    label: "Links",
-    links: [
-      { to: "/links", label: "Link hub", icon: "link", description: "Publish and style every Karamah link in one place." },
-    ],
-  },
-  {
-    label: "Forms",
-    links: [
-      { to: "/forms", label: "Forms", icon: "forms", description: "Build, publish, and review community forms." },
-    ],
-  },
-  {
     label: "Maps / configuration",
     links: [
       {
@@ -118,6 +98,26 @@ export const NAV_GROUPS = [
         icon: "settings",
         description: "Control the experience visitors see on the map.",
       },
+    ],
+  },
+  {
+    label: "Website",
+    links: [
+      { to: "/website/content", label: "Website content", icon: "globe", description: "Publish website copy, announcements, links and visibility." },
+      { to: "/website/team", label: "Team directory", icon: "building", description: "Manage the people introduced on the website." },
+      { to: "/website/subscribers", label: "Update signups", icon: "mail", description: "Manage the private website updates list." },
+    ],
+  },
+  {
+    label: "Links",
+    links: [
+      { to: "/links", label: "Link hub", icon: "link", description: "Publish and style every Karamah link in one place." },
+    ],
+  },
+  {
+    label: "Forms",
+    links: [
+      { to: "/forms", label: "Forms", icon: "forms", description: "Build, publish, and review community forms." },
     ],
   },
   {

@@ -149,19 +149,22 @@ export default function DashboardPage() {
     day: "numeric",
     year: "numeric",
   });
+  const isFirstSession =
+    user?.metadata?.creationTime &&
+    user?.metadata?.lastSignInTime &&
+    user.metadata.creationTime === user.metadata.lastSignInTime;
+  const welcomeText = isFirstSession ? "Welcome" : "Welcome back";
   return (
     <div className="pp-page dashboard-page">
       <div className="dashboard-heading">
         <div>
-          <div className="eyebrow">YOUR COMMUNITY, AT A GLANCE</div>
+          <div className="eyebrow">WORKSPACE OVERVIEW</div>
           <h1 className="pp-page-title">
-            Workspace overview<span className="heading-dot">.</span>
+            {welcomeText}
+            {user?.displayName ? `, ${user.displayName.split(" ")[0]}` : ""}
+            <span className="heading-dot">.</span>
           </h1>
-          <p>
-            Welcome back
-            {user?.displayName ? `, ${user.displayName.split(" ")[0]}` : ""}.
-            Here’s what’s happening on your map.
-          </p>
+          <p>Your community, at a glance.</p>
         </div>
         <div className="dashboard-heading-actions">
           <span className="date-label">

@@ -7,7 +7,7 @@ test("overview uses API totals and links to the review queue", async ({
   await mockAdmin(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Workspace overview." }),
+    page.getByRole("heading", { name: "Welcome back, Amina." }),
   ).toBeVisible();
   await expect(page.locator(".overview-metric").nth(1)).toContainText("17");
   await expect(page.locator(".category-row").first()).toContainText("68");
