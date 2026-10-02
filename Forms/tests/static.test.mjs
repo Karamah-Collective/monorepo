@@ -6,7 +6,7 @@ test("built public shell keeps respondent and administration boundaries separate
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
   const script = await readFile(new URL("../dist/app.js", import.meta.url), "utf8");
   assert.match(html, /<span>Karamah Collective<\/span><small>Forms<\/small>/);
-  assert.match(html, /data-auth-eyebrow>SIGN IN/);
+  assert.match(html, /data-auth-title>Sign in/);
   assert.match(html, /data-provider="facebook"/);
   assert.match(html, /data-email-mode="signup"/);
   assert.match(html, /data-reset-password/);

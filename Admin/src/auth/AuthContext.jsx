@@ -9,7 +9,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { auth, ADMIN_EMAIL_DOMAIN, googleProvider } from "../firebase.js";
-import { apiGet, logAuthEvent } from "../api/client.js";
+import { apiGet, apiPost, logAuthEvent } from "../api/client.js";
 
 const AuthContext = createContext(null);
 
@@ -73,8 +73,16 @@ export function AuthProvider({ children }) {
     await auth.currentUser.reload();
     setUser({ ...auth.currentUser });
   }
+  async function updateDisplayName(displayName) {
+    if (!auth.currentUser) throw new Error("Not signed in");
+    const value = displayName.trim();
+    await apiPost("save-my-profile", { displayName: value });
+    await updateProfile(auth.currentUser, { displayName: value });
+    setUser({ ...auth.currentUser });
+    setAccess(current => current ? { ...current, displayName: value } : current);
+  }
 
-  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, isAllowedEmail };
+  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, updateDisplayName, isAllowedEmail };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

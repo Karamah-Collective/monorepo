@@ -87,19 +87,20 @@ async function authenticateAdmin(request, env) {
 const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*"], moderator:["moderation.*"], viewer:["dashboard.view","activity.view"] };
 function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
 async function resolveAccess(db, actor) {
-  if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"] };
-  const row=await db.prepare("SELECT m.role_id, r.name, r.permissions FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
-  if (row) return { roleId:row.role_id, roleName:row.name, permissions:parsePermissions(row.permissions, ROLE_PERMISSIONS[row.role_id]||[]) };
+  const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
+  if (row) return { roleId:row.role_id, roleName:row.name, permissions:parsePermissions(row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:row.display_name || "" };
+  if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:"" };
   const setting=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first();
   const roleId=setting?.default_role_id||"viewer";
   const role=await db.prepare("SELECT name,permissions FROM admin_roles WHERE id=?").bind(roleId).first();
   if (!role) return null;
   await db.prepare("INSERT OR IGNORE INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?, 'automatic default role',datetime('now'))").bind(actor.email,roleId,actor.name||"").run();
-  return { roleId, roleName:role.name, permissions:parsePermissions(role.permissions,ROLE_PERMISSIONS[roleId]||[]) };
+  return { roleId, roleName:role.name, permissions:parsePermissions(role.permissions,ROLE_PERMISSIONS[roleId]||[]), displayName:actor.name || "" };
 }
 function allows(access, permission) { return access?.permissions.includes("*") || access?.permissions.includes(permission) || access?.permissions.includes(`${permission.split(".")[0]}.*`); }
 function permissionForAction(action) {
   if (action === "log-auth-event") return "activity.view";
+  if (action === "save-my-profile") return "dashboard.view";
   if (["access-roles","access-members","access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (action === "admin-stats" || action === "admin-access") return "dashboard.view";
   if (action === "admin-log") return "activity.view";
@@ -120,7 +121,7 @@ function permissionForAction(action) {
 async function authenticateAuthorized(request, env, action) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
   const access=await resolveAccess(env.DB, auth.actor);
-  return access && allows(access,permissionForAction(action)) ? { ...auth, access } : { ok:false,status:403,error:"Your role does not allow this action." };
+  return access && allows(access,permissionForAction(action)) ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
 }
 async function getAccess(db, actor) { return { access:(await resolveAccess(db,actor))||{roleId:"",roleName:"No role",permissions:[]} }; }
 async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,name,description,permissions,is_preset FROM admin_roles ORDER BY is_preset DESC,name").all(); return {roles:results.map(r=>({id:r.id,name:r.name,description:r.description,permissions:parsePermissions(r.permissions),isPreset:!!r.is_preset}))}; }
@@ -128,7 +129,8 @@ async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
 async function saveAccessSettings(db,data) { const roleId=String(data.defaultRoleId||""); if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid default role."};await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();return {success:true}; }
 async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(dashboard\.view|activity\.view|maps\.(places|events|eid|social|styles|settings)|moderation\.(places|events|reviews|wishes|contacts)|website\.(content|team|subscribers)|links\.manage|forms\.manage)$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
-async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=String(data.member?.displayName||"").trim().slice(0,120); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now')) ON CONFLICT(email) DO UPDATE SET role_id=excluded.role_id,display_name=excluded.display_name,added_by=excluded.added_by,updated_at=excluded.updated_at").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
+async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=String(data.member?.displayName||"").trim().slice(0,120); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};const existing=await db.prepare("SELECT email FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).first();if(existing)await db.prepare("UPDATE admin_role_members SET role_id=?,added_by=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,actor.email,email).run();else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now'))").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
+async function saveMyProfile(db,data,actor) { const displayName=String(data.displayName||"").trim().slice(0,120); if(!displayName)return {error:"Enter a display name."};await resolveAccess(db,actor);await db.prepare("UPDATE admin_role_members SET display_name=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(displayName,actor.email).run();return {success:true,displayName}; }
 async function deleteAccessMember(db,data) { const email=String(data.email||"").trim().toLowerCase();if(email===INITIAL_ADMIN_EMAIL)return {error:"The initial administrator cannot be removed."};await db.prepare("DELETE FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).run();return {success:true}; }
 
 // ── Audit log ────────────────────────────────────────────────────────────
@@ -1109,6 +1111,7 @@ async function rejectEid(db, rowId) {
 const POST_ACTIONS = {
   "save-access-role": (db, data) => saveAccessRole(db, data),
   "save-access-member": (db, data, _env, actor) => saveAccessMember(db, data, actor),
+  "save-my-profile": (db, data, _env, actor) => saveMyProfile(db, data, actor),
   "save-access-settings": (db, data) => saveAccessSettings(db, data),
   "delete-access-member": (db, data) => deleteAccessMember(db, data),
   "forms-create": (db, data, _env, actor) => createForm(db, data, actor),

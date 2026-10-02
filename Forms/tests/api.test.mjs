@@ -9,7 +9,7 @@ import { createFormSchema } from '../../shared/forms-domain.mjs';
 function context({versionId='v1',existing=null,status='published',limit=null,count=0,fail=false,changes=1,answers={}}={}) {
   const schema=createFormSchema('API test');schema.sections[0].blocks=[];schema.settings.responseLimit=limit;
   let batches=0;
-  return {get batches(){return batches;},request:new Request('https://forms.test/api/form?slug=test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({versionId,answers,idempotencyKey:'retry_key_123456'})}),env:{DB:{
+  return {get batches(){return batches;},request:new Request('http://localhost/api/form?slug=test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({versionId,answers,idempotencyKey:'retry_key_123456'})}),env:{DEV_SKIP_TURNSTILE:'true',DB:{
     prepare(sql){return {bind(){return this;},async first(){
       if(fail) throw new Error('database unavailable');
       if(sql.includes('FROM forms f')) return {id:'form',active_version_id:'v1',status,schema_json:JSON.stringify(schema)};

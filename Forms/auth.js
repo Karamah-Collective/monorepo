@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, FacebookAuthProvider, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, onAuthStateChanged, signOut, linkWithCredential } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-const firebase = initializeApp({ apiKey: "AIzaSyA8eOK1dL3hzz6cbQ2C73S4K4IQv9foMGU", authDomain: "halal-map-karamah.firebaseapp.com", projectId: "halal-map-karamah", appId: "1:372947925614:web:e4f700b0512e1aa25bc47f" });
+const firebase = initializeApp({ apiKey: "AIzaSyA8eOK1dL3hzz6cbQ2C73S4K4IQv9foMGU", authDomain: "auth.karamahcollective.com", projectId: "halal-map-karamah", appId: "1:372947925614:web:e4f700b0512e1aa25bc47f" });
 const auth = getAuth(firebase), google = new GoogleAuthProvider(), facebook = new FacebookAuthProvider(), microsoft = new OAuthProvider("microsoft.com");
 microsoft.addScope("User.Read");
 facebook.addScope("public_profile");

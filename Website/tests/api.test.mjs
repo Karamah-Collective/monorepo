@@ -21,6 +21,7 @@ function createTestDb(state = {}) {
           return { results: [] };
         },
         async first() {
+          if (sql.includes('FROM admin_role_members')) return { permissions: '["website.*"]' };
           if (sql.includes('SELECT content, revision')) return { content: JSON.stringify(state.content), revision: state.revision };
           if (sql.includes('SELECT revision FROM website_content')) return { revision: state.revision };
           return null;

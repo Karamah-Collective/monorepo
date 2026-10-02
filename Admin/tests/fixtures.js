@@ -216,7 +216,7 @@ export async function mockAdmin(page, overrides = {}, signedIn = true, clientErr
       contentType: "text/javascript",
       body: `
     export const AuthProvider = ({children}) => children;
-    export const useAuth = () => ({ user: ${signedIn ? JSON.stringify({ displayName: "Amina Hassan", email: "amina@example.test", emailVerified: true }) : "null"}, loading: false, signOut: async () => {}, signIn: async () => {}, signUp: async () => {} });
+    export const useAuth = () => ({ user: ${signedIn ? JSON.stringify({ displayName: "Amina Hassan", email: "amina@example.test", emailVerified: true }) : "null"}, loading: false, access: ${signedIn ? JSON.stringify({ roleId: "administrator", roleName: "Administrator", permissions: ["*"] }) : "null"}, signOut: async () => {}, signIn: async () => {}, signUp: async () => {} });
   `,
     }),
   );
