@@ -79,6 +79,27 @@ Folder capitalization matters on Cloudflare's Linux builders. Use `Admin`, not `
 
 `Maps/wrangler.toml` is intentionally for local development. It has no `pages_build_output_dir`, so this migration does not replace your dashboard's production bindings. Do not add that option casually: it makes the Wrangler file the deployment configuration source of truth. See [Pages Wrangler configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
 
+### Maps: weekly digest email
+
+The weekly Manarah digest now lives in this monorepo:
+
+- The scheduled caller is `.github/workflows/weekly-analytics-report.yml`.
+- The protected endpoint is `Maps/functions/api/weekly-report.js`, deployed at `/api/weekly-report` on the Maps Pages project.
+- By default, the email is sent from `maps@karamahcollective.com` to `home@karamahcollective.com` through Brevo.
+
+Copy the old `REPORT_SECRET` value into both places:
+
+| Location | Name | Notes |
+| --- | --- | --- |
+| GitHub repository secret | `REPORT_SECRET` | Used by the weekly workflow when it calls the endpoint |
+| Maps Pages secret | `REPORT_SECRET` | Used by the endpoint to authenticate the workflow request |
+| GitHub repository variable | `REPORT_URL` | Optional; defaults to `https://maps.karamahcollective.com/api/weekly-report` |
+| Maps Pages secret | `BREVO_API_KEY` | Existing Brevo transactional HTTP API key |
+| Maps Pages secret | `CLOUDFLARE_ANALYTICS_TOKEN` | Cloudflare GraphQL Analytics token |
+| Maps Pages variable | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID used by analytics queries |
+
+Optional Maps Pages variables are `REPORT_FROM`, `REPORT_FROM_NAME`, and `REPORT_TO`; leave them unset to match the old digest sender/recipient. After adding or rotating secrets, run the workflow manually with `dry_run=true`, then run it again with `dry_run=false` to send a real test digest. Disable the old halal-maps repository schedule once the monorepo workflow succeeds so the team does not receive duplicate weekly emails.
+
 ### Admin: update the folder too
 
 Apply the Admin column to its existing Pages project. Use `admin.karamahcollective.com` for the admin dashboard and keep the existing Firebase project. Production defaults already call the existing Maps and Website domains.

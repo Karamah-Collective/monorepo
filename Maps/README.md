@@ -656,6 +656,12 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 | `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for protected form writes) |
 | `ADMIN_SECRET` | Shared secret for the D1-backed admin API |
 | `BREVO_API_KEY` | Brevo transactional email API key for contact-form alerts |
+| `REPORT_SECRET` | Shared secret for the GitHub Actions weekly digest trigger |
+| `CLOUDFLARE_ANALYTICS_TOKEN` | Cloudflare GraphQL Analytics token for weekly digest metrics |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID for weekly digest metrics |
+| `REPORT_FROM` | Optional weekly digest sender; defaults to `maps@karamahcollective.com` |
+| `REPORT_FROM_NAME` | Optional weekly digest sender name; defaults to `Manarah Maps` |
+| `REPORT_TO` | Optional weekly digest recipients; defaults to `home@karamahcollective.com` |
 | `DEV_SKIP_RECAPTCHA` | Local-only flag for testing the contact form on localhost |
 
 Set these in the Cloudflare Pages dashboard under Settings → Environment Variables.
@@ -921,6 +927,9 @@ RECAPTCHA_SITE_KEY
 RECAPTCHA_SECRET
 ADMIN_SECRET
 BREVO_API_KEY
+REPORT_SECRET
+CLOUDFLARE_ANALYTICS_TOKEN
+CLOUDFLARE_ACCOUNT_ID
 ```
 
 ### Deployment Checklist
