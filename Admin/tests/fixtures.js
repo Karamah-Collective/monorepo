@@ -41,6 +41,13 @@ export const responses = {
   "forms-submissions": { submissions: [] },
   "forms-analytics": { total: 0, trend: [], questions: [] },
   "admin-stats": stats,
+  "weekly-report-subscribers": {
+    settings: { enabled: true, reportMode: "enabled", frequency: "weekly", dayOfWeek: 6, dayOfMonth: 1, sendTime: "09:00", timezone: "Europe/Helsinki", subjectPrefix: "Manarah weekly report", visualDensity: "standard", accentColor: "#08705b", includeAnalytics: true, includeCommunity: true, includeQueues: true, includeCountries: true, includeContributions: true, lastSentAt: "" },
+    subscribers: [
+      { id: "report-home", email: "home@karamahcollective.com", displayName: "Home", status: "subscribed", createdAt: "2026-10-03 13:00:00", updatedAt: "2026-10-03 13:00:00", unsubscribedAt: "" },
+      { id: "report-archive", email: "archive@example.test", displayName: "Archive", status: "unsubscribed", createdAt: "2026-10-01 13:00:00", updatedAt: "2026-10-02 13:00:00", unsubscribedAt: "2026-10-02 13:00:00" },
+    ],
+  },
   "admin-places": places,
   "admin-log": {
     entries: [
@@ -242,7 +249,7 @@ export async function mockAdmin(page, overrides = {}, signedIn = true, clientErr
     const responses = ${JSON.stringify({ ...responses, ...overrides })};
     export async function apiGet(action) { ${clientError ? `throw new Error(${JSON.stringify(clientError)});` : ""} return responses[action] ?? []; }
     export async function apiGetBlob() { return new Blob(); }
-    export async function apiPost(action, body) { window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; if (action === 'forms-create') return {success:true,id:'form-1',slug:'community-rsvp',shareCode:'0123456789abcdef0123456789abcdef',revision:0}; if (action === 'forms-save') return {success:true,revision:(body.revision||0)+1,slug:body.slug}; if (action === 'forms-publish') return {success:true,versionNumber:2}; return {success:true}; }
+    export async function apiPost(action, body) { window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; if (action === 'save-weekly-report-subscriber') return {success:true,id:'report-new'}; if (action === 'save-weekly-report-settings') return {success:true,settings:body.settings}; if (action === 'forms-create') return {success:true,id:'form-1',slug:'community-rsvp',shareCode:'0123456789abcdef0123456789abcdef',revision:0}; if (action === 'forms-save') return {success:true,revision:(body.revision||0)+1,slug:body.slug}; if (action === 'forms-publish') return {success:true,versionNumber:2}; return {success:true}; }
     export async function logAuthEvent() {}
   `,
     }),

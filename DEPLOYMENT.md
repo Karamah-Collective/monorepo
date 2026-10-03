@@ -85,7 +85,10 @@ The weekly Manarah digest now lives in this monorepo:
 
 - The scheduled caller is `.github/workflows/weekly-analytics-report.yml`.
 - The protected endpoint is `Maps/functions/api/weekly-report.js`, deployed at `/api/weekly-report` on the Maps Pages project.
-- By default, the email is sent from `maps@karamahcollective.com` to `home@karamahcollective.com` through Brevo.
+- Recipients are managed from Admin → Workspace → Weekly report. Each recipient receives an individual email with an unsubscribe link.
+- If the D1 recipient table has not been migrated yet, the endpoint falls back to `REPORT_TO`, which defaults to `home@karamahcollective.com`. Once the table exists, the subscribed rows are authoritative.
+
+Apply `Maps/migrations/0027_weekly_report_subscribers.sql` to both the production and Preview D1 databases used by Maps before relying on the Admin recipient manager. The migration seeds `home@karamahcollective.com` as subscribed and grants `reports.manage` to the built-in Content editor role. Administrators can also manage report recipients because they have full workspace access.
 
 Copy the old `REPORT_SECRET` value into both places:
 

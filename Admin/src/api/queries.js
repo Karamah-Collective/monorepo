@@ -19,6 +19,7 @@ export const useAdminSocialVideos = () =>
   useQuery({ queryKey: ["admin-social-videos"], queryFn: () => apiGet("admin-social-videos") });
 export const useAdminTypeStyles = () => useQuery({ queryKey: ["admin-type-styles"], queryFn: () => apiGet("admin-type-styles") });
 export const useAdminAppSettings = () => useQuery({ queryKey: ["admin-app-settings"], queryFn: () => apiGet("admin-app-settings") });
+export const useWeeklyReportSubscribers = () => useQuery({ queryKey: ["weekly-report-subscribers"], queryFn: () => apiGet("weekly-report-subscribers") });
 
 // ── Mutations — every one invalidates the queries it can affect, so a
 // pending row disappearing / stats changing shows up immediately without
@@ -66,3 +67,7 @@ export const useUpsertSocialVideo = () => useAdminMutation("upsert-social-video"
 export const useDeleteSocialVideo = () => useAdminMutation("delete-social-video", ["admin-social-videos"]);
 export const useUpdateTypeStyle = () => useAdminMutation("update-type-style", ["admin-type-styles"]);
 export const useUpdateAppSettings = () => useAdminMutation("update-app-settings", ["admin-app-settings"]);
+export const useSaveWeeklyReportSubscriber = () => useAdminMutation("save-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useSaveWeeklyReportSettings = () => useAdminMutation("save-weekly-report-settings", ["weekly-report-subscribers"]);
+export const useUnsubscribeWeeklyReportSubscriber = () => useAdminMutation("unsubscribe-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useDeleteWeeklyReportSubscriber = () => useAdminMutation("delete-weekly-report-subscriber", ["weekly-report-subscribers"]);

@@ -2,9 +2,8 @@ name: Weekly analytics report
 
 on:
   schedule:
-    # GitHub cron is UTC. This runs Saturday morning in Finland:
-    # 09:00 during summer time (EEST), 08:00 during winter time (EET).
-    - cron: "0 6 * * SAT"
+    # The endpoint decides whether a report is due based on Admin settings.
+    - cron: "6 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,8 +24,12 @@ jobs:
           set -euo pipefail
           url="${REPORT_URL:-https://maps.karamahcollective.com/api/weekly-report}"
           payload='{}'
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
-            payload='{"dryRun":true}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              payload='{"dryRun":true,"force":true}'
+            else
+              payload='{"manual":true}'
+            fi
           fi
           curl --fail-with-body --show-error --silent \
             --request POST "$url" \

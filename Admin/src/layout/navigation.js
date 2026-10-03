@@ -135,6 +135,12 @@ export const NAV_GROUPS = [
         icon: "settings",
         description: "Set your sidebar, table, and motion preferences for this browser.",
       },
+      {
+        to: "/workspace/weekly-report",
+        label: "Weekly report",
+        icon: "mail",
+        description: "Manage who receives the Manarah analytics digest.",
+      },
       { to: "/workspace/access", label: "Roles & access", icon: "shield", permission: "dashboard.view", description: "Manage your profile and workspace roles." },
     ],
   },

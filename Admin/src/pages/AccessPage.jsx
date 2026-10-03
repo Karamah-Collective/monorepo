@@ -6,7 +6,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { can } from "../auth/permissions.js";
 
 const permissionGroups = [
-  ["Workspace", [["dashboard.view", "Dashboard"], ["activity.view", "Activity log"]]],
+  ["Workspace", [["dashboard.view", "Dashboard"], ["activity.view", "Activity log"], ["reports.manage", "Weekly report"]]],
   ["Maps", [["maps.places", "Places"], ["maps.events", "Events"], ["maps.eid", "Eid prayers"], ["maps.social", "Social videos"], ["maps.styles", "Map appearance"], ["maps.settings", "Map settings"]]],
   ["Moderation", [["moderation.places", "Place submissions"], ["moderation.events", "Event edits"], ["moderation.reviews", "Reviews & reviewer access"], ["moderation.wishes", "Wishes"], ["moderation.contacts", "Inbox"]]],
   ["Publishing", [["website.content", "Website content"], ["website.team", "Team directory"], ["website.subscribers", "Update signups"], ["links.manage", "Link hub"], ["forms.manage", "Forms"]]],
@@ -14,6 +14,7 @@ const permissionGroups = [
 const roleScopeLabels = {
   "dashboard.view": "Dashboard",
   "activity.view": "Activity log",
+  "reports.manage": "Weekly report",
   "maps.*": "Map management",
   "moderation.*": "Moderation",
   "website.*": "Website content",

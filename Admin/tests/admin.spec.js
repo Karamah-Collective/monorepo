@@ -195,6 +195,7 @@ for (const width of [360, 390, 834, 1440])
       "/social-videos",
       "/type-styles",
       "/app-settings",
+      "/workspace/weekly-report",
       "/log",
     ]) {
       await page.goto(route);

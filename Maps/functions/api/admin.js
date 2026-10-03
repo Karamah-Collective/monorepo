@@ -84,7 +84,7 @@ async function authenticateAdmin(request, env) {
   return { ok: true, actor: { uid: verified.uid, email: verified.email.toLowerCase(), name: verified.name || "" } };
 }
 
-const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*"], moderator:["moderation.*"], viewer:["dashboard.view","activity.view"] };
+const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.manage"], moderator:["moderation.*"], viewer:["dashboard.view","activity.view"] };
 function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
 function firstName(value, email="") { const source=String(value||"").trim()||String(email||"").split("@")[0].replace(/[._-]+/g," "); const name=source.split(/\s+/)[0]||""; return name ? name[0].toUpperCase()+name.slice(1,40) : ""; }
 async function resolveAccess(db, actor) {
@@ -105,6 +105,7 @@ function permissionForAction(action) {
   if (["access-roles","access-members","access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (action === "admin-stats" || action === "admin-access") return "dashboard.view";
   if (action === "admin-log") return "activity.view";
+  if (action.includes("weekly-report")) return "reports.manage";
   if (action.startsWith("forms-")) return "forms.manage";
   if (action.includes("link-hub")) return "links.manage";
   if (["admin-contact","update-contact-replied"].includes(action)) return "moderation.contacts";
@@ -134,14 +135,126 @@ async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
 async function saveAccessSettings(db,data) { const roleId=String(data.defaultRoleId||""); if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid default role."};await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();return {success:true}; }
-async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(dashboard\.view|activity\.view|maps\.(places|events|eid|social|styles|settings)|moderation\.(places|events|reviews|wishes|contacts)|website\.(content|team|subscribers)|links\.manage|forms\.manage)$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
+async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(dashboard\.view|activity\.view|reports\.manage|maps\.(places|events|eid|social|styles|settings)|moderation\.(places|events|reviews|wishes|contacts)|website\.(content|team|subscribers)|links\.manage|forms\.manage)$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
 async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=firstName(data.member?.displayName,email); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};const existing=await db.prepare("SELECT email FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).first();if(existing)await db.prepare("UPDATE admin_role_members SET role_id=?,added_by=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,actor.email,email).run();else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now'))").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
 async function saveMyProfile(db,data,actor) { const displayName=firstName(data.displayName,actor.email);await resolveAccess(db,actor);await db.prepare("UPDATE admin_role_members SET display_name=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(displayName,actor.email).run();return {success:true,displayName}; }
 async function deleteAccessMember(db,data) { const email=String(data.email||"").trim().toLowerCase();if(email===INITIAL_ADMIN_EMAIL)return {error:"The initial administrator cannot be removed."};await db.prepare("DELETE FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).run();return {success:true}; }
 
+function randomToken(bytes = 24) { const values = new Uint8Array(bytes); crypto.getRandomValues(values); return [...values].map(value => value.toString(16).padStart(2, "0")).join(""); }
+function normalizeReportEmail(value) { return String(value || "").trim().toLowerCase(); }
+function normalizeReportName(value, email) { return String(value || "").trim().slice(0, 80) || firstName("", email); }
+const REPORT_TIMEZONES = new Set(["Europe/Helsinki", "UTC"]);
+const REPORT_FREQUENCIES = new Set(["weekly", "biweekly", "monthly"]);
+const REPORT_DENSITIES = new Set(["standard", "compact"]);
+const REPORT_MODES = new Set(["enabled", "disabled", "test"]);
+function reportBool(value, fallback = true) { return value === undefined || value === null ? fallback : value ? true : false; }
+function reportSettingsFromRow(row = {}) {
+  const legacyMode = row.enabled === undefined || row.enabled ? "enabled" : "disabled";
+  const reportMode = REPORT_MODES.has(row.report_mode || row.reportMode) ? (row.report_mode || row.reportMode) : legacyMode;
+  return {
+    enabled: reportMode === "enabled",
+    reportMode,
+    frequency: REPORT_FREQUENCIES.has(row.frequency) ? row.frequency : "weekly",
+    dayOfWeek: Math.max(0, Math.min(6, Number(row.day_of_week ?? 6))),
+    dayOfMonth: Math.max(1, Math.min(31, Number(row.day_of_month ?? 1))),
+    sendTime: /^\d{2}:\d{2}$/.test(row.send_time || "") ? row.send_time : "09:00",
+    timezone: REPORT_TIMEZONES.has(row.timezone) ? row.timezone : "Europe/Helsinki",
+    subjectPrefix: String(row.subject_prefix || "Manarah weekly report").slice(0, 120),
+    visualDensity: REPORT_DENSITIES.has(row.visual_density) ? row.visual_density : "standard",
+    accentColor: /^#[0-9a-f]{6}$/i.test(row.accent_color || "") ? row.accent_color : "#08705b",
+    includeAnalytics: row.include_analytics === undefined ? true : !!row.include_analytics,
+    includeCommunity: row.include_community === undefined ? true : !!row.include_community,
+    includeQueues: row.include_queues === undefined ? true : !!row.include_queues,
+    includeCountries: row.include_countries === undefined ? true : !!row.include_countries,
+    includeContributions: row.include_contributions === undefined ? true : !!row.include_contributions,
+    lastSentAt: row.last_sent_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+async function getWeeklyReportSettings(db) {
+  try {
+    const row = await db.prepare("SELECT * FROM weekly_report_settings WHERE id=1").first();
+    return reportSettingsFromRow(row || {});
+  } catch {
+    return reportSettingsFromRow({});
+  }
+}
+async function getWeeklyReportSubscribers(db) {
+  const settings = await getWeeklyReportSettings(db);
+  try {
+    const { results } = await db.prepare("SELECT id,email,display_name,status,created_at,updated_at,unsubscribed_at FROM weekly_report_subscribers ORDER BY status,email").all();
+    return { settings, subscribers: results.map(row => ({ id: row.id, email: row.email, displayName: row.display_name || "", status: row.status, createdAt: row.created_at, updatedAt: row.updated_at, unsubscribedAt: row.unsubscribed_at || "" })) };
+  } catch {
+    return { settings, subscribers: [], setupRequired: true };
+  }
+}
+async function saveWeeklyReportSettings(db, data) {
+  const source = data.settings || {};
+  const reportMode = REPORT_MODES.has(source.reportMode) ? source.reportMode : (reportBool(source.enabled, true) ? "enabled" : "disabled");
+  const settings = reportSettingsFromRow({
+    enabled: reportMode === "enabled" ? 1 : 0,
+    report_mode: reportMode,
+    frequency: String(source.frequency || "weekly"),
+    day_of_week: Number(source.dayOfWeek ?? 6),
+    day_of_month: Number(source.dayOfMonth ?? 1),
+    send_time: String(source.sendTime || "09:00"),
+    timezone: String(source.timezone || "Europe/Helsinki"),
+    subject_prefix: String(source.subjectPrefix || "Manarah weekly report"),
+    visual_density: String(source.visualDensity || "standard"),
+    accent_color: String(source.accentColor || "#08705b"),
+    include_analytics: reportBool(source.includeAnalytics, true) ? 1 : 0,
+    include_community: reportBool(source.includeCommunity, true) ? 1 : 0,
+    include_queues: reportBool(source.includeQueues, true) ? 1 : 0,
+    include_countries: reportBool(source.includeCountries, true) ? 1 : 0,
+    include_contributions: reportBool(source.includeContributions, true) ? 1 : 0,
+  });
+  await db.prepare(`INSERT INTO weekly_report_settings (
+    id,enabled,report_mode,frequency,day_of_week,day_of_month,send_time,timezone,subject_prefix,visual_density,accent_color,
+    include_analytics,include_community,include_queues,include_countries,include_contributions,updated_at
+  ) VALUES (1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+  ON CONFLICT(id) DO UPDATE SET
+    enabled=excluded.enabled,report_mode=excluded.report_mode,frequency=excluded.frequency,day_of_week=excluded.day_of_week,day_of_month=excluded.day_of_month,
+    send_time=excluded.send_time,timezone=excluded.timezone,subject_prefix=excluded.subject_prefix,visual_density=excluded.visual_density,
+    accent_color=excluded.accent_color,include_analytics=excluded.include_analytics,include_community=excluded.include_community,
+    include_queues=excluded.include_queues,include_countries=excluded.include_countries,include_contributions=excluded.include_contributions,
+    updated_at=excluded.updated_at`).bind(
+    settings.reportMode === "enabled" ? 1 : 0, settings.reportMode, settings.frequency, settings.dayOfWeek, settings.dayOfMonth, settings.sendTime, settings.timezone,
+    settings.subjectPrefix, settings.visualDensity, settings.accentColor, settings.includeAnalytics ? 1 : 0, settings.includeCommunity ? 1 : 0,
+    settings.includeQueues ? 1 : 0, settings.includeCountries ? 1 : 0, settings.includeContributions ? 1 : 0
+  ).run();
+  return { success: true, settings: await getWeeklyReportSettings(db) };
+}
+async function saveWeeklyReportSubscriber(db, data, actor) {
+  const email = normalizeReportEmail(data.subscriber?.email || data.email);
+  if (!/^[^\s@]+@karamahcollective\.com$/i.test(email)) return { error: "Use a @karamahcollective.com email address." };
+  const displayName = normalizeReportName(data.subscriber?.displayName || data.displayName, email);
+  const existing = await db.prepare("SELECT id FROM weekly_report_subscribers WHERE lower(email)=lower(?)").bind(email).first();
+  if (existing) {
+    await db.prepare("UPDATE weekly_report_subscribers SET display_name=?,status='subscribed',unsubscribed_at=NULL,updated_at=datetime('now') WHERE id=?").bind(displayName, existing.id).run();
+    return { success: true, id: existing.id };
+  }
+  const id = randomToken(16);
+  await db.prepare("INSERT INTO weekly_report_subscribers (id,email,display_name,status,unsubscribe_token,added_by,updated_at) VALUES (?,?,?,?,?,?,datetime('now'))").bind(id, email, displayName, "subscribed", randomToken(24), actor.email).run();
+  return { success: true, id };
+}
+async function unsubscribeWeeklyReportSubscriber(db, data) {
+  const email = normalizeReportEmail(data.email);
+  const id = String(data.id || "").trim();
+  if (!email && !id) return { error: "Choose a recipient to unsubscribe." };
+  const query = id ? "UPDATE weekly_report_subscribers SET status='unsubscribed',unsubscribed_at=datetime('now'),updated_at=datetime('now') WHERE id=?" : "UPDATE weekly_report_subscribers SET status='unsubscribed',unsubscribed_at=datetime('now'),updated_at=datetime('now') WHERE lower(email)=lower(?)";
+  const { meta } = await db.prepare(query).bind(id || email).run();
+  return meta.rows_written > 0 ? { success: true } : { error: "Recipient not found." };
+}
+async function deleteWeeklyReportSubscriber(db, data) {
+  const id = String(data.id || "").trim();
+  if (!id) return { error: "Choose a recipient to remove." };
+  await db.prepare("DELETE FROM weekly_report_subscribers WHERE id=?").bind(id).run();
+  return { success: true };
+}
+
 // ── Audit log ────────────────────────────────────────────────────────────
 
-const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "imageId", "rowIndex", "videoId", "id"];
+const TARGET_ID_FIELDS = ["rowId", "placeId", "eventId", "wishId", "imageId", "rowIndex", "videoId", "id", "email"];
 function extractTargetId(data) {
   for (const f of TARGET_ID_FIELDS) {
     if (data[f] !== undefined && data[f] !== null && data[f] !== "") return String(data[f]);
@@ -483,6 +596,7 @@ const GET_ACTIONS = {
   "admin-log": (db, url) => getAdminLog(db, url),
   "admin-social-videos": (db) => listAllSocialVideos(db),
   "admin-type-styles": (db) => getAdminTypeStyles(db),
+  "weekly-report-subscribers": (db) => getWeeklyReportSubscribers(db),
 };
 
 export async function onRequestGet(context) {
@@ -502,7 +616,11 @@ export async function onRequestGet(context) {
   try {
     if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
     return json(await handler(env.DB, url, auth.actor), 200, headers);
-  } catch {
+  } catch (err) {
+    const message = String(err?.message || err || "");
+    if (message.includes("weekly_report_")) {
+      return json({ error: "Run the weekly report migration before opening this page." }, 500, headers);
+    }
     return json({ error: "Service error" }, 502, headers);
   }
 }
@@ -1123,6 +1241,10 @@ const POST_ACTIONS = {
   "save-link-hub-settings": (db, data) => saveLinkHubSettings(db, data),
   "save-link-hub-link": (db, data) => saveLinkHubLink(db, data),
   "delete-link-hub-link": (db, data) => deleteLinkHubLink(db, data),
+  "save-weekly-report-settings": (db, data) => saveWeeklyReportSettings(db, data),
+  "save-weekly-report-subscriber": (db, data, _env, actor) => saveWeeklyReportSubscriber(db, data, actor),
+  "unsubscribe-weekly-report-subscriber": (db, data) => unsubscribeWeeklyReportSubscriber(db, data),
+  "delete-weekly-report-subscriber": (db, data) => deleteWeeklyReportSubscriber(db, data),
   "update-app-settings": (db, data) => saveAppSettings(db, data),
   "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
   "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),
@@ -1179,7 +1301,11 @@ export async function onRequestPost(context) {
   let result;
   try {
     result = await handler(env.DB, data, env, auth.actor);
-  } catch {
+  } catch (err) {
+    const message = String(err?.message || err || "");
+    if (message.includes("weekly_report_")) {
+      return json({ error: "Run the weekly report migration before saving these settings." }, 500, headers);
+    }
     return json({ error: "Service error" }, 502, headers);
   }
 

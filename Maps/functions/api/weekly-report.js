@@ -59,6 +59,137 @@ function escapeHtml(value) {
   }[ch]));
 }
 
+function mapsOriginFromRequest(request, env) {
+  return clean(env.MAPS_ORIGIN || env.REPORT_ORIGIN) || new URL(request.url).origin;
+}
+
+function fallbackRecipients(env) {
+  return (clean(env.REPORT_TO) || DEFAULT_TO)
+    .split(",")
+    .map((emailAddress) => clean(emailAddress).toLowerCase())
+    .filter(Boolean)
+    .map((emailAddress) => ({ email: emailAddress, displayName: "", unsubscribeToken: "" }));
+}
+
+async function reportRecipients(env) {
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT email, display_name, unsubscribe_token FROM weekly_report_subscribers WHERE status='subscribed' ORDER BY lower(email)"
+    ).all();
+    return results.map((row) => ({
+      email: clean(row.email).toLowerCase(),
+      displayName: clean(row.display_name),
+      unsubscribeToken: clean(row.unsubscribe_token),
+    })).filter((row) => row.email);
+  } catch {
+    return fallbackRecipients(env);
+  }
+}
+
+function unsubscribeUrl(origin, recipient) {
+  if (!recipient.unsubscribeToken) return "";
+  const url = new URL("/api/weekly-report", origin);
+  url.searchParams.set("unsubscribe", recipient.unsubscribeToken);
+  return url.toString();
+}
+
+const DEFAULT_REPORT_SETTINGS = {
+  enabled: true,
+  reportMode: "enabled",
+  frequency: "weekly",
+  dayOfWeek: 6,
+  dayOfMonth: 1,
+  sendTime: "09:00",
+  timezone: "Europe/Helsinki",
+  subjectPrefix: "Manarah weekly report",
+  visualDensity: "standard",
+  accentColor: "#08705b",
+  includeAnalytics: true,
+  includeCommunity: true,
+  includeQueues: true,
+  includeCountries: true,
+  includeContributions: true,
+  lastSentAt: "",
+};
+
+function boolSetting(value, fallback = true) {
+  return value === undefined || value === null ? fallback : !!value;
+}
+
+function normalizeReportSettings(row = {}) {
+  const rawMode = row.report_mode || row.reportMode;
+  const legacyMode = boolSetting(row.enabled, true) ? "enabled" : "disabled";
+  const reportMode = ["enabled", "disabled", "test"].includes(rawMode) ? rawMode : legacyMode;
+  return {
+    enabled: reportMode === "enabled",
+    reportMode,
+    frequency: ["weekly", "biweekly", "monthly"].includes(row.frequency) ? row.frequency : "weekly",
+    dayOfWeek: Math.max(0, Math.min(6, Number(row.day_of_week ?? row.dayOfWeek ?? 6))),
+    dayOfMonth: Math.max(1, Math.min(31, Number(row.day_of_month ?? row.dayOfMonth ?? 1))),
+    sendTime: /^\d{2}:\d{2}$/.test(row.send_time || row.sendTime || "") ? (row.send_time || row.sendTime) : "09:00",
+    timezone: ["Europe/Helsinki", "UTC"].includes(row.timezone) ? row.timezone : "Europe/Helsinki",
+    subjectPrefix: clean(row.subject_prefix || row.subjectPrefix) || "Manarah weekly report",
+    visualDensity: ["standard", "compact"].includes(row.visual_density || row.visualDensity) ? (row.visual_density || row.visualDensity) : "standard",
+    accentColor: /^#[0-9a-f]{6}$/i.test(row.accent_color || row.accentColor || "") ? (row.accent_color || row.accentColor) : "#08705b",
+    includeAnalytics: boolSetting(row.include_analytics ?? row.includeAnalytics, true),
+    includeCommunity: boolSetting(row.include_community ?? row.includeCommunity, true),
+    includeQueues: boolSetting(row.include_queues ?? row.includeQueues, true),
+    includeCountries: boolSetting(row.include_countries ?? row.includeCountries, true),
+    includeContributions: boolSetting(row.include_contributions ?? row.includeContributions, true),
+    lastSentAt: clean(row.last_sent_at || row.lastSentAt),
+  };
+}
+
+async function reportSettings(env) {
+  try {
+    const row = await env.DB.prepare("SELECT * FROM weekly_report_settings WHERE id=1").first();
+    return normalizeReportSettings(row || {});
+  } catch {
+    return { ...DEFAULT_REPORT_SETTINGS };
+  }
+}
+
+function localParts(date, timezone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+  const weekday = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[parts.weekday] ?? 0;
+  return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day), hour: parts.hour, minute: parts.minute, weekday, dateKey: `${parts.year}-${parts.month}-${parts.day}`, timeKey: `${parts.hour}:${parts.minute}` };
+}
+
+function daysInMonth(parts) {
+  return new Date(Date.UTC(parts.year, parts.month, 0)).getUTCDate();
+}
+
+function weeksSinceEpoch(parts) {
+  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / (7 * DAY_MS));
+}
+
+function dueStatus(settings, now = new Date()) {
+  if (settings.reportMode === "disabled") return { due: false, reason: "Report disabled" };
+  if (settings.reportMode === "test") return { due: false, reason: "Test mode waits for a manual workflow run" };
+  if (!settings.enabled) return { due: false, reason: "Report disabled" };
+  const parts = localParts(now, settings.timezone);
+  let dayMatches = settings.frequency === "monthly"
+    ? parts.day === Math.min(settings.dayOfMonth, daysInMonth(parts))
+    : parts.weekday === settings.dayOfWeek;
+  if (settings.frequency === "biweekly") dayMatches = dayMatches && weeksSinceEpoch(parts) % 2 === 0;
+  if (!dayMatches) return { due: false, reason: "Not the scheduled day", local: parts };
+  if (parts.timeKey < settings.sendTime) return { due: false, reason: "Before scheduled time", local: parts };
+  if (settings.lastSentAt) {
+    const last = localParts(new Date(`${settings.lastSentAt.replace(" ", "T")}Z`), settings.timezone);
+    if (last.dateKey === parts.dateKey) return { due: false, reason: "Already sent for this scheduled day", local: parts, lastSentAt: settings.lastSentAt };
+  }
+  return { due: true, reason: "Due", local: parts };
+}
+
 function makeReportingWindow(now = new Date()) {
   const until = now;
   const since = new Date(until.getTime() - 7 * DAY_MS);
@@ -530,12 +661,12 @@ function pendingSection(community, approved, pending) {
   `;
 }
 
-function buildEmail(report) {
+function buildEmail(report, recipient = {}, origin = DEFAULT_HOSTNAME, settings = DEFAULT_REPORT_SETTINGS) {
   const { windows, analytics, community } = report;
   const { current, previous, baselineAvg } = community;
   const period = `${shortDate(windows.current.since)}-${shortDate(windows.current.until)}, ${windows.current.until.getUTCFullYear()}`;
   const precisePeriod = `${isoDate(windows.current.since)} to ${isoDate(windows.current.until)}`;
-  const subject = `Manarah weekly report: ${period}`;
+  const subject = `${settings.subjectPrefix || "Manarah weekly report"}: ${period}`;
   const currentAnalytics = analytics.current;
   const previousAnalytics = analytics.previous;
   const baselineAnalytics = analytics.baseline;
@@ -566,38 +697,31 @@ function buildEmail(report) {
       `- Unique visitors: ${fmtNumber(visits)} (${signedPct(visits, previousVisits)} vs last week, ${signedPct(visits, baselineVisits)} vs 4-week avg)`,
       ...(currentAnalytics.warning ? [`- Note: ${currentAnalytics.warning}`] : []),
       "",
-      "Top countries",
-      ...linesForItems(currentAnalytics.topCountries, "name"),
-      "",
+      ...(settings.includeCountries ? ["Top countries", ...linesForItems(currentAnalytics.topCountries, "name"), ""] : []),
       `Contribution rate: ${contributionRate}`,
     ]
     : [`- ${currentAnalytics.warning}`];
 
   const communityLines = [
     `- New user accounts: ${fmtNumber(current.newUsers)} (${signedPct(current.newUsers, previous.newUsers)} vs last week)`,
-    `- Contributions: ${fmtNumber(actions)} (${signedPct(actions, previousActions)} vs last week, ${signedPct(actions, averageActions)} vs 4-week avg)`,
+    ...(settings.includeContributions ? [`- Contributions: ${fmtNumber(actions)} (${signedPct(actions, previousActions)} vs last week, ${signedPct(actions, averageActions)} vs 4-week avg)`] : []),
     `- Places submitted: ${fmtNumber(current.submittedPlaces)}`,
     `- Place edits submitted: ${fmtNumber(current.submittedEdits)}`,
     `- Reviews added/updated: ${fmtNumber(current.reviews)}`,
     `- Events/Eid submissions: ${fmtNumber(current.events + current.eventEdits + current.eidSubmissions)}`,
     `- Approvals completed: ${fmtNumber(approved)} (${signedPct(approved, previousApproved)} vs last week)`,
-    "",
-    "Queue now",
-    `- Pending new places: ${fmtNumber(current.pendingNewPlaces)}`,
-    `- Pending place edits: ${fmtNumber(current.pendingPlaceEdits)}`,
-    `- Pending reviews: ${fmtNumber(current.pendingReviews)}`,
+    ...(settings.includeQueues ? ["", "Queue now", `- Pending new places: ${fmtNumber(current.pendingNewPlaces)}`, `- Pending place edits: ${fmtNumber(current.pendingPlaceEdits)}`, `- Pending reviews: ${fmtNumber(current.pendingReviews)}`] : []),
     `- Total live places: ${fmtNumber(current.totalLivePlaces)}`,
   ];
 
+  const unsubscribeLink = unsubscribeUrl(origin, recipient);
   const textContent = [
     "Manarah - Weekly Analytics",
     precisePeriod,
     "",
-    "Website",
-    ...analyticsLines,
-    "",
-    "Community activity",
-    ...communityLines,
+    ...(settings.includeAnalytics ? ["Website", ...analyticsLines, ""] : []),
+    ...(settings.includeCommunity ? ["Community activity", ...communityLines] : []),
+    ...(unsubscribeLink ? ["", `Unsubscribe from this report: ${unsubscribeLink}`] : []),
   ].join("\n");
 
   const comparisonHtml = comparisonRows([
@@ -605,7 +729,7 @@ function buildEmail(report) {
     ["Contributions", actions, averageActions],
     ["Approvals", approved, averageApproved],
   ]);
-  const audiencePanel = currentAnalytics.ok
+  const audiencePanel = currentAnalytics.ok && settings.includeCountries
     ? insightBand(
       "Audience geography",
       "Top countries by unique visitors",
@@ -617,7 +741,7 @@ function buildEmail(report) {
       audienceShareBar(currentAnalytics.topCountries, visits),
     )
     : `<div style="background:#ffffff;border:1px solid #e4e9e6;border-radius:14px;padding:11px;margin-bottom:8px;color:#53605a;font-size:10px;">${escapeHtml(currentAnalytics.warning)}</div>`;
-  const contributionPanel = insightBand(
+  const contributionPanel = settings.includeContributions ? insightBand(
     "Contribution mix",
     `${fmtNumber(contributionPanelActions)} community actions`,
     escapeHtml(contributionRate),
@@ -625,20 +749,22 @@ function buildEmail(report) {
     htmlInlineBars(contributionItems, "label", "count", 4),
     `Baseline conversion ${baselineContributionRate}`,
     contributionDelta,
-  );
+  ) : "";
+  const accent = escapeHtml(settings.accentColor || "#08705b");
+  const maxWidth = settings.visualDensity === "compact" ? 620 : 680;
 
   const htmlContent = `
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     </style>
-    <div style="font-family:'Plus Jakarta Sans','Aptos','Segoe UI',Arial,sans-serif;max-width:680px;margin:0 auto;padding:0;background:transparent;color:#101714;">
+    <div style="font-family:'Plus Jakarta Sans','Aptos','Segoe UI',Arial,sans-serif;max-width:${maxWidth}px;margin:0 auto;padding:0;background:transparent;color:#101714;">
       <div style="background:#ffffff;border:1px solid #d6ddd9;border-radius:20px;overflow:hidden;">
         <div style="padding:16px 18px;border-bottom:1px solid #e4e9e6;">
           <table style="width:100%;border-collapse:collapse;">
             <tr>
               <td style="vertical-align:middle;">
                 <table style="border-collapse:collapse;"><tr>
-                  <td style="width:32px;height:32px;text-align:center;vertical-align:middle;background:#08705b;color:#ffffff;font-size:15px;font-weight:700;border-radius:10px;">H</td>
+                  <td style="width:32px;height:32px;text-align:center;vertical-align:middle;background:${accent};color:#ffffff;font-size:15px;font-weight:700;border-radius:10px;">H</td>
                   <td style="padding-left:9px;">
                     <div style="font-size:15px;line-height:1.15;color:#101714;font-weight:700;">Manarah</div>
                     <div style="margin-top:2px;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#89928d;font-weight:700;">Weekly analytics</div>
@@ -657,7 +783,7 @@ function buildEmail(report) {
           <table style="width:100%;border-collapse:collapse;">
             <tr>
               <td style="vertical-align:bottom;padding-right:16px;">
-                <div style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#08705b;font-weight:700;">Weekly analytics</div>
+                <div style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:${accent};font-weight:700;">Weekly analytics</div>
                 <div style="margin-top:4px;font-size:24px;line-height:1.08;color:#101714;font-weight:700;letter-spacing:-.03em;">Weekly performance</div>
                 <div style="margin-top:8px;color:#53605a;font-size:10px;line-height:1.45;">Current week compared with last week and the four-week average.</div>
               </td>
@@ -682,7 +808,7 @@ function buildEmail(report) {
             </table>
           </div>
 
-          <div style="margin-top:14px;padding:8px 10px;border-top:1px solid #d6ddd9;border-bottom:2px solid #08705b;background:#f7f9f8;">
+          <div style="margin-top:14px;padding:8px 10px;border-top:1px solid #d6ddd9;border-bottom:2px solid ${accent};background:#f7f9f8;">
             <span style="font-size:11px;color:#101714;font-weight:800;">Performance against the four-week average</span>
             <span style="float:right;font-size:9px;color:#89928d;">Marker shows baseline</span>
           </div>
@@ -690,12 +816,12 @@ function buildEmail(report) {
 
           <table style="width:100%;border-collapse:separate;border-spacing:0;margin:0 -4px;">
             <tr>
-              <td style="width:50%;padding:0 4px;vertical-align:top;">${audiencePanel}</td>
-              <td style="width:50%;padding:0 4px;vertical-align:top;">${contributionPanel}</td>
+              <td style="width:50%;padding:0 4px;vertical-align:top;">${settings.includeAnalytics ? audiencePanel : ""}</td>
+              <td style="width:50%;padding:0 4px;vertical-align:top;">${settings.includeCommunity ? contributionPanel : ""}</td>
             </tr>
           </table>
 
-          ${pendingSection(current, approved, pending)}
+          ${settings.includeQueues ? pendingSection(current, approved, pending) : ""}
 
           ${currentAnalytics.warning ? `<div style="margin-top:8px;padding:9px 10px;background:#fff8df;color:#5f4b12;font-size:10px;line-height:1.35;">${escapeHtml(currentAnalytics.warning)}</div>` : ""}
 
@@ -705,6 +831,7 @@ function buildEmail(report) {
               <td style="width:150px;text-align:right;color:#101714;font-size:9px;font-weight:700;white-space:nowrap;">Manarah Analytics</td>
             </tr>
           </table>
+          ${unsubscribeLink ? `<div style="margin:8px 2px 0;padding-top:8px;border-top:1px solid #e4e9e6;color:#89928d;font-size:9px;line-height:1.4;">You are receiving this because you are on the Manarah weekly report list. <a href="${escapeHtml(unsubscribeLink)}" style="color:#08705b;text-decoration:underline;">Unsubscribe</a></div>` : ""}
         </div>
       </div>
     </div>
@@ -713,7 +840,7 @@ function buildEmail(report) {
   return { subject, textContent, htmlContent };
 }
 
-async function sendBrevoEmail(env, email) {
+async function sendBrevoEmail(env, email, recipient) {
   const apiKey = clean(env.BREVO_API_KEY);
   if (!apiKey) throw new Error("Missing BREVO_API_KEY");
   if (apiKey.startsWith(BREVO_SMTP_PASSWORD_PREFIX)) {
@@ -722,13 +849,8 @@ async function sendBrevoEmail(env, email) {
 
   const from = clean(env.REPORT_FROM) || DEFAULT_FROM;
   const fromName = clean(env.REPORT_FROM_NAME) || DEFAULT_FROM_NAME;
-  const recipients = (clean(env.REPORT_TO) || DEFAULT_TO)
-    .split(",")
-    .map((emailAddress) => clean(emailAddress))
-    .filter(Boolean)
-    .map((emailAddress) => ({ email: emailAddress }));
-
-  if (!recipients.length) throw new Error("Missing REPORT_TO");
+  const to = [{ email: recipient.email, name: recipient.displayName || undefined }];
+  if (!recipient.email) throw new Error("Missing report recipient");
 
   const res = await fetch(BREVO_SEND_EMAIL_URL, {
     method: "POST",
@@ -739,20 +861,51 @@ async function sendBrevoEmail(env, email) {
     },
     body: JSON.stringify({
       sender: { name: fromName, email: from },
-      to: recipients,
+      to,
       subject: email.subject,
       textContent: email.textContent,
       htmlContent: email.htmlContent,
+      headers: {
+        ...(recipient.unsubscribeToken ? { "List-Unsubscribe": `<${unsubscribeUrl(clean(env.MAPS_ORIGIN || env.REPORT_ORIGIN) || `https://${DEFAULT_HOSTNAME}`, recipient)}>` } : {}),
+      },
+      tags: ["weekly-report"],
     }),
   });
 
-  if (res.ok) return;
+  if (res.ok) {
+    try {
+      const details = await res.json();
+      return { email: recipient.email, messageId: details?.messageId || "" };
+    } catch {
+      return { email: recipient.email, messageId: "" };
+    }
+  }
   let message = `Brevo returned HTTP ${res.status}`;
   try {
     const details = await res.json();
     if (details?.message) message = details.message;
   } catch { /* keep generic */ }
   throw new Error(message);
+}
+
+async function unsubscribeByToken(env, token) {
+  if (!env.DB) return { status: 503, title: "Report unavailable", message: "The report service is temporarily unavailable." };
+  const cleanToken = clean(token);
+  if (!cleanToken) return { status: 400, title: "Missing unsubscribe link", message: "This unsubscribe link is incomplete." };
+  const row = await env.DB.prepare("SELECT email FROM weekly_report_subscribers WHERE unsubscribe_token=?").bind(cleanToken).first();
+  if (!row) return { status: 404, title: "Link not found", message: "This unsubscribe link is no longer active." };
+  await env.DB.prepare("UPDATE weekly_report_subscribers SET status='unsubscribed',unsubscribed_at=datetime('now'),updated_at=datetime('now') WHERE unsubscribe_token=?").bind(cleanToken).run();
+  return { status: 200, title: "Unsubscribed", message: `${row.email} will no longer receive the Manarah weekly report.` };
+}
+
+function unsubscribePage(result) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(result.title)}</title><style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#f7f9f8;color:#101714;display:grid;min-height:100vh;place-items:center}.panel{max-width:520px;margin:24px;padding:28px;background:white;border:1px solid #dfe6e2;border-radius:14px}h1{margin:0 0 10px;font-size:28px}p{margin:0;color:#52605a}a{color:#08705b}</style></head><body><main class="panel"><h1>${escapeHtml(result.title)}</h1><p>${escapeHtml(result.message)}</p><p style="margin-top:18px"><a href="https://maps.karamahcollective.com">Open Manarah</a></p></main></body></html>`, { status: result.status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
+export async function onRequestGet(context) {
+  const url = new URL(context.request.url);
+  if (url.searchParams.has("unsubscribe")) return unsubscribePage(await unsubscribeByToken(context.env, url.searchParams.get("unsubscribe")));
+  return json({ error: "Not found" }, 404, { "Content-Type": "application/json" });
 }
 
 function isAuthorized(request, env) {
@@ -778,6 +931,35 @@ export async function onRequestPost(context) {
   }
 
   try {
+    const settings = await reportSettings(env);
+    const manual = !!body.manual;
+    const testMode = !!body.testMode || (settings.reportMode === "test" && manual);
+    const force = !!body.force || testMode;
+    const due = dueStatus(settings);
+    if (settings.reportMode === "disabled" && !body.dryRun) {
+      return json({
+        success: true,
+        sent: false,
+        skipped: "Report disabled",
+        schedule: { settings, due },
+      }, 200, headers);
+    }
+    if (settings.reportMode === "test" && !testMode && !body.dryRun) {
+      return json({
+        success: true,
+        sent: false,
+        skipped: "Test mode waits for a manual workflow run",
+        schedule: { settings, due },
+      }, 200, headers);
+    }
+    if (!force && !body.dryRun && !due.due) {
+      return json({
+        success: true,
+        sent: false,
+        skipped: due.reason,
+        schedule: { settings, due },
+      }, 200, headers);
+    }
     const windows = makeComparisonWindows();
     const [currentCommunity, previousCommunity, baselineCommunity, currentAnalytics, previousAnalytics, baselineAnalytics] = await Promise.all([
       getCommunityMetrics(env.DB, windows.current),
@@ -801,13 +983,43 @@ export async function onRequestPost(context) {
       },
     };
     assertAnalyticsReady(report.analytics);
-    const email = buildEmail(report);
+    const recipients = await reportRecipients(env);
+    if (!recipients.length) {
+      return json({
+        success: true,
+        sent: false,
+        skipped: "No weekly report recipients configured",
+        recipients: [],
+        deliveries: [],
+        period: { since: windows.current.sinceIso, until: windows.current.untilIso },
+        analytics: report.analytics,
+        community: report.community,
+      schedule: { settings, due },
+      }, 200, headers);
+    }
+    const origin = mapsOriginFromRequest(request, env);
+    const deliveries = [];
 
-    if (!body.dryRun) await sendBrevoEmail(env, email);
+    if (!body.dryRun) {
+      for (const recipient of recipients) {
+        deliveries.push(await sendBrevoEmail(env, buildEmail(report, recipient, origin, settings), recipient));
+      }
+      try {
+        await env.DB.prepare("UPDATE weekly_report_settings SET last_sent_at=datetime('now'),updated_at=datetime('now') WHERE id=1").run();
+      } catch {
+        /* Older deployments can still send through the fallback recipient before this table exists. */
+      }
+    }
 
     return json({
       success: true,
       sent: !body.dryRun,
+      forced: force,
+      manual,
+      testMode,
+      schedule: { settings, due },
+      recipients: recipients.map((recipient) => recipient.email),
+      deliveries,
       period: { since: windows.current.sinceIso, until: windows.current.untilIso },
       analytics: report.analytics,
       community: report.community,
