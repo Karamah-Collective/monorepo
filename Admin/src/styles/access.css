@@ -21,7 +21,7 @@
 .access-role-builder .access-permissions label i { display:none; }
 .access-role-builder .access-permissions label { padding-left:10px; border-left:2px solid transparent; }
 .access-role-builder .access-permissions label.is-selected { border-left-color:var(--interactive-accent); }
-.access-person-name{display:flex;align-items:center;gap:7px}.access-person-name input{max-width:220px;min-height:34px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm)}.access-name-edit{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--interactive-accent)}.access-name-edit:hover{background:var(--interactive-accent-soft)}.access-row select{min-height:34px;padding:0 28px 0 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:13px}
+.access-row{grid-template-columns:minmax(0,1fr) 150px auto}.access-row-top{display:contents}.access-person-name{display:flex;align-items:center;gap:7px;min-width:0}.access-person-name input{max-width:220px;min-height:34px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm)}.access-name-edit{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--interactive-accent)}.access-name-edit:hover{background:var(--interactive-accent-soft)}.access-email{grid-column:1;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:11px;margin-top:3px}.access-role-control{grid-column:2;grid-row:1 / span 2;align-self:center}.access-remove{grid-column:3;grid-row:1 / span 2;align-self:center}.access-row select{min-height:34px;padding:0 28px 0 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:13px}
 
 /* Compact navigation: group labels are the navigation, not empty decoration. */
 .pp-nav-links { padding-top:4px; }
@@ -33,14 +33,26 @@
 .nav-group:not(.is-collapsed) .nav-group-label { color:var(--nav-text-strong); }
 .pp-nav-link { min-height:34px; margin:1px 0; }
 
-/* Existing roles read as concise Maps-style pills, not a second card grid. */
-.access-role-grid { display:flex; flex-wrap:wrap; gap:8px; }
-.access-role { display:flex; align-items:center; gap:9px; min-height:38px; padding:6px 12px; border-radius:999px; background:var(--bg-alt); }
-.access-role > div { display:contents; }
-.access-role strong { font-size:14px; font-weight:600; }
-.access-role span { padding:2px 6px; border-radius:999px; background:var(--interactive-accent-soft); color:var(--interactive-accent); font:11px var(--font-mono); }
-.access-role p { display:none; }
-.access-role small { padding-left:9px; border-left:1px solid var(--border); font-size:11px; white-space:nowrap; }
+/* Role library follows the same quiet, rule-led rhythm as an admin collection. */
+.access-role-grid {
+  border-top:1px solid var(--border);
+}
+.access-role {
+  display:grid;
+  grid-template-columns:minmax(180px,.62fr) minmax(0,1fr);
+  align-items:center;
+  gap:24px;
+  min-width:0;
+  padding:12px 2px;
+  border:0;
+  border-bottom:1px solid var(--border);
+  border-radius:0;
+  background:transparent;
+  transition:background-color 180ms var(--ease);
+}
+.access-role:hover { background:var(--bg-alt); }
+.access-role strong { color:var(--text); font-size:14px; font-weight:650; line-height:1.2; }
+.access-role small { color:var(--text-muted); font:12px/1.35 var(--font-mono); }
 
 /* Compact heading preserves orientation without turning the builder into a hero. */
 .access-builder-heading { justify-content:space-between; min-height:0; padding:16px 24px 12px; }
@@ -53,8 +65,58 @@
 .access-selection-count span { margin:0; font-size:12px; text-align:left; }
 
 @media (max-width:767px) {
-  .access-role { width:100%; justify-content:flex-start; }
-  .access-role small { overflow:hidden; text-overflow:ellipsis; }
+  .access-role { grid-template-columns:minmax(114px,.62fr) minmax(0,1fr); gap:12px; padding:12px 0; }
+  .access-row {
+    grid-template-areas:"top" "email" "role";
+    grid-template-columns:1fr;
+    gap:5px;
+    padding:12px 0;
+  }
+  .access-row-top {
+    grid-area:top;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-width:0;
+  }
+  .access-row .access-person-name { min-width:0; }
+  .access-row .access-person-name strong {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .access-row .access-email {
+    grid-area:email;
+    grid-column:auto;
+    margin:0;
+    font-size:13px;
+  }
+  .access-row .access-role-control {
+    grid-area:role;
+    grid-column:auto;
+    grid-row:auto;
+    align-self:start;
+    width:100%;
+  }
+  .access-row .access-role-control :is(select,.pp-status-badge) {
+    width:100%;
+    min-height:40px;
+    height:auto;
+    padding:0 28px 0 9px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:var(--bg);
+    font-size:13px;
+  }
+  .access-row .access-remove {
+    grid-column:auto;
+    grid-row:auto;
+    justify-self:end;
+    flex:0 0 auto;
+    min-height:28px;
+    padding-inline:0;
+  }
   .access-builder-heading { display:flex; padding:9px 18px; }
 }
 
@@ -210,6 +272,7 @@
   }
   .access-role-builder .access-permissions {
     grid-template-columns: 1fr;
+    row-gap: 20px;
     border-top: 0;
   }
   .access-role-builder .access-permissions fieldset,
@@ -217,12 +280,9 @@
   .access-role-builder .access-permissions fieldset:nth-child(2n+1),
   .access-role-builder .access-permissions fieldset:nth-child(4n+1),
   .access-role-builder .access-permissions fieldset:nth-child(4n+4) {
-    padding: 0 0 21px;
+    padding: 0 0 20px;
     border: 0;
     border-bottom: 1px solid var(--border);
-  }
-  .access-role-builder .access-permissions fieldset + fieldset {
-    padding-top: 23px;
   }
   .access-role-builder .access-permissions fieldset:last-child {
     padding-bottom: 0;

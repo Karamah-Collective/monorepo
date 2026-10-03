@@ -19,7 +19,7 @@ test("built public shell keeps respondent and administration boundaries separate
 
 test("public security headers allow Firebase auth and deny framing", async () => {
   const headers = await readFile(new URL("../_headers", import.meta.url), "utf8");
-  assert.match(headers, /\/\*\n[\s\S]*frame-ancestors 'none'/);
+  assert.match(headers, /\/\*\r?\n[\s\S]*frame-ancestors 'none'/);
   assert.doesNotMatch(headers, /frame-ancestors https:\/\/admin\.karamahcollective\.com/);
   assert.match(headers, /object-src 'none'/);
   assert.match(headers, /identitytoolkit\.googleapis\.com/);

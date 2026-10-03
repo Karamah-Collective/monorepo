@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -17,12 +17,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState(null);
+  const hasResolvedInitialAuth = useRef(false);
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
+      const isInitialAuthState = !hasResolvedInitialAuth.current;
+      hasResolvedInitialAuth.current = true;
       setUser(u);
       if (!u) { setAccess(null); setLoading(false); return; }
       try { setAccess((await apiGet("admin-access")).access); } catch { setAccess(null); }
+      if (isInitialAuthState) void logAuthEvent("login");
       setLoading(false);
     });
   }, []);
@@ -75,8 +79,8 @@ export function AuthProvider({ children }) {
   }
   async function updateDisplayName(displayName) {
     if (!auth.currentUser) throw new Error("Not signed in");
-    const value = displayName.trim();
-    await apiPost("save-my-profile", { displayName: value });
+    const saved = await apiPost("save-my-profile", { displayName: displayName.trim() });
+    const value = saved.displayName || "";
     await updateProfile(auth.currentUser, { displayName: value });
     setUser({ ...auth.currentUser });
     setAccess(current => current ? { ...current, displayName: value } : current);
