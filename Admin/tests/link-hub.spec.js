@@ -1,6 +1,28 @@
 import { expect, test } from "@playwright/test";
 import { mockAdmin } from "./fixtures.js";
 
+const png1x1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
+
+async function mockQrApi(page, decoded = "https://karamahcollective.com/join") {
+  await page.route("https://api.qrserver.com/v1/create-qr-code/**", route =>
+    route.fulfill({
+      body: png1x1,
+      contentType: "image/png",
+      headers: { "Access-Control-Allow-Origin": "*" },
+    }),
+  );
+  await page.route("https://api.qrserver.com/v1/read-qr-code/**", route =>
+    route.fulfill({
+      contentType: "application/json",
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify([{ type: "qrcode", symbol: [{ seq: 0, data: decoded, error: null }] }]),
+    }),
+  );
+}
+
 test.beforeEach(async ({ page }) => {
   await mockAdmin(page);
 });
@@ -53,4 +75,25 @@ test("blank optional content remains blank when settings are published", async (
   expect(mutation.action).toBe("save-link-hub-settings");
   expect(mutation.body.settings.page_kicker).toBe("");
   expect(mutation.body.settings.profile_bio).toBe("A Helsinki-based collective.");
+});
+
+test("standalone QR generator validates before enabling download", async ({ page }) => {
+  const url = "https://karamahcollective.com/join";
+  await mockQrApi(page, url);
+  await page.goto(`/links/qr?url=${encodeURIComponent(url)}`);
+
+  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.getByLabel("Destination URL")).toHaveValue(url);
+  await expect(page.getByRole("button", { name: "Download PNG" })).toBeDisabled();
+
+  await expect(page.locator(".qr-status")).toContainText("Scanner read the QR correctly");
+  await expect(page.getByRole("button", { name: "Download PNG" })).toBeEnabled();
+});
+
+test("standalone QR generator blocks output when scanner check fails", async ({ page }) => {
+  await mockQrApi(page, "https://wrong.example.test");
+  await page.goto("/links/qr?url=https%3A%2F%2Fkaramahcollective.com%2Fjoin");
+
+  await expect(page.locator(".qr-status")).toContainText("scanner read a different value");
+  await expect(page.getByRole("button", { name: "Download PNG" })).toBeDisabled();
 });

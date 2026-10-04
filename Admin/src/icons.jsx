@@ -47,6 +47,7 @@ import {
   SpotifyLogo,
   ClipboardText,
   WarningCircle,
+  QrCode,
 } from "@phosphor-icons/react";
 
 const wrap = (Component) =>
@@ -103,6 +104,7 @@ export const Icons = Object.fromEntries(
     spotify: SpotifyLogo,
     forms: ClipboardText,
     warning: WarningCircle,
+    qr: QrCode,
   }).map(([key, component]) => [key, wrap(component)]),
 );
 export const CloseIcon = wrap(X);

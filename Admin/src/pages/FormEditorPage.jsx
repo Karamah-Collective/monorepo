@@ -15,6 +15,7 @@ import {
   ListBullets,
   Plus,
   PaperPlaneTilt,
+  QrCode,
   Trash,
   UsersThree,
   Warning,
@@ -206,7 +207,9 @@ function FormEditor() {
         </button>
       </div>
     );
-  const form = query.data.form, canPublish = !form.activeVersionId || form.hasUnpublishedChanges || saveState === "dirty";
+  const form = query.data.form,
+    shareUrl = formShortUrl(form.shortCode || form.shareCode),
+    canPublish = !form.activeVersionId || form.hasUnpublishedChanges || saveState === "dirty";
   return (
     <div className="form-editor-page">
       <header className="form-editor-header">
@@ -244,7 +247,8 @@ function FormEditor() {
             <summary className="pp-btn">Share <CaretDown size={14} /></summary>
             <div>
               <a href={formPublicUrl(form.shareCode)} target="_blank" rel="noreferrer"><ArrowSquareOut size={15} /> Open live form</a>
-              <button onClick={async event => { try { await navigator.clipboard.writeText(formShortUrl(form.shortCode)); toast("Short link copied"); } catch { toast("Could not copy the short link", "error"); } event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={15} /> Copy short link</button>
+              <button onClick={async event => { try { await navigator.clipboard.writeText(shareUrl); toast("Short link copied"); } catch { toast("Could not copy the short link", "error"); } event.currentTarget.closest("details")?.removeAttribute("open"); }}><Copy size={15} /> Copy short link</button>
+              <a href={`/links/qr?source=form&title=${encodeURIComponent(draft.title || form.title || 'Form')}&url=${encodeURIComponent(shareUrl)}`}><QrCode size={15} /> Create QR</a>
               <button onClick={event => { window.open(previewUrl(draft), "_blank", "noopener,noreferrer"); event.currentTarget.closest("details")?.removeAttribute("open"); }}><ArrowSquareOut size={15} /> Preview draft</button>
             </div>
           </details>}

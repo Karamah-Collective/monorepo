@@ -42,6 +42,32 @@ test("forms dashboard actions close predictably and confirm changes", async ({ p
   await expect(page.getByRole("status")).toContainText("Form archived");
 });
 
+test("form sharing opens the shared QR generator with the form link", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/forms/form-1");
+
+  await page.getByText("Share", { exact: true }).click();
+  await page.getByRole("link", { name: "Create QR" }).click();
+
+  await expect(page).toHaveURL(/\/links\/qr/);
+  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.getByLabel("Destination URL")).toHaveValue("http://127.0.0.1:8791/f/0123456789abcdef0123456789abcdef");
+  await expect(page.getByText("Loaded from Forms sharing")).toBeVisible();
+});
+
+test("forms dashboard opens published forms in the shared QR generator", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/forms");
+
+  await page.getByRole("button", { name: "Manage Community RSVP" }).click();
+  await page.getByRole("menuitem", { name: /Create QR/ }).click();
+
+  await expect(page).toHaveURL(/\/links\/qr/);
+  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.getByLabel("Destination URL")).toHaveValue("http://127.0.0.1:8791/f/0123456789abcdef0123456789abcdef");
+  await expect(page.getByText("Loaded from Forms sharing")).toBeVisible();
+});
+
 test("form builder remains usable on a phone", async ({ page }) => {
   await mockAdmin(page);
   await page.setViewportSize({ width: 390, height: 844 });

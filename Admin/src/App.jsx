@@ -22,6 +22,7 @@ import WebsiteTeamPage from "./pages/WebsiteTeamPage.jsx";
 import WebsiteSubscribersPage from "./pages/WebsiteSubscribersPage.jsx";
 import WebsiteContentPage from "./pages/WebsiteContentPage.jsx";
 import LinkHubPage from "./pages/LinkHubPage.jsx";
+import QrGeneratorPage from "./pages/QrGeneratorPage.jsx";
 import AdminPreferencesPage from "./pages/AdminPreferencesPage.jsx";
 import FormsPage from "./pages/FormsPage.jsx";
 import FormEditorPage from "./pages/FormEditorPage.jsx";
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/website/subscribers" element={<WebsiteSubscribersPage />} />
             <Route path="/website/content" element={<WebsiteContentPage />} />
             <Route path="/links" element={<LinkHubPage />} />
+            <Route path="/links/qr" element={<QrGeneratorPage />} />
             <Route path="/forms" element={<FormsPage />} />
             <Route path="/forms/:id" element={<FormEditorPage />} />
           </Route>

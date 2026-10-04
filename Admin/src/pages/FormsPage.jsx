@@ -10,6 +10,7 @@ import {
 import { useToast } from "../components/Toast.jsx";
 import {
   formPublicUrl,
+  formShortUrl,
   useCreateForm,
   useDeleteForm,
   useDuplicateForm,
@@ -268,6 +269,20 @@ export default function FormsPage() {
                 >
                   {() => (
                     <>
+                      {form.activeVersionId && (
+                        <button
+                          role="menuitem"
+                          className="pp-manage-action"
+                          onClick={() =>
+                            navigate(
+                              `/links/qr?source=form&title=${encodeURIComponent(form.title || "Form")}&url=${encodeURIComponent(formShortUrl(form.shortCode || form.shareCode))}`,
+                            )
+                          }
+                        >
+                          <span>Create QR</span>
+                          <small>Open the shared QR generator</small>
+                        </button>
+                      )}
                       <button
                         role="menuitem"
                         className="pp-manage-action"

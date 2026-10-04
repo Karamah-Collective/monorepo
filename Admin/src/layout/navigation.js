@@ -111,7 +111,8 @@ export const NAV_GROUPS = [
   {
     label: "Links",
     links: [
-      { to: "/links", label: "Link hub", icon: "link", description: "Publish and style every Karamah link in one place." },
+      { to: "/links", label: "Link hub", icon: "link", description: "Publish and style every Karamah link in one place.", end: true },
+      { to: "/links/qr", label: "QR generator", icon: "qr", description: "Create and scan-test Karamah-styled QR links." },
     ],
   },
   {
