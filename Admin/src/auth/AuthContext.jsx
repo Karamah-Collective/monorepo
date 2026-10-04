@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -19,17 +19,23 @@ export function AuthProvider({ children }) {
   const [access, setAccess] = useState(null);
   const hasResolvedInitialAuth = useRef(false);
 
+  const refreshAccess = useCallback(async () => {
+    const nextAccess = (await apiGet("admin-access")).access;
+    setAccess(nextAccess);
+    return nextAccess;
+  }, []);
+
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       const isInitialAuthState = !hasResolvedInitialAuth.current;
       hasResolvedInitialAuth.current = true;
       setUser(u);
       if (!u) { setAccess(null); setLoading(false); return; }
-      try { setAccess((await apiGet("admin-access")).access); } catch { setAccess(null); }
+      try { await refreshAccess(); } catch { setAccess(null); }
       if (isInitialAuthState) void logAuthEvent("login");
       setLoading(false);
     });
-  }, []);
+  }, [refreshAccess]);
 
   function isAllowedEmail(email) {
     return typeof email === "string" && email.toLowerCase().endsWith(ADMIN_EMAIL_DOMAIN);
@@ -37,6 +43,7 @@ export function AuthProvider({ children }) {
 
   async function signIn(email, password) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    await refreshAccess();
     await logAuthEvent("login");
     return cred.user;
   }
@@ -47,6 +54,7 @@ export function AuthProvider({ children }) {
       await firebaseSignOut(auth);
       throw new Error(`Use a ${ADMIN_EMAIL_DOMAIN} Google Workspace account.`);
     }
+    await refreshAccess();
     await logAuthEvent("login");
     return cred.user;
   }
@@ -86,7 +94,7 @@ export function AuthProvider({ children }) {
     setAccess(current => current ? { ...current, displayName: value } : current);
   }
 
-  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, updateDisplayName, isAllowedEmail };
+  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, updateDisplayName, refreshAccess, isAllowedEmail };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

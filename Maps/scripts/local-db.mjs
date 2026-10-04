@@ -35,6 +35,18 @@ async function executeSql(sql) {
   return runLocal(["--file", file]);
 }
 
+async function collectKnownColumns() {
+  const [tables] = await runLocal(["--command", "SELECT name FROM sqlite_master WHERE type='table'"]);
+  const known = new Set();
+  for (const table of tables.results) {
+    if (table.name.startsWith("sqlite_") || table.name.startsWith("_cf_")) continue;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table.name)) continue;
+    const [columns] = await runLocal(["--command", `PRAGMA table_info(${table.name})`]);
+    for (const column of columns.results) known.add(`${table.name}.${column.name}`);
+  }
+  return known;
+}
+
 async function seedEmptyDatabase() {
   const [result] = await runLocal(["--command", "SELECT COUNT(*) AS count FROM places"]);
   if (result.results[0].count) return;
@@ -109,21 +121,14 @@ export async function setupLocalDatabase() {
   if (!tables.results.some((row) => row.name === "places")) {
     await executeSql(await readFile(path.join(root, "schema.sql"), "utf8"));
   }
-  [tables] = await runLocal(["--command", "SELECT name FROM sqlite_master WHERE type='table'"]);
-  const known = new Set();
-  for (const table of tables.results) {
-    if (table.name.startsWith("sqlite_") || table.name.startsWith("_cf_")) continue;
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table.name)) continue;
-    const [columns] = await runLocal(["--command", `PRAGMA table_info(${table.name})`]);
-    for (const column of columns.results) known.add(`${table.name}.${column.name}`);
-  }
+  let known = await collectKnownColumns();
   const [applied] = await runLocal(["--command", "SELECT name FROM admin_local_migrations"]);
   const done = new Set(applied.results.map((row) => row.name));
   const files = (await readdir(path.join(root, "migrations"))).filter((file) => file.endsWith(".sql")).sort();
   for (const file of files) {
     if (done.has(file)) continue;
     let sql = await readFile(path.join(root, "migrations", file), "utf8");
-    sql = sql.replace(/ALTER TABLE (\w+) ADD COLUMN (\w+)[^;]+;/gi, (statement, table, column) => {
+    sql = sql.replace(/ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)[^;]+;/gi, (statement, table, column) => {
       const key = `${table}.${column}`;
       if (known.has(key)) return "";
       known.add(key);
@@ -133,6 +138,7 @@ export async function setupLocalDatabase() {
     const executableSql = sql.replace(/--.*$/gm, "").trim();
     if (executableSql) await executeSql(sql);
     await executeSql(`INSERT OR IGNORE INTO admin_local_migrations (name) VALUES (${quote(file)});`);
+    known = await collectKnownColumns();
     console.info(`Local migration: ${file}`);
   }
   await seedEmptyDatabase();

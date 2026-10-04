@@ -85,18 +85,29 @@ async function authenticateAdmin(request, env) {
 }
 
 const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.manage"], moderator:["moderation.*"], viewer:["dashboard.view","activity.view"] };
+const DEFAULT_ROLE_ID = "viewer";
 function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
 function firstName(value, email="") { const source=String(value||"").trim()||String(email||"").split("@")[0].replace(/[._-]+/g," "); const name=source.split(/\s+/)[0]||""; return name ? name[0].toUpperCase()+name.slice(1,40) : ""; }
+async function ensureDefaultRole(db, preferredRoleId = DEFAULT_ROLE_ID) {
+  await db.prepare(`INSERT OR IGNORE INTO admin_roles (id,name,description,permissions,is_preset)
+    VALUES ('viewer','Viewer','View the workspace without making changes.','["dashboard.view","activity.view"]',1)`).run();
+  const preferred = String(preferredRoleId || DEFAULT_ROLE_ID);
+  let role = await db.prepare("SELECT id,name,permissions FROM admin_roles WHERE id=?").bind(preferred).first();
+  if (!role && preferred !== DEFAULT_ROLE_ID) role = await db.prepare("SELECT id,name,permissions FROM admin_roles WHERE id=?").bind(DEFAULT_ROLE_ID).first();
+  const roleId = role?.id || DEFAULT_ROLE_ID;
+  await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();
+  return role || { id: DEFAULT_ROLE_ID, name: "Viewer", permissions: JSON.stringify(ROLE_PERMISSIONS.viewer) };
+}
 async function resolveAccess(db, actor) {
-  const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
-  if (row) return { roleId:row.role_id, roleName:row.name, permissions:parsePermissions(row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
+  const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m LEFT JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
+  if (row?.name) return { roleId:row.role_id, roleName:row.name, permissions:parsePermissions(row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
   if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:"" };
   const setting=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first();
-  const roleId=setting?.default_role_id||"viewer";
-  const role=await db.prepare("SELECT name,permissions FROM admin_roles WHERE id=?").bind(roleId).first();
-  if (!role) return null;
+  const role=await ensureDefaultRole(db, setting?.default_role_id);
+  const roleId=role.id;
   const displayName=firstName(actor.name,actor.email);
-  await db.prepare("INSERT OR IGNORE INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?, 'automatic default role',datetime('now'))").bind(actor.email,roleId,displayName).run();
+  if (row) await db.prepare("UPDATE admin_role_members SET role_id=?,display_name=COALESCE(NULLIF(display_name,''),?),added_by='automatic default role repair',updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,displayName,actor.email).run();
+  else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?, 'automatic default role',datetime('now'))").bind(actor.email,roleId,displayName).run();
   return { roleId, roleName:role.name, permissions:parsePermissions(role.permissions,ROLE_PERMISSIONS[roleId]||[]), displayName };
 }
 function allows(access, permission) { return access?.permissions.includes("*") || access?.permissions.includes(permission) || access?.permissions.includes(`${permission.split(".")[0]}.*`); }

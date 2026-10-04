@@ -1006,37 +1006,34 @@ kbd {
   }
   .pp-auth-screen {
     grid-template-columns: 1fr;
+    align-content: start;
   }
   .auth-story {
-    padding: 24px;
+    padding: max(18px, env(safe-area-inset-top)) 24px 10px;
+    background: var(--bg);
   }
   .auth-story-content {
-    padding: 28px 0 0;
-  }
-  .auth-story h2 {
-    font-size: 30px;
-    letter-spacing: -1px;
-    margin: 12px 0 0;
-  }
-  .auth-story h2 br {
     display: none;
   }
-  .auth-story h2 span {
-    display: block;
-  }
-  .auth-story p,
-  .auth-route-art,
   .auth-story-footer {
     display: none;
   }
+  .auth-brand {
+    width: fit-content;
+  }
   .auth-form-side {
-    padding: 32px 24px;
+    justify-content: flex-start;
+    padding: 16px 24px max(28px, env(safe-area-inset-bottom));
   }
   .auth-form-kicker {
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
+  .pp-auth-card h1 { font-size: 29px; line-height: 1.16; margin: 10px 0; }
+  .auth-description { margin-bottom: 20px; line-height: 1.55; }
+  .pp-auth-card .pp-field { margin-bottom: 16px; }
+  .pp-auth-switch { margin-top: 18px; }
   .auth-form-footer {
-    margin-top: 36px;
+    margin-top: 24px;
   }
   .pp-toast {
     right: 16px;
