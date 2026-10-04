@@ -6,7 +6,6 @@ import {
   Eye,
   MagnifyingGlass,
   Plus,
-  Trash,
 } from "@phosphor-icons/react";
 import { useToast } from "../components/Toast.jsx";
 import {
@@ -17,6 +16,7 @@ import {
   useForms,
   useSetFormStatus,
 } from "../api/forms.js";
+import ManageActions from "../components/ManageActions.jsx";
 
 const STATUS_LABELS = {
   draft: "Draft",
@@ -42,6 +42,8 @@ export default function FormsPage() {
     duplicate = useDuplicateForm(),
     changeStatus = useSetFormStatus(),
     remove = useDeleteForm();
+  const formActionBusy =
+    duplicate.isPending || changeStatus.isPending || remove.isPending;
   const forms = query.data?.forms || [];
   const counts = useMemo(
     () =>
@@ -55,8 +57,36 @@ export default function FormsPage() {
     [forms],
   );
   async function createNew() {
-    const result = await create.mutateAsync({ title: "Untitled form" });
-    navigate(`/forms/${result.id}`);
+    try {
+      const result = await create.mutateAsync({ title: "Untitled form" });
+      toast("Form created");
+      navigate(`/forms/${result.id}`);
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+  async function duplicateForm(form) {
+    try {
+      const result = await duplicate.mutateAsync({ id: form.id });
+      toast("Form duplicated");
+      navigate(`/forms/${result.id}`);
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+  async function updateStatus(form, status) {
+    const action = {
+      archived: "Form archived",
+      closed: "Responses closed",
+      draft: "Form restored to drafts",
+      published: "Form reopened",
+    }[status] || "Form updated";
+    try {
+      await changeStatus.mutateAsync({ id: form.id, status });
+      toast(action);
+    } catch (error) {
+      toast(error.message, "error");
+    }
   }
   async function deleteForm(form) {
     if (
@@ -65,8 +95,12 @@ export default function FormsPage() {
       )
     )
       return;
-    await remove.mutateAsync({ id: form.id });
-    toast("Form removed");
+    try {
+      await remove.mutateAsync({ id: form.id });
+      toast("Form removed");
+    } catch (error) {
+      toast(error.message, "error");
+    }
   }
 
   return (
@@ -225,62 +259,73 @@ export default function FormsPage() {
                     <Eye size={16} />
                   </a>
                 )}
-                <details>
-                  <summary
-                    className="icon-button"
-                    aria-label={`Manage ${form.title}`}
-                  >
-                    <DotsThree size={18} />
-                  </summary>
-                  <div className="form-actions-menu">
-                    <button
-                      onClick={async () => {
-                        const result = await duplicate.mutateAsync({
-                          id: form.id,
-                        });
-                        navigate(`/forms/${result.id}`);
-                      }}
-                    >
-                      Duplicate
-                    </button>
-                    {form.status === "published" && (
+                <ManageActions
+                  label={`Manage ${form.title}`}
+                  className="icon-button form-manage-trigger"
+                  icon={<DotsThree size={18} />}
+                  iconOnly
+                  disabled={formActionBusy}
+                >
+                  {() => (
+                    <>
                       <button
-                        onClick={() =>
-                          changeStatus.mutate({ id: form.id, status: "closed" })
-                        }
+                        role="menuitem"
+                        className="pp-manage-action"
+                        onClick={() => duplicateForm(form)}
                       >
-                        Close responses
+                        <span>Duplicate</span>
+                        <small>Create a copy to edit separately</small>
                       </button>
-                    )}
-                    {form.status === "closed" && (
+                      {form.status === "published" && (
+                        <button
+                          role="menuitem"
+                          className="pp-manage-action"
+                          onClick={() => updateStatus(form, "closed")}
+                        >
+                          <span>Close responses</span>
+                          <small>Keep the form visible but stop submissions</small>
+                        </button>
+                      )}
+                      {form.status === "closed" && (
+                        <button
+                          role="menuitem"
+                          className="pp-manage-action"
+                          onClick={() => updateStatus(form, "published")}
+                        >
+                          <span>Reopen</span>
+                          <small>Allow new responses again</small>
+                        </button>
+                      )}
                       <button
+                        role="menuitem"
+                        className="pp-manage-action"
                         onClick={() =>
-                          changeStatus.mutate({
-                            id: form.id,
-                            status: "published",
-                          })
-                        }
-                      >
-                        Reopen
-                      </button>
-                    )}
-                    <button
-                      onClick={() =>
-                        changeStatus.mutate({
-                          id: form.id,
-                          status:
+                          updateStatus(
+                            form,
                             form.status === "archived" ? "draft" : "archived",
-                        })
-                      }
-                    >
-                      {form.status === "archived" ? "Unarchive" : "Archive"}
-                    </button>
-                    <button className="danger" onClick={() => deleteForm(form)}>
-                      <Trash size={14} />
-                      Delete
-                    </button>
-                  </div>
-                </details>
+                          )
+                        }
+                      >
+                        <span>
+                          {form.status === "archived" ? "Unarchive" : "Archive"}
+                        </span>
+                        <small>
+                          {form.status === "archived"
+                            ? "Return it to drafts"
+                            : "Move it out of active views"}
+                        </small>
+                      </button>
+                      <button
+                        role="menuitem"
+                        className="pp-manage-action pp-manage-action-danger"
+                        onClick={() => deleteForm(form)}
+                      >
+                        <span>Delete</span>
+                        <small>Remove it from the forms list</small>
+                      </button>
+                    </>
+                  )}
+                </ManageActions>
               </div>
             </article>
           ))}

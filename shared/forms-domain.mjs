@@ -42,8 +42,28 @@ const CHOICE_TYPES = new Set([
   "ranking",
 ]);
 const MULTI_TYPES = new Set(["multi_choice", "multiselect", "ranking"]);
+const TRUSTED_REDIRECT_HOSTS = new Set([
+  "karamahcollective.com",
+  "www.karamahcollective.com",
+  "maps.karamahcollective.com",
+  "forms.karamahcollective.com",
+  "links.karamahcollective.com",
+  "admin.karamahcollective.com",
+  "admin.maps.karamahcollective.com",
+]);
 
 export const makeId = (prefix = "id") => `${prefix}_${crypto.randomUUID()}`;
+
+export function isSafeCompletionRedirect(value) {
+  if (!value) return true;
+  try {
+    const url = new URL(String(value));
+    if (url.username || url.password) return false;
+    if (url.protocol === "https:" && TRUSTED_REDIRECT_HOSTS.has(url.hostname.toLowerCase())) return true;
+    if (url.protocol === "http:" && /^(localhost|127\.0\.0\.1)$/.test(url.hostname)) return true;
+  } catch {}
+  return false;
+}
 
 export function createQuestion(type = "short_text") {
   const question = {
@@ -235,12 +255,8 @@ export function validateSchema(schemaInput) {
   if ([...sections].some(cyclic))
     errors.push("Section navigation contains a cycle.");
   if (schema.settings.redirectUrl) {
-    try {
-      if (!/^https?:$/.test(new URL(schema.settings.redirectUrl).protocol))
-        throw new Error();
-    } catch {
-      errors.push("The completion redirect must be a safe HTTP or HTTPS URL.");
-    }
+    if (!isSafeCompletionRedirect(schema.settings.redirectUrl))
+      errors.push("The completion redirect must use a trusted Karamah URL.");
   }
   if (
     schema.settings.opensAt &&

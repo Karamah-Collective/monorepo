@@ -51,7 +51,18 @@ test("integrity validation rejects broken references, bad schedules and unsafe r
   assert.equal(result.valid, false);
   assert.ok(result.errors.some(error => error.includes("missing question")));
   assert.ok(result.errors.some(error => error.includes("closing time")));
-  assert.ok(result.errors.some(error => error.includes("safe HTTP")));
+  assert.ok(result.errors.some(error => error.includes("trusted Karamah URL")));
+});
+
+test("completion redirects are limited to trusted destinations", () => {
+  const schema = createFormSchema("Redirects");
+  schema.settings.redirectUrl = "https://forms.karamahcollective.com/thanks";
+  assert.equal(validateSchema(schema).valid, true);
+
+  schema.settings.redirectUrl = "https://evil.example/collect";
+  const external = validateSchema(schema);
+  assert.equal(external.valid, false);
+  assert.ok(external.errors.some(error => error.includes("trusted Karamah URL")));
 });
 
 test("duplicate visible labels do not affect stable-ID answer validation", () => {

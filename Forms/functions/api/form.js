@@ -1,4 +1,4 @@
-import { publicSchema, validateAnswers } from "../../../shared/forms-domain.mjs";
+import { isSafeCompletionRedirect, publicSchema, validateAnswers } from "../../../shared/forms-domain.mjs";
 import { verifyFirebaseIdToken } from "../../../shared/firebase-verify.mjs";
 import { verifyTurnstile } from "../../../Maps/functions/_turnstile.js";
 
@@ -142,7 +142,8 @@ async function submit(env, request, url) {
     if (raced) return json({ success: true, submissionId: raced.id, duplicate: true, message: schema.confirmationMessage });
     return json({ error: "Your response could not be saved. Nothing was submitted; please try again." }, 502);
   }
-  return json({ success: true, submissionId, message: checked.state.completionMessage || schema.confirmationMessage, redirectUrl: schema.settings.redirectUrl || "", allowAnother: !!schema.settings.allowAnother });
+  const redirectUrl = isSafeCompletionRedirect(schema.settings.redirectUrl) ? schema.settings.redirectUrl || "" : "";
+  return json({ success: true, submissionId, message: checked.state.completionMessage || schema.confirmationMessage, redirectUrl, allowAnother: !!schema.settings.allowAnother });
 }
 
 export async function onRequestPost(context) {

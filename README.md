@@ -1,56 +1,119 @@
-# Karamah Collective
+# Karamah Collective Monorepo
 
-One repository, five independently deployed applications.
+This repository contains the public Karamah Collective web properties, the
+shared Admin panel, Cloudflare Pages Functions, database migrations, and the
+local tooling used to build and deploy them together.
 
-| Folder | Application | Data |
+The apps are intentionally deployed independently. The monorepo gives us one
+place to share authentication helpers, domain logic, tests, release scripts,
+and operational documentation without forcing every surface to ship from one
+Cloudflare project.
+
+## What Is Here
+
+| Folder | Application | Runtime and data |
 | --- | --- | --- |
-| [Maps](Maps/) | Public map and its Cloudflare API | Existing Cloudflare D1 database |
-| [Website](Website/) | Collective website, contact form and website API | Existing Google Sheets via Apps Script |
-| [Admin](Admin/) | Shared administration for Maps and Website | Authenticated calls to each application's API |
-| [Links](Links/) | Public Karamah link hub and read-only API | Existing Cloudflare D1 database |
-| [Forms](Forms/) | Public form respondent experience and submission API | Existing Cloudflare D1 database and R2 media bucket |
-| [shared](shared/) | Firebase token verification used by both APIs | No credentials |
-| [tooling](tooling/) | Local servers and monorepo validation | Local only |
+| [Maps](Maps/) | Public Manarah map PWA and map API | Cloudflare Pages, Functions, D1, R2 |
+| [Website](Website/) | Public Karamah Collective website and website API | Cloudflare Pages, Functions, D1 |
+| [Admin](Admin/) | Internal dashboard for Maps, Website, Links, and Forms | Vite app, Firebase Auth, authenticated API calls |
+| [Links](Links/) | Public link hub | Cloudflare Pages, Functions, D1 |
+| [Forms](Forms/) | Public form respondent app and submissions API | Cloudflare Pages, Functions, D1, R2 |
+| [shared](shared/) | Cross-app helpers, validation, auth, and domain logic | Imported by app functions and tests |
+| [tooling](tooling/) | Local dev server, checks, deploy agent, and repo automation | Local Node scripts |
+| [docs](docs/) | Supporting implementation and rollout notes | Documentation only |
 
-### Native shells (Maps)
+## Architecture
 
-`Maps/android/` and `Maps/ios/` hold Capacitor 8 native shells around the
-Manarah PWA (appId `com.karamahcollective.manarah`). See
-[Maps/README.md](Maps/README.md) → *Native apps (Capacitor)* and
-`docs/CAPACITOR_PROGRESS.md` for status. These are committed to `main` but
-**excluded from the Cloudflare deploy branches** by the `DEPLOY_FILES`
-allowlist in `tooling/deploy-agent.mjs`; do not add them there. Build
-artifacts (`Maps/android/**/build`, `Maps/dist`, iOS `App/App/public`) are
-gitignored. `Maps/android/app/google-services.json` (Firebase Android config)
-is **not** committed — download it from the Firebase console per machine.
+The public apps are Cloudflare Pages projects. Static assets are built into each
+app's `dist/` folder, while dynamic behavior lives in that app's
+`functions/` directory and is bundled by Cloudflare at deploy time.
 
-## Start locally
+Admin is a separate Vite application. It signs users in through Firebase Auth,
+verifies admin access server-side, and then calls the relevant app APIs with
+authenticated requests. Admin does not own all data itself; it is the control
+surface for the data stored by Maps, Website, Links, and Forms.
 
-Use Node.js 22 and run these commands from this repository's root:
+Database changes live under [Maps/migrations](Maps/migrations/) because the
+original D1 database and several shared tables started with Maps. Forms also
+has its own bindings and migrations documented in [Forms/README.md](Forms/README.md).
+The local dev script prepares the expected local D1 state before starting the
+servers.
+
+## Requirements
+
+- Node.js 22
+- npm, using the root [package-lock.json](package-lock.json)
+- Cloudflare account access for remote deployment and secrets
+- Firebase project access for Admin authentication
+- Playwright Chromium for browser-based tests
+
+Install dependencies from the repository root:
 
 ```sh
 npm ci
+npx playwright install chromium
+```
+
+Do not install dependencies inside individual app folders. The root lockfile is
+the source of truth for every workspace.
+
+## Local Setup
+
+1. Clone the repository and install dependencies from the root.
+2. Create local environment files where needed. The common local files are
+   `Maps/.dev.vars`, `Website/.dev.vars`, and any app-specific development
+   files described in the app README files.
+3. Run the Website helper if you need local Website secrets:
+
+```sh
+npm run setup:website
+```
+
+4. Start the full local stack:
+
+```sh
 npm run dev
 ```
+
+The root dev command starts the apps and prepares the existing local Maps
+database. If a migration was already applied locally, the tooling should treat
+that as normal state rather than a reason to recreate the database.
 
 | App | Local address | Start separately |
 | --- | --- | --- |
 | Maps | http://127.0.0.1:8788 | `npm run dev:maps` |
 | Website | http://127.0.0.1:8789 | `npm run dev:website` |
-| Admin | http://127.0.0.1:5173 | `npm run dev:admin` (starts both APIs too) |
+| Admin | http://127.0.0.1:5173 | `npm run dev:admin` |
 | Links | http://127.0.0.1:8790 | `npm run dev:links` |
 | Forms | http://127.0.0.1:8791 | `npm run dev:forms` |
 
-Links and Forms are built into `dist/`. Their dev commands now watch source
-files and rebuild automatically; refresh the browser after a rebuild rather
-than restarting the dev command. Maps, Website, and Admin already serve source
-changes through their respective development servers.
+Links and Forms rebuild into `dist/` during development. Refresh the browser
+after rebuilds. Maps, Website, and Admin serve source changes through their
+development servers.
 
-The Maps server prepares a local D1 database. Existing local database state moved to `Maps/.wrangler`. Local map secrets moved to `Maps/.dev.vars` and `Maps/src/config.local.js`. Website's old `.env.local` remains in its folder; Wrangler uses `Website/.dev.vars` for local secrets. Run `npm run setup:website` to create local Website keys without printing them.
+## Environment And Secrets
 
-The root `package-lock.json` is the only dependency lockfile. Install at the repository root. Each workspace also supports `npm run build` from its own folder.
+Keep secrets in local ignored files or Cloudflare/Firebase dashboards. Never
+commit private keys, Cloudflare tokens, production secrets, downloaded service
+account files, or per-machine Firebase native configuration.
 
-## Build and verify
+Common local files:
+
+| File | Purpose |
+| --- | --- |
+| `Maps/.dev.vars` | Local Cloudflare variables for Maps functions |
+| `Maps/src/config.local.js` | Local map client configuration |
+| `Website/.dev.vars` | Local Cloudflare variables for Website functions |
+| `Website/.env.local` | Legacy/local Website development values |
+| `Maps/android/app/google-services.json` | Per-machine Firebase Android config, not committed |
+
+Public Firebase web config can appear in frontend code, but private Firebase
+service credentials must not. Restrict production Firebase and Cloudflare keys
+in their provider dashboards.
+
+## Build And Test
+
+Run all standard verification from the repository root:
 
 ```sh
 npm run build
@@ -63,55 +126,94 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Install browsers once with `npx playwright install chromium`. Maps has its existing browser suites under `Maps/tests`; run `npm run test:maps`, or select tests/projects using the scripts in `Maps/package.json`. Those map integration tests also load external map services.
+Maps has additional browser and integration suites under [Maps/tests](Maps/tests/).
+Use `npm run test:maps`, or run the more specific scripts in
+[Maps/package.json](Maps/package.json). Some map integration tests call
+external map services.
 
-Each build produces its own `dist/` directory with public assets only. Pages Functions remain in each application's `functions/` folder and are bundled separately by Cloudflare. Nothing deploys from the repository root.
+Before deployment, use the deploy agent validation flow described below. It
+selects the checks relevant to the changed apps and prevents generated deploy
+branches from drifting away from `main`.
 
-## Website administration
+## Admin Workflows
 
-After completing [the one-time connection setup](DEPLOYMENT.md#3-connect-google-sheets-to-admin), sign in to Admin with a verified `@karamahcollective.com` account. The Website navigation group contains:
+Admin is the internal operations panel. It is not a public data source and
+should always be served behind strong authentication.
 
-- **Website content:** headlines, introductions, program descriptions, feature descriptions, announcements, section visibility, signup visibility, social links and page metadata. Publish all edits together. Blank fields retain the original website copy.
-- **Team directory:** add/edit profiles, public email, role, biography, location, visibility and display order.
-- **Update signups:** search registrations, mark a person unsubscribed, remove a registration, and export subscribed people as CSV. This does not send newsletters.
+| Admin area | What it manages |
+| --- | --- |
+| Website content | Homepage copy, programs, announcements, visibility, metadata, team profiles, and update signups |
+| Maps | Places, links, videos, submissions, moderation, and operational map data |
+| Links | Public link hub profile, link ordering, visibility, previews, styling, and open counts |
+| Forms | Draft forms, published schemas, conditional logic, responses, CSV exports, analytics, and archive state |
+| Access | Authenticated workspace access and role-aware administration |
 
-Sheets remains the source of truth. Existing rows and extra columns are preserved; IDs and revisions are added automatically. Concurrent edits are rejected instead of silently overwriting someone else's work. Most visitors see published changes on their next load within a minute; open pages are not live-updated.
+Admin users sign in with a verified Karamah Collective account. Server-side API
+checks remain the authority for sensitive actions; frontend route protection is
+only a usability layer.
 
-## Link hub administration
+## Forms
 
-Admin's **Links → Link hub** page manages public destinations, automatic Open
-Graph/Twitter preview metadata, per-link sharing, ordering, visibility, featured
-state, aggregate open counts, profile copy, SEO copy, colors, card treatment,
-corner style, page width, and desktop layout. The public app reads only active
-links. Both administration and public rendering use the existing D1 database.
-Apply `Maps/migrations/0011_link_hub.sql`, `0012_link_hub_content.sql`, and
-`0013_link_hub_card_overrides.sql` in that order before deploying it. See
-`Links/README.md` for exact local and remote commands.
+Forms is split between an Admin authoring surface and a public respondent
+experience. Admins create drafts, build sections and questions, preview
+conditional logic, publish immutable versions, inspect responses, and export
+CSV files. Respondents only see published schemas and submit through the public
+Forms API.
 
-## Forms administration
+See [Forms/README.md](Forms/README.md) for bindings, D1 setup, R2 media setup,
+deployment details, and rollout checks.
 
-Admin's **Forms** workspace creates drafts, builds sections and questions,
-tests conditional logic in the real respondent preview, publishes immutable
-versions, reviews responses, exports CSV, and inspects aggregate analytics.
-The public Forms app serves only published schemas and validated submissions.
-Apply [Maps/migrations/0021_forms.sql](Maps/migrations/0021_forms.sql) to the
-matching D1 environment before first use. See [Forms/README.md](Forms/README.md)
-for the bindings, Cloudflare Pages deployment sequence, and manual rollout
-checklist.
+## Link Hub
+
+The Links app renders the public Karamah link hub. Admin controls destinations,
+Open Graph/Twitter preview metadata, link ordering, featured state, visibility,
+profile copy, SEO copy, card treatment, colors, page width, and desktop layout.
+
+See [Links/README.md](Links/README.md) for local and remote migration commands.
+
+## Native Shells
+
+[Maps/android](Maps/android/) and [Maps/ios](Maps/ios/) hold Capacitor native
+shells around the Manarah PWA with app id `com.karamahcollective.manarah`.
+They are committed to `main`, but they are excluded from the generated
+Cloudflare deployment branches by the deploy allowlist in
+[tooling/deploy-agent.mjs](tooling/deploy-agent.mjs).
+
+Native build outputs such as `Maps/android/**/build`, `Maps/dist`, and
+`Maps/ios/App/App/public` are ignored. Download
+`Maps/android/app/google-services.json` from Firebase per machine; do not commit
+it. See [docs/CAPACITOR_PROGRESS.md](docs/CAPACITOR_PROGRESS.md) and
+[Maps/README.md](Maps/README.md) for native status.
 
 ## Deployment
 
-`main` is the full collaboration branch. `preview` and `deploy` are generated deployment branches containing only the files Cloudflare Pages needs.
+`main` is the full collaboration branch. `preview` and `deploy` are generated
+deployment branches containing only the files Cloudflare Pages needs.
 
-Use the master deploy agent from `main`:
+Do not hand-edit `preview` or `deploy`. Make source changes on `main`, commit
+them there, then use the deploy agent:
 
 ```sh
 npm run deploy:agent -- plan main
 npm run deploy:agent -- validate main
-npm run deploy:agent -- sync preview
-npm run deploy:agent -- sync deploy
+npm run deploy:agent -- sync preview --push
+npm run deploy:agent -- sync deploy --push
 ```
 
-Add `--push` to the two sync commands when publishing the generated branches. Follow [DEPLOYMENT.md](DEPLOYMENT.md) for Cloudflare project roots, variables, Apps Script setup, Forms bindings, and domain cutover.
+Use [DEPLOYMENT.md](DEPLOYMENT.md) as the deployment runbook. It documents
+branch policy, Cloudflare project roots, Pages build settings, D1/R2 bindings,
+required secrets, migration commands, and verification steps.
 
-The copied Website Git history is preserved locally in `.local-backups/website-git-original`. It is excluded from this repository. Previous nested lockfiles and dependencies are also archived under `.local-backups/workspace-migration`. Keep those backups if you need the original Website history.
+## Release Discipline
+
+- Stage only the changes that belong to the release.
+- Commit source changes on `main` before syncing generated branches.
+- Let the deploy agent build `preview` and `deploy`.
+- Do not commit generated local caches, private env files, or native build
+  outputs.
+- Keep unrelated local work out of release commits.
+
+The copied Website Git history is preserved locally in
+`.local-backups/website-git-original` and is excluded from this repository.
+Previous nested lockfiles and dependency folders are archived under
+`.local-backups/workspace-migration` for reference.

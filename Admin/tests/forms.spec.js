@@ -25,6 +25,23 @@ test("forms dashboard opens the versioned builder and autosaves edits", async ({
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
 });
 
+test("forms dashboard actions close predictably and confirm changes", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/forms");
+
+  const menu = page.getByRole("menu", { name: "Manage Community RSVP actions" });
+  await page.getByRole("button", { name: "Manage Community RSVP" }).click();
+  await expect(menu).toBeVisible();
+
+  await page.getByRole("heading", { name: "Forms" }).click();
+  await expect(menu).toBeHidden();
+
+  await page.getByRole("button", { name: "Manage Community RSVP" }).click();
+  await page.getByRole("menuitem", { name: /Archive/ }).click();
+  await expect(menu).toBeHidden();
+  await expect(page.getByRole("status")).toContainText("Form archived");
+});
+
 test("form builder remains usable on a phone", async ({ page }) => {
   await mockAdmin(page);
   await page.setViewportSize({ width: 390, height: 844 });

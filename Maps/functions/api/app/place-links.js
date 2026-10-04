@@ -12,15 +12,19 @@
 import { json } from "../../_shared.js";
 import { parsePlaceIdsParam, rowToApiLinks } from "../../_app-links.js";
 
-const APP_CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+const appCors = (request) => {
+  const origin = request.headers.get("Origin") || "";
+  const allowed = /^https:\/\/(?:maps\.)?karamahcollective\.com$/.test(origin) || /^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(origin);
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "https://maps.karamahcollective.com",
+    Vary: "Origin",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
 };
-
 export async function onRequestGet(context) {
   const { env, request } = context;
-  const headers = { "Content-Type": "application/json", ...APP_CORS, "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" };
+  const headers = { "Content-Type": "application/json", ...appCors(request), "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" };
 
   if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
@@ -46,6 +50,6 @@ export async function onRequestGet(context) {
   }
 }
 
-export async function onRequestOptions() {
-  return new Response(null, { status: 204, headers: { ...APP_CORS, "Access-Control-Max-Age": "86400" } });
+export async function onRequestOptions({ request }) {
+  return new Response(null, { status: 204, headers: { ...appCors(request), "Access-Control-Max-Age": "86400" } });
 }

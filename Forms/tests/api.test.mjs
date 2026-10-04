@@ -6,8 +6,9 @@ import { onRequest as shortLinkRedirect } from '../functions/f/[code].js';
 import { createForm } from '../../Maps/functions/_forms-admin.js';
 import { createFormSchema } from '../../shared/forms-domain.mjs';
 
-function context({versionId='v1',existing=null,status='published',limit=null,count=0,fail=false,changes=1,answers={}}={}) {
+function context({versionId='v1',existing=null,status='published',limit=null,count=0,fail=false,changes=1,answers={},redirectUrl=''}={}) {
   const schema=createFormSchema('API test');schema.sections[0].blocks=[];schema.settings.responseLimit=limit;
+  schema.settings.redirectUrl=redirectUrl;
   let batches=0;
   return {get batches(){return batches;},request:new Request('http://localhost/api/form?slug=test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({versionId,answers,idempotencyKey:'retry_key_123456'})}),env:{DEV_SKIP_TURNSTILE:'true',DB:{
     prepare(sql){return {bind(){return this;},async first(){
@@ -41,6 +42,12 @@ test('malformed answer containers are rejected',async()=>{
 test('valid submissions create one response',async()=>{
   const ctx=context(),response=await onRequestPost(ctx);
   assert.equal(response.status,200);assert.equal((await response.json()).success,true);assert.equal(ctx.batches,1);
+});
+
+test('unsafe stored completion redirects are not returned to respondents',async()=>{
+  const response=await onRequestPost(context({redirectUrl:'https://evil.example/after'})),data=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.redirectUrl,'');
 });
 
 test('public form catalogue falls back to the draft schema for published rows with a missing version row',async()=>{

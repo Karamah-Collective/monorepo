@@ -7,6 +7,8 @@ export default function ManageActions({
   label = "Manage",
   disabled = false,
   className = "",
+  icon = <Icons.settings size={14} />,
+  iconOnly = false,
 }) {
   const { open, style, triggerRef, popoverRef, openPopover, close } =
     useAnchoredPopover(192);
@@ -19,11 +21,12 @@ export default function ManageActions({
         className={`pp-btn pp-manage-trigger ${className}`.trim()}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={iconOnly ? label : undefined}
         disabled={disabled}
         onClick={open ? close : openPopover}
       >
-        <Icons.settings size={14} />
-        {label}
+        {icon}
+        {!iconOnly && label}
       </button>
       {open &&
         createPortal(
@@ -33,6 +36,10 @@ export default function ManageActions({
             style={style || undefined}
             role="menu"
             aria-label={`${label} actions`}
+            onClick={(event) => {
+              const item = event.target.closest('[role="menuitem"]');
+              if (item && !item.disabled && item.getAttribute("aria-disabled") !== "true") close();
+            }}
           >
             {typeof children === "function" ? children({ close }) : children}
           </div>,
