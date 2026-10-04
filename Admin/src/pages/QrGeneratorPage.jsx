@@ -78,16 +78,6 @@ const colorDistance = (first, second) => Math.hypot(first[0] - second[0], first[
 const randomItem = values => values[Math.floor(Math.random() * values.length)];
 const randomStep = (minimum, maximum, step = 2) => minimum + Math.floor(Math.random() * (Math.floor((maximum - minimum) / step) + 1)) * step;
 
-function isFinderPixel(x, y, size, qrScale) {
-  const qrSize = Math.round(size * qrScale);
-  const inset = Math.round((size - qrSize) / 2);
-  const localX = x - inset;
-  const localY = y - inset;
-  if (localX < 0 || localY < 0 || localX >= qrSize || localY >= qrSize) return false;
-  const guard = Math.round(qrSize * 0.255);
-  return (localX < guard && localY < guard) || (localX > qrSize - guard && localY < guard) || (localX < guard && localY > qrSize - guard);
-}
-
 function roundedRect(context, x, y, width, height, radius) {
   const r = Math.min(radius, width / 2, height / 2);
   context.beginPath();
@@ -184,10 +174,6 @@ async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity
 
   const foregroundRgb = rgb(foreground), backgroundRgb = rgb(background), logoForegroundRgb = rgb(logoForeground), logoBackgroundRgb = rgb(logoBackground);
   for (let index = 0; index < base.data.length; index += 4) {
-    const pixel = index / 4;
-    const x = pixel % size;
-    const y = Math.floor(pixel / size);
-    if (isFinderPixel(x, y, size, qrScale)) continue;
     const maskDarkness = 255 - ((maskData[index] + maskData[index + 1] + maskData[index + 2]) / 3);
     if (maskDarkness < 96) continue;
     const alpha = Math.min(1, Math.max(0, maskDarkness / 255));

@@ -726,7 +726,7 @@
 .qr-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 26px; }
 .qr-page-head .pp-page-lead { max-width: 68ch; }
 .qr-generator-layout { display: grid; grid-template-columns: minmax(300px, .78fr) minmax(360px, 1fr); gap: 24px; align-items: start; }
-.qr-controls { display: grid; gap: 18px; padding: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); }
+.qr-controls { display: grid; gap: 16px; padding: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); }
 .qr-controls label { display: grid; gap: 8px; min-width: 0; color: var(--text-muted); font-size: 13px; font-weight: 650; }
 .qr-controls :is(input, select) { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
 .qr-appearance-panel { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-alt); }
@@ -745,7 +745,7 @@
 .qr-auto-row > div { display: grid; gap: 2px; }
 .qr-auto-row strong { color: var(--text); font-size: 12px; }
 .qr-auto-row small { color: var(--text-muted); font-size: 10px; line-height: 1.35; }
-.qr-auto-row .pp-btn { min-height: 34px; flex: 0 0 auto; padding: 7px 11px; font-size: 11px; }
+.qr-auto-row .pp-btn { min-height: 40px; flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
 .qr-appearance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; margin-top: 16px; }
 .qr-color-controls { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 .qr-color-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; }
@@ -774,7 +774,7 @@
 .qr-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .qr-actions .pp-btn { flex: 1; justify-content: center; min-width: 150px; }
 .qr-preview-panel { display: grid; padding: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); }
-.qr-preview-frame { display: grid; place-items: center; aspect-ratio: 1; padding: 20px; border-radius: 18px; background: #fff; box-shadow: 0 18px 50px rgb(23 77 61 / .13); }
+.qr-preview-frame { display: grid; place-items: center; aspect-ratio: 1; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-inset); box-shadow: var(--shadow); }
 .qr-preview-frame canvas { display: block; width: 100%; height: auto; border-radius: 6px; }
 
 @media (max-width: 900px) {
