@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Icons } from "../icons.jsx";
-import karamahLogoUrl from "../../../without a dot .svg";
+import karamahLogoUrl from "../assets/karamah-wordmark.svg";
 
 const QR_API = "https://api.qrserver.com/v1/create-qr-code/";
 const QR_READ_API = "https://api.qrserver.com/v1/read-qr-code/";
