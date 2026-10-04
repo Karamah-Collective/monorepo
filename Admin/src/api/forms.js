@@ -10,7 +10,7 @@ async function formsRequest(action, body, method = "GET") {
   if (!auth.currentUser) throw new Error("Not signed in");
   const url = new URL(`${formsOrigin}/api/admin`); if (method === "GET") { url.searchParams.set("action", action); for (const [key, value] of Object.entries(body || {})) if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value); }
   const response = await fetch(url, { method, headers: { Authorization: `Bearer ${await auth.currentUser.getIdToken()}`, ...(method === "POST" ? { "Content-Type": "application/json" } : {}) }, ...(method === "POST" ? { body: JSON.stringify({ action, ...body }) } : {}) });
-  const result = await response.json(); if (!response.ok) throw new Error(result.error || "Forms service error"); return result;
+  const result = await response.json(); if (!response.ok || result.error) throw new Error(result.error || "Forms service error"); return result;
 }
 export async function uploadFormCover(formId, file, alt = "") {
   if (!auth.currentUser) throw new Error("Not signed in");
@@ -44,4 +44,6 @@ export const useDuplicateForm = mutation("forms-duplicate");
 export const useDeleteForm = mutation("forms-delete");
 export const useDeleteSubmission = mutation("forms-delete-submission");
 export const useSendFormInvites = mutation("forms-invite");
+export const useAddFormCollaborator = mutation("forms-add-collaborator");
+export const useRemoveFormCollaborator = mutation("forms-remove-collaborator");
 export const exportFormResponses = id => formsRequest("forms-export", { id });

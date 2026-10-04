@@ -96,3 +96,23 @@ button,a,input,select,textarea{touch-action:manipulation}.choice{touch-action:ma
 .public-form-grid{gap:16px}.public-form-card{border-color:color-mix(in srgb,var(--ink) 11%,var(--line));border-radius:20px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:none}.public-form-card>div{padding:24px}.public-form-card h3{font-size:22px;letter-spacing:-.04em}.public-form-card span{color:var(--accent)}
 @media(hover:hover) and (pointer:fine){.public-form-card:hover{border-color:color-mix(in srgb,var(--accent) 38%,var(--line));background:var(--surface);transform:none}}
 @media(max-width:600px){.forms-atmosphere:before{top:-42vmax;right:-44vmax}.section-card{border-radius:18px}.block{padding:26px 0}.public-form-card>div{padding:22px}}
+
+/* Public catalogue cards keep artwork proportional and let the image carry identity. */
+.forms-home{width:min(980px,100% - 64px)}
+.public-form-grid{grid-template-columns:1fr;gap:18px}
+.public-form-card{min-height:0;border-radius:22px;background:var(--surface);--cover-scrim:linear-gradient(to bottom,transparent 18%,rgb(253 252 248 / .18) 42%,rgb(253 252 248 / .97) 100%);--cover-copy:#24312a}
+.public-form-card:hover{border-color:color-mix(in srgb,var(--accent) 42%,var(--line));background:var(--surface)}
+.public-form-visual{position:relative;isolation:isolate;margin:0;overflow:hidden;background:var(--surface-2)}
+.public-form-visual img{display:block;width:100%;height:auto;max-height:280px;object-fit:cover}
+.public-form-visual::after{content:"";position:absolute;z-index:1;inset:22% 0 0;background:var(--cover-scrim);pointer-events:none}
+.public-form-cover-copy{position:absolute;z-index:2;right:0;bottom:0;left:0;display:flex;flex-direction:column-reverse;align-items:flex-start;padding:48px 22px 19px;color:var(--cover-copy)}
+.public-form-cover-copy small{margin:5px 0 0;padding:0;color:inherit;font-size:12px;font-weight:600;letter-spacing:.055em;text-transform:uppercase}
+.public-form-cover-copy h3{max-width:21ch;margin:0;font-size:clamp(22px,2.6vw,28px);line-height:1.08;letter-spacing:-.045em;text-wrap:balance}
+.public-form-card>.public-form-details{display:flex;flex:1;flex-direction:column;padding:19px 22px 22px}
+.public-form-details .card-subtitle{margin:0;color:var(--ink);font-size:15px;font-weight:580}
+.public-form-summary{display:-webkit-box;margin-top:9px;overflow:hidden;color:var(--muted);font-size:14px;line-height:1.58;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+.public-form-summary :is(p,ul,ol,blockquote){margin:0}
+.public-form-details>span{display:inline-flex;align-items:center;align-self:flex-start;margin-top:17px;padding-top:0;color:var(--accent);font-size:14px;font-weight:650}
+:root[data-color-mode='dark'] .public-form-card{--cover-scrim:linear-gradient(to bottom,transparent 15%,rgb(13 26 31 / .2) 40%,rgb(13 26 31 / .96) 100%);--cover-copy:#ede8df}
+@media(min-width:900px){.public-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-form-visual img{max-height:230px}}
+@media(max-width:600px){.forms-home{width:calc(100% - 28px)}.public-form-cover-copy{padding:44px 20px 18px}.public-form-card>.public-form-details{padding:18px 20px 21px}.public-form-visual img{max-height:250px}}

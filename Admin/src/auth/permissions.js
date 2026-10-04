@@ -1,10 +1,23 @@
+export const EVERYONE_PERMISSIONS = [
+  "dashboard.view",
+  "maps.places.read",
+  "links.qr",
+  "forms.create",
+  "access.view",
+  "access.request",
+];
+
 export function can(access, permission) {
-  const permissions = access?.permissions || [];
-  return permissions.includes("*") || permissions.includes(permission) || permissions.includes(`${permission.split(".")[0]}.*`);
+  const permissions = [...EVERYONE_PERMISSIONS, ...(access?.permissions || [])];
+  const [area, resource, level] = permission.split(".");
+  const legacy = level && permissions.includes(`${area}.${resource}`);
+  const writeIncludesRead = (level === "read" && permissions.includes(`${area}.${resource}.write`)) || (resource === "read" && permissions.includes(`${area}.write`));
+  const viewAlias = resource === "read" && permissions.includes(`${area}.view`);
+  return permissions.includes("*") || permissions.includes(permission) || legacy || writeIncludesRead || viewAlias || permissions.includes(`${area}.*`);
 }
 
 export const ROUTE_PERMISSION = {
-  "/": "dashboard.view", "/places": "maps.places", "/events": "maps.events", "/eid": "maps.eid", "/social-videos": "maps.social", "/type-styles": "maps.styles", "/app-settings": "maps.settings",
-  "/submissions/new": "moderation.places", "/submissions/edits": "moderation.places", "/events/edits": "moderation.events", "/reviews": "moderation.reviews", "/wishes": "moderation.wishes", "/contacts": "moderation.contacts",
-  "/website/content": "website.content", "/website/team": "website.team", "/website/subscribers": "website.subscribers", "/links": "links.manage", "/links/qr": "links.manage", "/forms": "forms.manage", "/log": "activity.view", "/workspace/preferences": "dashboard.view", "/workspace/weekly-report": "reports.manage", "/workspace/access": "dashboard.view",
+  "/": "dashboard.view", "/places": "maps.places.read", "/events": "maps.events.read", "/eid": "maps.eid.read", "/social-videos": "maps.social.read", "/type-styles": "maps.styles.read", "/app-settings": "maps.settings.read",
+  "/submissions/new": "moderation.places.read", "/submissions/edits": "moderation.places.read", "/events/edits": "moderation.events.read", "/reviews": "moderation.reviews.read", "/wishes": "moderation.wishes.read", "/contacts": "moderation.contacts.read",
+  "/website/content": "website.content.read", "/website/team": "website.team.read", "/website/subscribers": "website.subscribers.read", "/links": "links.read", "/links/qr": "links.qr", "/forms": "forms.create", "/log": "activity.read", "/workspace/preferences": "dashboard.view", "/workspace/weekly-report": "reports.read", "/workspace/access": "access.view",
 };

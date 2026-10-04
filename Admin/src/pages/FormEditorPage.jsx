@@ -45,6 +45,8 @@ import {
   useSaveForm,
   useSetFormStatus,
   useSendFormInvites,
+  useAddFormCollaborator,
+  useRemoveFormCollaborator,
 } from "../api/forms.js";
 
 const TYPE_LABELS = {
@@ -1400,10 +1402,32 @@ function SettingsEditor({ draft, update, slug, setSlug, form, versions, setStatu
           </button>
         </div>
       </section>
+      <CollaborationPanel form={form} />
       <InvitePanel form={form} />
       <VersionHistory formId={form.id} versions={versions} activeVersionId={form.activeVersionId} />
     </div>
   );
+}
+
+function CollaborationPanel({ form }) {
+  const add = useAddFormCollaborator(), remove = useRemoveFormCollaborator(), toast = useToast();
+  const [email, setEmail] = useState("");
+  const canManage = form.accessRelation === "owner" || form.accessRelation === "administrator";
+  async function addCollaborator(event) {
+    event.preventDefault();
+    try { const result = await add.mutateAsync({ id: form.id, email }); if (result.error) throw new Error(result.error); setEmail(""); toast("Collaborator added"); }
+    catch (error) { toast(error.message, "error"); }
+  }
+  async function removeCollaborator(value) {
+    try { const result = await remove.mutateAsync({ id: form.id, email: value }); if (result.error) throw new Error(result.error); toast("Collaborator removed"); }
+    catch (error) { toast(error.message, "error"); }
+  }
+  return <section className="form-collaboration">
+    <div className="form-invite-heading"><div><p className="page-eyebrow">FORM TEAM</p><h2>Owners & collaborators</h2><p>Collaborators are co-owners. They can edit, publish, manage responses, and delete this form.</p></div><span className="form-invite-count">{(form.collaborators?.length || 0) + 1} owner{form.collaborators?.length ? "s" : ""}</span></div>
+    <div className="form-owner-row"><span>{form.ownerEmail || "Original creator"}</span><em>Owner</em></div>
+    {(form.collaborators || []).map(person => <div className="form-owner-row" key={person.email}><span>{person.email}</span><em>Co-owner</em>{canManage && <button className="pp-btn pp-btn-text" disabled={remove.isPending} onClick={() => removeCollaborator(person.email)}>Remove</button>}</div>)}
+    {canManage && <form className="form-collaborator-form" onSubmit={addCollaborator}><label className="pp-field">Team member email<input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@karamahcollective.com" /></label><button className="pp-btn" disabled={add.isPending}><Plus size={15} />{add.isPending ? "Adding…" : "Add co-owner"}</button></form>}
+  </section>;
 }
 
 function InvitePanel({ form }) {

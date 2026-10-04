@@ -144,9 +144,13 @@ dedicated preview storage for Preview deployments so test responses and uploads
 never touch production. Apply `Maps/migrations/0021_forms.sql`,
 `Maps/migrations/0022_form_share_codes.sql`, and
 `Maps/migrations/0023_shorten_form_share_codes.sql`, and
-`Maps/migrations/0024_form_share_code_aliases.sql` to both environments
+`Maps/migrations/0024_form_share_code_aliases.sql`, then
+`Maps/migrations/0030_form_collaborators.sql` to both environments
 before the first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
 environment uses a Firebase project other than `halal-map-karamah`.
+Set `ADMIN_ACCESS_URL` only when the Forms deployment should resolve
+administrator roles from a non-production Admin API; production defaults to
+`https://karamahcollective.com/api/admin`.
 
 Run `npm run migrate:form-links -- --remote` to create three-character short
 links that redirect to the long canonical form URLs.
@@ -166,7 +170,8 @@ management and cover-asset endpoints. Respondent uploads remain private.
 
 Before deploying the role-aware Admin build, apply
 `Maps/migrations/0025_admin_roles.sql` and
-`Maps/migrations/0026_granular_admin_roles.sql` to both the production and Preview D1
+`Maps/migrations/0026_granular_admin_roles.sql`, then
+`Maps/migrations/0029_access_foundation.sql` to both the production and Preview D1
 databases used by Maps. The Website Pages project must use the same `DB` D1
 binding so website-role checks can read these assignments. In Firebase
 Authentication, enable the **Google** provider and ensure
@@ -174,6 +179,10 @@ Authentication, enable the **Google** provider and ensure
 seeds `moontasir@karamahcollective.com` as Administrator; after deploying,
 sign in with that account and use **Workspace → Roles & access** to give other
 Workspace accounts a role.
+
+Set `BREVO_API_KEY` on the Maps Pages project to email access requests to the
+administrator selected by the requester. Requests remain stored in D1 when
+email delivery is not configured.
 
 If the existing Website project uses the old repository, create a replacement Pages project connected to this monorepo. Cloudflare documents creating a new project when changing repositories in its [known issues](https://developers.cloudflare.com/pages/platform/known-issues/).
 

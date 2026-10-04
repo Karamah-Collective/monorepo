@@ -84,7 +84,8 @@ async function authenticateAdmin(request, env) {
   return { ok: true, actor: { uid: verified.uid, email: verified.email.toLowerCase(), name: verified.name || "" } };
 }
 
-const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.manage"], moderator:["moderation.*"], viewer:["dashboard.view","activity.view"] };
+const EVERYONE_PERMISSIONS = ["dashboard.view","maps.places.read","links.qr","forms.create","access.view","access.request"];
+const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.write"], moderator:["moderation.*"], viewer:[] };
 const DEFAULT_ROLE_ID = "viewer";
 function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
 function firstName(value, email="") { const source=String(value||"").trim()||String(email||"").split("@")[0].replace(/[._-]+/g," "); const name=source.split(/\s+/)[0]||""; return name ? name[0].toUpperCase()+name.slice(1,40) : ""; }
@@ -110,26 +111,31 @@ async function resolveAccess(db, actor) {
   else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?, 'automatic default role',datetime('now'))").bind(actor.email,roleId,displayName).run();
   return { roleId, roleName:role.name, permissions:parsePermissions(role.permissions,ROLE_PERMISSIONS[roleId]||[]), displayName };
 }
-function allows(access, permission) { return access?.permissions.includes("*") || access?.permissions.includes(permission) || access?.permissions.includes(`${permission.split(".")[0]}.*`); }
+function allows(access, permission) {
+  const permissions=[...EVERYONE_PERMISSIONS,...(access?.permissions||[])], [area,resource,level]=permission.split(".");
+  return permissions.includes("*") || permissions.includes(permission) || (level && permissions.includes(`${area}.${resource}`)) || (level==="read" && permissions.includes(`${area}.${resource}.write`)) || (resource==="read" && (permissions.includes(`${area}.write`) || permissions.includes(`${area}.view`))) || permissions.includes(`${area}.*`);
+}
 function permissionForAction(action) {
   if (action === "save-my-profile") return "dashboard.view";
-  if (["access-roles","access-members","access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
+  if (["access-roles","access-members"].includes(action)) return "access.view";
+  if (action === "request-access") return "access.request";
+  if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (action === "admin-stats" || action === "admin-access") return "dashboard.view";
-  if (action === "admin-log") return "activity.view";
-  if (action.includes("weekly-report")) return "reports.manage";
-  if (action.startsWith("forms-")) return "forms.manage";
-  if (action.includes("link-hub")) return "links.manage";
-  if (["admin-contact","update-contact-replied"].includes(action)) return "moderation.contacts";
-  if (["admin-wishes","update-wish-approved","update-wish-implemented"].includes(action)) return "moderation.wishes";
-  if (["pending-new","pending-edits","approve-new","reject-new","approve-edit","reject-edit"].includes(action)) return "moderation.places";
-  if (["pending-event-edits","approve-event-edit","reject-event-edit"].includes(action)) return "moderation.events";
-  if (["admin-reviews","approve-review","reject-review","set-review-status","set-review-image-status","delete-review","ban-reviewer","unban-reviewer","admin-review-image"].includes(action)) return "moderation.reviews";
-  if (action.includes("social-video")) return "maps.social";
-  if (action.includes("type-style")) return "maps.styles";
-  if (action.includes("eid")) return "maps.eid";
-  if (action.includes("event")) return "maps.events";
-  if (action.includes("app-settings")) return "maps.settings";
-  return "maps.places";
+  if (action === "admin-log") return "activity.read";
+  if (action.includes("weekly-report")) return action.startsWith("save-") || action.startsWith("delete-") || action.startsWith("unsubscribe-") ? "reports.write" : "reports.read";
+  if (action.startsWith("forms-")) return action === "forms-list" || action === "forms-get" ? "forms.read" : "forms.write";
+  if (action.includes("link-hub")) return action.startsWith("admin-") ? "links.read" : "links.write";
+  if (["admin-contact","update-contact-replied"].includes(action)) return action === "admin-contact" ? "moderation.contacts.read" : "moderation.contacts.write";
+  if (["admin-wishes","update-wish-approved","update-wish-implemented"].includes(action)) return action === "admin-wishes" ? "moderation.wishes.read" : "moderation.wishes.write";
+  if (["pending-new","pending-edits","approve-new","reject-new","approve-edit","reject-edit"].includes(action)) return action.startsWith("pending-") ? "moderation.places.read" : "moderation.places.write";
+  if (["pending-event-edits","approve-event-edit","reject-event-edit"].includes(action)) return action === "pending-event-edits" ? "moderation.events.read" : "moderation.events.write";
+  if (["admin-reviews","approve-review","reject-review","set-review-status","set-review-image-status","delete-review","ban-reviewer","unban-reviewer","admin-review-image"].includes(action)) return action.startsWith("admin-") ? "moderation.reviews.read" : "moderation.reviews.write";
+  if (action.includes("social-video")) return action.startsWith("admin-") ? "maps.social.read" : "maps.social.write";
+  if (action.includes("type-style")) return action.startsWith("admin-") ? "maps.styles.read" : "maps.styles.write";
+  if (action.includes("eid")) return action.startsWith("admin-") || action.startsWith("pending-") ? "maps.eid.read" : "maps.eid.write";
+  if (action.includes("event")) return action.startsWith("admin-") || action.startsWith("pending-") ? "maps.events.read" : "maps.events.write";
+  if (action.includes("app-settings")) return action.startsWith("admin-") ? "maps.settings.read" : "maps.settings.write";
+  return action === "admin-places" ? "maps.places.read" : "maps.places.write";
 }
 async function authenticateAuthorized(request, env, action) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
@@ -146,10 +152,25 @@ async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
 async function saveAccessSettings(db,data) { const roleId=String(data.defaultRoleId||""); if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid default role."};await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();return {success:true}; }
-async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(dashboard\.view|activity\.view|reports\.manage|maps\.(places|events|eid|social|styles|settings)|moderation\.(places|events|reviews|wishes|contacts)|website\.(content|team|subscribers)|links\.manage|forms\.manage)$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
+async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(activity\.(read|write)|reports\.(read|write)|maps\.(places|events|eid|social|styles|settings)\.(read|write)|moderation\.(places|events|reviews|wishes|contacts)\.(read|write)|website\.(content|team|subscribers)\.(read|write)|links\.(read|write)|forms\.(read|write))$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
 async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=firstName(data.member?.displayName,email); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};const existing=await db.prepare("SELECT email FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).first();if(existing)await db.prepare("UPDATE admin_role_members SET role_id=?,added_by=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,actor.email,email).run();else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now'))").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
 async function saveMyProfile(db,data,actor) { const displayName=firstName(data.displayName,actor.email);await resolveAccess(db,actor);await db.prepare("UPDATE admin_role_members SET display_name=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(displayName,actor.email).run();return {success:true,displayName}; }
 async function deleteAccessMember(db,data) { const email=String(data.email||"").trim().toLowerCase();if(email===INITIAL_ADMIN_EMAIL)return {error:"The initial administrator cannot be removed."};await db.prepare("DELETE FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).run();return {success:true}; }
+async function requestAccess(db,data,env,actor) {
+  const adminEmail=String(data.adminEmail||"").trim().toLowerCase(), permission=String(data.permission||"").trim().slice(0,100), note=String(data.note||"").trim().slice(0,500);
+  if(!permission)return {error:"Choose the access you need."};
+  const admin=await db.prepare(`SELECT m.email,m.display_name FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?) AND r.permissions LIKE '%"*"%'`).bind(adminEmail).first();
+  if(!admin)return {error:"Choose a workspace administrator."};
+  const id=randomToken(16);
+  await db.prepare("INSERT INTO admin_access_requests (id,requester_email,requested_permission,admin_email,note,status,created_at) VALUES (?,?,?,?,?,'pending',datetime('now'))").bind(id,actor.email,permission,adminEmail,note).run();
+  const apiKey=String(env.BREVO_API_KEY||"").trim();
+  if(apiKey) {
+    const requester=actor.name||firstName("",actor.email);
+    const text=`${requester} (${actor.email}) requested ${permission} access.${note?`\n\nNote: ${note}`:""}\n\nReview the request in Karamah Admin → Roles & access.`;
+    try { await fetch("https://api.brevo.com/v3/smtp/email",{method:"POST",headers:{accept:"application/json","api-key":apiKey,"content-type":"application/json"},body:JSON.stringify({sender:{email:"admin@karamahcollective.com",name:"Karamah Admin"},to:[{email:adminEmail,name:firstName(admin.display_name,adminEmail)}],subject:`Access request from ${requester}`,textContent:text})}); } catch(error) { console.error("Access request email failed",error); }
+  }
+  return {success:true,id,notified:!!apiKey};
+}
 
 function randomToken(bytes = 24) { const values = new Uint8Array(bytes); crypto.getRandomValues(values); return [...values].map(value => value.toString(16).padStart(2, "0")).join(""); }
 function normalizeReportEmail(value) { return String(value || "").trim().toLowerCase(); }
@@ -1242,6 +1263,7 @@ const POST_ACTIONS = {
   "save-my-profile": (db, data, _env, actor) => saveMyProfile(db, data, actor),
   "save-access-settings": (db, data) => saveAccessSettings(db, data),
   "delete-access-member": (db, data) => deleteAccessMember(db, data),
+  "request-access": (db, data, env, actor) => requestAccess(db, data, env, actor),
   "forms-create": (db, data, _env, actor) => createForm(db, data, actor),
   "forms-save": (db, data, _env, actor) => saveForm(db, data, actor),
   "forms-publish": (db, data, _env, actor) => publishForm(db, data, actor),

@@ -1,284 +1,376 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Code,
   LinkSimple,
   ListBullets,
   ListNumbers,
+  Minus,
   Quotes,
   TextB,
   TextItalic,
   TextStrikethrough,
+  X,
 } from "@phosphor-icons/react";
+import { isSafeDescriptionLink, parseDescriptionMarkdown } from "./richDescriptionModel.js";
 
-const SAFE_LINK = /^(https?:\/\/|mailto:)/i;
+const EMPTY_FORMATS = {
+  bold: false,
+  italic: false,
+  strike: false,
+  unordered: false,
+  ordered: false,
+  quote: false,
+  code: false,
+  link: false,
+};
 
-const escapeHtml = value =>
-  String(value).replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[character]);
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
-const inlineHtml = value =>
-  escapeHtml(value)
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-    .replace(/(\*\*|__)(.+?)\1/g, "<strong>$2</strong>")
-    .replace(/~~(.+?)~~/g, "<s>$1</s>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/(\*|_)([^*_\n]+?)\1/g, "<em>$2</em>");
-
-function markdownToVisual(markdown) {
-  const blocks = String(markdown || "").trim().split(/\n{2,}/).filter(Boolean);
-  if (!blocks.length) return "";
-
-  return blocks.map(block => {
-    const lines = block.split("\n");
-    if (lines.every(line => /^-\s+/.test(line))) {
-      return `<ul>${lines.map(line => `<li>${inlineHtml(line.replace(/^-\s+/, ""))}</li>`).join("")}</ul>`;
+function inlineNodesToHtml(nodes) {
+  return nodes.map((node) => {
+    if (node.type === "text") return escapeHtml(node.text);
+    if (node.type === "code") return `<code>${escapeHtml(node.text)}</code>`;
+    const content = inlineNodesToHtml(node.children || []);
+    if (node.type === "strong") return `<strong>${content}</strong>`;
+    if (node.type === "emphasis") return `<em>${content}</em>`;
+    if (node.type === "strike") return `<s>${content}</s>`;
+    if (node.type === "link" && isSafeDescriptionLink(node.url)) {
+      return `<a href="${escapeHtml(node.url)}" target="_blank" rel="noopener noreferrer">${content}</a>`;
     }
-    if (lines.every(line => /^\d+\.\s+/.test(line))) {
-      return `<ol>${lines.map(line => `<li>${inlineHtml(line.replace(/^\d+\.\s+/, ""))}</li>`).join("")}</ol>`;
-    }
-    if (lines.every(line => /^>\s?/.test(line))) {
-      return `<blockquote>${lines.map(line => inlineHtml(line.replace(/^>\s?/, ""))).join("<br>")}</blockquote>`;
-    }
-    return `<p>${lines.map(inlineHtml).join("<br>")}</p>`;
+    return content;
   }).join("");
 }
 
-function visualToMarkdown(node) {
-  if (!node) return "";
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent.replace(/\u00a0/g, " ");
+function markdownToEditorHtml(markdown) {
+  return parseDescriptionMarkdown(markdown).map((block) => {
+    if (block.type === "paragraph") {
+      return `<p>${block.lines.map(inlineNodesToHtml).join("<br>")}</p>`;
+    }
+    if (block.type === "unordered-list" || block.type === "ordered-list") {
+      const tag = block.type === "ordered-list" ? "ol" : "ul";
+      return `<${tag}>${block.items.map((item) => `<li>${inlineNodesToHtml(item)}</li>`).join("")}</${tag}>`;
+    }
+    if (block.type === "quote") {
+      return `<blockquote>${block.lines.map(inlineNodesToHtml).join("<br>")}</blockquote>`;
+    }
+    if (block.type === "divider") return "<hr>";
+    return "";
+  }).join("");
+}
+
+function inlineToMarkdown(node) {
+  if (node.nodeType === Node.TEXT_NODE) return (node.nodeValue || "").replaceAll("\u00a0", " ");
   if (node.nodeType !== Node.ELEMENT_NODE) return "";
-
-  const children = [...node.childNodes].map(visualToMarkdown).join("");
-  switch (node.tagName) {
-    case "STRONG":
-    case "B":
-      return children ? `**${children}**` : "";
-    case "EM":
-    case "I":
-      return children ? `*${children}*` : "";
-    case "S":
-    case "STRIKE":
-    case "DEL":
-      return children ? `~~${children}~~` : "";
-    case "CODE":
-      return children ? `\`${children}\`` : "";
-    case "A":
-      return SAFE_LINK.test(node.href) ? `[${children}](${node.href})` : children;
-    case "BR":
-      return "\n";
-    case "P":
-    case "DIV":
-      return `${children}\n\n`;
-    case "LI":
-      return children.trim();
-    case "UL":
-      return `${[...node.children].map(item => `- ${visualToMarkdown(item).trim()}`).join("\n")}\n\n`;
-    case "OL":
-      return `${[...node.children].map((item, index) => `${index + 1}. ${visualToMarkdown(item).trim()}`).join("\n")}\n\n`;
-    case "BLOCKQUOTE":
-      return `${children.split("\n").filter(Boolean).map(line => `> ${line}`).join("\n")}\n\n`;
-    case "PRE":
-      return children ? `\`${children}\`\n\n` : "";
-    default:
-      return children;
+  const tag = node.tagName.toLowerCase();
+  const content = Array.from(node.childNodes).map(inlineToMarkdown).join("");
+  if (tag === "br") return "\n";
+  if ((tag === "strong" || tag === "b") && content) return `**${content}**`;
+  if ((tag === "em" || tag === "i") && content) return `*${content}*`;
+  if ((tag === "s" || tag === "strike" || tag === "del") && content) return `~~${content}~~`;
+  if (tag === "code" && content) return `\`${content.replaceAll("`", "")}\``;
+  if (tag === "a") {
+    const href = node.getAttribute("href") || "";
+    return isSafeDescriptionLink(href) && content ? `[${content}](${href})` : content;
   }
+  return content;
 }
 
-function placeCaretAfter(node) {
-  const selection = window.getSelection();
-  if (!selection) return;
-
-  const range = document.createRange();
-  range.setStartAfter(node);
-  range.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-function placeCaretInside(node) {
-  const selection = window.getSelection();
-  if (!selection) return;
-
-  const range = document.createRange();
-  range.selectNodeContents(node);
-  range.collapse(false);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-function getEditorRange(editor) {
-  if (!editor) return null;
-
-  const selection = window.getSelection();
-  if (!selection?.rangeCount) return null;
-
-  const range = selection.getRangeAt(0);
-  const container = range.commonAncestorContainer;
-  const element = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
-  if (!editor.contains(element)) return null;
-  return range;
-}
-
-function applyInlineElement(editor, tagName, attributes = {}) {
-  const range = getEditorRange(editor);
-  if (!range || range.collapsed) return false;
-
-  const wrapper = document.createElement(tagName);
-  Object.entries(attributes).forEach(([key, value]) => wrapper.setAttribute(key, value));
-  wrapper.appendChild(range.extractContents());
-  range.insertNode(wrapper);
-  placeCaretAfter(wrapper);
-  return true;
-}
-
-function applyList(editor, tagName) {
-  const range = getEditorRange(editor);
-  if (!range) return false;
-
-  const selectedText = range.collapsed ? "" : range.toString();
-  const lines = selectedText.split(/\n+/).map(line => line.trim()).filter(Boolean);
-  const list = document.createElement(tagName);
-  const items = lines.length ? lines : [""];
-
-  items.forEach(line => {
-    const item = document.createElement("li");
-    if (line) item.textContent = line;
-    else item.appendChild(document.createElement("br"));
-    list.appendChild(item);
-  });
-
-  if (!range.collapsed) range.deleteContents();
-  range.insertNode(list);
-  if (lines.length) placeCaretAfter(list);
-  else placeCaretInside(list.firstElementChild);
-  return true;
-}
-
-function applyQuote(editor) {
-  const range = getEditorRange(editor);
-  if (!range) return false;
-
-  const quote = document.createElement("blockquote");
-  if (range.collapsed) {
-    quote.appendChild(document.createElement("br"));
-  } else {
-    quote.appendChild(range.extractContents());
+function blockToMarkdown(node) {
+  if (node.nodeType === Node.TEXT_NODE) return inlineToMarkdown(node).trim();
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+  const tag = node.tagName.toLowerCase();
+  if (tag === "hr") return "---";
+  if (tag === "ul" || tag === "ol") {
+    return Array.from(node.children)
+      .filter((child) => child.tagName.toLowerCase() === "li")
+      .map((child, index) => `${tag === "ol" ? `${index + 1}.` : "-"} ${Array.from(child.childNodes).map(inlineToMarkdown).join("").trim()}`)
+      .join("\n");
   }
-
-  range.insertNode(quote);
-  if (range.collapsed) placeCaretInside(quote);
-  else placeCaretAfter(quote);
-  return true;
+  if (tag === "blockquote") {
+    return Array.from(node.childNodes).map(inlineToMarkdown).join("").split("\n").map((line) => `> ${line}`.trimEnd()).join("\n");
+  }
+  return Array.from(node.childNodes).map(inlineToMarkdown).join("").trim();
 }
 
-export default function RichDescriptionEditor({ value, onChange, ariaLabelledBy }) {
+function editorToMarkdown(editor) {
+  return Array.from(editor.childNodes)
+    .map(blockToMarkdown)
+    .filter(Boolean)
+    .join("\n\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function sanitisePastedHtml(html) {
+  const documentNode = new DOMParser().parseFromString(html, "text/html");
+  const clean = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.nodeValue || "");
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const tag = node.tagName.toLowerCase();
+    const content = Array.from(node.childNodes).map(clean).join("");
+    if (["script", "style", "meta", "link", "iframe", "object"].includes(tag)) return "";
+    if (["strong", "b"].includes(tag)) return `<strong>${content}</strong>`;
+    if (["em", "i"].includes(tag)) return `<em>${content}</em>`;
+    if (["s", "strike", "del"].includes(tag)) return `<s>${content}</s>`;
+    if (tag === "code") return `<code>${content}</code>`;
+    if (tag === "a") {
+      const href = node.getAttribute("href") || "";
+      return isSafeDescriptionLink(href) ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${content}</a>` : content;
+    }
+    if (["p", "div", "ul", "ol", "li", "blockquote"].includes(tag)) return `<${tag}>${content}</${tag}>`;
+    if (tag === "br" || tag === "hr") return `<${tag}>`;
+    if (/^h[1-6]$/.test(tag)) return `<p><strong>${content}</strong></p>`;
+    return content;
+  };
+  return Array.from(documentNode.body.childNodes).map(clean).join("");
+}
+
+function closestElement(node, selector, boundary) {
+  const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  const match = element?.closest?.(selector);
+  return match && boundary.contains(match) ? match : null;
+}
+
+function ToolButton({ active = false, label, children, onAction }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={active}
+      className={active ? "is-active" : ""}
+      title={label}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onAction}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function RichDescriptionEditor({ value = "", onChange, ariaLabelledBy }) {
   const editorRef = useRef(null);
   const focusedRef = useRef(false);
-  const lastSavedRef = useRef(value || "");
+  const initializedRef = useRef(false);
+  const lastEmittedRef = useRef(String(value || ""));
+  const emitTimerRef = useRef(null);
+  const savedRangeRef = useRef(null);
+  const [formats, setFormats] = useState(EMPTY_FORMATS);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [characterCount, setCharacterCount] = useState(String(value || "").length);
 
-  useEffect(() => {
+  const emitChange = useCallback(() => {
     const editor = editorRef.current;
-    if (!editor || focusedRef.current || value === lastSavedRef.current) return;
-    editor.innerHTML = markdownToVisual(value);
-    lastSavedRef.current = value || "";
+    if (!editor) return;
+    clearTimeout(emitTimerRef.current);
+    const markdown = editorToMarkdown(editor);
+    setCharacterCount(editor.innerText.replace(/\n$/, "").length);
+    if (markdown === lastEmittedRef.current) return;
+    lastEmittedRef.current = markdown;
+    onChange(markdown);
+  }, [onChange]);
+
+  const scheduleChange = useCallback(() => {
+    clearTimeout(emitTimerRef.current);
+    const editor = editorRef.current;
+    if (editor) setCharacterCount(editor.innerText.replace(/\n$/, "").length);
+    emitTimerRef.current = setTimeout(emitChange, 180);
+  }, [emitChange]);
+
+  const refreshFormats = useCallback(() => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount || !editor.contains(selection.anchorNode)) {
+      setFormats(EMPTY_FORMATS);
+      return;
+    }
+    const anchor = selection.anchorNode;
+    setFormats({
+      bold: document.queryCommandState("bold") || Boolean(closestElement(anchor, "strong,b", editor)),
+      italic: document.queryCommandState("italic") || Boolean(closestElement(anchor, "em,i", editor)),
+      strike: document.queryCommandState("strikeThrough") || Boolean(closestElement(anchor, "s,strike,del", editor)),
+      unordered: document.queryCommandState("insertUnorderedList") || Boolean(closestElement(anchor, "ul", editor)),
+      ordered: document.queryCommandState("insertOrderedList") || Boolean(closestElement(anchor, "ol", editor)),
+      quote: Boolean(closestElement(anchor, "blockquote", editor)),
+      code: Boolean(closestElement(anchor, "code", editor)),
+      link: Boolean(closestElement(anchor, "a", editor)),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const editor = editorRef.current;
+    const incoming = String(value || "");
+    if (!editor) return;
+    if (!initializedRef.current || (!focusedRef.current && incoming !== lastEmittedRef.current)) {
+      editor.innerHTML = markdownToEditorHtml(incoming);
+      lastEmittedRef.current = incoming;
+      setCharacterCount(editor.innerText.replace(/\n$/, "").length);
+      initializedRef.current = true;
+    }
   }, [value]);
 
   useEffect(() => {
+    const handleSelectionChange = () => {
+      if (focusedRef.current) refreshFormats();
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      clearTimeout(emitTimerRef.current);
+    };
+  }, [refreshFormats]);
+
+  const runCommand = (command, commandValue = null) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.innerHTML = markdownToVisual(value);
-  }, []);
-
-  const save = () => {
-    const next = visualToMarkdown(editorRef.current)
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trimEnd();
-    lastSavedRef.current = next;
-    onChange(next);
+    editor.focus({ preventScroll: true });
+    document.execCommand(command, false, commandValue);
+    scheduleChange();
+    refreshFormats();
   };
 
-  const runFormat = action => {
+  const toggleQuote = () => runCommand("formatBlock", formats.quote ? "p" : "blockquote");
+
+  const toggleCode = () => {
     const editor = editorRef.current;
-    if (!editor) return;
-
-    const changed = action(editor);
-    if (changed) {
-      editor.focus();
-      save();
-    }
-  };
-
-  const promptForLink = () => {
-    const range = getEditorRange(editorRef.current);
-    if (!range || range.collapsed) return;
-
-    const savedRange = range.cloneRange();
-    const url = window.prompt("Link URL");
-    const cleanUrl = String(url || "").trim();
-    if (!SAFE_LINK.test(cleanUrl)) return;
-
     const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
+    const existing = closestElement(selection.anchorNode, "code", editor);
+    if (existing) {
+      existing.replaceWith(...existing.childNodes);
+    } else {
+      const range = selection.getRangeAt(0);
+      if (range.collapsed) return;
+      const code = document.createElement("code");
+      code.append(range.extractContents());
+      range.insertNode(code);
+      selection.removeAllRanges();
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(code);
+      selection.addRange(nextRange);
+    }
+    scheduleChange();
+    refreshFormats();
+  };
+
+  const openLinkEditor = () => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount || !editor.contains(selection.anchorNode)) return;
+    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+    const existing = closestElement(selection.anchorNode, "a", editor);
+    setLinkUrl(existing?.getAttribute("href") || "https://");
+    setLinkError("");
+    setLinkOpen(true);
+  };
+
+  const applyLink = (event) => {
+    event.preventDefault();
+    const cleanUrl = linkUrl.trim();
+    if (!isSafeDescriptionLink(cleanUrl)) {
+      setLinkError("Use a full https:// link or an email address beginning with mailto:.");
+      return;
+    }
+    const editor = editorRef.current;
+    const range = savedRangeRef.current;
+    const selection = window.getSelection();
+    if (!editor || !range || !selection) return;
+    editor.focus({ preventScroll: true });
     selection.removeAllRanges();
-    selection.addRange(savedRange);
-    runFormat(editor => applyInlineElement(editor, "a", { href: cleanUrl, target: "_blank", rel: "noopener noreferrer" }));
+    selection.addRange(range);
+    if (range.collapsed) document.execCommand("insertHTML", false, `<a href="${escapeHtml(cleanUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(cleanUrl)}</a>`);
+    else document.execCommand("createLink", false, cleanUrl);
+    const anchor = closestElement(selection.anchorNode, "a", editor);
+    if (anchor) {
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+    }
+    setLinkOpen(false);
+    setLinkError("");
+    scheduleChange();
+    refreshFormats();
+  };
+
+  const handlePaste = (event) => {
+    event.preventDefault();
+    const html = event.clipboardData.getData("text/html");
+    const text = event.clipboardData.getData("text/plain");
+    if (html) document.execCommand("insertHTML", false, sanitisePastedHtml(html));
+    else document.execCommand("insertText", false, text);
+    scheduleChange();
+  };
+
+  const handleKeyDown = (event) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const key = event.key.toLowerCase();
+    if (["b", "i", "k"].includes(key)) event.preventDefault();
+    if (key === "b") runCommand("bold");
+    if (key === "i") runCommand("italic");
+    if (key === "k") openLinkEditor();
   };
 
   return (
-    <div className="visual-description-editor">
-      <div className="visual-editor-toolbar" role="toolbar" aria-label="Description formatting">
-        <div>
-          <button type="button" aria-label="Bold" title="Bold" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyInlineElement(editor, "strong"))}>
-            <TextB size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Italic" title="Italic" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyInlineElement(editor, "em"))}>
-            <TextItalic size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Strikethrough" title="Strikethrough" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyInlineElement(editor, "s"))}>
-            <TextStrikethrough size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Code" title="Code" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyInlineElement(editor, "code"))}>
-            <Code size={17} weight="bold" />
-          </button>
+    <div className="rich-description-editor">
+      <div className="rich-description-toolbar" role="toolbar" aria-label="Description formatting">
+        <div className="rich-tool-group">
+          <ToolButton active={formats.bold} label="Bold (Ctrl+B)" onAction={() => runCommand("bold")}><TextB size={18} weight="bold" /></ToolButton>
+          <ToolButton active={formats.italic} label="Italic (Ctrl+I)" onAction={() => runCommand("italic")}><TextItalic size={18} /></ToolButton>
+          <ToolButton active={formats.strike} label="Strikethrough" onAction={() => runCommand("strikeThrough")}><TextStrikethrough size={18} /></ToolButton>
+          <ToolButton active={formats.code} label="Inline code" onAction={toggleCode}><Code size={18} /></ToolButton>
         </div>
         <i aria-hidden="true" />
-        <div>
-          <button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyList(editor, "ul"))}>
-            <ListBullets size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Numbered list" title="Numbered list" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(editor => applyList(editor, "ol"))}>
-            <ListNumbers size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Quote" title="Quote" onMouseDown={event => event.preventDefault()} onClick={() => runFormat(applyQuote)}>
-            <Quotes size={17} weight="bold" />
-          </button>
-          <button type="button" aria-label="Link" title="Link" onMouseDown={event => event.preventDefault()} onClick={promptForLink}>
-            <LinkSimple size={17} weight="bold" />
-          </button>
+        <div className="rich-tool-group">
+          <ToolButton active={formats.unordered} label="Bulleted list" onAction={() => runCommand("insertUnorderedList")}><ListBullets size={19} /></ToolButton>
+          <ToolButton active={formats.ordered} label="Numbered list" onAction={() => runCommand("insertOrderedList")}><ListNumbers size={19} /></ToolButton>
+          <ToolButton active={formats.quote} label="Quote" onAction={toggleQuote}><Quotes size={18} /></ToolButton>
         </div>
+        <i aria-hidden="true" />
+        <div className="rich-tool-group">
+          <ToolButton active={formats.link} label="Add link (Ctrl+K)" onAction={openLinkEditor}><LinkSimple size={18} /></ToolButton>
+          <ToolButton label="Divider" onAction={() => runCommand("insertHorizontalRule")}><Minus size={18} /></ToolButton>
+        </div>
+        <span className="rich-description-count" aria-live="polite">{characterCount.toLocaleString()} characters</span>
       </div>
+
+      {linkOpen && (
+        <form className="rich-link-editor" onSubmit={applyLink}>
+          <label>
+            Link address
+            <input autoFocus value={linkUrl} onChange={(event) => { setLinkUrl(event.target.value); setLinkError(""); }} placeholder="https://example.com" />
+          </label>
+          <button className="pp-btn primary" type="submit">Apply link</button>
+          <button className="icon-button" type="button" aria-label="Close link editor" onClick={() => { setLinkOpen(false); setLinkError(""); }}><X size={18} /></button>
+          {linkError && <small role="alert">{linkError}</small>}
+        </form>
+      )}
+
       <div
         ref={editorRef}
-        className="visual-editor-surface"
+        className="rich-editor-surface"
         contentEditable
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
         aria-labelledby={ariaLabelledBy}
-        data-placeholder="Write the form introduction..."
-        onFocus={() => {
-          focusedRef.current = true;
+        data-placeholder="Write the form description…"
+        onFocus={() => { focusedRef.current = true; refreshFormats(); }}
+        onBlur={(event) => {
+          if (!event.currentTarget.parentElement.contains(event.relatedTarget)) {
+            focusedRef.current = false;
+            emitChange();
+          }
         }}
-        onBlur={() => {
-          focusedRef.current = false;
-          save();
-        }}
-        onInput={save}
+        onInput={scheduleChange}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
       />
     </div>
   );

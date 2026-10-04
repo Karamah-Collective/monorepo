@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   const accessMessage = location.state?.accessDenied ? "Your account is signed in, but an administrator has not assigned it a workspace role yet." : "";
 
-  if (user && access?.permissions?.length)
+  if (user && access?.roleId)
     return <Navigate to={location.state?.from?.pathname || "/"} replace />;
 
   async function handleSubmit(e) {

@@ -43,7 +43,7 @@ const APP_SCOPES = {
   },
   forms: {
     label: "Forms",
-    paths: ["Forms/", "tooling/build-version.mjs", "shared/forms-domain.mjs", "shared/firebase-verify.mjs", "shared/brand/", "Maps/functions/_forms-admin.js", "Maps/functions/api/admin.js", "Maps/functions/api/form-asset.js", "Maps/migrations/0021_forms.sql", "Maps/migrations/0022_form_share_codes.sql", "Maps/migrations/0023_shorten_form_share_codes.sql", "Maps/migrations/0024_form_share_code_aliases.sql", "package.json", "package-lock.json"],
+    paths: ["Forms/", "tooling/build-version.mjs", "shared/forms-domain.mjs", "shared/firebase-verify.mjs", "shared/brand/", "Maps/functions/_forms-admin.js", "Maps/functions/api/admin.js", "Maps/functions/api/form-asset.js", "Maps/migrations/0021_forms.sql", "Maps/migrations/0022_form_share_codes.sql", "Maps/migrations/0023_shorten_form_share_codes.sql", "Maps/migrations/0024_form_share_code_aliases.sql", "Maps/migrations/0030_form_collaborators.sql", "package.json", "package-lock.json"],
     checks: ["npm run build:forms", "npm run test:forms", "npm run test:forms:ui"],
   },
 };

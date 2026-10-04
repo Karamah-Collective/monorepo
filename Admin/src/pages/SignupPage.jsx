@@ -15,7 +15,7 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (user && access?.permissions?.length) return <Navigate to="/" replace />;
+  if (user && access?.roleId) return <Navigate to="/" replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();

@@ -15,6 +15,8 @@ import {
 import { useToast } from "../components/Toast.jsx";
 import { SPONSOR_TIER_OPTIONS, TYPE_OPTIONS } from "../constants.js";
 import { CloseIcon, Icons } from "../icons.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { can } from "../auth/permissions.js";
 
 const columnHelper = createColumnHelper();
 const EMPTY_PROMO = { code: "", description: "", startDate: "", endDate: "" };
@@ -99,6 +101,8 @@ function PlaceManager({ place, close, mutations, toast }) {
 }
 
 export default function PlacesPage() {
+  const { access } = useAuth();
+  const canManage = can(access, "maps.places.write");
   const { data, isLoading, error } = useAdminPlaces();
   const updateBoycott = useUpdateBoycott();
   const updateDisabled = useUpdatePlaceDisabled();
@@ -112,15 +116,15 @@ export default function PlacesPage() {
     columnHelper.accessor("name", { header: "Name" }),
     columnHelper.accessor("type", { header: "Type", meta: { filterVariant: "select", options: TYPE_OPTIONS }, filterFn: "equals" }),
     columnHelper.accessor((row) => `${row.address || ""} ${row.city || ""}`, { id: "location", header: "Location", cell: (info) => <div className="place-location-cell"><strong>{info.row.original.address || "Address unavailable"}</strong>{info.row.original.city && <small>{info.row.original.city}</small>}</div> }),
-    columnHelper.display({ id: "actions", header: "Actions", cell: (info) => <button className="pp-btn pp-btn-refresh place-manage-button" onClick={() => setManagedPlace(info.row.original)}><Icons.settings size={14} />Manage</button> }),
-  ], []);
+    ...(canManage ? [columnHelper.display({ id: "actions", header: "Actions", cell: (info) => <button className="pp-btn pp-btn-refresh place-manage-button" onClick={() => setManagedPlace(info.row.original)}><Icons.settings size={14} />Manage</button> })] : []),
+  ], [canManage]);
   const mutations = { boycott: updateBoycott, disabled: updateDisabled, coordinates: updateCoordinates, sponsor: updateSponsor, refresh: refreshPlace, remove: deletePlace };
   return <div className="pp-page">
     <h1 className="pp-page-title">Places</h1>
-    <p className="pp-page-lead">Review each place’s public map presence, enrichment, sponsorship, and location data from one focused control panel.</p>
+    <p className="pp-page-lead">{canManage ? "Review each place’s public map presence, enrichment, sponsorship, and location data from one focused control panel." : "Browse the shared place directory. Your current role has view-only access, so records cannot be changed."}</p>
     {isLoading && <LoadingState />}
     {error && <p className="pp-error-text">{error.message}</p>}
     {data && <DataTable data={data} columns={columns} getRowId={(row) => row.id} />}
-    {managedPlace && <PlaceManager place={managedPlace} close={() => setManagedPlace(null)} mutations={mutations} toast={toast} />}
+    {canManage && managedPlace && <PlaceManager place={managedPlace} close={() => setManagedPlace(null)} mutations={mutations} toast={toast} />}
   </div>;
 }

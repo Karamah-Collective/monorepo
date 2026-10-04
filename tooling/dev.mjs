@@ -70,6 +70,7 @@ try {
     if(!/\bshare_code\b/.test(columns)) await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0022_form_share_codes.sql')],formsCwd);
     await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0023_shorten_form_share_codes.sql')],formsCwd);
     await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0024_form_share_code_aliases.sql')],formsCwd);
+    if(!/\bowner_email\b/.test(columns)) await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0030_form_collaborators.sql')],formsCwd);
     console.log('Building Forms assets for local Pages...');
     await import('../Forms/scripts/build.mjs');
     watchBuild({ label:'Forms', cwd:formsCwd, source:formsCwd, output:path.join(formsCwd,'dist'), script:'scripts/build.mjs' });

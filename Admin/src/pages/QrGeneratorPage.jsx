@@ -5,15 +5,25 @@ import karamahLogoUrl from "../assets/karamah-wordmark.svg";
 
 const QR_API = "https://api.qrserver.com/v1/create-qr-code/";
 const QR_READ_API = "https://api.qrserver.com/v1/read-qr-code/";
-const BRAND_GREEN = [23, 77, 61];
-const BRAND_GOLD = [226, 184, 91];
-const WHITE = [255, 255, 255];
-
-const STYLE_PRESETS = {
-  safe: { label: "Safe", logoScale: 0.78, goldOpacity: 0.38, green: [43, 116, 92], protectFinders: true },
-  high: { label: "High contrast", logoScale: 0.9, goldOpacity: 0.64, green: BRAND_GREEN, protectFinders: true },
-  bold: { label: "Extreme test", logoScale: 0.94, goldOpacity: 0.76, green: BRAND_GREEN, protectFinders: true },
+const QR_COLORS = {
+  green: { label: "Karamah green", hex: "#08705B" },
+  blue: { label: "Karamah deep blue", hex: "#0B3C49" },
+  gold: { label: "Karamah gold", hex: "#F2C879" },
 };
+const QR_DARK_COLORS = {
+  green: { label: "Karamah light green", hex: "#E6F2EF" },
+  blue: { label: "Karamah light blue", hex: "#E7F0FB" },
+  gold: QR_COLORS.gold,
+};
+const QR_BACKGROUNDS = {
+  white: { label: "White", hex: "#FFFFFF" },
+  lightGold: { label: "Light gold", hex: "#FDF6E8" },
+  blue: { label: "Deep blue", hex: "#0B3C49" },
+};
+const LOGO_GOLD = "#E2B85B";
+const BODY_SHAPES = { dots: "Dots", rounded: "Rounded", square: "Square" };
+const EYE_SHAPES = { rounded: "Rounded", square: "Square", circle: "Circle" };
+const imageCache = new Map();
 
 function qrUrl(value, ecc) {
   const params = new URLSearchParams({
@@ -32,13 +42,19 @@ function qrUrl(value, ecc) {
 }
 
 function loadImage(source) {
-  return new Promise((resolve, reject) => {
+  if (imageCache.has(source)) return imageCache.get(source);
+  const request = new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("The QR artwork could not be loaded."));
+    image.onerror = () => {
+      imageCache.delete(source);
+      reject(new Error("The QR artwork could not be loaded."));
+    };
     image.src = source;
   });
+  imageCache.set(source, request);
+  return request;
 }
 
 function canvasBlob(canvas) {
@@ -55,13 +71,82 @@ function mix(base, color, alpha) {
   ];
 }
 
-function isFinderPixel(x, y, size) {
-  const guard = Math.round(size * 0.255);
-  return (x < guard && y < guard) || (x > size - guard && y < guard) || (x < guard && y > size - guard);
+const rgb = hex => hex.match(/[0-9a-f]{2}/gi).map(value => parseInt(value, 16));
+const luminance = hex => rgb(hex).map(value => value / 255).map(value => value <= .03928 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+const contrastRatio = (first, second) => { const a = luminance(first), b = luminance(second); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
+const colorDistance = (first, second) => Math.hypot(first[0] - second[0], first[1] - second[1], first[2] - second[2]);
+const randomItem = values => values[Math.floor(Math.random() * values.length)];
+const randomStep = (minimum, maximum, step = 2) => minimum + Math.floor(Math.random() * (Math.floor((maximum - minimum) / step) + 1)) * step;
+
+function isFinderPixel(x, y, size, qrScale) {
+  const qrSize = Math.round(size * qrScale);
+  const inset = Math.round((size - qrSize) / 2);
+  const localX = x - inset;
+  const localY = y - inset;
+  if (localX < 0 || localY < 0 || localX >= qrSize || localY >= qrSize) return false;
+  const guard = Math.round(qrSize * 0.255);
+  return (localX < guard && localY < guard) || (localX > qrSize - guard && localY < guard) || (localX < guard && localY > qrSize - guard);
 }
 
-async function composeQr({ value, ecc, presetId }) {
-  const preset = STYLE_PRESETS[presetId] || STYLE_PRESETS.high;
+function roundedRect(context, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.roundRect(x, y, width, height, r);
+  context.fill();
+}
+
+function finderModule(column, row, count) {
+  return (column < 7 && row < 7) || (column >= count - 7 && row < 7) || (column < 7 && row >= count - 7);
+}
+
+function drawFinder(context, x, y, cell, frameShape, ballShape, foreground, background) {
+  const drawShape = (shape, left, top, size, radius) => {
+    if (shape === "circle") { context.beginPath(); context.arc(left + size / 2, top + size / 2, size / 2, 0, Math.PI * 2); context.fill(); }
+    else roundedRect(context, left, top, size, size, shape === "rounded" ? radius : 0);
+  };
+  context.fillStyle = foreground;
+  drawShape(frameShape, x, y, cell * 7, cell * 1.55);
+  context.fillStyle = background;
+  drawShape(frameShape, x + cell, y + cell, cell * 5, cell * 1.05);
+  context.fillStyle = foreground;
+  drawShape(ballShape, x + cell * 2, y + cell * 2, cell * 3, cell * .82);
+}
+
+function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, foreground, background) {
+  const sourceSize = qrImage.naturalWidth || qrImage.width || 1000;
+  const source = document.createElement("canvas"); source.width = sourceSize; source.height = sourceSize;
+  const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  sourceContext.drawImage(qrImage, 0, 0, sourceSize, sourceSize);
+  const pixels = sourceContext.getImageData(0, 0, sourceSize, sourceSize).data;
+  let minX = sourceSize, minY = sourceSize;
+  for (let index = 0; index < pixels.length; index += 4) {
+    if ((pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3 >= 96) continue;
+    const pixel = index / 4, x = pixel % sourceSize, y = Math.floor(pixel / sourceSize);
+    if (x < minX) minX = x; if (y < minY) minY = y;
+  }
+  const cellEstimate = Math.min(minX, minY) / 4;
+  const total = Math.round(sourceSize / cellEstimate), count = total - 8;
+  if (!Number.isFinite(cellEstimate) || cellEstimate < 2 || count < 21 || (count - 21) % 4 !== 0) return false;
+  const cell = size / total, sourceCell = sourceSize / total, quiet = cell * 4;
+  context.fillStyle = background; context.fillRect(0, 0, size, size);
+  context.fillStyle = foreground;
+  for (let row = 0; row < count; row++) for (let column = 0; column < count; column++) {
+    if (finderModule(column, row, count)) continue;
+    const sampleX = Math.min(sourceSize - 1, Math.floor((column + 4.5) * sourceCell));
+    const sampleY = Math.min(sourceSize - 1, Math.floor((row + 4.5) * sourceCell));
+    const index = (sampleY * sourceSize + sampleX) * 4;
+    if ((pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3 >= 128) continue;
+    const x = quiet + column * cell, y = quiet + row * cell;
+    if (bodyShape === "dots") { context.beginPath(); context.arc(x + cell / 2, y + cell / 2, cell * .31, 0, Math.PI * 2); context.fill(); }
+    else { const inset = bodyShape === "rounded" ? cell * .08 : cell * .035; roundedRect(context, x + inset, y + inset, cell - inset * 2, cell - inset * 2, bodyShape === "rounded" ? cell * .25 : 0); }
+  }
+  drawFinder(context, quiet, quiet, cell, eyeFrame, eyeBall, foreground, background);
+  drawFinder(context, quiet + (count - 7) * cell, quiet, cell, eyeFrame, eyeBall, foreground, background);
+  drawFinder(context, quiet, quiet + (count - 7) * cell, cell, eyeFrame, eyeBall, foreground, background);
+  return true;
+}
+
+async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, foreground, background, logoForeground, logoBackground, withBlob = true }) {
   const size = 1000;
   const qrImage = await loadImage(qrUrl(value, ecc));
   const logoImage = await loadImage(karamahLogoUrl);
@@ -69,9 +154,21 @@ async function composeQr({ value, ecc, presetId }) {
   canvas.width = size;
   canvas.height = size;
   const context = canvas.getContext("2d", { willReadFrequently: true });
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, size, size);
-  context.drawImage(qrImage, 0, 0, size, size);
+  context.fillStyle = background; context.fillRect(0, 0, size, size);
+  const qrSize = Math.round(size * qrScale);
+  const qrInset = Math.round((size - qrSize) / 2);
+  const qrCanvas = document.createElement("canvas");
+  qrCanvas.width = qrSize;
+  qrCanvas.height = qrSize;
+  const qrContext = qrCanvas.getContext("2d", { willReadFrequently: true });
+  const modern = drawModernQr(qrContext, qrImage, qrSize, bodyShape, eyeFrame, eyeBall, foreground, background);
+  if (!modern) {
+    qrContext.drawImage(qrImage, 0, 0, qrSize, qrSize);
+    const fallback = qrContext.getImageData(0, 0, qrSize, qrSize), foregroundRgb = rgb(foreground), backgroundRgb = rgb(background);
+    for (let index = 0; index < fallback.data.length; index += 4) { const dark = (fallback.data[index] + fallback.data[index + 1] + fallback.data[index + 2]) / 3 < 128, color = dark ? foregroundRgb : backgroundRgb; fallback.data[index] = color[0]; fallback.data[index + 1] = color[1]; fallback.data[index + 2] = color[2]; }
+    qrContext.putImageData(fallback, 0, 0);
+  }
+  context.drawImage(qrCanvas, qrInset, qrInset);
   const base = context.getImageData(0, 0, size, size);
 
   const maskCanvas = document.createElement("canvas");
@@ -80,30 +177,31 @@ async function composeQr({ value, ecc, presetId }) {
   const mask = maskCanvas.getContext("2d", { willReadFrequently: true });
   mask.fillStyle = "#ffffff";
   mask.fillRect(0, 0, size, size);
-  const logoSize = Math.round(size * preset.logoScale);
+  const logoSize = Math.round(size * logoScale);
   const logoInset = Math.round((size - logoSize) / 2);
   mask.drawImage(logoImage, logoInset, logoInset, logoSize, logoSize);
   const maskData = mask.getImageData(0, 0, size, size).data;
 
+  const foregroundRgb = rgb(foreground), backgroundRgb = rgb(background), logoForegroundRgb = rgb(logoForeground), logoBackgroundRgb = rgb(logoBackground);
   for (let index = 0; index < base.data.length; index += 4) {
     const pixel = index / 4;
     const x = pixel % size;
     const y = Math.floor(pixel / size);
-    if (preset.protectFinders && isFinderPixel(x, y, size)) continue;
+    if (isFinderPixel(x, y, size, qrScale)) continue;
     const maskDarkness = 255 - ((maskData[index] + maskData[index + 1] + maskData[index + 2]) / 3);
     if (maskDarkness < 96) continue;
     const alpha = Math.min(1, Math.max(0, maskDarkness / 255));
-    const qrDark = ((base.data[index] + base.data[index + 1] + base.data[index + 2]) / 3) < 128;
-    const color = qrDark ? preset.green : mix(WHITE, BRAND_GOLD, preset.goldOpacity);
-    const strength = qrDark ? alpha : alpha * 0.88;
     const current = [base.data[index], base.data[index + 1], base.data[index + 2]];
+    const qrDark = colorDistance(current, foregroundRgb) < colorDistance(current, backgroundRgb);
+    const color = qrDark ? logoForegroundRgb : logoBackgroundRgb;
+    const strength = alpha * logoBackgroundOpacity;
     const out = mix(current, color, strength);
     base.data[index] = out[0];
     base.data[index + 1] = out[1];
     base.data[index + 2] = out[2];
   }
   context.putImageData(base, 0, 0);
-  return { canvas, blob: await canvasBlob(canvas) };
+  return { canvas, blob: withBlob ? await canvasBlob(canvas) : null };
 }
 
 async function readQrBlob(blob) {
@@ -114,8 +212,38 @@ async function readQrBlob(blob) {
   if (!response.ok) throw new Error("The QR scanner service could not read this image.");
   const result = await response.json();
   const symbol = result?.[0]?.symbol?.[0];
-  if (symbol?.error) throw new Error(symbol.error);
-  return symbol?.data || "";
+  if (symbol?.error) throw new Error("This design could not be scanned reliably. Reduce the logo size or logo background opacity, or try Auto mode.");
+  if (!symbol?.data) throw new Error("This design could not be scanned reliably. Reduce the logo size or logo background opacity, or try Auto mode.");
+  return symbol.data;
+}
+
+async function invertedCanvasBlob(canvas) {
+  const copy = document.createElement("canvas");
+  copy.width = canvas.width;
+  copy.height = canvas.height;
+  const context = copy.getContext("2d", { willReadFrequently: true });
+  context.drawImage(canvas, 0, 0);
+  const image = context.getImageData(0, 0, copy.width, copy.height);
+  for (let index = 0; index < image.data.length; index += 4) {
+    image.data[index] = 255 - image.data[index];
+    image.data[index + 1] = 255 - image.data[index + 1];
+    image.data[index + 2] = 255 - image.data[index + 2];
+  }
+  context.putImageData(image, 0, 0);
+  return canvasBlob(copy);
+}
+
+async function validateQr(result, expected, foreground, background) {
+  try {
+    const decoded = await readQrBlob(result.blob);
+    if (decoded === expected) return { normalized: false };
+  } catch (error) {
+    if (luminance(foreground) <= luminance(background)) throw error;
+  }
+  if (luminance(foreground) <= luminance(background)) throw new Error("The scanner read a different value, so this QR is not safe to use.");
+  const decoded = await readQrBlob(await invertedCanvasBlob(result.canvas));
+  if (decoded !== expected) throw new Error("The scanner read a different value, so this QR is not safe to use.");
+  return { normalized: true };
 }
 
 function normalizeUrl(value) {
@@ -126,27 +254,70 @@ function normalizeUrl(value) {
   }
 }
 
+function ColorChoices({ legend, palette, value, onChange, allowed = () => true, disabledReason = () => "" }) {
+  return <fieldset className="qr-color-fieldset">
+    <legend>{legend}</legend>
+    <div className="qr-color-options">
+      {Object.entries(palette).map(([id, item]) => {
+        const isAllowed = allowed(id, item);
+        const hint = !isAllowed ? disabledReason(id, item) : item.hex;
+        return <label key={id} className={`qr-color-option${value === id ? " is-selected" : ""}${!isAllowed ? " is-disabled" : ""}`} title={hint} aria-label={`${legend}: ${item.label}${!isAllowed ? ", unavailable" : ""}`}>
+          <input type="radio" name={`qr-${legend.toLowerCase().replace(/\s+/g, "-")}`} value={id} checked={value === id} disabled={!isAllowed} onChange={() => onChange(id)} />
+          <i style={{ "--qr-swatch": item.hex }} aria-hidden="true" />
+          <span className="sr-only">{item.label}</span>
+        </label>;
+      })}
+    </div>
+  </fieldset>;
+}
+
 export default function QrGeneratorPage() {
   const [params, setParams] = useSearchParams();
   const canvasRef = useRef(null);
   const runRef = useRef(0);
+  const autoRef = useRef({ active: false, attempt: 0, maximum: 8, token: 0, animationTimer: 0, finalKey: "" });
   const [url, setUrl] = useState(() => params.get("url") || "");
   const [ecc, setEcc] = useState("H");
-  const [preset, setPreset] = useState("high");
+  const [qrSize, setQrSize] = useState(90);
+  const [logoSize, setLogoSize] = useState(86);
+  const [logoBackgroundOpacity, setLogoBackgroundOpacity] = useState(42);
+  const [bodyShape, setBodyShape] = useState("dots");
+  const [eyeFrame, setEyeFrame] = useState("rounded");
+  const [eyeBall, setEyeBall] = useState("rounded");
+  const [backgroundId, setBackgroundId] = useState("white");
+  const [dotColorId, setDotColorId] = useState("green");
   const [status, setStatus] = useState({ state: "idle", message: "Enter a public URL to render a scan-tested QR." });
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [autoActive, setAutoActive] = useState(false);
   const title = params.get("title") || "";
   const source = params.get("source") || "";
   const safeUrl = useMemo(() => normalizeUrl(url), [url]);
+  const background = QR_BACKGROUNDS[backgroundId];
+  const effectiveQrColors = backgroundId === "blue" ? QR_DARK_COLORS : QR_COLORS;
+  const allowedColorIds = useMemo(() => Object.keys(effectiveQrColors).filter(id => contrastRatio(effectiveQrColors[id].hex, background.hex) >= 4.5), [background.hex, effectiveQrColors]);
+  const dotColor = effectiveQrColors[dotColorId];
+  const dotContrast = contrastRatio(dotColor.hex, background.hex);
+  const overlapPalette = backgroundId === "blue" ? QR_COLORS : QR_DARK_COLORS;
+  const logoOverlapColor = useMemo(() => Object.entries(overlapPalette)
+    .filter(([id]) => id !== dotColorId)
+    .sort((first, second) => contrastRatio(second[1].hex, dotColor.hex) - contrastRatio(first[1].hex, dotColor.hex))[0][1].hex, [dotColor.hex, dotColorId, overlapPalette]);
+  const designKey = [ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, backgroundId, dotColorId].join(":");
 
   useEffect(() => {
+    const fallback = allowedColorIds[0];
+    if (!allowedColorIds.includes(dotColorId)) setDotColorId(fallback);
+  }, [allowedColorIds, dotColorId]);
+
+  useEffect(() => {
+    if (autoRef.current.active || autoRef.current.finalKey === designKey) return undefined;
     const runId = runRef.current + 1;
     runRef.current = runId;
-    const preview = canvasRef.current;
-    if (preview) preview.getContext("2d").clearRect(0, 0, preview.width, preview.height);
+    let validationTimer;
     setDownloadUrl("");
 
     if (!url.trim()) {
+      const preview = canvasRef.current;
+      if (preview) preview.getContext("2d").clearRect(0, 0, preview.width, preview.height);
       setStatus({ state: "idle", message: "Enter a public URL to render a scan-tested QR." });
       return undefined;
     }
@@ -156,39 +327,67 @@ export default function QrGeneratorPage() {
       return undefined;
     }
 
-    setStatus({ state: "checking", message: "Rendering and asking the scanner to read it back..." });
-    const timer = window.setTimeout(async () => {
+    setStatus({ state: "checking", message: "Updating preview..." });
+    const renderTimer = window.setTimeout(async () => {
       try {
-        const result = await composeQr({ value: safeUrl, ecc, presetId: preset });
-        const decoded = await readQrBlob(result.blob);
+        const result = await composeQr({
+          value: safeUrl,
+          ecc,
+          qrScale: qrSize / 100,
+          logoScale: logoSize / 100,
+          logoBackgroundOpacity: logoBackgroundOpacity / 100,
+          bodyShape,
+          eyeFrame,
+          eyeBall,
+          foreground: dotColor.hex,
+          background: background.hex,
+          logoForeground: logoOverlapColor,
+          logoBackground: LOGO_GOLD,
+        });
         if (runRef.current !== runId) return;
-        if (decoded !== safeUrl) throw new Error("The scanner read a different value, so this QR is not safe to use.");
         const currentPreview = canvasRef.current;
         currentPreview.width = result.canvas.width;
         currentPreview.height = result.canvas.height;
         currentPreview.getContext("2d").drawImage(result.canvas, 0, 0);
-        setDownloadUrl(URL.createObjectURL(result.blob));
-        setStatus({ state: "ok", message: "Scanner read the QR correctly. This version is ready to download." });
-        const next = new URLSearchParams(window.location.search);
-        next.set("url", safeUrl);
-        if (title) next.set("title", title);
-        if (source) next.set("source", source);
-        setParams(next, { replace: true });
+        setStatus({ state: "checking", message: "Preview updated. Checking scan reliability..." });
+
+        validationTimer = window.setTimeout(async () => {
+          try {
+            const validation = await validateQr(result, safeUrl, dotColor.hex, background.hex);
+            if (runRef.current !== runId) return;
+            setDownloadUrl(URL.createObjectURL(result.blob));
+            setStatus({ state: "ok", message: validation.normalized ? "Dark QR structure passed the scanner check. Ready to download." : "Scanner read the QR correctly. This version is ready to download." });
+            const currentQuery = new URLSearchParams(window.location.search);
+            if (currentQuery.get("url") !== safeUrl) {
+              currentQuery.set("url", safeUrl);
+              if (title) currentQuery.set("title", title);
+              if (source) currentQuery.set("source", source);
+              setParams(currentQuery, { replace: true });
+            }
+          } catch (error) {
+            if (runRef.current !== runId) return;
+            setStatus({ state: "error", message: error.message || "This QR did not pass the scanner check." });
+          }
+        }, 320);
       } catch (error) {
         if (runRef.current !== runId) return;
-        const currentPreview = canvasRef.current;
-        if (currentPreview) currentPreview.getContext("2d").clearRect(0, 0, currentPreview.width, currentPreview.height);
         setStatus({ state: "error", message: error.message || "This QR did not pass the scanner check." });
       }
-    }, 450);
+    }, 35);
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(renderTimer);
+      window.clearTimeout(validationTimer);
       if (runRef.current === runId) runRef.current += 1;
     };
-  }, [url, safeUrl, ecc, preset, setParams, source, title]);
+  }, [url, safeUrl, ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, dotColorId, dotColor.hex, logoOverlapColor, background.hex, designKey, setParams, source, title]);
 
   useEffect(() => () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl); }, [downloadUrl]);
+  useEffect(() => () => {
+    autoRef.current.active = false;
+    autoRef.current.token += 1;
+    window.clearTimeout(autoRef.current.animationTimer);
+  }, []);
 
   function download() {
     if (!downloadUrl) return;
@@ -196,6 +395,153 @@ export default function QrGeneratorPage() {
     link.href = downloadUrl;
     link.download = "karamah-qr.png";
     link.click();
+  }
+
+  function cancelAuto() {
+    autoRef.current.finalKey = "";
+    if (!autoRef.current.active) return;
+    autoRef.current.active = false;
+    autoRef.current.token += 1;
+    window.clearTimeout(autoRef.current.animationTimer);
+    runRef.current += 1;
+    setAutoActive(false);
+  }
+
+  function createRandomDesign(attempt = 1, showcase = false) {
+    const nextBackgroundId = randomItem(Object.keys(QR_BACKGROUNDS));
+    const nextBackground = QR_BACKGROUNDS[nextBackgroundId];
+    const nextPalette = nextBackgroundId === "blue" ? QR_DARK_COLORS : QR_COLORS;
+    const validDots = Object.keys(nextPalette).filter(id => contrastRatio(nextPalette[id].hex, nextBackground.hex) >= 4.5);
+    const fallbackPass = !showcase && attempt > 5;
+    return {
+      backgroundId: nextBackgroundId,
+      dotColorId: randomItem(validDots),
+      bodyShape: randomItem(Object.keys(BODY_SHAPES)),
+      eyeFrame: randomItem(Object.keys(EYE_SHAPES)),
+      eyeBall: randomItem(Object.keys(EYE_SHAPES)),
+      ecc: showcase ? randomItem(["L", "M", "Q", "H"]) : randomItem(["Q", "H", "H", "H"]),
+      qrSize: showcase ? randomStep(70, 100) : fallbackPass ? randomStep(84, 96) : randomStep(78, 92),
+      logoSize: showcase ? randomStep(58, 98) : fallbackPass ? randomStep(80, 90) : randomStep(84, 96),
+      logoBackgroundOpacity: showcase ? randomStep(12, 76, 4) : fallbackPass ? randomStep(38, 58, 4) : randomStep(46, 70, 4),
+    };
+  }
+
+  function resolveDesign(nextDesign) {
+    const nextBackground = QR_BACKGROUNDS[nextDesign.backgroundId];
+    const nextPalette = nextDesign.backgroundId === "blue" ? QR_DARK_COLORS : QR_COLORS;
+    const nextDotColor = nextPalette[nextDesign.dotColorId];
+    const nextOverlapPalette = nextDesign.backgroundId === "blue" ? QR_COLORS : QR_DARK_COLORS;
+    const nextLogoOverlap = Object.entries(nextOverlapPalette)
+      .filter(([id]) => id !== nextDesign.dotColorId)
+      .sort((first, second) => contrastRatio(second[1].hex, nextDotColor.hex) - contrastRatio(first[1].hex, nextDotColor.hex))[0][1].hex;
+    return { background: nextBackground, dotColor: nextDotColor, logoOverlap: nextLogoOverlap };
+  }
+
+  async function composeDesign(nextDesign, withBlob = true) {
+    const resolved = resolveDesign(nextDesign);
+    const result = await composeQr({
+      value: safeUrl,
+      ecc: nextDesign.ecc,
+      qrScale: nextDesign.qrSize / 100,
+      logoScale: nextDesign.logoSize / 100,
+      logoBackgroundOpacity: nextDesign.logoBackgroundOpacity / 100,
+      bodyShape: nextDesign.bodyShape,
+      eyeFrame: nextDesign.eyeFrame,
+      eyeBall: nextDesign.eyeBall,
+      foreground: resolved.dotColor.hex,
+      background: resolved.background.hex,
+      logoForeground: resolved.logoOverlap,
+      logoBackground: LOGO_GOLD,
+      withBlob,
+    });
+    return { ...result, resolved };
+  }
+
+  function drawPreview(canvas) {
+    const preview = canvasRef.current;
+    if (!preview) return;
+    preview.width = canvas.width;
+    preview.height = canvas.height;
+    preview.getContext("2d").drawImage(canvas, 0, 0);
+  }
+
+  function applyDesign(nextDesign) {
+    setBackgroundId(nextDesign.backgroundId);
+    setDotColorId(nextDesign.dotColorId);
+    setBodyShape(nextDesign.bodyShape);
+    setEyeFrame(nextDesign.eyeFrame);
+    setEyeBall(nextDesign.eyeBall);
+    setEcc(nextDesign.ecc);
+    setQrSize(nextDesign.qrSize);
+    setLogoSize(nextDesign.logoSize);
+    setLogoBackgroundOpacity(nextDesign.logoBackgroundOpacity);
+  }
+
+  async function animateAuto(token) {
+    if (!autoRef.current.active || autoRef.current.token !== token) return;
+    try {
+      const frame = await composeDesign(createRandomDesign(1, true), false);
+      if (!autoRef.current.active || autoRef.current.token !== token) return;
+      drawPreview(frame.canvas);
+    } catch {
+      // The checked candidate loop owns failures; decorative frames can simply skip.
+    }
+    if (!autoRef.current.active || autoRef.current.token !== token) return;
+    autoRef.current.animationTimer = window.setTimeout(() => animateAuto(token), 200);
+  }
+
+  async function findAutoDesign(token) {
+    let lastError;
+    for (let attempt = 1; attempt <= autoRef.current.maximum; attempt += 1) {
+      if (!autoRef.current.active || autoRef.current.token !== token) return;
+      autoRef.current.attempt = attempt;
+      setStatus({ state: "checking", message: `Checking automatic design ${attempt} of ${autoRef.current.maximum}...` });
+      const candidate = createRandomDesign(attempt, false);
+      try {
+        const result = await composeDesign(candidate, true);
+        const validation = await validateQr(result, safeUrl, result.resolved.dotColor.hex, result.resolved.background.hex);
+        if (!autoRef.current.active || autoRef.current.token !== token) return;
+        autoRef.current.active = false;
+        window.clearTimeout(autoRef.current.animationTimer);
+        const finalKey = [candidate.ecc, candidate.qrSize, candidate.logoSize, candidate.logoBackgroundOpacity, candidate.bodyShape, candidate.eyeFrame, candidate.eyeBall, candidate.backgroundId, candidate.dotColorId].join(":");
+        autoRef.current.finalKey = finalKey;
+        applyDesign(candidate);
+        drawPreview(result.canvas);
+        setDownloadUrl(URL.createObjectURL(result.blob));
+        setAutoActive(false);
+        setStatus({ state: "ok", message: validation.normalized ? "Auto mode found a scannable dark design. Ready to download." : "Auto mode found a scannable design. Ready to download." });
+        const currentQuery = new URLSearchParams(window.location.search);
+        if (currentQuery.get("url") !== safeUrl) {
+          currentQuery.set("url", safeUrl);
+          if (title) currentQuery.set("title", title);
+          if (source) currentQuery.set("source", source);
+          setParams(currentQuery, { replace: true });
+        }
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!autoRef.current.active || autoRef.current.token !== token) return;
+    autoRef.current.active = false;
+    window.clearTimeout(autoRef.current.animationTimer);
+    setAutoActive(false);
+    setStatus({ state: "error", message: lastError?.message || "Auto mode could not find a scannable design. Try again." });
+  }
+
+  function startAuto() {
+    if (!safeUrl) {
+      setStatus({ state: "error", message: "Enter a complete public URL before using Auto mode." });
+      return;
+    }
+    runRef.current += 1;
+    const token = autoRef.current.token + 1;
+    autoRef.current = { active: true, attempt: 1, maximum: 8, token, animationTimer: 0, finalKey: "" };
+    setAutoActive(true);
+    setDownloadUrl("");
+    setStatus({ state: "checking", message: `Checking automatic design 1 of ${autoRef.current.maximum}...` });
+    animateAuto(token);
+    findAutoDesign(token);
   }
 
   return <div className="pp-page qr-generator-page">
@@ -206,17 +552,34 @@ export default function QrGeneratorPage() {
     <section className="qr-generator-layout">
       <div className="qr-controls">
         {title && <div className="qr-source-note"><Icons.forms size={18} /><span><strong>{title}</strong><small>Loaded from Forms sharing</small></span></div>}
-        <label>Destination URL<input type="url" required value={url} onChange={event => setUrl(event.target.value)} placeholder="https://..." /></label>
-        <div className="qr-control-grid">
-          <label>Error correction<select value={ecc} onChange={event => setEcc(event.target.value)}><option value="H">H, safest</option><option value="Q">Q</option><option value="M">M</option></select></label>
-          <label>Visibility preset<select value={preset} onChange={event => setPreset(event.target.value)}>{Object.entries(STYLE_PRESETS).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}</select></label>
-        </div>
+        <label>Destination URL<input type="url" required value={url} onChange={event => { cancelAuto(); setUrl(event.target.value); }} placeholder="https://..." /></label>
+        <section className="qr-appearance-panel" aria-labelledby="qr-appearance-title">
+          <div className="qr-appearance-heading"><div><strong id="qr-appearance-title">Appearance</strong><small>Set the QR and logo sizes independently, then choose the shape and palette.</small></div><span>{dotContrast.toFixed(1)}:1</span></div>
+          <div className="qr-size-controls">
+            <label><span>QR size <output>{qrSize}%</output></span><input type="range" min="70" max="100" step="2" value={qrSize} onChange={event => { cancelAuto(); setQrSize(Number(event.target.value)); }} /></label>
+            <label><span>Logo size <output>{logoSize}%</output></span><input type="range" min="58" max="98" step="2" value={logoSize} onChange={event => { cancelAuto(); setLogoSize(Number(event.target.value)); }} /></label>
+            <label className="qr-opacity-control"><span>Logo background <output>{logoBackgroundOpacity}%</output></span><input type="range" min="0" max="80" step="2" value={logoBackgroundOpacity} onChange={event => { cancelAuto(); setLogoBackgroundOpacity(Number(event.target.value)); }} /></label>
+          </div>
+          <div className="qr-auto-row"><div><strong>Auto mode</strong><small>Prioritizes a visible logo, then keeps trying until the design scans.</small></div><button className="pp-btn" type="button" onClick={startAuto} disabled={autoActive}>{autoActive ? "Finding design…" : "Auto design"}</button></div>
+          <div className="qr-appearance-grid">
+            <label>Error correction<select value={ecc} onChange={event => { cancelAuto(); setEcc(event.target.value); }}><option value="L">L · most compact</option><option value="M">M · balanced</option><option value="Q">Q · resilient</option><option value="H">H · most resilient</option></select></label>
+            <label>Body<select value={bodyShape} onChange={event => { cancelAuto(); setBodyShape(event.target.value); }}>{Object.entries(BODY_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+            <label>Eye frame<select value={eyeFrame} onChange={event => { cancelAuto(); setEyeFrame(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+            <label>Eye center<select value={eyeBall} onChange={event => { cancelAuto(); setEyeBall(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          </div>
+          <section className="qr-color-controls" aria-label="Palette">
+            <div className="qr-color-grid">
+              <ColorChoices legend="Background" palette={QR_BACKGROUNDS} value={backgroundId} onChange={id => { cancelAuto(); setBackgroundId(id); }} />
+              <ColorChoices legend="QR dots" palette={effectiveQrColors} value={dotColorId} onChange={id => { cancelAuto(); setDotColorId(id); }} allowed={id => allowedColorIds.includes(id)} disabledReason={(id, item) => `${contrastRatio(item.hex, background.hex).toFixed(1)}:1 contrast; 4.5:1 is required.`} />
+            </div>
+            <p>Unavailable swatches do not meet the required contrast.</p>
+          </section>
+        </section>
         <div className={`qr-status is-${status.state}`} role="status"><Icons.qr size={18} /><span>{status.message}</span></div>
         <div className="qr-actions"><button className="pp-btn pp-btn-primary" type="button" onClick={download} disabled={!downloadUrl}>Download PNG</button></div>
       </div>
       <aside className="qr-preview-panel">
         <div className="qr-preview-frame"><canvas ref={canvasRef} width="1000" height="1000" aria-label="Generated QR preview" /></div>
-        <p>Downloads are disabled until the rendered PNG is decoded by the scanner check.</p>
       </aside>
     </section>
   </div>;

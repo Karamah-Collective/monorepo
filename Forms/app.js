@@ -511,11 +511,15 @@ async function renderHome() {
     forms.forEach(item => {
       let submitted = false;
       try { submitted = !!localStorage.getItem(`karamah-form-submitted:${item.id}`); } catch {}
-      const card = node("a", { class: "public-form-card", href: `/f/${encodeURIComponent(item.shareCode)}` });
-      if (item.coverImage?.assetId) card.append(node("div", { class: "public-form-cover", role: "img", "aria-label": item.coverImage.alt || "", style: coverStyle(`/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, item.coverImage.crop) }));
-      const copy = node("div", {}, [node("h3", { text: item.title }), item.subtitle ? node("p", { class: "card-subtitle", text: item.subtitle }) : null, item.description ? node("p", { text: item.description.slice(0, 180) }) : null, node("span", { text: "Open form →" })]);
+      const hasCover = !!item.coverImage?.assetId;
+      const card = node("a", { class: `public-form-card${hasCover ? " has-cover" : ""}`, href: `/f/${encodeURIComponent(item.shareCode)}` });
+      if (hasCover) card.append(node("figure", { class: "public-form-visual" }, [node("img", { src: `/api/media?id=${encodeURIComponent(item.coverImage.assetId)}`, alt: item.coverImage.alt || "", loading: "lazy" }), node("figcaption", { class: "public-form-cover-copy" }, [node("small", { text: "Karamah Forms" }), node("h3", { text: item.title })])]));
+      const summary = item.description ? node("div", { class: "public-form-summary" }) : null;
+      if (summary) renderMarkdown(summary, item.description.slice(0, 320));
+      const copy = node("div", { class: "public-form-details" }, [!hasCover ? node("h3", { text: item.title }) : null, item.subtitle ? node("p", { class: "card-subtitle", text: item.subtitle }) : null, summary, node("span", { text: "Open form →" })]);
       if (submitted) {
-        copy.querySelector("h3")?.after(node("p", { class: "form-submitted-note", text: "Submitted before on this device" }));
+        const submittedNote = node("p", { class: "form-submitted-note", text: "Submitted before on this device" });
+        const copyTitle = copy.querySelector("h3"); if (copyTitle) copyTitle.after(submittedNote); else copy.prepend(submittedNote);
         const action = copy.querySelector("span"); if (action) action.textContent = "Respond again →";
       }
       card.append(copy); grid.append(card);

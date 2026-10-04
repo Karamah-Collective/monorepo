@@ -234,7 +234,7 @@ export default function FormsPage() {
                 <span>
                   <strong>{form.title}</strong>
                   <small>
-                    Updated {dateLabel(form.updatedAt)} · {form.responseCount}{" "}
+                    <span className={`form-access-label is-${form.accessRelation || "owner"}`}>{form.accessRelation === "collaborator" ? "Shared with you" : form.accessRelation === "administrator" ? (form.ownerEmail ? `Owned by ${form.ownerEmail}` : "Administrator view") : "Owned by you"}</span> · Updated {dateLabel(form.updatedAt)} · {form.responseCount}{" "}
                     response{form.responseCount === 1 ? "" : "s"}
                   </small>
                 </span>

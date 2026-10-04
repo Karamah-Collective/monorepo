@@ -10,7 +10,7 @@ From the repository root:
 npm run dev:forms
 ```
 
-The public app runs at `http://127.0.0.1:8791`. Admin development also starts Forms automatically. Apply the shared D1 schema through `node Maps/scripts/local-db.mjs`; this runs `Maps/migrations/0021_forms.sql` without deleting existing data.
+The public app runs at `http://127.0.0.1:8791`. Admin development also starts Forms automatically. Apply the shared D1 schema through `node Maps/scripts/local-db.mjs`; new installations need `Maps/migrations/0021_forms.sql` through `0024_form_share_code_aliases.sql`, followed by `0030_form_collaborators.sql`.
 
 ## Cloudflare bindings
 
@@ -63,4 +63,4 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Before deployment, apply `Maps/migrations/0021_forms.sql` through `Maps/migrations/0024_form_share_code_aliases.sql` to the matching Forms D1 database. Run `npm run migrate:form-links -- --remote` after applying `0024` to create three-character short links that redirect to the long canonical URLs.
+Before deployment, apply `Maps/migrations/0021_forms.sql` through `Maps/migrations/0024_form_share_code_aliases.sql`, then `Maps/migrations/0030_form_collaborators.sql`, to the matching Forms D1 database. Run `npm run migrate:form-links -- --remote` after applying `0024` to create three-character short links that redirect to the long canonical URLs.
