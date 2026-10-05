@@ -1,0 +1,238 @@
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWebsiteTeam, useWebsiteMutation } from '../api/website.js';
+import { LoadingState } from '../components/QueryState.jsx';
+import WebsitePageHeader, { WebsiteError } from '../components/WebsitePageHeader.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { Icons, CloseIcon } from '../icons.jsx';
+import useUnsavedChanges from '../components/useUnsavedChanges.js';
+import ManageActions from '../components/ManageActions.jsx';
+
+const EMPTY = { name: '', email: '', position: '', description: '', location: '', status: 'active', order: 0 };
+const REQUIRED_TEAM_SERVICE_VERSION = '2026-09-16-d1-v1';
+
+function hasCurrentTeamService(data) {
+  return (
+    data?.serviceVersion === REQUIRED_TEAM_SERVICE_VERSION &&
+    data?.capabilities?.teamCrud === true &&
+    data?.capabilities?.teamDetails === true
+  );
+}
+
+function PersonEditor({ person, onClose, onSaved }) {
+  const [draft, setDraft] = useState({ ...EMPTY, ...person });
+  const save = useWebsiteMutation('save-person', 'website-team');
+  const dialog = useRef(null);
+  const toast = useToast();
+  const dirty = JSON.stringify(draft) !== JSON.stringify({ ...EMPTY, ...person });
+
+  useUnsavedChanges(dirty);
+
+  useEffect(() => {
+    const el = dialog.current;
+    el.showModal();
+    return () => el.close();
+  }, []);
+
+  function close() {
+    if (save.isPending) return;
+    if (!dirty || window.confirm('Discard the changes to this team member?')) onClose();
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    const nextPerson = {
+      name: draft.name.trim(),
+      email: draft.email.trim(),
+      position: draft.position.trim(),
+      description: draft.description.trim(),
+      location: draft.location.trim(),
+      status: draft.status,
+      order: Number(draft.order),
+    };
+
+    save.mutate(
+      { id: person.id, revision: person.revision || 0, person: nextPerson },
+      {
+        onSuccess: result => {
+          onSaved(result.person || { ...nextPerson, id: result.id || person.id, revision: result.revision || (person.revision || 0) + 1 });
+          toast('Team member saved. The website updates within a minute.');
+          onClose();
+        },
+        onError: error => toast(error.message, 'error'),
+      },
+    );
+  }
+
+  return (
+    <dialog ref={dialog} className="website-editor-dialog" aria-labelledby="person-editor-title" onCancel={event => { event.preventDefault(); close(); }}>
+      <form onSubmit={submit}>
+        <header>
+          <div>
+            <div className="eyebrow">WEBSITE TEAM</div>
+            <h2 id="person-editor-title">{person.id ? 'Edit team member' : 'Add team member'}</h2>
+          </div>
+          <button className="icon-button" type="button" aria-label="Close editor" onClick={close}><CloseIcon /></button>
+        </header>
+        <fieldset disabled={save.isPending}>
+          <div className="website-person-fields">
+            {[
+              { key: 'name', label: 'Full name', max: 120 },
+              { key: 'position', label: 'Role or position', max: 160 },
+              { key: 'email', label: 'Public email', type: 'email', max: 254 },
+              { key: 'location', label: 'Location', max: 160 },
+            ].map(field => (
+              <div className="pp-field" key={field.key}>
+                <label htmlFor={`person-${field.key}`}>{field.label}</label>
+                <input
+                  autoFocus={field.key === 'name'}
+                  id={`person-${field.key}`}
+                  type={field.type || 'text'}
+                  required={field.key === 'name'}
+                  maxLength={field.max}
+                  value={draft[field.key]}
+                  onChange={event => setDraft({ ...draft, [field.key]: event.target.value })}
+                />
+              </div>
+            ))}
+            <div className="pp-field website-field-wide">
+              <label htmlFor="person-description">Short biography</label>
+              <textarea id="person-description" rows={4} maxLength={1200} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} />
+            </div>
+            <div className="pp-field">
+              <label htmlFor="person-status">Website visibility</label>
+              <select id="person-status" value={draft.status} onChange={event => setDraft({ ...draft, status: event.target.value })}>
+                <option value="active">Active - visible on website</option>
+                <option value="inactive">Inactive - hidden from website</option>
+              </select>
+            </div>
+            <div className="pp-field">
+              <label htmlFor="person-order">Display order</label>
+              <input id="person-order" type="number" min={0} max={10000} required value={draft.order} onChange={event => setDraft({ ...draft, order: event.target.value })} />
+              <small className="pp-field-hint">Lower numbers appear first.</small>
+            </div>
+          </div>
+        </fieldset>
+        {save.error && <p className="pp-error-text" role="alert">{save.error.message}</p>}
+        <footer>
+          <p>Active profiles and their email addresses are public.</p>
+          <button type="button" className="pp-btn" onClick={close} disabled={save.isPending}>Cancel</button>
+          <button type="submit" className="pp-btn pp-btn-primary" disabled={save.isPending}>{save.isPending ? 'Saving...' : 'Save team member'}</button>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+export default function WebsiteTeamPage() {
+  const query = useWebsiteTeam();
+  const remove = useWebsiteMutation('delete-person', 'website-team');
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+
+  function mergeSavedPerson(saved) {
+    queryClient.setQueryData(['website-team'], current => {
+      const people = Array.isArray(current?.people) ? current.people : [];
+      const exists = people.some(person => person.id === saved.id);
+      const nextPeople = exists ? people.map(person => (person.id === saved.id ? { ...person, ...saved } : person)) : [...people, saved];
+      return { ...(current || {}), success: true, people: nextPeople };
+    });
+    query.refetch();
+  }
+
+  function removePerson(person) {
+    if (!window.confirm(`Remove ${person.name} from the team directory? You can instead edit their visibility to hide them.`)) return;
+    remove.mutate(
+      { id: person.id, revision: person.revision },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData(['website-team'], current => ({
+            ...(current || {}),
+            success: true,
+            people: (current?.people || []).filter(item => item.id !== person.id),
+          }));
+          toast('Team member removed');
+        },
+        onError: error => toast(error.message, 'error'),
+      },
+    );
+  }
+
+  const people = (query.data?.people || [])
+    .filter(person => `${person.name} ${person.position} ${person.email}`.toLowerCase().includes(search.toLowerCase()) && (status === 'all' || person.status === status))
+    .sort((a, b) => a.order - b.order);
+  const teamServiceReady = !query.data || hasCurrentTeamService(query.data);
+
+  return (
+    <div className="pp-page">
+      <WebsitePageHeader title="Website team" description="Introduce the people behind the collective. Changes are saved to your existing team directory.">
+        <button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY)} disabled={!query.data || !teamServiceReady}>
+          <Icons.plusCircle size={16} />Add team member
+        </button>
+      </WebsitePageHeader>
+      <WebsiteError query={query} />
+      {query.isLoading && <LoadingState />}
+      {query.data && !teamServiceReady && (
+        <div className="query-error" role="alert">
+          <strong>Team editing is blocked until Apps Script is updated</strong>
+          <p>The live website data service is missing the current team CRUD capability marker. Replace the spreadsheet Apps Script with <code>Website/reference/google_apps_script.js</code>, deploy a new web-app version, then refresh this page.</p>
+          <button className="pp-btn" onClick={() => query.refetch()} disabled={query.isFetching}>Check again</button>
+        </div>
+      )}
+      {query.data && (
+        <>
+          <div className="website-collection-toolbar">
+            <div className="table-search-wrap">
+              <Icons.search size={16} />
+              <input className="pp-table-search" type="search" aria-label="Search team members" placeholder="Search the team..." value={search} onChange={event => setSearch(event.target.value)} />
+            </div>
+            <select aria-label="Team visibility" value={status} onChange={event => setStatus(event.target.value)}>
+              <option value="all">Everyone</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <span>{people.length} team members</span>
+            <button className="pp-btn" onClick={() => query.refetch()} disabled={query.isFetching}>Refresh</button>
+          </div>
+          <div className="website-people-grid">
+            {people.map(person => (
+              <article className="website-person-card" key={person.id}>
+                <div className="website-person-top">
+                  <span className="website-person-avatar">{person.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span>
+                  <span className={`pp-badge ${person.status === 'active' ? 'pp-badge-yes' : 'pp-badge-pending'}`}>{person.status === 'active' ? 'Visible' : 'Hidden'}</span>
+                </div>
+                <h2>{person.name}</h2>
+                <p className="website-person-role">{person.position || 'Role not added'}</p>
+                <p className="website-person-bio">{person.description || 'Add a short introduction for website visitors.'}</p>
+                <div className="website-person-meta">
+                  <span><Icons.mail size={14} />{person.email || 'No public email'}</span>
+                  {person.location && <span><Icons.pin size={14} />{person.location}</span>}
+                </div>
+                <footer>
+                  <span>Order {person.order || 0}</span>
+                  <ManageActions disabled={remove.isPending || !teamServiceReady}>
+                    {({ close }) => <>
+                      <button role="menuitem" aria-label="Edit" className="pp-manage-action" onClick={() => { close(); setEditing(person); }}><span>Edit profile</span><small>Update details and visibility</small></button>
+                      <button role="menuitem" aria-label="Remove" className="pp-manage-action pp-manage-action-danger" onClick={() => { close(); removePerson(person); }}><span>Remove member</span><small>Delete from the directory</small></button>
+                    </>}
+                  </ManageActions>
+                </footer>
+              </article>
+            ))}
+          </div>
+          {!people.length && (
+            <div className="inline-empty">
+              <Icons.building size={28} />
+              <strong>{query.data.people.length ? 'No matching team members' : 'Introduce your team'}</strong>
+              <span>{query.data.people.length ? 'Try a different search or visibility filter.' : 'Add your first team member to display them on the website.'}</span>
+            </div>
+          )}
+        </>
+      )}
+      {editing && <PersonEditor person={editing} onClose={() => setEditing(null)} onSaved={mergeSavedPerson} />}
+    </div>
+  );
+}
