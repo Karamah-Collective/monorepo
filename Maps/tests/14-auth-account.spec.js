@@ -65,6 +65,27 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
     expect(cached?.email).toBe("mockuser@example.com");
   });
 
+  test("a loaded profile photo replaces the profile outline instead of stacking with it", async ({ page }) => {
+    await page.evaluate(() => {
+      window.__mockOAuthUser = {
+        uid: "mock-photo-user",
+        email: "photo@example.com",
+        displayName: "Photo User",
+        photoURL: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+        emailVerified: true,
+        providerData: [{ providerId: "google.com" }],
+        reload: async () => {},
+        getIdToken: async () => "mock-photo-token",
+      };
+    });
+    await openMenuAndWaitForAccount(page);
+    await page.click("#menu-google-signin");
+
+    await expect(page.locator("#profile-tab-avatar")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#profile-tab-icon")).toBeHidden();
+    await expect(page.locator("#profile-tab-initial")).toBeHidden();
+  });
+
   test("signing out asks for Yes/No confirmation, cancel leaves the session signed in", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");

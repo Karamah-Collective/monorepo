@@ -5261,3 +5261,18 @@ and make the icon appear off-center.
 `Website/assets/css/site-content.css`, `Maps/src/place-media.js`, `Maps/src/styles/styles.css`,
 `Maps/tests/05-animations.spec.js`, `Maps/docs/DESIGN_SYSTEM.md`, and this log.
 No browser or Playwright tests were run, following the standing preference.
+### 2026-10-05 — Five-item navigation and unobscured Places icon
+
+**User preference:** the primary Maps navigation uses Home, Routes, Places, Events, and Profile in that order. Places must occupy the exact center and remain the strongest destination without raised-button, notch, or oversized floating-action treatments. The accepted treatment is a compact, quiet accent-tinted icon core.
+
+The place-count badge sits at the icon core's upper-right corner, mostly above it and only slightly overlapping the core without covering the pin artwork. Phone navigation is icon-only, matching the established mobile pattern; labels remain available to assistive technology through each button's accessible name. Profile continues opening the existing Menu/Profile sheet and must render exactly one representation: account photo when available, initial fallback for signed-in accounts without a photo, or profile outline when signed out. Events moves into the permanent navigation, while the former top events shortcut stays hidden as a legacy click proxy to avoid duplicate navigation.
+
+### 2026-10-05 — Navigation correction after design-system review
+
+**Pattern to follow:** on phone, primary navigation shows icons only. The Places count belongs on the upper-right of its icon core, biased upward so the full pin remains readable. Emphasis stays quiet: teal/teal-soft in light mode, switching to the established gold/gold-soft company treatment in dark mode. The profile destination uses one visual slot and never shows the outline together with a photo or initial.
+
+**Pattern to avoid:** do not reintroduce phone tab labels, center the Places count above the core, cover the pin with the count, keep teal Places styling in dark mode, show multiple profile representations, or use a saturated filled background for the center destination.
+
+**Session note:** corrected the five-item Maps navigation after the first implementation contradicted established mobile preferences. Removed the taller labeled-phone-bar token, restored the existing compact bar height, hid labels at the phone breakpoint, centered the count above the Places core, and moved the core/avatar visuals into the shared `.btn-tab` design-system template area. Added `--tab-count-ring`, kept the tab hit areas at least 44px despite the bar border, and documented the corrected responsive behavior.
+
+**Follow-up correction:** moved the count from top-center to the requested upper-right core corner, consolidated profile icon/photo/initial into one fixed visual slot, and introduced theme-aware Places tokens so dark mode uses gold throughout. Final polish shifts the count four pixels farther right in two small review steps and lightens the navigation-specific dark-mode gold without changing the global company-gold token used elsewhere.

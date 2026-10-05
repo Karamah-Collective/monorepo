@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { GIFEncoder, applyPalette, quantize } from "gifenc";
 import { Icons } from "../icons.jsx";
 import karamahLogoUrl from "../assets/karamah-wordmark.svg";
 
@@ -23,6 +24,15 @@ const QR_BACKGROUNDS = {
 const LOGO_GOLD = "#E2B85B";
 const BODY_SHAPES = { dots: "Dots", rounded: "Rounded", square: "Square" };
 const EYE_SHAPES = { rounded: "Rounded", square: "Square", circle: "Circle" };
+const QR_ANIMATIONS = {
+  none: { label: "Still", description: "A classic, static PNG." },
+  auto: { label: "Match design", description: "Motion tailored to the selected body shape." },
+  ripple: { label: "Ripple", description: "Concentric color rings travel through the modules." },
+  sweep: { label: "Sweep", description: "A soft diagonal band crosses the code." },
+  signal: { label: "Signal", description: "Alternating color lanes pulse in sequence." },
+};
+const ANIMATION_FRAME_COUNT = 8;
+const ANIMATION_FRAME_DELAY = 160;
 const imageCache = new Map();
 
 function qrUrl(value, ecc) {
@@ -89,6 +99,28 @@ function finderModule(column, row, count) {
   return (column < 7 && row < 7) || (column >= count - 7 && row < 7) || (column < 7 && row >= count - 7);
 }
 
+function resolveAnimation(animation, bodyShape) {
+  if (animation !== "auto") return animation;
+  if (bodyShape === "dots") return "ripple";
+  if (bodyShape === "rounded") return "sweep";
+  return "signal";
+}
+
+function moduleAnimationStrength(animation, column, row, count, phase) {
+  if (animation === "none") return 0;
+  const progress = phase * Math.PI * 2;
+  let wave;
+  if (animation === "ripple") {
+    const distance = Math.hypot(column - count / 2, row - count / 2);
+    wave = Math.sin(distance * .92 - progress);
+  } else if (animation === "sweep") {
+    wave = Math.sin((column + row) * .52 - progress);
+  } else {
+    wave = Math.sin(column * 1.08 + progress) * Math.cos(row * .34 - progress * .5);
+  }
+  return Math.max(0, wave) * .82;
+}
+
 function drawFinder(context, x, y, cell, frameShape, ballShape, foreground, background) {
   const drawShape = (shape, left, top, size, radius) => {
     if (shape === "circle") { context.beginPath(); context.arc(left + size / 2, top + size / 2, size / 2, 0, Math.PI * 2); context.fill(); }
@@ -102,7 +134,7 @@ function drawFinder(context, x, y, cell, frameShape, ballShape, foreground, back
   drawShape(ballShape, x + cell * 2, y + cell * 2, cell * 3, cell * .82);
 }
 
-function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, foreground, background) {
+function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, foreground, background, animation = "none", animationPhase = 0, animationAccent = foreground) {
   const sourceSize = qrImage.naturalWidth || qrImage.width || 1000;
   const source = document.createElement("canvas"); source.width = sourceSize; source.height = sourceSize;
   const sourceContext = source.getContext("2d", { willReadFrequently: true });
@@ -119,6 +151,8 @@ function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, fore
   if (!Number.isFinite(cellEstimate) || cellEstimate < 2 || count < 21 || (count - 21) % 4 !== 0) return false;
   const cell = size / total, sourceCell = sourceSize / total, quiet = cell * 4;
   context.fillStyle = background; context.fillRect(0, 0, size, size);
+  const foregroundRgb = rgb(foreground);
+  const accentRgb = rgb(animationAccent);
   context.fillStyle = foreground;
   for (let row = 0; row < count; row++) for (let column = 0; column < count; column++) {
     if (finderModule(column, row, count)) continue;
@@ -127,6 +161,11 @@ function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, fore
     const index = (sampleY * sourceSize + sampleX) * 4;
     if ((pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3 >= 128) continue;
     const x = quiet + column * cell, y = quiet + row * cell;
+    const strength = moduleAnimationStrength(animation, column, row, count, animationPhase);
+    if (strength > 0) {
+      const animatedColor = mix(foregroundRgb, accentRgb, strength);
+      context.fillStyle = `rgb(${animatedColor.join(" ")})`;
+    } else context.fillStyle = foreground;
     if (bodyShape === "dots") { context.beginPath(); context.arc(x + cell / 2, y + cell / 2, cell * .31, 0, Math.PI * 2); context.fill(); }
     else { const inset = bodyShape === "rounded" ? cell * .08 : cell * .035; roundedRect(context, x + inset, y + inset, cell - inset * 2, cell - inset * 2, bodyShape === "rounded" ? cell * .25 : 0); }
   }
@@ -136,7 +175,7 @@ function drawModernQr(context, qrImage, size, bodyShape, eyeFrame, eyeBall, fore
   return true;
 }
 
-async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, foreground, background, logoForeground, logoBackground, withBlob = true }) {
+async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, foreground, background, logoForeground, logoBackground, animation = "none", animationPhase = 0, animationAccent = foreground, withBlob = true }) {
   const size = 1000;
   const qrImage = await loadImage(qrUrl(value, ecc));
   const logoImage = await loadImage(karamahLogoUrl);
@@ -151,7 +190,7 @@ async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity
   qrCanvas.width = qrSize;
   qrCanvas.height = qrSize;
   const qrContext = qrCanvas.getContext("2d", { willReadFrequently: true });
-  const modern = drawModernQr(qrContext, qrImage, qrSize, bodyShape, eyeFrame, eyeBall, foreground, background);
+  const modern = drawModernQr(qrContext, qrImage, qrSize, bodyShape, eyeFrame, eyeBall, foreground, background, animation, animationPhase, animationAccent);
   if (!modern) {
     qrContext.drawImage(qrImage, 0, 0, qrSize, qrSize);
     const fallback = qrContext.getImageData(0, 0, qrSize, qrSize), foregroundRgb = rgb(foreground), backgroundRgb = rgb(background);
@@ -188,6 +227,23 @@ async function composeQr({ value, ecc, qrScale, logoScale, logoBackgroundOpacity
   }
   context.putImageData(base, 0, 0);
   return { canvas, blob: withBlob ? await canvasBlob(canvas) : null };
+}
+
+function encodeAnimatedGif(frames) {
+  const gif = GIFEncoder();
+  frames.forEach(({ canvas }, index) => {
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    const image = context.getImageData(0, 0, canvas.width, canvas.height);
+    const palette = quantize(image.data, 64);
+    const indexed = applyPalette(image.data, palette);
+    gif.writeFrame(indexed, canvas.width, canvas.height, {
+      palette,
+      delay: ANIMATION_FRAME_DELAY,
+      repeat: index === 0 ? 0 : undefined,
+    });
+  });
+  gif.finish();
+  return new Blob([gif.bytes()], { type: "image/gif" });
 }
 
 async function readQrBlob(blob) {
@@ -257,6 +313,17 @@ function ColorChoices({ legend, palette, value, onChange, allowed = () => true, 
   </fieldset>;
 }
 
+function QrControlGroup({ id, title, summary, isPhone, open, onToggle, children }) {
+  const contentId = `qr-control-${id}`;
+  return <section className="qr-control-group" data-open={!isPhone || open}>
+    <header>
+      <div><strong>{title}</strong><small>{summary}</small></div>
+      {isPhone && <button type="button" aria-expanded={open} aria-controls={contentId} onClick={onToggle}><span className="sr-only">{open ? "Collapse" : "Expand"} {title}</span><i aria-hidden="true" /></button>}
+    </header>
+    <div id={contentId} className="qr-control-group-content" hidden={isPhone && !open}>{children}</div>
+  </section>;
+}
+
 export default function QrGeneratorPage() {
   const [params, setParams] = useSearchParams();
   const canvasRef = useRef(null);
@@ -272,9 +339,14 @@ export default function QrGeneratorPage() {
   const [eyeBall, setEyeBall] = useState("rounded");
   const [backgroundId, setBackgroundId] = useState("white");
   const [dotColorId, setDotColorId] = useState("green");
+  const [animationId, setAnimationId] = useState("none");
   const [status, setStatus] = useState({ state: "idle", message: "Enter a public URL to render a scan-tested QR." });
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloadType, setDownloadType] = useState("png");
   const [autoActive, setAutoActive] = useState(false);
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia("(max-width: 520px)").matches);
+  const [openGroups, setOpenGroups] = useState({ size: false, structure: false, animation: false, palette: false });
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const title = params.get("title") || "";
   const source = params.get("source") || "";
   const safeUrl = useMemo(() => normalizeUrl(url), [url]);
@@ -283,11 +355,17 @@ export default function QrGeneratorPage() {
   const allowedColorIds = useMemo(() => Object.keys(effectiveQrColors).filter(id => contrastRatio(effectiveQrColors[id].hex, background.hex) >= 4.5), [background.hex, effectiveQrColors]);
   const dotColor = effectiveQrColors[dotColorId];
   const dotContrast = contrastRatio(dotColor.hex, background.hex);
+  const animationAccent = useMemo(() => allowedColorIds
+    .filter(id => id !== dotColorId)
+    .map(id => effectiveQrColors[id])
+    .sort((first, second) => colorDistance(rgb(second.hex), rgb(dotColor.hex)) - colorDistance(rgb(first.hex), rgb(dotColor.hex)))[0]?.hex || dotColor.hex,
+  [allowedColorIds, dotColor.hex, dotColorId, effectiveQrColors]);
+  const resolvedAnimation = resolveAnimation(animationId, bodyShape);
   const overlapPalette = backgroundId === "blue" ? QR_COLORS : QR_DARK_COLORS;
   const logoOverlapColor = useMemo(() => Object.entries(overlapPalette)
     .filter(([id]) => id !== dotColorId)
     .sort((first, second) => contrastRatio(second[1].hex, dotColor.hex) - contrastRatio(first[1].hex, dotColor.hex))[0][1].hex, [dotColor.hex, dotColorId, overlapPalette]);
-  const designKey = [ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, backgroundId, dotColorId].join(":");
+  const designKey = [ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, backgroundId, dotColorId, animationId].join(":");
 
   useEffect(() => {
     const fallback = allowedColorIds[0];
@@ -295,11 +373,26 @@ export default function QrGeneratorPage() {
   }, [allowedColorIds, dotColorId]);
 
   useEffect(() => {
+    const media = window.matchMedia("(max-width: 520px)");
+    const update = event => {
+      setIsPhone(event.matches);
+      if (!event.matches) setPreviewExpanded(false);
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  function toggleGroup(id) {
+    setOpenGroups(current => ({ ...current, [id]: !current[id] }));
+  }
+
+  useEffect(() => {
     if (autoRef.current.active || autoRef.current.finalKey === designKey) return undefined;
     const runId = runRef.current + 1;
     runRef.current = runId;
     let validationTimer;
     setDownloadUrl("");
+    setDownloadType(animationId === "none" ? "png" : "gif");
 
     if (!url.trim()) {
       const preview = canvasRef.current;
@@ -329,6 +422,8 @@ export default function QrGeneratorPage() {
           background: background.hex,
           logoForeground: logoOverlapColor,
           logoBackground: LOGO_GOLD,
+          animation: resolvedAnimation,
+          animationAccent,
         });
         if (runRef.current !== runId) return;
         const currentPreview = canvasRef.current;
@@ -339,10 +434,44 @@ export default function QrGeneratorPage() {
 
         validationTimer = window.setTimeout(async () => {
           try {
-            const validation = await validateQr(result, safeUrl, dotColor.hex, background.hex);
+            if (animationId !== "none") {
+              const frames = [];
+              for (let frameIndex = 0; frameIndex < ANIMATION_FRAME_COUNT; frameIndex += 1) {
+                if (runRef.current !== runId) return;
+                setStatus({ state: "checking", message: `Scan-testing animation frame ${frameIndex + 1} of ${ANIMATION_FRAME_COUNT}...` });
+                const frame = await composeQr({
+                  value: safeUrl,
+                  ecc,
+                  qrScale: qrSize / 100,
+                  logoScale: logoSize / 100,
+                  logoBackgroundOpacity: logoBackgroundOpacity / 100,
+                  bodyShape,
+                  eyeFrame,
+                  eyeBall,
+                  foreground: dotColor.hex,
+                  background: background.hex,
+                  logoForeground: logoOverlapColor,
+                  logoBackground: LOGO_GOLD,
+                  animation: resolvedAnimation,
+                  animationPhase: frameIndex / ANIMATION_FRAME_COUNT,
+                  animationAccent,
+                });
+                await validateQr(frame, safeUrl, dotColor.hex, background.hex);
+                frames.push(frame);
+              }
+              if (runRef.current !== runId) return;
+              const animatedBlob = encodeAnimatedGif(frames);
+              setDownloadUrl(URL.createObjectURL(animatedBlob));
+              setDownloadType("gif");
+              setStatus({ state: "ok", message: `All ${ANIMATION_FRAME_COUNT} animation frames passed the scanner check. Animated GIF ready.` });
+            } else {
+              const validation = await validateQr(result, safeUrl, dotColor.hex, background.hex);
+              if (runRef.current !== runId) return;
+              setDownloadUrl(URL.createObjectURL(result.blob));
+              setDownloadType("png");
+              setStatus({ state: "ok", message: validation.normalized ? "Dark QR structure passed the scanner check. Ready to download." : "Scanner read the QR correctly. This version is ready to download." });
+            }
             if (runRef.current !== runId) return;
-            setDownloadUrl(URL.createObjectURL(result.blob));
-            setStatus({ state: "ok", message: validation.normalized ? "Dark QR structure passed the scanner check. Ready to download." : "Scanner read the QR correctly. This version is ready to download." });
             const currentQuery = new URLSearchParams(window.location.search);
             if (currentQuery.get("url") !== safeUrl) {
               currentQuery.set("url", safeUrl);
@@ -366,7 +495,7 @@ export default function QrGeneratorPage() {
       window.clearTimeout(validationTimer);
       if (runRef.current === runId) runRef.current += 1;
     };
-  }, [url, safeUrl, ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, dotColorId, dotColor.hex, logoOverlapColor, background.hex, designKey, setParams, source, title]);
+  }, [url, safeUrl, ecc, qrSize, logoSize, logoBackgroundOpacity, bodyShape, eyeFrame, eyeBall, dotColorId, dotColor.hex, logoOverlapColor, background.hex, designKey, animationId, resolvedAnimation, animationAccent, setParams, source, title]);
 
   useEffect(() => () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl); }, [downloadUrl]);
   useEffect(() => () => {
@@ -379,7 +508,7 @@ export default function QrGeneratorPage() {
     if (!downloadUrl) return;
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = "karamah-qr.png";
+    link.download = `karamah-qr.${downloadType}`;
     link.click();
   }
 
@@ -540,32 +669,58 @@ export default function QrGeneratorPage() {
         {title && <div className="qr-source-note"><Icons.forms size={18} /><span><strong>{title}</strong><small>Loaded from Forms sharing</small></span></div>}
         <label>Destination URL<input type="url" required value={url} onChange={event => { cancelAuto(); setUrl(event.target.value); }} placeholder="https://..." /></label>
         <section className="qr-appearance-panel" aria-labelledby="qr-appearance-title">
-          <div className="qr-appearance-heading"><div><strong id="qr-appearance-title">Appearance</strong><small>Set the QR and logo sizes independently, then choose the shape and palette.</small></div><span>{dotContrast.toFixed(1)}:1</span></div>
-          <div className="qr-size-controls">
-            <label><span>QR size <output>{qrSize}%</output></span><input type="range" min="70" max="100" step="2" value={qrSize} onChange={event => { cancelAuto(); setQrSize(Number(event.target.value)); }} /></label>
-            <label><span>Logo size <output>{logoSize}%</output></span><input type="range" min="58" max="98" step="2" value={logoSize} onChange={event => { cancelAuto(); setLogoSize(Number(event.target.value)); }} /></label>
-            <label className="qr-opacity-control"><span>Logo background <output>{logoBackgroundOpacity}%</output></span><input type="range" min="0" max="80" step="2" value={logoBackgroundOpacity} onChange={event => { cancelAuto(); setLogoBackgroundOpacity(Number(event.target.value)); }} /></label>
-          </div>
+          <div className="qr-appearance-heading"><div><strong id="qr-appearance-title">Customize</strong><small>Open only what you want to change.</small></div><span>{dotContrast.toFixed(1)}:1</span></div>
           <div className="qr-auto-row"><div><strong>Auto mode</strong><small>Prioritizes a visible logo, then keeps trying until the design scans.</small></div><button className="pp-btn" type="button" onClick={startAuto} disabled={autoActive}>{autoActive ? "Finding design…" : "Auto design"}</button></div>
-          <div className="qr-appearance-grid">
-            <label>Error correction<select value={ecc} onChange={event => { cancelAuto(); setEcc(event.target.value); }}><option value="L">L · most compact</option><option value="M">M · balanced</option><option value="Q">Q · resilient</option><option value="H">H · most resilient</option></select></label>
-            <label>Body<select value={bodyShape} onChange={event => { cancelAuto(); setBodyShape(event.target.value); }}>{Object.entries(BODY_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-            <label>Eye frame<select value={eyeFrame} onChange={event => { cancelAuto(); setEyeFrame(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-            <label>Eye center<select value={eyeBall} onChange={event => { cancelAuto(); setEyeBall(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          <div className="qr-control-groups">
+            <QrControlGroup id="size" title="Size & logo" summary={`${qrSize}% QR · ${logoSize}% logo`} isPhone={isPhone} open={openGroups.size} onToggle={() => toggleGroup("size")}>
+              <div className="qr-size-controls">
+                <label><span>QR size <output>{qrSize}%</output></span><input type="range" min="70" max="100" step="2" value={qrSize} onChange={event => { cancelAuto(); setQrSize(Number(event.target.value)); }} /></label>
+                <label><span>Logo size <output>{logoSize}%</output></span><input type="range" min="58" max="98" step="2" value={logoSize} onChange={event => { cancelAuto(); setLogoSize(Number(event.target.value)); }} /></label>
+                <label className="qr-opacity-control"><span>Logo background <output>{logoBackgroundOpacity}%</output></span><input type="range" min="0" max="80" step="2" value={logoBackgroundOpacity} onChange={event => { cancelAuto(); setLogoBackgroundOpacity(Number(event.target.value)); }} /></label>
+              </div>
+            </QrControlGroup>
+            <QrControlGroup id="structure" title="Structure" summary={`${BODY_SHAPES[bodyShape]} body · ${ecc} correction`} isPhone={isPhone} open={openGroups.structure} onToggle={() => toggleGroup("structure")}>
+              <div className="qr-appearance-grid">
+                <label>Error correction<select value={ecc} onChange={event => { cancelAuto(); setEcc(event.target.value); }}><option value="L">L · most compact</option><option value="M">M · balanced</option><option value="Q">Q · resilient</option><option value="H">H · most resilient</option></select></label>
+                <label>Body<select value={bodyShape} onChange={event => { cancelAuto(); setBodyShape(event.target.value); }}>{Object.entries(BODY_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+                <label>Eye frame<select value={eyeFrame} onChange={event => { cancelAuto(); setEyeFrame(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+                <label>Eye center<select value={eyeBall} onChange={event => { cancelAuto(); setEyeBall(event.target.value); }}>{Object.entries(EYE_SHAPES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+              </div>
+            </QrControlGroup>
+            <QrControlGroup id="animation" title="Motion" summary={QR_ANIMATIONS[animationId].label} isPhone={isPhone} open={openGroups.animation} onToggle={() => toggleGroup("animation")}>
+              <fieldset className="qr-animation-fieldset">
+                <legend className="sr-only">Animation</legend>
+                <div className="qr-animation-options">
+                  {Object.entries(QR_ANIMATIONS).map(([id, item]) => <label key={id} className={animationId === id ? "is-selected" : ""}>
+                    <input type="radio" name="qr-animation" value={id} checked={animationId === id} onChange={() => { cancelAuto(); setAnimationId(id); }} />
+                    <i className="qr-motion-mark" aria-hidden="true"><b /><b /><b /></i>
+                    <span><strong>{item.label}</strong></span>
+                  </label>)}
+                </div>
+                <p className="qr-animation-description"><strong>{QR_ANIMATIONS[animationId].label}</strong> · {QR_ANIMATIONS[animationId].description} QR modules and finder eyes stay fixed.</p>
+              </fieldset>
+            </QrControlGroup>
+            <QrControlGroup id="palette" title="Palette" summary={`${background.label} · ${dotColor.label}`} isPhone={isPhone} open={openGroups.palette} onToggle={() => toggleGroup("palette")}>
+              <section className="qr-color-controls" aria-label="Palette">
+                <div className="qr-color-grid">
+                  <ColorChoices legend="Background" palette={QR_BACKGROUNDS} value={backgroundId} onChange={id => { cancelAuto(); setBackgroundId(id); }} />
+                  <ColorChoices legend="QR dots" palette={effectiveQrColors} value={dotColorId} onChange={id => { cancelAuto(); setDotColorId(id); }} allowed={id => allowedColorIds.includes(id)} disabledReason={(id, item) => `${contrastRatio(item.hex, background.hex).toFixed(1)}:1 contrast; 4.5:1 is required.`} />
+                </div>
+                <p>Unavailable swatches do not meet the required contrast.</p>
+              </section>
+            </QrControlGroup>
           </div>
-          <section className="qr-color-controls" aria-label="Palette">
-            <div className="qr-color-grid">
-              <ColorChoices legend="Background" palette={QR_BACKGROUNDS} value={backgroundId} onChange={id => { cancelAuto(); setBackgroundId(id); }} />
-              <ColorChoices legend="QR dots" palette={effectiveQrColors} value={dotColorId} onChange={id => { cancelAuto(); setDotColorId(id); }} allowed={id => allowedColorIds.includes(id)} disabledReason={(id, item) => `${contrastRatio(item.hex, background.hex).toFixed(1)}:1 contrast; 4.5:1 is required.`} />
-            </div>
-            <p>Unavailable swatches do not meet the required contrast.</p>
-          </section>
         </section>
         <div className={`qr-status is-${status.state}`} role="status"><Icons.qr size={18} /><span>{status.message}</span></div>
-        <div className="qr-actions"><button className="pp-btn pp-btn-primary" type="button" onClick={download} disabled={!downloadUrl}>Download PNG</button></div>
+        <div className="qr-actions"><button className="pp-btn pp-btn-primary" type="button" onClick={download} disabled={!downloadUrl}>Download {downloadType.toUpperCase()}</button></div>
       </div>
-      <aside className="qr-preview-panel">
-        <div className="qr-preview-frame"><canvas ref={canvasRef} width="1000" height="1000" aria-label="Generated QR preview" /></div>
+      <aside className={`qr-preview-panel${previewExpanded ? " is-expanded" : ""}`}>
+        <div className="qr-preview-frame">
+          <canvas ref={canvasRef} width="1000" height="1000" aria-label="Generated QR preview" hidden={downloadType === "gif" && Boolean(downloadUrl)} />
+          {downloadType === "gif" && downloadUrl && <img src={downloadUrl} alt="Animated QR preview" />}
+        </div>
+        <div className="qr-preview-copy"><strong>Live preview</strong><small>{status.state === "ok" ? "Scan-tested and ready" : status.state === "checking" ? "Updating…" : "Changes appear here"}</small></div>
+        <button className="qr-preview-toggle" type="button" aria-expanded={previewExpanded} onClick={() => setPreviewExpanded(current => !current)}>{previewExpanded ? "Minimize" : "Enlarge"}</button>
       </aside>
     </section>
   </div>;

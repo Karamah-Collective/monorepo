@@ -76,9 +76,9 @@ const ALL_STEPS = [
   },
   {
     target: "#menu-pill",
-    title: "Menu",
+    title: "Profile & Menu",
     body: "Sign in, switch map style, contact us, or vote on the wishlist \u2014 all in one place",
-    icon: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 3.5-6 8-6s7.2 1.8 8 6"/>',
     before() { return openMenuSheet(); },
     phoneOrder: 7,
   },
@@ -104,12 +104,11 @@ const ALL_STEPS = [
     phoneOrder: 10,
   },
   {
-    target: "#events-pill",
+    target: "#events-nav-btn",
     title: "Events",
     body: "Browse mosque events \u2014 classes, lectures, community gatherings and more",
     icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-    forceShow: true,
-    before() { closeMenuSheet(); return _showEventsPillForTutorial(); },
+    before() { return closeMenuSheet(); },
     phoneOrder: 11,
   },
   {
@@ -117,7 +116,6 @@ const ALL_STEPS = [
     title: "Prayer Times",
     body: "Today\u2019s prayer schedule with a live countdown \u2014 Ramadan times appear automatically",
     icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    before() { _restoreEventsPill(); },
     phoneOrder: 12,
   },
   {
@@ -135,23 +133,6 @@ const ALL_STEPS = [
     phoneOrder: 99,
   },
 ];
-
-/** Re-hide the events pill if it has no events (was only shown for the tutorial step). */
-let _eventsPillWasHidden = false;
-function _showEventsPillForTutorial() {
-  const el = document.getElementById("events-pill");
-  if (el && el.classList.contains("hide")) {
-    _eventsPillWasHidden = true;
-    el.classList.remove("hide");
-  }
-}
-function _restoreEventsPill() {
-  if (_eventsPillWasHidden) {
-    const el = document.getElementById("events-pill");
-    if (el) el.classList.add("hide");
-    _eventsPillWasHidden = false;
-  }
-}
 
 // ─── Build the filtered step list for the current layout ──────────────────────
 let STEPS = [];

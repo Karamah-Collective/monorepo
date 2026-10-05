@@ -234,17 +234,91 @@ test.describe("Touch Target Sizes (≥44px per Apple HIG)", () => {
   });
 
   test("all tab bar buttons have height ≥44px", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "events-nav-btn", "menu-pill"]) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box.height, `#${id} height`).toBeGreaterThanOrEqual(44);
     }
   });
 
   test("all tab bar buttons have width ≥44px", async ({ page }) => {
-    for (const id of ["home-btn", "dir-btn", "places-btn", "menu-pill"]) {
+    for (const id of ["home-btn", "dir-btn", "places-btn", "events-nav-btn", "menu-pill"]) {
       const box = await page.locator(`#${id}`).boundingBox();
       expect(box.width, `#${id} width`).toBeGreaterThanOrEqual(44);
     }
+  });
+
+  test("phone navigation is icon-only and the Places count sits at the core's upper-right", async ({ page }) => {
+    const geometry = await page.evaluate(() => {
+      const labels = [...document.querySelectorAll("#tab-bar .tab-label")];
+      const core = document.querySelector("#places-btn .tab-icon-core");
+      const icon = core?.querySelector("svg");
+      const badge = document.querySelector("#places-badge");
+      const coreBox = core?.getBoundingClientRect();
+      const iconBox = icon?.getBoundingClientRect();
+      const badgeBox = badge?.getBoundingClientRect();
+      const coreStyle = core ? getComputedStyle(core) : null;
+      const accentSoftProbe = document.createElement("span");
+      const accentProbe = document.createElement("span");
+      accentSoftProbe.style.backgroundColor = "var(--tab-place-soft)";
+      accentProbe.style.color = "var(--tab-place-color)";
+      document.body.append(accentSoftProbe, accentProbe);
+      const accentSoft = getComputedStyle(accentSoftProbe).backgroundColor;
+      const accent = getComputedStyle(accentProbe).color;
+      accentSoftProbe.remove();
+      accentProbe.remove();
+      return {
+        labelsHidden: labels.every((label) => getComputedStyle(label).display === "none"),
+        core: coreBox && { x: coreBox.x, y: coreBox.y, width: coreBox.width, height: coreBox.height },
+        icon: iconBox && { x: iconBox.x, y: iconBox.y, width: iconBox.width, height: iconBox.height },
+        badge: badgeBox && { x: badgeBox.x, y: badgeBox.y, width: badgeBox.width, height: badgeBox.height },
+        viewportWidth: innerWidth,
+        coreBackground: coreStyle?.backgroundColor,
+        coreColor: coreStyle?.color,
+        accentSoft,
+        accent,
+      };
+    });
+
+    expect(geometry.labelsHidden).toBe(true);
+    expect(geometry.core).toBeTruthy();
+    expect(geometry.icon).toBeTruthy();
+    expect(geometry.badge).toBeTruthy();
+    expect(geometry.badge.x + geometry.badge.width / 2).toBeGreaterThan(geometry.core.x + geometry.core.width / 2);
+    expect(geometry.badge.x + geometry.badge.width).toBeGreaterThanOrEqual(geometry.core.x + geometry.core.width);
+    expect(geometry.badge.y).toBeLessThan(geometry.core.y);
+    expect(geometry.badge.y + geometry.badge.height).toBeLessThanOrEqual(geometry.icon.y + 1);
+    expect(geometry.badge.x).toBeGreaterThanOrEqual(0);
+    expect(geometry.badge.x + geometry.badge.width).toBeLessThanOrEqual(geometry.viewportWidth);
+    expect(geometry.coreBackground).toBe(geometry.accentSoft);
+    expect(geometry.coreColor).toBe(geometry.accent);
+  });
+
+  test("dark mode uses the company gold treatment for the Places core, pin, and count", async ({ page }) => {
+    const colors = await page.evaluate(() => {
+      document.documentElement.classList.add("dark-mode");
+      document.body.classList.add("dark-mode");
+      const core = document.querySelector("#places-btn .tab-icon-core");
+      const badge = document.querySelector("#places-badge");
+      const placeColorProbe = document.createElement("span");
+      const goldSoftProbe = document.createElement("span");
+      placeColorProbe.style.color = "var(--tab-place-color)";
+      goldSoftProbe.style.backgroundColor = "var(--tab-place-soft)";
+      document.body.append(placeColorProbe, goldSoftProbe);
+      const result = {
+        coreColor: getComputedStyle(core).color,
+        coreBackground: getComputedStyle(core).backgroundColor,
+        badgeBackground: getComputedStyle(badge).backgroundColor,
+        gold: getComputedStyle(placeColorProbe).color,
+        goldSoft: getComputedStyle(goldSoftProbe).backgroundColor,
+      };
+      placeColorProbe.remove();
+      goldSoftProbe.remove();
+      return result;
+    });
+
+    expect(colors.coreColor).toBe(colors.gold);
+    expect(colors.coreBackground).toBe(colors.goldSoft);
+    expect(colors.badgeBackground).toBe(colors.gold);
   });
 
   test("zoom in/out buttons are ≥36×36px on mobile", async ({ page }) => {
@@ -1309,7 +1383,7 @@ test.describe("Zoom Controls — Layout & Position on Mobile", () => {
 test.describe("Event location suggestions on mobile", () => {
   test("the dropdown is portaled and stays inside the viewport", async ({ page }) => {
     await setupApp(page);
-    await page.locator("#events-pill").tap();
+    await page.locator("#events-nav-btn").tap();
     await page.locator("#events-add-btn").tap();
     await page.locator("#ev-loc-search").focus();
 

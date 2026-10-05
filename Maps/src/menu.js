@@ -441,9 +441,58 @@ export async function initMenuAccount() {
 }
 
 function _renderAccountSection() {
+  _renderProfileTab(_account);
   accountBody.innerHTML = _account ? _buildSignedInHTML(_account) : _buildSignedOutHTML();
   if (_account) _wireSignedInView();
   else _wireSignedOutView();
+}
+
+function _renderProfileTab(account) {
+  const button = document.getElementById("menu-pill");
+  const icon = document.getElementById("profile-tab-icon");
+  const initial = document.getElementById("profile-tab-initial");
+  const image = document.getElementById("profile-tab-avatar");
+  if (!button || !icon || !initial || !image) return;
+
+  image.onload = null;
+  image.onerror = null;
+  image.hidden = true;
+  initial.hidden = true;
+  icon.hidden = true;
+
+  if (!account) {
+    image.removeAttribute("src");
+    icon.hidden = false;
+    button.setAttribute("aria-label", "Profile and menu");
+    return;
+  }
+
+  const identity = account.displayName || account.email || "Profile";
+  const fallbackInitial = identity.trim().charAt(0).toUpperCase() || "P";
+  initial.textContent = fallbackInitial;
+  initial.hidden = false;
+  icon.hidden = true;
+  button.setAttribute("aria-label", `Profile and menu, ${identity}`);
+
+  if (!account.photoURL) {
+    image.removeAttribute("src");
+    return;
+  }
+
+  const expectedSource = account.photoURL;
+  image.onload = () => {
+    if (image.src !== expectedSource && image.getAttribute("src") !== expectedSource) return;
+    icon.hidden = true;
+    image.hidden = false;
+    initial.hidden = true;
+  };
+  image.onerror = () => {
+    icon.hidden = true;
+    image.hidden = true;
+    initial.hidden = false;
+    image.removeAttribute("src");
+  };
+  image.src = expectedSource;
 }
 
 /**

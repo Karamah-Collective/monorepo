@@ -97,3 +97,50 @@ test("standalone QR generator blocks output when scanner check fails", async ({ 
   await expect(page.locator(".qr-status")).toContainText("scanner read a different value");
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeDisabled();
 });
+
+test("animated QR keeps its modules fixed and scan-tests every GIF frame", async ({ page }) => {
+  const url = "https://karamahcollective.com/join";
+  let scanRequests = 0;
+  page.on("request", request => {
+    if (request.url().startsWith("https://api.qrserver.com/v1/read-qr-code/")) scanRequests += 1;
+  });
+  await mockQrApi(page, url);
+  await page.goto(`/links/qr?url=${encodeURIComponent(url)}`);
+  await expect(page.locator(".qr-status")).toContainText("Scanner read the QR correctly");
+  const scansBeforeAnimation = scanRequests;
+
+  await page.getByLabel("Ripple").check();
+
+  await expect(page.locator(".qr-status")).toContainText("All 8 animation frames passed the scanner check", { timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "Download GIF" })).toBeEnabled();
+  await expect(page.getByAltText("Animated QR preview")).toBeVisible();
+  expect(scanRequests - scansBeforeAnimation).toBe(8);
+
+  const signature = await page.getByAltText("Animated QR preview").evaluate(async image => {
+    const bytes = new Uint8Array(await (await fetch(image.src)).arrayBuffer());
+    return String.fromCharCode(...bytes.slice(0, 6));
+  });
+  expect(signature).toBe("GIF89a");
+});
+
+test("phone QR editor uses a compact live preview and collapsed customization groups", async ({ page }) => {
+  const url = "https://karamahcollective.com/join";
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockQrApi(page, url);
+  await page.goto(`/links/qr?url=${encodeURIComponent(url)}`);
+
+  const preview = page.locator(".qr-preview-panel");
+  const controls = page.locator(".qr-controls");
+  const previewBox = await preview.boundingBox();
+  const controlsBox = await controls.boundingBox();
+  expect(previewBox.y).toBeLessThan(controlsBox.y);
+  await expect(page.getByRole("button", { name: "Expand Size & logo" })).toBeVisible();
+  await expect(page.getByLabel("QR size")).toBeHidden();
+
+  await page.getByRole("button", { name: "Expand Size & logo" }).click();
+  await expect(page.getByLabel("QR size")).toBeVisible();
+
+  await page.getByRole("button", { name: "Enlarge" }).click();
+  await expect(page.getByRole("button", { name: "Minimize" })).toBeVisible();
+  expect((await page.locator(".qr-preview-frame").boundingBox()).width).toBeGreaterThan(250);
+});

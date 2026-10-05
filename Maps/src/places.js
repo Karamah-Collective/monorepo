@@ -3473,6 +3473,7 @@ function renderPlacesList() {
 
 // ── Events Button + Overlay ──────────────────────────────────────────────────
 const _eventsPill = document.getElementById("events-pill");
+const _eventsNavBtn = document.getElementById("events-nav-btn");
 const _eventsOverlay = document.getElementById("events-overlay");
 const _eventsCard = document.getElementById("events-card");
 const _eventsList = document.getElementById("events-list");
@@ -3484,8 +3485,10 @@ let _evActiveFilter = "upcoming";
 let _evNearbySort = false;
 
 export function renderEventsPill() {
-  // Visible even with zero events unless admins explicitly hide the shortcut.
-  _eventsPill.classList.toggle("hide", !getAppSettings().eventsShortcutEnabled);
+  // Events now has a permanent destination in the five-item navigation.
+  // Keep the legacy top shortcut as a hidden event proxy so older integrations
+  // can still dispatch its click without presenting duplicate navigation.
+  _eventsPill.classList.add("hide");
 
   // Count upcoming events for badge
   const today = _todayMidnight();
@@ -3654,8 +3657,19 @@ document.getElementById("ev-filter-bar")?.addEventListener("click", (e) => {
 
 _evMosqueFilter?.addEventListener("change", () => _renderEventsList());
 
-_eventsPill.addEventListener("click", () => {
+function _openEventsNavigation() {
   _eventsOverlay.classList.remove("hide");
+}
+
+function _closeEventsNavigation() {
+  _eventsOverlay.classList.add("hide");
+  if (_eventsNavBtn?.classList.contains("active-tab")) setActiveTab(null);
+}
+
+_eventsPill.addEventListener("click", _openEventsNavigation);
+_eventsNavBtn?.addEventListener("click", () => {
+  setActiveTab("events-nav-btn");
+  _openEventsNavigation();
 });
 
 /**
@@ -3678,16 +3692,16 @@ function _openEventsOverlayToEvent(evId) {
 }
 
 document.getElementById("events-close").addEventListener("click", () => {
-  _eventsOverlay.classList.add("hide");
+  _closeEventsNavigation();
 });
 
 document.getElementById("events-add-btn").addEventListener("click", () => {
-  _eventsOverlay.classList.add("hide");
+  _closeEventsNavigation();
   openEventOverlay();
 });
 
 _eventsOverlay.addEventListener("click", (e) => {
-  if (e.target === _eventsOverlay) _eventsOverlay.classList.add("hide");
+  if (e.target === _eventsOverlay) _closeEventsNavigation();
 });
 
 _eventsList.addEventListener("click", (e) => {
@@ -3697,7 +3711,7 @@ _eventsList.addEventListener("click", (e) => {
     e.stopPropagation();
     const ev = eventsData.find((x) => x.id === editBtn.dataset.evId);
     if (ev) {
-      _eventsOverlay.classList.add("hide");
+      _closeEventsNavigation();
       openEventOverlay(null, ev);
     }
     return;
@@ -3713,7 +3727,7 @@ _eventsList.addEventListener("click", (e) => {
     const pid = card.dataset.placeId;
     const place = placesData.find((p) => p.id === pid);
     if (place) {
-      _eventsOverlay.classList.add("hide");
+      _closeEventsNavigation();
       openPlaceSheet(place);
     }
   }

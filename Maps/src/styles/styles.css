@@ -2012,6 +2012,9 @@ body.dark-mode {
   --accent-muted: #4a9a88;
   --gold:         #c49838;
   --gold-soft:    rgba(196, 152, 56, 0.18);
+  --tab-place-color: color-mix(in srgb, var(--gold) 82%, var(--on-accent) 18%);
+  --tab-place-soft: color-mix(in srgb, var(--tab-place-color) 20%, transparent);
+  --tab-place-count-text: var(--canvas);
   --logo-word:    color-mix(in srgb, var(--text) 92%, var(--accent) 8%);
   --review:       #f59e0b;
   --review-soft:  rgba(245, 158, 11, 0.16);
@@ -2259,6 +2262,7 @@ body.dark-mode .sp-tip {
 
 #tab-bar {
   position: absolute;
+  box-sizing: content-box;
   z-index: var(--z-bar);
   bottom: var(--map-edge);
   left: 50%;
@@ -2323,6 +2327,10 @@ body.dark-mode .sp-tip {
 .tab.active-tab::after {
   transform: scaleX(1);
 }
+.tab-places::after {
+  background: var(--tab-place-color);
+  box-shadow: var(--tab-place-indicator-shadow);
+}
 @keyframes tabTrackPulse {
   0%,
   100% {
@@ -2357,11 +2365,24 @@ body.dark-mode .sp-tip {
     transform 0.2s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.15s ease;
 }
+#places-badge {
+  top: calc(var(--sp-3) * -1);
+  right: calc(var(--sp-3) * -1);
+  bottom: auto;
+  left: auto;
+  color: var(--tab-place-count-text);
+  background: var(--tab-place-color);
+  box-shadow: var(--tab-count-ring);
+  transform: scale(1);
+}
 .badge.hide {
   display: block !important;
   transform: scale(0);
   opacity: 0;
   pointer-events: none;
+}
+#places-badge.hide {
+  transform: scale(0);
 }
 
 @media (min-width: 769px) {
@@ -2407,9 +2428,18 @@ body.dark-mode .sp-tip {
   .tab.active-tab::after {
     transform: translateY(-50%) scaleY(1);
   }
+  .tab-places::after {
+    box-shadow: var(--tab-place-indicator-shadow);
+  }
   .badge {
     top: 4px;
     right: 8px;
+  }
+  #places-badge {
+    top: calc(var(--sp-3) * -1);
+    right: calc(var(--sp-3) * -1);
+    bottom: auto;
+    left: auto;
   }
   #zoom-pill {
     right: 26px;
@@ -9916,9 +9946,11 @@ body.dark-mode .sp-chip {
   }
   .tab {
     gap: 0;
+    min-width: 0;
+    padding-inline: var(--sp-5);
     font-size: var(--txt-xs);
   }
-  .tab > span:not(.badge) {
+  .tab > .tab-label {
     display: none;
   }
   .tab svg {

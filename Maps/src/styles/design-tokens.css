@@ -164,6 +164,7 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --r-2xl: 28px;
   --r-3xl: 32px;
   --r-pill: 999px;
+  --border-w: 1px;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -275,6 +276,13 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --switch-h: 24px;
   --switch-thumb-size: 18px;
   --tab-h: 56px;
+  --tab-place-core-size: 34px;
+  --tab-profile-avatar-size: 24px;
+  --tab-count-ring: 0 0 0 var(--sp-0) var(--surface);
+  --tab-place-color: var(--accent);
+  --tab-place-soft: var(--accent-soft);
+  --tab-place-count-text: var(--on-accent);
+  --tab-place-indicator-shadow: 0 0 var(--sp-2) color-mix(in srgb, var(--tab-place-color) 35%, transparent);
   --nav-turn-marker-size: 36px;
   --nav-turn-icon-size: 20px;
   --nav-turn-pointer-size: 8px;
@@ -1228,6 +1236,57 @@ html.reduce-motion *::after {
 .btn-tab svg {
   width: 20px;
   height: 20px;
+}
+.tab-icon-core {
+  position: relative;
+  display: grid;
+  width: var(--tab-place-core-size);
+  height: var(--tab-place-core-size);
+  flex: 0 0 var(--tab-place-core-size);
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--tab-place-soft);
+  color: var(--tab-place-color);
+}
+.tab-icon-core svg {
+  width: 20px;
+  height: 20px;
+}
+.profile-tab-visual {
+  position: relative;
+  display: grid;
+  width: var(--tab-profile-avatar-size);
+  height: var(--tab-profile-avatar-size);
+  flex: 0 0 var(--tab-profile-avatar-size);
+  place-items: center;
+}
+.profile-tab-visual > svg,
+.profile-tab-avatar {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+.profile-tab-avatar {
+  width: var(--tab-profile-avatar-size);
+  height: var(--tab-profile-avatar-size);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  object-fit: cover;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  line-height: var(--tab-profile-avatar-size);
+  text-align: center;
+}
+.profile-tab-avatar[hidden],
+#profile-tab-icon[hidden] {
+  display: none;
+}
+.profile-tab-visual:has(#profile-tab-avatar:not([hidden])) #profile-tab-icon,
+.profile-tab-visual:has(#profile-tab-avatar:not([hidden])) #profile-tab-initial,
+.profile-tab-visual:has(#profile-tab-initial:not([hidden])) #profile-tab-icon {
+  display: none;
 }
 @media (hover: hover) {
   .btn-tab:hover {

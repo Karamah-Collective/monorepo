@@ -111,6 +111,7 @@ adding one-off blacks/whites.
 | `--r-2xl` | `28px` | Sheet corners (mobile), desktop side panels |
 | `--r-3xl` | `32px` | Sheet corners (mobile), large overlays |
 | `--r-pill` | `999px` | Pill shapes, badges |
+| `--border-w` | `1px` | Standard component border width |
 
 ### Shadows (keep flat — very subtle)
 
@@ -342,6 +343,13 @@ space while keeping long place details progressively expandable.
 | `--btn-roundel-size` | `32px` | Header / close roundel buttons |
 | `--btn-roundel-sm-size` | `30px` | Compact roundels (calendar nav, focused-back) |
 | `--tab-h` | `56px` | Tab bar height — used in positioning calculations |
+| `--tab-place-core-size` | `34px` | Quiet accent-tinted Places icon core in bottom/side navigation |
+| `--tab-profile-avatar-size` | `24px` | Profile tab photo or signed-in initial size |
+| `--tab-count-ring` | tokenized ring | Surface separation around the Places count badge |
+| `--tab-place-color` | teal / dark-mode light gold | Places pin, count fill, and active indicator |
+| `--tab-place-soft` | teal-soft / dark-mode light-gold tint | Places icon-core background |
+| `--tab-place-count-text` | theme contrast token | Digits on the Places count badge |
+| `--tab-place-indicator-shadow` | tokenized glow | Theme-aware Places active-indicator glow |
 | `--nav-turn-marker-size` | `36px` | Navigation turn overlay badge and fixed road-arrow size |
 | `--nav-turn-icon-size` | `20px` | Navigation overlay icon size |
 | `--nav-turn-pointer-size` | `8px` | Navigation turn overlay pointer width |
@@ -751,12 +759,16 @@ Inline text action. Looks like a hyperlink inside a sentence. No border or backg
 
 Bottom / side navigation tab item.
 
-**Layout:** `flex-direction: column`, icon + label on desktop/side navigation; icon-only visual treatment on mobile while keeping the label span in the DOM
+**Layout:** five destinations in a stable order: Home, Routes, Places, Events, Profile. The desktop side rail uses compact icon + label stacks; the phone bar is icon-only.
 **Active (`.active-tab`):** accent colour + pill indicator bar below icon (mobile) or left edge (desktop)  
 **Special states:** `.tracking` — pulsing accent animation, `.route-active` — static accent  
-**Used by:** `#home-btn`, `#dir-btn`, `#places-btn`, `#locate-btn`
+**Used by:** `#home-btn`, `#dir-btn`, `#places-btn`, `#events-nav-btn`, `#menu-pill`
 
-**Mobile (2026-08-09):** visible tab labels are hidden at `max-width: 768px` and `--tab-h` resolves to `--h-submit` so the mainbar consumes the minimum touch-safe height while preserving each button's `aria-label` and DOM text. Phone-only chrome position variables (`--phone-zoom-bottom`, `--phone-search-bottom`, `--phone-locate-bottom`, `--phone-bar-bottom`) derive from that mainbar height so adjacent controls tighten with it.
+**Places emphasis (2026-10-05):** Places owns the exact middle slot and uses a quiet themed icon core. Its count badge sits on the core's upper-right corner, mostly above the core with only slight overlap; it must not cover the pin artwork. Light mode uses the teal brand tokens. Dark mode switches the core, pin, count, and active indicator to a slightly lightened version of the established company gold treatment.
+
+**Profile representation:** `.profile-tab-visual` is one fixed-size slot. It renders exactly one of the signed-out profile outline, signed-in initial fallback, or loaded profile photo. Hidden state is explicitly enforced for both SVG and avatar nodes so the outline can never stack above a photo.
+
+**Mobile (corrected 2026-10-05):** all five labels are hidden at `max-width: 768px`; accessible names remain on each button. `--tab-h` resolves to the existing `--h-submit`, and the bar uses `content-box` sizing so its border does not subtract from the 44px tab-button touch height. Phone-only chrome position variables continue deriving from that compact mainbar height.
 
 > The `.tab` selector (JS state class) is kept alongside `.btn-tab` in the HTML. Tab-specific state overrides (`active-tab`, `tracking`) are scoped to `.tab.*` in `styles.css` because they involve animation keyframes and responsive repositioning of the indicator bar.
 
