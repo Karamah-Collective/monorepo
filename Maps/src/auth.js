@@ -404,10 +404,12 @@ async function _fetchAndCacheMicrosoftPhoto(accessToken) {
  * @returns {{account: {uid: string, email: string, displayName: string}, isNewUser: boolean}}
  */
 function _resultFromCredential(cred) {
-  return {
+  const result = {
     account: _cacheAccount(cred.user),
     isNewUser: !!getAdditionalUserInfo(cred)?.isNewUser,
   };
+  window.dispatchEvent(new CustomEvent(EVT.SIGN_IN_COMPLETED, { detail: { account: result.account } }));
+  return result;
 }
 
 /**

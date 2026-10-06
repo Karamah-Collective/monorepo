@@ -22,6 +22,7 @@ import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPa
 import { placesData, updateMarkerVisibility } from "./places.js";
 import { setTrafficDetailOverlay, refreshTrafficDetailOverlayLayers } from "./traffic-overlay.js";
 import { getAppSettings } from "./app-settings.js";
+import { EVT } from "./events.js";
 
 let locMarker = null;
 let locWatchId = null;
@@ -1284,6 +1285,7 @@ function _syncStyleButtons() {
     } else if (s?.startsWith("markers-")) {
       el.classList.toggle("active", s === `markers-${markerVisualMode}`);
     }
+    el.setAttribute("aria-pressed", String(el.classList.contains("active")));
   });
   const isNonDefault =
     isSatelliteActive ||
@@ -1302,12 +1304,16 @@ export function refreshHeatmapSource() {
 document.querySelectorAll(".style-opt").forEach((btn) => {
   btn.addEventListener("click", () => {
     const s = btn.dataset.style;
-    if (s === "light" || s === "dark" || s === "auto") setTheme(s);
-    else if (s === "satellite") toggleSatellite();
-    else if (s === "hybrid") toggleHybridSatellite();
-    else if (s === "heatmap") toggleHeatmap();
-    else if (s?.startsWith("detail-")) setMapDetailMode(s.replace("detail-", ""));
-    else if (s?.startsWith("markers-")) setMarkerVisualMode(s.replace("markers-", ""));
+    try {
+      if (s === "light" || s === "dark" || s === "auto") setTheme(s);
+      else if (s === "satellite") toggleSatellite();
+      else if (s === "hybrid") toggleHybridSatellite();
+      else if (s === "heatmap") toggleHeatmap();
+      else if (s?.startsWith("detail-")) setMapDetailMode(s.replace("detail-", ""));
+      else if (s?.startsWith("markers-")) setMarkerVisualMode(s.replace("markers-", ""));
+    } finally {
+      _syncStyleButtons();
+    }
   });
 });
 
@@ -1315,6 +1321,39 @@ map.on("load", () => {
   _applyMapDetail();
   _syncStyleButtons();
 });
+
+function _syncFullscreenButton() {
+  const button = document.getElementById("fullscreen-btn");
+  if (!button) return;
+  const active = Boolean(document.fullscreenElement);
+  button.setAttribute("aria-pressed", String(active));
+  button.setAttribute("aria-label", active ? "Exit full screen" : "Enter full screen");
+}
+
+function _initPhoneUtilityControls() {
+  const fullscreenButton = document.getElementById("fullscreen-btn");
+  const fullscreenAvailable = Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+  document.body.classList.toggle("phone-fullscreen-unavailable", !fullscreenAvailable);
+  if (fullscreenAvailable) {
+    fullscreenButton?.classList.remove("hide");
+    fullscreenButton?.addEventListener("click", async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch {
+        showToast("Full screen unavailable", "info", "Your browser did not allow this request.");
+      }
+    });
+    document.addEventListener("fullscreenchange", _syncFullscreenButton);
+    _syncFullscreenButton();
+  }
+
+  document.getElementById("contribute-place-btn")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent(EVT.ADD_PLACE_REQUESTED));
+  });
+}
+
+_initPhoneUtilityControls();
 
 // Home / zoom / locate buttons
 document.getElementById("home-btn").addEventListener("click", () => {

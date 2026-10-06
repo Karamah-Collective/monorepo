@@ -99,7 +99,7 @@ const ALL_STEPS = [
   {
     target: "#wish-pill",
     title: "Wishlist",
-    body: "Vote on feature ideas or suggest your own \u2014 the community shapes what we build next",
+    body: "Vote on feature ideas or add your own. The community shapes what we build next.",
     icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
     phoneOrder: 10,
   },
@@ -128,7 +128,7 @@ const ALL_STEPS = [
   {
     target: null,
     title: "You\u2019re all set!",
-    body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to suggest one \u2014 the community keeps the map accurate",
+    body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to add it. The community keeps the map accurate.",
     icon: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
     phoneOrder: 99,
   },

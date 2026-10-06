@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Function – /api/submit
  *
- * Handles form submissions from the "Suggest a Place" and "Suggest Edit" forms,
+ * Handles form submissions from the "Add a Place" and "Edit Place" forms,
  * plus the Firebase-only "my submitted places/edits" read actions. Writes
  * directly to D1 (see docs/D1_MIGRATION_PLAN.md) instead of forwarding to
  * Google Apps Script — every downstream side effect Code.gs used to perform

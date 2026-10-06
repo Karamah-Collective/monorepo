@@ -37,7 +37,10 @@ import { loadPlacesData, preloadPlacesData } from "./places.js";
 import { appSettingsReady, renderAppNotice } from "./app-settings.js";
 import "./search.js";
 import { initMenuAccount, initMenuPreferences } from "./menu.js";
+import { initInstallExperience } from "./install.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
+
+initInstallExperience();
 
 const WELCOME_LOGO_URL = "/LOGO%20-%20Manarah.svg";
 const WELCOME_LOGO_CYCLE_MS = 1550;
@@ -378,7 +381,7 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
   if (!mq || !canvasTarget) return;
 
   _wrapChromeZone("phone-chrome-top-zone", ["prayer-snack", "eid-pill", "events-pill", "promos-pill"]);
-  _wrapChromeZone("phone-chrome-right-zone", ["locate-pill-wrap", "search-card", "zoom-pill"]);
+  _wrapChromeZone("phone-chrome-right-zone", ["contribute-place-btn", "search-card", "locate-pill-wrap", "fullscreen-btn", "zoom-pill"]);
   _wrapChromeZone("phone-chrome-bottom-zone", ["tab-bar"]);
 
   const COMPACT_RESTORE_GRACE_MS = 3000;

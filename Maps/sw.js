@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20261005-4'; // Replaced automatically with the deployment commit version by scripts/build.mjs.
+const VERSION = '20261006-8'; // Replaced automatically with the deployment commit version by scripts/build.mjs.
 
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
@@ -41,6 +41,7 @@ const MAX_SAT    = 300;   // satellite raster tiles ~15-40 KB each; 300 ≈ 5-12
 const SHELL_ASSETS = [
   '/',
   '/index.html',
+  '/manifest.json',
   '/src/app.js',
   '/src/app-settings.js',
   '/src/app-settings-schema.js',
@@ -67,6 +68,8 @@ const SHELL_ASSETS = [
   '/src/profile.js',
   '/src/reviews.js',
   '/src/events.js',
+  '/src/install.js',
+  '/src/capacitor-bridge.js',
   '/src/auth.js',
   '/src/account-sync.js',
   '/src/account-profile.js',

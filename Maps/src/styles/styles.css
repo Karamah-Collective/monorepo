@@ -1702,11 +1702,13 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
     border-color: var(--border);
   }
 }
-.style-opt.active {
+#style-panel .style-opt.active,
+#style-panel .style-opt[aria-pressed="true"] {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
-.style-opt.active span {
+#style-panel .style-opt.active span,
+#style-panel .style-opt[aria-pressed="true"] span {
   color: var(--accent);
   font-weight: var(--fw-semibold);
 }
@@ -2252,6 +2254,25 @@ body.dark-mode .sp-tip {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
+}
+
+.phone-map-action {
+  display: none;
+  position: absolute;
+  z-index: var(--z-ctrl-mid);
+  right: 0;
+}
+
+.fullscreen-exit-icon {
+  display: none;
+}
+
+#fullscreen-btn[aria-pressed="true"] .fullscreen-enter-icon {
+  display: none;
+}
+
+#fullscreen-btn[aria-pressed="true"] .fullscreen-exit-icon {
+  display: block;
 }
 
 .zp-div {
@@ -5674,6 +5695,15 @@ body.marker-style-bold .custom-mk {
   pointer-events: auto;
 }
 
+#toast-stack .share-toast-action {
+  width: max-content;
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* ── Toast slot: grid wrapper that smoothly opens/closes the height slot ─ */
 /* grid-template-rows 0fr→1fr interpolates to the real content height,     */
 /* eliminating the max-height jump that caused existing toasts to wobble.   */
@@ -8166,6 +8196,34 @@ body.nav-mode #locate-pill-wrap {
 #events-overlay.hide #events-card {
   transform: scale(0.96);
 }
+
+/* Desktop navigation opens Events beside the right mainbar, like other sheets. */
+@media (min-width: 769px) {
+  #events-overlay {
+    padding: 0;
+  }
+
+  #events-card {
+    position: absolute;
+    top: 50%;
+    right: 92px;
+    width: min(420px, calc(100vw - 132px));
+    max-width: none;
+    max-height: calc(100vh - 48px);
+    transform: translateY(-50%);
+    transform-origin: right center;
+    box-shadow: var(--shadow-float);
+    transition:
+      transform 0.32s var(--ease-expo),
+      opacity 0.2s var(--ease-expo),
+      height var(--t-spring);
+  }
+
+  #events-overlay.hide #events-card {
+    opacity: 0;
+    transform: translateY(-50%) translateX(24px) scale(0.97);
+  }
+}
 #events-card .suggest-head h3 {
   display: flex;
   align-items: center;
@@ -9845,8 +9903,7 @@ body.dark-mode .sp-chip {
     --tab-h: var(--h-submit);
     --phone-mainbar-gap-rest: var(--sp-4);
     --phone-chrome-gap-rest: var(--sp-3);
-    --phone-zoom-stack-h-rest: calc(var(--btn-icon-size) + var(--btn-icon-size) + var(--sp-0));
-    --phone-search-stack-h-rest: var(--h-submit);
+    --phone-search-stack-h-rest: var(--btn-icon-size);
     --phone-top-stack-left: var(--sp-7);
     --phone-top-stack-step-rest: calc(var(--h-submit) + var(--sp-3));
     --phone-top-stack-gap-rest: var(--sp-3);
@@ -9854,16 +9911,47 @@ body.dark-mode .sp-chip {
     --phone-top-stack-step: var(--phone-top-stack-step-rest);
     --phone-top-stack-gap: var(--phone-top-stack-gap-rest);
     --phone-prayer-expanded-w: var(--phone-prayer-expanded-w-rest);
-    --phone-mainbar-scale: var(--scale-phone-mainbar-compact);
-    --phone-chrome-scale: var(--scale-phone-chrome-compact);
     --phone-mainbar-gap: var(--phone-mainbar-gap-rest);
     --phone-chrome-gap: var(--phone-chrome-gap-rest);
-    --phone-zoom-stack-h: var(--phone-zoom-stack-h-rest);
     --phone-search-stack-h: var(--phone-search-stack-h-rest);
-    --phone-zoom-bottom: calc(var(--tab-h) + var(--safe-b) + var(--phone-mainbar-gap));
-    --phone-search-bottom: calc(var(--phone-zoom-bottom) + var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
+    --phone-right-rail-bottom: calc(var(--tab-h) + var(--safe-b) + var(--phone-mainbar-gap));
+    --phone-contribute-bottom: 0px;
+    --phone-search-bottom: calc(var(--btn-icon-size) + var(--phone-chrome-gap));
     --phone-locate-bottom: calc(var(--phone-search-bottom) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
+    --phone-fullscreen-bottom: calc(var(--phone-locate-bottom) + var(--btn-icon-size) + var(--phone-chrome-gap));
+    --phone-right-zone-h: calc(var(--phone-fullscreen-bottom) + var(--btn-icon-size));
     --phone-bar-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-6));
+  }
+
+  body.phone-fullscreen-unavailable {
+    --phone-right-zone-h: calc(var(--phone-locate-bottom) + var(--btn-icon-size));
+  }
+
+  #zoom-pill {
+    display: none;
+  }
+
+  .phone-map-action:not(.hide) {
+    display: flex;
+  }
+
+  #search-card.collapsed {
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
+  }
+
+  #search-card.collapsed #search-pill {
+    width: 100%;
+    height: 100%;
+  }
+
+  #search-card,
+  #prayer-snack {
+    --txt-xs: var(--txt-phone-chrome-xs);
+    --txt-sm: var(--txt-phone-chrome-sm);
+    --txt-base: var(--txt-phone-chrome-base);
+    --txt-md: var(--txt-phone-chrome-md);
+    --txt-lg: var(--txt-phone-chrome-lg);
   }
 
   #search-card:not(.collapsed) {
@@ -9907,7 +9995,7 @@ body.dark-mode .sp-chip {
     display: block;
     overflow: visible;
     will-change: transform;
-    transform: scale(1);
+    transform: scale(var(--scale-phone-chrome-rest));
     transition: transform var(--t-phone-chrome-compact);
   }
 
@@ -9922,9 +10010,9 @@ body.dark-mode .sp-chip {
 
   #phone-chrome-right-zone {
     right: var(--map-edge);
-    bottom: var(--phone-zoom-bottom);
+    bottom: var(--phone-right-rail-bottom);
     width: var(--btn-icon-size);
-    height: calc(var(--phone-locate-bottom) - var(--phone-zoom-bottom) + var(--btn-icon-size));
+    height: var(--phone-right-zone-h);
     transform-origin: bottom right;
     z-index: var(--z-ctrl-mid);
   }
@@ -9959,20 +10047,22 @@ body.dark-mode .sp-chip {
   }
 
   #search-card,
-  #locate-pill-wrap,
-  #zoom-pill {
+  #locate-pill-wrap {
     right: 0;
     transform: none;
     transform-origin: bottom right;
   }
-  #zoom-pill {
-    bottom: 0;
+  #contribute-place-btn {
+    bottom: var(--phone-contribute-bottom);
   }
   #search-card {
-    bottom: calc(var(--phone-zoom-stack-h) + var(--phone-chrome-gap));
+    bottom: var(--phone-search-bottom);
   }
   #locate-pill-wrap {
-    bottom: calc(var(--phone-zoom-stack-h) + var(--phone-chrome-gap) + var(--phone-search-stack-h) + var(--phone-chrome-gap));
+    bottom: var(--phone-locate-bottom);
+  }
+  #fullscreen-btn {
+    bottom: var(--phone-fullscreen-bottom);
   }
   .maplibregl-ctrl-bottom-left {
     bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-3)) !important;
@@ -11937,11 +12027,11 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   body.map-interacting #phone-chrome-top-zone,
   body.map-interacting #phone-chrome-right-zone {
-    transform: scale(var(--phone-chrome-scale));
+    transform: scale(var(--scale-phone-chrome-compact));
   }
 
   body.map-interacting #phone-chrome-bottom-zone {
-    transform: translateX(-50%) scale(var(--phone-mainbar-scale));
+    transform: translateX(-50%) scale(var(--scale-phone-mainbar-compact));
   }
 
   .eid-banner {

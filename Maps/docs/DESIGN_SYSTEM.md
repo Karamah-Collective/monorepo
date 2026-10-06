@@ -40,9 +40,10 @@ All tokens are CSS custom properties on `:root`.
 
 | Token | Value | Usage |
 |---|---|---|
-| `--accent` | `#08705B` | Brand teal — interactive elements, active states |
-| `--accent-soft` | `#e6f2ef` | Teal tint surface, soft backgrounds |
-| `--accent-muted` | `#4a9a88` | De-emphasised teal, pulse animations |\n| `--on-accent` | `#fff` | Text/icons on any accent or coloured background |
+| `--accent` | theme-adjusted teal | App-owned interactive elements and active states |
+| `--accent-soft` | theme-adjusted teal tint | App-owned selected surfaces |
+| `--accent-muted` | muted teal | De-emphasised app interaction color |
+| `--on-accent` | `#fff` | Text/icons on any accent or coloured background |
 | `--gold` | `#b89030` | Sponsor / Eid highlight, partially-halal chip |
 | `--gold-soft` | `#fdf6e8` | Gold tint surface |
 | `--logo-word` | `#352359` | Official Manarah wordmark colour; dark mode adapts it against the dark canvas |
@@ -231,8 +232,14 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 
 | Token | Value | Use |
 |---|---|---|
-| `--scale-phone-mainbar-compact` | `.84` | Phone mainbar scale while the map canvas is being manipulated |
-| `--scale-phone-chrome-compact` | `.82` | Phone floating-control scale while the map canvas is being manipulated |
+| `--scale-phone-mainbar-compact` | `.84` | Phone bottom-navigation scale while the map canvas is being manipulated |
+| `--scale-phone-chrome-rest` | `.82` | Resting scale for phone floating controls |
+| `--scale-phone-chrome-compact` | `.67` | Phone floating-control scale while the map canvas is being manipulated |
+| `--txt-phone-chrome-xs` | `13.5px` | Compensated phone text inside scaled map chrome whose source size is `--txt-xs` |
+| `--txt-phone-chrome-sm` | `14.5px` | Compensated phone text inside scaled map chrome whose source size is `--txt-sm` |
+| `--txt-phone-chrome-base` | `16px` | Compensated phone text inside scaled map chrome whose source size is `--txt-base` |
+| `--txt-phone-chrome-md` | `17px` | Compensated phone text inside scaled map chrome whose source size is `--txt-md` |
+| `--txt-phone-chrome-lg` | `18.5px` | Compensated phone text inside scaled map chrome whose source size is `--txt-lg` |
 | `--welcome-logo-vw` | `58vw` | Desktop welcome logo viewport-relative width |
 | `--welcome-logo-max-w` | `430px` | Desktop welcome logo maximum width |
 | `--welcome-logo-tablet-vw` | `76vw` | Tablet/phone welcome logo viewport-relative width |
@@ -246,11 +253,19 @@ Three-tier hierarchy — **regular** (body/captions) → **medium** (interactive
 | `--welcome-logo-trace-gold-w` | `5` | Gold emblem outline width |
 | `--welcome-logo-trace-word-w` | `1.45` | Wordmark outline width |
 
-Phone map-interaction scaling is applied to runtime-created zone wrappers
+Phone top/right chrome is already scaled at rest, then becomes smaller again
+during map interaction. The bottom navigation retains its full resting size and
+uses its original compact interaction scale. Scaling is applied to runtime-created zone wrappers
 (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`,
 `#phone-chrome-bottom-zone`), not to individual floating pills. Keep that zone
 pattern so top-left actions, the right rail, and the bottom nav preserve their
-internal alignment while shrinking proportionally.
+internal alignment while scaling proportionally.
+
+Search and prayer locally remap their phone type scale to the
+`--txt-phone-chrome-*` compensation tokens. At the `.82` resting wrapper scale,
+their rendered text therefore matches its pre-shrink visual size while their
+pill geometry and icons remain compact. Do not apply these tokens to the bottom
+navigation, which is not scaled at rest.
 
 ### Component Sizing
 
@@ -1241,7 +1256,7 @@ Use `focusMapPoint()` from `src/map-init.js` for ordinary "show this point" came
 
 ### Phone Map-Interaction Chrome
 
-On phone, map-canvas gestures immediately add `body.map-interacting` and keep the compact chrome state for three seconds after the gesture ends. Pressing or focusing visible app chrome clears the grace timer immediately and restores full-size controls because the user has switched from map manipulation back to UI interaction. The compact state scales three runtime-created zone wrappers (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`, `#phone-chrome-bottom-zone`) rather than individual pills. Do not change right-rail or top-left spacing variables in the compact state; the zone transform shrinks each cluster proportionally while preserving internal alignment.
+On phone, top and right map chrome rest at the former compact size so secondary controls do not compete with the map. The frequently used bottom navigation retains its original full resting size. Map-canvas gestures immediately add `body.map-interacting`, applying a second, smaller scale tier to top/right chrome and the original `.84` compact scale to the bottom navigation, and keep that state for three seconds after the gesture ends. Pressing or focusing visible app chrome clears the grace timer immediately and restores the resting size because the user has switched from map manipulation back to UI interaction. The states scale three runtime-created zone wrappers (`#phone-chrome-top-zone`, `#phone-chrome-right-zone`, `#phone-chrome-bottom-zone`) rather than individual pills. Do not change right-rail or top-left spacing variables in the compact state; the zone transform shrinks each cluster proportionally while preserving internal alignment.
 
 ### `#snackbar-close` (route snackbar close button)
 
@@ -1443,3 +1458,50 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 - Reject popovers reuse App Settings' standard rejection reasons as quick chips
   while preserving the custom textarea. This keeps the repeated moderation
   workflow faster without adding a second settings source.
+
+## 2026-10-06 - Phone map utilities and contribution language
+
+- On phone (`max-width: 768px`), the right rail no longer exposes zoom buttons.
+  Pinch-to-zoom remains the primary map gesture. Each right-rail action has its
+  own compact surface. Bottom-to-top order is **Add a place**, **Search**,
+  **Locate**, then **Full screen** when the standard Fullscreen API reports
+  support. Desktop and tablet keep the established zoom pill.
+- The full-screen control is progressive enhancement: it is hidden, together
+  with its reserved rail space, when `document.fullscreenEnabled` or
+  `requestFullscreen()` is unavailable. Search, Locate, and Add a place retain
+  their order and spacing.
+- Contribution UI uses direct ownership language: **Add a Place**, **Edit
+  Place**, **Add Event**, and **Edit Event**. Internal IDs and backend form
+  types keep their existing `suggest`/`submit` names so moderation and approval
+  behavior do not change. Success feedback explicitly says submissions appear
+  after review.
+- `showActionToast()` is the reusable clickable-toast variant. It preserves the
+  existing snack surface and animation, uses a real button for keyboard access,
+  accepts one action, and remains visible longer than informational toasts.
+- The install toast appears only after every fifth explicit credential sign-in
+  per account on a phone viewport. Restored sessions do not increment the
+  count. Standalone/native display mode, `getInstalledRelatedApps()` where
+  supported, `beforeinstallprompt`, and `appinstalled` suppress redundant
+  prompts. Browsers without a programmatic prompt receive concise menu
+  instructions; iOS receives Safari Share > Add to Home Screen instructions.
+- A collapsed phone Search control uses `--btn-icon-size` for both dimensions,
+  matching the separate Contribute, Locate, and Full screen surfaces. Expansion
+  may return to the established 44px search-field height.
+- Dark mode retains the established teal interaction system for navigation,
+  selections, links, filled actions, focus, prayer, and Qibla. Only the Places
+  navigation treatment uses its dedicated dark-mode gold tokens; semantic gold
+  for sponsor, Eid, and promo content remains unchanged.
+- Every Map View option exposes `aria-pressed`, and active options use the same
+  accent-tinted background, border, and label treatment across Theme, Overlay,
+  Detail, and Markers. Overlay state is synchronized in a post-click `finally`
+  path so a map-rendering error cannot leave the selected control unmarked.
+
+## 2026-10-06 - Desktop Events mainbar panel
+
+- In the desktop vertical-mainbar layout (`min-width: 769px`), Events opens as
+  a 420px panel whose right edge sits 92px from the viewport, aligned beside
+  the mainbar like the other navigation sheets. It is vertically centered and
+  limited to the viewport height with the standard floating-panel shadow.
+- The panel enters from the mainbar side with a short horizontal translate and
+  scale transition. The phone Events experience remains the established bottom
+  sheet, including its drag handle and bottom-up dismissal motion.

@@ -2084,7 +2084,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   {
     const eventsSection = document.createElement("div");
     eventsSection.className = "pp-events";
-    const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Submit an event" aria-label="Submit event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+    const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Add an event" aria-label="Add event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
     const listHTML = placeEvents.length
       ? `<div class="pp-events-list">${placeEvents.map((ev) => _buildEventCard(ev)).join("")}</div>`
       : `<p class="pp-ev-empty">No events yet</p>`;
@@ -2170,8 +2170,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
 
   const editBtn = document.createElement("button");
   editBtn.className = "pp-edit-btn";
-  editBtn.title = "Suggest an edit";
-  editBtn.setAttribute("aria-label", "Suggest an edit");
+  editBtn.title = "Edit place";
+  editBtn.setAttribute("aria-label", "Edit place");
   editBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
   editBtn.addEventListener("click", (e) => { e.stopPropagation(); openEditOverlay(place); });
 
@@ -3372,7 +3372,7 @@ function renderPlacesList() {
         </div>
         <div class="empty-text">
           <span class="empty-title">${esc(getAppSettings().emptyPlacesText || "No places found")}</span>
-          <span class="empty-sub">Try other filters · <button id="suggest-place-btn-empty" class="empty-suggest btn-inline">Suggest one</button></span>
+          <span class="empty-sub">Try other filters · <button id="suggest-place-btn-empty" class="empty-suggest btn-inline">Add one</button></span>
         </div>`;
     }
     return;
@@ -3616,7 +3616,7 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
           ${organizerLine}
         </div>
         <div class="ev-overlay-actions">
-          <button type="button" class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Suggest an edit" aria-label="Suggest event edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button type="button" class="ev-overlay-edit-btn" data-ev-id="${escA(ev.id)}" title="Edit event" aria-label="Edit event"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           ${ev.url ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="ev-overlay-link-btn" title="Open event page" aria-label="Open event page"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ""}
         </div>
       </div>
@@ -4350,8 +4350,8 @@ export function openEventOverlay(preselectedPlaceId, editEvent, presetLocation) 
   document.getElementById("ev-edit-id").value = editEvent ? editEvent.id : "";
 
   // Update heading and submit button text
-  heading.textContent = _eventEditMode ? "Suggest Edit" : "Submit Event";
-  submitBtn.textContent = _eventEditMode ? "Submit Edit Suggestion" : "Submit Event";
+  heading.textContent = _eventEditMode ? "Edit Event" : "Add Event";
+  submitBtn.textContent = _eventEditMode ? "Submit Edit" : "Add Event";
 
   // Reset schedule chips to one-time
   _evScheduleMode = "oneTime";
@@ -4478,21 +4478,20 @@ function _prefillRecurringFromPattern(pattern) {
 
   _syncRecurringFields({ animate: false });
 }
-document.getElementById("suggest-place-btn").addEventListener("click", () => {
+function _startAddPlace() {
   document.getElementById("suggest-form").reset();
   sgTypeSelect.classList.add("placeholder");
   clearPinLocation();
   renderSuggestTags();
   openSuggestOverlay();
-});
+}
+
+document.getElementById("suggest-place-btn").addEventListener("click", _startAddPlace);
+window.addEventListener(EVT.ADD_PLACE_REQUESTED, _startAddPlace);
 // suggest-place-btn-empty is rendered dynamically, use delegation
 document.getElementById("places-scroll").addEventListener("click", (e) => {
   if (e.target.closest("#suggest-place-btn-empty")) {
-    document.getElementById("suggest-form").reset();
-    sgTypeSelect.classList.add("placeholder");
-    clearPinLocation();
-    renderSuggestTags();
-    openSuggestOverlay();
+    _startAddPlace();
   }
 });
 
@@ -5329,7 +5328,7 @@ suggestForm.addEventListener("submit", async (e) => {
       _eidSelectedOrgs = [];
       _renderEidOrgChips();
       document.getElementById("suggest-overlay").classList.add("hide");
-      setTimeout(() => showToast("Suggestion submitted", "check", "JazakAllah Khair!"), 200);
+      setTimeout(() => showToast("Place submitted", "check", "It will appear after review."), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
@@ -5618,7 +5617,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     const data = await res.json();
     if (data.success) {
       document.getElementById("edit-overlay").classList.add("hide");
-      setTimeout(() => showToast("Edit submitted", "check", "JazakAllah Khair!"), 200);
+      setTimeout(() => showToast("Edit submitted", "check", "It will appear after review."), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");
     }
@@ -6207,7 +6206,7 @@ _eventForm.addEventListener("submit", async (e) => {
       _eventEditMode = false;
       _eventEditOriginal = null;
       _eventOverlay.classList.add("hide");
-      const msg = isEditMode ? "Edit suggestion submitted" : "Event submitted";
+      const msg = isEditMode ? "Edit submitted" : "Event submitted";
       setTimeout(() => showToast(msg, "check", "It will appear after review."), 200);
     } else {
       showToast("Submission failed", "error", data.error || "Please try again.");

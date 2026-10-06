@@ -45,7 +45,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20261005-4" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20261006-8" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -116,9 +116,9 @@
         </div>
       </div>
 
-      <!-- ─── Zoom Pill (bottom-right, always visible) ─── -->
+      <!-- Desktop zoom controls. Phone uses touch gestures instead. -->
       <div id="zoom-pill">
-        <button id="zoomin-btn" class="btn-icon" aria-label="Zoom in">
+        <button id="zoomin-btn" class="btn-icon desktop-zoom-control" aria-label="Zoom in">
           <svg
             width="18"
             height="18"
@@ -131,8 +131,8 @@
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
-        <div class="zp-div"></div>
-        <button id="zoomout-btn" class="btn-icon" aria-label="Zoom out">
+        <div class="zp-div desktop-zoom-control"></div>
+        <button id="zoomout-btn" class="btn-icon desktop-zoom-control" aria-label="Zoom out">
           <svg
             width="18"
             height="18"
@@ -146,6 +146,21 @@
           </svg>
         </button>
       </div>
+
+      <button id="contribute-place-btn" class="btn-icon-card phone-map-action" type="button" aria-label="Contribute: add a place" title="Add a place">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+
+      <button id="fullscreen-btn" class="btn-icon-card phone-map-action hide" type="button" aria-label="Enter full screen" aria-pressed="false">
+        <svg class="fullscreen-enter-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />
+        </svg>
+        <svg class="fullscreen-exit-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5" />
+        </svg>
+      </button>
 
       <!-- ─── Tab Bar + Zoom ─── -->
       <nav id="tab-bar">
@@ -677,8 +692,8 @@
           <button
             id="suggest-place-btn"
             class="sheet-action-btn btn-roundel-accent"
-            aria-label="Suggest a place"
-            title="Suggest a place"
+            aria-label="Add a place"
+            title="Add a place"
           >
             <svg
               width="16"
@@ -902,7 +917,7 @@
                   id="suggest-place-btn-empty"
                   class="empty-suggest btn-inline"
                 >
-                  Suggest one
+                  Add one
                 </button></span
               >
             </div>
@@ -1264,11 +1279,11 @@
         </div>
       </div>
 
-      <!-- ─── Suggest Place Overlay ─── -->
+      <!-- ─── Add a Place Overlay ─── -->
       <div id="suggest-overlay" class="hide">
         <div id="suggest-card">
           <div class="suggest-head">
-            <h3>Suggest a Place</h3>
+            <h3>Add a Place</h3>
             <button
               id="suggest-close"
               class="sheet-x btn-roundel"
@@ -1382,18 +1397,18 @@
               <div id="sg-hours-container"></div>
             </div>
             <button type="submit" id="sg-submit" class="btn-primary">
-              Submit Suggestion
+              Add Place
             </button>
                   <p class="form-legal">Protected by Cloudflare Turnstile · <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy</a> · <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener">Terms</a></p>
           </form>
         </div>
       </div>
 
-      <!-- ─── Submit Event Overlay ─── -->
+      <!-- ─── Add Event Overlay ─── -->
       <div id="event-overlay" class="hide">
         <div id="event-card">
           <div class="suggest-head">
-            <h3 id="ev-heading">Submit Event</h3>
+            <h3 id="ev-heading">Add Event</h3>
             <button
               id="event-close"
               class="sheet-x btn-roundel"
@@ -1553,18 +1568,18 @@
               />
             </label>
             <button id="ev-submit" type="submit" class="btn-primary">
-              Submit Event
+              Add Event
             </button>
             <p class="form-legal">Protected by Cloudflare Turnstile · <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy</a> · <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener">Terms</a></p>
           </form>
         </div>
       </div>
 
-      <!-- ─── Suggest Edit Overlay ─── -->
+      <!-- ─── Edit Place Overlay ─── -->
       <div id="edit-overlay" class="hide">
         <div id="edit-card">
           <div class="suggest-head">
-            <h3>Suggest Edit</h3>
+            <h3>Edit Place</h3>
             <button
               id="edit-close"
               class="sheet-x btn-roundel"
@@ -1649,7 +1664,7 @@
               <div id="ed-hours-container"></div>
             </div>
             <button type="submit" id="ed-submit" class="btn-primary">
-              Submit Edit Suggestion
+              Submit Edit
             </button>
             <p class="form-legal">Protected by Cloudflare Turnstile · <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy</a> · <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener">Terms</a></p>
           </form>
@@ -1841,7 +1856,7 @@
               <svg class="events-heading-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Events
             </h3>
-            <button id="events-add-btn" class="sheet-action-btn btn-roundel-accent" type="button" title="Submit an event" aria-label="Submit event">
+            <button id="events-add-btn" class="sheet-action-btn btn-roundel-accent" type="button" title="Add an event" aria-label="Add event">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
             <button id="events-close" class="sheet-x btn-roundel" aria-label="Close">
@@ -2011,7 +2026,7 @@
 
             <h4>2. Information We Collect</h4>
             <p>We collect information only when you voluntarily submit it, sign in, or choose to save/sync items:</p>
-            <p><strong>Suggest a Place / Suggest Edit forms:</strong></p>
+            <p><strong>Add a Place / Edit Place forms:</strong></p>
             <ul>
               <li>Place name, type, address, Google Maps link, and tags</li>
               <li>Additional notes you choose to include</li>
@@ -2030,7 +2045,7 @@
               <li>Saved place IDs, saved pin coordinates/names, visited-place IDs, and home location coordinates/name that you choose to sync</li>
               <li>A one-way cryptographic hash of your verified email address — never the email address itself — used to link your reviews and synced saved data to your account and to prevent duplicate or abusive submissions</li>
             </ul>
-            <p>Place suggestions are anonymous. Reviews and their uploaded photos are shown publicly without displaying your email address or any other sign-in detail.</p>
+            <p>Place submissions are anonymous. Reviews and their uploaded photos are shown publicly without displaying your email address or any other sign-in detail.</p>
 
             <h4>3. What We Don't Do</h4>
             <ul>
@@ -2072,10 +2087,10 @@
             </ul>
 
             <h4>7. Data Storage &amp; Security</h4>
-            <p>Place suggestions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to maps@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+            <p>Place submissions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to maps@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
             <h4>8. Your Rights (GDPR)</h4>
-            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place suggestions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place submissions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
             <p>Contact: <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
 
             <h4>9. Children's Privacy</h4>

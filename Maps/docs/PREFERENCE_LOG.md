@@ -5261,6 +5261,7 @@ and make the icon appear off-center.
 `Website/assets/css/site-content.css`, `Maps/src/place-media.js`, `Maps/src/styles/styles.css`,
 `Maps/tests/05-animations.spec.js`, `Maps/docs/DESIGN_SYSTEM.md`, and this log.
 No browser or Playwright tests were run, following the standing preference.
+
 ### 2026-10-05 — Five-item navigation and unobscured Places icon
 
 **User preference:** the primary Maps navigation uses Home, Routes, Places, Events, and Profile in that order. Places must occupy the exact center and remain the strongest destination without raised-button, notch, or oversized floating-action treatments. The accepted treatment is a compact, quiet accent-tinted icon core.
@@ -5276,3 +5277,102 @@ The place-count badge sits at the icon core's upper-right corner, mostly above i
 **Session note:** corrected the five-item Maps navigation after the first implementation contradicted established mobile preferences. Removed the taller labeled-phone-bar token, restored the existing compact bar height, hid labels at the phone breakpoint, centered the count above the Places core, and moved the core/avatar visuals into the shared `.btn-tab` design-system template area. Added `--tab-count-ring`, kept the tab hit areas at least 44px despite the bar border, and documented the corrected responsive behavior.
 
 **Follow-up correction:** moved the count from top-center to the requested upper-right core corner, consolidated profile icon/photo/initial into one fixed visual slot, and introduced theme-aware Places tokens so dark mode uses gold throughout. Final polish shifts the count four pixels farther right in two small review steps and lightens the navigation-specific dark-mode gold without changing the global company-gold token used elsewhere.
+
+### 2026-10-06 — Smaller two-tier phone map chrome
+
+**User preference:** phone map controls should stay materially smaller than their
+desktop/tablet counterparts. The previous gesture-compacted size is now the
+normal maximum size on phone; zoom controls in particular should remain quiet
+because touch users normally pinch the map.
+
+**Responsive decision:** the existing three wrapper-zone transform architecture
+is retained. The bottom navigation is the phone's most-used control, so it keeps
+its original full resting size and `0.84` gesture scale. Only the secondary top
+and right-side control zones use the new smaller tiers: `0.82` at rest and `0.67`
+during active map manipulation. Avoid grouping the primary bottom navigation
+with secondary map chrome when changing visual weight. Tablet/desktop sizing and
+the three-second post-gesture restore behavior are unchanged.
+
+**Files modified:** `src/styles/design-tokens.css`, `src/styles/styles.css`,
+`index.html`, `sw.js`, `docs/DESIGN_SYSTEM.md`, and `docs/PREFERENCE_LOG.md`.
+No browser or Playwright tests were run, following the standing preference.
+
+**Text-size refinement:** shrinking the search and prayer wrappers must not also
+make their text harder to read. Their phone typography is counter-sized so it
+renders at the pre-shrink visual scale inside the smaller pills. Keep the
+collapsed and expanded pill geometry compact; compensate text only, not icons or
+surface dimensions.
+
+### 2026-10-06 — Phone map actions, direct contribution copy, and install cadence
+
+**User preference:** phone users navigate the map with touch gestures, so zoom
+buttons add unnecessary chrome. Keep zoom controls on larger screens. On phone,
+Full Screen and Contribute must be separate buttons, not two actions inside one
+pill. The complete right rail runs bottom-to-top as Contribute, Search, Locate,
+then Full Screen when supported; unsupported Full Screen leaves no empty slot.
+
+**Language preference:** contribution actions should say **Add a Place**, **Edit
+Place**, **Add Event**, and **Edit Event**, rather than framing the user's work as
+a suggestion. The existing review/approval pipeline remains unchanged and is
+disclosed in the success toast after submission.
+
+**Install preference:** offer **Install Manarah** only on every fifth explicit
+login per account and only when the app is not detected as installed. Session
+restoration does not count as a login. The whole toast is clickable; supported
+Chromium browsers receive the native install prompt, while iOS receives Safari's
+manual Share > Add to Home Screen instruction because it cannot be triggered
+programmatically. Installed standalone/native sessions suppress the toast, and
+the related-app API is used where available to detect an installation from the
+browser tab.
+
+**Files modified:** `index.html`, `manifest.json`, `sw.js`, `src/app.js`,
+`src/auth.js`, `src/events.js`, `src/install.js`, `src/map-controls.js`,
+`src/places.js`, `src/search.js`, `src/tutorial.js`, `src/utils.js`, `src/styles/styles.css`,
+`functions/api/submit.js`, `docs/DESIGN_SYSTEM.md`, and this log. No browser or
+Playwright tests were run, following the standing preference.
+
+### 2026-10-06 — Equal phone rail controls and dark-mode gold interaction system
+
+**Phone rail correction:** the collapsed Search surface must match the 42px
+Contribute, Locate, and Full Screen buttons. Only its expanded field returns to
+the established search-field geometry.
+
+**Superseded theme experiment:** app-wide gold was briefly applied to dark-mode
+interactions, then rejected in the correction below. Do not restore it; gold is
+scoped to the Places navigation treatment while the global accent remains teal.
+
+**Map View state:** Theme, Overlay, Detail, and Markers must all visibly mark
+their selected options with the same accent background/border/label treatment.
+Map View buttons also expose `aria-pressed`, and Overlay selection state is
+resynchronized even if its map-layer operation throws.
+
+**Files modified:** `index.html`, `sw.js`, `src/map-controls.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`,
+`docs/DESIGN_SYSTEM.md`, and this log. No browser or Playwright tests were run,
+following the standing preference.
+
+### 2026-10-06 — Events follows the desktop mainbar
+
+**Desktop navigation preference:** because Events is now a destination in the
+right-side mainbar, its window should open beside that bar instead of appearing
+in the center of the map. Match the placement and side-entry direction of the
+other desktop navigation sheets. Keep the phone Events bottom sheet unchanged.
+
+**Files modified:** `index.html`, `sw.js`, `src/styles/styles.css`,
+`docs/DESIGN_SYSTEM.md`, and this log. No browser or Playwright tests were run,
+following the standing preference.
+
+### 2026-10-06 — Restore teal dark-mode interactions
+
+**Theme correction:** dark mode keeps the established teal accent for Menu,
+navigation, selections, links, filled actions, focus states, prayer, and Qibla.
+The Places navigation icon remains the sole app-navigation exception and keeps
+its dedicated gold treatment. Existing semantic gold for sponsors, Eid, and
+promotions is content-specific and remains unchanged.
+
+**Pattern to avoid:** do not remap the global dark-mode `--accent` tokens to
+gold in order to match one navigation destination. Scope exceptional color to
+the component-specific Places tokens.
+
+**Files modified:** `index.html`, `sw.js`, `src/styles/design-tokens.css`,
+`src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, and this log.

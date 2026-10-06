@@ -251,7 +251,13 @@ body.promos-disabled .pp-promo-btn { display: none; }
   /* Stagger delay unit — used with CSS custom property --i for sequential reveal */
   --stagger-unit: 30ms;
   --scale-phone-mainbar-compact: 0.84;
-  --scale-phone-chrome-compact: 0.82;
+  --scale-phone-chrome-rest: 0.82;
+  --scale-phone-chrome-compact: 0.67;
+  --txt-phone-chrome-xs: 13.5px;
+  --txt-phone-chrome-sm: 14.5px;
+  --txt-phone-chrome-base: 16px;
+  --txt-phone-chrome-md: 17px;
+  --txt-phone-chrome-lg: 18.5px;
   --welcome-logo-vw: 58vw;
   --welcome-logo-max-w: 430px;
   --welcome-logo-tablet-vw: 76vw;

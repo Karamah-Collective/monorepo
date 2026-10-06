@@ -10,6 +10,10 @@
  * every existing event name is a larger refactor out of scope for this change.
  */
 export const EVT = {
+  /** Fired after an explicit credential sign-in or sign-up succeeds. Restored
+   *  Firebase sessions do not fire it. Used for cadence-based post-login UX.
+   *  detail: { account: {uid,email,displayName} } */
+  SIGN_IN_COMPLETED: "hf:sign-in-completed",
   /** Fired on window whenever the signed-in Firebase account changes (sign-in,
    *  sign-out, or auth state restored on load). detail: { account: {uid,email,displayName}|null } */
   AUTH_CHANGED: "hf:auth-changed",
@@ -104,4 +108,8 @@ export const EVT = {
    *  same avoid-circular-imports convention as ACCOUNT_SHEET_CLOSE above.
    *  detail: {} */
   PROFILE_CARD_RENDERED: "hf:profile-card-rendered",
+  /** Fired by phone map chrome when the user chooses the direct contribution
+   *  shortcut. places.js owns resetting and opening the Add a Place form.
+   *  detail: {} */
+  ADD_PLACE_REQUESTED: "hf:add-place-requested",
 };

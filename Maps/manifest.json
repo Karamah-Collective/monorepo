@@ -2,11 +2,20 @@
   "name": "Manarah",
   "short_name": "Manarah",
   "description": "Find halal food, shops, and prayer spaces across Finland.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#08705B",
   "background_color": "#f2f2f2",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.json",
+      "id": "https://maps.karamahcollective.com/"
+    }
+  ],
   "icons": [
     {
       "src": "/data/icons/icon-192.png",
