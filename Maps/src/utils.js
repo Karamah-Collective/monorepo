@@ -631,31 +631,46 @@ const ACTION_TOAST_DURATION_MS = 8000;
 const TOAST_COLLAPSE_DURATION_MS = 300;
 
 /**
- * Show a toast whose whole surface performs one user-triggered action.
+ * Show a temporary action toast with an optional independent close control.
  * @param {string} label - Primary toast copy
  * @param {string} icon - Key from the shared toast icon registry
  * @param {string|null} sub - Optional supporting copy
  * @param {() => void|Promise<void>} onAction - Action invoked once on click
+ * @param {{onClose?: () => void, onAutoDismiss?: () => void, closeLabel?: string}} [options]
+ *   Optional callbacks that distinguish explicit close from timeout expiry
  * @returns {void}
  */
-export function showActionToast(label, icon, sub, onAction) {
+export function showActionToast(label, icon, sub, onAction, options = {}) {
   const stack = _getToastStack();
   const slot = document.createElement("div");
   slot.className = "toast-slot";
-  const toast = document.createElement("button");
-  toast.type = "button";
-  toast.className = "share-toast snack share-toast-action";
+  const toast = document.createElement("div");
+  toast.className = "share-toast snack share-toast-action-shell";
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "share-toast-action";
   const svg = _TOAST_SVG[icon] || "";
   const iconClass = _TOAST_ICON_CLASS[icon] || "snack-icon--success";
   const subHtml = sub ? `<span class="snack-sub">${esc(sub)}</span>` : "";
-  toast.innerHTML = `${svg ? `<span class="snack-icon ${iconClass}">${svg}</span>` : ""}<span class="snack-body"><span class="snack-label">${esc(label)}</span>${subHtml}</span>`;
+  action.innerHTML = `${svg ? `<span class="snack-icon ${iconClass}">${svg}</span>` : ""}<span class="snack-body"><span class="snack-label">${esc(label)}</span>${subHtml}</span>`;
+  toast.appendChild(action);
+
+  let closeButton = null;
+  if (options.onClose) {
+    closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "btn-icon share-toast-close";
+    closeButton.setAttribute("aria-label", options.closeLabel || "Close");
+    closeButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    toast.appendChild(closeButton);
+  }
   slot.appendChild(toast);
   stack.appendChild(slot);
 
   let dismissed = false;
   let actionStarted = false;
   let timeoutId = 0;
-  const dismiss = () => {
+  const dismiss = (reason) => {
     if (dismissed) return;
     dismissed = true;
     clearTimeout(timeoutId);
@@ -663,19 +678,22 @@ export function showActionToast(label, icon, sub, onAction) {
     slot.classList.remove("toast-slot-show");
     slot.classList.add("toast-slot-collapsing");
     setTimeout(() => slot.remove(), TOAST_COLLAPSE_DURATION_MS);
+    if (reason === "close") options.onClose?.();
+    if (reason === "auto") options.onAutoDismiss?.();
   };
 
-  toast.addEventListener("click", () => {
+  action.addEventListener("click", () => {
     if (actionStarted) return;
     actionStarted = true;
-    toast.disabled = true;
-    Promise.resolve().then(() => onAction?.()).catch(() => {}).finally(dismiss);
+    action.disabled = true;
+    Promise.resolve().then(() => onAction?.()).catch(() => {}).finally(() => dismiss("action"));
   });
+  closeButton?.addEventListener("click", () => dismiss("close"));
 
   void slot.offsetHeight;
   slot.classList.add("toast-slot-show");
   toast.classList.add("share-toast-show");
-  timeoutId = setTimeout(dismiss, ACTION_TOAST_DURATION_MS);
+  timeoutId = setTimeout(() => dismiss("auto"), ACTION_TOAST_DURATION_MS);
 }
 
 let _activeConfirmCleanup = null; // the open dialog's own finish() fn, if any

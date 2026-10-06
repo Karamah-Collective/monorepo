@@ -5316,14 +5316,11 @@ Place**, **Add Event**, and **Edit Event**, rather than framing the user's work 
 a suggestion. The existing review/approval pipeline remains unchanged and is
 disclosed in the success toast after submission.
 
-**Install preference:** offer **Install Manarah** only on every fifth explicit
-login per account and only when the app is not detected as installed. Session
-restoration does not count as a login. The whole toast is clickable; supported
-Chromium browsers receive the native install prompt, while iOS receives Safari's
-manual Share > Add to Home Screen instruction because it cannot be triggered
-programmatically. Installed standalone/native sessions suppress the toast, and
-the related-app API is used where available to detect an installation from the
-browser tab.
+**Superseded install cadence:** the original implementation offered **Install
+Manarah** every fifth explicit login. The later session-aware correction below
+replaces that cadence and separates the install action from an explicit Close
+control. Installed standalone/native sessions still suppress the toast, and
+the related-app API remains the preferred browser-tab installation check.
 
 **Files modified:** `index.html`, `manifest.json`, `sw.js`, `src/app.js`,
 `src/auth.js`, `src/events.js`, `src/install.js`, `src/map-controls.js`,
@@ -5396,3 +5393,33 @@ the unrequested generated branch, and do not describe the configured GitHub
 remote as a separate repository from the monorepo.
 
 **Files modified:** root `DEPLOYMENT.md` and this log.
+
+### 2026-10-06 — Reliable tutorial dismissal and session-aware install reminder
+
+**Tutorial repair:** the tutorial must dismiss cleanly from both Explore
+buttons and Close. Removal of a legacy Events-pill helper must include removal
+of every cleanup call to it. Teardown is idempotent, releases its resize
+listener, and remains usable when storage is blocked. Phone walkthroughs omit
+the desktop Zoom step because phone zoom is gesture-based and the control is
+not rendered there.
+
+**Install reminder cadence:** the install prompt is a temporary action toast
+with an independent Close button. Auto-dismiss does not create a cooldown, so
+the toast is eligible again next session. Explicit Close suppresses it for the
+next five fresh app sessions for that account, then restores eligibility.
+Installed, standalone, and native sessions remain excluded.
+
+**Files modified:** `index.html`, `sw.js`, `src/auth.js`, `src/events.js`,
+`src/install.js`, `src/tutorial.js`, `src/utils.js`, `src/styles/styles.css`,
+`tests/09-tutorial.spec.js`, `tests/16-install-prompt.spec.js`,
+`docs/DESIGN_SYSTEM.md`, and this log.
+
+### 2026-10-07 — Tutorial follows the main navigation
+
+**Canonical sequence:** phone and desktop use the same concise tutorial order:
+Home, Routes, Places, Events, Profile, then Prayer Times. The welcome and final
+Explore cards remain as entry and exit. Do not insert secondary map or menu
+utilities into this flow, and do not maintain a separate phone ordering table.
+
+**Files modified:** `index.html`, `sw.js`, `src/tutorial.js`,
+`tests/09-tutorial.spec.js`, `docs/DESIGN_SYSTEM.md`, and this log.

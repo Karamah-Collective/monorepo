@@ -408,7 +408,6 @@ function _resultFromCredential(cred) {
     account: _cacheAccount(cred.user),
     isNewUser: !!getAdditionalUserInfo(cred)?.isNewUser,
   };
-  window.dispatchEvent(new CustomEvent(EVT.SIGN_IN_COMPLETED, { detail: { account: result.account } }));
   return result;
 }
 

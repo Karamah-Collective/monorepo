@@ -1475,15 +1475,18 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
   types keep their existing `suggest`/`submit` names so moderation and approval
   behavior do not change. Success feedback explicitly says submissions appear
   after review.
-- `showActionToast()` is the reusable clickable-toast variant. It preserves the
-  existing snack surface and animation, uses a real button for keyboard access,
-  accepts one action, and remains visible longer than informational toasts.
-- The install toast appears only after every fifth explicit credential sign-in
-  per account on a phone viewport. Restored sessions do not increment the
-  count. Standalone/native display mode, `getInstalledRelatedApps()` where
-  supported, `beforeinstallprompt`, and `appinstalled` suppress redundant
-  prompts. Browsers without a programmatic prompt receive concise menu
-  instructions; iOS receives Safari Share > Add to Home Screen instructions.
+- `showActionToast()` is the reusable temporary action-toast variant. It
+  preserves the existing snack surface and animation, uses a real button for
+  its primary action, optionally provides an independent Close button, and can
+  distinguish explicit Close from automatic expiry.
+- The phone install toast is session-aware and non-persistent. If it expires on
+  its own, it is eligible again in the next fresh app session. Its independent
+  Close button starts a five-session cooldown for that account; the reminder
+  returns after those five sessions. Standalone/native display mode,
+  `getInstalledRelatedApps()` where supported, `beforeinstallprompt`, and
+  `appinstalled` suppress redundant prompts. Browsers without a programmatic
+  prompt receive concise menu instructions; iOS receives Safari Share > Add to
+  Home Screen instructions.
 - A collapsed phone Search control uses `--btn-icon-size` for both dimensions,
   matching the separate Contribute, Locate, and Full screen surfaces. Expansion
   may return to the established 44px search-field height.
@@ -1507,3 +1510,12 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
   sheet, including its drag handle and bottom-up dismissal motion.
 - Desktop Events uses `--scrim-bg`, matching Places navigation rather than the
   darker modal `--overlay-bg`. Mobile Events retains the modal backdrop.
+
+## 2026-10-07 - First-run tutorial sequence
+
+- Phone, tablet, and desktop share one canonical feature sequence: **Home →
+  Routes → Places → Events → Profile → Prayer Times**. The welcome and
+  completion cards wrap that sequence.
+- Secondary utilities such as Locate, Zoom, Search, Map Style, Contact,
+  Wishlist, and Eid do not receive tutorial steps. Tutorial order mirrors the
+  primary navigation before moving to Prayer Times.

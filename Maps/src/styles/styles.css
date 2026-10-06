@@ -5696,12 +5696,29 @@ body.marker-style-bold .custom-mk {
 }
 
 #toast-stack .share-toast-action {
-  width: max-content;
+  flex: 1;
+  min-width: 0;
   appearance: none;
   font: inherit;
   text-align: left;
   color: inherit;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  background: transparent;
+}
+
+.share-toast-action-shell {
+  width: calc(100vw - var(--sp-7));
+  padding: var(--sp-2);
+  gap: var(--sp-1);
+}
+
+.share-toast-close {
+  flex: 0 0 var(--btn-icon-size);
 }
 
 /* ── Toast slot: grid wrapper that smoothly opens/closes the height slot ─ */

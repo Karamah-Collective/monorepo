@@ -33,8 +33,9 @@ test.describe("Tutorial — First Run", () => {
     // Clear tutorial localStorage
     await page.addInitScript(() => localStorage.removeItem("hf_tutorial_v1"));
     await loadApp(page);
-    // Wait for tutorial to appear (800ms delay + render)
-    await page.waitForTimeout(1500);
+    // The tutorial starts after app initialization; wait on the UI rather than
+    // assuming startup completes within a fixed interval on every device.
+    await expect(page.locator(".tut-card")).toBeVisible({ timeout: 10_000 });
   });
 
   test("tutorial overlay appears on first visit", async ({ page }) => {
@@ -43,7 +44,7 @@ test.describe("Tutorial — First Run", () => {
   });
 
   test("first step is the welcome screen", async ({ page }) => {
-    await expect(page.locator(".tut-title")).toContainText("Welcome");
+    await expect(page.locator(".tut-title")).toContainText("Assalamu Alaikum");
   });
 
   test("first step has Get started button", async ({ page }) => {
@@ -52,6 +53,15 @@ test.describe("Tutorial — First Run", () => {
 
   test("first step has no back button", async ({ page }) => {
     await expect(page.locator("#tut-back")).toHaveCount(0);
+  });
+
+  test("Explore dismisses the welcome step without an error", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.locator("#tut-explore").click();
+    await expect(page.locator(".tut-overlay")).not.toBeVisible();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("hf_tutorial_v1"))).toBeTruthy();
+    expect(errors).not.toContain(expect.stringContaining("_restoreEventsPill"));
   });
 
   test("clicking Get started advances to step 2", async ({ page }) => {
@@ -73,7 +83,7 @@ test.describe("Tutorial — First Run", () => {
     await page.waitForTimeout(300);
     await page.locator("#tut-back").click();
     await page.waitForTimeout(300);
-    await expect(page.locator(".tut-title")).toContainText("Welcome");
+    await expect(page.locator(".tut-title")).toContainText("Assalamu Alaikum");
   });
 
   test("spotlight appears for steps with a target", async ({ page }) => {
@@ -82,6 +92,29 @@ test.describe("Tutorial — First Run", () => {
     const spotlight = page.locator(".tut-spotlight");
     const opacity = await spotlight.evaluate((el) => getComputedStyle(el).opacity);
     expect(parseFloat(opacity)).toBe(1);
+  });
+
+  test("walkthrough follows the same main-navigation order on every viewport", async ({ page }) => {
+    const titles = [];
+    let safetyCounter = 0;
+    while (safetyCounter < 20 && await page.locator("#tut-next").isVisible().catch(() => false)) {
+      titles.push((await page.locator(".tut-title").textContent()) || "");
+      const label = (await page.locator("#tut-next").textContent()) || "";
+      await page.locator("#tut-next").click();
+      await page.waitForTimeout(350);
+      if (label.includes("Explore")) break;
+      safetyCounter += 1;
+    }
+    expect(titles).toEqual([
+      "Assalamu Alaikum!",
+      "Home",
+      "Routes",
+      "Places",
+      "Events",
+      "Profile",
+      "Prayer Times",
+      "You’re all set!",
+    ]);
   });
 
   test("close button dismisses tutorial", async ({ page }) => {
@@ -138,23 +171,29 @@ test.describe("Tutorial — Full Walkthrough", () => {
     await page.route("**/gstatic.com/recaptcha/**", r => r.abort());
     await page.addInitScript(() => localStorage.removeItem("hf_tutorial_v1"));
     await loadApp(page);
-    await page.waitForTimeout(1500);
+    await expect(page.locator(".tut-title")).toHaveText("Assalamu Alaikum!", { timeout: 10_000 });
 
     // Navigate through all steps
     const errors = [];
     page.on("pageerror", (err) => errors.push(err.message));
-    let safetyCounter = 0;
-    while (safetyCounter < 15) {
-      const nextBtn = page.locator("#tut-next");
-      if (!(await nextBtn.isVisible().catch(() => false))) break;
-      const text = await nextBtn.textContent();
-      await nextBtn.click();
-      await page.waitForTimeout(400);
-      if (text.includes("Explore")) break;
-      safetyCounter++;
+    const remainingTitles = [
+      "Home",
+      "Routes",
+      "Places",
+      "Events",
+      "Profile",
+      "Prayer Times",
+      "You’re all set!",
+    ];
+    for (const title of remainingTitles) {
+      await page.locator("#tut-next").click();
+      await expect(page.locator(".tut-title")).toHaveText(title);
     }
+
+    await expect(page.locator("#tut-next")).toHaveText("Explore");
+    await page.locator("#tut-next").click();
+
     // Tutorial should be dismissed
-    await page.waitForTimeout(500);
     await expect(page.locator(".tut-overlay")).not.toBeVisible();
     // No JS errors during walkthrough
     const real = errors.filter(e => !e.includes("recaptcha") && !e.includes("grecaptcha"));

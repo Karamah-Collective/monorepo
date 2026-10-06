@@ -10,10 +10,6 @@
  * every existing event name is a larger refactor out of scope for this change.
  */
 export const EVT = {
-  /** Fired after an explicit credential sign-in or sign-up succeeds. Restored
-   *  Firebase sessions do not fire it. Used for cadence-based post-login UX.
-   *  detail: { account: {uid,email,displayName} } */
-  SIGN_IN_COMPLETED: "hf:sign-in-completed",
   /** Fired on window whenever the signed-in Firebase account changes (sign-in,
    *  sign-out, or auth state restored on load). detail: { account: {uid,email,displayName}|null } */
   AUTH_CHANGED: "hf:auth-changed",

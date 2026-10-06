@@ -2,106 +2,37 @@
 // Shows an interactive spotlight tour for new users on their first visit.
 // Persists completion state in localStorage so it only shows once.
 // The card physically animates between positions for a fluid experience.
-// Steps adapt to the current layout: desktop / tablet / phone.
+// Desktop and phone share the same main-navigation sequence.
 import { openMenuSheet, closeMenuSheet } from "./menu.js";
 
 const TUTORIAL_KEY = "hf_tutorial_v1";
 
-// ─── Layout detection ─────────────────────────────────────────────────────────
-function getLayout() {
-  const w = window.innerWidth;
-  if (w >= 1200) return "desktop";
-  if (w >= 769)  return "tablet";
-  return "phone";
-}
-
 // ─── Step Definitions ─────────────────────────────────────────────────────────
-// Each step can include a `layout` array to restrict it to certain breakpoints.
-// If omitted the step appears on all layouts.
 // `before` — an optional callback run before the step displays (e.g. open menu).
 const ALL_STEPS = [
-  // phoneOrder controls the sequence on phone (lower = earlier); default order
-  // is used for desktop and tablet.
   {
     target: null,
     title: "Assalamu Alaikum!",
     body: "Discover mosques, spaces, halal food &amp; services across Helsinki.<br>Let\u2019s take a quick tour of the key features",
     icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
-    phoneOrder: 0,
   },
   {
     target: "#home-btn",
     title: "Home",
     body: "Tap <b>Home</b> to return to Helsinki, or to your saved home if you've set one",
     icon: '<path d="M15 21v-8a1 1 0 00-1-1h-4a1 1 0 00-1 1v8"/><path d="M3 10a2 2 0 01.709-1.528l7-5.999a2 2 0 012.582 0l7 5.999A2 2 0 0121 10v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
-    phoneOrder: 1,
-  },
-  {
-    target: "#places-btn",
-    title: "Places",
-    body: "Browse mosques, spaces, halal food &amp; services \u2014 filter by category and save favourites",
-    icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
-    phoneOrder: 2,
   },
   {
     target: "#dir-btn",
     title: "Routes",
     body: "Plan a journey \u2014 drive, transit, cycle or walk \u2014 with custom departure times",
     icon: '<path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/>',
-    phoneOrder: 3,
   },
   {
-    target: "#locate-btn",
-    title: "My Location",
-    body: "Centre the map on your position and keep it tracking as you move",
-    icon: '<path d="M3 11l19-9-9 19-2-8-8-2z"/>',
-    phoneOrder: 4,
-  },
-
-  // ─── Shared: always visible on all layouts ────────────────────
-  {
-    target: "#zoom-pill",
-    title: "Zoom",
-    body: "Use <b>+</b> and <b>\u2212</b> to zoom, or pinch on a touch screen",
-    icon: '<path d="M12 5v14M5 12h14"/>',
-    before() { return closeMenuSheet(); },
-    phoneOrder: 5,
-  },
-  {
-    target: "#search-pill",
-    title: "Search",
-    body: "Find any address or place in Helsinki \u2014 just start typing",
-    icon: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
-    phoneOrder: 6,
-  },
-  {
-    target: "#menu-pill",
-    title: "Profile & Menu",
-    body: "Sign in, switch map style, contact us, or vote on the wishlist \u2014 all in one place",
-    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 3.5-6 8-6s7.2 1.8 8 6"/>',
-    before() { return openMenuSheet(); },
-    phoneOrder: 7,
-  },
-  {
-    target: "#style-panel",
-    title: "Map Style",
-    body: "Switch between the street map, satellite imagery, and more",
-    icon: '<path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/>',
-    phoneOrder: 8,
-  },
-  {
-    target: "#contact-pill",
-    title: "Contact",
-    body: "Have feedback or a question? Reach us directly from the map",
-    icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
-    phoneOrder: 9,
-  },
-  {
-    target: "#wish-pill",
-    title: "Wishlist",
-    body: "Vote on feature ideas or add your own. The community shapes what we build next.",
-    icon: '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
-    phoneOrder: 10,
+    target: "#places-btn",
+    title: "Places",
+    body: "Browse mosques, spaces, halal food &amp; services, filter by category and save favourites",
+    icon: '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>',
   },
   {
     target: "#events-nav-btn",
@@ -109,47 +40,40 @@ const ALL_STEPS = [
     body: "Browse mosque events \u2014 classes, lectures, community gatherings and more",
     icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
     before() { return closeMenuSheet(); },
-    phoneOrder: 11,
+  },
+  {
+    target: "#menu-pill",
+    title: "Profile",
+    body: "Sign in, manage your account and open app settings",
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 3.5-6 8-6s7.2 1.8 8 6"/>',
+    before() { return openMenuSheet(); },
   },
   {
     target: "#prayer-pill",
     title: "Prayer Times",
     body: "Today\u2019s prayer schedule with a live countdown \u2014 Ramadan times appear automatically",
     icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    phoneOrder: 12,
-  },
-  {
-    target: "#eid-pill",
-    title: "Eid Prayers",
-    body: "Find Eid prayer locations, jamaat times and organizers \u2014 tap to see all locations on the map",
-    icon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-    phoneOrder: 13,
+    before() { return closeMenuSheet(); },
   },
   {
     target: null,
     title: "You\u2019re all set!",
     body: "Don\u2019t see a place? Open <b>Places \u203a +</b> to add it. The community keeps the map accurate.",
     icon: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
-    phoneOrder: 99,
   },
 ];
 
-// ─── Build the filtered step list for the current layout ──────────────────────
+// ─── Build the available step list ─────────────────────────────────────────────
 let STEPS = [];
 function buildSteps() {
-  const layout = getLayout();
   STEPS = ALL_STEPS.filter(s => {
-    if (s.layout && !s.layout.includes(layout)) return false;
-    // Skip steps whose target is hidden (e.g. Eid pill when no data loaded)
+    // Skip a target if its feature is unavailable at runtime.
     if (s.target && !s.forceShow) {
       const el = document.querySelector(s.target);
       if (el && el.classList.contains("hide")) return false;
     }
     return true;
   });
-  if (layout === "phone") {
-    STEPS.sort((a, b) => (a.phoneOrder ?? 50) - (b.phoneOrder ?? 50));
-  }
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -157,6 +81,8 @@ let step = 0;
 let overlayEl, spotlightEl, cardEl, resizeTimer;
 let firstShow = true;                // skip slide animation on the first render
 let _onComplete = null;
+let _dismissed = false;
+let _onResize = null;
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 // onComplete is called after the tutorial finishes or is skipped (returning user)
@@ -183,14 +109,16 @@ function build() {
 
   document.body.append(overlayEl, spotlightEl, cardEl);
 
-  window.addEventListener("resize", () => {
+  _onResize = () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+      if (_dismissed) return;
       buildSteps();
       if (step >= STEPS.length) step = STEPS.length - 1;
       show(step);
     }, 100);
-  });
+  };
+  window.addEventListener("resize", _onResize);
 }
 
 // ─── Resolve the actual element to spotlight ──────────────────────────────────
@@ -420,9 +348,12 @@ function retreat() {
 }
 
 function dismiss() {
-  localStorage.setItem(TUTORIAL_KEY, "1");
+  if (_dismissed) return;
+  _dismissed = true;
+  try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch { /* storage blocked */ }
   closeMenuSheet();
-  _restoreEventsPill();
+  clearTimeout(resizeTimer);
+  if (_onResize) window.removeEventListener("resize", _onResize);
   overlayEl.classList.remove("visible");
   cardEl.classList.remove("visible");
   spotlightEl.style.opacity = "0";

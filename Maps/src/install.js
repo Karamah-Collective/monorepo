@@ -2,9 +2,10 @@ import { isNative } from "./capacitor-bridge.js";
 import { EVT } from "./events.js";
 import { showActionToast, showToast } from "./utils.js";
 
-const INSTALL_LOGIN_INTERVAL = 5;
+const INSTALL_SNOOZE_SESSIONS = 5;
 const INSTALL_TOAST_DELAY_MS = 2800;
-const INSTALL_COUNT_KEY_PREFIX = "hf_install_login_count:";
+const INSTALL_COOLDOWN_KEY_PREFIX = "hf_install_session_cooldown:";
+const INSTALL_SESSION_KEY_PREFIX = "hf_install_session_seen:";
 const INSTALL_CONFIRMED_KEY = "hf_install_confirmed";
 const PHONE_MEDIA_QUERY = "(max-width: 768px)";
 const STANDALONE_MEDIA_QUERY = "(display-mode: standalone)";
@@ -14,6 +15,7 @@ let _deferredInstallPrompt = null;
 let _installConfirmed = false;
 let _initialized = false;
 let _toastTimer = 0;
+let _activeUid = null;
 
 function _safeStorageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -25,6 +27,14 @@ function _safeStorageSet(key, value) {
 
 function _safeStorageRemove(key) {
   try { localStorage.removeItem(key); } catch { /* storage blocked */ }
+}
+
+function _safeSessionGet(key) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+
+function _safeSessionSet(key, value) {
+  try { sessionStorage.setItem(key, value); } catch { /* storage blocked */ }
 }
 
 function _isStandalone() {
@@ -64,12 +74,26 @@ async function _isInstalled() {
   return false;
 }
 
-function _nextLoginCount(uid) {
-  const key = `${INSTALL_COUNT_KEY_PREFIX}${uid}`;
-  const previous = Number.parseInt(_safeStorageGet(key) || "0", 10);
-  const next = Number.isFinite(previous) ? previous + 1 : 1;
-  _safeStorageSet(key, String(next));
-  return next;
+function _claimSession(uid) {
+  const key = `${INSTALL_SESSION_KEY_PREFIX}${uid}`;
+  if (_safeSessionGet(key) === "1") return false;
+  _safeSessionSet(key, "1");
+  return true;
+}
+
+function _isSessionEligible(uid) {
+  const key = `${INSTALL_COOLDOWN_KEY_PREFIX}${uid}`;
+  const stored = Number.parseInt(_safeStorageGet(key) || "0", 10);
+  const remaining = Number.isFinite(stored) ? Math.max(0, stored) : 0;
+  if (remaining === 0) return true;
+  const next = remaining - 1;
+  if (next === 0) _safeStorageRemove(key);
+  else _safeStorageSet(key, String(next));
+  return false;
+}
+
+function _snoozeInstall(uid) {
+  _safeStorageSet(`${INSTALL_COOLDOWN_KEY_PREFIX}${uid}`, String(INSTALL_SNOOZE_SESSIONS));
 }
 
 async function _startInstall() {
@@ -96,19 +120,30 @@ async function _startInstall() {
   showToast("Install from your browser menu", "install", "Choose Install app or Add to Home Screen.");
 }
 
-async function _offerInstallAfterLogin(event) {
-  if (!_isPhoneViewport() || await _isInstalled()) return;
+async function _offerInstallForSession(event) {
   const uid = event.detail?.account?.uid;
-  if (!uid || _nextLoginCount(uid) % INSTALL_LOGIN_INTERVAL !== 0) return;
+  _activeUid = uid || null;
+  if (!uid) {
+    clearTimeout(_toastTimer);
+    return;
+  }
+  if (!_isPhoneViewport() || !_claimSession(uid)) return;
+  if (await _isInstalled() || !_isSessionEligible(uid)) return;
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(async () => {
-    if (await _isInstalled()) return;
-    showActionToast("Install Manarah", "install", "Open without the browser bars. Tap to install.", _startInstall);
+    if (_activeUid !== uid || await _isInstalled()) return;
+    showActionToast(
+      "Install Manarah",
+      "install",
+      "Open without the browser bars. Tap to install.",
+      _startInstall,
+      { onClose: () => _snoozeInstall(uid), closeLabel: "Close install reminder" },
+    );
   }, INSTALL_TOAST_DELAY_MS);
 }
 
 /**
- * Initialize the rate-limited post-login PWA installation experience.
+ * Initialize the session-aware PWA installation experience.
  * @returns {void}
  */
 export function initInstallExperience() {
@@ -127,5 +162,5 @@ export function initInstallExperience() {
     _deferredInstallPrompt = null;
     _safeStorageSet(INSTALL_CONFIRMED_KEY, "1");
   });
-  window.addEventListener(EVT.SIGN_IN_COMPLETED, _offerInstallAfterLogin);
+  window.addEventListener(EVT.AUTH_CHANGED, _offerInstallForSession);
 }
