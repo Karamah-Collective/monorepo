@@ -5376,3 +5376,13 @@ the component-specific Places tokens.
 
 **Files modified:** `index.html`, `sw.js`, `src/styles/design-tokens.css`,
 `src/styles/styles.css`, `docs/DESIGN_SYSTEM.md`, and this log.
+
+### 2026-10-06 — Events backdrop matches Places on desktop
+
+**Navigation consistency:** opening Events from the desktop mainbar must dim the
+map by the same amount as opening Places. Use the lighter `--scrim-bg` for the
+desktop Events panel, not the modal `--overlay-bg`. Keep the stronger overlay for
+the phone bottom sheet.
+
+**Files modified:** `index.html`, `sw.js`, `src/styles/styles.css`,
+`docs/DESIGN_SYSTEM.md`, and this log.

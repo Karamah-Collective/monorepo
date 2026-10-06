@@ -8200,6 +8200,7 @@ body.nav-mode #locate-pill-wrap {
 /* Desktop navigation opens Events beside the right mainbar, like other sheets. */
 @media (min-width: 769px) {
   #events-overlay {
+    background: var(--scrim-bg);
     padding: 0;
   }
 

@@ -1505,3 +1505,5 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 - The panel enters from the mainbar side with a short horizontal translate and
   scale transition. The phone Events experience remains the established bottom
   sheet, including its drag handle and bottom-up dismissal motion.
+- Desktop Events uses `--scrim-bg`, matching Places navigation rather than the
+  darker modal `--overlay-bg`. Mobile Events retains the modal backdrop.
