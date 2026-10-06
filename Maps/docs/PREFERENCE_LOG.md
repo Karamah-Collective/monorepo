@@ -5386,3 +5386,13 @@ the phone bottom sheet.
 
 **Files modified:** `index.html`, `sw.js`, `src/styles/styles.css`,
 `docs/DESIGN_SYSTEM.md`, and this log.
+
+### 2026-10-06 — Deployment command targets are exclusive
+
+**Deployment workflow preference:** `deploy` means push reviewed source to
+`main`, then generate and push only `deploy`. `preview` means push `main`, then
+generate and push only `preview`. `main` means push only `main`. Do not publish
+the unrequested generated branch, and do not describe the configured GitHub
+remote as a separate repository from the monorepo.
+
+**Files modified:** root `DEPLOYMENT.md` and this log.

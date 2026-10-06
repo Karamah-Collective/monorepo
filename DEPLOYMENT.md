@@ -23,6 +23,23 @@ npm run deploy:agent -- sync deploy
 
 Add `--push` to the sync commands when you are ready to publish the generated branches.
 
+### Deployment request routing
+
+Treat the user's requested target as authoritative. Always commit and push the
+reviewed source changes to `main` first, then publish only the named generated
+branch:
+
+| User request | Push `main` | Push `preview` | Push `deploy` |
+| --- | --- | --- | --- |
+| `deploy` or `deployment deploy` | Yes | No | Yes |
+| `preview` or `deployment preview` | Yes | Yes | No |
+| `main` or `deployment main` | Yes | No | No |
+
+Do not publish both generated branches by default. A production deployment
+skips `preview`; a preview deployment skips `deploy`; a main-only request skips
+both generated branches. Publish more than one generated branch only when the
+user explicitly names each target.
+
 ### Release discipline
 
 Before syncing a release branch, stage only the intended source changes and
