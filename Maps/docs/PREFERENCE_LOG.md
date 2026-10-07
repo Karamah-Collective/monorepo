@@ -53,6 +53,14 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-10-08 — Consent analytics and Admin reporting
+
+- Visitor analytics must be opt-in through a compact Cookies & analytics prompt with equal Allow and Decline actions and a Privacy Policy link. The decision is stored per browser so returning visitors, including people who previously completed onboarding, are prompted unless they already have a saved choice.
+- Consent UI follows Manarah's flat Premium Utility language: existing surface/border/shadow tokens, pill buttons, no alarmist copy, no hover-scale treatment, and no new visual constants outside the token system.
+- PostHog is EU-hosted, consent-gated, minimal, and never receives raw searches, precise locations, contact data, form/review content, Firebase data, or auth tokens. Session replay masks inputs/forms and identified user-content containers.
+- Admin analytics is a native workspace route, never a browser-to-PostHog private API integration. The server caches live responses in D1 for five minutes and stores only aggregate daily snapshot metrics for future trends.
+- Consent must never be implied by use of the site. The approved compact treatment uses calm improvement-focused language and a Privacy Policy link.
+
 ### 2026-09-27 — Forms refinement direction
 
 - Forms must match the Links shell structurally: a compact shared masthead and a restrained atmospheric background, while retaining its own visual motif rather than copying Links exactly.
@@ -5423,3 +5431,10 @@ utilities into this flow, and do not maintain a separate phone ordering table.
 
 **Files modified:** `index.html`, `sw.js`, `src/tutorial.js`,
 `tests/09-tutorial.spec.js`, `docs/DESIGN_SYSTEM.md`, and this log.
+### 2026-10-08 — Compact consent and analytics controls
+
+- Consent is a compact, text-first surface: the privacy-policy link belongs in the disclosure sentence, with small right-aligned actions below it. Avoid decorative cookie icons, headings, large equal-width buttons, and spare vertical space.
+- Analytics date ranges use a dense segmented control. `24h` must query one day, rather than appearing as a 24-hour label while requesting an unrelated range.
+- The consent prompt may use the plain header “Cookies”. Keep the privacy-policy link and both choices together in one compact footer row.
+- Consent choices should use the direct, neutral labels “Decline” and “Accept”. Admin controls must reuse established Admin components rather than introducing a separate visual language.
+- Analytics is an explicit `analytics.read` permission. It is not part of the universal workspace baseline and administrators retain access through their full-access role. Custom roles can be granted Analytics read access from Roles & access.

@@ -5,6 +5,7 @@ import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { placesData, openPlaceSheet, activeSponsor, openEventOverlay } from "./places.js";
 import { getExpandedSearchTerms } from "./app-settings.js";
+import { track } from "./analytics.js";
 
 // ─── Saved custom pins: storage lives in utils.js, re-exported for back-compat
 export { getSavedPins, removeSavedPin };
@@ -345,6 +346,7 @@ async function search(q) {
     const apiFiltered = apiItems.filter(r => !localNames.has(r.name.toLowerCase()));
 
     showResults([...localItems, ...apiFiltered]);
+    track("search_performed", { query_length: q.length, result_count: localItems.length + apiFiltered.length });
   } catch {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:var(--txt-sm)">Search failed.</li>';
     showDrop();
@@ -436,6 +438,7 @@ rList.addEventListener("click", (e) => {
   collapseSearch();
   inp.blur();
   if (li.dataset.placeId) {
+    track("search_result_opened", { source: "search" });
     const place = placesData.find(p => p.id === li.dataset.placeId);
     if (place) { openPlaceSheet(place); return; }
   }

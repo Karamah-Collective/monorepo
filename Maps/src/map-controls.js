@@ -19,6 +19,7 @@ import {
   clearLocationWatch,
 } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
+import { track } from "./analytics.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
 import { setTrafficDetailOverlay, refreshTrafficDetailOverlayLayers } from "./traffic-overlay.js";
 import { getAppSettings } from "./app-settings.js";
@@ -348,6 +349,7 @@ export async function centerVisitorCityIfAvailable({ instant = false, canApply =
 }
 
 export function showCurrentLocation() {
+  track("location_requested");
   const locBtn = document.getElementById("locate-btn");
 
   // ── Already tracking ──
@@ -396,6 +398,7 @@ export function showCurrentLocation() {
   let firstFix = true;
 
   function onPosition(pos) {
+    if (firstFix) track("location_granted");
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
     setCurrentLocationState({ lat, lng, accuracy, active: true });
     if (firstFix) hideLoadingToast();
@@ -430,6 +433,7 @@ export function showCurrentLocation() {
     onPosition,
     onWatch(id) { locWatchId = id; },
   }).catch((e) => {
+    if (e?.denied) track("location_denied");
     hideLoadingToast();
     clearCurrentLocationState();
     showToast("Location is off", "loc", e.message);
@@ -993,7 +997,9 @@ export function preloadSatelliteSource() {
 // ── Satellite toggle ──────────────────────────────────────────────
 export function toggleSatellite() {
   if (!getAppSettings().satelliteEnabled) return;
-  _setSatelliteMode(isSatelliteActive && !isHybridSatelliteActive ? "off" : "satellite");
+  const next = isSatelliteActive && !isHybridSatelliteActive ? "off" : "satellite";
+  _setSatelliteMode(next);
+  if (next === "satellite") track("satellite_enabled");
 }
 
 /**
@@ -1002,7 +1008,9 @@ export function toggleSatellite() {
  */
 export function toggleHybridSatellite() {
   if (!getAppSettings().hybridEnabled) return;
-  _setSatelliteMode(isSatelliteActive && isHybridSatelliteActive ? "off" : "hybrid");
+  const next = isSatelliteActive && isHybridSatelliteActive ? "off" : "hybrid";
+  _setSatelliteMode(next);
+  if (next === "hybrid") track("hybrid_enabled");
 }
 
 function _setSatelliteMode(mode) {

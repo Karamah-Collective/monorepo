@@ -38,6 +38,7 @@ import { appSettingsReady, renderAppNotice } from "./app-settings.js";
 import "./search.js";
 import { initMenuAccount, initMenuPreferences } from "./menu.js";
 import { initInstallExperience } from "./install.js";
+import { initAnalyticsConsent, track } from "./analytics.js";
 // Non-critical modules loaded lazily after map.on("load") for faster startup
 
 initInstallExperience();
@@ -450,6 +451,7 @@ function initPhoneMapChromeCompact(collapsePrayerForMapInteraction) {
 }
 
 map.on("load", async () => {
+  track("map_opened");
   preloadSatelliteSource();
   syncHomeMarker();
 
@@ -513,6 +515,7 @@ map.on("load", async () => {
   );
 
   // Privacy overlay wiring
+  initAnalyticsConsent();
   const privacyOverlay = document.getElementById("privacy-overlay");
   document
     .getElementById("privacy-close")
@@ -521,6 +524,10 @@ map.on("load", async () => {
     if (e.target === privacyOverlay) privacyOverlay.classList.add("hide");
   });
   document.getElementById("privacy-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    privacyOverlay.classList.remove("hide");
+  });
+  document.getElementById("analytics-privacy-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     privacyOverlay.classList.remove("hide");
   });

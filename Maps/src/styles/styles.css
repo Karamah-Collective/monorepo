@@ -11135,6 +11135,27 @@ body.dark-mode .sp-chip {
 }
 
 /* ─── Privacy Overlay ─── */
+.analytics-consent {
+  position: fixed;
+  z-index: var(--z-top);
+  right: max(var(--consent-edge), env(safe-area-inset-right));
+  bottom: max(var(--consent-edge), env(safe-area-inset-bottom));
+  width: min(var(--consent-width), calc(100vw - (var(--consent-edge) * 2)));
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+.analytics-consent[hidden] { display: none; }
+.analytics-consent-title { display: block; color: var(--text); font-size: var(--txt-sm); font-weight: var(--fw-bold); }
+.analytics-consent-copy { margin: 0; color: var(--text-2); font-size: var(--txt-sm); line-height: var(--lh-normal); }
+.analytics-consent-title + .analytics-consent-copy { margin-top: var(--sp-1); }
+.analytics-consent-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); }
+.analytics-consent-footer > a { flex: none; color: var(--accent); font-size: var(--txt-xs); font-weight: var(--fw-semibold); text-underline-offset: 2px; }
+.analytics-consent-actions { display: flex; gap: var(--sp-2); }
+.analytics-consent .btn-primary, .analytics-consent .btn-secondary { min-height: var(--consent-button-h); padding: 0 var(--sp-5); font-size: var(--txt-xs); }
+@media (max-width: 380px) { .analytics-consent { --consent-edge: var(--sp-5); } }
 #privacy-overlay {
   position: fixed;
   inset: 0;

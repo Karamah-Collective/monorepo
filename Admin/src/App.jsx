@@ -30,6 +30,7 @@ import NotFoundPage from "./pages/NotFoundPage.jsx";
 import AccessPage from "./pages/AccessPage.jsx";
 import WeeklyReportPage from "./pages/WeeklyReportPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import AnalyticsPage from "./pages/AnalyticsPage.jsx";
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/social-videos" element={<SocialVideosPage />} />
             <Route path="/type-styles" element={<TypeStylesPage />} />
             <Route path="/app-settings" element={<AppSettingsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/workspace/preferences" element={<AdminPreferencesPage />} />
             <Route path="/workspace/profile" element={<ProfilePage />} />
             <Route path="/workspace/access" element={<AccessPage />} />

@@ -39,6 +39,9 @@ export async function onRequestGet(context) {
     NOMINATIM_VB:        env.NOMINATIM_VB        || '24.0,60.8,25.8,59.8',
     HF_TOKEN_KEY:        env.HF_TOKEN_KEY        || '',
     TURNSTILE_SITE_KEY:  env.TURNSTILE_SITE_KEY  || '0x4AAAAAAFIwqiUGSK74cVm5',
+    // Public capture token, never the private PostHog API key.
+    POSTHOG_PROJECT_TOKEN: env.POSTHOG_PROJECT_TOKEN || '',
+    POSTHOG_INGEST_HOST: env.POSTHOG_INGEST_HOST || 'https://eu.i.posthog.com',
     // Database details intentionally omitted — clients use /api/* functions.
   };
 

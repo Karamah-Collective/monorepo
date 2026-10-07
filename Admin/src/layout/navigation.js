@@ -142,6 +142,7 @@ export const NAV_GROUPS = [
         icon: "mail",
         description: "Manage who receives the Manarah analytics digest.",
       },
+      { to: "/analytics", label: "Analytics", icon: "dashboard", permission: "analytics.read", description: "Review Manarah product activity and traffic totals." },
       { to: "/workspace/access", label: "Roles & access", icon: "shield", permission: "dashboard.view", description: "Manage your profile and workspace roles." },
     ],
   },

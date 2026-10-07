@@ -6,6 +6,7 @@ import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl,
 import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
+import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
 import { EVT } from "./events.js";
@@ -722,6 +723,7 @@ export function toggleFavourite(id) {
   if (favourites.has(id)) favourites.delete(id); else favourites.add(id);
   saveFavourites();
   const saved = favourites.has(id);
+  if (saved) track("place_saved", { place_id: id });
   window.dispatchEvent(new CustomEvent(EVT.FAVOURITE_TOGGLED, { detail: { placeId: id, saved } }));
 }
 /**
@@ -1889,6 +1891,7 @@ function _renderPlaceSheetReviews(reviewsSection, placeId, placeName, ratingData
  * @returns {void}
  */
 export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
+  track("place_opened", { place_id: place.id, category: String(place.type || ""), source: "map_marker" });
   if (_activePlaceSheetReviewsListener) {
     window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
     _activePlaceSheetReviewsListener = null;
@@ -1961,6 +1964,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
       links.push(`<a class="pp-contact-link" href="${escA(place.mapsUrl)}" target="_blank" rel="noopener noreferrer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Google Maps</span></a>`);
     }
     contact.innerHTML = links.join("");
+    contact.querySelectorAll('a[href^="tel:"]').forEach((link) => link.addEventListener("click", () => track("phone_clicked", { place_id: place.id, category: String(place.type || "") })));
+    contact.querySelectorAll('a[target="_blank"]').forEach((link) => link.addEventListener("click", () => track("website_clicked", { place_id: place.id, category: String(place.type || "") })));
     inner.appendChild(contact);
   }
 
@@ -2123,6 +2128,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   dirBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>`;
   dirBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    track("directions_clicked", { place_id: place.id, category: String(place.type || ""), source: "map_marker" });
     dir.dest = { lat: place.lat, lng: place.lng, name: place.name };
     document.getElementById("dir-to").value = place.name;
     placeDestMarker(place.lng, place.lat);
@@ -2151,6 +2157,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     contactBtn.innerHTML = _CONTACT_PHONE_ICON_SVG;
     contactBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      track("phone_clicked", { place_id: place.id, category: String(place.type || "") });
       window.location.href = `tel:${place.phone}`;
     });
   }
@@ -2164,6 +2171,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   function doShare(e) {
     e.preventDefault();
     e.stopPropagation();
+    track("place_shared", { place_id: place.id, category: String(place.type || "") });
     shareUrl(buildShareUrl(place), place.name, `${place.name} – Manarah`);
   }
   shareBtn.addEventListener("click", doShare);
@@ -5169,6 +5177,7 @@ sgTagsContainer.addEventListener("keydown", (e) => {
 });
 
 const suggestForm = document.getElementById("suggest-form");
+suggestForm.addEventListener("focusin", () => track("place_submission_started"), { once: true });
 suggestForm.querySelectorAll("[required]").forEach((el) => {
   el.addEventListener("input", () => el.classList.remove("invalid"));
   if (el.tagName === "SELECT") el.addEventListener("change", () => el.classList.remove("invalid"));
@@ -5317,6 +5326,7 @@ suggestForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      track("place_submission_completed", { category: String(type || "") });
       document.getElementById("suggest-form").reset();
       sgTypeSelect.classList.add("placeholder");
       clearPinLocation();
@@ -5616,6 +5626,7 @@ document.getElementById("edit-form").addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      track("place_reported", { place_id: placeId, category: String(type || "") });
       document.getElementById("edit-overlay").classList.add("hide");
       setTimeout(() => showToast("Edit submitted", "check", "It will appear after review."), 200);
     } else {

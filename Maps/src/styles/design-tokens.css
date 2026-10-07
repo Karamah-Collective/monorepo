@@ -333,6 +333,9 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --h-field: 46px; /* direction / date input row       */
   --h-submit: 44px; /* form submit button               */
   --h-search: 48px; /* search box                       */
+  --consent-width: 344px;
+  --consent-edge: var(--sp-7);
+  --consent-button-h: 34px;
   --places-refine-max-h: 360px;
   --place-media-card-w: 154px;
   --place-media-card-h: 102px;

@@ -30,6 +30,8 @@ export const NOMINATIM_VB = _cfg.NOMINATIM_VB || "24.0,60.8,25.8,59.8";
 export const _CRYPTO_KEY = _cfg.HF_TOKEN_KEY || "Hf#K4r@m@h_2O26!";
 // Public Cloudflare Turnstile site key. The matching secret remains a Pages secret.
 export const TURNSTILE_SITE_KEY = _cfg.TURNSTILE_SITE_KEY || "0x4AAAAAAFIwqiUGSK74cVm5";
+export const POSTHOG_PROJECT_TOKEN = _cfg.POSTHOG_PROJECT_TOKEN || "";
+export const POSTHOG_INGEST_HOST = _cfg.POSTHOG_INGEST_HOST || "https://eu.i.posthog.com";
 
 // Firebase Auth (identity layer only — no Firestore/Analytics/FCM). Not secret:
 // this is public client config baked into every Firebase web app's JS bundle

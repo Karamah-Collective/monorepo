@@ -18,5 +18,12 @@ SITE_HOSTNAME=maps.karamahcollective.com
 REPORT_FROM=analytics@karamahcollective.com
 REPORT_TO=home@karamahcollective.com
 
+# PostHog: this capture token is public by design. The API key stays server-only.
+POSTHOG_PROJECT_TOKEN=phc_YOUR_PROJECT_CAPTURE_TOKEN
+POSTHOG_INGEST_HOST=https://eu.i.posthog.com
+POSTHOG_PROJECT_ID=YOUR_POSTHOG_PROJECT_ID
+POSTHOG_API_HOST=https://eu.posthog.com
+POSTHOG_API_KEY=YOUR_SERVER_SIDE_POSTHOG_API_KEY
+
 # Optional for local testing of non-contact submissions that still use reCAPTCHA.
 RECAPTCHA_SECRET=YOUR_RECAPTCHA_SECRET

@@ -2010,6 +2010,17 @@
       </div>
 
       <!-- ─── Privacy Overlay ─── -->
+      <aside id="analytics-consent" class="analytics-consent" aria-label="Cookies and analytics" hidden>
+        <strong class="analytics-consent-title">Cookies</strong>
+        <p class="analytics-consent-copy">Optional analytics help us improve Manarah.</p>
+        <div class="analytics-consent-footer">
+          <a id="analytics-privacy-link" href="#privacy">Privacy Policy</a>
+          <div class="analytics-consent-actions">
+            <button type="button" class="btn-secondary" data-analytics-choice="decline">Decline</button>
+            <button type="button" class="btn-primary" data-analytics-choice="allow">Accept</button>
+          </div>
+        </div>
+      </aside>
       <div id="privacy-overlay" class="hide">
         <div id="privacy-card">
           <div class="suggest-head">
@@ -2019,7 +2030,7 @@
             </button>
           </div>
           <div id="privacy-body">
-            <p class="privacy-updated">Last updated: August 2026</p>
+            <p class="privacy-updated">Last updated: October 2026</p>
 
             <h4>1. Who We Are</h4>
             <p><strong>Manarah</strong> is a service by <a href="https://karamahcollective.com" target="_blank" rel="noopener">Karamah Collective</a>, a community organisation supporting Finnish Muslims through practical guidance and compassionate connections. This policy explains how we handle your information when you use this app.</p>
@@ -2049,8 +2060,8 @@
 
             <h4>3. What We Don't Do</h4>
             <ul>
-              <li>No cookies or advertising pixels</li>
-              <li>No behavioural tracking, ad targeting, or user profiling</li>
+              <li>No advertising cookies, advertising pixels, ad targeting, or sale of personal data</li>
+              <li>Optional analytics are used only after you choose “Allow” in the Cookies &amp; analytics prompt</li>
               <li>No live location tracking or current-position storage — your current position is used only in your browser for the map and is never sent to our servers. If you set a home location or save a custom pin, that chosen location is stored locally while signed out and synced to your account while signed in</li>
               <li>We use Cloudflare's approximate IP-based country/city signal only to show the correct regional context, such as a better first map view. It is not stored as your home location.</li>
               <li>We will never sell personal information or share it for advertising</li>
@@ -2058,7 +2069,11 @@
               <li>We do not store your email address for reviews or account sync — only a one-way hash, used solely to link them to your account. No plaintext email data is retained from any new review.</li>
             </ul>
 
-            <h4>4. Cloudflare Web Analytics</h4>
+            <h4>4. Optional analytics cookies</h4>
+            <p>If you choose “Allow”, we use PostHog to understand aggregated use of Manarah, such as searches, place views, directions clicks, and feature use. It uses EU endpoints, minimal event properties, and replay protection that masks form fields and marked user-generated content. We do not send exact GPS coordinates, search text, names, email addresses, phone numbers, form or review text, Firebase details, or authentication tokens to PostHog.</p>
+            <p>We use this information to improve Manarah, not for advertising. You can decline without losing access to the app. Your choice is stored on this device so we do not ask again; clear this site’s storage to change it.</p>
+
+            <h4>5. Cloudflare Web Analytics</h4>
             <p>We use <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener">Cloudflare Web Analytics</a> to count visitors and understand general usage patterns. It is privacy-first by design:</p>
             <ul>
               <li>No cookies are set</li>
@@ -2068,12 +2083,13 @@
             </ul>
             <p>Cloudflare's privacy practices are described in the <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare Privacy Policy</a>.</p>
 
-            <h4>5. Cloudflare Turnstile</h4>
+            <h4>6. Cloudflare Turnstile</h4>
             <p>We use Cloudflare Turnstile to protect forms and community actions from automated abuse. Turnstile may process technical browser and network information to determine whether an interaction is legitimate. It is governed by Cloudflare's <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy Policy</a> and <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noopener">Website Terms</a>.</p>
 
-            <h4>6. Third-Party Services</h4>
+            <h4>7. Third-Party Services</h4>
             <p>Manarah relies on the following external services. Each handles its own data independently:</p>
             <ul>
+              <li><strong><a href="https://posthog.com/privacy" target="_blank" rel="noopener">PostHog</a></strong> — Optional product analytics and session replay, enabled only after your choice in the Cookies &amp; analytics prompt. We use EU endpoints and send only the limited usage information described above.</li>
               <li><strong><a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransit (HSL &amp; Waltti)</a></strong> — Our primary routing and geocoding API. The HSL endpoint, provided by Helsinki Regional Transport Authority (HSL), covers the Greater Helsinki area. The Waltti endpoint covers the Turku / F&ouml;li region. Both are used to calculate public transport routes and to search for addresses in Finland. Governed by the <a href="https://digitransit.fi/en/developers/apis/1-routing-api/0-graphql/" target="_blank" rel="noopener">Digitransit API terms</a>.</li>
               <li><strong><a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a></strong> — Open-source community transit routing, used as a fallback when Digitransit is unavailable. Data sourced from GTFS feeds under open licences.</li>
               <li><strong><a href="https://routing.openstreetmap.de" target="_blank" rel="noopener">OSRM (OpenStreetMap Routing Machine)</a></strong> — Fallback routing service for walking, cycling, and driving, used when Digitransit is unavailable. Powered by OpenStreetMap data under the <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL licence</a>.</li>
@@ -2086,17 +2102,17 @@
               <li><strong><a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener">Brevo</a></strong> — Sends Manarah contact form messages to maps@karamahcollective.com by email. Brevo handles the email delivery and SMTP processing for those messages under Brevo's own privacy policy. Contact form messages from new submissions are not stored in our D1 database.</li>
             </ul>
 
-            <h4>7. Data Storage &amp; Security</h4>
+            <h4>8. Data Storage &amp; Security</h4>
             <p>Place submissions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to maps@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
-            <h4>8. Your Rights (GDPR)</h4>
+            <h4>9. Your Rights (GDPR)</h4>
             <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place submissions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
             <p>Contact: <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
 
-            <h4>9. Children's Privacy</h4>
+            <h4>10. Children's Privacy</h4>
             <p>This service is not directed at children under 16. We do not knowingly collect personal data from anyone under 16.</p>
 
-            <h4>10. Featured Places</h4>
+            <h4>11. Featured Places</h4>
             <p>Some places in the app are marked as <strong>Featured</strong>. These are sponsored placements — businesses that support Manarah in exchange for increased visibility. Sponsored places are shown in the app as "Featured" for full transparency.</p>
             <p>What this means in practice:</p>
             <ul>
@@ -2108,10 +2124,10 @@
               <li>Featured places are clearly labelled in-app so users are always aware</li>
             </ul>
 
-            <h4>11. Changes to This Policy</h4>
+            <h4>12. Changes to This Policy</h4>
             <p>We may update this policy from time to time. The "Last updated" date above will be revised accordingly.</p>
 
-            <h4>12. Contact</h4>
+            <h4>13. Contact</h4>
             <p>Questions about this policy? Reach us at <a href="mailto:maps@karamahcollective.com">maps@karamahcollective.com</a></p>
             <p class="privacy-org">Karamah Collective · Helsinki, Finland</p>
           </div>

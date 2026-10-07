@@ -45,6 +45,7 @@ import {
 } from "../_place-videos.js";
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
+import { getAnalyticsDashboard } from "../_analytics.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -120,7 +121,8 @@ function permissionForAction(action) {
   if (["access-roles","access-members"].includes(action)) return "access.view";
   if (action === "request-access") return "access.request";
   if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
-  if (action === "admin-stats" || action === "admin-access") return "dashboard.view";
+  if (["admin-stats", "admin-access"].includes(action)) return "dashboard.view";
+  if (action === "analytics-dashboard") return "analytics.read";
   if (action === "admin-log") return "activity.read";
   if (action.includes("weekly-report")) return action.startsWith("save-") || action.startsWith("delete-") || action.startsWith("unsubscribe-") ? "reports.write" : "reports.read";
   if (action.startsWith("forms-")) return action === "forms-list" || action === "forms-get" ? "forms.read" : "forms.write";
@@ -152,7 +154,7 @@ async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
 async function saveAccessSettings(db,data) { const roleId=String(data.defaultRoleId||""); if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid default role."};await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();return {success:true}; }
-async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(activity\.(read|write)|reports\.(read|write)|maps\.(places|events|eid|social|styles|settings)\.(read|write)|moderation\.(places|events|reviews|wishes|contacts)\.(read|write)|website\.(content|team|subscribers)\.(read|write)|links\.(read|write)|forms\.(read|write))$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
+async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(activity\.(read|write)|analytics\.(read|write)|reports\.(read|write)|maps\.(places|events|eid|social|styles|settings)\.(read|write)|moderation\.(places|events|reviews|wishes|contacts)\.(read|write)|website\.(content|team|subscribers)\.(read|write)|links\.(read|write)|forms\.(read|write))$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
 async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=firstName(data.member?.displayName,email); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};const existing=await db.prepare("SELECT email FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).first();if(existing)await db.prepare("UPDATE admin_role_members SET role_id=?,added_by=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,actor.email,email).run();else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now'))").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
 async function saveMyProfile(db,data,actor) { const displayName=firstName(data.displayName,actor.email);await resolveAccess(db,actor);await db.prepare("UPDATE admin_role_members SET display_name=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(displayName,actor.email).run();return {success:true,displayName}; }
 async function deleteAccessMember(db,data) { const email=String(data.email||"").trim().toLowerCase();if(email===INITIAL_ADMIN_EMAIL)return {error:"The initial administrator cannot be removed."};await db.prepare("DELETE FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).run();return {success:true}; }
@@ -614,6 +616,7 @@ const GET_ACTIONS = {
   "admin-link-hub": (db) => getAdminLinkHub(db),
   "admin-app-settings": (db) => readAdminAppSettings(db),
   "admin-stats": (db) => getAdminStats(db),
+  "analytics-dashboard": (db, url, _actor, env) => getAnalyticsDashboard(db, env, url.searchParams.get("days")),
   "pending-new": (db) => getPendingNew(db),
   "pending-edits": (db) => getPendingEdits(db),
   "admin-places": (db) => getAdminPlaces(db),
@@ -647,11 +650,11 @@ export async function onRequestGet(context) {
 
   try {
     if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
-    return json(await handler(env.DB, url, auth.actor), 200, headers);
+    return json(await handler(env.DB, url, auth.actor, env), 200, headers);
   } catch (err) {
     const message = String(err?.message || err || "");
-    if (message.includes("weekly_report_")) {
-      return json({ error: "Run the weekly report migration before opening this page." }, 500, headers);
+    if (message.includes("weekly_report_") || message.includes("analytics_cache") || message.includes("analytics_daily_snapshots")) {
+      return json({ error: "Run the required analytics migration before opening this page." }, 500, headers);
     }
     return json({ error: "Service error" }, 502, headers);
   }

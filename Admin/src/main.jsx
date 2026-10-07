@@ -16,6 +16,7 @@ import "./styles/editors.css";
 import "./styles/cells.css";
 import "./styles/table.css";
 import "./styles/dashboard.css";
+import "./styles/analytics.css";
 import "./styles/website.css";
 import "./styles/links.css";
 import "./styles/section-tabs.css";
