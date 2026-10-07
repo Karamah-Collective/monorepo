@@ -8,7 +8,7 @@ import { can, ROUTE_PERMISSION } from "../auth/permissions.js";
 import logoLightUrl from "../../../Website/assets/images/kc_logo_small.webp";
 import logoDarkUrl from "../../../Website/assets/images/kc_logo_small_dark.webp";
 
-export function Brand() {
+export function Brand({ name }) {
   return (
     <>
       <span className="brand-mark">
@@ -16,14 +16,14 @@ export function Brand() {
         <img className="brand-logo brand-logo--dark" src={logoDarkUrl} alt="" />
       </span>
       <span className="brand-copy">
-        Karamah Collective<span>ADMIN</span>
+        {name.split(/\s+/)[0]}<span>ADMIN</span>
       </span>
     </>
   );
 }
 
 export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
-  const { user, access, signOut } = useAuth();
+  const { user, access } = useAuth();
   const { data } = useAdminStats();
   const location = useLocation();
   const [closedGroups, setClosedGroups] = useState(() => new Set(NAV_GROUPS.map(group => group.label)));
@@ -37,7 +37,7 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
     >
       <div className="pp-nav-brand">
         <NavLink to="/" aria-label="Karamah Collective overview">
-          <Brand />
+          <Brand name={name} />
         </NavLink>
         <button
           className="pp-nav-close icon-button"
@@ -90,7 +90,7 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
           <Icons.sidebar />
           <span>Collapse sidebar</span>
         </button>
-        <div className="pp-nav-user">
+        <NavLink to="/workspace/profile" className="pp-nav-user pp-nav-profile" aria-label="Open your profile">
           <span className="user-avatar">
             {name
               .split(/\s+/)
@@ -103,15 +103,8 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
             <strong>{name}</strong>
             <small>{access?.roleName || "Workspace member"}</small>
           </span>
-          <button
-            className="icon-button"
-            onClick={signOut}
-            aria-label="Sign out"
-            title="Sign out"
-          >
-            <Icons.signOut />
-          </button>
-        </div>
+          <Icons.right className="nav-profile-arrow" size={15} />
+        </NavLink>
       </div>
     </aside>
   );

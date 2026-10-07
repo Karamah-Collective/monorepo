@@ -16,8 +16,8 @@ test('every editable field points to real website content', async ({ page }) => 
   }
 });
 
-test('published copy is literal, hidden sections leave navigation, and signup can be disabled', async ({ page }) => {
-  await setup(page, { heroTitle: '<b>A place for everyone</b>', aboutVisible: false, updatesEnabled: false, noticeEnabled: true, noticeText: 'Community gathering this Sunday', pageTitle: 'Karamah - Together' }, [{ name: 'Amina Hassan', email: 'amina@example.test', position: 'Coordinator', description: 'Community organizer', location: 'Helsinki', order: 1 }]);
+test('published copy is literal, hidden sections leave navigation, and member details open privately selected fields', async ({ page }) => {
+  await setup(page, { heroTitle: '<b>A place for everyone</b>', aboutVisible: false, updatesEnabled: false, noticeEnabled: true, noticeText: 'Community gathering this Sunday', pageTitle: 'Karamah - Together' }, [{ fullName: 'Amina Hassan', email: 'amina@example.test', role: 'Coordinator', shortBio: 'Community organizer', bio:'I build practical neighborhood programs.', location: 'Helsinki', expertise:'Community programs', phone:'+358 40 123 4567', order: 1 }]);
   await page.goto('/');
   await expect(page.locator('#home h1')).toHaveText('<b>A place for everyone</b>');
   expect(await page.locator('#home h1 b').count()).toBe(0);
@@ -29,7 +29,13 @@ test('published copy is literal, hidden sections leave navigation, and signup ca
   await expect(page).toHaveTitle('Karamah - Together');
   await expect(page.locator('[data-team-loader]')).toBeHidden();
   await expect(page.locator('[data-team-list]')).toBeVisible();
-  await expect(page.locator('.kc-team-description')).toHaveText('Community organizer');
+  await expect(page.locator('[data-team-card]')).not.toContainText('Community organizer');
+  await page.getByRole('button', { name: "View Amina Hassan's profile" }).click();
+  await expect(page.getByRole('dialog')).toContainText('I build practical neighborhood programs.');
+  await expect(page.getByRole('dialog')).toContainText('Community programs');
+  await expect(page.getByRole('dialog').getByRole('link', { name:'+358 40 123 4567' })).toHaveAttribute('href', 'tel:+358401234567');
+  await page.getByRole('button', { name:'Close profile' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('single ticket opens as a popup and then returns as a delayed toast', async ({ page }) => {

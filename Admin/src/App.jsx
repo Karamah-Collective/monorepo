@@ -29,6 +29,7 @@ import FormEditorPage from "./pages/FormEditorPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import AccessPage from "./pages/AccessPage.jsx";
 import WeeklyReportPage from "./pages/WeeklyReportPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/type-styles" element={<TypeStylesPage />} />
             <Route path="/app-settings" element={<AppSettingsPage />} />
             <Route path="/workspace/preferences" element={<AdminPreferencesPage />} />
+            <Route path="/workspace/profile" element={<ProfilePage />} />
             <Route path="/workspace/access" element={<AccessPage />} />
             <Route path="/workspace/weekly-report" element={<WeeklyReportPage />} />
             <Route path="/log" element={<LogPage />} />

@@ -6,7 +6,9 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updatePassword,
   updateProfile,
+  verifyBeforeUpdateEmail,
 } from "firebase/auth";
 import { auth, ADMIN_EMAIL_DOMAIN, googleProvider } from "../firebase.js";
 import { apiGet, apiPost, logAuthEvent } from "../api/client.js";
@@ -93,8 +95,17 @@ export function AuthProvider({ children }) {
     setUser({ ...auth.currentUser });
     setAccess(current => current ? { ...current, displayName: value } : current);
   }
+  async function changePassword(password) {
+    if (!auth.currentUser) throw new Error("Not signed in");
+    await updatePassword(auth.currentUser, password);
+  }
+  async function requestEmailChange(email) {
+    if (!auth.currentUser) throw new Error("Not signed in");
+    if (!isAllowedEmail(email)) throw new Error(`Use a ${ADMIN_EMAIL_DOMAIN} email address.`);
+    await verifyBeforeUpdateEmail(auth.currentUser, email.trim().toLowerCase());
+  }
 
-  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, updateDisplayName, refreshAccess, isAllowedEmail };
+  const value = { user, loading, access, signIn, signInWithGoogle, signUp, signOut, getIdToken, reloadUser, updateDisplayName, changePassword, requestEmailChange, refreshAccess, isAllowedEmail };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

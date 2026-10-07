@@ -3,8 +3,8 @@ import { websiteDataRequest, WebsiteDataError } from '../_website-data.js';
 import { validateWebsiteContent, publicWebsiteContent } from '../../assets/js/content-schema.mjs';
 
 const origins=['https://admin.karamahcollective.com','https://admin.maps.karamahcollective.com','http://localhost:5173','http://127.0.0.1:5173'];
-const reads=new Set(['admin-team','admin-subscribers','admin-content','maps-admin']);
-const writes=new Set(['save-person','delete-person','unsubscribe','delete-subscriber','save-content','maps-admin']);
+const reads=new Set(['admin-team','admin-subscribers','admin-content','my-profile','maps-admin']);
+const writes=new Set(['save-person','delete-person','save-my-profile','unsubscribe','delete-subscriber','save-content','maps-admin']);
 const mapsAdminOrigin=env=>String(env.MAPS_ADMIN_ORIGIN||'https://maps.karamahcollective.com').replace(/\/$/,'');
 const initialAdminEmail='moontasir@karamahcollective.com';
 async function hasWebsiteAccess(env,actor){
@@ -37,6 +37,13 @@ async function proxyMapsAdmin(request,env,token,data){
   }catch{return respond(request,{error:'The map administration service is temporarily unavailable.'},502,env);}
 }
 function validateWrite(action,data) {
+  if(action==='save-my-profile') {
+    if(!Number.isInteger(data.revision)||data.revision<0)return 'Reload your profile before saving.';
+    if(!data.profile||typeof data.profile!=='object'||Array.isArray(data.profile))return 'Missing profile.';
+    if(!String(data.profile.fullName||'').trim())return 'Enter your full name.';
+    if(!Array.isArray(data.publicFields))return 'Choose which fields to publish.';
+    return null;
+  }
   if(!Number.isInteger(data.revision)||data.revision<0)return 'Reload this record before saving.';
   if(action!=='save-content' && action!=='save-person' && !data.id)return 'Missing record ID.';
   if(data.id && (typeof data.id!=='string'||data.id.length>100))return 'Invalid record ID.';
@@ -68,7 +75,7 @@ export async function onRequest(context) {
     let data,action;
     if(request.method==='GET'){data={};action=new URL(request.url).searchParams.get('action');if(!reads.has(action))return response(request,{error:'Unknown read action'},400);}
     else {
-      const raw=await request.text();if(raw.length>70000)return response(request,{error:'Request too large'},413);
+      const raw=await request.text();if(raw.length>150000)return response(request,{error:'Request too large'},413);
       try{data=JSON.parse(raw);}catch{return response(request,{error:'Invalid JSON'},400);}
       if(!data||typeof data!=='object'||Array.isArray(data))return response(request,{error:'Invalid request'},400);
       action=data.action;if(!writes.has(action))return response(request,{error:'Unknown write action'},400);
@@ -76,6 +83,9 @@ export async function onRequest(context) {
       if(action==='save-content')data.content=publicWebsiteContent(data.content);
     }
     if(action==='maps-admin')return proxyMapsAdmin(request,env,match[1],data);
+    if(action==='my-profile'||action==='save-my-profile') {
+      return response(request,await websiteDataRequest(env,action,{...data,actor:{uid:actor.uid,email:actor.email,name:actor.name||''}}));
+    }
     if(!await hasWebsiteAccess(env,actor))return response(request,{error:'Your role does not allow website administration.'},403);
     const payload={id:data.id,revision:data.revision,person:data.person,content:data.content,actor:{email:actor.email,name:actor.name||''}};
     return response(request,await websiteDataRequest(env,action,payload));

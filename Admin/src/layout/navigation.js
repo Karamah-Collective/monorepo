@@ -146,6 +146,7 @@ export const NAV_GROUPS = [
     ],
   },
 ];
+export const PERSONAL_LINK = { to: "/workspace/profile", label: "Your profile", icon: "profile", group: "Workspace", description: "Manage your details, public profile, and account security." };
 export const NAV_LINKS = NAV_GROUPS.flatMap((group) =>
   group.links.map((link) => ({ ...link, group: group.label })),
-);
+).concat(PERSONAL_LINK);

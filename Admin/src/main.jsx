@@ -21,6 +21,7 @@ import "./styles/links.css";
 import "./styles/section-tabs.css";
 import "./styles/forms.css";
 import "./styles/access.css";
+import "./styles/profile.css";
 import "./styles/weekly-report.css";
 import faviconUrl from "../../Website/assets/images/kc_logo_small_icon.ico";
 

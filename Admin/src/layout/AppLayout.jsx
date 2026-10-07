@@ -4,8 +4,10 @@ import Nav from "./Nav.jsx";
 import { NAV_LINKS } from "./navigation.js";
 import { HamburgerIcon, Icons } from "../icons.jsx";
 import CommandMenu from "../components/CommandMenu.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 export default function AppLayout() {
+  const { signOut } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -183,15 +185,7 @@ export default function AppLayout() {
           >
             {darkMode ? <Icons.sun /> : <Icons.moon />}
           </button>
-          <a
-            className="topbar-map icon-button"
-            href="https://maps.karamahcollective.com"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open public map"
-          >
-            <Icons.arrowUpRight />
-          </a>
+          <button className="topbar-map icon-button" type="button" onClick={signOut} aria-label="Sign out" title="Sign out"><Icons.signOut /></button>
         </header>
         <main
           id="main-content"

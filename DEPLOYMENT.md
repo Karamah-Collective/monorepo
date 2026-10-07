@@ -188,7 +188,8 @@ management and cover-asset endpoints. Respondent uploads remain private.
 Before deploying the role-aware Admin build, apply
 `Maps/migrations/0025_admin_roles.sql` and
 `Maps/migrations/0026_granular_admin_roles.sql`, then
-`Maps/migrations/0029_access_foundation.sql` to both the production and Preview D1
+`Maps/migrations/0029_access_foundation.sql`, then
+`Maps/migrations/0031_member_profiles.sql` to both the production and Preview D1
 databases used by Maps. The Website Pages project must use the same `DB` D1
 binding so website-role checks can read these assignments. In Firebase
 Authentication, enable the **Google** provider and ensure

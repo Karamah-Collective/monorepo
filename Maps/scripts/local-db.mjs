@@ -114,6 +114,20 @@ async function seedLocalSocialProfiles() {
   await executeSql(statements.join("\n"));
 }
 
+async function seedLocalWebsiteTeam() {
+  const [result] = await runLocal(["--command", "SELECT COUNT(*) AS count FROM website_people"]);
+  if (result.results[0].count) return;
+  const now = new Date().toISOString();
+  const profiles = [
+    ['local-amina-hassan', 'Amina Hassan', 'amina@karamahcollective.com', 'Community coordinator', 'Amina brings neighbours together through practical gatherings and support.', 'Helsinki', 10],
+    ['local-yusuf-ali', 'Yusuf Ali', 'yusuf@karamahcollective.com', 'Partnerships lead', 'Yusuf develops partnerships that make everyday community support easier to find.', 'Espoo', 20],
+    ['local-maryam-noor', 'Maryam Noor', 'maryam@karamahcollective.com', 'Programs volunteer', 'Maryam helps turn community ideas into welcoming, useful programs.', 'Vantaa', 30],
+  ];
+  const statements = profiles.map(([id,name,email,position,description,location,order]) => `INSERT OR IGNORE INTO website_people (id,revision,name,email,position,status,description,location,display_order,created_at,updated_at) VALUES (${[id,1,name,email,position,'active',description,location,order,now,now].map(quote).join(',')});`);
+  await executeSql(statements.join('\n'));
+  console.info(`Seeded ${profiles.length} local-only website team profiles.`);
+}
+
 /** Reconcile old local schemas without erasing data, then apply new migrations once. */
 export async function setupLocalDatabase() {
   await runLocal(["--command", "CREATE TABLE IF NOT EXISTS admin_local_migrations (name TEXT PRIMARY KEY)"]);
@@ -144,6 +158,7 @@ export async function setupLocalDatabase() {
   await seedEmptyDatabase();
   await seedLocalLinkHub();
   await seedLocalSocialProfiles();
+  await seedLocalWebsiteTeam();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

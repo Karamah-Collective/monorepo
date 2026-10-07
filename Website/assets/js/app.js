@@ -1947,53 +1947,36 @@ function makeTeamCard(member, index) {
   item.dataset.reveal = "";
   item.dataset.delay = String((index % 3) * 70);
 
-  const card = document.createElement("div");
+  const card = document.createElement("article");
   card.className = "kc-card kc-team-card";
   card.dataset.teamCard = "";
-  card.tabIndex = 0;
 
   const avatarWrap = document.createElement("div");
   avatarWrap.className = "kc-avatar-wrap";
 
-  const avatar = document.createElement("span");
-  avatar.className = "kc-avatar-text";
-  avatar.dataset.avatar = "";
-  avatar.textContent = getInitials(member.name);
+  const avatar = member.image ? document.createElement('img') : document.createElement('span');
+  avatar.className = member.image ? 'kc-avatar-image' : 'kc-avatar-text';
+  avatar.dataset.avatar = '';
+  if (member.image) { avatar.src = member.image; avatar.alt = ''; }
+  else avatar.textContent = getInitials(member.fullName);
   avatarWrap.appendChild(avatar);
 
   const body = document.createElement("div");
   body.className = "kc-min-w0";
 
-  const name = document.createElement("div");
+  const name = document.createElement("button");
+  name.type = 'button';
   name.className = "kc-team-name";
-  name.textContent = member.name;
+  name.textContent = member.fullName;
+  name.setAttribute('aria-label', `View ${member.fullName}'s profile`);
+  name.addEventListener('click', () => openTeamProfile(member));
   body.appendChild(name);
 
-  if (member.position) {
+  if (member.role) {
     const role = document.createElement("div");
     role.className = "kc-team-role";
-    role.textContent = member.position;
+    role.textContent = member.role;
     body.appendChild(role);
-  }
-
-  for (const field of ['description', 'location']) {
-    if (!member[field]) continue;
-    const detail = document.createElement('p');
-    detail.className = 'kc-team-' + field;
-    detail.textContent = member[field];
-    body.appendChild(detail);
-  }
-  const mailto = safeMailto(member.email);
-  if (mailto) {
-    const email = document.createElement("p");
-    email.className = "kc-team-email";
-
-    const link = document.createElement("a");
-    link.className = "kc-link-hover";
-    link.href = mailto;
-    link.textContent = member.email;
-    email.appendChild(link);
-    body.appendChild(email);
   }
 
   card.appendChild(avatarWrap);
@@ -2003,27 +1986,53 @@ function makeTeamCard(member, index) {
   return item;
 }
 
+function appendProfileDetail(container, label, value, options = {}) {
+  if (!value) return;
+  const row = document.createElement('div'); row.className = 'kc-team-profile-detail';
+  const term = document.createElement('dt'); term.textContent = label;
+  const detail = document.createElement('dd');
+  if (options.href) { const link=document.createElement('a');link.href=options.href;link.textContent=value;if(options.external){link.target='_blank';link.rel='noopener noreferrer';}detail.appendChild(link); }
+  else detail.textContent = value;
+  row.append(term, detail); container.appendChild(row);
+}
+
+function openTeamProfile(member) {
+  document.querySelector('[data-team-profile-dialog]')?.remove();
+  const dialog=document.createElement('dialog');dialog.className='kc-team-profile-dialog';dialog.dataset.teamProfileDialog='';
+  const close=document.createElement('button');close.type='button';close.className='kc-team-profile-close';close.setAttribute('aria-label','Close profile');close.textContent='×';close.addEventListener('click',()=>dialog.close());
+  const header=document.createElement('header'),avatarWrap=document.createElement('div');avatarWrap.className='kc-team-profile-avatar';
+  if(member.image){const image=document.createElement('img');image.src=member.image;image.alt='';avatarWrap.appendChild(image);}else avatarWrap.textContent=getInitials(member.fullName);
+  const identity=document.createElement('div'),title=document.createElement('h2');title.textContent=member.fullName;identity.appendChild(title);
+  if(member.role){const role=document.createElement('p');role.textContent=member.role;identity.appendChild(role);}if(member.pronouns){const pronouns=document.createElement('span');pronouns.textContent=member.pronouns;identity.appendChild(pronouns);}header.append(avatarWrap,identity,close);
+  const body=document.createElement('div');body.className='kc-team-profile-body';
+  if(member.bio||member.shortBio){const bio=document.createElement('p');bio.className='kc-team-profile-bio';bio.textContent=member.bio||member.shortBio;body.appendChild(bio);}
+  const details=document.createElement('dl');details.className='kc-team-profile-details';
+  appendProfileDetail(details,'Location',member.location);appendProfileDetail(details,'Languages',member.languages);appendProfileDetail(details,'Expertise',member.expertise);appendProfileDetail(details,'Affiliations',member.affiliations);appendProfileDetail(details,'Email',member.email,{href:safeMailto(member.email)});appendProfileDetail(details,'Phone',member.phone,{href:member.phone?`tel:${member.phone.replace(/[^+\d]/g,'')}`:''});appendProfileDetail(details,'Website',member.website,{href:member.website,external:true});body.appendChild(details);
+  for(const [key,label,primary,secondary] of [['education','Education','qualification','school'],['experience','Experience','title','organization']]){if(!member[key]?.length)continue;const section=document.createElement('section'),heading=document.createElement('h3');heading.textContent=label;section.appendChild(heading);for(const entry of member[key]){const item=document.createElement('div');item.className='kc-team-profile-entry';const strong=document.createElement('strong');strong.textContent=entry[primary]||entry[secondary];item.appendChild(strong);if(entry[primary]&&entry[secondary]){const meta=document.createElement('span');meta.textContent=entry[secondary];item.appendChild(meta);}if(entry.period){const period=document.createElement('small');period.textContent=entry.period;item.appendChild(period);}section.appendChild(item);}body.appendChild(section);}
+  if(member.links?.length){const links=document.createElement('div');links.className='kc-team-profile-links';for(const item of member.links){const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.label||new URL(item.url).hostname;links.appendChild(link);}body.appendChild(links);}
+  dialog.append(header,body);dialog.addEventListener('close',()=>dialog.remove());document.body.appendChild(dialog);dialog.showModal();requestAnimationFrame(()=>dialog.classList.add('is-open'));close.focus();
+}
+
 function normalizeTeamMember(value) {
   if (!value || typeof value !== "object") return null;
 
   const member = {
-    name: String(value.name || value.Name || "").trim(),
+    fullName: String(value.fullName || value.name || value.Name || "").trim(),
     email: String(value.email || value.Email || "").trim().toLowerCase(),
-    position: String(value.position || value.Position || "").trim(),
-    description: String(value.description || "").trim(),
+    role: String(value.role || value.position || value.Position || "").trim(),
+    shortBio: String(value.shortBio || value.description || "").trim(),
+    bio: String(value.bio || "").trim(),
     location: String(value.location || "").trim(),
+    pronouns: String(value.pronouns || "").trim(), image: String(value.image || "").trim(), phone: String(value.phone || "").trim(), website: String(value.website || "").trim(), languages: String(value.languages || "").trim(), expertise: String(value.expertise || "").trim(), affiliations: String(value.affiliations || "").trim(),
+    education: Array.isArray(value.education) ? value.education : [], experience: Array.isArray(value.experience) ? value.experience : [], links: Array.isArray(value.links) ? value.links : [],
     status: String(value.status || value.Status || "").trim().toLowerCase(),
   };
 
-  if (!member.name) return null;
+  if (!member.fullName) return null;
   if (member.status && member.status !== "active") return null;
 
   return {
-    name: member.name,
-    email: member.email,
-    position: member.position,
-    description: member.description,
-    location: member.location,
+    ...member,
   };
 }
 
