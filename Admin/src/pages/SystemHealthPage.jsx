@@ -8,9 +8,10 @@ function date(value) { return value ? new Date(value).toLocaleString() : "Unavai
 function duration(seconds) { if (!seconds) return "Unavailable"; const minutes = Math.round(seconds / 60); return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`; }
 function metric(value, suffix = "") { return Number.isFinite(Number(value)) ? `${Number(value).toFixed(suffix === "%" ? 3 : 0)}${suffix}` : "Unavailable"; }
 
-function UptimeMeter({ value }) {
+function UptimeMeter({ value, history = [] }) {
   const uptime = Math.max(0, Math.min(100, Number(value)));
-  return <div className="health-uptime-value"><i className="health-uptime-meter" role="meter" aria-label={`${uptime.toFixed(3)} percent uptime`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={uptime}><b style={{ "--uptime-percent": `${uptime}%` }} /></i><strong>{metric(uptime, "%")}</strong></div>;
+  const buckets = history.slice(-30);
+  return <div className="health-uptime-value"><i className={`health-uptime-meter${buckets.length ? " health-uptime-history" : ""}`} role="meter" aria-label={`${uptime.toFixed(3)} percent uptime over the last 24 hours`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={uptime}>{buckets.length ? buckets.map((bucket, index) => <b className={bucket >= 100 ? "is-up" : "is-down"} key={index} />) : <b style={{ "--uptime-percent": `${uptime}%` }} />}</i><strong>{metric(uptime, "%")}</strong></div>;
 }
 
 function ComponentRow({ id, component }) {
@@ -19,14 +20,14 @@ function ComponentRow({ id, component }) {
   return <article className={`health-component-row${component.lastChecked ? "" : " health-component-row-no-check"}`}>
     <div className="health-component-name"><span>{LABELS[id]}</span><State value={component.status} /></div>
     {component.lastChecked && <div className="health-component-detail"><span>Checked</span><strong>{date(component.lastChecked)}</strong></div>}
-    {hasUptime && <div className="health-component-detail health-component-performance"><span>{hasResponseTime ? `Uptime / ${metric(component.responseTime, " ms")}` : "Uptime"}</span><UptimeMeter value={component.uptime} /></div>}
+    {hasUptime && <div className="health-component-detail health-component-performance"><span>{hasResponseTime ? `24h uptime / ${metric(component.responseTime, " ms")}` : "24h uptime"}</span><UptimeMeter value={component.uptime} history={component.uptimeHistory} /></div>}
   </article>;
 }
 
 function Service({ service }) {
   return <section className="health-service">
     <header className="health-service-header"><div><span className="analytics-kicker">APPLICATION</span><h3>{service.name}</h3></div><State value={service.status} /></header>
-    <div className="health-summary"><div><span>Web uptime</span><strong>{metric(service.uptime, "%")}</strong><small>Selected period</small></div><div><span>Response time</span><strong>{metric(service.responseTime, " ms")}</strong><small>Web monitor</small></div></div>
+    <div className="health-summary"><div><span>Web uptime</span><strong>{metric(service.uptime, "%")}</strong><small>Last 24 hours</small></div><div><span>Response time</span><strong>{metric(service.responseTime, " ms")}</strong><small>Web monitor</small></div></div>
     <div className="health-components" aria-label={`${service.name} component status`}>{Object.entries(service.components).map(([id, component]) => <ComponentRow id={id} component={component} key={id} />)}</div>
   </section>;
 }

@@ -58,6 +58,15 @@ function responseTimeOf(body) {
   const value = summary?.avg ?? summary?.average ?? body?.average ?? body?.data?.average;
   return Number.isFinite(Number(value)) ? Number(value) : null;
 }
+function uptimeHistoryOf(monitor) {
+  return asArray(monitor?.lastDayUptimes?.histogram)
+    .map((item) => Number(item?.uptime))
+    .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
+}
+function uptimeFromHistory(history) {
+  if (!history.length) return null;
+  return history.reduce((total, value) => total + value, 0) / history.length;
+}
 function incidentFor(incidents, monitorId) {
   const incident = incidents.find((item) => String(item.monitorId ?? item.monitor_id ?? item.monitor?.id ?? "") === monitorId);
   if (!incident) return null;
@@ -104,19 +113,21 @@ export async function getSystemHealth(db, env, inputDays) {
   const monitors = monitorList(monitorsResult.body);
   const incidents = incidentsResult.ok ? incidentList(incidentsResult.body) : [];
   const located = Object.fromEntries(COMPONENTS.map(([service, component, name]) => [`${service}:${component}`, matchMonitor(monitors, name)]));
-  // Get uptime for every monitored component. Together with the monitor list, incident
-  // list, and the two web response-time requests, this is exactly ten requests per
-  // cached refresh: UptimeRobot's documented Free-plan allowance.
+  // UptimeRobot's own monitor surface is driven by each monitor's last-day
+  // histogram. Fetching the monitor detail for all six gives us those exact
+  // green/red check buckets and its matching last-24-hour availability figure.
+  // Alongside monitor list, incidents, and two web response-time requests this
+  // stays at exactly ten requests per cached refresh on the Free plan.
   const monitored = COMPONENTS.map(([service, component]) => located[`${service}:${component}`]).filter(Boolean);
   const frontends = [located["manarah:frontend"], located["forms:frontend"]].filter(Boolean);
-  const [uptimeStats, responseTimeStats] = await Promise.all([
-    Promise.all(monitored.map((monitor) => apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/uptime?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token))),
+  const [details, responseTimeStats] = await Promise.all([
+    Promise.all(monitored.map((monitor) => apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}`, token))),
     Promise.all(frontends.map((monitor) =>
     apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/response-time?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token),
     )),
   ]);
   const statById = new Map();
-  monitored.forEach((monitor, index) => statById.set(idOf(monitor), { uptime: uptimeStats[index], responseTime: null }));
+  monitored.forEach((monitor, index) => statById.set(idOf(monitor), { detail: details[index], responseTime: null }));
   frontends.forEach((monitor, index) => {
     const stat = statById.get(idOf(monitor));
     if (stat) stat.responseTime = responseTimeStats[index];
@@ -124,7 +135,9 @@ export async function getSystemHealth(db, env, inputDays) {
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
+      const detail = stat?.detail?.ok ? stat.detail.body : monitor;
+      const uptimeHistory = uptimeHistoryOf(detail);
+      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: uptimeFromHistory(uptimeHistory), uptimeHistory, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
     return { id, name: id === "manarah" ? "Manarah" : "Forms", status: appStatus(components), components, uptime: components.frontend.uptime, responseTime: components.frontend.responseTime };
   });

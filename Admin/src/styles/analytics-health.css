@@ -71,6 +71,9 @@
 .analytics-page .health-uptime-value strong { overflow:visible; min-width:0; font-family:var(--font-mono); letter-spacing:-.025em; text-align:right; white-space:nowrap; }
 .analytics-page .health-uptime-meter { display:block; position:relative; min-width:0; height:9px; overflow:hidden; border-radius:2px; background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--danger) 82%, var(--bg-inset)) 0 3px, var(--ops-subtle) 3px 4px); }
 .analytics-page .health-uptime-meter b { position:absolute; inset:0 auto 0 0; width:var(--uptime-percent); background:repeating-linear-gradient(90deg, var(--success, #35c46a) 0 3px, var(--ops-subtle) 3px 4px); }
+.analytics-page .health-uptime-history { display:grid; grid-template-columns:repeat(auto-fit, minmax(2px, 1fr)); align-items:stretch; gap:2px; padding:0; background:none; }
+.analytics-page .health-uptime-history b { position:static; width:auto; min-width:0; border-radius:1px; background:var(--success, #35c46a); }
+.analytics-page .health-uptime-history b.is-down { background:color-mix(in srgb, var(--danger) 82%, var(--bg-inset)); }
 .analytics-page .health-incidents { margin-top:10px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; }
 .analytics-page .health-incidents header { margin:0 0 7px; }
 .analytics-page .health-incidents h3 { margin:4px 0 0; font-size:15px; }
