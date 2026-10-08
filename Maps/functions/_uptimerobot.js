@@ -23,7 +23,14 @@ function statusOf(monitor) {
   if (["DEGRADED", "MINOR", "SLOW_RESPONSE"].includes(status)) return "Degraded";
   return "Unknown";
 }
-function dateOf(value) { if (!value) return null; const date = new Date(value); return Number.isNaN(date.getTime()) ? null : date.toISOString(); }
+function dateOf(value) {
+  if (!value) return null;
+  const numeric = Number(value);
+  // UptimeRobot may return a Unix timestamp while browser Date expects
+  // milliseconds. ISO values are left untouched.
+  const date = Number.isFinite(numeric) && numeric > 0 && numeric < 10_000_000_000 ? new Date(numeric * 1000) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
 function idOf(monitor) { return monitor?.id == null ? "" : String(monitor.id); }
 
 async function apiGet(path, token) {
@@ -85,11 +92,17 @@ export async function getSystemHealth(db, env, inputDays) {
   const token = String(env.UPTIMEROBOT_API_KEY || "").trim();
   if (!token) return { days, services: [], incidents: [], generatedAt: new Date().toISOString(), warning: "UptimeRobot monitoring is not configured." };
 
-  const [monitorsResult, incidentsResult] = await Promise.all([apiGet("/monitors?limit=100", token), apiGet("/incidents?limit=50", token)]);
+  const from = new Date(Date.now() - days * 86400000).toISOString(), to = new Date().toISOString();
+  // Incidents are supplemental. UptimeRobot's v3 endpoint accepts the date
+  // filters below (not a v2-style `limit` parameter), so an incident-history
+  // problem can never make otherwise healthy monitor data look unavailable.
+  const [monitorsResult, incidentsResult] = await Promise.all([
+    apiGet("/monitors?limit=100", token),
+    apiGet(`/incidents?started_after=${encodeURIComponent(from)}`, token),
+  ]);
   if (!monitorsResult.ok) return { days, services: [], incidents: [], generatedAt: new Date().toISOString(), warning: issue(monitorsResult.code) };
   const monitors = monitorList(monitorsResult.body);
   const incidents = incidentsResult.ok ? incidentList(incidentsResult.body) : [];
-  const from = new Date(Date.now() - days * 86400000).toISOString(), to = new Date().toISOString();
   const located = Object.fromEntries(COMPONENTS.map(([service, component, name]) => [`${service}:${component}`, matchMonitor(monitors, name)]));
   // The stats endpoints are requested for the two frontend monitors only. This gives each
   // application a clearly sourced availability/performance metric while keeping a refresh
@@ -104,7 +117,7 @@ export async function getSystemHealth(db, env, inputDays) {
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastCheck || monitor?.last_check), incident: incidentFor(incidents, monitorId), uptime: component === "frontend" && stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: component === "frontend" && stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
+      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: component === "frontend" && stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: component === "frontend" && stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
     return { id, name: id === "manarah" ? "Manarah" : "Forms", status: appStatus(components), components, uptime: components.frontend.uptime, responseTime: components.frontend.responseTime };
   });
@@ -114,7 +127,7 @@ export async function getSystemHealth(db, env, inputDays) {
     if (!found) return null;
     return { application: found[0] === "manarah" ? "Manarah" : "Forms", component: found[1], startedAt: dateOf(incident.startedAt || incident.startDateTime || incident.start_datetime || incident.datetime || incident.createdAt), recoveredAt: dateOf(incident.recoveredAt || incident.resolvedAt || incident.endDateTime || incident.end_datetime), durationSeconds: Number(incident.durationSeconds ?? incident.duration ?? incident.duration_seconds) || null };
   }).filter(Boolean).slice(0, 50);
-  const payload = { days, services, incidents: publicIncidents, generatedAt: new Date().toISOString(), ...(incidentsResult.ok ? {} : { warning: issue(incidentsResult.code) }) };
+  const payload = { days, services, incidents: publicIncidents, incidentsAvailable: incidentsResult.ok, generatedAt: new Date().toISOString() };
   await putCached(db, key, payload);
   return payload;
 }
