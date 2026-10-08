@@ -2,16 +2,18 @@
 
 ## Architecture
 
-Manarah loads `src/analytics.js` only after a visitor chooses **Allow** in the
-Cookies & analytics prompt. The public `POSTHOG_PROJECT_TOKEN` is obtained from
-`/api/config`; it is a capture token, not a secret. Events go to the EU
-ingestion host (`https://eu.i.posthog.com`). The private `POSTHOG_API_KEY` is
-reserved for the authenticated Admin server integration and must never be
-included in the browser bundle.
+Manarah initializes `src/analytics.js` in PostHog’s cookieless always-on mode.
+The public `POSTHOG_PROJECT_TOKEN` is obtained from `/api/config`; it is a
+capture token, not a secret. Events go to the EU ingestion host
+(`https://eu.i.posthog.com`). The private `POSTHOG_API_KEY` is reserved for
+the authenticated Admin server integration and must never be included in the
+browser bundle.
 
-The current visitor choice is stored as `hf-analytics-consent-v1` in browser
-storage. Declining has no impact on application functionality. Removing site
-storage lets a visitor make a new choice.
+Cookieless server hash mode must be enabled in PostHog Project settings before
+deployment. The SDK uses `cookieless_mode: "always"`, `person_profiles:
+"never"`, no autocapture, no pageview capture, and session recording is
+explicitly disabled. It must never write analytics cookies or browser storage,
+call `identify()`, or call `reset()`.
 
 ## Environment
 
@@ -38,16 +40,13 @@ selection. Event properties are allowlisted to `place_id`, `category`, `source`,
 Never add exact coordinates, raw search text, names, email addresses, phone
 numbers, form/review contents, Firebase details, or authentication tokens.
 
-Authenticated visitors are identified only with Firebase UID. Sign-out resets
-PostHog identity. `person_profiles: "identified_only"` prevents anonymous
-profile creation.
+Do not identify authenticated visitors. Cookieless analytics intentionally
+does not create user profiles or link a person across browsing days.
 
-## Replay and privacy
+## Privacy
 
-Session replay is enabled only after consent. All inputs and forms are masked,
-as are review/place-detail user-content containers. Do not weaken this masking
-without a privacy review. Privacy Policy text in `index.html` documents the
-choice, purpose, EU endpoint, and excluded data.
+Session replay is disabled. Privacy Policy text in `index.html` documents the
+cookieless processing, EU endpoint, purpose, and excluded data.
 
 ## Future Admin reporting
 

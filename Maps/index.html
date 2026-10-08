@@ -2010,6 +2010,7 @@
       </div>
 
       <!-- ─── Privacy Overlay ─── -->
+      <!-- Kept dormant for a future cookie-based analytics mode. Cookieless mode never reveals it. -->
       <aside id="analytics-consent" class="analytics-consent" aria-label="Cookies and analytics" hidden>
         <strong class="analytics-consent-title">Cookies</strong>
         <p class="analytics-consent-copy">Optional analytics help us improve Manarah.</p>
@@ -2061,7 +2062,7 @@
             <h4>3. What We Don't Do</h4>
             <ul>
               <li>No advertising cookies, advertising pixels, ad targeting, or sale of personal data</li>
-              <li>Optional analytics are used only after you choose “Allow” in the Cookies &amp; analytics prompt</li>
+              <li>No analytics cookies, analytics local storage, identification profiles, or session replay</li>
               <li>No live location tracking or current-position storage — your current position is used only in your browser for the map and is never sent to our servers. If you set a home location or save a custom pin, that chosen location is stored locally while signed out and synced to your account while signed in</li>
               <li>We use Cloudflare's approximate IP-based country/city signal only to show the correct regional context, such as a better first map view. It is not stored as your home location.</li>
               <li>We will never sell personal information or share it for advertising</li>
@@ -2069,9 +2070,10 @@
               <li>We do not store your email address for reviews or account sync — only a one-way hash, used solely to link them to your account. No plaintext email data is retained from any new review.</li>
             </ul>
 
-            <h4>4. Optional analytics cookies</h4>
-            <p>If you choose “Allow”, we use PostHog to understand aggregated use of Manarah, such as searches, place views, directions clicks, and feature use. It uses EU endpoints, minimal event properties, and replay protection that masks form fields and marked user-generated content. We do not send exact GPS coordinates, search text, names, email addresses, phone numbers, form or review text, Firebase details, or authentication tokens to PostHog.</p>
-            <p>We use this information to improve Manarah, not for advertising. You can decline without losing access to the app. Your choice is stored on this device so we do not ask again; clear this site’s storage to change it.</p>
+            <h4>4. Cookieless product analytics</h4>
+            <p>We use PostHog’s cookieless mode to understand aggregated use of Manarah, such as searches, place views, directions clicks, and feature use. It does not set cookies or use browser local or session storage. It does not create user profiles, link activity across days, identify signed-in accounts, or record sessions.</p>
+            <p>PostHog uses EU endpoints and a privacy-preserving daily server-side hash to count visitors. The hash is derived from technical connection information, including IP address, browser user agent, and hostname, with a changing daily salt; PostHog states that the raw inputs are not retained in the resulting hash. We send only the minimal event properties described here, never exact GPS coordinates, raw search text, names, email addresses, phone numbers, form or review text, Firebase details, or authentication tokens. We use these aggregate signals to improve Manarah, never for advertising.</p>
+            <p>Read <a href="https://posthog.com/privacy" target="_blank" rel="noopener">PostHog’s Privacy Policy</a> and its <a href="https://posthog.com/tutorials/cookieless-tracking" target="_blank" rel="noopener">cookieless tracking guidance</a> for more about this mode.</p>
 
             <h4>5. Cloudflare Web Analytics</h4>
             <p>We use <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener">Cloudflare Web Analytics</a> to count visitors and understand general usage patterns. It is privacy-first by design:</p>
@@ -2089,7 +2091,7 @@
             <h4>7. Third-Party Services</h4>
             <p>Manarah relies on the following external services. Each handles its own data independently:</p>
             <ul>
-              <li><strong><a href="https://posthog.com/privacy" target="_blank" rel="noopener">PostHog</a></strong> — Optional product analytics and session replay, enabled only after your choice in the Cookies &amp; analytics prompt. We use EU endpoints and send only the limited usage information described above.</li>
+              <li><strong><a href="https://posthog.com/privacy" target="_blank" rel="noopener">PostHog</a></strong> — Cookieless aggregate product analytics through EU endpoints. It does not receive user profiles, session replay, raw search text, precise location, or the contact and account data described above.</li>
               <li><strong><a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransit (HSL &amp; Waltti)</a></strong> — Our primary routing and geocoding API. The HSL endpoint, provided by Helsinki Regional Transport Authority (HSL), covers the Greater Helsinki area. The Waltti endpoint covers the Turku / F&ouml;li region. Both are used to calculate public transport routes and to search for addresses in Finland. Governed by the <a href="https://digitransit.fi/en/developers/apis/1-routing-api/0-graphql/" target="_blank" rel="noopener">Digitransit API terms</a>.</li>
               <li><strong><a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a></strong> — Open-source community transit routing, used as a fallback when Digitransit is unavailable. Data sourced from GTFS feeds under open licences.</li>
               <li><strong><a href="https://routing.openstreetmap.de" target="_blank" rel="noopener">OSRM (OpenStreetMap Routing Machine)</a></strong> — Fallback routing service for walking, cycling, and driving, used when Digitransit is unavailable. Powered by OpenStreetMap data under the <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL licence</a>.</li>

@@ -567,14 +567,6 @@ Filled accent CTA. Use for the **single strongest action** on any given screen o
 
 ### `.btn-secondary`
 
-### Analytics consent prompt
-
-`#analytics-consent` is a compact fixed surface that reuses the existing
-surface, border, shadow, spacing, text, and pill-button tokens. Its only
-feature-specific sizing tokens are `--consent-width`, `--consent-edge`, and
-`--consent-button-h`; these keep the prompt aligned with safe areas and the
-app's minimum touch target without introducing hard-coded visual values.
-
 Ghost / outline button. Use for **secondary actions** alongside a primary button.
 
 **States:** hover — darker text + darker border  
