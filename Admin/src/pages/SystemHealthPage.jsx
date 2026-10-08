@@ -15,13 +15,21 @@ function UptimeMeter({ value, history = [] }) {
 }
 
 function ComponentRow({ id, component }) {
-  const hasUptime = Number.isFinite(Number(component.uptime));
+  const hasUptime = component.uptime != null && Number.isFinite(Number(component.uptime));
   const hasResponseTime = id === "frontend" && Number.isFinite(Number(component.responseTime));
   return <article className={`health-component-row${component.lastChecked ? "" : " health-component-row-no-check"}`}>
     <div className="health-component-name"><span>{LABELS[id]}</span><State value={component.status} /></div>
     {component.lastChecked && <div className="health-component-detail"><span>Checked</span><strong>{date(component.lastChecked)}</strong></div>}
     {hasUptime && <div className="health-component-detail health-component-performance"><span>{hasResponseTime ? `24h uptime / ${metric(component.responseTime, " ms")}` : "24h uptime"}</span><UptimeMeter value={component.uptime} history={component.uptimeHistory} /></div>}
   </article>;
+}
+
+function LastDaySummary({ services, incidents = [] }) {
+  const uptimeValues = services.flatMap((service) => Object.values(service.components).map((component) => component.uptime).filter((value) => value != null && Number.isFinite(Number(value))));
+  const overallUptime = uptimeValues.length ? uptimeValues.reduce((total, value) => total + Number(value), 0) / uptimeValues.length : null;
+  const startedAfter = Date.now() - 24 * 60 * 60 * 1000;
+  const recentIncidents = incidents.filter((incident) => incident.startedAt && new Date(incident.startedAt).getTime() >= startedAfter).length;
+  return <aside className="health-last-day" aria-label="Last 24 hours system health"><header><h3>Last 24 hours</h3><span>Live monitor data</span></header><div><strong>{overallUptime == null ? "Unavailable" : metric(overallUptime, "%")}</strong><small>Overall uptime</small></div><div><strong>{uptimeValues.length}</strong><small>Components tracked</small></div><div><strong>{recentIncidents}</strong><small>Incidents</small></div></aside>;
 }
 
 function Service({ service }) {
@@ -40,8 +48,8 @@ export function SystemHealthPanel({ days = 30 }) {
     {error && <div className="query-error" role="alert"><strong>System Health could not be loaded</strong><p>{error.message}</p><button className="pp-btn" onClick={() => refetch()}>Try again</button></div>}
     {data && <>
       {data.warning && <div className="health-notice"><Icons.warning size={19} />{data.warning}</div>}
-      <div className="health-services">{data.services.map((service) => <Service key={service.id} service={service} />)}</div>
-      <section className="health-incidents" aria-labelledby="incident-history-title"><header><div><span className="analytics-kicker">INCIDENT HISTORY</span><h3 id="incident-history-title">Recent interruptions</h3></div></header>{data.incidents?.length ? <div className="health-incident-table"><div className="health-incident-head"><span>Application</span><span>Component</span><span>Incident start</span><span>Recovery time</span><span>Duration</span></div>{data.incidents.map((incident, index) => <div className="health-incident-row" key={`${incident.application}-${incident.startedAt}-${index}`}><span>{incident.application}</span><span>{LABELS[incident.component] || incident.component}</span><span>{date(incident.startedAt)}</span><span>{date(incident.recoveredAt)}</span><span>{duration(incident.durationSeconds)}</span></div>)}</div> : <div className="health-widget-empty">{data.incidentsAvailable === false ? "Incident history is temporarily unavailable." : "No incidents in the selected period."}</div>}</section>
+      <div className="health-overview"><LastDaySummary services={data.services} incidents={data.incidents} /><div className="health-services">{data.services.map((service) => <Service key={service.id} service={service} />)}</div></div>
+      <section className="health-incidents" aria-labelledby="incident-history-title"><header><div><span className="analytics-kicker">INCIDENT HISTORY</span><h3 id="incident-history-title">Recent interruptions</h3></div><span className="health-incident-period">Selected range: {days === 1 ? "24h" : `${days}d`}</span></header>{data.incidents?.length ? <div className="health-incident-table"><div className="health-incident-head"><span>Application</span><span>Component</span><span>Incident start</span><span>Recovery time</span><span>Duration</span></div>{data.incidents.map((incident, index) => <div className="health-incident-row" key={`${incident.application}-${incident.startedAt}-${index}`}><span>{incident.application}</span><span>{LABELS[incident.component] || incident.component}</span><span>{date(incident.startedAt)}</span><span>{date(incident.recoveredAt)}</span><span>{duration(incident.durationSeconds)}</span></div>)}</div> : <div className="health-widget-empty">{data.incidentsAvailable === false ? "Incident history is temporarily unavailable." : "No incidents in the selected period."}</div>}</section>
       <p className="health-updated">{data.generatedAt ? `Last refreshed ${date(data.generatedAt)}` : "Refresh time unavailable"}{data.cached ? " / cached server-side" : ""}</p>
     </>}
   </section>;

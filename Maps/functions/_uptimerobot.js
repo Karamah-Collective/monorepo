@@ -135,7 +135,7 @@ export async function getSystemHealth(db, env, inputDays) {
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      const detail = stat?.detail?.ok ? stat.detail.body : monitor;
+      const detail = stat?.detail?.ok ? (stat.detail.body?.data || stat.detail.body) : monitor;
       const uptimeHistory = uptimeHistoryOf(detail);
       return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: uptimeFromHistory(uptimeHistory), uptimeHistory, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
