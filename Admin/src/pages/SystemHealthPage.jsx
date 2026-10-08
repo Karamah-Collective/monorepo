@@ -3,11 +3,15 @@ import { Icons } from "../icons.jsx";
 import { LoadingState } from "../components/QueryState.jsx";
 
 const LABELS = { frontend: "Web", api: "API", database: "D1" };
-
 function State({ value }) { return <span className={`health-state health-${String(value || "Unknown").toLowerCase()}`}>{value || "Unknown"}</span>; }
 function date(value) { return value ? new Date(value).toLocaleString() : "Unavailable"; }
 function duration(seconds) { if (!seconds) return "Unavailable"; const minutes = Math.round(seconds / 60); return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`; }
 function metric(value, suffix = "") { return Number.isFinite(Number(value)) ? `${Number(value).toFixed(suffix === "%" ? 3 : 0)}${suffix}` : "Unavailable"; }
+
+function UptimeMeter({ value }) {
+  const uptime = Math.max(0, Math.min(100, Number(value)));
+  return <div className="health-uptime-value"><i className="health-uptime-meter" role="meter" aria-label={`${uptime.toFixed(3)} percent uptime`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={uptime}><b style={{ "--uptime-percent": `${uptime}%` }} /></i><strong>{metric(uptime, "%")}</strong></div>;
+}
 
 function ComponentRow({ id, component }) {
   const hasUptime = Number.isFinite(Number(component.uptime));
@@ -15,7 +19,7 @@ function ComponentRow({ id, component }) {
   return <article className={`health-component-row${component.lastChecked ? "" : " health-component-row-no-check"}`}>
     <div className="health-component-name"><span>{LABELS[id]}</span><State value={component.status} /></div>
     {component.lastChecked && <div className="health-component-detail"><span>Checked</span><strong>{date(component.lastChecked)}</strong></div>}
-    {hasUptime && <div className="health-component-detail health-component-performance"><span>Uptime</span><strong>{metric(component.uptime, "%")}{hasResponseTime ? ` · ${metric(component.responseTime, " ms")}` : ""}</strong></div>}
+    {hasUptime && <div className="health-component-detail health-component-performance"><span>{hasResponseTime ? `Uptime / ${metric(component.responseTime, " ms")}` : "Uptime"}</span><UptimeMeter value={component.uptime} /></div>}
   </article>;
 }
 
@@ -37,7 +41,7 @@ export function SystemHealthPanel({ days = 30 }) {
       {data.warning && <div className="health-notice"><Icons.warning size={19} />{data.warning}</div>}
       <div className="health-services">{data.services.map((service) => <Service key={service.id} service={service} />)}</div>
       <section className="health-incidents" aria-labelledby="incident-history-title"><header><div><span className="analytics-kicker">INCIDENT HISTORY</span><h3 id="incident-history-title">Recent interruptions</h3></div></header>{data.incidents?.length ? <div className="health-incident-table"><div className="health-incident-head"><span>Application</span><span>Component</span><span>Incident start</span><span>Recovery time</span><span>Duration</span></div>{data.incidents.map((incident, index) => <div className="health-incident-row" key={`${incident.application}-${incident.startedAt}-${index}`}><span>{incident.application}</span><span>{LABELS[incident.component] || incident.component}</span><span>{date(incident.startedAt)}</span><span>{date(incident.recoveredAt)}</span><span>{duration(incident.durationSeconds)}</span></div>)}</div> : <div className="health-widget-empty">{data.incidentsAvailable === false ? "Incident history is temporarily unavailable." : "No incidents in the selected period."}</div>}</section>
-      <p className="health-updated">{data.generatedAt ? `Last refreshed ${date(data.generatedAt)}` : "Refresh time unavailable"}{data.cached ? " · cached server-side" : ""}</p>
+      <p className="health-updated">{data.generatedAt ? `Last refreshed ${date(data.generatedAt)}` : "Refresh time unavailable"}{data.cached ? " / cached server-side" : ""}</p>
     </>}
   </section>;
 }
