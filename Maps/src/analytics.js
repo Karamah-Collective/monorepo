@@ -5,7 +5,8 @@ let client = null;
 let initialized = false;
 
 function cleanProperties(properties = {}) {
-  const allowed = new Set(["place_id", "category", "source", "query_length", "result_count", "filter_category", "kind"]);
+  // Keep analytics useful and privacy-safe: no search text or exact user location.
+  const allowed = new Set(["place_id", "place_name", "place_lat", "place_lng", "category", "source", "mode", "query_length", "result_count", "filter_category", "kind"]);
   return Object.fromEntries(Object.entries(properties).filter(([key, value]) =>
     allowed.has(key) && (typeof value === "string" || (typeof value === "number" && Number.isFinite(value))),
   ));

@@ -346,7 +346,7 @@ async function search(q) {
     const apiFiltered = apiItems.filter(r => !localNames.has(r.name.toLowerCase()));
 
     showResults([...localItems, ...apiFiltered]);
-    track("search_performed", { query_length: q.length, result_count: localItems.length + apiFiltered.length });
+    track("search_performed", { query_length: q.length, result_count: localItems.length + apiFiltered.length, mode: "search" });
   } catch {
     rList.innerHTML = '<li style="padding:16px;color:var(--text-3);font-size:var(--txt-sm)">Search failed.</li>';
     showDrop();

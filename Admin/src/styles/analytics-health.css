@@ -1,0 +1,77 @@
+/* A shared operational workspace: dense enough for daily use, while leaving
+   clear bounds for future analytics sections. */
+.analytics-page { --ops-panel: var(--bg); --ops-line: color-mix(in srgb, var(--border) 84%, transparent); --ops-subtle: var(--bg-alt); max-width: 1540px; }
+.analytics-page .analytics-heading { display:flex; align-items:end; justify-content:space-between; gap:24px; margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--ops-line); }
+.analytics-page .analytics-heading p { max-width:62ch; margin-bottom:0; }
+.analytics-page .analytics-period { flex:0 0 auto; margin:0; }
+.analytics-page .analytics-section, .analytics-page .system-health-page { margin:0; padding:16px; border:1px solid var(--ops-line); border-radius:14px; background:var(--ops-panel); }
+.analytics-page .analytics-section-heading, .analytics-page .system-health-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin:0 0 12px; }
+.analytics-page .analytics-section-heading h2, .analytics-page .system-health-heading h2 { margin:4px 0; font-size:19px; letter-spacing:-.025em; }
+.analytics-page .analytics-section-heading p, .analytics-page .system-health-heading p { margin:0; font-size:13px; color:var(--text-muted); }
+.analytics-page .analytics-kpis { margin:0 0 12px; gap:1px; border:1px solid var(--ops-line); border-radius:10px; overflow:hidden; background:var(--ops-line); }
+.analytics-page .analytics-kpi { min-height:70px; padding:11px 14px; background:var(--ops-panel); }
+.analytics-page .analytics-kpi strong { margin-top:5px; font-size:22px; }
+.analytics-page .analytics-content { gap:14px; }
+.analytics-page .analytics-panel { border-radius:11px; }
+.analytics-page .analytics-panel-header { padding:16px 16px 0; }
+.analytics-page .analytics-panel-header-compact { align-items:center; min-height:46px; padding:10px 14px; }
+.analytics-page .analytics-panel-header-compact > div { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.analytics-page .analytics-panel-header-compact .analytics-kicker { flex:0 0 auto; }
+.analytics-page .analytics-panel-header-compact h2 { margin:0; overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+.analytics-page .analytics-panel-header-compact .pp-btn { min-height:32px; padding:5px 10px; font-size:11px; }
+.analytics-page .analytics-chart { min-height:224px; }
+.analytics-page .analytics-plot { margin:10px 16px 0; }
+.analytics-page .analytics-chart-axis { padding:9px 16px 14px; }
+.analytics-page .analytics-discovery .analytics-list { padding:3px 14px 8px; }
+.analytics-page .analytics-discovery .analytics-list li { min-height:38px; padding-top:6px; padding-bottom:6px; }
+.analytics-page .analytics-insights { gap:8px; margin:12px 0; }
+.analytics-page .analytics-insight { min-height:84px; padding:12px 14px; border-radius:10px; }
+.analytics-page .analytics-insight strong { margin-top:5px; font-size:21px; }
+.analytics-page .analytics-insight p { margin-top:4px; font-size:11px; }
+.analytics-page .analytics-breakdowns { margin-top:12px; }
+.analytics-page .analytics-breakdown-grid { gap:16px; padding:7px 14px 11px; }
+.analytics-page .analytics-breakdown h3 { margin:5px 0; font-size:12px; }
+.analytics-page .analytics-breakdown-row { min-height:34px; }
+.analytics-page .analytics-top-places { display:flex; align-items:center; gap:14px; margin-top:12px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; background:var(--ops-subtle); }
+.analytics-page .analytics-top-places header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 190px; }
+.analytics-page .analytics-top-places h2 { margin:4px 0 0; font-size:15px; letter-spacing:-.015em; }
+.analytics-page .analytics-top-places header > span { color:var(--text-faint); font:500 10px var(--font-mono); white-space:nowrap; }
+.analytics-page .analytics-top-places ol { display:grid; grid-template-columns:repeat(auto-fit, minmax(155px, 1fr)); gap:6px; flex:1; margin:0; padding:0; list-style:none; }
+.analytics-page .analytics-top-places li { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:8px; min-width:0; padding:7px 9px; border:1px solid var(--ops-line); border-radius:7px; background:var(--ops-panel); }
+.analytics-page .analytics-place-rank { color:var(--interactive-accent); font:600 10px var(--font-mono); }
+.analytics-page .analytics-top-places li div { min-width:0; }
+.analytics-page .analytics-top-places li strong { display:block; overflow:hidden; color:var(--text); font-size:12px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.analytics-page .analytics-top-places li small { display:block; overflow:hidden; margin-top:2px; color:var(--text-faint); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.analytics-page .analytics-top-places li > b { color:var(--text); font:600 13px/1 var(--font-mono); text-align:right; }
+.analytics-page .analytics-top-places li > b small { margin-top:2px; font:500 9px/1 var(--font-mono); }
+.analytics-page .analytics-top-places-empty { justify-content:space-between; }
+.analytics-page .analytics-top-places-empty p { margin:0; color:var(--text-muted); font-size:12px; }
+.analytics-page .analytics-footnote { margin:9px 0 0; font-size:11px; }
+.analytics-page .system-health-page { margin-top:12px; }
+.analytics-page .system-health-heading { align-items:center; margin-bottom:12px; }
+.analytics-page .health-refresh { flex:0 0 auto; }
+.analytics-page .health-notice { margin:0 0 10px; }
+.analytics-page .health-services { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+.analytics-page .health-service { padding:12px; border:1px solid var(--ops-line); border-radius:11px; background:var(--ops-subtle); }
+.analytics-page .health-service-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin:0 0 10px; }
+.analytics-page .health-service-header h3 { margin:4px 0 0; font-size:18px; letter-spacing:-.02em; }
+.analytics-page .health-summary { margin:0 0 8px; padding:8px 0; border-top:1px solid var(--ops-line); border-bottom:1px solid var(--ops-line); }
+.analytics-page .health-summary > div { padding:0 11px; }
+.analytics-page .health-summary > div + div { border-left:1px solid var(--ops-line); }
+.analytics-page .health-components { display:grid; gap:0; }
+.analytics-page .health-component-row { display:grid; grid-template-columns:minmax(94px, .8fr) minmax(0, 1.25fr) minmax(0, 1.1fr); gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--ops-line); }
+.analytics-page .health-component-row:last-child { padding-bottom:0; border-bottom:0; }
+.analytics-page .health-component-name { display:flex; align-items:center; gap:7px; min-width:0; font-size:13px; font-weight:600; }
+.analytics-page .health-component-detail { min-width:0; display:grid; gap:2px; }
+.analytics-page .health-component-detail span { color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.055em; }
+.analytics-page .health-component-detail strong { overflow:hidden; color:var(--text); font-size:11px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.analytics-page .health-component-incident { grid-column:2 / -1; }
+.analytics-page .health-incidents { margin-top:10px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; }
+.analytics-page .health-incidents header { margin:0 0 7px; }
+.analytics-page .health-incidents h3 { margin:4px 0 0; font-size:15px; }
+.analytics-page .health-incident-table { border:0; border-radius:0; }
+.analytics-page .health-incident-head, .analytics-page .health-incident-row { grid-template-columns:1.1fr .8fr 1.2fr 1.2fr .6fr; column-gap:12px; padding-left:0; padding-right:0; }
+.analytics-page .health-widget-empty { padding:8px 0 0; }
+.analytics-page .health-updated { margin:7px 1px 0; font-size:11px; }
+@media (max-width:900px) { .analytics-page .analytics-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-services { grid-template-columns:1fr; } .analytics-page .analytics-top-places { align-items:stretch; flex-direction:column; } .analytics-page .analytics-top-places header { flex:unset; } }
+@media (max-width:680px) { .analytics-page .analytics-section, .analytics-page .system-health-page { padding:15px; border-radius:10px; } .analytics-page .analytics-heading { margin-bottom:12px; padding-bottom:14px; } .analytics-page .analytics-period { width:100%; } .analytics-page .analytics-period button { flex:1; } .analytics-page .analytics-section-heading, .analytics-page .system-health-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-refresh { align-self:flex-end; margin-top:-36px; } .analytics-page .analytics-kpi { min-height:69px; padding:11px; } .analytics-page .analytics-top-places { padding:13px; } .analytics-page .analytics-top-places ol { grid-template-columns:1fr; } .analytics-page .health-component-row { grid-template-columns:minmax(84px, .75fr) minmax(0, 1.25fr); } .analytics-page .health-component-performance, .analytics-page .health-component-incident { grid-column:2; } .analytics-page .health-incident-table { overflow-x:auto; } .analytics-page .health-incident-head, .analytics-page .health-incident-row { min-width:620px; } }

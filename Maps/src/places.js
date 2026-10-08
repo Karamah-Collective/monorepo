@@ -1891,7 +1891,7 @@ function _renderPlaceSheetReviews(reviewsSection, placeId, placeName, ratingData
  * @returns {void}
  */
 export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
-  track("place_opened", { place_id: place.id, category: String(place.type || ""), source: "map_marker" });
+  track("place_opened", { place_id: place.id, place_name: String(place.name || ""), place_lat: Math.round(Number(place.lat) * 100) / 100, place_lng: Math.round(Number(place.lng) * 100) / 100, category: String(place.type || ""), source: "map_marker", mode: "map" });
   if (_activePlaceSheetReviewsListener) {
     window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
     _activePlaceSheetReviewsListener = null;

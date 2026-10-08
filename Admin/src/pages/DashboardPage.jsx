@@ -3,6 +3,7 @@ import { useAdminStats, useAdminLog } from "../api/queries.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { Icons } from "../icons.jsx";
 import { LoadingState } from "../components/QueryState.jsx";
+import SystemHealthWidget from "../components/SystemHealthWidget.jsx";
 
 const QUEUES = [
   {
@@ -384,6 +385,7 @@ export default function DashboardPage() {
                 Explore your directory <Icons.arrowUpRight size={17} />
               </Link>
             </section>
+            <SystemHealthWidget />
             <Activity />
             <section className="dashboard-panel shortcuts-panel">
               <div className="panel-heading">

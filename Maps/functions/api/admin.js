@@ -46,6 +46,7 @@ import {
 import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
+import { getSystemHealth } from "../_uptimerobot.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -122,6 +123,7 @@ function permissionForAction(action) {
   if (action === "request-access") return "access.request";
   if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (["admin-stats", "admin-access"].includes(action)) return "dashboard.view";
+  if (action === "system-health") return "dashboard.view";
   if (action === "analytics-dashboard") return "analytics.read";
   if (action === "admin-log") return "activity.read";
   if (action.includes("weekly-report")) return action.startsWith("save-") || action.startsWith("delete-") || action.startsWith("unsubscribe-") ? "reports.write" : "reports.read";
@@ -617,6 +619,7 @@ const GET_ACTIONS = {
   "admin-app-settings": (db) => readAdminAppSettings(db),
   "admin-stats": (db) => getAdminStats(db),
   "analytics-dashboard": (db, url, _actor, env) => getAnalyticsDashboard(db, env, url.searchParams.get("days")),
+  "system-health": (db, url, _actor, env) => getSystemHealth(db, env, url.searchParams.get("days")),
   "pending-new": (db) => getPendingNew(db),
   "pending-edits": (db) => getPendingEdits(db),
   "admin-places": (db) => getAdminPlaces(db),
