@@ -3,8 +3,8 @@ const headers = {
   "Cache-Control": "no-store",
 };
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers });
+function json(body, status = 200, head = false) {
+  return new Response(head ? null : JSON.stringify(body), { status, headers });
 }
 
 /**
@@ -13,11 +13,12 @@ function json(body, status = 200) {
  * dedicated health endpoints and must not make this endpoint unreliable.
  */
 export function onRequest({ request }) {
-  if (request.method !== "GET") return json({ status: "error" }, 405);
+  const head = request.method === "HEAD";
+  if (request.method !== "GET" && !head) return json({ status: "error" }, 405);
 
   return json({
     status: "ok",
     service: "manarah",
     timestamp: new Date().toISOString(),
-  });
+  }, 200, head);
 }

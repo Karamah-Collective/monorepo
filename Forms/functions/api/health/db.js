@@ -3,13 +3,14 @@ const headers = {
   "Cache-Control": "no-store",
 };
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers });
+function json(body, status = 200, head = false) {
+  return new Response(head ? null : JSON.stringify(body), { status, headers });
 }
 
 /** Lightweight D1 readiness endpoint for external uptime monitors. */
 export async function onRequest({ request, env }) {
-  if (request.method !== "GET") return json({ status: "error" }, 405);
+  const head = request.method === "HEAD";
+  if (request.method !== "GET" && !head) return json({ status: "error" }, 405);
 
   try {
     if (!env.DB) throw new Error("Database binding unavailable");
@@ -20,13 +21,13 @@ export async function onRequest({ request, env }) {
       service: "forms",
       component: "database",
       timestamp: new Date().toISOString(),
-    });
+    }, 200, head);
   } catch {
     return json({
       status: "error",
       service: "forms",
       component: "database",
       timestamp: new Date().toISOString(),
-    }, 503);
+    }, 503, head);
   }
 }
