@@ -120,6 +120,25 @@ Copy the old `REPORT_SECRET` value into both places:
 
 Optional Maps Pages variables are `REPORT_FROM`, `REPORT_FROM_NAME`, and `REPORT_TO`; leave them unset to match the old digest sender/recipient. After adding or rotating secrets, run the workflow manually with `dry_run=true`, then run it again with `dry_run=false` to send a real test digest. Disable the old halal-maps repository schedule once the monorepo workflow succeeds so the team does not receive duplicate weekly emails.
 
+### D1 database backups
+
+The repository includes `.github/workflows/daily-d1-backup.yml`, which backs up the production `halal-finder-db` and `forms-db` databases to the private `karamah-database-backups` R2 bucket every day at 02:00 UTC. The preview database is deliberately excluded.
+
+Configure these GitHub Actions values:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| Repository secret | `CLOUDFLARE_DB_BACKUP_API_TOKEN` | Cloudflare API token with D1 read and Workers R2 Storage read/edit permissions |
+| Repository variable | `CLOUDFLARE_ACCOUNT_ID` | `4679b2bc7d254ccaf8243a3c727148f9` |
+
+Backups use this retention policy:
+
+- Daily: 7 days
+- Weekly: 1 month
+- Monthly: 3 months
+
+Run the workflow manually once after setup from GitHub → Actions → Daily D1 backup. Confirm that both databases produce objects in the private R2 bucket. D1 Time Travel remains the first recovery option for recent accidental changes; the R2 exports are the longer-retention disaster-recovery copy.
+
 ### Admin: update the folder too
 
 Apply the Admin column to its existing Pages project. Use `admin.karamahcollective.com` for the admin dashboard and keep the existing Firebase project. Production defaults already call the existing Maps and Website domains.

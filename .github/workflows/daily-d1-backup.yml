@@ -1,0 +1,53 @@
+name: Daily D1 backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: 4679b2bc7d254ccaf8243a3c727148f9
+  BACKUP_BUCKET: karamah-database-backups
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4.131.2
+
+      - name: Export and upload D1 databases
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DB_BACKUP_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          day="$(date -u +%F)"
+          week="$(date -u +%G-W%V)"
+          month="$(date -u +%Y-%m)"
+
+          mkdir -p backup-out
+          npx wrangler d1 export halal-finder-db --remote --config Maps/wrangler.toml --output "backup-out/halal-finder-db.sql"
+          npx wrangler d1 export forms-db --remote --config Forms/wrangler.toml --output "backup-out/forms-db.sql"
+
+          for db in halal-finder-db forms-db; do
+            npx wrangler r2 object put "${BACKUP_BUCKET}/daily/${day}/${db}.sql" --file "backup-out/${db}.sql" --remote
+            npx wrangler r2 object put "${BACKUP_BUCKET}/weekly/${week}/${db}.sql" --file "backup-out/${db}.sql" --remote
+            npx wrangler r2 object put "${BACKUP_BUCKET}/monthly/${month}/${db}.sql" --file "backup-out/${db}.sql" --remote
+          done
+
+      - name: Remove expired backups
+        env:
+          CLOUDFLARE_DB_BACKUP_API_TOKEN: ${{ secrets.CLOUDFLARE_DB_BACKUP_API_TOKEN }}
+        run: node tooling/cleanup-d1-backups.mjs
