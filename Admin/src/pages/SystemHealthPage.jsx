@@ -21,9 +21,9 @@ function metric(value, suffix = "") {
 }
 
 function ComponentRow({ id, component }) {
-  return <article className="health-component-row">
+  return <article className={`health-component-row${component.lastChecked ? "" : " health-component-row-no-check"}`}>
     <div className="health-component-name"><span>{LABELS[id]}</span><State value={component.status} /></div>
-    <div className="health-component-detail"><span>Checked</span><strong>{date(component.lastChecked)}</strong></div>
+    {component.lastChecked && <div className="health-component-detail"><span>Checked</span><strong>{date(component.lastChecked)}</strong></div>}
     {id === "frontend" && <div className="health-component-detail health-component-performance"><span>Performance</span><strong>{metric(component.uptime, "%")} · {metric(component.responseTime, " ms")}</strong></div>}
     {component.incident && <div className="health-component-detail health-component-incident"><span>Latest incident</span><strong>{date(component.incident.startedAt)}</strong></div>}
   </article>;

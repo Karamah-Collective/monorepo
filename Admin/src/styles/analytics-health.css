@@ -60,6 +60,7 @@
 .analytics-page .health-summary > div + div { border-left:1px solid var(--ops-line); }
 .analytics-page .health-components { display:grid; gap:0; }
 .analytics-page .health-component-row { display:grid; grid-template-columns:minmax(94px, .8fr) minmax(0, 1.25fr) minmax(0, 1.1fr); gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--ops-line); }
+.analytics-page .health-component-row-no-check { grid-template-columns:minmax(94px, .8fr) minmax(0, 1fr); }
 .analytics-page .health-component-row:last-child { padding-bottom:0; border-bottom:0; }
 .analytics-page .health-component-name { display:flex; align-items:center; gap:7px; min-width:0; font-size:13px; font-weight:600; }
 .analytics-page .health-component-detail { min-width:0; display:grid; gap:2px; }
