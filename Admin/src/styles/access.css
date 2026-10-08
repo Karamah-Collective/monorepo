@@ -317,8 +317,8 @@
 .access-foundation .access-section-title{padding:19px 22px 15px}
 .access-foundation-grid{padding:2px 22px 7px}
 .access-foundation-grid article{padding-block:13px}
-.access-role-grid{margin-top:2px}
-.access-role{gap:20px;padding:11px 2px}
+.access-role-grid{margin-top:2px;gap:var(--settings-gap-sm)}
+.access-role{gap:20px;padding:var(--settings-gap-sm) var(--settings-gap)}
 .access-role small{line-height:1.45}
 .access-role-builder .access-builder-heading{padding:18px 22px 14px;border-bottom:1px solid var(--border)}
 .access-role-builder .access-role-form{gap:14px 12px;padding:18px 22px 20px}
@@ -326,7 +326,7 @@
 .permission-matrix-head{padding:8px 0}
 .permission-matrix legend{padding:11px 0 5px}
 .permission-row{min-height:43px}
-@media(max-width:767px){.access-page{gap:14px}.access-page>.pp-panel:not(.access-foundation):not(.access-role-builder){padding:18px}.access-page>.pp-panel:not(.access-foundation):not(.access-role-builder)>.access-section-title{margin-bottom:12px}.access-foundation .access-section-title{padding:18px}.access-role-builder .access-builder-heading{padding:16px 18px 13px}.access-role-builder .access-role-form{padding:16px 18px 18px}.access-role{gap:4px;padding:10px 0}}
+@media(max-width:767px){.access-page{gap:14px}.access-page>.pp-panel:not(.access-foundation):not(.access-role-builder){padding:18px}.access-page>.pp-panel:not(.access-foundation):not(.access-role-builder)>.access-section-title{margin-bottom:12px}.access-foundation .access-section-title{padding:18px}.access-role-builder .access-builder-heading{padding:16px 18px 13px}.access-role-builder .access-role-form{padding:16px 18px 18px}.access-role{gap:4px;padding:var(--settings-gap)}}
 
 /* Audit alignment layer: one shared rhythm for the current access model. */
 .access-page{gap:var(--settings-gap);max-width:1120px}
