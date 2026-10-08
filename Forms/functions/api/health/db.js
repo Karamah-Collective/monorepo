@@ -8,10 +8,7 @@ function json(body, status = 200, head = false) {
 }
 
 /** Lightweight D1 readiness endpoint for external uptime monitors. */
-export async function onRequest({ request, env }) {
-  const head = request.method === "HEAD";
-  if (request.method !== "GET" && !head) return json({ status: "error" }, 405);
-
+async function health(env, head = false) {
   try {
     if (!env.DB) throw new Error("Database binding unavailable");
     await env.DB.prepare("SELECT 1").first();
@@ -31,3 +28,6 @@ export async function onRequest({ request, env }) {
     }, 503, head);
   }
 }
+
+export function onRequestGet({ env }) { return health(env); }
+export function onRequestHead({ env }) { return health(env, true); }

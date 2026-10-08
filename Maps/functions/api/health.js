@@ -12,13 +12,13 @@ function json(body, status = 200, head = false) {
  * It deliberately has no analytics, logging, or dependency checks; those have
  * dedicated health endpoints and must not make this endpoint unreliable.
  */
-export function onRequest({ request }) {
-  const head = request.method === "HEAD";
-  if (request.method !== "GET" && !head) return json({ status: "error" }, 405);
-
+function health(head = false) {
   return json({
     status: "ok",
     service: "manarah",
     timestamp: new Date().toISOString(),
   }, 200, head);
 }
+
+export function onRequestGet() { return health(); }
+export function onRequestHead() { return health(true); }
