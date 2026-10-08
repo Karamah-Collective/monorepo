@@ -13,6 +13,31 @@ function UptimeMeter({ value }) {
   return <div className="health-uptime-value"><i className="health-uptime-meter" role="meter" aria-label={`${uptime.toFixed(3)} percent uptime over the last 24 hours`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={uptime}><b style={{ "--uptime-percent": `${uptime}%` }} /></i><strong>{metric(uptime, "%")}</strong></div>;
 }
 
+function Last24HoursSummary({ services, incidents = [] }) {
+  const components = services.flatMap((service) => Object.values(service.components || {}));
+  const measured = components.map((component) => Number(component.uptime)).filter(Number.isFinite);
+  const averageUptime = measured.length ? measured.reduce((total, uptime) => total + uptime, 0) / measured.length : null;
+  const cutoff = Date.now() - 86400000;
+  const recentIncidents = incidents.filter((incident) => incident.startedAt && new Date(incident.startedAt).getTime() >= cutoff).length;
+  const operational = components.filter((component) => component.status === "Operational").length;
+
+  return <section className="health-last-day" aria-labelledby="last-day-title">
+    <header className="health-last-day-heading">
+      <div><span className="analytics-kicker">24-HOUR SNAPSHOT</span><h3 id="last-day-title">System availability</h3></div>
+      <span className="health-last-day-window">Fixed monitoring window</span>
+    </header>
+    <div className="health-last-day-primary">
+      <div className="health-last-day-metric"><span>Average availability</span><strong>{metric(averageUptime, "%")}</strong></div>
+      {averageUptime != null && <UptimeMeter value={averageUptime} />}
+    </div>
+    <dl className="health-last-day-facts">
+      <div><dt>Operational</dt><dd>{operational}<span> / {components.length} components</span></dd></div>
+      <div><dt>Incidents</dt><dd>{recentIncidents}<span> in last 24h</span></dd></div>
+      <div><dt>Services</dt><dd>{services.filter((service) => service.status === "Operational").length}<span> / {services.length} healthy</span></dd></div>
+    </dl>
+  </section>;
+}
+
 function ComponentRow({ id, component }) {
   const hasUptime = component.uptime != null && Number.isFinite(Number(component.uptime));
   const hasResponseTime = id === "frontend" && Number.isFinite(Number(component.responseTime));
@@ -39,6 +64,7 @@ export function SystemHealthPanel({ days = 30 }) {
     {error && <div className="query-error" role="alert"><strong>System Health could not be loaded</strong><p>{error.message}</p><button className="pp-btn" onClick={() => refetch()}>Try again</button></div>}
     {data && <>
       {data.warning && <div className="health-notice"><Icons.warning size={19} />{data.warning}</div>}
+      <Last24HoursSummary services={data.services} incidents={data.incidents} />
       <div className="health-services">{data.services.map((service) => <Service key={service.id} service={service} />)}</div>
       <section className="health-incidents" aria-labelledby="incident-history-title"><header><div><span className="analytics-kicker">INCIDENT HISTORY</span><h3 id="incident-history-title">Recent interruptions</h3></div><span className="health-incident-period">Selected range: {days === 1 ? "24h" : `${days}d`}</span></header>{data.incidents?.length ? <div className="health-incident-table"><div className="health-incident-head"><span>Application</span><span>Component</span><span>Incident start</span><span>Recovery time</span><span>Duration</span></div>{data.incidents.map((incident, index) => <div className="health-incident-row" key={`${incident.application}-${incident.startedAt}-${index}`}><span>{incident.application}</span><span>{LABELS[incident.component] || incident.component}</span><span>{date(incident.startedAt)}</span><span>{date(incident.recoveredAt)}</span><span>{duration(incident.durationSeconds)}</span></div>)}</div> : <div className="health-widget-empty">{data.incidentsAvailable === false ? "Incident history is temporarily unavailable." : "No incidents in the selected period."}</div>}</section>
       <p className="health-updated">{data.generatedAt ? `Last refreshed ${date(data.generatedAt)}` : "Refresh time unavailable"}{data.cached ? " / cached server-side" : ""}</p>
