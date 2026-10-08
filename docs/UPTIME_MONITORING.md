@@ -45,15 +45,17 @@ if the names differ.
 
 ## Data and rate limits
 
-The backend uses UptimeRobot v3 monitor and incident endpoints, plus uptime
-and response-time statistics for the two frontend monitors. The page reports
-those statistics as **Frontend uptime** and **Response time**; it does not
-pretend that they cover API or D1 monitors.
+The backend uses UptimeRobot v3 monitor and incident endpoints, plus a fixed
+last-24-hour uptime statistic for every monitored component and a last-24-hour
+response-time statistic for the two frontend monitors. The component bars are
+therefore always a directly comparable 24-hour availability view. The page's
+range selector applies to the clearly labelled incident-history section only.
 
 Responses are cached server-side for three minutes, in D1 when available with
-an in-memory fallback. A cold refresh performs six API requests: monitor list,
-incident list, and uptime/response-time statistics for Manarah and Forms. This
-stays under UptimeRobot's documented 10 requests/minute Free-plan limit.
+an in-memory fallback. A cold refresh performs ten API requests: monitor list,
+incident list, six component uptime-statistic requests, and two frontend
+response-time-statistic requests. This stays within UptimeRobot's documented
+10 requests/minute Free-plan limit.
 
 Incident fields appear only when UptimeRobot returns them. Empty history,
 malformed data, timeouts, API outages, 401/403 authorization failures, and 429

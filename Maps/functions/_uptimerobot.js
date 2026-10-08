@@ -113,21 +113,22 @@ export async function getSystemHealth(db, env, inputDays) {
   const monitors = monitorList(monitorsResult.body);
   const incidents = incidentsResult.ok ? incidentList(incidentsResult.body) : [];
   const located = Object.fromEntries(COMPONENTS.map(([service, component, name]) => [`${service}:${component}`, matchMonitor(monitors, name)]));
-  // UptimeRobot's own monitor surface is driven by each monitor's last-day
-  // histogram. Fetching the monitor detail for all six gives us those exact
-  // green/red check buckets and its matching last-24-hour availability figure.
-  // Alongside monitor list, incidents, and two web response-time requests this
-  // stays at exactly ten requests per cached refresh on the Free plan.
+  // Keep component availability on a fixed, comparable 24-hour window. The
+  // v3 histogram field is currently empty for these monitors, so we use the
+  // documented uptime-statistic endpoint rather than manufacture check buckets.
+  // Six uptime requests, two web response-time requests, monitor list and
+  // incident history remain within the Free-plan ten-request budget.
   const monitored = COMPONENTS.map(([service, component]) => located[`${service}:${component}`]).filter(Boolean);
   const frontends = [located["manarah:frontend"], located["forms:frontend"]].filter(Boolean);
-  const [details, responseTimeStats] = await Promise.all([
-    Promise.all(monitored.map((monitor) => apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}`, token))),
+  const healthFrom = new Date(Date.now() - 86400000).toISOString();
+  const [uptimeStats, responseTimeStats] = await Promise.all([
+    Promise.all(monitored.map((monitor) => apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/uptime?from=${encodeURIComponent(healthFrom)}&to=${encodeURIComponent(to)}`, token))),
     Promise.all(frontends.map((monitor) =>
-    apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/response-time?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token),
+    apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/response-time?from=${encodeURIComponent(healthFrom)}&to=${encodeURIComponent(to)}`, token),
     )),
   ]);
   const statById = new Map();
-  monitored.forEach((monitor, index) => statById.set(idOf(monitor), { detail: details[index], responseTime: null }));
+  monitored.forEach((monitor, index) => statById.set(idOf(monitor), { uptime: uptimeStats[index], responseTime: null }));
   frontends.forEach((monitor, index) => {
     const stat = statById.get(idOf(monitor));
     if (stat) stat.responseTime = responseTimeStats[index];
@@ -135,9 +136,7 @@ export async function getSystemHealth(db, env, inputDays) {
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      const detail = stat?.detail?.ok ? (stat.detail.body?.data || stat.detail.body) : monitor;
-      const uptimeHistory = uptimeHistoryOf(detail);
-      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: uptimeFromHistory(uptimeHistory), uptimeHistory, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
+      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
     return { id, name: id === "manarah" ? "Manarah" : "Forms", status: appStatus(components), components, uptime: components.frontend.uptime, responseTime: components.frontend.responseTime };
   });

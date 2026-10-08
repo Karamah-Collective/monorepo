@@ -51,14 +51,6 @@
 .analytics-page .system-health-heading { align-items:center; margin-bottom:12px; }
 .analytics-page .health-refresh { flex:0 0 auto; }
 .analytics-page .health-notice { margin:0 0 10px; }
-.analytics-page .health-overview { display:grid; grid-template-columns:148px minmax(0, 1fr); gap:10px; }
-.analytics-page .health-last-day { display:grid; grid-template-columns:1fr; align-content:start; gap:9px; padding:13px; border:1px solid var(--ops-line); border-radius:11px; background:var(--ops-subtle); }
-.analytics-page .health-last-day header { display:flex; align-items:baseline; justify-content:space-between; gap:7px; }
-.analytics-page .health-last-day h3 { margin:0; font-size:13px; letter-spacing:-.015em; }
-.analytics-page .health-last-day header span { color:var(--text-faint); font:500 9px var(--font-mono); text-align:right; }
-.analytics-page .health-last-day > div { display:grid; gap:1px; }
-.analytics-page .health-last-day strong { color:var(--text); font:600 18px/1 var(--font-mono); letter-spacing:-.04em; }
-.analytics-page .health-last-day small { color:var(--text-muted); font-size:10px; }
 .analytics-page .health-services { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
 .analytics-page .health-service { padding:12px; border:1px solid var(--ops-line); border-radius:11px; background:var(--ops-subtle); }
 .analytics-page .health-service-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin:0 0 10px; }
@@ -79,9 +71,6 @@
 .analytics-page .health-uptime-value strong { overflow:visible; min-width:0; font-family:var(--font-mono); letter-spacing:-.025em; text-align:right; white-space:nowrap; }
 .analytics-page .health-uptime-meter { display:block; position:relative; min-width:0; height:9px; overflow:hidden; border-radius:2px; background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--danger) 82%, var(--bg-inset)) 0 3px, var(--ops-subtle) 3px 4px); }
 .analytics-page .health-uptime-meter b { position:absolute; inset:0 auto 0 0; width:var(--uptime-percent); background:repeating-linear-gradient(90deg, var(--success, #35c46a) 0 3px, var(--ops-subtle) 3px 4px); }
-.analytics-page .health-uptime-history { display:grid; grid-template-columns:repeat(auto-fit, minmax(2px, 1fr)); align-items:stretch; gap:2px; padding:0; background:none; }
-.analytics-page .health-uptime-history b { position:static; width:auto; min-width:0; border-radius:1px; background:var(--success, #35c46a); }
-.analytics-page .health-uptime-history b.is-down { background:color-mix(in srgb, var(--danger) 82%, var(--bg-inset)); }
 .analytics-page .health-incidents { margin-top:10px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; }
 .analytics-page .health-incidents header { margin:0 0 7px; }
 .analytics-page .health-incidents header { display:flex; align-items:end; justify-content:space-between; gap:12px; }
@@ -91,7 +80,7 @@
 .analytics-page .health-incident-head, .analytics-page .health-incident-row { grid-template-columns:1.1fr .8fr 1.2fr 1.2fr .6fr; column-gap:12px; padding-left:0; padding-right:0; }
 .analytics-page .health-widget-empty { padding:8px 0 0; }
 .analytics-page .health-updated { margin:7px 1px 0; font-size:11px; }
-@media (max-width:900px) { .analytics-page .analytics-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-overview { grid-template-columns:1fr; } .analytics-page .health-last-day { grid-template-columns:1.4fr repeat(2, 1fr); align-items:end; } .analytics-page .health-last-day header { display:block; } .analytics-page .health-last-day header span { display:block; margin-top:3px; text-align:left; } .analytics-page .health-services { grid-template-columns:1fr; } .analytics-page .analytics-top-places { align-items:stretch; flex-direction:column; } .analytics-page .analytics-top-places header { flex:unset; } }
+@media (max-width:900px) { .analytics-page .analytics-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-services { grid-template-columns:1fr; } .analytics-page .analytics-top-places { align-items:stretch; flex-direction:column; } .analytics-page .analytics-top-places header { flex:unset; } }
 @media (max-width:680px) { .analytics-page .analytics-section, .analytics-page .system-health-page { padding:15px; border-radius:10px; } .analytics-page .analytics-heading { margin-bottom:12px; padding-bottom:14px; } .analytics-page .analytics-period { width:100%; } .analytics-page .analytics-period button { flex:1; } .analytics-page .analytics-section-heading, .analytics-page .system-health-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-refresh { align-self:flex-end; margin-top:-36px; } .analytics-page .analytics-kpi { min-height:69px; padding:11px; } .analytics-page .analytics-top-places { padding:13px; } .analytics-page .analytics-top-places ol { grid-template-columns:1fr; } .analytics-page .health-component-row { grid-template-columns:minmax(84px, .75fr) minmax(0, 1.25fr); } .analytics-page .health-component-performance, .analytics-page .health-component-incident { grid-column:2; } .analytics-page .health-incident-table { overflow-x:auto; } .analytics-page .health-incident-head, .analytics-page .health-incident-row { min-width:620px; } }
 
 @media (max-width:680px) { .analytics-page .health-component-row-no-check { grid-template-columns:112px minmax(0, 1fr); } }
