@@ -1,0 +1,28 @@
+/* Shared edge rhythm: content inside Admin surfaces never kisses a border. */
+#main-content .pp-page > .pp-panel:not(.access-foundation):not(.access-role-builder) { padding-inline: var(--settings-gap-lg); }
+.pp-nav-user { padding-inline: var(--settings-gap); }
+.access-row { padding-inline: var(--settings-gap); }
+.access-role { padding-inline: var(--settings-gap); }
+.forms-summary,
+.analytics-metrics { padding-inline: var(--settings-gap); }
+.settings-workspace > section { padding-inline: var(--settings-gap); }
+.hub-stats { padding-inline: var(--settings-gap); }
+.dashboard-panel > .panel-heading,
+.dashboard-panel > .queue-list,
+.dashboard-panel > .activity-list { padding-inline: var(--settings-gap-lg); }
+.dashboard-panel > .coverage-summary,
+.dashboard-panel > .shortcut-row { margin-inline: var(--settings-gap-lg); }
+.question-editor,
+.content-editor { padding-inline: var(--settings-gap-lg); }
+
+@media (max-width: 767px) {
+  #main-content .pp-page > .pp-panel:not(.access-foundation):not(.access-role-builder) { padding-inline: var(--settings-gap); }
+  .pp-nav-user { padding-inline: var(--settings-gap); }
+  .dashboard-panel > .panel-heading,
+  .dashboard-panel > .queue-list,
+  .dashboard-panel > .activity-list { padding-inline: var(--settings-gap); }
+  .dashboard-panel > .coverage-summary,
+  .dashboard-panel > .shortcut-row { margin-inline: var(--settings-gap); }
+  .question-editor,
+  .content-editor { padding-inline: var(--settings-gap); }
+}
