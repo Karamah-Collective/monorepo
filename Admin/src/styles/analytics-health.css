@@ -66,7 +66,6 @@
 .analytics-page .health-component-detail { min-width:0; display:grid; gap:2px; }
 .analytics-page .health-component-detail span { color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.055em; }
 .analytics-page .health-component-detail strong { overflow:hidden; color:var(--text); font-size:11px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
-.analytics-page .health-component-incident { grid-column:2 / -1; }
 .analytics-page .health-incidents { margin-top:10px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; }
 .analytics-page .health-incidents header { margin:0 0 7px; }
 .analytics-page .health-incidents h3 { margin:4px 0 0; font-size:15px; }

@@ -104,20 +104,27 @@ export async function getSystemHealth(db, env, inputDays) {
   const monitors = monitorList(monitorsResult.body);
   const incidents = incidentsResult.ok ? incidentList(incidentsResult.body) : [];
   const located = Object.fromEntries(COMPONENTS.map(([service, component, name]) => [`${service}:${component}`, matchMonitor(monitors, name)]));
-  // The stats endpoints are requested for the two frontend monitors only. This gives each
-  // application a clearly sourced availability/performance metric while keeping a refresh
-  // to six requests (including monitor list and incidents), below the free-plan limit.
+  // Get uptime for every monitored component. Together with the monitor list, incident
+  // list, and the two web response-time requests, this is exactly ten requests per
+  // cached refresh: UptimeRobot's documented Free-plan allowance.
+  const monitored = COMPONENTS.map(([service, component]) => located[`${service}:${component}`]).filter(Boolean);
   const frontends = [located["manarah:frontend"], located["forms:frontend"]].filter(Boolean);
-  const stats = await Promise.all(frontends.flatMap((monitor) => [
-    apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/uptime?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token),
+  const [uptimeStats, responseTimeStats] = await Promise.all([
+    Promise.all(monitored.map((monitor) => apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/uptime?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token))),
+    Promise.all(frontends.map((monitor) =>
     apiGet(`/monitors/${encodeURIComponent(idOf(monitor))}/stats/response-time?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, token),
-  ]));
+    )),
+  ]);
   const statById = new Map();
-  frontends.forEach((monitor, index) => statById.set(idOf(monitor), { uptime: stats[index * 2], responseTime: stats[index * 2 + 1] }));
+  monitored.forEach((monitor, index) => statById.set(idOf(monitor), { uptime: uptimeStats[index], responseTime: null }));
+  frontends.forEach((monitor, index) => {
+    const stat = statById.get(idOf(monitor));
+    if (stat) stat.responseTime = responseTimeStats[index];
+  });
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: component === "frontend" && stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: component === "frontend" && stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
+      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
     return { id, name: id === "manarah" ? "Manarah" : "Forms", status: appStatus(components), components, uptime: components.frontend.uptime, responseTime: components.frontend.responseTime };
   });
