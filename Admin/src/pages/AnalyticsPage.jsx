@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
       <p className="analytics-footnote">Results refresh every five minutes. Daily snapshots are retained in Manarah’s D1 database for longer-term reporting.</p>
     </>}
     </section>
-    <SystemHealthPanel days={days} />
+      <SystemHealthPanel />
   </div>;
 }
 

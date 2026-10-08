@@ -8,7 +8,7 @@ const COMPONENTS = [
 ];
 
 function daysFrom(input) { const value = Number(input); return [1, 7, 30, 90].includes(value) ? value : 30; }
-function cacheKey(days) { return `uptimerobot-health:${days}`; }
+function cacheKey() { return "uptimerobot-health:24h:v2"; }
 function asArray(value) { return Array.isArray(value) ? value : []; }
 function monitorList(body) { return asArray(body?.data || body?.monitors || body?.results); }
 function incidentList(body) { return asArray(body?.data || body?.incidents || body?.results); }
@@ -52,11 +52,40 @@ function issue(code) {
   if (code === "malformed") return "UptimeRobot returned an unexpected response.";
   return "UptimeRobot is temporarily unavailable.";
 }
-function uptimeOf(body) { const value = body?.uptime ?? body?.data?.uptime ?? body?.summary?.uptime; return Number.isFinite(Number(value)) ? Number(value) : null; }
+function numeric(value) {
+  if (value == null || (typeof value === "string" && !value.trim())) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+function uptimeOf(body) {
+  return numeric(body?.uptime ?? body?.data?.uptime ?? body?.summary?.uptime ?? body?.overallUptime ?? body?.data?.overallUptime);
+}
 function responseTimeOf(body) {
-  const summary = body?.summary || body?.data?.summary || body?.data?.all?.summary || body?.all?.summary;
-  const value = summary?.avg ?? summary?.average ?? body?.average ?? body?.data?.average;
-  return Number.isFinite(Number(value)) ? Number(value) : null;
+  const summaries = [body?.summary, body?.data?.summary, body?.data?.all?.summary, body?.all?.summary,
+    body?.eu?.summary, body?.na?.summary, body?.as?.summary, body?.oc?.summary,
+    body?.data?.eu?.summary, body?.data?.na?.summary, body?.data?.as?.summary, body?.data?.oc?.summary];
+  const values = summaries.map((summary) => numeric(summary?.avg ?? summary?.average)).filter((value) => value != null);
+  if (values.length) return values.reduce((sum, value) => sum + value, 0) / values.length;
+  return numeric(body?.average ?? body?.data?.average);
+}
+function incidentWindow(incident) {
+  const startedAt = dateOf(incident.startedAt || incident.startDateTime || incident.start_datetime || incident.datetime || incident.createdAt);
+  const recoveredAt = dateOf(incident.recoveredAt || incident.resolvedAt || incident.endDateTime || incident.end_datetime);
+  return { start: startedAt ? new Date(startedAt).getTime() : null, end: recoveredAt ? new Date(recoveredAt).getTime() : null };
+}
+function timelineFor(monitorId, monitor, incidents, fromMs, toMs) {
+  if (!monitor) return [];
+  const buckets = 48, width = (toMs - fromMs) / buckets;
+  const windows = incidents
+    .filter((incident) => String(incident.monitorId ?? incident.monitor_id ?? incident.monitor?.id ?? "") === monitorId)
+    .map(incidentWindow)
+    .filter(({ start }) => Number.isFinite(start));
+  return Array.from({ length: buckets }, (_, index) => {
+    const start = fromMs + index * width, end = start + width;
+    const outage = windows.some((window) => window.start < end && (window.end == null || window.end > start));
+    const activeDown = index === buckets - 1 && statusOf(monitor) === "Down";
+    return outage || activeDown ? "down" : "up";
+  });
 }
 function uptimeHistoryOf(monitor) {
   return asArray(monitor?.lastDayUptimes?.histogram)
@@ -96,12 +125,15 @@ async function putCached(db, key, payload) {
 
 /** Fetches the small, read-only operational view used by authenticated Admin. */
 export async function getSystemHealth(db, env, inputDays) {
-  const days = daysFrom(inputDays), key = cacheKey(days), cached = await getCached(db, key);
+  // System Health is intentionally independent from Analytics' product date
+  // range. Keeping one fixed cache key also prevents changing that selector
+  // from issuing another burst of UptimeRobot requests.
+  const days = 1, key = cacheKey(), cached = await getCached(db, key);
   if (cached) return { ...cached, cached: true };
   const token = String(env.UPTIMEROBOT_API_KEY || "").trim();
   if (!token) return { days, services: [], incidents: [], generatedAt: new Date().toISOString(), warning: "UptimeRobot monitoring is not configured." };
 
-  const from = new Date(Date.now() - days * 86400000).toISOString(), to = new Date().toISOString();
+  const from = new Date(Date.now() - 86400000).toISOString(), to = new Date().toISOString();
   // Incidents are supplemental. UptimeRobot's v3 endpoint accepts the date
   // filters below (not a v2-style `limit` parameter), so an incident-history
   // problem can never make otherwise healthy monitor data look unavailable.
@@ -133,10 +165,11 @@ export async function getSystemHealth(db, env, inputDays) {
     const stat = statById.get(idOf(monitor));
     if (stat) stat.responseTime = responseTimeStats[index];
   });
+  const healthFromMs = Date.now() - 86400000, healthToMs = Date.now();
   const services = ["manarah", "forms"].map((id) => {
     const components = Object.fromEntries(["frontend", "api", "database"].map((component) => {
       const monitor = located[`${id}:${component}`], monitorId = idOf(monitor), stat = statById.get(monitorId);
-      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), uptime: stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
+      return [component, { status: statusOf(monitor), monitorFound: !!monitor, lastChecked: dateOf(monitor?.lastCheckedAt || monitor?.lastChecked || monitor?.lastCheck || monitor?.last_check || monitor?.lastResponseAt), incident: incidentFor(incidents, monitorId), timeline: timelineFor(monitorId, monitor, incidents, healthFromMs, healthToMs), uptime: stat?.uptime?.ok ? uptimeOf(stat.uptime.body) : null, responseTime: stat?.responseTime?.ok ? responseTimeOf(stat.responseTime.body) : null }];
     }));
     return { id, name: id === "manarah" ? "Manarah" : "Forms", status: appStatus(components), components, uptime: components.frontend.uptime, responseTime: components.frontend.responseTime };
   });

@@ -21,7 +21,7 @@ export const useAdminTypeStyles = () => useQuery({ queryKey: ["admin-type-styles
 export const useAdminAppSettings = () => useQuery({ queryKey: ["admin-app-settings"], queryFn: () => apiGet("admin-app-settings") });
 export const useWeeklyReportSubscribers = () => useQuery({ queryKey: ["weekly-report-subscribers"], queryFn: () => apiGet("weekly-report-subscribers") });
 export const useMapAnalytics = (days) => useQuery({ queryKey: ["map-analytics", days], queryFn: () => apiGet("analytics-dashboard", { days }), staleTime: 5 * 60 * 1000 });
-export const useSystemHealth = (days = 30) => useQuery({ queryKey: ["system-health", days], queryFn: () => apiGet("system-health", { days }), staleTime: 2 * 60 * 1000, retry: 0 });
+export const useSystemHealth = () => useQuery({ queryKey: ["system-health", "24h"], queryFn: () => apiGet("system-health", { days: 1 }), staleTime: 2 * 60 * 1000, retry: 0 });
 
 // ── Mutations — every one invalidates the queries it can affect, so a
 // pending row disappearing / stats changing shows up immediately without

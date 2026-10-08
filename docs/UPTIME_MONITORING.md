@@ -46,10 +46,14 @@ if the names differ.
 ## Data and rate limits
 
 The backend uses UptimeRobot v3 monitor and incident endpoints, plus a fixed
-last-24-hour uptime statistic for every monitored component and a last-24-hour
-response-time statistic for the two frontend monitors. The component bars are
-therefore always a directly comparable 24-hour availability view. The page's
-range selector applies to the clearly labelled incident-history section only.
+last-24-hour uptime statistic for every monitored component, a compact
+incident-aware 24-hour timeline for every monitor, and a last-24-hour
+response-time statistic for the two frontend monitors. The timeline compresses
+the window into 48 half-hour buckets: a bucket is red when an UptimeRobot
+incident overlaps it and green otherwise. The percentage remains the aggregate
+uptime value; the timeline shows *when* the known outage occurred. System Health is
+always fixed to the same last-24-hour UptimeRobot window; the Analytics page's
+product date selector does not change it or trigger another provider request.
 
 Responses are cached server-side for three minutes, in D1 when available with
 an in-memory fallback. A cold refresh performs ten API requests: monitor list,
