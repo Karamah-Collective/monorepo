@@ -60,15 +60,16 @@
 .analytics-page .health-summary > div + div { border-left:1px solid var(--ops-line); }
 .analytics-page .health-components { display:grid; gap:0; }
 .analytics-page .health-component-row { display:grid; grid-template-columns:minmax(94px, .8fr) minmax(0, 1.25fr) minmax(0, 1.1fr); gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--ops-line); }
-.analytics-page .health-component-row-no-check { grid-template-columns:minmax(94px, .8fr) minmax(0, 1fr); }
+.analytics-page .health-component-row-no-check { grid-template-columns:minmax(142px, .8fr) minmax(170px, 1.2fr); }
 .analytics-page .health-component-row:last-child { padding-bottom:0; border-bottom:0; }
-.analytics-page .health-component-name { display:flex; align-items:center; gap:7px; min-width:0; font-size:13px; font-weight:600; }
+.analytics-page .health-component-name { display:grid; grid-template-columns:minmax(0, 1fr) max-content; align-items:center; gap:10px; min-width:0; font-size:13px; font-weight:600; }
 .analytics-page .health-component-detail { min-width:0; display:grid; gap:2px; }
 .analytics-page .health-component-detail span { color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.055em; }
 .analytics-page .health-component-detail strong { overflow:hidden; color:var(--text); font-size:11px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
-.analytics-page .health-uptime-value { display:flex; align-items:center; gap:7px; min-width:0; }
-.analytics-page .health-uptime-value strong { flex:0 0 auto; font-family:var(--font-mono); }
-.analytics-page .health-uptime-meter { display:block; position:relative; flex:1; min-width:56px; height:9px; overflow:hidden; border-radius:2px; background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--danger) 82%, var(--bg-inset)) 0 3px, var(--ops-subtle) 3px 4px); }
+.analytics-page .health-component-performance { min-width:0; width:100%; }
+.analytics-page .health-uptime-value { display:grid; grid-template-columns:minmax(72px, 1fr) max-content; align-items:center; gap:10px; min-width:0; width:100%; }
+.analytics-page .health-uptime-value strong { overflow:visible; font-family:var(--font-mono); letter-spacing:-.025em; white-space:nowrap; }
+.analytics-page .health-uptime-meter { display:block; position:relative; min-width:72px; height:9px; overflow:hidden; border-radius:2px; background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--danger) 82%, var(--bg-inset)) 0 3px, var(--ops-subtle) 3px 4px); }
 .analytics-page .health-uptime-meter b { position:absolute; inset:0 auto 0 0; width:var(--uptime-percent); background:repeating-linear-gradient(90deg, var(--success, #35c46a) 0 3px, var(--ops-subtle) 3px 4px); }
 .analytics-page .health-incidents { margin-top:10px; padding:11px 13px; border:1px solid var(--ops-line); border-radius:11px; }
 .analytics-page .health-incidents header { margin:0 0 7px; }
@@ -79,3 +80,5 @@
 .analytics-page .health-updated { margin:7px 1px 0; font-size:11px; }
 @media (max-width:900px) { .analytics-page .analytics-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-services { grid-template-columns:1fr; } .analytics-page .analytics-top-places { align-items:stretch; flex-direction:column; } .analytics-page .analytics-top-places header { flex:unset; } }
 @media (max-width:680px) { .analytics-page .analytics-section, .analytics-page .system-health-page { padding:15px; border-radius:10px; } .analytics-page .analytics-heading { margin-bottom:12px; padding-bottom:14px; } .analytics-page .analytics-period { width:100%; } .analytics-page .analytics-period button { flex:1; } .analytics-page .analytics-section-heading, .analytics-page .system-health-heading { align-items:flex-start; flex-direction:column; } .analytics-page .health-refresh { align-self:flex-end; margin-top:-36px; } .analytics-page .analytics-kpi { min-height:69px; padding:11px; } .analytics-page .analytics-top-places { padding:13px; } .analytics-page .analytics-top-places ol { grid-template-columns:1fr; } .analytics-page .health-component-row { grid-template-columns:minmax(84px, .75fr) minmax(0, 1.25fr); } .analytics-page .health-component-performance, .analytics-page .health-component-incident { grid-column:2; } .analytics-page .health-incident-table { overflow-x:auto; } .analytics-page .health-incident-head, .analytics-page .health-incident-row { min-width:620px; } }
+
+@media (max-width:680px) { .analytics-page .health-component-row-no-check { grid-template-columns:minmax(112px, .75fr) minmax(0, 1.25fr); } }
