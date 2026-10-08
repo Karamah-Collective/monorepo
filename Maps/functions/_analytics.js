@@ -7,12 +7,19 @@ async function putCache(db, key, payload) { await db.prepare("INSERT INTO analyt
 async function queryPostHog(env, days) {
   if (!env.POSTHOG_API_KEY || !env.POSTHOG_PROJECT_ID) return { ok:false, warning:"PostHog is not configured." };
   const eventList = POSTHOG_EVENTS.map((event) => `'${event}'`).join(",");
-  const query = `SELECT event, count() AS value FROM events WHERE timestamp >= now() - INTERVAL ${days} DAY AND event IN (${eventList}) GROUP BY event`;
+  const query = `SELECT toDate(timestamp) AS day, event, count() AS value FROM events WHERE timestamp >= now() - INTERVAL ${days} DAY AND event IN (${eventList}) GROUP BY day, event ORDER BY day ASC`;
   const response = await fetch(`${String(env.POSTHOG_API_HOST || "https://eu.posthog.com").replace(/\/$/, "")}/api/projects/${encodeURIComponent(env.POSTHOG_PROJECT_ID)}/query/`, { method:"POST", headers:{Authorization:`Bearer ${env.POSTHOG_API_KEY}`,"Content-Type":"application/json"}, body:JSON.stringify({query:{kind:"HogQLQuery",query}}) });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || !Array.isArray(body.results)) return { ok:false, warning:response.status === 401 || response.status === 403 ? "PostHog authorization failed." : "PostHog analytics is temporarily unavailable." };
-  const events = Object.fromEntries(body.results.map((row) => [String(row[0]), Number(row[1]) || 0]));
-  return { ok:true, events };
+  const events = {}, daily = {};
+  for (const row of body.results) {
+    const [day, event, value] = row;
+    const count = Number(value) || 0;
+    events[String(event)] = (events[String(event)] || 0) + count;
+    if (!daily[String(day)]) daily[String(day)] = {};
+    daily[String(day)][String(event)] = count;
+  }
+  return { ok:true, events, daily };
 }
 async function queryCloudflare(env, days) {
   if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_ANALYTICS_TOKEN) return { ok:false, warning:"Cloudflare Analytics is not configured." };
@@ -35,7 +42,9 @@ export async function getAnalyticsDashboard(db, env, inputDays) {
   const payload = { days, cached:false, posthog, cloudflare, generatedAt:new Date().toISOString() };
   const date = new Date().toISOString().slice(0,10);
   const writes = [];
-  for (const [metric, value] of Object.entries(posthog.events || {})) writes.push(db.prepare("INSERT INTO analytics_daily_snapshots(snapshot_date,provider,metric,value) VALUES(?,?,?,?) ON CONFLICT(snapshot_date,provider,metric) DO UPDATE SET value=excluded.value,captured_at=datetime('now')").bind(date,"posthog",metric,Number(value)||0));
+  for (const [snapshotDate, dailyEvents] of Object.entries(posthog.daily || {})) {
+    for (const [metric, value] of Object.entries(dailyEvents)) writes.push(db.prepare("INSERT INTO analytics_daily_snapshots(snapshot_date,provider,metric,value) VALUES(?,?,?,?) ON CONFLICT(snapshot_date,provider,metric) DO UPDATE SET value=excluded.value,captured_at=datetime('now')").bind(snapshotDate,"posthog",metric,Number(value)||0));
+  }
   if (cloudflare.ok) { writes.push(db.prepare("INSERT INTO analytics_daily_snapshots(snapshot_date,provider,metric,value) VALUES(?,?,?,?) ON CONFLICT(snapshot_date,provider,metric) DO UPDATE SET value=excluded.value,captured_at=datetime('now')").bind(date,"cloudflare","unique_users",cloudflare.visitors)); writes.push(db.prepare("INSERT INTO analytics_daily_snapshots(snapshot_date,provider,metric,value) VALUES(?,?,?,?) ON CONFLICT(snapshot_date,provider,metric) DO UPDATE SET value=excluded.value,captured_at=datetime('now')").bind(date,"cloudflare","page_loads",cloudflare.pageLoads)); }
   await Promise.all(writes.map((statement) => statement.run())).catch(() => {});
   await putCache(db, key, payload).catch(() => {});

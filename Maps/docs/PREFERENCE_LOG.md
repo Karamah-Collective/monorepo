@@ -5441,3 +5441,10 @@ utilities into this flow, and do not maintain a separate phone ordering table.
 - Superseded the consent-prompt approach: PostHog must run in its documented cookieless always-on mode with Cookieless server hash mode enabled in the PostHog project. Do not show a consent banner, set analytics cookies or storage, identify visitors, create person profiles, capture automatic pageviews, or use session replay.
 - Admin uses browser-history routes. Do not ship a top-level `404.html` with the Admin Pages output, because Cloudflare Pages uses its absence to provide the SPA fallback for refreshed nested routes.
 - Keep the cookie-dialog markup and styling as a dormant, permanently hidden component while cookieless analytics is active. Do not initialize it or store a consent choice unless Manarah intentionally returns to a cookie-based analytics mode.
+
+### 2026-10-08 â€” Analytics workspace is compact and visual
+
+- Remove provider-branded status cards from the Admin analytics workspace. Analytics should answer usage questions, not explain its plumbing.
+- Use a dense, divider-led metric rail rather than a loose grid of individual metric cards.
+- Product activity needs a real daily trend visualization and a compact ranked feature-use list with proportional bars. Never present analytics as one long sequence of label/value rows.
+- Do not remove horizontal inset from the first or last cell of a bordered Admin metric rail. Edge values need the same breathing room as interior values.
