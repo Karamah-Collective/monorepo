@@ -42,6 +42,23 @@ user explicitly names each target.
 
 ### Release discipline
 
+### Documentation gate
+
+The onboarding documentation is part of the release contract. Run this from
+the repository root before every Preview or Production release:
+
+```sh
+npm run docs:check
+```
+
+It verifies the required onboarding documents, their internal links, required
+service/application coverage, and a minimum documentation depth. The deploy
+agent runs the same command during `npm run deploy:agent -- validate`, so a
+release cannot be validated with a broken or incomplete documentation map.
+When a change adds or changes an application boundary, service, secret,
+binding, role, migration, operational procedure, or significant user flow,
+update the relevant `docs/` guide in the same source commit.
+
 Before syncing a release branch, stage only the intended source changes and
 create a structured source commit on `main`. Use the deploy agent so each
 commit has a concise subject plus an explanatory body:

@@ -34,6 +34,7 @@
     "test:forms": "node --test Forms/tests/*.test.mjs",
     "test:forms:ui": "playwright test --config Forms/tests/playwright.config.js",
     "check": "node tooling/check-layout.mjs",
+    "docs:check": "node tooling/check-docs.mjs",
     "update": "npm run update --workspace Maps",
     "update:force": "npm run update:force --workspace Maps"
   },

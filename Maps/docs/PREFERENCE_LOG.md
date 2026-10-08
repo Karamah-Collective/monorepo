@@ -5448,3 +5448,6 @@ utilities into this flow, and do not maintain a separate phone ordering table.
 - Use a dense, divider-led metric rail rather than a loose grid of individual metric cards.
 - Product activity needs a real daily trend visualization and a compact ranked feature-use list with proportional bars. Never present analytics as one long sequence of label/value rows.
 - Do not remove horizontal inset from the first or last cell of a bordered Admin metric rail. Edge values need the same breathing room as interior values.
+- For Admin role-library tiles, preserve a compact but visible inset on every edge. Do not collapse content padding to a near-zero value merely to make the grid denser.
+- Keep the sidebar profile entry aligned with navigation links. Its avatar, name, and action affordance use the same horizontal inset as the link list.
+- Admin surfaces use a shared edge-inset layer across routed pages. Full-bleed rows may keep their borders, but their content must retain the standard horizontal rhythm.

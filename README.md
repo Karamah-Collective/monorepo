@@ -1,5 +1,24 @@
 # Karamah Collective Monorepo
 
+> **New contributor reading path.** This README gives the working overview of
+> the platform. For a full, narrative onboarding guide, continue with
+> [Platform architecture](docs/PLATFORM_ARCHITECTURE.md), then the
+> [Application guide](docs/APPLICATION_GUIDE.md),
+> [Data, identity, and security](docs/DATA_IDENTITY_SECURITY.md),
+> [Development and release](docs/DEVELOPMENT_AND_RELEASE.md), and the
+> [Operations guide](docs/OPERATIONS_GUIDE.md). Use the
+> [Service catalogue](docs/SERVICE_CATALOG.md) to understand every external
+> platform and provider, then the
+> [Codebase reference](docs/CODEBASE_REFERENCE.md) as the directory/API map
+> and [Contributor playbook](docs/CONTRIBUTOR_PLAYBOOK.md) for end-to-end
+> feature-change walkthroughs.
+> The application chapters are also available directly: [Manarah](docs/DEEP_DIVE_MANARAH.md),
+> [Website](docs/DEEP_DIVE_WEBSITE.md), [Admin](docs/DEEP_DIVE_ADMIN.md),
+> [Links](docs/DEEP_DIVE_LINKS.md), and [Forms](docs/DEEP_DIVE_FORMS.md).
+> once you know the story. These documents explain the design decisions as
+> well as the mechanics, and are the canonical
+> cross-application onboarding reference.
+
 This repository contains the public Karamah Collective web properties, the
 shared Admin panel, Cloudflare Pages Functions, database migrations, and the
 local tooling used to build and deploy them together.

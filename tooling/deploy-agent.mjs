@@ -48,7 +48,9 @@ const APP_SCOPES = {
   },
 };
 
-const SHARED_CHECKS = ["npm run check"];
+// Documentation is a release requirement, not a best-effort follow-up. The
+// check validates the onboarding map and its internal links for every release.
+const SHARED_CHECKS = ["npm run check", "npm run docs:check"];
 
 const DEPLOY_FILES = [
   "package.json",
