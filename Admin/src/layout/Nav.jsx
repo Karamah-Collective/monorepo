@@ -54,8 +54,8 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
           const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
           const isClosed = closedGroups.has(group.label) && !active;
           return (
-          <section className={`nav-group${isClosed ? " is-collapsed" : ""}`} key={group.label}>
-            <button className="nav-group-label" type="button" onClick={() => setClosedGroups(current => { const next = new Set(current); if (next.has(group.label)) next.delete(group.label); else next.add(group.label); return next; })} aria-expanded={!isClosed}><span>{group.label}</span><Icons.right size={13} /></button>
+          <section className={`nav-group${!group.label ? " nav-group-root" : ""}${isClosed ? " is-collapsed" : ""}`} key={group.label || "overview"}>
+            {group.label && <button className="nav-group-label" type="button" onClick={() => setClosedGroups(current => { const next = new Set(current); if (next.has(group.label)) next.delete(group.label); else next.add(group.label); return next; })} aria-expanded={!isClosed}><span>{group.label}</span><Icons.right size={13} /></button>}
             <div className="nav-group-links"><div className="nav-group-links-inner">{links.map((link) => {
               const Icon = Icons[link.icon];
               return (

@@ -1,14 +1,19 @@
 export const NAV_GROUPS = [
   {
-    label: "Maps",
+    label: "",
     links: [
       {
         to: "/",
         label: "Overview",
         end: true,
         icon: "dashboard",
-        description: "Your map, community, and review queue at a glance.",
+        description: "A concise view across Maps, Forms, and system health.",
       },
+    ],
+  },
+  {
+    label: "Maps",
+    links: [
       {
         to: "/places",
         label: "Places",
