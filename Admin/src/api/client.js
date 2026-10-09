@@ -3,7 +3,7 @@ import { auth } from "../firebase.js";
 // The admin API lives on the public site's domain/Pages project — this app
 // calls it cross-origin (CORS is scoped to this app's origin server-side,
 // see functions/api/admin.js's ADMIN_ALLOWED_ORIGINS).
-const API_BASE = `${(import.meta.env.VITE_WEBSITE_ORIGIN || "https://karamahcollective.com").replace(/\/$/, "")}/api/admin`;
+const API_BASE = `${(import.meta.env.VITE_MAPS_ORIGIN || "https://maps.karamahcollective.com").replace(/\/$/, "")}/api/admin`;
 const LOCAL_API_BASE = "/api/admin";
 
 function apiBase() {
