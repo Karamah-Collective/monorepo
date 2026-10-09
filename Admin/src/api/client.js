@@ -32,8 +32,7 @@ async function parseResponse(res) {
 export async function apiGet(action, params = {}) {
   const headers = await authHeader();
   const url = new URL(apiBase(), window.location.origin);
-  url.searchParams.set("action", import.meta.env.DEV ? action : "maps-admin");
-  if (!import.meta.env.DEV) url.searchParams.set("mapAction", action);
+  url.searchParams.set("action", action);
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
   }
@@ -46,7 +45,7 @@ export async function apiPost(action, body = {}) {
   const res = await request(apiBase(), {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify(import.meta.env.DEV ? { action, ...body } : { action: "maps-admin", mapAction: action, payload: body }),
+    body: JSON.stringify({ action, ...body }),
   });
   return parseResponse(res);
 }
