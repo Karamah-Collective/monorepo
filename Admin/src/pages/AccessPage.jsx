@@ -9,7 +9,8 @@ import { can } from "../auth/permissions.js";
 const capabilities = [
   ["Workspace", [["activity", "Activity log"], ["analytics", "Analytics"], ["reports", "Weekly report"]]],
   ["Maps", [["maps.places", "Places"], ["maps.events", "Events"], ["maps.eid", "Eid prayers"], ["maps.social", "Social videos"], ["maps.styles", "Map appearance"], ["maps.settings", "Map settings"]]],
-  ["Moderation", [["moderation.places", "Place submissions"], ["moderation.events", "Event edits"], ["moderation.reviews", "Reviews"], ["moderation.wishes", "Wishes"], ["moderation.contacts", "Inbox"]]],
+  ["Moderation", [["moderation.places", "Place submissions"], ["moderation.events", "Event edits"], ["moderation.reviews", "Reviews"], ["moderation.wishes", "Wishes"]]],
+  ["Communications", [["inbox.contact", "Contact inbox"], ["inbox.manarah", "Manarah inbox"]]],
   ["Publishing", [["website.content", "Website content"], ["website.team", "Team directory"], ["website.subscribers", "Update signups"], ["links", "Link hub"]]],
 ];
 const everyone = [

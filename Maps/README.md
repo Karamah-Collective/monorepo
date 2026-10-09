@@ -659,7 +659,7 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 | `REPORT_SECRET` | Shared secret for the GitHub Actions weekly digest trigger |
 | `CLOUDFLARE_ANALYTICS_TOKEN` | Cloudflare GraphQL Analytics token for weekly digest metrics |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID for weekly digest metrics |
-| `REPORT_FROM` | Optional weekly digest sender; defaults to `maps@karamahcollective.com` |
+| `REPORT_FROM` | Optional weekly digest sender; defaults to `manarah@karamahcollective.com` |
 | `REPORT_FROM_NAME` | Optional weekly digest sender name; defaults to `Manarah Maps` |
 | `REPORT_TO` | Optional weekly digest recipients; defaults to `home@karamahcollective.com` |
 | `DEV_SKIP_RECAPTCHA` | Local-only flag for testing the contact form on localhost |

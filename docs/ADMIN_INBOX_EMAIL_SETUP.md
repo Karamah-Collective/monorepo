@@ -1,20 +1,20 @@
 # Admin inbox email setup
 
-The admin inbox sends email through Brevo from two verified addresses:
+The admin inbox sends email through Brevo from two verified Google Workspace addresses:
 
 - `contact@karamahcollective.com` for the website, Forms, Links, and general enquiries.
-- `maps@karamahcollective.com` for Manarah Maps enquiries.
+- `manarah@karamahcollective.com` for Manarah enquiries.
 
 ## Outbound sending, available now
 
 1. In Brevo, open **Senders, Domains & Dedicated IPs**.
-2. Verify `karamahcollective.com`, or verify both addresses individually.
+2. Verify `karamahcollective.com`, or verify both addresses individually. This authenticates Brevo as a sender; it does not replace Google Workspace MX records.
 3. Ensure the Maps Cloudflare Pages project has a valid `BREVO_API_KEY` secret. It must be a Brevo HTTP API key, not an SMTP password.
 4. Deploy the Admin and Maps projects. Open **Communications → Inbox**, create a new email, choose either mailbox, and send a test to yourself.
 
 ## Receiving ordinary email, required later
 
-Brevo's transactional API sends email but does not host an inbound mailbox. Keep Brevo for sending, then use an inbound mail provider or Cloudflare Email Worker to receive mail for the domain and post it to the inbox webhook.
+Brevo's transactional API sends email but does not host an inbound mailbox. Keep Google Workspace as the real mailbox provider and use an inbound parser/relay to copy messages into the admin panel.
 
 1. Create a strong random value for `INBOX_INGEST_SECRET`.
 2. Add it as a secret in the Maps Cloudflare Pages project.
@@ -41,4 +41,24 @@ Brevo's transactional API sends email but does not host an inbound mailbox. Keep
    }
    ```
 
-Use `maps@karamahcollective.com` in `mailbox` for Map email. Incoming mail received at either address will then appear in the shared inbox, with the correct reply-from address selected automatically.
+Use `manarah@karamahcollective.com` in `mailbox` for Manarah email. Incoming mail received at either address will then appear in the shared inbox, with the reply-from address restricted by the member's mailbox permissions.
+
+## Google Workspace receiving flow
+
+1. Keep Google Workspace's MX records in DNS so Gmail remains the real mailbox.
+2. Create an inbound parser destination with your chosen provider. It must accept mail for both addresses and POST the JSON above to `/api/inbox-webhook` with the `X-Inbox-Secret` header.
+3. In Google Admin Console, create a Gmail routing rule for `contact@karamahcollective.com` and `manarah@karamahcollective.com` that keeps the original delivery and also routes a copy to the parser destination. If the panel should be the only destination, choose routing instead of dual delivery—but that removes the message from Gmail.
+4. Set the same random value as `INBOX_INGEST_SECRET` on the Maps Pages project and in the parser webhook configuration.
+
+The parser must preserve the destination mailbox in `mailbox` or `to.email`; otherwise the panel cannot apply the correct role boundary.
+
+## Mailbox-scoped roles
+
+Create custom roles in Admin → Roles & access with these grants:
+
+- `Contact inbox — Read` = `inbox.contact.read`
+- `Contact inbox — Manage` = `inbox.contact.write`
+- `Manarah inbox — Read` = `inbox.manarah.read`
+- `Manarah inbox — Manage` = `inbox.manarah.write`
+
+Manage includes read, reply/send, status changes, and internal notes. A member with only the Manarah grants cannot list, open, manage, or send from the Contact inbox. The restriction is enforced by the API as well as the interface.

@@ -329,7 +329,7 @@ test("mobile drawer traps focus, closes on Escape and route selection", async ({
   await page.goto("/");
   await expect(page.locator(".pp-nav")).toHaveAttribute("inert", "");
   await page.getByRole("button", { name: "Open menu" }).click();
-  await expect(page.getByRole("button", { name: "Close menu" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Find a page" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
   await page.getByRole("button", { name: "Open menu" }).click();

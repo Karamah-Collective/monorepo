@@ -20,6 +20,7 @@
   min-height: 84px;
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 0 12px;
   justify-content: space-between;
 }
@@ -30,6 +31,12 @@
   gap: 10px;
   text-decoration: none;
   color: var(--nav-text-strong);
+}
+.pp-nav-brand > a {
+  flex: 0 0 auto;
+}
+.brand-lockup {
+  display: block;
 }
 .brand-mark {
   display: grid;
@@ -69,6 +76,39 @@
   margin-top: 6px;
   font-weight: 400;
   color: var(--nav-text-muted);
+}
+.nav-search {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--nav-border);
+  border-radius: 8px;
+  background: var(--nav-hover);
+  color: var(--nav-text-muted);
+  text-align: left;
+  font: 12px var(--font-sans);
+}
+.nav-search > svg {
+  flex: 0 0 auto;
+  color: var(--nav-icon);
+}
+.nav-search > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-search > kbd {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border-color: var(--nav-border);
+  background: transparent;
+  color: var(--nav-text-muted);
+  font-size: 9px;
 }
 .workspace-label {
   display: flex;
@@ -282,6 +322,13 @@
   background: var(--bg-alt);
 }
 .topbar-theme { border:1px solid var(--border); background:var(--bg); }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
 .breadcrumbs {
   display: flex;
   align-items: center;
@@ -858,12 +905,31 @@ kbd {
   }
   .nav-is-collapsed .pp-nav-brand {
     padding: 0;
+    gap: 4px;
     justify-content: center;
+  }
+  .nav-is-collapsed .pp-nav-brand > a {
+    display: none;
   }
   .nav-is-collapsed .brand-copy {
     opacity: 0;
     max-width: 0;
     transform: translateX(-6px);
+  }
+  .nav-is-collapsed .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .nav-is-collapsed .nav-search {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+  .nav-is-collapsed .nav-search > span,
+  .nav-is-collapsed .nav-search > kbd {
+    display: none;
   }
   .nav-is-collapsed .workspace-label {
     opacity: 0;
@@ -938,13 +1004,11 @@ kbd {
   .pp-nav-open {
     transform: translateX(0);
   }
-  .pp-nav-close,
   .mobile-menu {
     display: inline-flex;
   }
-  .pp-nav-close {
-    color: #b6c5b5;
-  }
+  .nav-search { height: 40px; }
+  .nav-search > kbd { display: none; }
   .pp-nav-backdrop {
     display: block;
     position: fixed;

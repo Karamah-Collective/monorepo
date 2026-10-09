@@ -3,11 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowBendUpLeft, ArrowBendUpRight, CaretDown, LinkSimple, ListBullets, ListNumbers, MagnifyingGlass, Paperclip, Plus, TextB, TextItalic, TextUnderline, Trash, X } from "@phosphor-icons/react";
 import { useAddInboxNote, useComposeInbox, useInbox, useInboxThread, useSendInboxReply, useSetInboxStatus } from "../api/queries.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { can } from "../auth/permissions.js";
+import { canInbox } from "../auth/permissions.js";
 import { useToast } from "../components/Toast.jsx";
 import PageHeaderActions from "../components/PageHeaderActions.jsx";
 
-const MAILBOXES = ["contact@karamahcollective.com", "maps@karamahcollective.com"];
+const MAILBOXES = ["contact@karamahcollective.com", "manarah@karamahcollective.com"];
+const mailboxKey = email => email.split("@")[0];
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEV_THREADS = [
@@ -28,7 +29,7 @@ function IconButton({ Icon, label, ...props }) { return <button type="button" cl
 function readFiles(files) { return Promise.all([...files].map(file => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ name:file.name, type:file.type, size:file.size, content:String(reader.result).split(",")[1] }); reader.onerror = reject; reader.readAsDataURL(file); }))); }
 const attachmentLabel = size => size < 1024 * 1024 ? Math.ceil(size / 1024) + " KB" : (size / 1024 / 1024).toFixed(1) + " MB";
 
-function Composer({ thread, mailbox, canWrite, onSent, onSampleSend, initialDraft }) {
+function Composer({ thread, mailbox, mailboxes, canWrite, onSent, onSampleSend, initialDraft }) {
   const editor = useRef(null), fileInput = useRef(null), toast = useToast();
   const reply = useSendInboxReply(), compose = useComposeInbox(), note = useAddInboxNote();
   const [from, setFrom] = useState(mailbox), [to, setTo] = useState(""), [cc, setCc] = useState(""), [bcc, setBcc] = useState(""), [subject, setSubject] = useState(""), [mode, setMode] = useState("reply"), [attachments, setAttachments] = useState([]), [error, setError] = useState("");
@@ -57,7 +58,7 @@ function Composer({ thread, mailbox, canWrite, onSent, onSampleSend, initialDraf
     <div className="inbox-editor-box"><div className="inbox-rich-toolbar" role="group" aria-label="Message formatting"><IconButton Icon={TextB} label="Bold" onClick={() => run("bold")} /><IconButton Icon={TextItalic} label="Italic" onClick={() => run("italic")} /><IconButton Icon={TextUnderline} label="Underline" onClick={() => run("underline")} /><i /><IconButton Icon={ListBullets} label="Bulleted list" onClick={() => run("insertUnorderedList")} /><IconButton Icon={ListNumbers} label="Numbered list" onClick={() => run("insertOrderedList")} /><IconButton Icon={LinkSimple} label="Insert link" onClick={() => { const url = prompt("Link URL"); if (url) run("createLink", url); }} /></div>
       <div ref={editor} className="inbox-editor" contentEditable role="textbox" aria-multiline="true" aria-label="Email message" data-placeholder={mode === "note" ? "Write an internal note…" : "Write your message…"} />
       {!!attachments.length && <div className="inbox-draft-attachments">{attachments.map((file, index) => <span key={file.name + index}>{file.name} <small>{attachmentLabel(file.size)}</small><button type="button" onClick={() => setAttachments(current => current.filter((_, item) => item !== index))} aria-label={"Remove " + file.name}>×</button></span>)}</div>}
-      <div className="inbox-editor-footer">{mode === "reply" && <label className="inbox-from">From<select value={from} onChange={event => setFrom(event.target.value)} aria-label="Send from email" disabled={!canWrite || mutation.isPending}>{MAILBOXES.map(email => <option key={email}>{email}</option>)}</select></label>}<div className="inbox-send-actions">{mode === "reply" && <IconButton Icon={Paperclip} label="Attach files" onClick={() => fileInput.current?.click()} disabled={!canWrite} />}<IconButton Icon={Trash} label="Clear draft" onClick={() => { if (editor.current) editor.current.innerHTML = ""; setAttachments([]); }} /><button type="submit" className="pp-btn pp-btn-primary" disabled={!canWrite || mutation.isPending}>{mutation.isPending ? mode === "note" ? "Saving…" : "Sending…" : mode === "note" ? "Save note" : "Send"}</button></div><input ref={fileInput} type="file" multiple hidden onChange={chooseFiles} /></div></div>
+      <div className="inbox-editor-footer">{mode === "reply" && <label className="inbox-from">From<select value={from} onChange={event => setFrom(event.target.value)} aria-label="Send from email" disabled={!canWrite || mutation.isPending}>{mailboxes.map(email => <option key={email}>{email}</option>)}</select></label>}<div className="inbox-send-actions">{mode === "reply" && <IconButton Icon={Paperclip} label="Attach files" onClick={() => fileInput.current?.click()} disabled={!canWrite} />}<IconButton Icon={Trash} label="Clear draft" onClick={() => { if (editor.current) editor.current.innerHTML = ""; setAttachments([]); }} /><button type="submit" className="pp-btn pp-btn-primary" disabled={!canWrite || mutation.isPending}>{mutation.isPending ? mode === "note" ? "Saving…" : "Sending…" : mode === "note" ? "Save note" : "Send"}</button></div><input ref={fileInput} type="file" multiple hidden onChange={chooseFiles} /></div></div>
     {error && <p className="pp-error-text" role="alert">{error}</p>}
   </form>;
 }
@@ -67,7 +68,9 @@ function AttachmentSection({ messages }) {
 }
 export default function ContactsPage() {
   const toast = useToast(), queryClient = useQueryClient(), { access } = useAuth();
-  const canWrite = can(access, "moderation.contacts.write"), inbox = useInbox(), statusMutation = useSetInboxStatus();
+  const readableMailboxes = useMemo(() => MAILBOXES.filter(email => canInbox(access, "read", mailboxKey(email))), [access]);
+  const writableMailboxes = useMemo(() => MAILBOXES.filter(email => canInbox(access, "write", mailboxKey(email))), [access]);
+  const canWrite = writableMailboxes.length > 0, inbox = useInbox(), statusMutation = useSetInboxStatus();
   const [selected, setSelected] = useState(""), [mailbox, setMailbox] = useState(MAILBOXES[0]), [tab, setTab] = useState("open"), [search, setSearch] = useState(""), [sampleMessages, setSampleMessages] = useState({}), [sampleStatuses, setSampleStatuses] = useState({}), [newDraft, setNewDraft] = useState(null);
   const [readerOpen, setReaderOpen] = useState(false);
   const threads = useMemo(() => {
@@ -75,6 +78,7 @@ export default function ContactsPage() {
     const liveThreads = inbox.data?.threads || [];
     return import.meta.env.DEV && !inbox.isLoading && !inbox.isError && !liveThreads.length ? samples : liveThreads;
   }, [inbox.data, inbox.isLoading, inbox.isError, sampleStatuses]);
+  useEffect(() => { if (!readableMailboxes.includes(mailbox)) setMailbox(readableMailboxes[0] || ""); }, [readableMailboxes, mailbox]);
   const visible = useMemo(() => threads.filter(thread => thread.mailbox === mailbox && thread.status === tab && (thread.participantName + " " + thread.participantEmail + " " + thread.subject + " " + thread.preview).toLowerCase().includes(search.trim().toLowerCase())), [threads, mailbox, tab, search]);
   useEffect(() => { if (selected !== "new" && !visible.some(thread => thread.id === selected)) setSelected(visible[0]?.id || ""); }, [visible, selected]);
   const detail = useInboxThread(selected && selected !== "new" && !selected.startsWith("sample-") ? selected : "");
@@ -98,7 +102,7 @@ export default function ContactsPage() {
     {canWrite && <PageHeaderActions><button type="button" className="pp-btn pp-btn-primary" onClick={() => openDraft()}><Plus size={16} />New email</button></PageHeaderActions>}
     <div className={"inbox-shell pp-panel" + (readerOpen ? " is-reading" : "")}>
       <aside className="inbox-list" aria-label="Conversations">
-        <div className="inbox-list-head"><label className="inbox-mailbox-label">Mailbox<select value={mailbox} onChange={event => setMailbox(event.target.value)}>{MAILBOXES.map(email => <option key={email}>{email}</option>)}</select></label></div>
+        <div className="inbox-list-head"><label className="inbox-mailbox-label">Mailbox<select value={mailbox} onChange={event => setMailbox(event.target.value)}>{readableMailboxes.map(email => <option key={email}>{email}</option>)}</select></label></div>
         <div className="inbox-list-tabs pp-section-tabs" role="group" aria-label="Conversation status">
           {["open", "closed"].map(status => <button type="button" key={status} aria-pressed={tab === status} onClick={() => setTab(status)}>{status === "open" ? "Open" : "Closed"}<span className="inbox-count">{threads.filter(thread => thread.mailbox === mailbox && thread.status === status).length}</span></button>)}
         </div>
@@ -113,22 +117,22 @@ export default function ContactsPage() {
       <section className={"inbox-reader" + (selected === "new" ? " is-composing" : "")} aria-label="Conversation">
         {selected === "new" ? <>
           <div className="inbox-titlebar">{backButton}<h2 tabIndex={-1}>New email</h2><button type="button" className="inbox-editor-icon" onClick={() => { setSelected(visible[0]?.id || ""); setReaderOpen(false); }} aria-label="Cancel new email"><X size={18} /></button></div>
-          <Composer mailbox={mailbox} initialDraft={newDraft} canWrite={canWrite} onSent={onSent} />
+          <Composer mailbox={writableMailboxes[0] || mailbox} mailboxes={writableMailboxes} initialDraft={newDraft} canWrite={canWrite} onSent={onSent} />
         </> : conversation ? <>
-          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2>{conversation.isSample && <p>Preview conversation</p>}</div><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!canWrite || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label></div>
+          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2>{conversation.isSample && <p>Preview conversation</p>}</div><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!writableMailboxes.includes(conversation.mailbox) || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label></div>
           <div className="inbox-thread">
             {conversation.messages.map(message => <article className={"inbox-message" + (message.kind === "internal_note" ? " is-note" : "")} key={message.id}>
               <div className="inbox-message-head">
                 <span className="inbox-avatar" aria-hidden="true">{initials(message.senderName || message.senderEmail)}</span>
                 <div className="inbox-message-sender"><strong>{message.kind === "internal_note" ? (message.senderName || "Admin") + " · Internal note" : message.senderName || message.senderEmail}</strong><small title={message.senderEmail}>{message.kind === "internal_note" ? "Visible to admins only" : message.senderEmail}</small></div>
                 <time dateTime={message.createdAt}>{timeLabel(message.createdAt)}</time>
-                {message.kind !== "internal_note" && canWrite && <div className="inbox-message-actions"><IconButton Icon={ArrowBendUpLeft} label="Reply to message" onClick={() => { document.querySelector('.inbox-compose-tabs button')?.click(); document.querySelector(".inbox-editor")?.focus(); }} /><IconButton Icon={ArrowBendUpRight} label="Forward" onClick={() => openDraft({subject:"Fwd: " + conversation.subject,body:"\n\n---------- Forwarded message ----------\nFrom: " + message.senderEmail + "\n\n" + message.textBody})} /></div>}
+                {message.kind !== "internal_note" && writableMailboxes.includes(conversation.mailbox) && <div className="inbox-message-actions"><IconButton Icon={ArrowBendUpLeft} label="Reply to message" onClick={() => { document.querySelector('.inbox-compose-tabs button')?.click(); document.querySelector(".inbox-editor")?.focus(); }} /><IconButton Icon={ArrowBendUpRight} label="Forward" onClick={() => openDraft({subject:"Fwd: " + conversation.subject,body:"\n\n---------- Forwarded message ----------\nFrom: " + message.senderEmail + "\n\n" + message.textBody})} /></div>}
               </div>
               <div className="inbox-message-body">{message.textBody || "No message text available."}</div>
             </article>)}
             <AttachmentSection messages={conversation.messages} />
           </div>
-          {canWrite && <Composer key={conversation.id} thread={conversation} mailbox={mailbox} canWrite={canWrite} onSent={onSent} onSampleSend={addSampleMessage} />}
+          {writableMailboxes.includes(conversation.mailbox) && <Composer key={conversation.id} thread={conversation} mailbox={conversation.mailbox} mailboxes={writableMailboxes} canWrite onSent={onSent} onSampleSend={addSampleMessage} />}
         </> : <><div className="inbox-mobile-empty-bar">{backButton}</div><div className="inbox-empty">{detail.isError ? <div role="alert"><p>Couldn’t load this conversation.</p><button type="button" className="pp-btn" onClick={() => detail.refetch()}>Try again</button></div> : detail.isLoading ? "Loading conversation…" : "Select a conversation to read it."}</div></>}
       </section>
     </div>

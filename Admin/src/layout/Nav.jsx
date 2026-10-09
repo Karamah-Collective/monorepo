@@ -2,27 +2,26 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useAdminStats } from "../api/queries.js";
-import { Icons, CloseIcon } from "../icons.jsx";
+import { Icons } from "../icons.jsx";
 import { NAV_GROUPS } from "./navigation.js";
-import { can, ROUTE_PERMISSION } from "../auth/permissions.js";
+import { canRoute } from "../auth/permissions.js";
 import logoLightUrl from "../../../Website/assets/images/kc_logo_small.webp";
 import logoDarkUrl from "../../../Website/assets/images/kc_logo_small_dark.webp";
 
-export function Brand({ name }) {
+const HIDDEN_NAV_GROUPS = new Set(["Communications"]);
+
+export function Brand() {
   return (
-    <>
+    <span className="brand-lockup">
       <span className="brand-mark">
         <img className="brand-logo brand-logo--light" src={logoLightUrl} alt="" />
         <img className="brand-logo brand-logo--dark" src={logoDarkUrl} alt="" />
       </span>
-      <span className="brand-copy">
-        {name.split(/\s+/)[0]}<span>ADMIN</span>
-      </span>
-    </>
+    </span>
   );
 }
 
-export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
+export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
   const { user, access } = useAuth();
   const { data } = useAdminStats();
   const location = useLocation();
@@ -37,19 +36,18 @@ export default function Nav({ open, collapsed, onClose, onCollapse, navRef }) {
     >
       <div className="pp-nav-brand">
         <NavLink to="/" aria-label="Karamah Collective overview">
-          <Brand name={name} />
+          <Brand />
         </NavLink>
-        <button
-          className="pp-nav-close icon-button"
-          onClick={onClose}
-          aria-label="Close menu"
-        >
-          <CloseIcon />
+        <button className="nav-search" type="button" onClick={onSearch} aria-label="Find a page">
+          <Icons.search size={17} />
+          <span>Find a page…</span>
+          <kbd>Ctrl K</kbd>
         </button>
       </div>
       <nav className="pp-nav-links pp-scroll" aria-label="Main navigation">
         {NAV_GROUPS.map((group) => {
-          const links = group.links.filter(link => can(access, link.permission || ROUTE_PERMISSION[link.to] || "read"));
+          if (HIDDEN_NAV_GROUPS.has(group.label)) return null;
+          const links = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
           if (!links.length) return null;
           const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
           const isClosed = Boolean(group.label) && closedGroups.has(group.label) && !active;

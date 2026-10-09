@@ -25,8 +25,8 @@ import { verifyTurnstile } from "../_turnstile.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const BREVO_SEND_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
-const CONTACT_TO_EMAIL = "maps@karamahcollective.com";
-const CONTACT_FROM_EMAIL = "maps@karamahcollective.com";
+const CONTACT_TO_EMAIL = "manarah@karamahcollective.com";
+const CONTACT_FROM_EMAIL = "manarah@karamahcollective.com";
 const DEV_CONTACT_TOKEN = "dev-local-contact";
 const BREVO_SMTP_PASSWORD_PREFIX = ["x", "smtpsib-"].join("");
 const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -524,7 +524,7 @@ export async function onRequestPost(context) {
     } else if (formType === "contact") {
       result = await sendContactEmail(env, data);
       if (!result?.error) {
-        await ingestInbox(env.DB, { from: { name: data.name, email: data.email }, mailbox: "maps@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
+        await ingestInbox(env.DB, { from: { name: data.name, email: data.email }, mailbox: "manarah@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
       }
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();

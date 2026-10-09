@@ -13,7 +13,7 @@
  *   CLOUDFLARE_ACCOUNT_ID
  *
  * Optional environment variables:
- *   REPORT_FROM                  defaults to maps@karamahcollective.com
+ *   REPORT_FROM                  defaults to manarah@karamahcollective.com
  *   REPORT_FROM_NAME             defaults to Manarah Maps
  *   REPORT_TO                    defaults to home@karamahcollective.com
  */
@@ -24,7 +24,7 @@ const CLOUDFLARE_GRAPHQL_URL = "https://api.cloudflare.com/client/v4/graphql";
 const BREVO_SMTP_PASSWORD_PREFIX = ["x", "smtpsib-"].join("");
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_HOSTNAME = "maps.karamahcollective.com";
-const DEFAULT_FROM = "maps@karamahcollective.com";
+const DEFAULT_FROM = "manarah@karamahcollective.com";
 const DEFAULT_FROM_NAME = "Manarah Maps";
 const DEFAULT_TO = "home@karamahcollective.com";
 

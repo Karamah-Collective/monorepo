@@ -39,7 +39,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  margin-left: 0;
   min-width: 0;
 }
 
@@ -66,10 +66,6 @@
 
 .workspace-search {
   margin-left: 0;
-}
-
-.topbar-page-actions:empty + .workspace-search {
-  margin-left: auto;
 }
 
 .pp-page > .pp-page-title,
@@ -163,29 +159,100 @@
 @media (max-width: 767px) {
   .workspace-topbar {
     min-height: 58px;
-    padding-block: 10px;
-    row-gap: 8px;
+    height: 58px;
+    padding: 0 16px;
+    gap: 8px;
   }
 
-  .breadcrumbs > span,
-  .breadcrumbs > svg {
+  .breadcrumbs {
     display: none;
   }
 
-  .breadcrumbs strong {
-    max-width: 48vw;
-    font-size: 20px;
+  .topbar-page-actions {
+    order: 0;
+    flex: 0 1 auto;
+    margin-left: 0;
+    gap: 4px;
+    overflow: hidden;
   }
 
-  .topbar-page-actions {
-    order: 5;
-    flex: 1 0 100%;
-    justify-content: flex-end;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
+  .topbar-actions {
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  .topbar-page-actions .website-header-actions,
+  .topbar-page-actions .hub-page-actions {
+    gap: 4px;
   }
 
   .topbar-page-actions .pp-btn {
     min-height: 36px;
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .topbar-page-actions .pp-btn svg {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .topbar-page-actions .pp-btn:not(:has(svg)) {
+    width: auto;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs {
+    max-width: 42vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs button {
+    width: auto;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .workspace-search {
+    order: 1;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    margin-left: auto;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .topbar-theme,
+  .topbar-map,
+  .mobile-menu {
+    width: 36px;
+    height: 36px;
+  }
+
+  .topbar-theme {
+    order: 2;
+  }
+
+  .topbar-map {
+    order: 3;
+  }
+}
+
+@media (min-width: 768px) {
+  .nav-is-collapsed .pp-nav-user {
+    padding-inline: 0;
   }
 }

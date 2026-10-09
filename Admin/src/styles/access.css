@@ -33,6 +33,42 @@
 .nav-group:not(.is-collapsed) .nav-group-label { color:var(--nav-text-strong); }
 .pp-nav-link { min-height:34px; margin:1px 0; }
 
+/* The icon rail is always navigable, regardless of expanded-sidebar group state. */
+@media (min-width:768px) {
+  .nav-is-collapsed .nav-group {
+    margin-bottom: 8px;
+  }
+  .nav-is-collapsed .nav-group + .nav-group {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .nav-is-collapsed .nav-group-label {
+    display: none;
+  }
+  .nav-is-collapsed .nav-group-links,
+  .nav-is-collapsed .nav-group.is-collapsed .nav-group-links {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav-is-collapsed .nav-group-links-inner {
+    overflow: visible;
+  }
+  .nav-is-collapsed .nav-bottom {
+    padding-top: 0;
+  }
+  .nav-is-collapsed .pp-nav-user {
+    box-sizing: border-box;
+    justify-content: center;
+    margin-top: 10px;
+    padding: 16px 0;
+    gap: 9px;
+  }
+  .nav-is-collapsed .pp-nav-user .user-details {
+    display: none;
+  }
+}
+
 /* Role library follows the same quiet, rule-led rhythm as an admin collection. */
 .access-role-grid {
   border-top:1px solid var(--border);

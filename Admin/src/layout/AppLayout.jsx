@@ -150,8 +150,8 @@ export default function AppLayout() {
         navRef={navRef}
         open={navOpen}
         collapsed={collapsed}
-        onClose={() => setNavOpen(false)}
         onCollapse={toggleCollapsed}
+        onSearch={() => setCommandOpen(true)}
       />
       <div className="workspace-main" inert={navOpen ? "" : undefined}>
         <header className="workspace-topbar">
@@ -169,26 +169,19 @@ export default function AppLayout() {
             <Icons.right size={12} />
             <strong>{current.label}</strong>
           </div>
-          <div id="topbar-page-actions" className="topbar-page-actions" aria-label="Page actions" />
-          <button
-            className="workspace-search"
-            aria-label="Find a page"
-            onClick={() => setCommandOpen(true)}
-          >
-            <Icons.search size={17} />
-            <span>Find a page…</span>
-            <kbd>Ctrl K</kbd>
-          </button>
-          <button
-            className="topbar-theme icon-button"
-            type="button"
-            onClick={toggleTheme}
-            aria-label={darkMode ? "Use light mode" : "Use dark mode"}
-            title={darkMode ? "Use light mode" : "Use dark mode"}
-          >
-            {darkMode ? <Icons.sun /> : <Icons.moon />}
-          </button>
-          <button className="topbar-map icon-button" type="button" onClick={signOut} aria-label="Sign out" title="Sign out"><Icons.signOut /></button>
+          <div className="topbar-actions">
+            <div id="topbar-page-actions" className="topbar-page-actions" aria-label="Page actions" />
+            <button
+              className="topbar-theme icon-button"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={darkMode ? "Use light mode" : "Use dark mode"}
+              title={darkMode ? "Use light mode" : "Use dark mode"}
+            >
+              {darkMode ? <Icons.sun /> : <Icons.moon />}
+            </button>
+            <button className="topbar-map icon-button" type="button" onClick={signOut} aria-label="Sign out" title="Sign out"><Icons.signOut /></button>
+          </div>
         </header>
         <main
           id="main-content"
