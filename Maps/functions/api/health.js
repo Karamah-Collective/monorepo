@@ -1,3 +1,4 @@
+// Deployment marker: rebuild Maps after the Gmail OAuth secret rollout.
 const headers = {
   "Content-Type": "application/json",
   "Cache-Control": "no-store",
