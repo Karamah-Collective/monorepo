@@ -8,8 +8,6 @@ import { canRoute } from "../auth/permissions.js";
 import logoLightUrl from "../../../Website/assets/images/kc_logo_small.webp";
 import logoDarkUrl from "../../../Website/assets/images/kc_logo_small_dark.webp";
 
-const HIDDEN_NAV_GROUPS = new Set(["Communications"]);
-
 export function Brand() {
   return (
     <span className="brand-lockup">
@@ -46,7 +44,6 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
       </div>
       <nav className="pp-nav-links pp-scroll" aria-label="Main navigation">
         {NAV_GROUPS.map((group) => {
-          if (HIDDEN_NAV_GROUPS.has(group.label)) return null;
           const links = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
           if (!links.length) return null;
           const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));

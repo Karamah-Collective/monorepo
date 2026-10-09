@@ -1,5 +1,39 @@
 # Admin inbox email setup
 
+## Gmail connection for Manarah
+
+The Manarah mailbox can connect directly to Gmail. This is the preferred path
+for receiving and sending from `manarah@karamahcollective.com`; it does not
+require Google Workspace administrator access because the mailbox owner grants
+the OAuth consent.
+
+Apply `Maps/migrations/0036_gmail_connections.sql` to both the production and
+Preview Maps D1 databases. Add these values to the Maps Pages project:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `GMAIL_CLIENT_ID` | variable | The Google OAuth web-client ID |
+| `GMAIL_CLIENT_SECRET` | secret | The Google OAuth web-client secret |
+| `GMAIL_OAUTH_REDIRECT_URI` | variable | `https://maps.karamahcollective.com/api/gmail/oauth/callback` |
+| `GMAIL_TOKEN_ENCRYPTION_KEY` | secret | A 32-byte key encoded as hex or base64 |
+
+The OAuth client must contain the exact redirect URI above. For local testing,
+also add `http://127.0.0.1:8788/api/gmail/oauth/callback` and use that local
+URI for `GMAIL_OAUTH_REDIRECT_URI` in local variables. Keep the client secret,
+refresh token, and encryption key out of the Admin build and browser code.
+
+After deployment, only `moontasir@karamahcollective.com` can open the OAuth
+connection from **Workspace → Admin preferences**. That account selects
+**Connect Gmail**, signs in as `manarah@karamahcollective.com`, and approves
+the Gmail read/send scopes. The callback stores only an encrypted refresh token
+in D1. Other authorized Admin members cannot start or disconnect OAuth, but can
+use the mailbox through the Admin inbox according to their roles. **Sync now**
+imports the mailbox; outbound messages from Manarah use Gmail after connection.
+
+The current implementation refreshes Gmail when an authorized member opens the
+Inbox, at most once every two minutes, and also exposes **Sync now** for an
+Administrator. It does not replace the mailbox's normal Gmail delivery.
+
 The admin inbox sends email through Brevo from two verified Google Workspace addresses:
 
 - `contact@karamahcollective.com` for the website, Forms, Links, and general enquiries.

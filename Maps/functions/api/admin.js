@@ -47,7 +47,8 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
-import { addInboxNote, composeInbox, getInboxThread, hasInboxPermission, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
+import { addInboxNote, composeInbox, getInboxThread, hasInboxPermission, ingestInbox, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
+import { disconnectGmail, gmailStatus, listGmailMessages, startGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -124,6 +125,8 @@ function permissionForAction(action) {
   if (action === "request-access") return "access.request";
   if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (["admin-stats", "admin-access"].includes(action)) return "dashboard.view";
+  if (action === "gmail-status") return "dashboard.view";
+  if (["gmail-oauth-start", "gmail-disconnect", "gmail-sync"].includes(action)) return "*";
   if (action === "system-health") return "dashboard.view";
   if (action === "analytics-dashboard") return "analytics.read";
   if (action === "admin-log") return "activity.read";
@@ -148,6 +151,7 @@ function inboxActionAllowed(access, action) {
 }
 async function authenticateAuthorized(request, env, action) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
+  if (["gmail-oauth-start", "gmail-disconnect"].includes(action) && auth.actor.email !== INITIAL_ADMIN_EMAIL) return { ok:false,status:403,error:"Only the primary administrator can manage the Gmail connection." };
   const access=await resolveAccess(env.DB, auth.actor);
   const allowed = action.startsWith("inbox-") ? inboxActionAllowed(access, action) : allows(access,permissionForAction(action));
   return access && allowed ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
@@ -158,6 +162,27 @@ async function authenticateWorkspaceMember(request, env) {
   return access ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your account does not have a workspace role." };
 }
 async function getAccess(db, actor) { return { access:(await resolveAccess(db,actor))||{roleId:"",roleName:"No role",permissions:[]} }; }
+async function syncGmail(db, env) {
+  const result = await listGmailMessages(db, env);
+  if (result.error) return result;
+  let imported = 0;
+  for (const message of result.messages || []) {
+    const saved = await ingestInbox(db, { ...message, mailbox: MANARAH_MAILBOX, to: { email: MANARAH_MAILBOX } });
+    if (saved.success && !saved.duplicate) imported += 1;
+  }
+  await db.prepare("UPDATE gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE mailbox=?").bind(MANARAH_MAILBOX).run();
+  return { success: true, imported, scanned: result.count || 0 };
+}
+async function listInboxWithGmail(db, _url, _actor, env, access) {
+  if (hasInboxPermission(access, "read") && access?.permissions?.some(permission => permission === "*" || permission === "inbox.*" || permission.startsWith("inbox.manarah."))) {
+    const status = await gmailStatus(db, env);
+    if (status.connected) {
+      const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
+      if (!last || Date.now() - last > 120000) await syncGmail(db, env);
+    }
+  }
+  return listInbox(db, access);
+}
 async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,name,description,permissions,is_preset FROM admin_roles ORDER BY is_preset DESC,name").all(); return {roles:results.map(r=>({id:r.id,name:r.name,description:r.description,permissions:parsePermissions(r.permissions),isPreset:!!r.is_preset}))}; }
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
@@ -612,6 +637,7 @@ async function getAdminTypeStyles(db) {
 
 const GET_ACTIONS = {
   "admin-access": (db, _url, actor) => getAccess(db, actor),
+  "gmail-status": (db, _url, _actor, env) => gmailStatus(db, env),
   "access-roles": (db) => getAccessRoles(db),
   "access-members": (db) => getAccessMembers(db),
   "access-settings": (db) => getAccessSettings(db),
@@ -630,7 +656,7 @@ const GET_ACTIONS = {
   "pending-edits": (db) => getPendingEdits(db),
   "admin-places": (db) => getAdminPlaces(db),
   "admin-contact": (db) => getAdminContacts(db),
-  "inbox-list": (db, _url, _actor, _env, access) => listInbox(db, access),
+  "inbox-list": listInboxWithGmail,
   "inbox-thread": (db, url, _actor, _env, access) => getInboxThread(db, url.searchParams.get("threadId"), access),
   "admin-wishes": (db) => getAdminWishes(db),
   "pending-events": (db) => getPendingEvents(db),
@@ -1272,6 +1298,9 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
+  "gmail-oauth-start": (db, data, env, actor) => startGmailOAuth(db, env, actor, data.returnTo),
+  "gmail-sync": (db, _data, env) => syncGmail(db, env),
+  "gmail-disconnect": (db) => disconnectGmail(db),
   "save-access-role": (db, data) => saveAccessRole(db, data),
   "save-access-member": (db, data, _env, actor) => saveAccessMember(db, data, actor),
   "save-my-profile": (db, data, _env, actor) => saveMyProfile(db, data, actor),

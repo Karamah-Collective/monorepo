@@ -1,3 +1,5 @@
+import { gmailStatus, sendGmailMessage, MANARAH_MAILBOX } from "./_gmail.js";
+
 export const INBOX_MAILBOXES = ["contact@karamahcollective.com", "manarah@karamahcollective.com"];
 const MAILBOXES = new Set(INBOX_MAILBOXES);
 const clean = (value, length = 10000) => String(value || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, length);
@@ -66,19 +68,25 @@ export async function replyInbox(db, env, data, actor, access) {
   const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=?").bind(clean(data.threadId,80)).first();
   const recipient = safeEmail(thread?.participant_email); const recipients = safeEmails(data.recipientEmails || [recipient]); const cc = safeEmails(data.cc); const bcc = safeEmails(data.bcc); const html = safeHtml(data.htmlBody); const text = textFromHtml(html);
   if (!thread || !recipient || !recipients.length || !canInboxMailbox(access, thread.mailbox, "read")) return { error:"Conversation not found." }; if (!text) return { error:"Write a reply before sending." };
-  const apiKey = clean(env.BREVO_API_KEY, 300); if (!apiKey || apiKey.startsWith("xsmtpsib-")) return { error:"A Brevo HTTP API key is required to send inbox replies." };
   const sender = inboxMailbox(data.mailbox || thread.mailbox); const subject = clean(data.subject || thread.subject || "Karamah Collective", 180); const attachments=attachmentsFrom(data.attachments,true);
   if (!canInboxMailbox(access, sender, "write")) return { error:"Your role cannot send from this mailbox." };
   if (Array.isArray(data.attachments) && !attachments.length) return { error:"Attachments must be files totalling 5 MB or less." };
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", { method:"POST", headers:{accept:"application/json","content-type":"application/json","api-key":apiKey}, body:JSON.stringify({ sender:{email:sender,name:"Karamah Collective"}, to:recipients.map(email=>({email,name:email===recipient?thread.participant_name||undefined:undefined})), ...(cc.length?{cc:cc.map(email=>({email}))}:{}), ...(bcc.length?{bcc:bcc.map(email=>({email}))}:{}), replyTo:{email:sender,name:"Karamah Collective"}, subject:subject.startsWith("Re:")?subject:`Re: ${subject}`, htmlContent:html, textContent:text, headers:{"In-Reply-To": thread.id}, tags:["admin-inbox"], ...(attachments.length ? {attachment:attachments.map(({name,content})=>({name,content}))}: {}) }) });
-  if (!response.ok) return { error:"Brevo could not send this reply. Check the verified sender and API key." };
-  const stamp = new Date().toISOString(); await db.batch([db.prepare("INSERT INTO inbox_messages (id,thread_id,direction,sender_email,sender_name,recipient_email,html_body,text_body,attachments_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(id("msg"),thread.id,"outbound",sender,actor?.name||"Karamah Collective",recipient,html,text,JSON.stringify(attachmentsFrom(data.attachments)),stamp),db.prepare("UPDATE inbox_threads SET mailbox=?,status='open',last_message_at=? WHERE id=?").bind(sender,stamp,thread.id)]);
+  let sent = {};
+  const gmail = sender === MANARAH_MAILBOX && (await gmailStatus(db, env)).connected;
+  if (gmail) {
+    sent = await sendGmailMessage(db, env, { to: recipients, cc, bcc, subject:subject.startsWith("Re:") ? subject : `Re: ${subject}`, text, html, attachments, threadId: thread.id });
+    if (sent.error) return sent;
+  } else {
+    const apiKey = clean(env.BREVO_API_KEY, 300); if (!apiKey || apiKey.startsWith("xsmtpsib-")) return { error: sender === MANARAH_MAILBOX ? "Connect Manarah Gmail or configure the Brevo HTTP API key before sending." : "A Brevo HTTP API key is required to send inbox replies." };
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", { method:"POST", headers:{accept:"application/json","content-type":"application/json","api-key":apiKey}, body:JSON.stringify({ sender:{email:sender,name:"Karamah Collective"}, to:recipients.map(email=>({email,name:email===recipient?thread.participant_name||undefined:undefined})), ...(cc.length?{cc:cc.map(email=>({email}))}:{}), ...(bcc.length?{bcc:bcc.map(email=>({email}))}:{}), replyTo:{email:sender,name:"Karamah Collective"}, subject:subject.startsWith("Re:")?subject:`Re: ${subject}`, htmlContent:html, textContent:text, headers:{"In-Reply-To": thread.id}, tags:["admin-inbox"], ...(attachments.length ? {attachment:attachments.map(({name,content})=>({name,content}))}: {}) }) });
+    if (!response.ok) return { error:"Brevo could not send this reply. Check the verified sender and API key." };
+  }
+  const stamp = new Date().toISOString(); await db.batch([db.prepare("INSERT INTO inbox_messages (id,thread_id,direction,sender_email,sender_name,recipient_email,html_body,text_body,provider_message_id,attachments_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(id("msg"),thread.id,"outbound",sender,actor?.name||"Karamah Collective",recipient,html,text,sent.providerMessageId || "",JSON.stringify(attachmentsFrom(data.attachments)),stamp),db.prepare("UPDATE inbox_threads SET mailbox=?,status='open',last_message_at=? WHERE id=?").bind(sender,stamp,thread.id)]);
   return { success:true };
 }
 export async function composeInbox(db, env, data, actor, access) {
   const recipients = safeEmails(data.recipientEmails || data.recipientEmail), recipient = recipients[0], subject = clean(data.subject, 180), html = safeHtml(data.htmlBody), text = textFromHtml(html);
   if (!recipient) return { error: "Enter a valid recipient email." }; if (!subject) return { error: "Add a subject." }; if (!text) return { error: "Write a message before sending." };
-  const apiKey = clean(env.BREVO_API_KEY, 300); if (!apiKey || apiKey.startsWith("xsmtpsib-")) return { error: "A Brevo HTTP API key is required to send inbox replies." };
   const stamp = new Date().toISOString(), threadId = id("thread"), mailbox = inboxMailbox(data.mailbox);
   if (!canInboxMailbox(access, mailbox, "write")) return { error: "Your role cannot send from this mailbox." };
   await db.prepare("INSERT INTO inbox_threads (id,subject,participant_email,participant_name,mailbox,source,status,unread_count,last_message_at,created_at) VALUES (?,?,?,?,?,'outbound','open',0,?,?)").bind(threadId, subject, recipient, clean(data.recipientName,120), mailbox, stamp, stamp).run();

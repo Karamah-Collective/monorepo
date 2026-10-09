@@ -238,6 +238,24 @@ Set `BREVO_API_KEY` on the Maps Pages project to email access requests to the
 administrator selected by the requester. Requests remain stored in D1 when
 email delivery is not configured.
 
+### Admin Gmail connection
+
+For the direct Manarah Gmail integration, apply
+`Maps/migrations/0036_gmail_connections.sql` to the production and Preview Maps
+D1 databases. Add `GMAIL_CLIENT_ID` and `GMAIL_OAUTH_REDIRECT_URI` as Maps
+variables, and add `GMAIL_CLIENT_SECRET` plus a 32-byte hex/base64
+`GMAIL_TOKEN_ENCRYPTION_KEY` as Maps secrets. The production redirect URI is
+`https://maps.karamahcollective.com/api/gmail/oauth/callback`; add the local
+redirect URI separately when developing with Wrangler.
+
+After the Maps and Admin builds are live, only
+`moontasir@karamahcollective.com` opens **Workspace → Admin preferences →
+Manarah Gmail**, connects the mailbox while signed in as
+`manarah@karamahcollective.com`, and runs the first sync. The stored Gmail
+refresh token is encrypted server-side. Other authorized Admin members cannot
+start or disconnect OAuth, while mailbox-scoped permissions continue to control
+which members can read and send from Manarah.
+
 If the existing Website project uses the old repository, create a replacement Pages project connected to this monorepo. Cloudflare documents creating a new project when changing repositories in its [known issues](https://developers.cloudflare.com/pages/platform/known-issues/).
 
 1. In **Workers & Pages**, create a **Pages** application and import this GitHub repository. Use a new project name, for example `karamah-website-monorepo`.

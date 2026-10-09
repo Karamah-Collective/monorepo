@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { useDisconnectGmail, useGmailStatus, useStartGmailOAuth, useSyncGmail } from "../api/queries.js";
 import { useToast } from "../components/Toast.jsx";
 
 function stored(key, fallback) {
@@ -16,6 +19,15 @@ function Choice({ title, description, value, onChange, options }) {
 
 export default function AdminPreferencesPage() {
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, access } = useAuth();
+  const isAdministrator = access?.permissions?.includes("*");
+  const isGmailOwner = user?.email?.toLowerCase() === "moontasir@karamahcollective.com";
+  const gmail = useGmailStatus({ enabled: isAdministrator });
+  const connect = useStartGmailOAuth();
+  const sync = useSyncGmail();
+  const disconnect = useDisconnectGmail();
   const [sidebar, setSidebar] = useState(() => stored("admin-sidebar", "expanded"));
   const [density, setDensity] = useState(() => stored("admin-table-density", "compact"));
   const [pageSize, setPageSize] = useState(() => stored("admin-table-page-size", "25"));
@@ -37,8 +49,35 @@ export default function AdminPreferencesPage() {
     } catch {}
   }, [sidebar, density, pageSize, readingScale, motion, contrast]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const result = params.get("gmail");
+    if (result === "connected") toast("Manarah Gmail connected");
+    if (result === "error") toast(params.get("gmailError") || "Gmail could not be connected");
+    if (result) navigate(location.pathname, { replace: true });
+  }, [location.pathname, location.search, navigate, toast]);
+
+  function connectGmail() {
+    connect.mutate({ returnTo: `${window.location.origin}${location.pathname}` }, {
+      onSuccess: (result) => {
+        if (result.authorizationUrl) window.location.assign(result.authorizationUrl);
+      },
+    });
+  }
+
   return <div className="pp-page admin-preferences-page">
     <h1 className="pp-page-title">Admin preferences</h1>
+    {isAdministrator && <section className="admin-preferences-panel gmail-connection-panel" aria-label="Gmail connection">
+      <div className="admin-preference-row">
+        <div className="gmail-connection-copy"><h2>Manarah Gmail</h2><span className={`gmail-connection-state${gmail.data?.connected ? " is-connected" : ""}`}>{gmail.isLoading ? "Checking connection" : gmail.data?.connected ? gmail.data.accountEmail : !isGmailOwner ? "Primary admin setup pending" : gmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-actions">
+          {gmail.data?.connected && <button className="pp-btn" type="button" disabled={sync.isPending} onClick={() => sync.mutate()}>{sync.isPending ? "Syncing…" : "Sync now"}</button>}
+          {isGmailOwner && gmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnect.isPending} onClick={() => disconnect.mutate()}>{disconnect.isPending ? "Disconnecting…" : "Disconnect"}</button>}
+          {isGmailOwner && !gmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!gmail.data?.configured || connect.isPending} onClick={connectGmail}>{connect.isPending ? "Opening Google…" : "Connect Gmail"}</button>}
+        </div>
+      </div>
+      {(connect.error || sync.error || disconnect.error || gmail.error) && <p className="pp-error-text gmail-connection-error">{(connect.error || sync.error || disconnect.error || gmail.error).message}</p>}
+    </section>}
     <div className="admin-preferences-panel">
       <Choice title="Sidebar" description="Choose whether your navigation begins expanded or compact on desktop." value={sidebar} onChange={setSidebar} options={[{ value: "expanded", label: "Expanded" }, { value: "collapsed", label: "Compact" }]} />
       <Choice title="Table density" description="Use comfortable rows by default, or choose compact rows when reviewing large collections." value={density} onChange={setDensity} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} />

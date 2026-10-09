@@ -4,6 +4,7 @@ import { apiGet, apiPost } from "./client.js";
 // ── Read queries ─────────────────────────────────────────────────────────
 
 export const useAdminStats = () => useQuery({ queryKey: ["admin-stats"], queryFn: () => apiGet("admin-stats") });
+export const useGmailStatus = (options = {}) => useQuery({ queryKey: ["gmail-status"], queryFn: () => apiGet("gmail-status"), staleTime: 30_000, ...options });
 export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn: () => apiGet("pending-new") });
 export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
 export const useAdminPlaces = () => useQuery({ queryKey: ["admin-places"], queryFn: () => apiGet("admin-places") });
@@ -51,6 +52,9 @@ export const useRefreshPlaceInfo = () => useAdminMutation("refresh-place-info", 
 export const useDeletePlace = () => useAdminMutation("delete-place", ["admin-places", "admin-stats", "admin-events", "admin-reviews"]);
 export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
 export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
+export const useStartGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["gmail-status"]);
+export const useSyncGmail = () => useAdminMutation("gmail-sync", ["gmail-status", "inbox"]);
+export const useDisconnectGmail = () => useAdminMutation("gmail-disconnect", ["gmail-status", "inbox"]);
 export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]);
 export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);
 export const useSetInboxStatus = () => useAdminMutation("inbox-status", ["inbox"]);
