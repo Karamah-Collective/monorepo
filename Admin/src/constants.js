@@ -1,4 +1,4 @@
-// Deployment marker: rebuild Admin after the Gmail OAuth secret rollout.
+// Deployment marker: refresh the Admin bundle after the Gmail rollout.
 export const TYPE_OPTIONS = [
   { value: "space", label: "Spaces" },
   { value: "restaurant", label: "Food" },
