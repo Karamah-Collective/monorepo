@@ -180,11 +180,6 @@ export default function SocialVideosPage() {
   return (
     <div className="pp-page">
       <h1 className="pp-page-title">Social Videos</h1>
-      <p className="pp-page-lead">
-        Metadata-only clips for the Anar Discover feed. Tapping a tile opens
-        TikTok, Instagram, or YouTube — nothing is hosted here.
-      </p>
-
       <form className="pp-panel pp-social-form" onSubmit={onSubmit}>
         <h2 className="pp-panel-title">Add video</h2>
 

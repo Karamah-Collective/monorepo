@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { GIFEncoder, applyPalette, quantize } from "gifenc";
 import { Icons } from "../icons.jsx";
+import PageHeaderActions from "../components/PageHeaderActions.jsx";
 import karamahLogoUrl from "../assets/karamah-wordmark.svg";
 
 const QR_API = "https://api.qrserver.com/v1/create-qr-code/";
@@ -660,10 +661,7 @@ export default function QrGeneratorPage() {
   }
 
   return <div className="pp-page qr-generator-page">
-    <header className="qr-page-head">
-      <div><span className="eyebrow">SHARED QR TOOL</span><h1 className="pp-page-title">QR generator</h1><p className="pp-page-lead">Create Karamah-styled QR artwork for forms, link hub items, campaigns, or any trusted public URL.</p></div>
-      {source === "form" && <a className="pp-btn" href="/forms">Back to forms</a>}
-    </header>
+    {source === "form" && <PageHeaderActions><a className="pp-btn" href="/forms">Back to forms</a></PageHeaderActions>}
     <section className="qr-generator-layout">
       <div className="qr-controls">
         {title && <div className="qr-source-note"><Icons.forms size={18} /><span><strong>{title}</strong><small>Loaded from Forms sharing</small></span></div>}

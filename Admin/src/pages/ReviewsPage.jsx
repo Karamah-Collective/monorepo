@@ -129,7 +129,6 @@ export default function ReviewsPage() {
 
   return <div className="pp-page">
     <h1 className="pp-page-title">Reviews</h1>
-    <p className="pp-page-lead">Moderate review visibility, individual uploads, and reviewer access from one focused control panel.</p>
     {isLoading && <LoadingState />}
     {error && <p className="pp-error-text">{error.message}</p>}
     {data && <DataTable data={data} columns={columns} getRowId={(row) => row.rowIndex} emptyMessage="No reviews." />}

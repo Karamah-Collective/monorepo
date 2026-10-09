@@ -20,6 +20,7 @@ import { isDuplicateInPlaces, isDuplicateInNew, namesMatch } from "../_gas-compa
 import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 import { readAppSettings } from "../_app-settings.js";
+import { ingestInbox } from "../_inbox.js";
 import { verifyTurnstile } from "../_turnstile.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
@@ -522,6 +523,9 @@ export async function onRequestPost(context) {
       result = await handleEditSubmission(env, data, emailHash);
     } else if (formType === "contact") {
       result = await sendContactEmail(env, data);
+      if (!result?.error) {
+        await ingestInbox(env.DB, { from: { name: data.name, email: data.email }, mailbox: "maps@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
+      }
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();
       let locationName = data.locationName || "";

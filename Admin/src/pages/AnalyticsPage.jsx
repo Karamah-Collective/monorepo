@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMapAnalytics } from "../api/queries.js";
 import { LoadingState } from "../components/QueryState.jsx";
+import PageHeaderActions from "../components/PageHeaderActions.jsx";
 import { SystemHealthPanel } from "./SystemHealthPage.jsx";
 
 const PERIODS = [{ value: 1, label: "24h" }, { value: 7, label: "7d" }, { value: 30, label: "30d" }, { value: 90, label: "90d" }];
@@ -52,11 +53,8 @@ export default function AnalyticsPage() {
   const searchViews = modes.filter(({ event, mode }) => event === "place_opened" && ["search", "search_result"].includes(mode)).reduce((sum, item) => sum + item.value, 0);
   const conversion = events.search_performed ? Math.round((searchViews / events.search_performed) * 100) : 0;
   return <div className="pp-page analytics-page">
-    <header className="analytics-heading">
-      <div><div className="analytics-kicker">WORKSPACE / INSIGHTS</div><h1 className="pp-page-title">Analytics &amp; Health</h1><p className="pp-page-lead">One workspace for product signals, service reliability, and the operational context behind both.</p></div>
-      <div className="analytics-period pp-type-style-tabs" aria-label="Analytics period">{PERIODS.map(({ value, label }) => <button key={value} className={days === value ? "active" : ""} aria-pressed={days === value} onClick={() => setDays(value)}>{label}</button>)}</div>
-    </header>
-    <section className="analytics-section" aria-labelledby="analytics-section-title"><header className="analytics-section-heading"><div><span className="analytics-kicker">ANALYTICS</span><h2 id="analytics-section-title">Product analytics</h2><p>How people discover and use the map.</p></div></header>
+    <PageHeaderActions><div className="analytics-period pp-type-style-tabs" aria-label="Analytics period">{PERIODS.map(({ value, label }) => <button key={value} className={days === value ? "active" : ""} aria-pressed={days === value} onClick={() => setDays(value)}>{label}</button>)}</div></PageHeaderActions>
+    <section className="analytics-section" aria-labelledby="analytics-section-title"><header className="analytics-section-heading"><div><h2 id="analytics-section-title">Product analytics</h2></div></header>
     {query.isLoading ? <LoadingState /> : query.error ? <section className="query-error"><strong>Analytics could not be loaded</strong><p>{query.error.message}</p><button className="pp-btn" onClick={() => query.refetch()}>Try again</button></section> : <>
       {warnings.length > 0 && <p className="analytics-notice">{warnings.join(" ")}</p>}
       <section className="analytics-kpis" aria-label="Key analytics"><Metric label="Unique users" value={query.data?.cloudflare?.visitors}/><Metric label="Page loads" value={query.data?.cloudflare?.pageLoads}/><Metric label="Searches" value={events.search_performed}/><Metric label="Place views" value={events.place_opened}/><Metric label="Location requests" value={events.location_requested}/></section>

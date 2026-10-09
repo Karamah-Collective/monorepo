@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import useUnsavedChanges from '../components/useUnsavedChanges.js';
 import karamahLogo from '../../../Website/assets/images/kc_logo_small.webp';
 import ManageActions from '../components/ManageActions.jsx';
+import PageHeaderActions from '../components/PageHeaderActions.jsx';
 
 const EMPTY_LINK = { url: '', title: '', description: '', image_url: '', custom_site_name: '', custom_favicon_url: '', link_kind: 'link', social_platform: '', social_handle: '', active: 1, featured: 0, sort_order: 0 };
 const SETTINGS_DEFAULTS = {
@@ -291,10 +292,7 @@ export default function LinkHubPage() {
   }
 
   return <div className="pp-page link-hub-page">
-    <div className="hub-page-head">
-      <div><span className="eyebrow">PUBLIC CHANNEL</span><h1 className="pp-page-title">Link hub</h1><p className="pp-page-lead">A single, considered home for every Karamah destination.</p></div>
-      <div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page <Icons.arrowUpRight size={14} /></a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}><Icons.plusCircle size={15} /> Add item</button></div>
-    </div>
+    <PageHeaderActions><div className="hub-page-actions"><a className="pp-btn" href={linksOrigin} target="_blank" rel="noreferrer">Open public page <Icons.arrowUpRight size={14} /></a><button className="pp-btn pp-btn-primary" onClick={() => setEditing(EMPTY_LINK)} disabled={!query.data}><Icons.plusCircle size={15} /> Add item</button></div></PageHeaderActions>
     {query.error && <div className="query-error" role="alert"><strong>Link hub data could not be loaded</strong><p>{query.error.message}</p><button className="pp-btn" onClick={() => query.refetch()}>Try again</button></div>}
     {query.isLoading && <LoadingState />}
     {draft && <>

@@ -440,10 +440,6 @@ export default function AppSettingsPage() {
   return (
     <div className="pp-page">
       <h1 className="pp-page-title">Map settings</h1>
-      <p className="pp-page-lead">
-        Choose how visitors experience the map. Your team can follow saved
-        changes in the activity log.
-      </p>
       {query.isLoading && <LoadingState />}
       {query.error && (
         <div role="alert">

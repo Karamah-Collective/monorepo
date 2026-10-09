@@ -1,25 +1,17 @@
 import { Icons } from "../icons.jsx";
 import { websiteOrigin } from "../api/website-client.js";
+import PageHeaderActions from "./PageHeaderActions.jsx";
 
-export default function WebsitePageHeader({ title, description, children }) {
+export default function WebsitePageHeader({ children }) {
   return (
-    <div className="website-page-heading">
-      <div>
-        <h1 className="pp-page-title">{title}</h1>
-        <p className="pp-page-lead">{description}</p>
-      </div>
+    <PageHeaderActions>
       <div className="website-header-actions">
         {children}
-        <a
-          href={websiteOrigin}
-          target="_blank"
-          rel="noreferrer"
-          className="pp-btn"
-        >
+        <a href={websiteOrigin} target="_blank" rel="noreferrer" className="pp-btn">
           View website <Icons.arrowUpRight size={15} />
         </a>
       </div>
-    </div>
+    </PageHeaderActions>
   );
 }
 

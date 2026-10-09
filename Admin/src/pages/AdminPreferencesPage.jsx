@@ -39,7 +39,6 @@ export default function AdminPreferencesPage() {
 
   return <div className="pp-page admin-preferences-page">
     <h1 className="pp-page-title">Admin preferences</h1>
-    <p className="pp-page-lead">Personal workspace choices stored in this browser. They never affect public Maps, Website, or Links.</p>
     <div className="admin-preferences-panel">
       <Choice title="Sidebar" description="Choose whether your navigation begins expanded or compact on desktop." value={sidebar} onChange={setSidebar} options={[{ value: "expanded", label: "Expanded" }, { value: "collapsed", label: "Compact" }]} />
       <Choice title="Table density" description="Use comfortable rows by default, or choose compact rows when reviewing large collections." value={density} onChange={setDensity} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} />

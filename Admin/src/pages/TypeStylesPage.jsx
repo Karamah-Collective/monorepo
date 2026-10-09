@@ -177,10 +177,6 @@ export default function TypeStylesPage() {
   return (
     <div className="pp-page">
       <h1 className="pp-page-title">Type Styles</h1>
-      <p className="pp-page-lead">
-        Set the marker language for each type. Built-ins cover the common cases;
-        uploads are for special icons the library does not cover.
-      </p>
       {isLoading && <LoadingState />}
       {error && <p className="pp-error-text">{error.message}</p>}
       {!!categoryOrder.length && (

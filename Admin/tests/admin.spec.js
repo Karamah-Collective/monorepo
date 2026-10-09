@@ -100,6 +100,110 @@ test("moderation still calls the existing actions and shows feedback", async ({
   });
 });
 
+test("inbox uses API threads and sends supported actions", async ({ page }) => {
+  await mockAdmin(page, {
+    "inbox-list": { threads: [{
+      id: "thread-1", subject: "Partnership inquiry", participantName: "Aisha Rahman",
+      participantEmail: "aisha@example.org", mailbox: "contact@karamahcollective.com",
+      status: "open", unreadCount: 1, lastMessageAt: "2026-10-09T10:24:00Z",
+      preview: "Could we discuss a partnership?",
+    }] },
+    "inbox-thread": { thread: {
+      id: "thread-1", subject: "Partnership inquiry", participantName: "Aisha Rahman",
+      participantEmail: "aisha@example.org", mailbox: "contact@karamahcollective.com", status: "open",
+    }, messages: [{
+      id: "message-1", direction: "inbound", senderName: "Aisha Rahman",
+      senderEmail: "aisha@example.org", recipientEmail: "contact@karamahcollective.com",
+      textBody: "Could we discuss a partnership?", createdAt: "2026-10-09T10:24:00Z",
+    }] },
+  });
+  await page.goto("/contacts");
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Aisha Rahman.*Partnership inquiry/ })).toBeVisible();
+  if (process.env.INBOX_CAPTURE) await page.screenshot({ path: process.env.INBOX_CAPTURE });
+  await page.getByRole("textbox", { name: "Search conversations" }).fill("no match");
+  await expect(page.getByText("No matching conversations.")).toBeVisible();
+  await page.getByRole("textbox", { name: "Search conversations" }).fill("");
+  await expect(page.getByText("Could we discuss a partnership?").last()).toBeVisible();
+  await page.getByRole("textbox", { name: "Email message" }).fill("Thank you for writing.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("status")).toContainText("Reply sent");
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "inbox-reply",
+    body: {
+      threadId: "thread-1", mailbox: "contact@karamahcollective.com",
+      subject: "Partnership inquiry", htmlBody: "Thank you for writing.", attachments: [],
+    },
+  });
+  await page.getByRole("button", { name: "Internal note" }).click();
+  await page.getByRole("textbox", { name: "Email message" }).fill("The team will follow up on Tuesday.");
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByRole("status")).toContainText("Internal note saved");
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "inbox-note",
+    body: { threadId: "thread-1", htmlBody: "The team will follow up on Tuesday." },
+  });
+  await page.locator(".inbox-status select").selectOption("closed");
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "inbox-status", body: { threadId: "thread-1", status: "closed" },
+  });
+  await page.getByRole("button", { name: "New email" }).click();
+  await page.getByRole("textbox", { name: "To" }).fill("new@example.org");
+  await page.getByRole("textbox", { name: "Subject" }).fill("Hello");
+  await expect(page.getByRole("textbox", { name: "CC", exact: true })).toBeHidden();
+  await page.getByRole("button", { name: "Cc / Bcc" }).click();
+  await page.getByRole("textbox", { name: "CC", exact: true }).fill("team@example.org");
+  await page.getByRole("textbox", { name: "BCC", exact: true }).fill("archive@example.org");
+  await page.getByRole("textbox", { name: "Email message" }).fill("A new message.");
+  await page.getByRole("button", { name: "Send" }).click();
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({
+    action: "inbox-compose",
+    body: {
+      recipientEmails: ["new@example.org"], subject: "Hello",
+      cc: "team@example.org", bcc: "archive@example.org",
+      mailbox: "contact@karamahcollective.com", htmlBody: "A new message.", attachments: [],
+    },
+  });
+});
+
+for (const width of [360, 834, 1440]) {
+  test(`inbox panes remain usable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockAdmin(page);
+    await page.goto("/contacts");
+    const list = page.getByRole("complementary", { name: "Conversations" });
+    const reader = page.getByRole("region", { name: "Conversation", exact: true });
+    await expect(page.locator(".inbox-row").first()).toBeVisible();
+    const bounds = await list.boundingBox();
+    expect(bounds.width).toBeGreaterThanOrEqual(260);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    if (width < 768) {
+      await expect(reader).toBeHidden();
+      await page.locator(".inbox-row").first().click();
+      await expect(reader).toBeVisible();
+      await expect(list).toBeHidden();
+      await expect(reader.getByRole("heading", { name: "Partnership inquiry" })).toBeFocused();
+      await page.getByRole("button", { name: "Back to conversations" }).click();
+      await expect(list).toBeVisible();
+      await expect(page.locator('.inbox-row[aria-current="true"]')).toBeFocused();
+    } else {
+      await expect(reader).toBeVisible();
+      const headerDelta = await page.evaluate(() => Math.abs(
+        document.querySelector(".inbox-titlebar").getBoundingClientRect().bottom -
+        document.querySelector(".inbox-list-head").getBoundingClientRect().bottom,
+      ));
+      expect(headerDelta).toBeLessThanOrEqual(1);
+    }
+    await page.getByRole("button", { name: "New email" }).click();
+    await expect(page.getByRole("textbox", { name: "To", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Send from email" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Attach files" })).toHaveCount(1);
+    expect(await page.locator(".inbox-shell").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.getByRole("button", { name: "Cancel new email" }).click();
+    await expect(list).toBeVisible();
+  });
+}
+
 test("settings section switching preserves drafts and saves the full settings", async ({
   page,
 }) => {

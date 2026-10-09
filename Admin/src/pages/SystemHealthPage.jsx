@@ -3,15 +3,21 @@ import { Icons } from "../icons.jsx";
 import { LoadingState } from "../components/QueryState.jsx";
 
 const LABELS = { frontend: "Web", api: "API", database: "D1" };
+const UPTIME_SEGMENTS = 48;
 function State({ value }) { return <span className={`health-state health-${String(value || "Unknown").toLowerCase()}`}>{value || "Unknown"}</span>; }
 function date(value) { return value ? new Date(value).toLocaleString() : "Unavailable"; }
 function duration(seconds) { if (!seconds) return "Unavailable"; const minutes = Math.round(seconds / 60); return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`; }
 function metric(value, suffix = "") { if (value == null || (typeof value === "string" && !value.trim())) return "Unavailable"; const number = Number(value); return Number.isFinite(number) ? `${number.toFixed(suffix === "%" ? 3 : 0)}${suffix}` : "Unavailable"; }
+function fallbackTimeline(uptime) {
+  const operational = Math.round((uptime / 100) * UPTIME_SEGMENTS);
+  return Array.from({ length: UPTIME_SEGMENTS }, (_, index) => index < operational ? "up" : "unknown");
+}
 
 function UptimeMeter({ value, timeline }) {
   const uptime = Math.max(0, Math.min(100, Number(value)));
   const label = `${uptime.toFixed(3)} percent uptime over the last 24 hours`;
-  return <div className="health-uptime-value"><i className="health-uptime-meter" role="img" aria-label={label}>{timeline?.length ? timeline.map((state, index) => <b className={`health-uptime-segment health-uptime-${state}`} key={index} title={`${state === "down" ? "Outage" : "Operational"} · ${index * 30}-${(index + 1) * 30} minutes ago`} />) : <b style={{ "--uptime-percent": `${uptime}%` }} />}</i><strong>{metric(uptime, "%")}</strong></div>;
+  const segments = timeline?.length ? timeline : fallbackTimeline(uptime);
+  return <div className="health-uptime-value"><i className="health-uptime-meter" role="img" aria-label={label}>{segments.map((state, index) => <b className={`health-uptime-segment health-uptime-${state}`} key={index} title={`${state === "down" ? "Outage" : state === "unknown" ? "No detailed check data" : "Operational"} · ${index * 30}-${(index + 1) * 30} minutes ago`} />)}</i><strong>{metric(uptime, "%")}</strong></div>;
 }
 
 function Last24HoursSummary({ services, incidents = [] }) {

@@ -73,14 +73,11 @@ export const NAV_GROUPS = [
         count: "pendingWishes",
         description: "Listen to ideas and track what the community needs.",
       },
-      {
-        to: "/contacts",
-        label: "Inbox",
-        icon: "mail",
-        count: "unrepliedContacts",
-        description: "Manage messages and keep conversations moving.",
-      },
     ],
+  },
+  {
+    label: "Communications",
+    links: [{ to: "/contacts", label: "Inbox", icon: "mail", count: "unrepliedContacts", description: "One shared inbox for Website, Maps, Forms, and Links." }],
   },
   {
     label: "Maps / configuration",

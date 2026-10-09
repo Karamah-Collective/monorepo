@@ -47,6 +47,7 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
+import { addInboxNote, composeInbox, getInboxThread, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -129,7 +130,7 @@ function permissionForAction(action) {
   if (action.includes("weekly-report")) return action.startsWith("save-") || action.startsWith("delete-") || action.startsWith("unsubscribe-") ? "reports.write" : "reports.read";
   if (action.startsWith("forms-")) return action === "forms-list" || action === "forms-get" ? "forms.read" : "forms.write";
   if (action.includes("link-hub")) return action.startsWith("admin-") ? "links.read" : "links.write";
-  if (["admin-contact","update-contact-replied"].includes(action)) return action === "admin-contact" ? "moderation.contacts.read" : "moderation.contacts.write";
+  if (["admin-contact","update-contact-replied","inbox-list","inbox-thread","inbox-reply","inbox-compose","inbox-status","inbox-note"].includes(action)) return ["admin-contact","inbox-list","inbox-thread"].includes(action) ? "moderation.contacts.read" : "moderation.contacts.write";
   if (["admin-wishes","update-wish-approved","update-wish-implemented"].includes(action)) return action === "admin-wishes" ? "moderation.wishes.read" : "moderation.wishes.write";
   if (["pending-new","pending-edits","approve-new","reject-new","approve-edit","reject-edit"].includes(action)) return action.startsWith("pending-") ? "moderation.places.read" : "moderation.places.write";
   if (["pending-event-edits","approve-event-edit","reject-event-edit"].includes(action)) return action === "pending-event-edits" ? "moderation.events.read" : "moderation.events.write";
@@ -624,6 +625,8 @@ const GET_ACTIONS = {
   "pending-edits": (db) => getPendingEdits(db),
   "admin-places": (db) => getAdminPlaces(db),
   "admin-contact": (db) => getAdminContacts(db),
+  "inbox-list": (db) => listInbox(db),
+  "inbox-thread": (db, url) => getInboxThread(db, url.searchParams.get("threadId")),
   "admin-wishes": (db) => getAdminWishes(db),
   "pending-events": (db) => getPendingEvents(db),
   "pending-event-edits": (db) => getPendingEventEdits(db),
@@ -1297,6 +1300,10 @@ const POST_ACTIONS = {
   "update-sponsor": (db, data) => updateSponsor(db, data),
   "update-type-style": (db, data) => updateTypeStyle(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
+  "inbox-reply": (db, data, env, actor) => replyInbox(db, env, data, actor),
+  "inbox-compose": (db, data, env, actor) => composeInbox(db, env, data, actor),
+  "inbox-status": (db, data) => setInboxStatus(db, data),
+  "inbox-note": (db, data, _env, actor) => addInboxNote(db, data, actor),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
   "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),
   "approve-event": (db, data, env) => approveEvent(db, data.eventId, env),

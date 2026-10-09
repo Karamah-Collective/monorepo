@@ -27,7 +27,9 @@ export default function AppLayout() {
   const navRef = useRef(null);
   const mainRef = useRef(null);
   const current =
-    NAV_LINKS.find((link) => link.to === location.pathname) || NAV_LINKS[0];
+    NAV_LINKS.find((link) => link.to === location.pathname) ||
+    NAV_LINKS.find((link) => link.to !== "/" && location.pathname.startsWith(link.to + "/")) ||
+    NAV_LINKS[0];
   useEffect(() => {
     setNavOpen(false);
     mainRef.current?.scrollTo(0, 0);
@@ -167,6 +169,7 @@ export default function AppLayout() {
             <Icons.right size={12} />
             <strong>{current.label}</strong>
           </div>
+          <div id="topbar-page-actions" className="topbar-page-actions" aria-label="Page actions" />
           <button
             className="workspace-search"
             aria-label="Find a page"
@@ -194,13 +197,6 @@ export default function AppLayout() {
           tabIndex={-1}
         >
           <div className="route-content" key={location.pathname}>
-            {location.pathname !== "/" && (
-              <div className="page-eyebrow">
-                {current.group}
-                <span>/</span>
-                {current.description}
-              </div>
-            )}
             <Outlet />
           </div>
           <footer className="workspace-footer">

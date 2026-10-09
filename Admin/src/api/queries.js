@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "./client.js";
 
 // ── Read queries ─────────────────────────────────────────────────────────
@@ -8,6 +8,8 @@ export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn
 export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
 export const useAdminPlaces = () => useQuery({ queryKey: ["admin-places"], queryFn: () => apiGet("admin-places") });
 export const useAdminContacts = () => useQuery({ queryKey: ["admin-contact"], queryFn: () => apiGet("admin-contact") });
+export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => apiGet("inbox-list") });
+export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: keepPreviousData });
 export const useAdminWishes = () => useQuery({ queryKey: ["admin-wishes"], queryFn: () => apiGet("admin-wishes") });
 export const useAdminEvents = () => useQuery({ queryKey: ["admin-events"], queryFn: () => apiGet("admin-events") });
 export const usePendingEventEdits = () => useQuery({ queryKey: ["pending-event-edits"], queryFn: () => apiGet("pending-event-edits") });
@@ -49,6 +51,10 @@ export const useRefreshPlaceInfo = () => useAdminMutation("refresh-place-info", 
 export const useDeletePlace = () => useAdminMutation("delete-place", ["admin-places", "admin-stats", "admin-events", "admin-reviews"]);
 export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
 export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
+export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]);
+export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);
+export const useSetInboxStatus = () => useAdminMutation("inbox-status", ["inbox"]);
+export const useAddInboxNote = () => useAdminMutation("inbox-note", ["inbox"]);
 export const useUpdateWishApproved = () => useAdminMutation("update-wish-approved", ["admin-wishes", "admin-stats"]);
 export const useUpdateWishImplemented = () => useAdminMutation("update-wish-implemented", ["admin-wishes"]);
 export const useApproveEvent = () => useAdminMutation("approve-event", ["admin-events", "admin-stats"]);

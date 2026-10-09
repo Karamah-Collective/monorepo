@@ -41,10 +41,6 @@ export default function LogPage() {
   return (
     <div className="pp-page activity-log-page">
       <h1 className="pp-page-title">Activity Log</h1>
-      <p className="pp-page-lead">
-        Every approval, rejection, update, sign-in, and sign-up, visible to the
-        whole team.
-      </p>
       {isLoading && <LoadingState />}
       {error && <p className="pp-error-text">{error.message}</p>}
       {data && (

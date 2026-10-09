@@ -22,6 +22,7 @@ import "./styles/website.css";
 import "./styles/links.css";
 import "./styles/section-tabs.css";
 import "./styles/forms.css";
+import "./styles/inbox.css";
 import "./styles/access.css";
 import "./styles/profile.css";
 import "./styles/weekly-report.css";
@@ -29,6 +30,7 @@ import "./styles/edge-insets.css";
 import "./styles/system-health.css";
 import "./styles/analytics-health.css";
 import "./styles/dashboard-health-override.css";
+import "./styles/density.css";
 import faviconUrl from "../../Website/assets/images/kc_logo_small_icon.ico";
 
 const appVersion = __APP_VERSION__;

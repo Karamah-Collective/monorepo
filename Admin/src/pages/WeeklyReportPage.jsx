@@ -105,9 +105,7 @@ export default function WeeklyReportPage() {
   return <div className="pp-page weekly-report-page">
     <div className="weekly-report-heading">
       <div>
-        <div className="eyebrow">MANARAH / REPORTS</div>
         <h1 className="pp-page-title">Weekly report</h1>
-        <p className="pp-page-lead">Manage the Manarah digest schedule, sections, visual treatment, and recipients.</p>
       </div>
       <Icons.mail size={30} />
     </div>

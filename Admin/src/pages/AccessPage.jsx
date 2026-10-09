@@ -56,7 +56,7 @@ export default function AccessPage() {
   const requestOptions = capabilities.flatMap(([, items]) => items.map(([base, label]) => [`${base}.write`, `Manage ${label}`]));
 
   return <div className="pp-page access-page">
-    <header className="access-heading"><div><div className="eyebrow">WORKSPACE / ACCESS</div><h1 className="pp-page-title">Roles & access</h1><p className="pp-page-lead">A clear baseline for everyone, with additional read or manage access added by role.</p></div><LockKey size={30} /></header>
+    <header className="access-heading"><div><div className="eyebrow">WORKSPACE / ACCESS</div><h1 className="pp-page-title">Roles & access</h1></div><LockKey size={30} /></header>
 
     <section className="pp-panel access-foundation"><div className="access-section-title"><div><span className="access-kicker">INCLUDED FOR EVERYONE</span><h2 className="pp-panel-title">Your workspace foundation</h2><p>These capabilities follow every verified team member, regardless of role.</p></div><span className="access-fixed"><LockKey size={14} /> Fixed baseline</span></div><div className="access-foundation-grid">{everyone.map(([id, label, description]) => <article key={id}><span><Check size={15} /></span><div><strong>{label}</strong><small>{description}</small></div></article>)}</div></section>
 

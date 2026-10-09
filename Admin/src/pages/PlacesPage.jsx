@@ -121,7 +121,6 @@ export default function PlacesPage() {
   const mutations = { boycott: updateBoycott, disabled: updateDisabled, coordinates: updateCoordinates, sponsor: updateSponsor, refresh: refreshPlace, remove: deletePlace };
   return <div className="pp-page">
     <h1 className="pp-page-title">Places</h1>
-    <p className="pp-page-lead">{canManage ? "Review each place’s public map presence, enrichment, sponsorship, and location data from one focused control panel." : "Browse the shared place directory. Your current role has view-only access, so records cannot be changed."}</p>
     {isLoading && <LoadingState />}
     {error && <p className="pp-error-text">{error.message}</p>}
     {data && <DataTable data={data} columns={columns} getRowId={(row) => row.id} />}

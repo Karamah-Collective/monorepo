@@ -142,6 +142,17 @@ async function saveOptIn(data, env) {
   }, false);
 }
 
+// The admin inbox is the durable conversation record; Brevo remains the
+// delivery provider. A failed mirror never prevents a legitimate contact form
+// submission from succeeding.
+async function mirrorToInbox(data, env) {
+  const secret = envValue(env, ["INBOX_INGEST_SECRET"]);
+  if (!secret) return;
+  const endpoint = envValue(env, ["INBOX_INGEST_URL"], "https://maps.karamahcollective.com/api/inbox-webhook");
+  const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "X-Inbox-Secret": secret }, body: JSON.stringify({ from: { name: data.name, email: data.email }, mailbox: CONTACT_EMAIL, subject: data.topic, textBody: data.message, receivedAt: data.submittedAtIso }) });
+  if (!response.ok) throw new Error(`Inbox mirror failed (${response.status})`);
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -205,6 +216,8 @@ export async function onRequestPost(context) {
       to: CONTACT_EMAIL,
       subject: submission.topic,
     });
+
+    try { await mirrorToInbox(submission, env); } catch (inboxError) { console.error("Inbox mirror failed:", inboxError); }
 
     let sheetSaved = false;
     if (updates === "yes") {

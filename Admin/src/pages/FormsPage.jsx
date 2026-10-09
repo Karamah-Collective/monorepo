@@ -18,6 +18,7 @@ import {
   useSetFormStatus,
 } from "../api/forms.js";
 import ManageActions from "../components/ManageActions.jsx";
+import PageHeaderActions from "../components/PageHeaderActions.jsx";
 
 const STATUS_LABELS = {
   draft: "Draft",
@@ -106,15 +107,7 @@ export default function FormsPage() {
 
   return (
     <div className="forms-page">
-      <header className="forms-page-header">
-        <div>
-          <p className="page-eyebrow">PUBLISH & COLLECT</p>
-          <h1 className="pp-page-title">Forms</h1>
-          <p className="pp-page-lead">
-            Build thoughtful workflows, then follow every response from one
-            place.
-          </p>
-        </div>
+      <PageHeaderActions>
         <button
           className="pp-btn pp-btn-primary"
           onClick={createNew}
@@ -123,7 +116,7 @@ export default function FormsPage() {
           <Plus size={16} />
           {create.isPending ? "Creating…" : "Create form"}
         </button>
-      </header>
+      </PageHeaderActions>
       <section className="forms-summary" aria-label="Form overview">
         <div>
           <strong>{forms.length}</strong>
