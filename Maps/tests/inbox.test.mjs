@@ -39,12 +39,34 @@ test("inbox list returns the latest message preview from stored rows", async () 
   assert.equal(result.threads[0].unreadCount, 2);
 });
 
-test("configured inbox mailboxes keep Contact readable without Brevo", async () => {
+test("configured inbox mailboxes only expose configured or connected mailboxes", async () => {
   const db = { prepare(sql) {
-    return { bind() { return { async first() { return sql.includes("gmail_connections") ? { refresh_token_ciphertext: "encrypted" } : null; } }; } };
+    return { bind(...values) { return {
+      async first() { return sql.includes("FROM gmail_connections") && values[0] === "manarah@karamahcollective.com" ? { refresh_token_ciphertext: "encrypted" } : null; },
+      async all() { return { results: [] }; },
+    }; } };
   } };
-  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["contact@karamahcollective.com", "manarah@karamahcollective.com"]);
-  assert.deepEqual(await configuredInboxMailboxes(db, { BREVO_API_KEY: "http-api-key" }), ["contact@karamahcollective.com", "manarah@karamahcollective.com"]);
+  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["manarah@karamahcollective.com"]);
+  assert.deepEqual(await configuredInboxMailboxes(db, { BREVO_API_KEY: "http-api-key" }), ["manarah@karamahcollective.com"]);
+});
+
+test("configured inbox mailboxes keep Contact hidden until its shared Gmail connects", async () => {
+  const db = { prepare(sql) {
+    return { bind() { return {
+      async first() { return null; },
+    }; } };
+  } };
+  assert.deepEqual(await configuredInboxMailboxes(db, {}), []);
+  assert.deepEqual(await configuredInboxMailboxes(db, { INBOX_INGEST_SECRET: "inbound-secret" }), []);
+});
+
+test("configured inbox mailboxes expose Contact after the shared Gmail mailbox connects", async () => {
+  const db = { prepare(sql) {
+    return { bind(...values) { return {
+      async first() { return sql.includes("FROM gmail_connections") && values[0] === "contact@karamahcollective.com" ? { refresh_token_ciphertext: "encrypted" } : null; },
+    }; } };
+  } };
+  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["contact@karamahcollective.com"]);
 });
 
 test("status updates validate input and persist the requested state", async () => {

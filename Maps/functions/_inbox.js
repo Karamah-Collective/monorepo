@@ -1,4 +1,4 @@
-import { gmailStatus, gmailThreadIdForMessage, personalGmailStatus, sendGmailMessage, MANARAH_MAILBOX } from "./_gmail.js";
+import { CONTACT_MAILBOX, gmailStatus, gmailThreadIdForMessage, personalGmailStatus, sendGmailMessage, MANARAH_MAILBOX } from "./_gmail.js";
 
 export const INBOX_MAILBOXES = ["contact@karamahcollective.com", "manarah@karamahcollective.com"];
 const MAILBOXES = new Set(INBOX_MAILBOXES);
@@ -32,14 +32,13 @@ export function canInboxMailbox(access, mailbox, level = "read", personalMailbox
 export function accessibleInboxMailboxes(access, level = "read", personalMailbox = "") { return [...INBOX_MAILBOXES.filter(mailbox => canInboxMailbox(access, mailbox, level)), ...(personalMailbox && canInboxMailbox(access, personalMailbox, level, personalMailbox) ? [personalMailbox] : [])]; }
 export function hasInboxPermission(access, level = "read", personalMailbox = "") { return accessibleInboxMailboxes(access, level, personalMailbox).length > 0; }
 export async function configuredInboxMailboxes(db, env, actor) {
-  // Contact mail is stored in the shared inbox independently of outbound
-  // Brevo configuration. Keep the mailbox visible to members with the
-  // matching role even when production has not configured its sender yet;
-  // replyInbox will return the actionable Brevo setup error when needed.
-  const mailboxes = ["contact@karamahcollective.com"];
-  try {
-    if ((await gmailStatus(db, env)).connected) mailboxes.push(MANARAH_MAILBOX);
-  } catch {}
+  const mailboxes = [];
+  for (const mailbox of [MANARAH_MAILBOX, CONTACT_MAILBOX]) {
+    try {
+      const status = await gmailStatus(db, env, mailbox);
+      if (status.connected) mailboxes.push(mailbox);
+    } catch {}
+  }
   const personal = await personalGmailStatus(db, env, actor);
   if (personal.connected && personal.accountEmail) mailboxes.push(personal.accountEmail);
   return mailboxes;
@@ -93,8 +92,8 @@ export async function replyInbox(db, env, data, actor, access, personalMailbox =
   if (Array.isArray(data.attachments) && data.attachments.length > 0 && !attachments.length) return { error:"Attachments must be files totalling 5 MB or less." };
   let sent = {};
   const personal = sender === personalMailbox && sender !== MANARAH_MAILBOX;
-  const gmail = personal ? (await personalGmailStatus(db, env, actor)).connected : sender === MANARAH_MAILBOX && (await gmailStatus(db, env)).connected;
-  const gmailOptions = personal ? { ownerUid: actor?.uid, mailbox: sender } : {};
+  const gmail = personal ? (await personalGmailStatus(db, env, actor)).connected : [MANARAH_MAILBOX, CONTACT_MAILBOX].includes(sender) && (await gmailStatus(db, env, sender)).connected;
+  const gmailOptions = personal ? { ownerUid: actor?.uid, mailbox: sender } : { mailbox: sender };
   if (gmail) {
     let providerThreadId = shouldBranch ? "" : clean(thread.provider_thread_id, 255).replace(/^gmail_/i, "");
     let latestProviderMessageId = "";

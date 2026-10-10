@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { useDisconnectGmail, useDisconnectPersonalGmail, useGmailStatus, usePersonalGmailStatus, useStartGmailOAuth, useStartPersonalGmailOAuth, useSyncGmail, useSyncPersonalGmail } from "../api/queries.js";
+import { useDisconnectContactGmail, useDisconnectGmail, useDisconnectPersonalGmail, useContactGmailStatus, useGmailStatus, usePersonalGmailStatus, useStartContactGmailOAuth, useStartGmailOAuth, useStartPersonalGmailOAuth, useSyncContactGmail, useSyncGmail, useSyncPersonalGmail } from "../api/queries.js";
+import { canInbox } from "../auth/permissions.js";
 import { useToast } from "../components/Toast.jsx";
+
+const CONTACT_MAILBOX = "contact@karamahcollective.com";
 
 function stored(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -24,13 +27,18 @@ export default function AdminPreferencesPage() {
   const { user, access } = useAuth();
   const isAdministrator = access?.permissions?.includes("*");
   const isGmailOwner = user?.email?.toLowerCase() === "moontasir@karamahcollective.com";
+  const canManageContactGmail = canInbox(access, "write", "contact");
   const gmail = useGmailStatus({ enabled: isAdministrator });
+  const contactGmail = useContactGmailStatus({ enabled: canManageContactGmail });
   const personalGmail = usePersonalGmailStatus({ enabled: Boolean(user) });
   const connect = useStartGmailOAuth();
+  const connectContact = useStartContactGmailOAuth();
   const connectPersonal = useStartPersonalGmailOAuth();
   const sync = useSyncGmail();
+  const syncContact = useSyncContactGmail();
   const syncPersonal = useSyncPersonalGmail();
   const disconnect = useDisconnectGmail();
+  const disconnectContact = useDisconnectContactGmail();
   const disconnectPersonal = useDisconnectPersonalGmail();
   const [sidebar, setSidebar] = useState(() => stored("admin-sidebar", "expanded"));
   const [density, setDensity] = useState(() => stored("admin-table-density", "compact"));
@@ -56,12 +64,15 @@ export default function AdminPreferencesPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const result = params.get("gmail");
+    const contactResult = params.get("contactGmail");
     const personalResult = params.get("personalGmail");
     if (result === "connected") toast("Manarah Gmail connected");
     if (result === "error") toast(params.get("gmailError") || "Gmail could not be connected");
+    if (contactResult === "connected") toast("Contact Gmail connected");
+    if (contactResult === "error") toast(params.get("contactGmailError") || "Contact Gmail could not be connected");
     if (personalResult === "connected") toast("Your personal Gmail connected");
     if (personalResult === "error") toast(params.get("personalGmailError") || "Your personal Gmail could not be connected");
-    if (result || personalResult) navigate(location.pathname, { replace: true });
+    if (result || contactResult || personalResult) navigate(location.pathname, { replace: true });
   }, [location.pathname, location.search, navigate, toast]);
 
   function connectGmail() {
@@ -75,6 +86,20 @@ export default function AdminPreferencesPage() {
   function syncGmail() {
     sync.mutate(undefined, {
       onSuccess: (result) => toast(`Manarah Gmail synced · ${result.imported || 0} new message${result.imported === 1 ? "" : "s"}`),
+    });
+  }
+
+  function connectContactGmail() {
+    connectContact.mutate({ returnTo: `${window.location.origin}${location.pathname}`, mailbox: CONTACT_MAILBOX }, {
+      onSuccess: (result) => {
+        if (result.authorizationUrl) window.location.assign(result.authorizationUrl);
+      },
+    });
+  }
+
+  function syncContactGmail() {
+    syncContact.mutate({ mailbox: CONTACT_MAILBOX }, {
+      onSuccess: (result) => toast(`Contact Gmail synced Â· ${result.imported || 0} new message${result.imported === 1 ? "" : "s"}`),
     });
   }
 
@@ -104,6 +129,17 @@ export default function AdminPreferencesPage() {
         </div>
       </div>
       {(connect.error || sync.error || disconnect.error || gmail.error) && <p className="pp-error-text gmail-connection-error">{(connect.error || sync.error || disconnect.error || gmail.error).message}</p>}
+    </section>}
+    {canManageContactGmail && <section className="admin-preferences-panel gmail-connection-panel" aria-label="Contact Gmail connection">
+      <div className="admin-preference-row">
+        <div className="gmail-connection-copy"><h2>Contact Gmail</h2><p>Connect {CONTACT_MAILBOX} as the shared mailbox. Everyone with Contact inbox access will use this same connection.</p><span className={`gmail-connection-state${contactGmail.data?.connected ? " is-connected" : ""}`}>{contactGmail.isLoading ? "Checking connection" : contactGmail.data?.connected ? contactGmail.data.accountEmail : contactGmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-actions">
+          {contactGmail.data?.connected && <button className="pp-btn" type="button" disabled={syncContact.isPending} onClick={syncContactGmail}>{syncContact.isPending ? "Syncingâ€¦" : "Sync now"}</button>}
+          {contactGmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnectContact.isPending} onClick={() => disconnectContact.mutate({ mailbox: CONTACT_MAILBOX })}>{disconnectContact.isPending ? "Disconnectingâ€¦" : "Disconnect"}</button>}
+          {!contactGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!contactGmail.data?.configured || connectContact.isPending} onClick={connectContactGmail}>{connectContact.isPending ? "Opening Googleâ€¦" : "Connect Contact Gmail"}</button>}
+        </div>
+      </div>
+      {(connectContact.error || syncContact.error || disconnectContact.error || contactGmail.error) && <p className="pp-error-text gmail-connection-error">{(connectContact.error || syncContact.error || disconnectContact.error || contactGmail.error).message}</p>}
     </section>}
     <section className="admin-preferences-panel gmail-connection-panel" aria-label="Personal Gmail connection">
       <div className="admin-preference-row">

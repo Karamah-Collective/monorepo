@@ -247,7 +247,9 @@ email delivery is not configured.
 For the direct Manarah Gmail integration, apply
 `Maps/migrations/0033_shared_inbox.sql` through
 `Maps/migrations/0038_inbox_typing_presence.sql` in order, then apply
-`Maps/migrations/0039_personal_gmail_connections.sql` to the production and
+`Maps/migrations/0039_personal_gmail_connections.sql`, then
+`Maps/migrations/0040_hafsa_contact_access.sql` and
+`Maps/migrations/0041_shared_gmail_mailboxes.sql` to the production and
 Preview Maps D1 databases. These migrations create the inbox storage used by
 both Manarah and personal Gmail sync. Add `GMAIL_CLIENT_ID` and
 `GMAIL_OAUTH_REDIRECT_URI` as Maps variables or secrets, and add
@@ -264,10 +266,12 @@ refresh token is encrypted server-side. Other authorized Admin members cannot
 start or disconnect OAuth, while mailbox-scoped permissions continue to control
 which members can read and send from Manarah.
 
-For the shared Contact mailbox, apply
-`Maps/migrations/0040_hafsa_contact_access.sql` to the production and Preview
-Maps D1 databases. It grants `hafsa@karamahcollective.com` read and manage
-access to `contact@karamahcollective.com` without granting access to Manarah.
+For the shared Contact mailbox, Hafsa opens **Workspace → Admin preferences**
+and connects **Contact Gmail** while signed in as
+`contact@karamahcollective.com`. The OAuth connection is stored separately
+from Manarah and becomes available to everyone with Contact mailbox access.
+The migration grants `hafsa@karamahcollective.com` read and manage access to
+the mailbox without granting access to Manarah.
 
 If the existing Website project uses the old repository, create a replacement Pages project connected to this monorepo. Cloudflare documents creating a new project when changing repositories in its [known issues](https://developers.cloudflare.com/pages/platform/known-issues/).
 

@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "./client.js";
 
 export const useAdminStats = () => useQuery({ queryKey: ["admin-stats"], queryFn: () => apiGet("admin-stats") });
 export const useGmailStatus = (options = {}) => useQuery({ queryKey: ["gmail-status"], queryFn: () => apiGet("gmail-status"), staleTime: 30_000, ...options });
+export const useContactGmailStatus = (options = {}) => useQuery({ queryKey: ["contact-gmail-status"], queryFn: () => apiGet("contact-gmail-status"), staleTime: 30_000, ...options });
 export const usePersonalGmailStatus = (options = {}) => useQuery({ queryKey: ["personal-gmail-status"], queryFn: () => apiGet("personal-gmail-status"), staleTime: 30_000, ...options });
 export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn: () => apiGet("pending-new") });
 export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
@@ -63,10 +64,13 @@ export const useDeletePlace = () => useAdminMutation("delete-place", ["admin-pla
 export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
 export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
 export const useStartGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["gmail-status"]);
+export const useStartContactGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["contact-gmail-status", "inbox"]);
 export const useStartPersonalGmailOAuth = () => useAdminMutation("personal-gmail-oauth-start", ["personal-gmail-status", "inbox"]);
 export const useSyncGmail = () => useAdminMutation("gmail-sync", ["gmail-status", "inbox"]);
+export const useSyncContactGmail = () => useAdminMutation("gmail-sync", ["contact-gmail-status", "inbox"]);
 export const useSyncPersonalGmail = () => useAdminMutation("personal-gmail-sync", ["personal-gmail-status", "inbox"]);
 export const useDisconnectGmail = () => useAdminMutation("gmail-disconnect", ["gmail-status", "inbox"]);
+export const useDisconnectContactGmail = () => useAdminMutation("gmail-disconnect", ["contact-gmail-status", "inbox"]);
 export const useDisconnectPersonalGmail = () => useAdminMutation("personal-gmail-disconnect", ["personal-gmail-status", "inbox"]);
 export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]);
 export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);

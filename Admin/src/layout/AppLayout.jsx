@@ -165,7 +165,7 @@ export default function AppLayout() {
             <HamburgerIcon size={22} />
           </button>
           <div className="breadcrumbs">
-            <span>Workspace</span>
+            <span>{current.group || "Workspace"}</span>
             <Icons.right size={12} />
             <strong>{current.label}</strong>
           </div>

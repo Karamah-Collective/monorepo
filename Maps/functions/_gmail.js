@@ -1,4 +1,6 @@
 const MANARAH_MAILBOX = "manarah@karamahcollective.com";
+const CONTACT_MAILBOX = "contact@karamahcollective.com";
+const SHARED_GMAIL_MAILBOXES = new Set([MANARAH_MAILBOX, CONTACT_MAILBOX]);
 const GMAIL_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL_API_URL = "https://gmail.googleapis.com/gmail/v1/users/me";
@@ -55,8 +57,13 @@ async function decryptToken(env, value) {
   return new TextDecoder().decode(decrypted);
 }
 
-async function connection(db) {
-  try { return await db.prepare("SELECT * FROM gmail_connections WHERE mailbox=?").bind(MANARAH_MAILBOX).first(); } catch { return null; }
+function sharedMailbox(value) {
+  const candidate = clean(value, 254).toLowerCase();
+  return SHARED_GMAIL_MAILBOXES.has(candidate) ? candidate : MANARAH_MAILBOX;
+}
+
+async function connection(db, mailbox = MANARAH_MAILBOX) {
+  try { return await db.prepare("SELECT * FROM gmail_connections WHERE mailbox=?").bind(sharedMailbox(mailbox)).first(); } catch { return null; }
 }
 
 async function personalConnection(db, ownerUid) {
@@ -75,9 +82,10 @@ function statusFor(env, row, mailbox) {
   };
 }
 
-export async function gmailStatus(db, env) {
-  const row = await connection(db);
-  return statusFor(env, row, MANARAH_MAILBOX);
+export async function gmailStatus(db, env, mailbox = MANARAH_MAILBOX) {
+  const target = sharedMailbox(mailbox);
+  const row = await connection(db, target);
+  return statusFor(env, row, target);
 }
 
 export async function personalGmailStatus(db, env, actor) {
@@ -93,12 +101,13 @@ function validReturnTo(value) {
   } catch { return "https://admin.karamahcollective.com/workspace/preferences"; }
 }
 
-export async function startGmailOAuth(db, env, actor, returnTo) {
+export async function startGmailOAuth(db, env, actor, returnTo, mailbox = MANARAH_MAILBOX) {
   if (!configured(env)) return { error: "Gmail is not configured on the server yet." };
+  const targetMailbox = sharedMailbox(mailbox);
   const state = crypto.randomUUID();
   await db.prepare("DELETE FROM gmail_oauth_states WHERE expires_at < datetime('now')").run();
-  await db.prepare("INSERT INTO gmail_oauth_states (state,actor_email,return_to,expires_at,created_at) VALUES (?,?,?,datetime('now','+10 minutes'),datetime('now'))")
-    .bind(state, actor?.email || "", validReturnTo(returnTo)).run();
+  await db.prepare("INSERT INTO gmail_oauth_states (state,actor_email,return_to,mailbox,expires_at,created_at) VALUES (?,?,?,?,datetime('now','+10 minutes'),datetime('now'))")
+    .bind(state, actor?.email || "", validReturnTo(returnTo), targetMailbox).run();
   const params = new URLSearchParams({
     client_id: clean(env.GMAIL_CLIENT_ID, 300),
     redirect_uri: clean(env.GMAIL_OAUTH_REDIRECT_URI, 500),
@@ -106,7 +115,7 @@ export async function startGmailOAuth(db, env, actor, returnTo) {
     access_type: "offline",
     prompt: "consent",
     include_granted_scopes: "true",
-    login_hint: MANARAH_MAILBOX,
+    login_hint: targetMailbox,
     scope: GMAIL_SCOPES.join(" "),
     state,
   });
@@ -170,17 +179,18 @@ export async function completeGmailOAuth(db, env, request) {
   const returnTo = validReturnTo(row?.return_to || fallback);
   if (!row || !code) return { returnTo, error: "The Gmail authorization expired. Start the connection again." };
   try {
+    const targetMailbox = sharedMailbox(row.mailbox);
     const token = await exchangeCode(env, code);
     const profile = await gmailFetch(token.access_token, "/profile");
     const accountEmail = email(profile.emailAddress);
-    if (accountEmail !== MANARAH_MAILBOX) throw new Error(`Sign in as ${MANARAH_MAILBOX} to connect this mailbox.`);
-    const existing = await connection(db);
+    if (accountEmail !== targetMailbox) throw new Error(`Sign in as ${targetMailbox} to connect this mailbox.`);
+    const existing = await connection(db, targetMailbox);
     const refreshToken = token.refresh_token ? await encryptToken(env, token.refresh_token) : existing?.refresh_token_ciphertext;
     if (!refreshToken) throw new Error("Google did not return a refresh token. Reconnect and approve access again.");
     await db.prepare(`INSERT INTO gmail_connections (mailbox,account_email,refresh_token_ciphertext,scope_json,connected_by,connected_at,last_sync_at,updated_at)
       VALUES (?,?,?,?,?,datetime('now'),NULL,datetime('now'))
       ON CONFLICT(mailbox) DO UPDATE SET account_email=excluded.account_email,refresh_token_ciphertext=excluded.refresh_token_ciphertext,scope_json=excluded.scope_json,connected_by=excluded.connected_by,connected_at=excluded.connected_at,updated_at=excluded.updated_at`)
-      .bind(MANARAH_MAILBOX, accountEmail, refreshToken, JSON.stringify(token.scope ? token.scope.split(" ") : GMAIL_SCOPES), row.actor_email).run();
+      .bind(targetMailbox, accountEmail, refreshToken, JSON.stringify(token.scope ? token.scope.split(" ") : GMAIL_SCOPES), row.actor_email).run();
     await db.prepare("DELETE FROM gmail_oauth_states WHERE state=?").bind(state).run();
     return { returnTo, success: true };
   } catch (error) {
@@ -220,8 +230,9 @@ export async function completePersonalGmailOAuth(db, env, request) {
 async function accessTokenFor(db, env, options = {}) {
   if (!configured(env)) return { error: "Gmail server configuration is incomplete." };
   const personal = Boolean(options.ownerUid);
-  const row = personal ? await personalConnection(db, options.ownerUid) : await connection(db);
-  if (!row?.refresh_token_ciphertext) return { error: personal ? "Connect your personal Gmail before syncing or sending." : "Connect Manarah Gmail before syncing or sending." };
+  const mailbox = sharedMailbox(options.mailbox);
+  const row = personal ? await personalConnection(db, options.ownerUid) : await connection(db, mailbox);
+  if (!row?.refresh_token_ciphertext) return { error: personal ? "Connect your personal Gmail before syncing or sending." : `Connect ${mailbox} before syncing or sending.` };
   try {
     const refreshToken = await decryptToken(env, row.refresh_token_ciphertext);
     const response = await fetch(GMAIL_TOKEN_URL, {
@@ -231,7 +242,7 @@ async function accessTokenFor(db, env, options = {}) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload.access_token) throw new Error(payload.error_description || "Gmail authorization has expired. Reconnect the mailbox.");
-    return { accessToken: payload.access_token, accountEmail: row.account_email || options.mailbox || MANARAH_MAILBOX };
+    return { accessToken: payload.access_token, accountEmail: row.account_email || mailbox };
   } catch (error) {
     const message = clean(error?.message || "Gmail authorization has expired. Reconnect the mailbox.", 300);
     return { error: /invalid_grant|expired|revoked|invalid.*token/i.test(message) ? "Gmail authorization has expired. Reconnect the mailbox." : message };
@@ -392,8 +403,8 @@ export async function gmailThreadIdForMessage(db, env, providerMessageId, option
   }
 }
 
-export async function disconnectGmail(db) {
-  await db.prepare("DELETE FROM gmail_connections WHERE mailbox=?").bind(MANARAH_MAILBOX).run();
+export async function disconnectGmail(db, mailbox = MANARAH_MAILBOX) {
+  await db.prepare("DELETE FROM gmail_connections WHERE mailbox=?").bind(sharedMailbox(mailbox)).run();
   return { success: true };
 }
 
@@ -402,4 +413,4 @@ export async function disconnectPersonalGmail(db, actor) {
   return { success: true };
 }
 
-export { MANARAH_MAILBOX };
+export { CONTACT_MAILBOX, MANARAH_MAILBOX, SHARED_GMAIL_MAILBOXES };

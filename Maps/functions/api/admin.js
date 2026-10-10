@@ -48,7 +48,7 @@ import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
 import { addInboxNote, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, ingestInbox, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
-import { disconnectGmail, disconnectPersonalGmail, gmailStatus, listGmailMessages, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
+import { CONTACT_MAILBOX, disconnectGmail, disconnectPersonalGmail, gmailStatus, listGmailMessages, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -126,6 +126,7 @@ function permissionForAction(action) {
   if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (["admin-stats", "admin-access"].includes(action)) return "dashboard.view";
   if (action === "gmail-status") return "dashboard.view";
+  if (action === "contact-gmail-status") return "inbox.contact.read";
   if (["gmail-oauth-start", "gmail-disconnect"].includes(action)) return "*";
   if (action === "system-health") return "dashboard.view";
   if (action === "analytics-dashboard") return "analytics.read";
@@ -153,13 +154,20 @@ async function personalMailboxFor(db, env, actor) {
   const status = await personalGmailStatus(db, env, actor);
   return status.connected ? status.accountEmail : "";
 }
-async function authenticateAuthorized(request, env, action) {
+async function authenticateAuthorized(request, env, action, data = {}) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
-  if (["gmail-oauth-start", "gmail-disconnect"].includes(action) && auth.actor.email !== INITIAL_ADMIN_EMAIL) return { ok:false,status:403,error:"Only the primary administrator can manage the Gmail connection." };
   const access=await resolveAccess(env.DB, auth.actor);
   const personal = await personalMailboxFor(env.DB, env, auth.actor);
+  const sharedMailbox = String(data.mailbox || "").toLowerCase() === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
   const personalAction = ["personal-gmail-status", "personal-gmail-oauth-start", "personal-gmail-disconnect", "personal-gmail-sync"].includes(action);
-  const allowed = personalAction ? true : action === "inbox-list" ? true : action === "gmail-sync" ? hasInboxPermission(access, "read") : action.startsWith("inbox-") ? hasInboxPermission(access, ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action) ? "write" : "read", personal) : allows(access,permissionForAction(action));
+  const sharedGmailManagement = ["gmail-oauth-start", "gmail-disconnect"].includes(action);
+  const allowed = personalAction ? true
+    : action === "inbox-list" ? true
+    : action === "contact-gmail-status" ? canInboxMailbox(access, CONTACT_MAILBOX, "read", personal)
+    : sharedGmailManagement ? sharedMailbox === CONTACT_MAILBOX ? canInboxMailbox(access, CONTACT_MAILBOX, "write", personal) : auth.actor.email === INITIAL_ADMIN_EMAIL
+    : action === "gmail-sync" ? canInboxMailbox(access, sharedMailbox, "read", personal)
+    : action.startsWith("inbox-") ? hasInboxPermission(access, ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action) ? "write" : "read", personal)
+    : allows(access,permissionForAction(action));
   return access && allowed ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
 }
 async function authenticateWorkspaceMember(request, env) {
@@ -193,16 +201,17 @@ async function setInboxTyping(db, data, actor, env, access) {
   }
   return { success: true };
 }
-async function syncGmail(db, env) {
-  const result = await listGmailMessages(db, env);
+async function syncGmail(db, env, mailbox = MANARAH_MAILBOX) {
+  const targetMailbox = mailbox === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
+  const result = await listGmailMessages(db, env, { mailbox: targetMailbox });
   if (result.error) return result;
   let imported = 0;
   const messages = [...(result.messages || [])].sort((a, b) => Number(a.direction !== "outbound") - Number(b.direction !== "outbound"));
   for (const message of messages) {
-    const saved = await ingestInbox(db, { ...message, mailbox: MANARAH_MAILBOX, ...(message.direction === "inbound" ? { to: { email: MANARAH_MAILBOX } } : {}) });
+    const saved = await ingestInbox(db, { ...message, mailbox: targetMailbox, ...(message.direction === "inbound" ? { to: { email: targetMailbox } } : {}) });
     if (saved.success && !saved.duplicate) imported += 1;
   }
-  await db.prepare("UPDATE gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE mailbox=?").bind(MANARAH_MAILBOX).run();
+  await db.prepare("UPDATE gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE mailbox=?").bind(targetMailbox).run();
   return { success: true, imported, scanned: result.count || 0 };
 }
 async function syncPersonalGmail(db, env, actor) {
@@ -222,11 +231,13 @@ async function syncPersonalGmail(db, env, actor) {
 async function listInboxWithGmail(db, _url, actor, env, access) {
   const personalMailbox = await personalMailboxFor(db, env, actor);
   const configured = await configuredInboxMailboxes(db, env, actor);
-  if (configured.includes(MANARAH_MAILBOX) && hasInboxPermission(access, "read")) {
-    const status = await gmailStatus(db, env);
-    if (status.connected) {
-      const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
-      if (!last || Date.now() - last > 30000) await syncGmail(db, env);
+  for (const mailbox of [MANARAH_MAILBOX, CONTACT_MAILBOX]) {
+    if (configured.includes(mailbox) && canInboxMailbox(access, mailbox, "read", personalMailbox)) {
+      const status = await gmailStatus(db, env, mailbox);
+      if (status.connected) {
+        const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
+        if (!last || Date.now() - last > 30000) await syncGmail(db, env, mailbox);
+      }
     }
   }
   if (personalMailbox) {
@@ -691,6 +702,7 @@ async function getAdminTypeStyles(db) {
 const GET_ACTIONS = {
   "admin-access": (db, _url, actor) => getAccess(db, actor),
   "gmail-status": (db, _url, _actor, env) => gmailStatus(db, env),
+  "contact-gmail-status": (db, _url, _actor, env) => gmailStatus(db, env, CONTACT_MAILBOX),
   "personal-gmail-status": (db, _url, actor, env) => personalGmailStatus(db, env, actor),
   "access-roles": (db) => getAccessRoles(db),
   "access-members": (db) => getAccessMembers(db),
@@ -1353,9 +1365,9 @@ async function rejectEid(db, rowId) {
 }
 
 const POST_ACTIONS = {
-  "gmail-oauth-start": (db, data, env, actor) => startGmailOAuth(db, env, actor, data.returnTo),
-  "gmail-sync": (db, _data, env) => syncGmail(db, env),
-  "gmail-disconnect": (db) => disconnectGmail(db),
+  "gmail-oauth-start": (db, data, env, actor) => startGmailOAuth(db, env, actor, data.returnTo, data.mailbox),
+  "gmail-sync": (db, data, env) => syncGmail(db, env, data.mailbox),
+  "gmail-disconnect": (db, data) => disconnectGmail(db, data.mailbox),
   "personal-gmail-oauth-start": (db, data, env, actor) => startPersonalGmailOAuth(db, env, actor, data.returnTo),
   "personal-gmail-sync": (db, _data, env, actor) => syncPersonalGmail(db, env, actor),
   "personal-gmail-disconnect": (db, _data, _env, actor) => disconnectPersonalGmail(db, actor),
@@ -1434,7 +1446,7 @@ export async function onRequestPost(context) {
   const handler = POST_ACTIONS[data.action];
   if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
 
-  const auth = await authenticateAuthorized(request, env, data.action);
+  const auth = await authenticateAuthorized(request, env, data.action, data);
   if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
 
   let result;

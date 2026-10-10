@@ -8,9 +8,9 @@ require Google Workspace administrator access because the mailbox owner grants
 the OAuth consent.
 
 Apply `Maps/migrations/0033_shared_inbox.sql` through
-`Maps/migrations/0039_personal_gmail_connections.sql` in numeric order to both
+`Maps/migrations/0041_shared_gmail_mailboxes.sql` in numeric order to both
 the production and Preview Maps D1 databases. These migrations create the
-shared inbox, Gmail connection, and personal Gmail tables. Add these values to
+shared inbox, shared Gmail connections, and personal Gmail tables. Add these values to
 the Maps Pages project:
 
 | Name | Type | Value |
@@ -25,17 +25,24 @@ also add `http://127.0.0.1:8788/api/gmail/oauth/callback` and use that local
 URI for `GMAIL_OAUTH_REDIRECT_URI` in local variables. Keep the client secret,
 refresh token, and encryption key out of the Admin build and browser code.
 
-After deployment, only `moontasir@karamahcollective.com` can open the OAuth
+After deployment, `moontasir@karamahcollective.com` opens the Manarah OAuth
 connection from **Workspace → Admin preferences**. That account selects
 **Connect Gmail**, signs in as `manarah@karamahcollective.com`, and approves
 the Gmail read/send scopes. The callback stores only an encrypted refresh token
-in D1. Other authorized Admin members cannot start or disconnect OAuth, but can
+in D1. Other authorized Admin members cannot start or disconnect Manarah OAuth, but can
 use the mailbox through the Admin inbox according to their roles. **Sync now**
 imports the mailbox; outbound messages from Manarah use Gmail after connection.
 
+Hafsa signs in to the same page and uses **Contact Gmail** to connect
+`contact@karamahcollective.com`. The shared connection is stored separately
+from Manarah, so everyone with Contact mailbox access uses the same mailbox.
+
 The current implementation refreshes Gmail when an authorized member opens the
-Inbox, at most once every two minutes, and also exposes **Sync now** for an
-Administrator. It does not replace the mailbox's normal Gmail delivery.
+Inbox, at most once every 30 seconds, and also exposes **Sync now**. It does not
+replace the mailbox's normal Gmail delivery. Event driven sync would require a
+Gmail `users.watch` subscription, a Google Cloud Pub/Sub topic, and a public
+Maps webhook that consumes Gmail history changes. That infrastructure is
+separate from OAuth and is not enabled by this setup.
 
 The admin inbox sends email through Brevo from two verified Google Workspace addresses:
 
@@ -87,12 +94,12 @@ Use `manarah@karamahcollective.com` in `mailbox` for Manarah email. Incoming mai
 3. In Google Admin Console, create a Gmail routing rule for `contact@karamahcollective.com` and `manarah@karamahcollective.com` that keeps the original delivery and also routes a copy to the parser destination. If the panel should be the only destination, choose routing instead of dual delivery—but that removes the message from Gmail.
 4. Set the same random value as `INBOX_INGEST_SECRET` on the Maps Pages project and in the parser webhook configuration.
 
-The parser must preserve the destination mailbox in `mailbox` or `to.email`; otherwise the panel cannot apply the correct role boundary.
+The parser must preserve the destination mailbox in `mailbox` or `to.email`; otherwise the panel cannot apply the correct role boundary. Contact messages become visible in Admin after the Contact Gmail connection has been completed by Hafsa.
 
 ## Mailbox-scoped roles
 
 Apply `Maps/migrations/0040_hafsa_contact_access.sql` to the production and
-Preview Maps D1 databases. This seeds Hafsa's Contact mailbox role:
+Preview Maps D1 databases before Hafsa connects the shared mailbox. This seeds Hafsa's Contact mailbox role:
 `hafsa@karamahcollective.com` receives read and manage access to
 `contact@karamahcollective.com`, while Manarah remains separate.
 
