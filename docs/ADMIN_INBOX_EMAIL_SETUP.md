@@ -7,9 +7,11 @@ for receiving and sending from `manarah@karamahcollective.com`; it does not
 require Google Workspace administrator access because the mailbox owner grants
 the OAuth consent.
 
-Apply `Maps/migrations/0036_gmail_connections.sql` and
-`Maps/migrations/0039_personal_gmail_connections.sql` to both the production
-and Preview Maps D1 databases. Add these values to the Maps Pages project:
+Apply `Maps/migrations/0033_shared_inbox.sql` through
+`Maps/migrations/0039_personal_gmail_connections.sql` in numeric order to both
+the production and Preview Maps D1 databases. These migrations create the
+shared inbox, Gmail connection, and personal Gmail tables. Add these values to
+the Maps Pages project:
 
 | Name | Type | Value |
 | --- | --- | --- |

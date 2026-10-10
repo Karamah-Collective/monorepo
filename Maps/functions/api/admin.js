@@ -1442,6 +1442,7 @@ export async function onRequestPost(context) {
     result = await handler(env.DB, data, env, auth.actor, auth.access);
   } catch (err) {
     const message = String(err?.message || err || "");
+    console.error("Admin action failed", { action: data.action, actor: auth.actor.email, message });
     if (message.includes("weekly_report_")) {
       return json({ error: "Run the weekly report migration before saving these settings." }, 500, headers);
     }

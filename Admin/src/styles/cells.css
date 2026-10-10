@@ -550,7 +550,7 @@
 .gmail-connection-state { color: var(--text-muted); font-size: 12px; }
 .gmail-connection-state.is-connected { color: var(--interactive-accent); }
 .gmail-connection-actions { display: flex; align-items: center; gap: 8px; }
-.gmail-connection-error { margin: -8px 24px 18px; }
+.gmail-connection-error { margin: 14px 24px 18px; }
 .admin-preference-row h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.015em; }
 .admin-preference-row p { max-width:55ch; margin:5px 0 0; color:var(--text-muted); font-size:13px; line-height:1.5; }
 .admin-choice-group { display:inline-flex; padding:3px; border:1px solid var(--border); border-radius:9px; background:var(--bg-alt); }
