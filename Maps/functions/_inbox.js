@@ -32,12 +32,14 @@ export function canInboxMailbox(access, mailbox, level = "read", personalMailbox
 export function accessibleInboxMailboxes(access, level = "read", personalMailbox = "") { return [...INBOX_MAILBOXES.filter(mailbox => canInboxMailbox(access, mailbox, level)), ...(personalMailbox && canInboxMailbox(access, personalMailbox, level, personalMailbox) ? [personalMailbox] : [])]; }
 export function hasInboxPermission(access, level = "read", personalMailbox = "") { return accessibleInboxMailboxes(access, level, personalMailbox).length > 0; }
 export async function configuredInboxMailboxes(db, env, actor) {
-  const mailboxes = [];
+  // Contact mail is stored in the shared inbox independently of outbound
+  // Brevo configuration. Keep the mailbox visible to members with the
+  // matching role even when production has not configured its sender yet;
+  // replyInbox will return the actionable Brevo setup error when needed.
+  const mailboxes = ["contact@karamahcollective.com"];
   try {
     if ((await gmailStatus(db, env)).connected) mailboxes.push(MANARAH_MAILBOX);
   } catch {}
-  const brevoKey = clean(env?.BREVO_API_KEY, 300);
-  if (brevoKey && !brevoKey.startsWith("xsmtpsib-")) mailboxes.push("contact@karamahcollective.com");
   const personal = await personalGmailStatus(db, env, actor);
   if (personal.connected && personal.accountEmail) mailboxes.push(personal.accountEmail);
   return mailboxes;

@@ -39,12 +39,12 @@ test("inbox list returns the latest message preview from stored rows", async () 
   assert.equal(result.threads[0].unreadCount, 2);
 });
 
-test("configured inbox mailboxes only include connected services", async () => {
+test("configured inbox mailboxes keep Contact readable without Brevo", async () => {
   const db = { prepare(sql) {
     return { bind() { return { async first() { return sql.includes("gmail_connections") ? { refresh_token_ciphertext: "encrypted" } : null; } }; } };
   } };
-  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["manarah@karamahcollective.com"]);
-  assert.deepEqual(await configuredInboxMailboxes(db, { BREVO_API_KEY: "http-api-key" }), ["manarah@karamahcollective.com", "contact@karamahcollective.com"]);
+  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["contact@karamahcollective.com", "manarah@karamahcollective.com"]);
+  assert.deepEqual(await configuredInboxMailboxes(db, { BREVO_API_KEY: "http-api-key" }), ["contact@karamahcollective.com", "manarah@karamahcollective.com"]);
 });
 
 test("status updates validate input and persist the requested state", async () => {

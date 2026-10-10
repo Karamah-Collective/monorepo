@@ -160,6 +160,10 @@ Run the workflow manually once after setup from GitHub → Actions → Daily D1 
 
 Apply the Admin column to its existing Pages project. Use `admin.karamahcollective.com` for the admin dashboard and keep the existing Firebase project. Production defaults already call the existing Maps and Website domains.
 
+Admin's same-origin `/api/admin` proxy reads `MAPS_ORIGIN` at runtime and
+falls back to `https://maps.karamahcollective.com`. It also accepts
+`VITE_MAPS_ORIGIN` for compatibility with existing Pages variables.
+
 Optional build variables, useful while testing a replacement Website project:
 
 ```text
@@ -256,6 +260,11 @@ refresh token is encrypted server-side. Other authorized Admin members cannot
 start or disconnect OAuth, while mailbox-scoped permissions continue to control
 which members can read and send from Manarah.
 
+For the shared Contact mailbox, apply
+`Maps/migrations/0040_hafsa_contact_access.sql` to the production and Preview
+Maps D1 databases. It grants `hafsa@karamahcollective.com` read and manage
+access to `contact@karamahcollective.com` without granting access to Manarah.
+
 If the existing Website project uses the old repository, create a replacement Pages project connected to this monorepo. Cloudflare documents creating a new project when changing repositories in its [known issues](https://developers.cloudflare.com/pages/platform/known-issues/).
 
 1. In **Workers & Pages**, create a **Pages** application and import this GitHub repository. Use a new project name, for example `karamah-website-monorepo`.
@@ -343,7 +352,7 @@ The existing `Status=active` convention still controls public team visibility. E
 
 ## 4. Preview environments
 
-Use a separate spreadsheet/Apps Script deployment and different secrets for Website Preview if you want to test writes. Point Maps Preview at the existing preview D1 database. In Admin Preview, set `VITE_MAPS_ORIGIN` and `VITE_WEBSITE_ORIGIN` to those preview services; otherwise its production defaults still point at the live APIs.
+Use a separate spreadsheet/Apps Script deployment and different secrets for Website Preview if you want to test writes. Point Maps Preview at the existing preview D1 database. In Admin Preview, set `MAPS_ORIGIN` (or `VITE_MAPS_ORIGIN`) and `VITE_WEBSITE_ORIGIN` to those preview services; otherwise its production defaults still point at the live APIs.
 
 For a stable Admin preview hostname, add that exact HTTPS origin to `ADMIN_ALLOWED_ORIGINS` in both the Maps and Website preview projects. Multiple origins are comma-separated, with no path or trailing slash. Also add the Admin hostname to Firebase Authentication's authorized domains. Arbitrary `*.pages.dev` origins are deliberately not trusted.
 

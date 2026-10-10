@@ -1,13 +1,12 @@
 import { auth } from "../firebase.js";
 
-// The admin API lives on the public site's domain/Pages project — this app
-// calls it cross-origin (CORS is scoped to this app's origin server-side,
-// see functions/api/admin.js's ADMIN_ALLOWED_ORIGINS).
-const API_BASE = `${(import.meta.env.VITE_MAPS_ORIGIN || "https://maps.karamahcollective.com").replace(/\/$/, "")}/api/admin`;
-const LOCAL_API_BASE = "/api/admin";
+// Keep authenticated Admin requests same-origin. The Admin Pages Function
+// proxies /api/admin to Maps, which avoids browser CORS failures in production
+// while preserving the same local Vite route.
+const API_BASE = "/api/admin";
 
 function apiBase() {
-  return import.meta.env.DEV ? LOCAL_API_BASE : API_BASE;
+  return API_BASE;
 }
 
 async function authHeader() {

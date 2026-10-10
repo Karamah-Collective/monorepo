@@ -88,6 +88,11 @@ The parser must preserve the destination mailbox in `mailbox` or `to.email`; oth
 
 ## Mailbox-scoped roles
 
+Apply `Maps/migrations/0040_hafsa_contact_access.sql` to the production and
+Preview Maps D1 databases. This seeds Hafsa's Contact mailbox role:
+`hafsa@karamahcollective.com` receives read and manage access to
+`contact@karamahcollective.com`, while Manarah remains separate.
+
 Create custom roles in Admin → Roles & access with these grants:
 
 - `Contact inbox — Read` = `inbox.contact.read`

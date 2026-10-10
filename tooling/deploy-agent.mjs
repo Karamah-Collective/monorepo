@@ -86,6 +86,7 @@ const DEPLOY_FILES = [
   "Admin/package.json",
   "Admin/index.html",
   "Admin/public",
+  "Admin/functions",
   "Admin/src",
   "Admin/vite.config.js",
   "Links/package.json",
