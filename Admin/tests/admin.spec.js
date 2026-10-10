@@ -142,7 +142,7 @@ test("inbox uses API threads and sends supported actions", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sync Manarah support" })).toHaveText("");
   await page.getByRole("button", { name: "Sync Manarah support" }).click();
   await expect(page.getByRole("status")).toContainText("Inbox synced");
-  expect(await page.evaluate(() => window.__lastMutation)).toEqual({ action: "gmail-sync", body: undefined });
+  expect(await page.evaluate(() => window.__lastMutation)).toEqual({ action: "gmail-sync", body: { mailbox: "manarah@karamahcollective.com" } });
   if (process.env.INBOX_CAPTURE) await page.screenshot({ path: process.env.INBOX_CAPTURE });
   await page.getByRole("textbox", { name: "Search conversations" }).fill("no match");
   await expect(page.getByText("No matching conversations.")).toBeVisible();
