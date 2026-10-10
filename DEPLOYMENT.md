@@ -246,8 +246,10 @@ email delivery is not configured.
 
 For the direct Manarah Gmail integration, apply
 `Maps/migrations/0036_gmail_connections.sql` to the production and Preview Maps
-D1 databases. Add `GMAIL_CLIENT_ID` and `GMAIL_OAUTH_REDIRECT_URI` as Maps
-variables, and add `GMAIL_CLIENT_SECRET` plus a 32-byte hex/base64
+D1 databases. For personal Gmail connections, also apply
+`Maps/migrations/0039_personal_gmail_connections.sql` to both databases. Add
+`GMAIL_CLIENT_ID` and `GMAIL_OAUTH_REDIRECT_URI` as Maps variables or secrets,
+and add `GMAIL_CLIENT_SECRET` plus a 32-byte hex/base64
 `GMAIL_TOKEN_ENCRYPTION_KEY` as Maps secrets. The production redirect URI is
 `https://maps.karamahcollective.com/api/gmail/oauth/callback`; add the local
 redirect URI separately when developing with Wrangler.

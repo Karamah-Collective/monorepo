@@ -7,14 +7,15 @@ for receiving and sending from `manarah@karamahcollective.com`; it does not
 require Google Workspace administrator access because the mailbox owner grants
 the OAuth consent.
 
-Apply `Maps/migrations/0036_gmail_connections.sql` to both the production and
-Preview Maps D1 databases. Add these values to the Maps Pages project:
+Apply `Maps/migrations/0036_gmail_connections.sql` and
+`Maps/migrations/0039_personal_gmail_connections.sql` to both the production
+and Preview Maps D1 databases. Add these values to the Maps Pages project:
 
 | Name | Type | Value |
 | --- | --- | --- |
 | `GMAIL_CLIENT_ID` | variable | The Google OAuth web-client ID |
 | `GMAIL_CLIENT_SECRET` | secret | The Google OAuth web-client secret |
-| `GMAIL_OAUTH_REDIRECT_URI` | variable | `https://maps.karamahcollective.com/api/gmail/oauth/callback` |
+| `GMAIL_OAUTH_REDIRECT_URI` | variable or secret | `https://maps.karamahcollective.com/api/gmail/oauth/callback` |
 | `GMAIL_TOKEN_ENCRYPTION_KEY` | secret | A 32-byte key encoded as hex or base64 |
 
 The OAuth client must contain the exact redirect URI above. For local testing,
