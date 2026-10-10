@@ -47,8 +47,8 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
-import { addInboxNote, composeInbox, getInboxThread, hasInboxPermission, ingestInbox, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
-import { disconnectGmail, gmailStatus, listGmailMessages, startGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
+import { addInboxNote, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, ingestInbox, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
+import { disconnectGmail, disconnectPersonalGmail, gmailStatus, listGmailMessages, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -126,7 +126,7 @@ function permissionForAction(action) {
   if (["access-settings","save-access-role","save-access-member","delete-access-member","save-access-settings"].includes(action)) return "*";
   if (["admin-stats", "admin-access"].includes(action)) return "dashboard.view";
   if (action === "gmail-status") return "dashboard.view";
-  if (["gmail-oauth-start", "gmail-disconnect", "gmail-sync"].includes(action)) return "*";
+  if (["gmail-oauth-start", "gmail-disconnect"].includes(action)) return "*";
   if (action === "system-health") return "dashboard.view";
   if (action === "analytics-dashboard") return "analytics.read";
   if (action === "admin-log") return "activity.read";
@@ -149,11 +149,17 @@ function inboxActionAllowed(access, action) {
   const write = ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action);
   return hasInboxPermission(access, write ? "write" : "read");
 }
+async function personalMailboxFor(db, env, actor) {
+  const status = await personalGmailStatus(db, env, actor);
+  return status.connected ? status.accountEmail : "";
+}
 async function authenticateAuthorized(request, env, action) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
   if (["gmail-oauth-start", "gmail-disconnect"].includes(action) && auth.actor.email !== INITIAL_ADMIN_EMAIL) return { ok:false,status:403,error:"Only the primary administrator can manage the Gmail connection." };
   const access=await resolveAccess(env.DB, auth.actor);
-  const allowed = action.startsWith("inbox-") ? inboxActionAllowed(access, action) : allows(access,permissionForAction(action));
+  const personal = await personalMailboxFor(env.DB, env, auth.actor);
+  const personalAction = ["personal-gmail-status", "personal-gmail-oauth-start", "personal-gmail-disconnect", "personal-gmail-sync"].includes(action);
+  const allowed = personalAction ? true : action === "inbox-list" ? true : action === "gmail-sync" ? hasInboxPermission(access, "read") : action.startsWith("inbox-") ? hasInboxPermission(access, ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action) ? "write" : "read", personal) : allows(access,permissionForAction(action));
   return access && allowed ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
 }
 async function authenticateWorkspaceMember(request, env) {
@@ -162,26 +168,73 @@ async function authenticateWorkspaceMember(request, env) {
   return access ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your account does not have a workspace role." };
 }
 async function getAccess(db, actor) { return { access:(await resolveAccess(db,actor))||{roleId:"",roleName:"No role",permissions:[]} }; }
+async function getInboxTyping(db, url, actor, env, access) {
+  const threadId = String(url.searchParams.get("threadId") || "").trim().slice(0, 180);
+  if (!threadId) return { participants: [] };
+  const thread = await db.prepare("SELECT mailbox FROM inbox_threads WHERE id=?").bind(threadId).first();
+  const personal = await personalMailboxFor(db, env, actor);
+  if (!thread || !canInboxMailbox(access, thread.mailbox, "read", personal)) return { participants: [] };
+  const cutoff = Date.now() - 4500;
+  await db.prepare("DELETE FROM inbox_typing_presence WHERE updated_at < ?").bind(cutoff).run();
+  const { results } = await db.prepare("SELECT admin_email,admin_name,updated_at FROM inbox_typing_presence WHERE thread_id=? AND lower(admin_email)<>lower(?) AND updated_at>=? ORDER BY updated_at DESC").bind(threadId, actor.email, cutoff).all();
+  return { participants: results.map(row => ({ email: row.admin_email, name: row.admin_name, updatedAt: row.updated_at })) };
+}
+async function setInboxTyping(db, data, actor, env, access) {
+  const threadId = String(data.threadId || "").trim().slice(0, 180);
+  if (!threadId) return { error: "A conversation is required." };
+  const thread = await db.prepare("SELECT mailbox FROM inbox_threads WHERE id=?").bind(threadId).first();
+  const personal = await personalMailboxFor(db, env, actor);
+  if (!thread || !canInboxMailbox(access, thread.mailbox, "read", personal)) return { error: "Conversation not found." };
+  if (data.active) {
+    const name = String(data.name || actor.name || actor.email).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 120) || actor.email;
+    await db.prepare("INSERT INTO inbox_typing_presence (thread_id,admin_email,admin_name,updated_at) VALUES (?,?,?,?) ON CONFLICT(thread_id,admin_email) DO UPDATE SET admin_name=excluded.admin_name,updated_at=excluded.updated_at").bind(threadId, actor.email, name, Date.now()).run();
+  } else {
+    await db.prepare("DELETE FROM inbox_typing_presence WHERE thread_id=? AND lower(admin_email)=lower(?)").bind(threadId, actor.email).run();
+  }
+  return { success: true };
+}
 async function syncGmail(db, env) {
   const result = await listGmailMessages(db, env);
   if (result.error) return result;
   let imported = 0;
-  for (const message of result.messages || []) {
-    const saved = await ingestInbox(db, { ...message, mailbox: MANARAH_MAILBOX, to: { email: MANARAH_MAILBOX } });
+  const messages = [...(result.messages || [])].sort((a, b) => Number(a.direction !== "outbound") - Number(b.direction !== "outbound"));
+  for (const message of messages) {
+    const saved = await ingestInbox(db, { ...message, mailbox: MANARAH_MAILBOX, ...(message.direction === "inbound" ? { to: { email: MANARAH_MAILBOX } } : {}) });
     if (saved.success && !saved.duplicate) imported += 1;
   }
   await db.prepare("UPDATE gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE mailbox=?").bind(MANARAH_MAILBOX).run();
   return { success: true, imported, scanned: result.count || 0 };
 }
-async function listInboxWithGmail(db, _url, _actor, env, access) {
-  if (hasInboxPermission(access, "read") && access?.permissions?.some(permission => permission === "*" || permission === "inbox.*" || permission.startsWith("inbox.manarah."))) {
+async function syncPersonalGmail(db, env, actor) {
+  const personalMailbox = await personalMailboxFor(db, env, actor);
+  if (!personalMailbox) return { success: true, imported: 0, scanned: 0 };
+  const result = await listGmailMessages(db, env, { ownerUid: actor.uid, mailbox: personalMailbox });
+  if (result.error) return result;
+  let imported = 0;
+  const messages = [...(result.messages || [])].sort((a, b) => Number(a.direction !== "outbound") - Number(b.direction !== "outbound"));
+  for (const message of messages) {
+    const saved = await ingestInbox(db, { ...message, mailbox: personalMailbox, ...(message.direction === "inbound" ? { to: { email: personalMailbox } } : {}) }, personalMailbox);
+    if (saved.success && !saved.duplicate) imported += 1;
+  }
+  await db.prepare("UPDATE personal_gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE owner_uid=?").bind(actor.uid).run();
+  return { success: true, imported, scanned: result.count || 0 };
+}
+async function listInboxWithGmail(db, _url, actor, env, access) {
+  const personalMailbox = await personalMailboxFor(db, env, actor);
+  const configured = await configuredInboxMailboxes(db, env, actor);
+  if (configured.includes(MANARAH_MAILBOX) && hasInboxPermission(access, "read")) {
     const status = await gmailStatus(db, env);
     if (status.connected) {
       const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
-      if (!last || Date.now() - last > 120000) await syncGmail(db, env);
+      if (!last || Date.now() - last > 30000) await syncGmail(db, env);
     }
   }
-  return listInbox(db, access);
+  if (personalMailbox) {
+    const status = await personalGmailStatus(db, env, actor);
+    const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
+    if (!last || Date.now() - last > 30000) await syncPersonalGmail(db, env, actor);
+  }
+  return listInbox(db, access, configured, personalMailbox);
 }
 async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,name,description,permissions,is_preset FROM admin_roles ORDER BY is_preset DESC,name").all(); return {roles:results.map(r=>({id:r.id,name:r.name,description:r.description,permissions:parsePermissions(r.permissions),isPreset:!!r.is_preset}))}; }
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
@@ -638,6 +691,7 @@ async function getAdminTypeStyles(db) {
 const GET_ACTIONS = {
   "admin-access": (db, _url, actor) => getAccess(db, actor),
   "gmail-status": (db, _url, _actor, env) => gmailStatus(db, env),
+  "personal-gmail-status": (db, _url, actor, env) => personalGmailStatus(db, env, actor),
   "access-roles": (db) => getAccessRoles(db),
   "access-members": (db) => getAccessMembers(db),
   "access-settings": (db) => getAccessSettings(db),
@@ -657,7 +711,8 @@ const GET_ACTIONS = {
   "admin-places": (db) => getAdminPlaces(db),
   "admin-contact": (db) => getAdminContacts(db),
   "inbox-list": listInboxWithGmail,
-  "inbox-thread": (db, url, _actor, _env, access) => getInboxThread(db, url.searchParams.get("threadId"), access),
+  "inbox-thread": async (db, url, actor, env, access) => getInboxThread(db, url.searchParams.get("threadId"), access, await personalMailboxFor(db, env, actor)),
+  "inbox-typing": getInboxTyping,
   "admin-wishes": (db) => getAdminWishes(db),
   "pending-events": (db) => getPendingEvents(db),
   "pending-event-edits": (db) => getPendingEventEdits(db),
@@ -1301,6 +1356,9 @@ const POST_ACTIONS = {
   "gmail-oauth-start": (db, data, env, actor) => startGmailOAuth(db, env, actor, data.returnTo),
   "gmail-sync": (db, _data, env) => syncGmail(db, env),
   "gmail-disconnect": (db) => disconnectGmail(db),
+  "personal-gmail-oauth-start": (db, data, env, actor) => startPersonalGmailOAuth(db, env, actor, data.returnTo),
+  "personal-gmail-sync": (db, _data, env, actor) => syncPersonalGmail(db, env, actor),
+  "personal-gmail-disconnect": (db, _data, _env, actor) => disconnectPersonalGmail(db, actor),
   "save-access-role": (db, data) => saveAccessRole(db, data),
   "save-access-member": (db, data, _env, actor) => saveAccessMember(db, data, actor),
   "save-my-profile": (db, data, _env, actor) => saveMyProfile(db, data, actor),
@@ -1334,10 +1392,11 @@ const POST_ACTIONS = {
   "update-sponsor": (db, data) => updateSponsor(db, data),
   "update-type-style": (db, data) => updateTypeStyle(db, data),
   "update-contact-replied": (db, data) => updateContactReplied(db, data.rowId, data.replied),
-  "inbox-reply": (db, data, env, actor, access) => replyInbox(db, env, data, actor, access),
-  "inbox-compose": (db, data, env, actor, access) => composeInbox(db, env, data, actor, access),
-  "inbox-status": (db, data, _env, _actor, access) => setInboxStatus(db, data, access),
-  "inbox-note": (db, data, _env, actor, access) => addInboxNote(db, data, actor, access),
+  "inbox-reply": async (db, data, env, actor, access) => replyInbox(db, env, data, actor, access, await personalMailboxFor(db, env, actor)),
+  "inbox-compose": async (db, data, env, actor, access) => composeInbox(db, env, data, actor, access, await personalMailboxFor(db, env, actor)),
+  "inbox-status": async (db, data, env, actor, access) => setInboxStatus(db, data, access, await personalMailboxFor(db, env, actor)),
+  "inbox-note": async (db, data, env, actor, access) => addInboxNote(db, data, actor, access, await personalMailboxFor(db, env, actor)),
+  "inbox-typing": (db, data, env, actor, access) => setInboxTyping(db, data, actor, env, access),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
   "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),
   "approve-event": (db, data, env) => approveEvent(db, data.eventId, env),
@@ -1390,7 +1449,7 @@ export async function onRequestPost(context) {
   }
 
   try {
-    await logAdminAction(env.DB, {
+    if (data.action !== "inbox-typing") await logAdminAction(env.DB, {
       action: data.action, actor: auth.actor,
       targetId: extractTargetId(data), detail: buildAuditDetail(data), success: !!result.success,
     });

@@ -130,7 +130,7 @@ body,
   min-height: 100%;
 }
 body {
-  font-family: "Geist", sans-serif;
+  font-family: "Plus Jakarta Sans", "Geist", sans-serif;
   font-size: 16px;
   color: var(--text);
   background: var(--bg-alt);

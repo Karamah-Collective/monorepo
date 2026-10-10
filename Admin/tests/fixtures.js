@@ -217,13 +217,14 @@ export const responses = {
 };
 
 // Browser-only module interception: production authentication and API code stay intact.
-export async function mockAdmin(page, overrides = {}, signedIn = true, clientError = "") {
+export async function mockAdmin(page, overrides = {}, signedIn = true, clientError = "", identity = null) {
+  const currentIdentity = identity || { displayName: "Amina Hassan", email: "amina@example.test", emailVerified: true };
   await page.route("**/src/auth/AuthContext.jsx*", (route) =>
     route.fulfill({
       contentType: "text/javascript",
       body: `
     export const AuthProvider = ({children}) => children;
-    export const useAuth = () => ({ user: ${signedIn ? JSON.stringify({ displayName: "Amina Hassan", email: "amina@example.test", emailVerified: true }) : "null"}, loading: false, access: ${signedIn ? JSON.stringify({ roleId: "administrator", roleName: "Administrator", permissions: ["*"] }) : "null"}, signOut: async () => {}, signIn: async () => {}, signUp: async () => {} });
+    export const useAuth = () => ({ user: ${signedIn ? JSON.stringify(currentIdentity) : "null"}, loading: false, access: ${signedIn ? JSON.stringify({ roleId: "administrator", roleName: "Administrator", permissions: ["*"] }) : "null"}, signOut: async () => {}, signIn: async () => {}, signUp: async () => {} });
   `,
     }),
   );
@@ -249,7 +250,7 @@ export async function mockAdmin(page, overrides = {}, signedIn = true, clientErr
     const responses = ${JSON.stringify({ ...responses, ...overrides })};
     export async function apiGet(action) { ${clientError ? `throw new Error(${JSON.stringify(clientError)});` : ""} return responses[action] ?? []; }
     export async function apiGetBlob() { return new Blob(); }
-    export async function apiPost(action, body) { window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; if (action === 'save-weekly-report-subscriber') return {success:true,id:'report-new'}; if (action === 'save-weekly-report-settings') return {success:true,settings:body.settings}; if (action === 'forms-create') return {success:true,id:'form-1',slug:'community-rsvp',shareCode:'0123456789abcdef0123456789abcdef',revision:0}; if (action === 'forms-save') return {success:true,revision:(body.revision||0)+1,slug:body.slug}; if (action === 'forms-publish') return {success:true,versionNumber:2}; return {success:true}; }
+    export async function apiPost(action, body) { if (action !== 'inbox-typing') window.__lastMutation = {action, body}; if (action === 'update-app-settings') return {revision: 2, settings: body.settings}; if (action === 'save-link-hub-settings') return {success: true, settings: {...body.settings, revision: body.revision + 1}}; if (action === 'save-link-hub-link') return {success: true, link: {...body.link, id: body.link.id || 'new-link', metadata_status: 'ready'}}; if (action === 'save-weekly-report-subscriber') return {success:true,id:'report-new'}; if (action === 'save-weekly-report-settings') return {success:true,settings:body.settings}; if (action === 'forms-create') return {success:true,id:'form-1',slug:'community-rsvp',shareCode:'0123456789abcdef0123456789abcdef',revision:0}; if (action === 'forms-save') return {success:true,revision:(body.revision||0)+1,slug:body.slug}; if (action === 'forms-publish') return {success:true,versionNumber:2}; return {success:true}; }
     export async function logAuthEvent() {}
   `,
     }),

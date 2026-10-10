@@ -1,16 +1,26 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "./client.js";
 
 // ── Read queries ─────────────────────────────────────────────────────────
 
 export const useAdminStats = () => useQuery({ queryKey: ["admin-stats"], queryFn: () => apiGet("admin-stats") });
 export const useGmailStatus = (options = {}) => useQuery({ queryKey: ["gmail-status"], queryFn: () => apiGet("gmail-status"), staleTime: 30_000, ...options });
+export const usePersonalGmailStatus = (options = {}) => useQuery({ queryKey: ["personal-gmail-status"], queryFn: () => apiGet("personal-gmail-status"), staleTime: 30_000, ...options });
 export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn: () => apiGet("pending-new") });
 export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
 export const useAdminPlaces = () => useQuery({ queryKey: ["admin-places"], queryFn: () => apiGet("admin-places") });
 export const useAdminContacts = () => useQuery({ queryKey: ["admin-contact"], queryFn: () => apiGet("admin-contact") });
-export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => apiGet("inbox-list") });
-export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: keepPreviousData });
+export const useInbox = () => useQuery({
+  queryKey: ["inbox"],
+  queryFn: () => apiGet("inbox-list"),
+  staleTime: 30_000,
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: true,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+});
+export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: previous => previous });
+export const useInboxTyping = (threadId) => useQuery({ queryKey: ["inbox-typing", threadId], queryFn: () => apiGet("inbox-typing", { threadId }), enabled: !!threadId, staleTime: 0, refetchInterval: 1_200, refetchIntervalInBackground: true, refetchOnWindowFocus: true, retry: 0 });
 export const useAdminWishes = () => useQuery({ queryKey: ["admin-wishes"], queryFn: () => apiGet("admin-wishes") });
 export const useAdminEvents = () => useQuery({ queryKey: ["admin-events"], queryFn: () => apiGet("admin-events") });
 export const usePendingEventEdits = () => useQuery({ queryKey: ["pending-event-edits"], queryFn: () => apiGet("pending-event-edits") });
@@ -53,12 +63,16 @@ export const useDeletePlace = () => useAdminMutation("delete-place", ["admin-pla
 export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
 export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
 export const useStartGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["gmail-status"]);
+export const useStartPersonalGmailOAuth = () => useAdminMutation("personal-gmail-oauth-start", ["personal-gmail-status", "inbox"]);
 export const useSyncGmail = () => useAdminMutation("gmail-sync", ["gmail-status", "inbox"]);
+export const useSyncPersonalGmail = () => useAdminMutation("personal-gmail-sync", ["personal-gmail-status", "inbox"]);
 export const useDisconnectGmail = () => useAdminMutation("gmail-disconnect", ["gmail-status", "inbox"]);
+export const useDisconnectPersonalGmail = () => useAdminMutation("personal-gmail-disconnect", ["personal-gmail-status", "inbox"]);
 export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]);
 export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);
 export const useSetInboxStatus = () => useAdminMutation("inbox-status", ["inbox"]);
 export const useAddInboxNote = () => useAdminMutation("inbox-note", ["inbox"]);
+export const useSetInboxTyping = () => useMutation({ mutationFn: body => apiPost("inbox-typing", body) });
 export const useUpdateWishApproved = () => useAdminMutation("update-wish-approved", ["admin-wishes", "admin-stats"]);
 export const useUpdateWishImplemented = () => useAdminMutation("update-wish-implemented", ["admin-wishes"]);
 export const useApproveEvent = () => useAdminMutation("approve-event", ["admin-events", "admin-stats"]);

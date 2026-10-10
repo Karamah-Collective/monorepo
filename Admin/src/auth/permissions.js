@@ -26,7 +26,7 @@ export function canInbox(access, level = "read", mailbox = "") {
 }
 
 export function canRoute(access, path) {
-  return path === "/contacts" ? canInbox(access, "read") : can(access, ROUTE_PERMISSION[path] || "read");
+  return path === "/contacts" ? true : can(access, ROUTE_PERMISSION[path] || "read");
 }
 
 export const ROUTE_PERMISSION = {

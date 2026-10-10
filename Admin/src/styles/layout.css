@@ -1,4 +1,11 @@
 /* Workspace composition: desktop sidebar, tablet rail, phone drawer. */
+html:has(.pp-app-shell),
+body:has(.pp-app-shell),
+#root:has(.pp-app-shell) {
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+}
 .pp-app-shell {
   height: 100dvh;
   display: grid;

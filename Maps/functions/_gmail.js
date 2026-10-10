@@ -59,16 +59,30 @@ async function connection(db) {
   try { return await db.prepare("SELECT * FROM gmail_connections WHERE mailbox=?").bind(MANARAH_MAILBOX).first(); } catch { return null; }
 }
 
-export async function gmailStatus(db, env) {
-  const row = await connection(db);
+async function personalConnection(db, ownerUid) {
+  if (!ownerUid) return null;
+  try { return await db.prepare("SELECT * FROM personal_gmail_connections WHERE owner_uid=?").bind(ownerUid).first(); } catch { return null; }
+}
+
+function statusFor(env, row, mailbox) {
   return {
     configured: configured(env),
-    mailbox: MANARAH_MAILBOX,
+    mailbox,
     connected: Boolean(row?.refresh_token_ciphertext),
     connectedAt: row?.connected_at || "",
     lastSyncAt: row?.last_sync_at || "",
-    accountEmail: row?.account_email || MANARAH_MAILBOX,
+    accountEmail: row?.account_email || mailbox,
   };
+}
+
+export async function gmailStatus(db, env) {
+  const row = await connection(db);
+  return statusFor(env, row, MANARAH_MAILBOX);
+}
+
+export async function personalGmailStatus(db, env, actor) {
+  const row = await personalConnection(db, actor?.uid);
+  return statusFor(env, row, actor?.email || "personal mailbox");
 }
 
 function validReturnTo(value) {
@@ -93,6 +107,27 @@ export async function startGmailOAuth(db, env, actor, returnTo) {
     prompt: "consent",
     include_granted_scopes: "true",
     login_hint: MANARAH_MAILBOX,
+    scope: GMAIL_SCOPES.join(" "),
+    state,
+  });
+  return { success: true, authorizationUrl: `${GMAIL_AUTH_URL}?${params}` };
+}
+
+export async function startPersonalGmailOAuth(db, env, actor, returnTo) {
+  if (!configured(env)) return { error: "Gmail is not configured on the server yet." };
+  if (!actor?.uid || !actor?.email) return { error: "Your workspace identity could not be verified." };
+  const state = crypto.randomUUID();
+  await db.prepare("DELETE FROM personal_gmail_oauth_states WHERE expires_at < datetime('now')").run();
+  await db.prepare("INSERT INTO personal_gmail_oauth_states (state,owner_uid,owner_email,return_to,expires_at,created_at) VALUES (?,?,?,?,datetime('now','+10 minutes'),datetime('now'))")
+    .bind(state, actor.uid, actor.email, validReturnTo(returnTo)).run();
+  const params = new URLSearchParams({
+    client_id: clean(env.GMAIL_CLIENT_ID, 300),
+    redirect_uri: clean(env.GMAIL_OAUTH_REDIRECT_URI, 500),
+    response_type: "code",
+    access_type: "offline",
+    prompt: "consent",
+    include_granted_scopes: "true",
+    login_hint: actor.email,
     scope: GMAIL_SCOPES.join(" "),
     state,
   });
@@ -154,18 +189,53 @@ export async function completeGmailOAuth(db, env, request) {
   }
 }
 
-async function accessTokenFor(db, env) {
-  const row = await connection(db);
-  if (!row?.refresh_token_ciphertext) return { error: "Connect Manarah Gmail before syncing or sending." };
-  const refreshToken = await decryptToken(env, row.refresh_token_ciphertext);
-  const response = await fetch(GMAIL_TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: clean(env.GMAIL_CLIENT_ID, 300), client_secret: clean(env.GMAIL_CLIENT_SECRET, 300), refresh_token: refreshToken, grant_type: "refresh_token" }),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.access_token) throw new Error(payload.error_description || "Gmail authorization has expired. Reconnect the mailbox.");
-  return { accessToken: payload.access_token };
+export async function completePersonalGmailOAuth(db, env, request) {
+  const url = new URL(request.url);
+  const state = clean(url.searchParams.get("state"), 100);
+  const code = clean(url.searchParams.get("code"), 4000);
+  const row = state ? await db.prepare("SELECT * FROM personal_gmail_oauth_states WHERE state=? AND expires_at > datetime('now')").bind(state).first() : null;
+  const fallback = "https://admin.karamahcollective.com/workspace/preferences";
+  const returnTo = validReturnTo(row?.return_to || fallback);
+  if (!row || !code) return { returnTo, error: "The personal Gmail authorization expired. Start the connection again." };
+  try {
+    const token = await exchangeCode(env, code);
+    const profile = await gmailFetch(token.access_token, "/profile");
+    const accountEmail = email(profile.emailAddress);
+    if (accountEmail !== String(row.owner_email || "").toLowerCase()) throw new Error(`Sign in as ${row.owner_email} to connect your personal mailbox.`);
+    const existing = await personalConnection(db, row.owner_uid);
+    const refreshToken = token.refresh_token ? await encryptToken(env, token.refresh_token) : existing?.refresh_token_ciphertext;
+    if (!refreshToken) throw new Error("Google did not return a refresh token. Reconnect and approve access again.");
+    await db.prepare(`INSERT INTO personal_gmail_connections (owner_uid,owner_email,account_email,refresh_token_ciphertext,scope_json,connected_at,last_sync_at,updated_at)
+      VALUES (?,?,?,?,?,datetime('now'),NULL,datetime('now'))
+      ON CONFLICT(owner_uid) DO UPDATE SET owner_email=excluded.owner_email,account_email=excluded.account_email,refresh_token_ciphertext=excluded.refresh_token_ciphertext,scope_json=excluded.scope_json,connected_at=excluded.connected_at,updated_at=excluded.updated_at`)
+      .bind(row.owner_uid, row.owner_email, accountEmail, refreshToken, JSON.stringify(token.scope ? token.scope.split(" ") : GMAIL_SCOPES)).run();
+    await db.prepare("DELETE FROM personal_gmail_oauth_states WHERE state=?").bind(state).run();
+    return { returnTo, success: true };
+  } catch (error) {
+    await db.prepare("DELETE FROM personal_gmail_oauth_states WHERE state=?").bind(state).run().catch(() => {});
+    return { returnTo, error: clean(error?.message || "Could not connect your personal Gmail.", 300) };
+  }
+}
+
+async function accessTokenFor(db, env, options = {}) {
+  if (!configured(env)) return { error: "Gmail server configuration is incomplete." };
+  const personal = Boolean(options.ownerUid);
+  const row = personal ? await personalConnection(db, options.ownerUid) : await connection(db);
+  if (!row?.refresh_token_ciphertext) return { error: personal ? "Connect your personal Gmail before syncing or sending." : "Connect Manarah Gmail before syncing or sending." };
+  try {
+    const refreshToken = await decryptToken(env, row.refresh_token_ciphertext);
+    const response = await fetch(GMAIL_TOKEN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: clean(env.GMAIL_CLIENT_ID, 300), client_secret: clean(env.GMAIL_CLIENT_SECRET, 300), refresh_token: refreshToken, grant_type: "refresh_token" }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.access_token) throw new Error(payload.error_description || "Gmail authorization has expired. Reconnect the mailbox.");
+    return { accessToken: payload.access_token, accountEmail: row.account_email || options.mailbox || MANARAH_MAILBOX };
+  } catch (error) {
+    const message = clean(error?.message || "Gmail authorization has expired. Reconnect the mailbox.", 300);
+    return { error: /invalid_grant|expired|revoked|invalid.*token/i.test(message) ? "Gmail authorization has expired. Reconnect the mailbox." : message };
+  }
 }
 
 function headerMap(headers = []) {
@@ -190,32 +260,85 @@ function addressFrom(value) {
   return { email: email(match?.[2] || raw), name: clean(match?.[1]?.replace(/^"|"$/g, "") || "", 120) };
 }
 
-export async function listGmailMessages(db, env) {
-  const auth = await accessTokenFor(db, env);
+function stripQuotedText(value) {
+  const text = String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const marker = text.search(/(?:^|\n)\s*(?:[_-]{5,}\s*\n\s*)?From:\s.+\n\s*(?:Sent|Date):\s.+\n\s*To:\s.+\n\s*Subject:\s.+/i);
+  if (marker > 0) return text.slice(0, marker).trim();
+  const replyMarker = text.search(/(?:^|\n)\s*(?:On .+ wrote:|[-_]{5,}\s*Original Message\s*[-_]{5,})/im);
+  if (replyMarker > 0) return text.slice(0, replyMarker).trim();
+  const quotedLines = text.split("\n");
+  const firstQuotedLine = quotedLines.findIndex((line, index) => index > 0 && /^\s*>/.test(line));
+  return firstQuotedLine > 0 ? quotedLines.slice(0, firstQuotedLine).join("\n").trim() : text.trim();
+}
+
+function stripQuotedHtml(value) {
+  const html = String(value || "");
+  const withoutKnownQuote = html
+    .replace(/<blockquote\b[^>]*>[\s\S]*?<\/blockquote>/gi, "")
+    .replace(/<div\b[^>]*class=["'][^"']*(?:gmail_quote|gmail_attr)[^"']*["'][\s\S]*$/i, "")
+    .trim();
+  if (withoutKnownQuote !== html.trim()) return withoutKnownQuote;
+  const visible = html.replace(/<br\s*\/?>|<\/(?:p|div|li|tr)>/gi, "\n").replace(/<[^>]+>/g, " ");
+  if (stripQuotedText(visible) === visible.trim()) return html.trim();
+  const divider = html.search(/<hr\b[^>]*>/i);
+  return divider >= 0 ? html.slice(0, divider).trim() : html.trim();
+}
+
+export function normalizeReplyBody(text, html) {
+  const normalizedHtml = String(stripQuotedHtml(html) || "")
+    .replace(/<(p|div)\b[^>]*>(?:\s|&nbsp;|\u00a0|<br\s*\/?>)*<\/\1>/gi, "")
+    .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>")
+    .replace(/(?:<br\s*\/?>\s*)+$/i, "")
+    .trim();
+  const normalizedText = String(stripQuotedText(text || normalizedHtml.replace(/<[^>]+>/g, " ")) || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n[ \t]*\n(?:[ \t]*\n)+/g, "\n\n")
+    .trim();
+  return { text: normalizedText, html: normalizedHtml };
+}
+
+export async function listGmailMessages(db, env, options = {}) {
+  const auth = await accessTokenFor(db, env, options);
   if (auth.error) return auth;
-  const list = await gmailFetch(auth.accessToken, "/messages?maxResults=100&q=in:anywhere+-in:sent+-in:drafts");
-  const messages = [];
-  for (const item of list.messages || []) {
-    try {
-      const message = await gmailFetch(auth.accessToken, `/messages/${encodeURIComponent(item.id)}?format=full`);
-      const headers = headerMap(message.payload?.headers);
-      const body = { text: "", html: "" };
-      walkParts(message.payload, body);
-      const sender = addressFrom(headers.from);
-      if (!sender.email) continue;
-      messages.push({
-        from: sender,
-        to: addressFrom(headers.to),
-        subject: headers.subject || "(No subject)",
-        textBody: body.text || body.html.replace(/<[^>]+>/g, " "),
-        htmlBody: body.html,
-        messageId: message.id,
-        threadId: `gmail_${message.threadId || message.id}`,
-        receivedAt: headers.date ? new Date(headers.date).toISOString() : new Date(Number(message.internalDate) || Date.now()).toISOString(),
-      });
-    } catch { /* One malformed message must not block the rest of the mailbox. */ }
+  try {
+    const pageSize = "500";
+    let pageToken = "";
+    const messages = [];
+    do {
+      const query = new URLSearchParams({ maxResults: pageSize, q: "in:anywhere -in:drafts" });
+      if (pageToken) query.set("pageToken", pageToken);
+      const list = await gmailFetch(auth.accessToken, `/messages?${query}`);
+      for (const item of list.messages || []) {
+        try {
+          const message = await gmailFetch(auth.accessToken, `/messages/${encodeURIComponent(item.id)}?format=full`);
+          const headers = headerMap(message.payload?.headers);
+          const body = { text: "", html: "" };
+          walkParts(message.payload, body);
+          const sender = addressFrom(headers.from);
+          const recipient = addressFrom(headers.to);
+          if (!sender.email) continue;
+          const normalized = normalizeReplyBody(body.text, body.html);
+          const sent = Array.isArray(message.labelIds) && message.labelIds.includes("SENT");
+          messages.push({
+            from: sender,
+            to: recipient,
+            subject: headers.subject || "(No subject)",
+            textBody: normalized.text || normalized.html.replace(/<[^>]+>/g, " "),
+            htmlBody: normalized.html,
+            direction: sent ? "outbound" : "inbound",
+            messageId: message.id,
+            threadId: `gmail_${message.threadId || message.id}`,
+            providerThreadId: message.threadId || message.id,
+            receivedAt: headers.date ? new Date(headers.date).toISOString() : new Date(Number(message.internalDate) || Date.now()).toISOString(),
+          });
+        } catch { /* One malformed message must not block the rest of the mailbox. */ }
+      }
+      pageToken = String(list.nextPageToken || "");
+    } while (pageToken);
+    return { messages, count: messages.length };
+  } catch (error) {
+    return { error: clean(error?.message || "Gmail could not be read.", 300) };
   }
-  return { messages, count: messages.length };
 }
 
 function mimeBase64(value) {
@@ -237,22 +360,45 @@ function rawMessage({ from, to, cc, bcc, subject, text, html, threadId, inReplyT
   return `${headers.join("\r\n")}\r\n\r\n${parts.join("\r\n")}\r\n--manarah-mixed--`;
 }
 
-export async function sendGmailMessage(db, env, data) {
-  const auth = await accessTokenFor(db, env);
+export async function sendGmailMessage(db, env, data, options = {}) {
+  const auth = await accessTokenFor(db, env, options);
   if (auth.error) return auth;
   const to = Array.isArray(data.to) ? data.to.map(email).filter(Boolean) : [];
   const cc = Array.isArray(data.cc) ? data.cc.map(email).filter(Boolean) : [];
   const bcc = Array.isArray(data.bcc) ? data.bcc.map(email).filter(Boolean) : [];
   if (!to.length) return { error: "Enter a valid recipient email." };
-  const raw = rawMessage({ ...data, from: MANARAH_MAILBOX, to, cc, bcc });
+  const raw = rawMessage({ ...data, from: auth.accountEmail, to, cc, bcc });
   const encoded = base64(new TextEncoder().encode(raw)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   const gmailThreadId = String(data.threadId || "").startsWith("gmail_") ? String(data.threadId).slice(6) : "";
-  const payload = await gmailFetch(auth.accessToken, "/messages/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ raw: encoded, ...(gmailThreadId ? { threadId: gmailThreadId } : {}) }) });
-  return { success: true, providerMessageId: payload.id || "", gmailThreadId: payload.threadId || "" };
+  try {
+    const payload = await gmailFetch(auth.accessToken, "/messages/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ raw: encoded, ...(gmailThreadId ? { threadId: gmailThreadId } : {}) }) });
+    return { success: true, providerMessageId: payload.id || "", gmailThreadId: payload.threadId || "" };
+  } catch (error) {
+    return { error: clean(error?.message || "Gmail could not send the message.", 300) };
+  }
+}
+
+export async function gmailThreadIdForMessage(db, env, providerMessageId, options = {}) {
+  const messageId = clean(providerMessageId, 255);
+  if (!messageId) return { gmailThreadId: "" };
+  const auth = await accessTokenFor(db, env, options);
+  if (auth.error) return auth;
+  try {
+    const message = await gmailFetch(auth.accessToken, `/messages/${encodeURIComponent(messageId)}?format=metadata&metadataHeaders=Message-ID`);
+    const headers = headerMap(message.payload?.headers);
+    return { gmailThreadId: clean(message.threadId, 255), messageHeaderId: clean(headers["message-id"], 500) };
+  } catch (error) {
+    return { error: clean(error?.message || "Gmail could not read the conversation.", 300) };
+  }
 }
 
 export async function disconnectGmail(db) {
   await db.prepare("DELETE FROM gmail_connections WHERE mailbox=?").bind(MANARAH_MAILBOX).run();
+  return { success: true };
+}
+
+export async function disconnectPersonalGmail(db, actor) {
+  if (actor?.uid) await db.prepare("DELETE FROM personal_gmail_connections WHERE owner_uid=?").bind(actor.uid).run();
   return { success: true };
 }
 

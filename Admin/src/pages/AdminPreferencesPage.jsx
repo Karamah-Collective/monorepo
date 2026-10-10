@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { useDisconnectGmail, useGmailStatus, useStartGmailOAuth, useSyncGmail } from "../api/queries.js";
+import { useDisconnectGmail, useDisconnectPersonalGmail, useGmailStatus, usePersonalGmailStatus, useStartGmailOAuth, useStartPersonalGmailOAuth, useSyncGmail, useSyncPersonalGmail } from "../api/queries.js";
 import { useToast } from "../components/Toast.jsx";
 
 function stored(key, fallback) {
@@ -25,9 +25,13 @@ export default function AdminPreferencesPage() {
   const isAdministrator = access?.permissions?.includes("*");
   const isGmailOwner = user?.email?.toLowerCase() === "moontasir@karamahcollective.com";
   const gmail = useGmailStatus({ enabled: isAdministrator });
+  const personalGmail = usePersonalGmailStatus({ enabled: Boolean(user) });
   const connect = useStartGmailOAuth();
+  const connectPersonal = useStartPersonalGmailOAuth();
   const sync = useSyncGmail();
+  const syncPersonal = useSyncPersonalGmail();
   const disconnect = useDisconnectGmail();
+  const disconnectPersonal = useDisconnectPersonalGmail();
   const [sidebar, setSidebar] = useState(() => stored("admin-sidebar", "expanded"));
   const [density, setDensity] = useState(() => stored("admin-table-density", "compact"));
   const [pageSize, setPageSize] = useState(() => stored("admin-table-page-size", "25"));
@@ -52,9 +56,12 @@ export default function AdminPreferencesPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const result = params.get("gmail");
+    const personalResult = params.get("personalGmail");
     if (result === "connected") toast("Manarah Gmail connected");
     if (result === "error") toast(params.get("gmailError") || "Gmail could not be connected");
-    if (result) navigate(location.pathname, { replace: true });
+    if (personalResult === "connected") toast("Your personal Gmail connected");
+    if (personalResult === "error") toast(params.get("personalGmailError") || "Your personal Gmail could not be connected");
+    if (result || personalResult) navigate(location.pathname, { replace: true });
   }, [location.pathname, location.search, navigate, toast]);
 
   function connectGmail() {
@@ -65,19 +72,50 @@ export default function AdminPreferencesPage() {
     });
   }
 
+  function syncGmail() {
+    sync.mutate(undefined, {
+      onSuccess: (result) => toast(`Manarah Gmail synced · ${result.imported || 0} new message${result.imported === 1 ? "" : "s"}`),
+    });
+  }
+
+  function connectPersonalGmail() {
+    connectPersonal.mutate({ returnTo: `${window.location.origin}${location.pathname}` }, {
+      onSuccess: (result) => {
+        if (result.authorizationUrl) window.location.assign(result.authorizationUrl);
+      },
+    });
+  }
+
+  function syncPersonalGmail() {
+    syncPersonal.mutate(undefined, {
+      onSuccess: (result) => toast(`Personal Gmail synced · ${result.imported || 0} new message${result.imported === 1 ? "" : "s"}`),
+    });
+  }
+
   return <div className="pp-page admin-preferences-page">
     <h1 className="pp-page-title">Admin preferences</h1>
     {isAdministrator && <section className="admin-preferences-panel gmail-connection-panel" aria-label="Gmail connection">
       <div className="admin-preference-row">
         <div className="gmail-connection-copy"><h2>Manarah Gmail</h2><span className={`gmail-connection-state${gmail.data?.connected ? " is-connected" : ""}`}>{gmail.isLoading ? "Checking connection" : gmail.data?.connected ? gmail.data.accountEmail : !isGmailOwner ? "Primary admin setup pending" : gmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
         <div className="gmail-connection-actions">
-          {gmail.data?.connected && <button className="pp-btn" type="button" disabled={sync.isPending} onClick={() => sync.mutate()}>{sync.isPending ? "Syncing…" : "Sync now"}</button>}
+          {gmail.data?.connected && <button className="pp-btn" type="button" disabled={sync.isPending} onClick={syncGmail}>{sync.isPending ? "Syncing…" : "Sync now"}</button>}
           {isGmailOwner && gmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnect.isPending} onClick={() => disconnect.mutate()}>{disconnect.isPending ? "Disconnecting…" : "Disconnect"}</button>}
           {isGmailOwner && !gmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!gmail.data?.configured || connect.isPending} onClick={connectGmail}>{connect.isPending ? "Opening Google…" : "Connect Gmail"}</button>}
         </div>
       </div>
       {(connect.error || sync.error || disconnect.error || gmail.error) && <p className="pp-error-text gmail-connection-error">{(connect.error || sync.error || disconnect.error || gmail.error).message}</p>}
     </section>}
+    <section className="admin-preferences-panel gmail-connection-panel" aria-label="Personal Gmail connection">
+      <div className="admin-preference-row">
+        <div className="gmail-connection-copy"><h2>Your Gmail</h2><p>Connect your Karamah email to read and send personal messages here. Only you can access this mailbox.</p><span className={`gmail-connection-state${personalGmail.data?.connected ? " is-connected" : ""}`}>{personalGmail.isLoading ? "Checking connection" : personalGmail.data?.connected ? personalGmail.data.accountEmail : personalGmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-actions">
+          {personalGmail.data?.connected && <button className="pp-btn" type="button" disabled={syncPersonal.isPending} onClick={syncPersonalGmail}>{syncPersonal.isPending ? "Syncing…" : "Sync"}</button>}
+          {personalGmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnectPersonal.isPending} onClick={() => disconnectPersonal.mutate()}>{disconnectPersonal.isPending ? "Disconnecting…" : "Disconnect"}</button>}
+          {!personalGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!personalGmail.data?.configured || connectPersonal.isPending} onClick={connectPersonalGmail}>{connectPersonal.isPending ? "Opening Google…" : "Connect your Gmail"}</button>}
+        </div>
+      </div>
+      {(connectPersonal.error || syncPersonal.error || disconnectPersonal.error || personalGmail.error) && <p className="pp-error-text gmail-connection-error">{(connectPersonal.error || syncPersonal.error || disconnectPersonal.error || personalGmail.error).message}</p>}
+    </section>
     <div className="admin-preferences-panel">
       <Choice title="Sidebar" description="Choose whether your navigation begins expanded or compact on desktop." value={sidebar} onChange={setSidebar} options={[{ value: "expanded", label: "Expanded" }, { value: "collapsed", label: "Compact" }]} />
       <Choice title="Table density" description="Use comfortable rows by default, or choose compact rows when reviewing large collections." value={density} onChange={setDensity} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} />
