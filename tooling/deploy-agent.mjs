@@ -65,6 +65,7 @@ const DEPLOY_FILES = [
   "Maps/_routes.json",
   "Maps/kc_logo_big.inline.svg",
   "Maps/LOGO - Manarah.svg",
+  "Maps/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
   "Maps/src",
   "Maps/data",
   "Maps/functions",
