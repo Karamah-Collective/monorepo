@@ -32,7 +32,7 @@ test("sidebar collapse persists and search supports the keyboard", async ({
   await page.reload();
   await expect(page.locator(".pp-app-shell")).toHaveClass(/nav-is-collapsed/);
   await page.keyboard.press("Control+k");
-  await page.getByRole("textbox", { name: "Find a page" }).fill("places");
+  await page.getByRole("textbox", { name: "Search workspace" }).fill("places");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/places$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -135,18 +135,25 @@ test("inbox uses API threads and sends supported actions", async ({ page }) => {
   });
   await page.goto("/contacts");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mail folders" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Junk", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sort and filter mail" })).toHaveCount(0);
   await expect(page.locator("body")).toHaveCSS("font-family", /Plus Jakarta Sans/);
-  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row")).toContainText("manarah@karamahcollective.com");
+  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row").filter({ hasText: "manarah@karamahcollective.com" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row").filter({ hasText: "manarah@karamahcollective.com" })).toContainText("manarah@karamahcollective.com");
   await expect(page.getByRole("button", { name: /Aisha Rahman.*Partnership inquiry/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sync Manarah support" })).toHaveText("");
   await page.getByRole("button", { name: "Sync Manarah support" }).click();
   await expect(page.getByRole("status")).toContainText("Inbox synced");
   expect(await page.evaluate(() => window.__lastMutation)).toEqual({ action: "gmail-sync", body: { mailbox: "manarah@karamahcollective.com" } });
   if (process.env.INBOX_CAPTURE) await page.screenshot({ path: process.env.INBOX_CAPTURE });
-  await page.getByRole("textbox", { name: "Search conversations" }).fill("no match");
-  await expect(page.getByText("No matching conversations.")).toBeVisible();
-  await page.getByRole("textbox", { name: "Search conversations" }).fill("");
+  await expect(page.getByRole("button", { name: "Search mail" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sort and filter mail" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Search workspace" }).click();
+  await page.getByRole("textbox", { name: "Search workspace" }).fill("partnership");
+  await expect(page.getByRole("link", { name: /Partnership inquiry/ })).toBeVisible();
+  await page.getByRole("link", { name: /Partnership inquiry/ }).click();
+  await expect(page).toHaveURL(/\/contacts\?folder=all&search=partnership/);
   await expect(page.getByText("I will also review this.").last()).toBeVisible();
   await expect(page.getByRole("button", { name: "Show earlier messages" })).toBeVisible();
   await expect(page.getByText("Earlier context from the partnership thread.")).toBeHidden();
@@ -239,6 +246,27 @@ test("inbox uses API threads and sends supported actions", async ({ page }) => {
       mailbox: "manarah@karamahcollective.com", htmlBody: "A new message.", attachments: [],
     },
   });
+});
+
+test("shared mailbox selector keeps both authorized mailboxes visible", async ({ page }) => {
+  await mockAdmin(page, {
+    "inbox-list": { mailboxes: ["amina@example.test", "contact@karamahcollective.com"], threads: [] },
+  });
+  await page.goto("/contacts");
+  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row")).toHaveCount(2);
+  await expect(page.locator(".inbox-mailbox-panel-shared")).toContainText("contact@karamahcollective.com");
+  await expect(page.locator(".inbox-mailbox-panel-shared")).toContainText("manarah@karamahcollective.com");
+});
+
+test("mailbox switching keeps the active folder", async ({ page }) => {
+  await mockAdmin(page, {
+    "inbox-list": { mailboxes: ["amina@example.test", "contact@karamahcollective.com"], threads: [] },
+  });
+  await page.goto("/contacts?folder=Sent");
+  await page.getByRole("tab", { name: "Shared" }).click();
+  await expect(page).toHaveURL(/\/contacts\?folder=Sent/);
+  await page.getByRole("tab", { name: "Personal" }).click();
+  await expect(page).toHaveURL(/\/contacts\?folder=Sent/);
 });
 
 for (const width of [360, 834, 1440]) {
@@ -406,11 +434,11 @@ test("page search honors the unsaved settings guard", async ({ page }) => {
   await page.getByRole("tab", { name: "Startup", exact: true }).click();
   await page.locator("#setting-welcomeEnabled").uncheck();
   await page.keyboard.press("Control+k");
-  await page.getByRole("textbox", { name: "Find a page" }).fill("places");
+  await page.getByRole("textbox", { name: "Search workspace" }).fill("places");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/app-settings$/);
-  await expect(page.getByRole("dialog", { name: "Find a page" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Search workspace" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#setting-welcomeEnabled")).not.toBeChecked();
 });
@@ -467,7 +495,7 @@ test("mobile drawer traps focus, closes on Escape and route selection", async ({
   await page.goto("/");
   await expect(page.locator(".pp-nav")).toHaveAttribute("inert", "");
   await page.getByRole("button", { name: "Open menu" }).click();
-  await expect(page.getByRole("button", { name: "Find a page" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Search workspace" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
   await page.getByRole("button", { name: "Open menu" }).click();

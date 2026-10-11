@@ -47,8 +47,9 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
-import { addInboxNote, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, ingestInbox, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
-import { CONTACT_MAILBOX, disconnectGmail, disconnectPersonalGmail, gmailStatus, listGmailMessages, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
+import { addInboxNote, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
+import { CONTACT_MAILBOX, disconnectGmail, disconnectPersonalGmail, gmailStatus, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
+import { syncGmailFull, syncGmailHistory } from "../_gmail-sync.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
 import {
   createForm, deleteForm, deleteSubmission, duplicateForm, exportResponses,
@@ -92,6 +93,11 @@ const EVERYONE_PERMISSIONS = ["dashboard.view","maps.places.read","links.qr","fo
 const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.write"], moderator:["moderation.*","inbox.*"], viewer:[] };
 const DEFAULT_ROLE_ID = "viewer";
 function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
+function effectiveRolePermissions(roleId, raw, fallback=[]) {
+  const permissions = parsePermissions(raw, fallback);
+  if (roleId !== "contact-agent") return permissions;
+  return [...new Set([...permissions, "inbox.contact.read", "inbox.contact.write", "inbox.manarah.read", "inbox.manarah.write"])]
+}
 function firstName(value, email="") { const source=String(value||"").trim()||String(email||"").split("@")[0].replace(/[._-]+/g," "); const name=source.split(/\s+/)[0]||""; return name ? name[0].toUpperCase()+name.slice(1,40) : ""; }
 async function ensureDefaultRole(db, preferredRoleId = DEFAULT_ROLE_ID) {
   await db.prepare(`INSERT OR IGNORE INTO admin_roles (id,name,description,permissions,is_preset)
@@ -105,7 +111,7 @@ async function ensureDefaultRole(db, preferredRoleId = DEFAULT_ROLE_ID) {
 }
 async function resolveAccess(db, actor) {
   const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m LEFT JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
-  if (row?.name) return { roleId:row.role_id, roleName:row.name, permissions:parsePermissions(row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
+  if (row?.name) return { roleId:row.role_id, roleName:row.name, permissions:effectiveRolePermissions(row.role_id, row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
   if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:"" };
   const setting=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first();
   const role=await ensureDefaultRole(db, setting?.default_role_id);
@@ -164,11 +170,11 @@ async function authenticateAuthorized(request, env, action, data = {}) {
   const allowed = personalAction ? true
     : action === "inbox-list" ? true
     : action === "contact-gmail-status" ? canInboxMailbox(access, CONTACT_MAILBOX, "read", personal)
-    : sharedGmailManagement ? sharedMailbox === CONTACT_MAILBOX ? canInboxMailbox(access, CONTACT_MAILBOX, "write", personal) : auth.actor.email === INITIAL_ADMIN_EMAIL
+    : sharedGmailManagement ? action === "gmail-disconnect" ? auth.actor.email === INITIAL_ADMIN_EMAIL : sharedMailbox === CONTACT_MAILBOX ? canInboxMailbox(access, CONTACT_MAILBOX, "write", personal) : auth.actor.email === INITIAL_ADMIN_EMAIL
     : action === "gmail-sync" ? canInboxMailbox(access, sharedMailbox, "read", personal)
     : action.startsWith("inbox-") ? hasInboxPermission(access, ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action) ? "write" : "read", personal)
     : allows(access,permissionForAction(action));
-  return access && allowed ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
+  return access && allowed ? { ...auth, actor:{...auth.actor,name:auth.actor.name || access.displayName || auth.actor.email}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
 }
 async function authenticateWorkspaceMember(request, env) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
@@ -201,52 +207,38 @@ async function setInboxTyping(db, data, actor, env, access) {
   }
   return { success: true };
 }
-async function syncGmail(db, env, mailbox = MANARAH_MAILBOX) {
-  const targetMailbox = mailbox === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
-  const result = await listGmailMessages(db, env, { mailbox: targetMailbox });
-  if (result.error) return result;
-  let imported = 0;
-  const messages = [...(result.messages || [])].sort((a, b) => Number(a.direction !== "outbound") - Number(b.direction !== "outbound"));
-  for (const message of messages) {
-    const saved = await ingestInbox(db, { ...message, mailbox: targetMailbox, ...(message.direction === "inbound" ? { to: { email: targetMailbox } } : {}) });
-    if (saved.success && !saved.duplicate) imported += 1;
-  }
-  await db.prepare("UPDATE gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE mailbox=?").bind(targetMailbox).run();
-  return { success: true, imported, scanned: result.count || 0 };
-}
-async function syncPersonalGmail(db, env, actor) {
-  const personalMailbox = await personalMailboxFor(db, env, actor);
-  if (!personalMailbox) return { success: true, imported: 0, scanned: 0 };
-  const result = await listGmailMessages(db, env, { ownerUid: actor.uid, mailbox: personalMailbox });
-  if (result.error) return result;
-  let imported = 0;
-  const messages = [...(result.messages || [])].sort((a, b) => Number(a.direction !== "outbound") - Number(b.direction !== "outbound"));
-  for (const message of messages) {
-    const saved = await ingestInbox(db, { ...message, mailbox: personalMailbox, ...(message.direction === "inbound" ? { to: { email: personalMailbox } } : {}) }, personalMailbox);
-    if (saved.success && !saved.duplicate) imported += 1;
-  }
-  await db.prepare("UPDATE personal_gmail_connections SET last_sync_at=datetime('now'),updated_at=datetime('now') WHERE owner_uid=?").bind(actor.uid).run();
-  return { success: true, imported, scanned: result.count || 0 };
-}
-async function listInboxWithGmail(db, _url, actor, env, access) {
+async function listInboxWithGmail(db, url, actor, env, access, context) {
+  const folder = url.searchParams.get("folder") || "all";
   const personalMailbox = await personalMailboxFor(db, env, actor);
   const configured = await configuredInboxMailboxes(db, env, actor);
+  const automaticSyncTasks = [];
   for (const mailbox of [MANARAH_MAILBOX, CONTACT_MAILBOX]) {
     if (configured.includes(mailbox) && canInboxMailbox(access, mailbox, "read", personalMailbox)) {
       const status = await gmailStatus(db, env, mailbox);
-      if (status.connected) {
-        const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
-        if (!last || Date.now() - last > 30000) await syncGmail(db, env, mailbox);
-      }
+      if (status.connected) automaticSyncTasks.push(() => syncGmailHistory(db, env, { mailbox, skipWatch: true }));
     }
   }
   if (personalMailbox) {
     const status = await personalGmailStatus(db, env, actor);
-    const last = status.lastSyncAt ? Date.parse(`${status.lastSyncAt.replace(" ", "T")}Z`) : 0;
-    if (!last || Date.now() - last > 30000) await syncPersonalGmail(db, env, actor);
+    if (status.connected) automaticSyncTasks.push(() => syncGmailHistory(db, env, { ownerUid: actor.uid, skipWatch: true }));
   }
-  return listInbox(db, access, configured, personalMailbox);
+  if (automaticSyncTasks.length) {
+    const results = await Promise.all(automaticSyncTasks.map(task => task().catch(error => ({ error: error?.message || "Automatic Gmail sync failed." }))));
+    const updates = results.filter(result => result.success && result.imported > 0);
+    if (updates.length && env.INBOX_REALTIME) {
+      const id = env.INBOX_REALTIME.idFromName("workspace");
+      context?.waitUntil?.(env.INBOX_REALTIME.get(id).fetch("https://inbox-realtime/notify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "inbox.updated", imported: updates.reduce((sum, result) => sum + result.imported, 0), at: Date.now() }),
+      }).catch(() => {}));
+    }
+    return listInbox(db, access, configured, personalMailbox, folder);
+  }
+  return listInbox(db, access, configured, personalMailbox, folder);
 }
+const syncGmail = (db, env, mailbox) => syncGmailFull(db, env, { mailbox: mailbox === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX });
+const syncPersonalGmail = (db, env, actor) => syncGmailFull(db, env, { ownerUid: actor?.uid });
 async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,name,description,permissions,is_preset FROM admin_roles ORDER BY is_preset DESC,name").all(); return {roles:results.map(r=>({id:r.id,name:r.name,description:r.description,permissions:parsePermissions(r.permissions),isPreset:!!r.is_preset}))}; }
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
@@ -754,7 +746,7 @@ export async function onRequestGet(context) {
 
   try {
     if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
-    return json(await handler(env.DB, url, auth.actor, env, auth.access), 200, headers);
+    return json(await handler(env.DB, url, auth.actor, env, auth.access, context), 200, headers);
   } catch (err) {
     const message = String(err?.message || err || "");
     if (message.includes("weekly_report_") || message.includes("analytics_cache") || message.includes("analytics_daily_snapshots")) {

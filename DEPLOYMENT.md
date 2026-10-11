@@ -392,3 +392,105 @@ Cloudflare's path wildcard matches nested paths. Keep the shared schema paths be
 - **Fallback:** missing Sheets configuration leaves the original Website copy visible. Private controls show a setup error instead of pretending a save succeeded.
 
 No remote databases, Apps Script deployments, Cloudflare project settings, DNS records or Git remotes are changed by the local migration scripts.
+
+## 6. Gmail automatic inbox sync
+
+Inbox mail is now synchronized by the server automatically. The default path
+does not require Google Pub/Sub or a Workspace administrator:
+
+`Cloudflare scheduled Worker → Gmail history.list → D1 → live admin WebSocket`
+
+Apply the pending inbox migrations `Maps/migrations/0042_*.sql` through
+`Maps/migrations/0045_gmail_push_sync.sql` to each environment's D1 database
+before deploying the new Maps code. They add cross-device admin actor data,
+mail labels, the shared mailbox access update, and Gmail history cursors/watch
+expiry; they do not store Gmail access tokens in the browser. Review migration
+0044 separately: it expands the `contact-agent` role to manage both shared
+mailboxes and should only be applied after that permission change is approved.
+
+### One-time production setup (automatic History API mode)
+
+Deploy the companion Worker and give it the same D1 binding and Gmail OAuth
+secrets as Maps:
+
+```sh
+cd Maps/workers/gmail-events
+npx wrangler deploy
+```
+
+The Worker runs every minute, checks every connected shared and personal
+mailbox, and notifies open Admin sessions only when new messages were stored.
+No browser polling, manual sync, Gmail watch, Pub/Sub topic, or Pub/Sub IAM
+principal is required. A mailbox's first automatic run performs its initial
+import and stores Gmail's current history cursor; later runs only read changes.
+
+The Worker is separate because Pages Functions can bind to a Durable Object,
+but cannot create one inside the Pages project. Bind the Worker script's
+`InboxRealtime` class to the Maps Pages project under `INBOX_REALTIME`. See
+Cloudflare's [Pages bindings](https://developers.cloudflare.com/pages/functions/bindings/)
+and [Durable Object WebSocket](https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server/)
+documentation.
+
+### Optional Pub/Sub fast path
+
+If the project later gets permission to use Google Pub/Sub, the existing push
+path can be enabled as an optimization. It is optional; the one-minute History
+API scheduler remains the recovery path.
+
+1. Create a Google Cloud Pub/Sub topic, for example
+   `projects/PROJECT_ID/topics/manarah-gmail-push`.
+2. Grant the Gmail push service account
+   `gmail-api-push@system.gserviceaccount.com` permission to publish to that
+   topic. Gmail documents this requirement in its [push notification guide](https://developers.google.com/workspace/gmail/api/guides/push).
+3. Create a push subscription for that topic with this endpoint:
+   `https://maps.karamahcollective.com/api/gmail-push?token=RANDOM_SECRET`.
+   The subscription must use the same topic and secret configured below.
+4. Add these secrets/variables to the Maps Pages project and to the companion
+   Worker. Keep the token private:
+
+   - `GMAIL_PUBSUB_TOPIC` — the full Pub/Sub topic name.
+   - `GMAIL_PUBSUB_TOKEN` — a random 32-byte hex secret.
+   - `GMAIL_PUBSUB_ENABLED=true` — explicitly enables the optional push path.
+   - the existing Gmail OAuth and `GMAIL_TOKEN_ENCRYPTION_KEY` values.
+
+5. Deploy the companion Worker, which owns the Durable Object and renews Gmail
+   watches when configured:
+
+   ```sh
+   cd Maps/workers/gmail-events
+   npx wrangler deploy
+   ```
+
+   Configure its D1 binding and Gmail secrets for each environment. The
+   Worker is separate because Pages Functions can bind to a Durable Object,
+   but cannot create one inside the Pages project. Bind the Worker script's
+   `InboxRealtime` class to the Maps Pages project under the binding name
+   `INBOX_REALTIME`. See Cloudflare's [Pages bindings](https://developers.cloudflare.com/pages/functions/bindings/)
+   and [Durable Object WebSocket](https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server/)
+   documentation.
+
+6. Reconnect any already-connected Gmail mailbox once after deployment, or
+   open its inbox once. New OAuth connections bootstrap automatically. The
+   scheduled History API sync continues to work if Pub/Sub is unavailable.
+
+For Preview, create a separate Pub/Sub subscription targeting the Preview
+Maps URL, use a separate push token, and deploy a separate Worker name/DO
+namespace. Add the Preview Admin origin to the Maps WebSocket origin allowlist.
+Do not point Preview Pub/Sub at production.
+
+### Local automatic sync
+
+The local dev runner starts the Gmail events Worker, binds its
+`InboxRealtime` class to local Pages, and triggers the same one-minute
+scheduled sync automatically. Add the existing Gmail OAuth variables and
+`GMAIL_TOKEN_ENCRYPTION_KEY` to `Maps/.dev.vars`, then run `npm run dev`.
+There is no local Pub/Sub tunnel requirement for this mode.
+
+Cloudflare documents the local Durable Object binding form as
+`--do BINDING=CLASS@SCRIPT`; the runner uses that form automatically for
+`INBOX_REALTIME`. See [local Pages bindings](https://developers.cloudflare.com/pages/functions/bindings/).
+
+The browser no longer polls the inbox and the visible manual sync controls are
+removed. If a Gmail history cursor expires, the server automatically performs
+a fresh import and establishes a new cursor; this is the recovery behavior
+recommended by Google's [watch API documentation](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/watch).

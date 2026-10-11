@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { FolderSimple } from "@phosphor-icons/react";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { useAdminStats } from "../api/queries.js";
+import { useAdminStats, useInbox } from "../api/queries.js";
 import { Icons } from "../icons.jsx";
 import { NAV_GROUPS } from "./navigation.js";
 import { canRoute } from "../auth/permissions.js";
@@ -23,8 +24,19 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
   const { user, access } = useAuth();
   const { data } = useAdminStats();
   const location = useLocation();
+  const isInboxRoute = location.pathname === "/contacts";
+  const selectedFolder = new URLSearchParams(location.search).get("folder") || "Inbox";
+  const { data: inboxData } = useInbox(selectedFolder, { enabled: isInboxRoute, staleTime: 30_000 });
   const [closedGroups, setClosedGroups] = useState(() => new Set(NAV_GROUPS.map(group => group.label)));
   const name = user?.displayName || user?.email || "Administrator";
+  const mailFolders = Array.isArray(inboxData?.folders) && inboxData.folders.length ? inboxData.folders : [
+    { id: "all", label: "All mail" },
+    { id: "Inbox", label: "Inbox" },
+    { id: "Sent", label: "Sent" },
+    { id: "Junk", label: "Junk" },
+    { id: "Deleted", label: "Deleted" },
+    { id: "Starred", label: "Starred" },
+  ];
   return (
     <aside
       ref={navRef}
@@ -36,17 +48,19 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
         <NavLink to="/" aria-label="Karamah Collective overview">
           <Brand />
         </NavLink>
-        <button className="nav-search" type="button" onClick={onSearch} aria-label="Find a page">
+        <button className="nav-search" type="button" onClick={onSearch} aria-label="Search workspace">
           <Icons.search size={17} />
-          <span>Find a page…</span>
+          <span>Search workspace…</span>
           <kbd>Ctrl K</kbd>
         </button>
       </div>
       <nav className="pp-nav-links pp-scroll" aria-label="Main navigation">
         {NAV_GROUPS.map((group) => {
-          const links = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
-          if (!links.length) return null;
-          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
+          const isCommunications = group.label === "Communications";
+          const permittedLinks = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
+          const links = permittedLinks.filter(link => !link.hidden);
+          if (!links.length && !(isCommunications && permittedLinks.length)) return null;
+          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`))) || (isCommunications && isInboxRoute);
           const isClosed = Boolean(group.label) && closedGroups.has(group.label) && !active;
           return (
           <section className={`nav-group${!group.label ? " nav-group-root" : ""}${isClosed ? " is-collapsed" : ""}`} key={group.label || "overview"}>
@@ -71,7 +85,13 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
                   )}
                 </NavLink>
               );
-            })}</div></div>
+            })}
+            {isCommunications && <nav className="nav-folder-links" aria-label="Mail folders">
+              {mailFolders.map(folder => <NavLink key={folder.id} to={{ pathname: "/contacts", search: `?folder=${encodeURIComponent(folder.id)}` }} end className="nav-folder-link" data-selected={selectedFolder === folder.id ? "true" : undefined} aria-current={selectedFolder === folder.id ? "page" : undefined} title={folder.label}>
+                <FolderSimple size={15} weight="regular" /><span>{folder.label}</span>
+              </NavLink>)}
+            </nav>}
+            </div></div>
           </section>
         )})}
       </nav>

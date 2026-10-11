@@ -546,10 +546,12 @@
 .admin-preference-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:28px; align-items:center; padding:22px 24px; border-bottom:1px solid var(--border); }
 .admin-preference-row:last-child { border-bottom:0; }
 .gmail-connection-panel { margin-bottom: 18px; }
+.contact-gmail-panel[data-can-disconnect="false"] .pp-btn-text { display: none; }
 .gmail-connection-copy { display: grid; gap: 5px; }
 .gmail-connection-state { color: var(--text-muted); font-size: 12px; }
 .gmail-connection-state.is-connected { color: var(--interactive-accent); }
 .gmail-connection-actions { display: flex; align-items: center; gap: 8px; }
+.gmail-connection-actions > .pp-btn:not(.pp-btn-text):not(.pp-btn-primary) { display: none; }
 .gmail-connection-error { margin: 14px 24px 18px; }
 .admin-preference-row h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.015em; }
 .admin-preference-row p { max-width:55ch; margin:5px 0 0; color:var(--text-muted); font-size:13px; line-height:1.5; }

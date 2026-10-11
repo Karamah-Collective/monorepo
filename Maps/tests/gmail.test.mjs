@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gmailThreadIdForMessage, listGmailMessages, normalizeReplyBody, sendGmailMessage } from "../functions/_gmail.js";
+import { gmailHistoryCursor, gmailThreadIdForMessage, listGmailHistoryMessages, listGmailMessages, normalizeReplyBody, sendGmailMessage } from "../functions/_gmail.js";
 
 const env = {
   GMAIL_CLIENT_ID: "client-id",
@@ -60,6 +60,78 @@ test("Gmail sync reads delivered messages and normalizes the API query", async (
   }
 });
 
+test("Gmail sync retrieves named attachment content for opening later", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "access-token" });
+    if (url.endsWith("/labels")) return Response.json({ labels: [] });
+    if (url.includes("/messages?") && url.includes("maxResults=500")) return Response.json({ messages: [{ id: "message-with-file" }] });
+    if (url.endsWith("/messages/message-with-file?format=full")) return Response.json({
+      id: "message-with-file", threadId: "thread-with-file", internalDate: "1791626400000",
+      payload: { headers: [
+        { name: "From", value: "Aisha <aisha@example.org>" },
+        { name: "To", value: "Manarah <manarah@karamahcollective.com>" },
+        { name: "Subject", value: "A file for you" },
+      ], mimeType: "multipart/mixed", parts: [
+        { mimeType: "text/plain", body: { data: btoa("See attached") } },
+        { filename: "notes.txt", mimeType: "text/plain", body: { attachmentId: "attachment-1", size: 12 } },
+      ] },
+    });
+    if (url.endsWith("/messages/message-with-file/attachments/attachment-1")) return Response.json({ data: btoa("attachment! ") });
+    throw new Error(`Unexpected Gmail request: ${url}`);
+  };
+  try {
+    const result = await listGmailMessages(dbWithToken(await encryptedToken("refresh-token")), env);
+    assert.deepEqual(result.messages[0].attachments, [{ name: "notes.txt", type: "text/plain", size: 12, content: btoa("attachment! ") }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Gmail history sync reads changed message ids from a push cursor", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "access-token" });
+    if (url.endsWith("/labels")) return Response.json({ labels: [] });
+    if (url.includes("/history?") && url.includes("startHistoryId=history-1")) return Response.json({ historyId: "history-2", history: [{ messagesAdded: [{ message: { id: "message-2" } }] }] });
+    if (url.endsWith("/messages/message-2?format=full")) return Response.json({
+      id: "message-2", threadId: "thread-2", internalDate: "1791626400000",
+      payload: { headers: [
+        { name: "From", value: "Aisha <aisha@example.org>" },
+        { name: "To", value: "Manarah <manarah@karamahcollective.com>" },
+        { name: "Subject", value: "A changed message" },
+      ], mimeType: "text/plain", body: { data: btoa("A new message") } },
+    });
+    throw new Error(`Unexpected Gmail request: ${url}`);
+  };
+  try {
+    const result = await listGmailHistoryMessages(dbWithToken(await encryptedToken("refresh-token")), env, { startHistoryId: "history-1" });
+    assert.equal(result.historyId, "history-2");
+    assert.equal(result.count, 1);
+    assert.equal(result.messages[0].subject, "A changed message");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Gmail history cursor works without a Pub/Sub watch", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "access-token" });
+    if (url.endsWith("/profile")) return Response.json({ emailAddress: "manarah@karamahcollective.com", historyId: "history-current" });
+    throw new Error(`Unexpected Gmail request: ${url}`);
+  };
+  try {
+    const result = await gmailHistoryCursor(dbWithToken(await encryptedToken("refresh-token")), env, { mailbox: "manarah@karamahcollective.com" });
+    assert.deepEqual(result, { success: true, historyId: "history-current" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Gmail reply normalization removes quoted headers from the new message", () => {
   const result = normalizeReplyBody(
     "received the mail\n\n________________________________\nFrom: Karamah Collective <manarah@karamahcollective.com>\nSent: Saturday, 10 October, 2026 3:21 PM\nTo: moontasirsoumik@live.com\nSubject: Re: Test Mail\n\nTesting",
@@ -67,6 +139,16 @@ test("Gmail reply normalization removes quoted headers from the new message", ()
   );
   assert.equal(result.text, "received the mail");
   assert.equal(result.html, "<p>received the mail</p>");
+});
+
+test("Gmail forward normalization preserves the forwarded message", () => {
+  const result = normalizeReplyBody(
+    "FYI, sharing this with you.\n\n---------- Forwarded message ----------\nFrom: Aisha <aisha@example.org>\nSubject: Community workshop\n\nThe original details are below.",
+    '<div>FYI, sharing this with you.</div><div class="gmail_quote"><div class="gmail_attr">---------- Forwarded message ----------<br>From: Aisha &lt;aisha@example.org&gt;<br>Subject: Community workshop</div><div>The original details are below.</div></div>',
+    "Fwd: Community workshop",
+  );
+  assert.match(result.text, /The original details are below/);
+  assert.match(result.html, /gmail_quote/);
 });
 
 test("Gmail send returns the provider result and includes a reply thread", async () => {

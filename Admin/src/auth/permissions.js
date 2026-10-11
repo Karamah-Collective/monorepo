@@ -20,6 +20,7 @@ export function canInbox(access, level = "read", mailbox = "") {
   const permissions = [...EVERYONE_PERMISSIONS, ...(access?.permissions || [])];
   if (permissions.includes("*") || permissions.includes("inbox.*")) return true;
   const key = String(mailbox || "").split("@")[0].toLowerCase();
+  if (access?.roleId === "contact-agent" && ["contact", "manarah"].includes(key)) return true;
   if (key && (permissions.includes(`inbox.${key}.${level}`) || (level === "read" && permissions.includes(`inbox.${key}.write`)))) return true;
   if (permissions.includes("moderation.contacts.*") || permissions.includes(`moderation.contacts.${level}`) || (level === "read" && permissions.includes("moderation.contacts.write"))) return true;
   return !key && ["contact", "manarah"].some(item => permissions.includes(`inbox.${item}.${level}`) || (level === "read" && permissions.includes(`inbox.${item}.write`)));

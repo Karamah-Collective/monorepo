@@ -1,0 +1,19 @@
+name = "manarah-gmail-events"
+main = "index.js"
+compatibility_date = "2026-08-04"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
+
+[[durable_objects.bindings]]
+name = "INBOX_REALTIME"
+class_name = "InboxRealtime"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["InboxRealtime"]
