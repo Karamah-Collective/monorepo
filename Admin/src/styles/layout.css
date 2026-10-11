@@ -228,6 +228,28 @@ body:has(.pp-app-shell),
 .pp-nav-link.active > svg {
   color: var(--nav-active-icon);
 }
+.nav-folder-links {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+}
+.nav-folder-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 35px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  color: var(--nav-text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+.nav-folder-link:hover { background: var(--nav-hover); color: var(--nav-text-strong); }
+.nav-folder-link[data-selected="true"] { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
+.nav-folder-link svg { flex-shrink: 0; }
+.nav-folder-link[data-selected="true"] svg { color: var(--nav-active-icon); }
 .nav-count {
   margin-left: auto;
   background: var(--nav-count-bg);
@@ -966,6 +988,16 @@ kbd {
     transform: translateX(-6px);
     pointer-events: none;
   }
+  .nav-is-collapsed .nav-folder-links {
+    margin: 0;
+  }
+  .nav-is-collapsed .nav-folder-link {
+    justify-content: center;
+    gap: 0;
+    min-height: 35px;
+    padding: 6px;
+  }
+  .nav-is-collapsed .nav-folder-link span { display: none; }
   .nav-is-collapsed .nav-count,
   .nav-is-collapsed .nav-public-link > svg:last-child {
     margin-left: 0;

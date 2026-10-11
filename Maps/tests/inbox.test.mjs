@@ -22,6 +22,7 @@ async function encryptedToken(token) {
 
 test("inbox list returns the latest message preview from stored rows", async () => {
   const db = { prepare(sql) {
+    if (/DISTINCT fj\.value AS folder/.test(sql)) return { bind() { return { all: async () => ({ results: [] }) }; } };
     assert.match(sql, /last_message_preview/);
     return {
       bind() {

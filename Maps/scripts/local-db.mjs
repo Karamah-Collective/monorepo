@@ -7,11 +7,12 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 export const wrangler = path.join(root, "../node_modules/wrangler/bin/wrangler.js");
 const database = "halal-finder-db";
 const localEnv = { ...process.env, WRANGLER_SEND_METRICS: "false" };
+const persistTo = path.join(root, ".wrangler", "state");
 
 /** Run local Wrangler with argument arrays; never selects a remote database. */
 export function runLocal(args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [wrangler, "d1", "execute", database, "--local", "--json", ...args], {
+    const child = spawn(process.execPath, [wrangler, "d1", "execute", database, "--local", "--persist-to", persistTo, "--json", ...args], {
       cwd: root, env: localEnv, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";

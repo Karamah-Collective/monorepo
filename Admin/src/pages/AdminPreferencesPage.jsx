@@ -130,7 +130,7 @@ export default function AdminPreferencesPage() {
       </div>
       {(connect.error || sync.error || disconnect.error || gmail.error) && <p className="pp-error-text gmail-connection-error">{(connect.error || sync.error || disconnect.error || gmail.error).message}</p>}
     </section>}
-    {canManageContactGmail && <section className="admin-preferences-panel gmail-connection-panel" aria-label="Contact Gmail connection">
+    {canManageContactGmail && <section className="admin-preferences-panel gmail-connection-panel contact-gmail-panel" data-can-disconnect={isGmailOwner ? "true" : "false"} aria-label="Contact Gmail connection">
       <div className="admin-preference-row">
         <div className="gmail-connection-copy"><h2>Contact Gmail</h2><p>Connect {CONTACT_MAILBOX} as the shared mailbox. Everyone with Contact inbox access will use this same connection.</p><span className={`gmail-connection-state${contactGmail.data?.connected ? " is-connected" : ""}`}>{contactGmail.isLoading ? "Checking connection" : contactGmail.data?.connected ? contactGmail.data.accountEmail : contactGmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
         <div className="gmail-connection-actions">

@@ -1,0 +1,75 @@
+import { DurableObject } from "cloudflare:workers";
+import { renewAllGmailWatches } from "../../functions/_gmail.js";
+import { syncGmailHistory } from "../../functions/_gmail-sync.js";
+
+export class InboxRealtime extends DurableObject {
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (request.method === "POST" && url.pathname === "/notify") {
+      const payload = await request.json().catch(() => null);
+      if (!payload) return new Response("Invalid event", { status: 400 });
+      const frame = JSON.stringify(payload);
+      for (const socket of this.ctx.getWebSockets()) {
+        try { socket.send(frame); } catch {}
+      }
+      return new Response("ok");
+    }
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") return new Response("WebSocket upgrade required.", { status: 426 });
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ connectedAt: Date.now() });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  webSocketMessage(socket, message) {
+    if (String(message) === "ping") socket.send("pong");
+  }
+
+  webSocketClose() {}
+  webSocketError() {}
+}
+
+async function notifyInbox(env, payload) {
+  try {
+    const id = env.INBOX_REALTIME.idFromName("workspace");
+    await env.INBOX_REALTIME.get(id).fetch("https://inbox-events/notify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {}
+}
+
+async function syncConnectedMailboxes(env) {
+  const results = [];
+  const shared = await env.DB.prepare("SELECT mailbox FROM gmail_connections WHERE refresh_token_ciphertext<>'' ORDER BY mailbox").all();
+  for (const row of shared.results || []) {
+    const result = await syncGmailHistory(env.DB, env, { mailbox: row.mailbox, skipWatch: true }).catch(error => ({ error: String(error?.message || "Mailbox sync failed.") }));
+    results.push({ mailbox: row.mailbox, ...result });
+    if (result.success && result.imported > 0) await notifyInbox(env, { type: "inbox.updated", mailbox: row.mailbox, imported: result.imported });
+  }
+  const personal = await env.DB.prepare("SELECT owner_uid FROM personal_gmail_connections WHERE refresh_token_ciphertext<>'' ORDER BY owner_uid").all();
+  for (const row of personal.results || []) {
+    const result = await syncGmailHistory(env.DB, env, { ownerUid: row.owner_uid, skipWatch: true }).catch(error => ({ error: String(error?.message || "Mailbox sync failed.") }));
+    results.push({ ownerUid: row.owner_uid, ...result });
+    if (result.success && result.imported > 0) await notifyInbox(env, { type: "inbox.updated", ownerUid: row.owner_uid, imported: result.imported });
+  }
+  return results;
+}
+
+export default {
+  async fetch(request, env) {
+    const id = env.INBOX_REALTIME.idFromName("workspace");
+    return env.INBOX_REALTIME.get(id).fetch(request);
+  },
+
+  async scheduled(_controller, env) {
+    // Pub/Sub watches remain supported when configured, but are no longer a
+    // prerequisite. History API cursors are checked automatically every
+    // minute, which also recovers missed push notifications.
+    if (String(env.GMAIL_PUBSUB_ENABLED || "").toLowerCase() === "true") await renewAllGmailWatches(env.DB, env).catch(() => {});
+    await syncConnectedMailboxes(env);
+  },
+};

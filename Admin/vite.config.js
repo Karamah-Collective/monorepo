@@ -17,6 +17,7 @@ export default defineConfig({
       "/api": {
         target: "http://127.0.0.1:8788",
         changeOrigin: true,
+        ws: true,
       },
       "/forms-api": {
         target: "http://127.0.0.1:8791",

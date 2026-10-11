@@ -11,14 +11,14 @@ export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn
 export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
 export const useAdminPlaces = () => useQuery({ queryKey: ["admin-places"], queryFn: () => apiGet("admin-places") });
 export const useAdminContacts = () => useQuery({ queryKey: ["admin-contact"], queryFn: () => apiGet("admin-contact") });
-export const useInbox = () => useQuery({
-  queryKey: ["inbox"],
-  queryFn: () => apiGet("inbox-list"),
-  staleTime: 30_000,
-  refetchInterval: 30_000,
-  refetchIntervalInBackground: true,
-  refetchOnWindowFocus: true,
-  refetchOnReconnect: true,
+export const useInbox = (folder = "all", options = {}) => useQuery({
+  queryKey: ["inbox", folder],
+  queryFn: () => apiGet("inbox-list", { folder }),
+  staleTime: Infinity,
+  refetchInterval: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  ...options,
 });
 export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: previous => previous });
 export const useInboxTyping = (threadId) => useQuery({ queryKey: ["inbox-typing", threadId], queryFn: () => apiGet("inbox-typing", { threadId }), enabled: !!threadId, staleTime: 0, refetchInterval: 1_200, refetchIntervalInBackground: true, refetchOnWindowFocus: true, retry: 0 });
