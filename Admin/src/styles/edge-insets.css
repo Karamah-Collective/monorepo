@@ -1,5 +1,6 @@
 /* Shared edge rhythm: content inside Admin surfaces never kisses a border. */
 #main-content .pp-page > .pp-panel:not(.access-foundation):not(.access-role-builder) { padding-inline: var(--settings-gap-lg); }
+#main-content .inbox-page > .inbox-shell.pp-panel:not(.access-foundation):not(.access-role-builder) { padding-inline: 0; }
 .pp-nav-user { padding-inline: var(--settings-gap); }
 .access-row { padding-inline: var(--settings-gap); }
 .access-role { padding-inline: var(--settings-gap); }

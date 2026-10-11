@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import logoUrl from "../../../shared/brand/karamah-logo.svg";
 
-export function BrandLoadingScreen({ startup = false }) {
+export function BrandLoadingScreen({ startup = false, nonBlocking = false }) {
   const [phase, setPhase] = useState("running");
   const outlineFilterId = useId().replaceAll(":", "");
 
@@ -19,10 +19,10 @@ export function BrandLoadingScreen({ startup = false }) {
 
   return (
     <div
-      className={`pp-brand-loader is-${phase}`}
-      role="status"
-      aria-label="Loading Karamah Collective"
-      aria-hidden={phase === "closing" ? "true" : undefined}
+      className={`pp-brand-loader is-${phase}${nonBlocking ? " is-nonblocking" : ""}`}
+      role={nonBlocking ? undefined : "status"}
+      aria-label={nonBlocking ? undefined : "Loading Karamah Collective"}
+      aria-hidden={nonBlocking || phase === "closing" ? "true" : undefined}
     >
       <div className="pp-brand-loader-mark pp-loader-written">
         <svg
@@ -78,5 +78,5 @@ export function BrandLoadingScreen({ startup = false }) {
 }
 
 export default function StartupScreen() {
-  return <BrandLoadingScreen startup />;
+  return <BrandLoadingScreen startup nonBlocking />;
 }

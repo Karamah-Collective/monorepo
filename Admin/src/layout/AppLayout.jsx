@@ -6,6 +6,20 @@ import { HamburgerIcon, Icons } from "../icons.jsx";
 import CommandMenu from "../components/CommandMenu.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 
+const INBOX_FOLDER_LABELS = {
+  all: "All mail",
+  Inbox: "Inbox",
+  Sent: "Sent",
+  Junk: "Junk",
+  Deleted: "Deleted",
+  Starred: "Starred",
+};
+
+function inboxFolderLabel(search) {
+  const folder = new URLSearchParams(search).get("folder") || "Inbox";
+  return INBOX_FOLDER_LABELS[folder] || folder.replace(/[-_]+/g, " ").replace(/\b\w/g, character => character.toUpperCase());
+}
+
 export default function AppLayout() {
   const { signOut } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
@@ -30,11 +44,12 @@ export default function AppLayout() {
     NAV_LINKS.find((link) => link.to === location.pathname) ||
     NAV_LINKS.find((link) => link.to !== "/" && location.pathname.startsWith(link.to + "/")) ||
     NAV_LINKS[0];
+  const currentLabel = current.to === "/contacts" ? inboxFolderLabel(location.search) : current.label;
   useEffect(() => {
     setNavOpen(false);
     mainRef.current?.scrollTo(0, 0);
-    document.title = `${current.label} · Karamah Collective Admin`;
-  }, [location.pathname, current.label]);
+    document.title = `${currentLabel} · Karamah Collective Admin`;
+  }, [location.pathname, currentLabel]);
   useEffect(() => {
     function keydown(event) {
       document.documentElement.dataset.inputMode = "keyboard";
@@ -167,7 +182,7 @@ export default function AppLayout() {
           <div className="breadcrumbs">
             <span>{current.group || "Workspace"}</span>
             <Icons.right size={12} />
-            <strong>{current.label}</strong>
+            <strong>{currentLabel}</strong>
           </div>
           <div className="topbar-actions">
             <div id="topbar-page-actions" className="topbar-page-actions" aria-label="Page actions" />

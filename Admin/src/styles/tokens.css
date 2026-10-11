@@ -397,6 +397,7 @@ time {
 }
 
 .pp-brand-loader.is-closing { opacity: 0; pointer-events: none; }
+.pp-brand-loader.is-nonblocking { pointer-events: none; }
 .pp-brand-loader.is-closing .pp-brand-loader-mark { transform: translateY(-4px) scale(.99); transition: transform 240ms var(--ease); }
 
 @keyframes pp-brand-mark-in {

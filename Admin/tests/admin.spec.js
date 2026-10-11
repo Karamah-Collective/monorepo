@@ -263,6 +263,8 @@ test("mailbox switching keeps the active folder", async ({ page }) => {
     "inbox-list": { mailboxes: ["amina@example.test", "contact@karamahcollective.com"], threads: [] },
   });
   await page.goto("/contacts?folder=Sent");
+  await expect(page.locator(".breadcrumbs")).toContainText("Communications");
+  await expect(page.locator(".breadcrumbs")).toContainText("Sent");
   await page.getByRole("tab", { name: "Shared" }).click();
   await expect(page).toHaveURL(/\/contacts\?folder=Sent/);
   await page.getByRole("tab", { name: "Personal" }).click();
@@ -293,17 +295,24 @@ for (const width of [360, 834, 1440]) {
       expect(mobileComposerBounds).not.toBeNull();
       expect(mobileThreadBounds.y + mobileThreadBounds.height).toBeLessThanOrEqual(mobileComposerBounds.y + 1);
       expect(mobileComposerBounds.y + mobileComposerBounds.height).toBeLessThanOrEqual(mobileReaderBounds.y + mobileReaderBounds.height + 1);
+      await expect(page.locator(".inbox-compose")).toHaveClass(/is-compact/);
       await page.locator(".inbox-thread").hover();
       await page.mouse.wheel(0, 500);
       await expect(page.locator(".inbox-compose")).toHaveClass(/is-compact/);
-      const compactComposerBounds = await page.locator(".inbox-compose").boundingBox();
-      expect(compactComposerBounds.height).toBeLessThan(mobileComposerBounds.height);
-      const beforeExpandBottomGap = await page.locator(".inbox-thread").evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight);
       await page.locator(".inbox-editor").click();
       await expect(page.locator(".inbox-compose")).not.toHaveClass(/is-compact/);
+      const expandedComposerBounds = await page.locator(".inbox-compose").boundingBox();
+      expect(expandedComposerBounds.height).toBeGreaterThan(mobileComposerBounds.height);
+      const beforeCollapseBottomGap = await page.locator(".inbox-thread").evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight);
+      await page.waitForTimeout(600);
+      await page.locator(".inbox-thread").hover();
+      await page.mouse.wheel(0, 500);
+      await expect(page.locator(".inbox-compose")).toHaveClass(/is-compact/);
       await page.waitForTimeout(350);
-      const afterExpandBottomGap = await page.locator(".inbox-thread").evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight);
-      expect(Math.abs(afterExpandBottomGap - beforeExpandBottomGap)).toBeLessThanOrEqual(2);
+      const afterCollapseBottomGap = await page.locator(".inbox-thread").evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight);
+      expect(Math.abs(afterCollapseBottomGap - beforeCollapseBottomGap)).toBeLessThanOrEqual(2);
+      await page.locator(".inbox-editor").click();
+      await expect(page.locator(".inbox-compose")).not.toHaveClass(/is-compact/);
       const shell = await page.locator(".inbox-shell").boundingBox();
       expect(shell.x).toBe(0);
       expect(shell.width).toBe(width);

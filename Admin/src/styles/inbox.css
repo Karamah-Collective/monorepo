@@ -356,10 +356,12 @@
   #main-content .route-content:has(.inbox-page),#main-content .inbox-page { height:100%; min-height:0; }
   #main-content .inbox-page { display:flex; flex-direction:column; }
   .inbox-shell.pp-panel { position:relative; display:flex; flex:1 1 0; flex-direction:column; height:100%; min-height:0; }
-  .inbox-list { flex:1 1 0; height:100%; min-height:0; border-right:0; opacity:1; transform:translateX(0); visibility:visible; transition:opacity 180ms ease,transform 280ms cubic-bezier(.16,1,.3,1),visibility 0s linear 0s; }
-  .inbox-reader { position:absolute; inset:0; display:flex; min-height:0; overflow:hidden; opacity:0; transform:translateX(18px); visibility:hidden; pointer-events:none; transition:opacity 180ms ease,transform 300ms cubic-bezier(.16,1,.3,1),visibility 0s linear 300ms; }
+  .inbox-shell.pp-panel { overflow-x:hidden; }
+  .inbox-list { position:relative; z-index:1; flex:1 1 0; width:100%; min-width:0; height:100%; min-height:0; border-right:0; opacity:1; transform:translateX(0); visibility:visible; transition:opacity 180ms ease,transform 280ms cubic-bezier(.16,1,.3,1),visibility 0s linear 0s; }
+  .inbox-reader { position:absolute; inset:0 1px 0 0; z-index:0; display:flex; min-width:0; max-width:100%; min-height:0; overflow:hidden; opacity:0; transform:translateX(18px); visibility:hidden; pointer-events:none; transition:opacity 180ms ease,transform 300ms cubic-bezier(.16,1,.3,1),visibility 0s linear 300ms; }
   .inbox-shell.is-reading .inbox-list { opacity:0; transform:translateX(-18px); visibility:hidden; pointer-events:none; transition:opacity 150ms ease,transform 260ms cubic-bezier(.16,1,.3,1),visibility 0s linear 260ms; }
-  .inbox-shell.is-reading .inbox-reader { opacity:1; transform:translateX(0); visibility:visible; pointer-events:auto; transition:opacity 220ms ease,transform 320ms cubic-bezier(.16,1,.3,1),visibility 0s linear 0s; }
+  .inbox-shell.is-reading .inbox-list { z-index:0; }
+  .inbox-shell.is-reading .inbox-reader { z-index:2; opacity:1; transform:translateX(0); visibility:visible; pointer-events:auto; transition:opacity 220ms ease,transform 320ms cubic-bezier(.16,1,.3,1),visibility 0s linear 0s; }
   .inbox-shell.is-reading { flex:1; min-height:0; }
   .inbox-rows { flex:1 1 0; min-height:0; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .inbox-shell.is-reading .inbox-thread { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; }
@@ -394,7 +396,7 @@
   .inbox-chat-thread { padding:12px; }
   .inbox-chat-message { width:100%; max-width:100%; }
   .inbox-chat-bubble { padding:9px 12px; font-size:14px; }
-  .inbox-compose { display:flex; flex:0 0 auto; flex-direction:column; min-height:0; padding:4px 10px max(6px, env(safe-area-inset-bottom)); border-top:0; transition:padding 260ms cubic-bezier(.16,1,.3,1); }
+  .inbox-compose { display:flex; flex:0 0 auto; flex-direction:column; width:100%; min-width:0; max-width:100%; min-height:0; padding:4px 10px max(6px, env(safe-area-inset-bottom)); border-top:0; transition:padding 260ms cubic-bezier(.16,1,.3,1); }
   .inbox-compose-head { display:grid; grid-template-columns:auto minmax(0,1fr); min-height:30px; align-items:center; gap:0 10px; margin-bottom:2px; padding:0 2px; transition:min-height 260ms cubic-bezier(.16,1,.3,1),margin-bottom 260ms cubic-bezier(.16,1,.3,1),padding 260ms cubic-bezier(.16,1,.3,1); }
   .inbox-compose-tabs.pp-section-tabs { min-height:34px; gap:0; transition:min-height 260ms cubic-bezier(.16,1,.3,1); }
   .inbox-compose-tabs.pp-section-tabs > button { min-width:86px; min-height:28px; padding:4px 8px; font-size:12px; }
@@ -416,11 +418,11 @@
   .inbox-toolbar-advanced.is-mobile-open { height:52px; max-height:56px; padding:4px 0 0; border-color:var(--border); opacity:1; pointer-events:auto; transform:translateY(0); visibility:visible; transition-delay:0s; }
   .inbox-font-picker { max-width:112px; }
   .inbox-font-size-picker { width:56px; }
-  .inbox-editor-box { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; }
+  .inbox-editor-box { display:flex; flex:1 1 auto; flex-direction:column; width:100%; min-width:0; max-width:100%; min-height:0; }
   .inbox-compose:not(.is-compact) .inbox-send-actions > .inbox-editor-icon { display:none; }
   .inbox-editor { flex:1 1 auto; height:140px; min-height:0; max-height:none; padding:11px 10px; font-size:14px; line-height:1.55; transition:height 280ms cubic-bezier(.16,1,.3,1),padding 260ms cubic-bezier(.16,1,.3,1); }
   .inbox-editor-icon { width:36px; height:36px; }
-  .inbox-editor-footer { display:grid; grid-template-columns:minmax(0,1fr) auto; flex-wrap:nowrap; gap:4px; min-height:38px; padding:3px 6px; transition:min-height 260ms cubic-bezier(.16,1,.3,1),padding 260ms cubic-bezier(.16,1,.3,1); }
+  .inbox-editor-footer { display:grid; grid-template-columns:minmax(0,1fr) auto; flex-wrap:nowrap; gap:4px; min-width:0; max-width:100%; min-height:38px; padding:3px 6px; transition:min-height 260ms cubic-bezier(.16,1,.3,1),padding 260ms cubic-bezier(.16,1,.3,1); }
   .inbox-from { flex:0 1 210px; max-width:210px; min-width:0; gap:5px; font-size:11px; }
   .inbox-from-address { font-size:11px; }
   .inbox-send-actions .pp-btn { min-height:34px; padding:6px 14px; }
