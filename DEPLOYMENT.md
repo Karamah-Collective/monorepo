@@ -398,7 +398,7 @@ No remote databases, Apps Script deployments, Cloudflare project settings, DNS r
 Inbox mail is now synchronized by the server automatically. The default path
 does not require Google Pub/Sub or a Workspace administrator:
 
-`Cloudflare scheduled Worker → Gmail history.list → D1 → live admin WebSocket`
+`active Admin Inbox WebSocket → Durable Object alarm (30s) → Gmail history.list → D1 → live admin WebSocket`
 
 Apply the pending inbox migrations `Maps/migrations/0042_*.sql` through
 `Maps/migrations/0045_gmail_push_sync.sql` to each environment's D1 database
@@ -418,11 +418,16 @@ cd Maps/workers/gmail-events
 npx wrangler deploy
 ```
 
-The Worker runs every minute, checks every connected shared and personal
-mailbox, and notifies open Admin sessions only when new messages were stored.
-No browser polling, manual sync, Gmail watch, Pub/Sub topic, or Pub/Sub IAM
-principal is required. A mailbox's first automatic run performs its initial
-import and stores Gmail's current history cursor; later runs only read changes.
+The Worker syncs every 30 seconds only while at least one authorized Admin
+Inbox tab is open. The existing Durable Object WebSocket starts the alarm when
+the first tab connects and stops it when the last tab disconnects. It checks
+every connected shared and personal mailbox, and notifies open Admin sessions
+only when new messages were stored. There is no always-on mail-sync cron;
+the Worker has one daily maintenance trigger solely for optional Pub/Sub watch
+renewal. No browser polling, manual sync, Gmail watch, Pub/Sub topic, or
+Pub/Sub IAM principal is required for the default mode. A mailbox's first
+automatic run performs its initial import and stores Gmail's current history
+cursor; later runs only read changes.
 
 The Worker is separate because Pages Functions can bind to a Durable Object,
 but cannot create one inside the Pages project. Bind the Worker script's
@@ -434,8 +439,9 @@ documentation.
 ### Optional Pub/Sub fast path
 
 If the project later gets permission to use Google Pub/Sub, the existing push
-path can be enabled as an optimization. It is optional; the one-minute History
-API scheduler remains the recovery path.
+path can be enabled as an optimization. It is optional; the daily maintenance
+trigger renews its watches, while the active-session History API alarm remains
+the recovery path while the Inbox is open.
 
 1. Create a Google Cloud Pub/Sub topic, for example
    `projects/PROJECT_ID/topics/manarah-gmail-push`.
@@ -471,7 +477,7 @@ API scheduler remains the recovery path.
 
 6. Reconnect any already-connected Gmail mailbox once after deployment, or
    open its inbox once. New OAuth connections bootstrap automatically. The
-   scheduled History API sync continues to work if Pub/Sub is unavailable.
+   active-session History API sync continues to work if Pub/Sub is unavailable.
 
 For Preview, create a separate Pub/Sub subscription targeting the Preview
 Maps URL, use a separate push token, and deploy a separate Worker name/DO
@@ -480,9 +486,9 @@ Do not point Preview Pub/Sub at production.
 
 ### Local automatic sync
 
-The local dev runner starts the Gmail events Worker, binds its
-`InboxRealtime` class to local Pages, and triggers the same one-minute
-scheduled sync automatically. Add the existing Gmail OAuth variables and
+The local dev runner starts the Gmail events Worker and binds its
+`InboxRealtime` class to local Pages. The same active-session alarm runs
+automatically when the local Inbox WebSocket is open. Add the existing Gmail OAuth variables and
 `GMAIL_TOKEN_ENCRYPTION_KEY` to `Maps/.dev.vars`, then run `npm run dev`.
 There is no local Pub/Sub tunnel requirement for this mode.
 
@@ -490,7 +496,8 @@ Cloudflare documents the local Durable Object binding form as
 `--do BINDING=CLASS@SCRIPT`; the runner uses that form automatically for
 `INBOX_REALTIME`. See [local Pages bindings](https://developers.cloudflare.com/pages/functions/bindings/).
 
-The browser no longer polls the inbox and the visible manual sync controls are
-removed. If a Gmail history cursor expires, the server automatically performs
-a fresh import and establishes a new cursor; this is the recovery behavior
-recommended by Google's [watch API documentation](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/watch).
+The browser no longer polls the inbox; the WebSocket only receives change
+notifications and keeps the server-side active-session alarm alive. If a Gmail
+history cursor expires, the server automatically performs a fresh import and
+establishes a new cursor; this is the recovery behavior recommended by
+Google's [watch API documentation](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/watch).

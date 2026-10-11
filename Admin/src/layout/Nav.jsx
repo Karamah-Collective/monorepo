@@ -91,6 +91,9 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
                 <FolderSimple size={15} weight="regular" /><span>{folder.label}</span>
               </NavLink>)}
             </nav>}
+            {isCommunications && <NavLink to={{ pathname: "/contacts", search: "?folder=Inbox" }} end className={({ isActive }) => `nav-collapsed-inbox${isActive ? " active" : ""}`} aria-label="Open inbox" title="Inbox">
+              <Icons.mail size={18} />
+            </NavLink>}
             </div></div>
           </section>
         )})}

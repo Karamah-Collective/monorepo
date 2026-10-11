@@ -8,9 +8,9 @@
 }
 
 .workspace-topbar {
-  min-height: 76px;
-  height: auto;
-  padding-block: 14px;
+  min-height: 60px;
+  height: 60px;
+  padding-block: 0;
   gap: 16px;
 }
 
@@ -28,7 +28,8 @@
   max-width: min(32vw, 360px);
   color: var(--text);
   align-self: center;
-  font-family: inherit;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -.01em;

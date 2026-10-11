@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowBendUpLeft, ArrowBendUpRight, ArrowsOut, CaretDown, ChatCircleDots, DotsThreeOutline, LinkSimple, ListBullets, ListNumbers, MagnifyingGlassMinus, MagnifyingGlassPlus, Paperclip, Plus, SidebarSimple, TextB, TextItalic, TextUnderline, Trash, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowBendUpLeft, ArrowBendUpRight, ArrowsOut, CaretDown, ChatCircleDots, DotsThreeOutline, EnvelopeSimple, LinkSimple, ListBullets, ListNumbers, Paperclip, Plus, SidebarSimple, TextB, TextItalic, TextUnderline, Trash, X } from "@phosphor-icons/react";
 import { useAddInboxNote, useComposeInbox, useInbox, useInboxThread, useInboxTyping, useSendInboxReply, useSetInboxStatus, useSetInboxTyping } from "../api/queries.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { canInbox } from "../auth/permissions.js";
@@ -264,6 +264,52 @@ function compactHtmlBody(value) {
       if (/^on/i.test(attribute.name) || (/^(href|src|action)$/i.test(attribute.name) && /^\s*javascript:/i.test(attribute.value))) node.removeAttribute(attribute.name);
     });
   });
+  const hasVisibleBackground = node => {
+    const legacyBackground = String(node.getAttribute("bgcolor") || "").trim();
+    const style = String(node.getAttribute("style") || "");
+    const styledBackground = style.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim() || "";
+    const background = legacyBackground || styledBackground;
+    if (!background) return Boolean(/(?:^|;)\s*background(?:-image)?\s*:/i.test(style));
+    return !/^(?:transparent|none|inherit|initial|unset)$/i.test(background) && !/^rgba?\([^)]*,\s*0(?:\s*%?)?\s*\)$/i.test(background);
+  };
+  const colorLuminance = value => {
+    const source = String(value || "").trim().toLowerCase();
+    const hex = source.match(/#([\da-f]{3,8})\b/i);
+    const rgb = source.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+)%?)?\s*\)/i);
+    const named = { white:[255,255,255], snow:[255,250,250], ivory:[255,255,240], whitesmoke:[245,245,245], beige:[245,245,220], linen:[250,240,230], black:[0,0,0], navy:[0,0,128], maroon:[128,0,0] };
+    let channels;
+    let alpha = 1;
+    if (hex) {
+      const digits = hex[1];
+      if (digits.length === 3 || digits.length === 4) channels = [digits[0] + digits[0], digits[1] + digits[1], digits[2] + digits[2]].map(value => parseInt(value, 16));
+      else channels = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 6)].map(value => parseInt(value, 16));
+      if (digits.length === 4 || digits.length === 8) alpha = parseInt(digits.slice(-2), 16) / 255;
+    } else if (rgb) {
+      channels = rgb.slice(1, 4).map(Number);
+      if (rgb[4] !== undefined) alpha = Number(rgb[4]) / (source.includes("%") ? 100 : 1);
+    } else if (named[source]) channels = named[source];
+    if (!channels || alpha === 0) return null;
+    const normalized = channels.map(channel => channel / 255).map(channel => channel <= .03928 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4);
+    return (normalized[0] * .2126) + (normalized[1] * .7152) + (normalized[2] * .0722);
+  };
+  const surfaceTone = node => {
+    const legacyBackground = String(node.getAttribute("bgcolor") || "").trim();
+    const style = String(node.getAttribute("style") || "");
+    const background = legacyBackground || style.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim() || "";
+    if (!background) return "light";
+    const luminance = colorLuminance(background);
+    return luminance === null || luminance > .55 ? "light" : "dark";
+  };
+  const preserveSurfaceColors = node => {
+    const tone = surfaceTone(node);
+    [node, ...node.querySelectorAll("*")].forEach(child => {
+      child.setAttribute("data-email-preserve-colors", "true");
+      child.setAttribute("data-email-surface-tone", tone);
+    });
+  };
+  root.querySelectorAll("[style], [bgcolor]").forEach(node => {
+    if (hasVisibleBackground(node)) preserveSurfaceColors(node);
+  });
   const visibleText = node => String(node.textContent || "").replace(/\u00a0/g, " ").trim();
   const hasMedia = node => /^(IMG|SVG|VIDEO|AUDIO|TABLE)$/.test(node.tagName) || Boolean(node.querySelector?.("img,svg,video,audio,table"));
   [...root.querySelectorAll("*")].reverse().forEach(node => {
@@ -307,7 +353,84 @@ function attachmentHasOnlyQuotedBody(message, htmlBody, textBody) {
 function messageHasContent(message) {
   return Boolean(compactHtmlBody(message.htmlBody) || compactTextBody(message.textBody) || message.attachments?.length);
 }
-function MessageCard({ message, conversation, currentUser, onReply, onForward, isEarlier = false, bodyZoom = 1 }) {
+function EmailBodyViewport({ children, zoom, onZoomChange }) {
+  const viewport = useRef(null);
+  const content = useRef(null);
+  const zoomRef = useRef(zoom);
+  const changeZoomRef = useRef(onZoomChange);
+  const fitScaleRef = useRef(1);
+  const animationFrame = useRef(null);
+  const [baseSize, setBaseSize] = useState({ width:0, height:0, viewportWidth:0 });
+  zoomRef.current = zoom;
+  changeZoomRef.current = onZoomChange;
+  useEffect(() => {
+    const viewportNode = viewport.current;
+    const contentNode = content.current;
+    if (!viewportNode || !contentNode) return undefined;
+    const measure = () => {
+      const viewportWidth = viewportNode.clientWidth;
+      const width = Math.max(viewportWidth, contentNode.scrollWidth);
+      const height = contentNode.scrollHeight;
+      setBaseSize(previous => previous.width === width && previous.height === height && previous.viewportWidth === viewportWidth ? previous : { width, height, viewportWidth });
+    };
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(contentNode);
+    window.addEventListener("resize", measure);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+  const fitScale = baseSize.width && baseSize.viewportWidth ? Math.min(1, baseSize.viewportWidth / baseSize.width) : 1;
+  const effectiveScale = fitScale * zoom;
+  fitScaleRef.current = fitScale;
+  useEffect(() => {
+    const node = viewport.current;
+    if (!node) return undefined;
+    const distance = touches => {
+      const [first, second] = touches;
+      return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+    };
+    const midpoint = touches => ({ x:(touches[0].clientX + touches[1].clientX) / 2, y:(touches[0].clientY + touches[1].clientY) / 2 });
+    let gesture = null;
+    const start = event => {
+      if (event.touches.length !== 2) return;
+      event.preventDefault();
+      const center = midpoint(event.touches);
+      gesture = { distance:distance(event.touches), zoom:zoomRef.current, scale:fitScaleRef.current * zoomRef.current, scrollLeft:node.scrollLeft, center };
+    };
+    const move = event => {
+      if (!gesture || event.touches.length < 2) return;
+      event.preventDefault();
+      const ratio = distance(event.touches) / Math.max(1, gesture.distance);
+      const nextZoom = Math.min(2.4, Math.max(1, Number((gesture.zoom * ratio).toFixed(3))));
+      const rect = node.getBoundingClientRect();
+      const centerX = gesture.center.x;
+      const contentPoint = (centerX - rect.left + gesture.scrollLeft) / Math.max(.01, gesture.scale);
+      const nextScale = fitScaleRef.current * nextZoom;
+      changeZoomRef.current(nextZoom);
+      if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = requestAnimationFrame(() => {
+        node.scrollLeft = Math.max(0, contentPoint * nextScale - (centerX - rect.left));
+        animationFrame.current = null;
+      });
+    };
+    const end = () => { gesture = null; };
+    node.addEventListener("touchstart", start, { passive:false });
+    node.addEventListener("touchmove", move, { passive:false });
+    node.addEventListener("touchend", end, { passive:true });
+    node.addEventListener("touchcancel", end, { passive:true });
+    return () => {
+      node.removeEventListener("touchstart", start);
+      node.removeEventListener("touchmove", move);
+      node.removeEventListener("touchend", end);
+      node.removeEventListener("touchcancel", end);
+      if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+    };
+  }, []);
+  const scaledWidth = baseSize.width ? Math.ceil(baseSize.width * effectiveScale) : undefined;
+  const scaledHeight = baseSize.height ? Math.ceil(baseSize.height * effectiveScale) : undefined;
+  return <div ref={viewport} className="inbox-message-body-viewport"><div className="inbox-message-body-canvas" style={{ width:scaledWidth ? `${scaledWidth}px` : undefined, minHeight:scaledHeight ? `${scaledHeight}px` : undefined }}><div ref={content} className="inbox-message-body-content" style={{ width:baseSize.width ? `${baseSize.width}px` : undefined, transform:`scale(${effectiveScale})` }}>{children}</div></div></div>;
+}
+function MessageCard({ message, conversation, currentUser, onReply, onForward, isEarlier = false, bodyZoom = 1, onBodyZoomChange }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const isNote = message.kind === "internal_note";
   const adminName = message.senderAdminName || message.senderName || message.senderEmail;
@@ -324,21 +447,14 @@ function MessageCard({ message, conversation, currentUser, onReply, onForward, i
     <div className="inbox-message-content">
       <button type="button" className="inbox-message-details-toggle" aria-expanded={detailsOpen} onClick={() => setDetailsOpen(value => !value)}>{detailsOpen ? "Hide details" : "Show details"}</button>
       <div className={"inbox-message-details-wrap" + (detailsOpen ? " is-open" : "")} aria-hidden={!detailsOpen}><dl className="inbox-message-details"><div><dt>From</dt><dd>{message.senderAdminEmail ? `${message.senderAdminName || message.senderName || "Admin"} <${message.senderAdminEmail}>` : message.senderName ? `${message.senderName} <${message.senderEmail}>` : message.senderEmail}</dd></div><div><dt>Sent</dt><dd>{timeLabel(message.createdAt)}</dd></div><div><dt>To</dt><dd>{message.recipientEmail || conversation.mailbox}</dd></div><div><dt>Subject</dt><dd>{conversation.subject}</dd></div></dl></div>
-      <div className="inbox-message-body-viewport"><div className="inbox-message-body-canvas" style={{ "--email-body-zoom": bodyZoom }}>{message.htmlBody ? <div className="inbox-message-body inbox-message-html" dangerouslySetInnerHTML={{ __html: compactHtmlBody(message.htmlBody) }} /> : <div className="inbox-message-body">{plainEmailBody(message.textBody)}</div>}</div></div>
+      <EmailBodyViewport zoom={bodyZoom} onZoomChange={onBodyZoomChange}>{message.htmlBody ? <div className="inbox-message-body inbox-message-html" dangerouslySetInnerHTML={{ __html: compactHtmlBody(message.htmlBody) }} /> : <div className="inbox-message-body inbox-message-plain">{plainEmailBody(message.textBody)}</div>}</EmailBodyViewport>
       <MessageAttachments files={message.attachments} />
     </div>
   </article>;
 }
-function EmailBodyToolbar({ zoom, onZoomChange }) {
-  const percent = Math.round(zoom * 100);
-  return <div className="inbox-email-body-toolbar" role="toolbar" aria-label="Email body view controls">
-    <span>Message body</span>
-    <div className="inbox-email-body-zoom"><IconButton Icon={MagnifyingGlassMinus} label="Zoom email body out" onClick={() => onZoomChange(Math.max(.8, Number((zoom - .1).toFixed(2))))} /><span aria-live="polite">{percent}%</span><IconButton Icon={MagnifyingGlassPlus} label="Zoom email body in" onClick={() => onZoomChange(Math.min(1.8, Number((zoom + .1).toFixed(2))))} /></div>
-  </div>;
-}
 export default function ContactsPage() {
   const toast = useToast(), queryClient = useQueryClient(), { access, user, loading: authLoading } = useAuth();
-  const chatUser = useMemo(() => user ? { ...user, displayName: access?.displayName || user.displayName || user.email } : user, [access?.displayName, user]);
+  const chatUser = useMemo(() => user ? { ...user, displayName: user.displayName || user.email } : user, [user]);
   const [searchParams, setSearchParams] = useSearchParams();
   const routeFolder = searchParams.get("folder") || "Inbox";
   const routeSearch = searchParams.get("search") || "";
@@ -361,7 +477,7 @@ export default function ContactsPage() {
   const tabStorageKey = `admin-inbox-tab:${storageScope}`;
   const [selected, setSelected] = useState(""), [mailbox, setMailbox] = useState(""), [tab, setTab] = useState("all"), [search, setSearch] = useState(routeSearch), [filters, setFilters] = useState({ sortOrder:"newest", read:"all", direction:"all", sender:"", subject:"" }), [sampleMessages, setSampleMessages] = useState({}), [sampleStatuses, setSampleStatuses] = useState({}), [sampleUnread, setSampleUnread] = useState({}), [sampleBranches, setSampleBranches] = useState([]), [newDraft, setNewDraft] = useState(null), [sidebarCollapsed, setSidebarCollapsed] = useState(() => storedValue("admin-inbox-sidebar", "expanded") === "collapsed");
   const activeMailboxContext = mailboxContext(mailbox, personalMailbox);
-  const [readerOpen, setReaderOpen] = useState(false), [historyOpen, setHistoryOpen] = useState(false), [chatMode, setChatMode] = useState(false), [chatViewMounted, setChatViewMounted] = useState(false), [replyContext, setReplyContext] = useState(null), [typingParticipant, setTypingParticipant] = useState(null), [composeExpanded, setComposeExpanded] = useState(true), [emailZoom, setEmailZoom] = useState(1), [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [readerOpen, setReaderOpen] = useState(false), [historyOpen, setHistoryOpen] = useState(false), [chatMode, setChatMode] = useState(false), [chatViewMounted, setChatViewMounted] = useState(false), [replyContext, setReplyContext] = useState(null), [typingParticipant, setTypingParticipant] = useState(null), [composeExpanded, setComposeExpanded] = useState(() => typeof window === "undefined" || !window.matchMedia("(max-width:767px)").matches), [emailZoom, setEmailZoom] = useState(1), [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const typingChannel = useRef(null), typingStopTimer = useRef(null), typingExpiryTimer = useRef(null), composeInteractionUntil = useRef(0), typingClientId = useRef(`typing-${Math.random().toString(36).slice(2)}`);
   useEffect(() => {
     if (authLoading || !user?.uid) return undefined;
@@ -452,7 +568,7 @@ export default function ContactsPage() {
   const threadHistoryOpen = historyOpen && conversation?.id === selected;
   const selectedSummary = useMemo(() => threads.find(thread => thread.id === selected), [threads, selected]);
   useEffect(() => {
-    setHistoryOpen(false); setReplyContext(null); setTypingParticipant(null); setComposeExpanded(true);
+    setHistoryOpen(false); setReplyContext(null); setTypingParticipant(null); setComposeExpanded(typeof window === "undefined" || !window.matchMedia("(max-width:767px)").matches);
     setEmailZoom(1);
     if (typingExpiryTimer.current) window.clearTimeout(typingExpiryTimer.current);
     if (typingStopTimer.current) window.clearTimeout(typingStopTimer.current);
@@ -568,16 +684,15 @@ export default function ContactsPage() {
           <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>New email</h2><p className={`inbox-mailbox-context-line is-${activeMailboxContext.kind}`}><strong>{activeMailboxContext.label}</strong><span>{mailbox}</span></p></div><button type="button" className="inbox-editor-icon" onClick={() => { setSelected(visible[0]?.id || ""); setReaderOpen(false); }} aria-label="Cancel new email"><X size={18} /></button></div>
           <Composer mailbox={(writableMailboxes.includes(mailbox) ? mailbox : writableMailboxes[0]) || mailbox} mailboxes={[(writableMailboxes.includes(mailbox) ? mailbox : writableMailboxes[0]) || mailbox]} personalMailbox={personalMailbox} initialDraft={newDraft} canWrite={canWrite} onSent={onSent} branchFromMessage={newDraft?.branchFromMessage} branchFromThreadId={newDraft?.branchFromThreadId} />
         </> : conversation ? <>
-          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2><p className={`inbox-mailbox-context-line is-${mailboxContext(conversation.mailbox, personalMailbox).kind}`}><strong>{mailboxContext(conversation.mailbox, personalMailbox).label}</strong><span>{conversation.mailbox}</span>{conversation.isSample && <em>Preview</em>}</p></div><div className="inbox-title-actions"><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!writableMailboxes.includes(conversation.mailbox) || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label><button type="button" className={"inbox-mode-toggle" + (chatMode ? " is-active" : "")} aria-label={chatMode ? "Use email view" : "Use chat mode"} aria-pressed={chatMode} title={chatMode ? "Use email view" : "Use chat mode"} onClick={toggleChatMode}><ChatCircleDots size={17} /><span>{chatMode ? "Email" : "Chat"}</span></button></div></div>
+          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2><p className={`inbox-mailbox-context-line is-${mailboxContext(conversation.mailbox, personalMailbox).kind}`}><strong>{mailboxContext(conversation.mailbox, personalMailbox).label}</strong><span>{conversation.mailbox}</span>{conversation.isSample && <em>Preview</em>}</p></div><div className="inbox-title-actions"><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!writableMailboxes.includes(conversation.mailbox) || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label><button type="button" className="inbox-mode-toggle" aria-label={chatMode ? "Switch to email view" : "Switch to chat mode"} aria-pressed={chatMode} title={chatMode ? "Switch to email view" : "Switch to chat mode"} onClick={toggleChatMode}>{chatMode ? <ChatCircleDots size={15} /> : <EnvelopeSimple size={15} />}<span className="inbox-mode-current">{chatMode ? "Chat" : "Email"}</span></button></div></div>
           <div className="inbox-view-switcher">
             <div className={"inbox-view-pane inbox-chat-view" + (chatMode ? " is-active" : "")} aria-hidden={!chatMode}>{chatViewMounted && <ChatThread messages={messages} currentUser={chatUser} typingParticipant={typingParticipant} onScroll={collapseComposeOnScroll} />}</div>
             <div className={"inbox-view-pane inbox-email-view" + (!chatMode ? " is-active" : "")} aria-hidden={chatMode}>
               <div className="inbox-thread" onScroll={collapseComposeOnScroll} onWheel={collapseComposeOnScroll}>
-                <EmailBodyToolbar zoom={emailZoom} onZoomChange={setEmailZoom} />
-                {latestMessage && <MessageCard key={latestMessage.id} message={latestMessage} conversation={conversation} currentUser={chatUser} bodyZoom={emailZoom} onReply={() => startReply(latestMessage)} onForward={() => startForward(latestMessage)} />}
+                {latestMessage && <MessageCard key={latestMessage.id} message={latestMessage} conversation={conversation} currentUser={chatUser} bodyZoom={emailZoom} onBodyZoomChange={setEmailZoom} onReply={() => startReply(latestMessage)} onForward={() => startForward(latestMessage)} />}
                 {!!olderMessages.length && <>
                   <button type="button" className={"inbox-thread-toggle" + (threadHistoryOpen ? " is-open" : "")} aria-label={threadHistoryOpen ? "Hide earlier messages" : "Show earlier messages"} aria-expanded={threadHistoryOpen} aria-controls={`inbox-history-${conversation.id}`} title={threadHistoryOpen ? "Hide earlier messages" : "Show earlier messages"} onClick={() => setHistoryOpen(value => !value)}><DotsThreeOutline size={22} weight="bold" /></button>
-                  <div id={`inbox-history-${conversation.id}`} className={"inbox-thread-history" + (threadHistoryOpen ? " is-open" : "")} role="region" aria-label="Earlier messages" aria-hidden={!threadHistoryOpen}><div className="inbox-thread-history-inner"><p className="inbox-thread-history-label"><span>Earlier messages</span><span className="inbox-thread-history-count">{olderMessages.length}</span></p>{olderMessages.map(message => <MessageCard key={message.id} message={message} conversation={conversation} currentUser={chatUser} bodyZoom={emailZoom} isEarlier onReply={() => startReply(message)} onForward={() => startForward(message)} />)}</div></div>
+                  <div id={`inbox-history-${conversation.id}`} className={"inbox-thread-history" + (threadHistoryOpen ? " is-open" : "")} role="region" aria-label="Earlier messages" aria-hidden={!threadHistoryOpen}><div className="inbox-thread-history-inner"><p className="inbox-thread-history-label"><span>Earlier messages</span><span className="inbox-thread-history-count">{olderMessages.length}</span></p>{olderMessages.map(message => <MessageCard key={message.id} message={message} conversation={conversation} currentUser={chatUser} bodyZoom={emailZoom} onBodyZoomChange={setEmailZoom} isEarlier onReply={() => startReply(message)} onForward={() => startForward(message)} />)}</div></div>
                 </>}
               </div>
             </div>

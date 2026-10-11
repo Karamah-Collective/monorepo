@@ -2,7 +2,19 @@ import { DurableObject } from "cloudflare:workers";
 import { renewAllGmailWatches } from "../../functions/_gmail.js";
 import { syncGmailHistory } from "../../functions/_gmail-sync.js";
 
+const ACTIVE_SYNC_INTERVAL_MS = 30_000;
+
 export class InboxRealtime extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.env = env;
+  }
+
+  async scheduleActiveSync() {
+    if (!(await this.ctx.storage.getAlarm())) {
+      await this.ctx.storage.setAlarm(Date.now() + ACTIVE_SYNC_INTERVAL_MS);
+    }
+  }
 
   async fetch(request) {
     const url = new URL(request.url);
@@ -20,6 +32,7 @@ export class InboxRealtime extends DurableObject {
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ connectedAt: Date.now() });
+    await this.scheduleActiveSync();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -27,8 +40,23 @@ export class InboxRealtime extends DurableObject {
     if (String(message) === "ping") socket.send("pong");
   }
 
-  webSocketClose() {}
+  async webSocketClose() {
+    if (!this.ctx.getWebSockets().length) await this.ctx.storage.deleteAlarm();
+  }
+
   webSocketError() {}
+
+  async alarm() {
+    if (!this.ctx.getWebSockets().length) return;
+
+    try {
+      await syncConnectedMailboxes(this.env);
+    } catch (error) {
+      console.error("Active Gmail sync failed", error);
+    }
+
+    if (this.ctx.getWebSockets().length) await this.ctx.storage.setAlarm(Date.now() + ACTIVE_SYNC_INTERVAL_MS);
+  }
 }
 
 async function notifyInbox(env, payload) {
@@ -66,10 +94,8 @@ export default {
   },
 
   async scheduled(_controller, env) {
-    // Pub/Sub watches remain supported when configured, but are no longer a
-    // prerequisite. History API cursors are checked automatically every
-    // minute, which also recovers missed push notifications.
+    // Kept for local/manual invocations from older tooling. Production has no
+    // Cron Trigger: active Inbox WebSockets drive the Durable Object alarm.
     if (String(env.GMAIL_PUBSUB_ENABLED || "").toLowerCase() === "true") await renewAllGmailWatches(env.DB, env).catch(() => {});
-    await syncConnectedMailboxes(env);
   },
 };

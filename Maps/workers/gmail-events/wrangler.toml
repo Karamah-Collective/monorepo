@@ -2,8 +2,11 @@ name = "manarah-gmail-events"
 main = "index.js"
 compatibility_date = "2026-08-04"
 
+# Mail sync is driven by InboxRealtime alarms only while an Admin Inbox
+# WebSocket is connected. The daily trigger only renews optional Pub/Sub
+# watches and never synchronizes mail.
 [triggers]
-crons = ["* * * * *"]
+crons = ["0 0 * * *"]
 
 [[d1_databases]]
 binding = "DB"

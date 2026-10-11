@@ -250,6 +250,19 @@ body:has(.pp-app-shell),
 .nav-folder-link[data-selected="true"] { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
 .nav-folder-link svg { flex-shrink: 0; }
 .nav-folder-link[data-selected="true"] svg { color: var(--nav-active-icon); }
+.nav-collapsed-inbox {
+  display: none;
+  place-items: center;
+  min-height: 35px;
+  margin: 2px 0;
+  padding: 7px;
+  border-radius: 6px;
+  color: var(--nav-icon);
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+.nav-collapsed-inbox:hover { background: var(--nav-hover); color: var(--nav-text-strong); }
+.nav-collapsed-inbox.active { background: var(--nav-active-bg); color: var(--nav-active-icon); }
 .nav-count {
   margin-left: auto;
   background: var(--nav-count-bg);
@@ -989,7 +1002,10 @@ kbd {
     pointer-events: none;
   }
   .nav-is-collapsed .nav-folder-links {
-    margin: 0;
+    display: none;
+  }
+  .nav-is-collapsed .nav-collapsed-inbox {
+    display: grid;
   }
   .nav-is-collapsed .nav-folder-link {
     justify-content: center;

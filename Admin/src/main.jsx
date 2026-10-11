@@ -37,6 +37,22 @@ import "./styles/dashboard-health-override.css";
 import "./styles/density.css";
 import faviconUrl from "../../Website/assets/images/kc_logo_small_icon.ico";
 
+const emailBodySelector = ".inbox-message-body-viewport";
+const isEmailBodyTarget = target => target instanceof Element && Boolean(target.closest(emailBodySelector));
+const preventZoomOutsideEmailBody = event => {
+  if (!isEmailBodyTarget(event.target)) event.preventDefault();
+};
+const preventPinchOutsideEmailBody = event => {
+  if (event.touches?.length > 1 && !isEmailBodyTarget(event.target)) event.preventDefault();
+};
+document.addEventListener("touchmove", preventPinchOutsideEmailBody, { passive:false });
+document.addEventListener("gesturestart", preventZoomOutsideEmailBody, { passive:false });
+document.addEventListener("gesturechange", preventZoomOutsideEmailBody, { passive:false });
+document.addEventListener("gestureend", preventZoomOutsideEmailBody, { passive:false });
+document.addEventListener("wheel", event => {
+  if (event.ctrlKey && !isEmailBodyTarget(event.target)) event.preventDefault();
+}, { passive:false });
+
 const appVersion = __APP_VERSION__;
 try {
   const previousVersion = localStorage.getItem("karamah-admin-version");

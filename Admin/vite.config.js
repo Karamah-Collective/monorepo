@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   define: { __APP_VERSION__: JSON.stringify(getBuildVersion()) },
   server: {
+    host: "0.0.0.0",
     port: 5173,
     strictPort: true,
     proxy: {

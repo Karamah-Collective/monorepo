@@ -14,13 +14,13 @@ const gmailEventsCwd=path.join(root,'Maps');
 const gmailEventsVars=path.join(root,'Maps','workers','gmail-events','.dev.vars');
 const mapsVars=path.join(root,'Maps','.dev.vars');
 const children=new Set(), watchers=new Set();
-let stopping=false, keepAlive, localGmailSchedule;
+let stopping=false, keepAlive;
 function terminate(child) {
   if (child.exitCode !== null) return;
   if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { windowsHide:true, stdio:'ignore' });
   else child.kill('SIGTERM');
 }
-function stop(code=0) { if(stopping)return; stopping=true; for(const watcher of watchers)watcher.close(); for(const child of children)terminate(child); if(keepAlive)clearInterval(keepAlive); if(localGmailSchedule)clearInterval(localGmailSchedule); process.exitCode=code; }
+function stop(code=0) { if(stopping)return; stopping=true; for(const watcher of watchers)watcher.close(); for(const child of children)terminate(child); if(keepAlive)clearInterval(keepAlive); process.exitCode=code; }
 function launch(script,args,cwd) { const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}); children.add(child); child.on('error',err=>{console.error(err.message);stop(1);});child.on('exit',code=>{children.delete(child);stop(code||0);}); return child; }
 function run(script,args,cwd,capture=false) { return new Promise((resolve,reject)=>{ const child=spawn(process.execPath,[script,...args],{cwd,windowsHide:true,stdio:capture?'pipe':'inherit',env:{...process.env,WRANGLER_SEND_METRICS:'false'}}), output=[]; if(capture){child.stdout.on('data',chunk=>output.push(chunk));child.stderr.on('data',chunk=>output.push(chunk));} child.on('error',reject); child.on('exit',code=>code ? reject(new Error(`Command failed: ${args.join(' ')}`)) : resolve(Buffer.concat(output).toString())); }); }
 function watchBuild({ label, cwd, source, output, script }) {
@@ -44,7 +44,6 @@ function watchBuild({ label, cwd, source, output, script }) {
   console.log(`Watching ${label} source changes.`);
 }
 function busy(port) { return new Promise(resolve=>{const socket=net.connect({host:'127.0.0.1',port});socket.once('connect',()=>{socket.destroy();resolve(true);});socket.once('error',()=>resolve(false));}); }
-function triggerLocalGmailSchedule() { fetch('http://127.0.0.1:8792/cdn-cgi/local/scheduled').catch(()=>{}); }
 async function waitUntilReady(port,child,label) {
   const deadline=Date.now()+30000;
   while(Date.now()<deadline) {
@@ -66,11 +65,6 @@ try {
     try { await copyFile(mapsVars, gmailEventsVars); } catch {}
     if(!await busy(8792)) { const child=launch(wrangler,['dev','workers/gmail-events/index.js','--config','workers/gmail-events/wrangler.toml','--port','8792','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8792,child,'Gmail events'); }
     if(!await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const pagesArgs=['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState,'--do','INBOX_REALTIME=InboxRealtime@manarah-gmail-events'];const child=launch(wrangler,pagesArgs,path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
-    // Wrangler does not fire cron events automatically during local dev.
-    // Mirror the production one-minute trigger so local mail keeps syncing
-    // without a manual request.
-    triggerLocalGmailSchedule();
-    localGmailSchedule=setInterval(triggerLocalGmailSchedule,60_000);
   }
   if(['all','admin','website'].includes(target) && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
   if(['all','admin','links'].includes(target) && !await busy(8790)) {
@@ -101,7 +95,7 @@ try {
   if(['all','admin'].includes(target) && !await busy(5173)) {
     const adminRequire=createRequire(path.join(root,'Admin/package.json'));
     const vite=path.join(path.dirname(adminRequire.resolve('vite/package.json')),'bin/vite.js');
-    const child=launch(vite,['--host','127.0.0.1','--strictPort'],path.join(root,'Admin'));
+    const child=launch(vite,['--host','0.0.0.0','--strictPort'],path.join(root,'Admin'));
     await waitUntilReady(5173,child,'Admin');
   }
   console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Forms: http://127.0.0.1:8791 · Admin: http://127.0.0.1:5173');

@@ -37,12 +37,13 @@ Hafsa signs in to the same page and uses **Contact Gmail** to connect
 `contact@karamahcollective.com`. The shared connection is stored separately
 from Manarah, so everyone with Contact mailbox access uses the same mailbox.
 
-The current implementation refreshes Gmail when an authorized member opens the
-Inbox, at most once every 30 seconds, and also exposes **Sync now**. It does not
-replace the mailbox's normal Gmail delivery. Event driven sync would require a
-Gmail `users.watch` subscription, a Google Cloud Pub/Sub topic, and a public
-Maps webhook that consumes Gmail history changes. That infrastructure is
-separate from OAuth and is not enabled by this setup.
+The current implementation refreshes Gmail only while an authorized member has
+the Inbox open, at most once every 30 seconds. The Admin WebSocket activates a
+server-side Durable Object alarm for that period; it stops when the last Inbox
+tab closes. It does not replace the mailbox's normal Gmail delivery. Event
+driven sync would require a Gmail `users.watch` subscription, a Google Cloud
+Pub/Sub topic, and a public Maps webhook that consumes Gmail history changes.
+That infrastructure is separate from OAuth and is not enabled by this setup.
 
 The admin inbox sends email through Brevo from two verified Google Workspace addresses:
 
