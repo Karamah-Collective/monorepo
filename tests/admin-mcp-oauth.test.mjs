@@ -126,6 +126,7 @@ test("OAuth authorization validates redirect URI and PKCE, then rotates refresh 
   const code = redirect.searchParams.get("code");
   const tokens = await exchangeMcpToken(db, { code, client_id: client.client_id, redirect_uri: client.redirect_uris[0], code_verifier: verifier });
   assert.equal(tokens.token_type, "Bearer");
+  assert.equal(tokens.resource, "https://admin.karamahcollective.com/mcp");
   assert.match(tokens.scope, /(^| )offline_access( |$)/);
   await assert.rejects(() => exchangeMcpToken(db, { code, client_id: client.client_id, redirect_uri: client.redirect_uris[0], code_verifier: verifier }), /Invalid authorization code/);
   const rotated = await refreshMcpToken(db, { refresh_token: tokens.refresh_token, client_id: client.client_id });

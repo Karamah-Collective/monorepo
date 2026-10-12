@@ -220,19 +220,20 @@ export async function completeMcpConsent(db, data, actor, env = {}) {
   return { redirectUri: redirect.toString(), grants: scopeList(grants) };
 }
 
-function tokenResponse(accessToken, refreshToken, grants) {
+function tokenResponse(accessToken, refreshToken, grants, resource) {
   return {
     access_token: accessToken,
     token_type: "Bearer",
     expires_in: Math.floor(ACCESS_TOKEN_TTL / 1000),
     refresh_token: refreshToken,
+    resource,
     // Every connection receives a rotating refresh token, so expose the
     // corresponding OAuth scope alongside the role-scoped Admin grants.
     scope: [OFFLINE_ACCESS_SCOPE, ...scopeList(grants)].join(" "),
   };
 }
 
-async function issueTokens(db, connectionId, grants, rotatedFrom = "") {
+async function issueTokens(db, connectionId, grants, resource, rotatedFrom = "") {
   const accessToken = randomMcpToken(32);
   const refreshToken = randomMcpToken(40);
   const issued = now();
@@ -240,7 +241,7 @@ async function issueTokens(db, connectionId, grants, rotatedFrom = "") {
     .bind(await hashMcpToken(accessToken), connectionId, issued + ACCESS_TOKEN_TTL, rotatedFrom || null, issued).run();
   await db.prepare("INSERT INTO admin_mcp_tokens (token_hash,connection_id,token_type,expires_at,created_at) VALUES (?,?, 'refresh',?,?,?)")
     .bind(await hashMcpToken(refreshToken), connectionId, issued + REFRESH_TOKEN_TTL, issued).run();
-  return tokenResponse(accessToken, refreshToken, grants);
+  return tokenResponse(accessToken, refreshToken, grants, resource);
 }
 
 export async function exchangeMcpToken(db, data, env = {}) {
@@ -260,7 +261,7 @@ export async function exchangeMcpToken(db, data, env = {}) {
   const client = await db.prepare("SELECT client_name FROM admin_mcp_clients WHERE client_id=?").bind(row.client_id).first();
   await db.prepare("UPDATE admin_mcp_connections SET client_name=? WHERE id=?").bind(client?.client_name || "MCP client", connectionId).run();
   await auditMcp(db, "connection.created", { uid: row.actor_uid, email: row.actor_email, name: row.actor_name }, { connectionId, clientId: row.client_id, clientName: client?.client_name || "MCP client", grants: scopeList(grants) });
-  return issueTokens(db, connectionId, grants);
+  return issueTokens(db, connectionId, grants, resourceUrl(env));
 }
 
 export async function refreshMcpToken(db, data, env = {}) {
@@ -272,7 +273,7 @@ export async function refreshMcpToken(db, data, env = {}) {
   const rotated = await db.prepare("UPDATE admin_mcp_tokens SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL").bind(now(), row.token_hash).run();
   if (!((rotated.meta?.changes ?? rotated.meta?.rows_written) > 0)) throw new Error("Invalid refresh token.");
   await auditMcp(db, "token.rotated", { uid: row.actor_uid, email: row.actor_email }, { connectionId: row.connection_id, clientId: row.client_id });
-  return issueTokens(db, row.connection_id, json(row.grants, []), row.token_hash);
+  return issueTokens(db, row.connection_id, json(row.grants, []), resourceUrl(env), row.token_hash);
 }
 
 export async function revokeMcpToken(db, data) {
