@@ -129,7 +129,7 @@ export async function registerMcpClient(db, data) {
   const redirectUris = uniqueStrings(Array.isArray(redirectValue) ? redirectValue : [redirectValue]);
   const authMethod = String(data.token_endpoint_auth_method || "none");
   if (authMethod !== "none") throw new Error("Only public PKCE clients using token_endpoint_auth_method=none are supported.");
-  if (redirectUris.length > 20 || redirectUris.some((uri) => uri.length > 2048 || !redirectIsSafe(uri))) throw new Error("Register one to twenty HTTPS or loopback redirect URIs.");
+  if (redirectUris.length < 1 || redirectUris.length > 20 || redirectUris.some((uri) => uri.length > 2048 || !redirectIsSafe(uri))) throw new Error("Register one to twenty HTTPS or loopback redirect URIs.");
   const clientId = `mcp_${randomMcpToken(18)}`;
   await db.prepare("INSERT INTO admin_mcp_clients (client_id,client_name,redirect_uris,metadata,created_at,updated_at) VALUES (?,?,?,?,datetime('now'),datetime('now'))")
     .bind(clientId, name, JSON.stringify(redirectUris), JSON.stringify(data || {})).run();

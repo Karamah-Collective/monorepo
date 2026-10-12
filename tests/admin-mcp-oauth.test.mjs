@@ -139,3 +139,8 @@ test("OAuth rejects an unregistered redirect URI", async () => {
   const client = await registerMcpClient(db, { client_name: "Redirect test", redirect_uris: ["https://client.example/callback"] });
   await assert.rejects(() => beginMcpAuthorization(db, { client_id: client.client_id, redirect_uri: "https://evil.example/callback", code_challenge: "challenge", code_challenge_method: "S256" }), /redirect URI/);
 });
+
+test("DCR requires at least one redirect URI", async () => {
+  const db = fixture();
+  await assert.rejects(() => registerMcpClient(db, { client_name: "Missing redirect test", redirect_uris: [] }), /one to twenty/);
+});
