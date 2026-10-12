@@ -1,8 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { FolderSimple } from "@phosphor-icons/react";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { useAdminStats, useInbox } from "../api/queries.js";
+import { useAdminStats } from "../api/queries.js";
 import { Icons } from "../icons.jsx";
 import { NAV_GROUPS } from "./navigation.js";
 import { canRoute } from "../auth/permissions.js";
@@ -24,19 +23,8 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
   const { user, access } = useAuth();
   const { data } = useAdminStats();
   const location = useLocation();
-  const isInboxRoute = location.pathname === "/contacts";
-  const selectedFolder = new URLSearchParams(location.search).get("folder") || "Inbox";
-  const { data: inboxData } = useInbox(selectedFolder, { enabled: isInboxRoute, staleTime: 30_000 });
   const [closedGroups, setClosedGroups] = useState(() => new Set(NAV_GROUPS.map(group => group.label)));
   const name = user?.displayName || user?.email || "Administrator";
-  const mailFolders = Array.isArray(inboxData?.folders) && inboxData.folders.length ? inboxData.folders : [
-    { id: "all", label: "All mail" },
-    { id: "Inbox", label: "Inbox" },
-    { id: "Sent", label: "Sent" },
-    { id: "Junk", label: "Junk" },
-    { id: "Deleted", label: "Deleted" },
-    { id: "Starred", label: "Starred" },
-  ];
   return (
     <aside
       ref={navRef}
@@ -60,7 +48,7 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
           const permittedLinks = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
           const links = permittedLinks.filter(link => !link.hidden);
           if (!links.length && !(isCommunications && permittedLinks.length)) return null;
-          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`))) || (isCommunications && isInboxRoute);
+          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
           const isClosed = Boolean(group.label) && closedGroups.has(group.label) && !active;
           return (
           <section className={`nav-group${!group.label ? " nav-group-root" : ""}${isClosed ? " is-collapsed" : ""}`} key={group.label || "overview"}>
@@ -86,14 +74,6 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
                 </NavLink>
               );
             })}
-            {isCommunications && <nav className="nav-folder-links" aria-label="Mail folders">
-              {mailFolders.map(folder => <NavLink key={folder.id} to={{ pathname: "/contacts", search: `?folder=${encodeURIComponent(folder.id)}` }} end className="nav-folder-link" data-selected={selectedFolder === folder.id ? "true" : undefined} aria-current={selectedFolder === folder.id ? "page" : undefined} title={folder.label}>
-                <FolderSimple size={15} weight="regular" /><span>{folder.label}</span>
-              </NavLink>)}
-            </nav>}
-            {isCommunications && <NavLink to={{ pathname: "/contacts", search: "?folder=Inbox" }} end className={({ isActive }) => `nav-collapsed-inbox${isActive ? " active" : ""}`} aria-label="Open inbox" title="Inbox">
-              <Icons.mail size={18} />
-            </NavLink>}
             </div></div>
           </section>
         )})}

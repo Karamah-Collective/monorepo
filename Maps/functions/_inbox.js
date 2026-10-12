@@ -43,13 +43,14 @@ export async function configuredInboxMailboxes(db, env, actor) {
   if (personal.connected && personal.accountEmail) mailboxes.push(personal.accountEmail);
   return mailboxes;
 }
-function inboxWhere(access, level = "read", configured = INBOX_MAILBOXES, personalMailbox = "") {
-  const mailboxes = accessibleInboxMailboxes(access, level, personalMailbox).filter(mailbox => configured.includes(mailbox));
+function inboxWhere(access, level = "read", configured = INBOX_MAILBOXES, personalMailbox = "", selectedMailbox = "") {
+  const requestedMailbox = clean(selectedMailbox, 160).toLowerCase();
+  const mailboxes = accessibleInboxMailboxes(access, level, personalMailbox).filter(mailbox => configured.includes(mailbox) && (!requestedMailbox || mailbox === requestedMailbox));
   return mailboxes.length ? { sql: `t.mailbox IN (${mailboxes.map(() => "?").join(",")})`, values: mailboxes } : { sql: "1=0", values: [] };
 }
-export async function listInbox(db, access, configured = INBOX_MAILBOXES, personalMailbox = "", folder = "all") {
+export async function listInbox(db, access, configured = INBOX_MAILBOXES, personalMailbox = "", folder = "all", selectedMailbox = "") {
   const available = accessibleInboxMailboxes(access, "read", personalMailbox).filter(mailbox => configured.includes(mailbox));
-  const filter = inboxWhere(access, "read", configured, personalMailbox);
+  const filter = inboxWhere(access, "read", configured, personalMailbox, selectedMailbox);
   const selectedFolder = clean(folder, 160) || "all";
   const folderValues = [...filter.values];
   const folderSql = selectedFolder.toLowerCase() === "all" ? "" : ` AND (EXISTS (SELECT 1 FROM inbox_messages fm JOIN json_each(fm.labels_json) fj ON true WHERE fm.thread_id=t.id AND fj.value=?) OR (?='Inbox' AND NOT EXISTS (SELECT 1 FROM inbox_messages unl WHERE unl.thread_id=t.id AND unl.labels_json <> '[]')) OR (?='Sent' AND EXISTS (SELECT 1 FROM inbox_messages sm WHERE sm.thread_id=t.id AND sm.direction='outbound')))`;

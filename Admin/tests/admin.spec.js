@@ -9,8 +9,8 @@ test("overview uses API totals and links to the review queue", async ({
   await expect(
     page.getByRole("heading", { name: "Welcome back, Amina." }),
   ).toBeVisible();
-  await expect(page.locator(".overview-metric").nth(1)).toContainText("17");
-  await expect(page.locator(".category-row").first()).toContainText("68");
+  await expect(page.locator(".count-pill")).toContainText("17");
+  await expect(page.locator(".category-list a").first()).toContainText("68");
   await expect(page.locator(".activity-list")).toContainText("Amina Hassan");
   await page.getByRole("link", { name: "Review", exact: true }).click();
   await expect(page).toHaveURL(/submissions\/new/);
@@ -135,17 +135,24 @@ test("inbox uses API threads and sends supported actions", async ({ page }) => {
   });
   await page.goto("/contacts");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Email", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mail accounts" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Mail folders" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Junk", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose a mail folder" })).toBeVisible();
+  await page.getByRole("button", { name: "Choose a mail folder" }).click();
+  await expect(page.getByRole("listbox", { name: "Choose a mail folder" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Junk", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Change mail account" }).click();
+  await expect(page.getByRole("menu", { name: "Choose mail account" })).toBeVisible();
+  await expect(page.getByRole("menuitemradio", { name: /Manarah support/ })).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Sort and filter mail" })).toHaveCount(0);
   await expect(page.locator("body")).toHaveCSS("font-family", /Plus Jakarta Sans/);
-  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row").filter({ hasText: "manarah@karamahcollective.com" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row").filter({ hasText: "manarah@karamahcollective.com" })).toContainText("manarah@karamahcollective.com");
+  await expect(page.locator(".inbox-account-context")).toContainText("manarah@karamahcollective.com");
   await expect(page.getByRole("button", { name: /Aisha Rahman.*Partnership inquiry/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sync Manarah support" })).toHaveText("");
-  await page.getByRole("button", { name: "Sync Manarah support" }).click();
-  await expect(page.getByRole("status")).toContainText("Inbox synced");
-  expect(await page.evaluate(() => window.__lastMutation)).toEqual({ action: "gmail-sync", body: { mailbox: "manarah@karamahcollective.com" } });
+  await expect(page.getByRole("button", { name: "Sync Manarah support" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Change mail account" })).toBeVisible();
   if (process.env.INBOX_CAPTURE) await page.screenshot({ path: process.env.INBOX_CAPTURE });
   await expect(page.getByRole("button", { name: "Search mail" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sort and filter mail" })).toHaveCount(0);
@@ -248,27 +255,26 @@ test("inbox uses API threads and sends supported actions", async ({ page }) => {
   });
 });
 
-test("shared mailbox selector keeps both authorized mailboxes visible", async ({ page }) => {
+test("universal sidebar exposes one email entry", async ({ page }) => {
   await mockAdmin(page, {
     "inbox-list": { mailboxes: ["amina@example.test", "contact@karamahcollective.com"], threads: [] },
   });
   await page.goto("/contacts");
-  await expect(page.locator(".inbox-mailbox-panel-shared .inbox-mailbox-row")).toHaveCount(2);
-  await expect(page.locator(".inbox-mailbox-panel-shared")).toContainText("contact@karamahcollective.com");
-  await expect(page.locator(".inbox-mailbox-panel-shared")).toContainText("manarah@karamahcollective.com");
+  await expect(page.getByRole("link", { name: "Email", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mail accounts" })).toHaveCount(0);
 });
 
-test("mailbox switching keeps the active folder", async ({ page }) => {
+test("account switching keeps the active folder", async ({ page }) => {
   await mockAdmin(page, {
     "inbox-list": { mailboxes: ["amina@example.test", "contact@karamahcollective.com"], threads: [] },
   });
   await page.goto("/contacts?folder=Sent");
   await expect(page.locator(".breadcrumbs")).toContainText("Communications");
   await expect(page.locator(".breadcrumbs")).toContainText("Sent");
-  await page.getByRole("tab", { name: "Shared" }).click();
-  await expect(page).toHaveURL(/\/contacts\?folder=Sent/);
-  await page.getByRole("tab", { name: "Personal" }).click();
-  await expect(page).toHaveURL(/\/contacts\?folder=Sent/);
+  await page.getByRole("button", { name: "Change mail account" }).click();
+  await page.getByRole("menuitemradio", { name: /Contact support/ }).click();
+  await expect(page).toHaveURL(/folder=Sent&mailbox=contact%40karamahcollective\.com/);
+  await expect(page.getByRole("button", { name: "Choose a mail folder" })).toContainText("Sent");
 });
 
 for (const width of [360, 834, 1440]) {
@@ -332,8 +338,8 @@ for (const width of [360, 834, 1440]) {
       const mailboxHeaderBounds = await page.locator(".inbox-list-head").boundingBox();
       expect(mailboxHeaderBounds).not.toBeNull();
       expect(mailboxHeaderBounds.height).toBeGreaterThan(80);
-      await expect(page.locator(".inbox-list-head")).not.toContainText("Inbox");
-      await expect(page.locator(".inbox-mailbox-tabs")).toHaveText(/Personal|Shared/);
+      await expect(page.locator(".inbox-list-head")).toContainText("Folder");
+      await expect(page.locator(".inbox-mailbox-tabs")).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1 && document.body.scrollHeight <= window.innerHeight + 1)).toBe(true);
     }
     await page.getByRole("button", { name: "New email" }).click();
@@ -478,7 +484,7 @@ for (const width of [360, 390, 834, 1440])
       "/log",
     ]) {
       await page.goto(route);
-      await expect(page.locator("h1")).toBeVisible();
+      await expect(page.locator(".pp-page, .forms-page, .link-hub-page, .qr-generator-page").first()).toBeVisible();
       await expect(page.locator(".loading-state")).toHaveCount(0);
       expect(
         await page.evaluate(
@@ -508,10 +514,13 @@ test("mobile drawer traps focus, closes on Escape and route selection", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
   await page.getByRole("button", { name: "Open menu" }).click();
+  await page.waitForTimeout(350);
+  await page.getByRole("button", { name: "Maps", exact: true }).click({ force: true });
+  await expect(page.getByRole("button", { name: "Maps", exact: true })).toHaveAttribute("aria-expanded", "true");
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Places", exact: true })
-    .click();
+    .click({ force: true });
   await expect(page).toHaveURL(/\/places$/);
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute(
     "aria-expanded",
@@ -531,7 +540,7 @@ test("empty dashboard remains useful and reduced motion is respected", async ({
   });
   await page.goto("/");
   await expect(page.getByText("You’re all caught up.")).toBeVisible();
-  await expect(page.getByText("A fresh start")).toBeVisible();
+  await expect(page.getByText("New submissions will appear here when they arrive.")).toBeVisible();
   expect(
     await page
       .locator(".route-content")

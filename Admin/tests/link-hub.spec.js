@@ -37,7 +37,8 @@ for (const viewport of [
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto("/links");
-    await expect(page.getByRole("heading", { name: "Link hub" })).toBeVisible();
+    await expect(page.locator(".link-hub-page")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Links and social profiles" })).toBeVisible();
     await expect(page.locator(".hub-admin-link")).toHaveCount(2);
     await expect(page.locator(".hub-mini-profile")).not.toContainText("Karamah, collected");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -82,7 +83,7 @@ test("standalone QR generator validates before enabling download", async ({ page
   await mockQrApi(page, url);
   await page.goto(`/links/qr?url=${encodeURIComponent(url)}`);
 
-  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.locator(".qr-generator-page")).toBeVisible();
   await expect(page.getByLabel("Destination URL")).toHaveValue(url);
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeDisabled();
 

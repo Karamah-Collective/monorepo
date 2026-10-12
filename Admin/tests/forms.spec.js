@@ -14,7 +14,7 @@ function captureFormsMutations(page) {
 test("forms dashboard opens the versioned builder and autosaves edits", async ({ page }) => {
   await mockAdmin(page);
   await page.goto("/forms");
-  await expect(page.getByRole("heading", { name: "Forms" })).toBeVisible();
+  await expect(page.locator(".forms-page")).toBeVisible();
   await expect(page.getByText("Community RSVP", { exact: true })).toBeVisible();
   await page.getByText("Community RSVP", { exact: true }).click();
   await expect(page).toHaveURL(/forms\/form-1/);
@@ -33,7 +33,7 @@ test("forms dashboard actions close predictably and confirm changes", async ({ p
   await page.getByRole("button", { name: "Manage Community RSVP" }).click();
   await expect(menu).toBeVisible();
 
-  await page.getByRole("heading", { name: "Forms" }).click();
+  await page.locator(".forms-page").click({ position: { x: 8, y: 8 } });
   await expect(menu).toBeHidden();
 
   await page.getByRole("button", { name: "Manage Community RSVP" }).click();
@@ -50,7 +50,7 @@ test("form sharing opens the shared QR generator with the form link", async ({ p
   await page.getByRole("link", { name: "Create QR" }).click();
 
   await expect(page).toHaveURL(/\/links\/qr/);
-  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.locator(".qr-generator-page")).toBeVisible();
   await expect(page.getByLabel("Destination URL")).toHaveValue("http://127.0.0.1:8791/f/0123456789abcdef0123456789abcdef");
   await expect(page.getByText("Loaded from Forms sharing")).toBeVisible();
 });
@@ -63,7 +63,7 @@ test("forms dashboard opens published forms in the shared QR generator", async (
   await page.getByRole("menuitem", { name: /Create QR/ }).click();
 
   await expect(page).toHaveURL(/\/links\/qr/);
-  await expect(page.getByRole("heading", { name: "QR generator" })).toBeVisible();
+  await expect(page.locator(".qr-generator-page")).toBeVisible();
   await expect(page.getByLabel("Destination URL")).toHaveValue("http://127.0.0.1:8791/f/0123456789abcdef0123456789abcdef");
   await expect(page.getByText("Loaded from Forms sharing")).toBeVisible();
 });

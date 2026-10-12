@@ -1,19 +1,21 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowBendUpLeft, ArrowBendUpRight, ArrowsOut, CaretDown, ChatCircleDots, DotsThreeOutline, EnvelopeSimple, LinkSimple, ListBullets, ListNumbers, Paperclip, Plus, SidebarSimple, TextB, TextItalic, TextUnderline, Trash, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowBendUpLeft, ArrowBendUpRight, ArrowsOut, CaretDown, ChatCircleDots, Check, DotsThreeOutline, EnvelopeSimple, FolderSimple, LinkSimple, ListBullets, ListNumbers, Paperclip, Plus, TextB, TextItalic, TextUnderline, Trash, X } from "@phosphor-icons/react";
 import { useAddInboxNote, useComposeInbox, useInbox, useInboxThread, useInboxTyping, useSendInboxReply, useSetInboxStatus, useSetInboxTyping } from "../api/queries.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { canInbox } from "../auth/permissions.js";
 import { auth } from "../firebase.js";
 import { useToast } from "../components/Toast.jsx";
 import PageHeaderActions from "../components/PageHeaderActions.jsx";
+import { useMyProfile } from "../api/website.js";
 import karamahIconUrl from "../../../Website/assets/images/kc_logo_small_icon.ico";
 import manarahIconUrl from "../../../Maps/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png";
 
 const MAILBOXES = ["contact@karamahcollective.com", "manarah@karamahcollective.com"];
 const MANARAH_MAILBOX = "manarah@karamahcollective.com";
 const mailboxKey = email => email.split("@")[0];
+const mailboxLogoUrl = email => String(email || "").toLowerCase().startsWith("manarah@") ? manarahIconUrl : karamahIconUrl;
 function mailboxContext(email, personalMailbox = "") {
   const normalized = String(email || "").toLowerCase();
   if (normalized && normalized === String(personalMailbox || "").toLowerCase()) return { kind:"personal", label:"Personal", title:"Your private mailbox", description:"Only you can access this inbox." };
@@ -55,29 +57,91 @@ function Avatar({ name, email, unread = false }) {
 }
 function readFiles(files) { return Promise.all([...files].map(file => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ name:file.name, type:file.type, size:file.size, content:String(reader.result).split(",")[1] }); reader.onerror = reject; reader.readAsDataURL(file); }))); }
 const attachmentLabel = size => size < 1024 * 1024 ? Math.ceil(size / 1024) + " KB" : (size / 1024 / 1024).toFixed(1) + " MB";
-function MailboxWorkspace({ mailboxes, personalMailbox, personalName, selected, onSelect, syncButton = null, collapseButton = null, isLoading = false }) {
+function useDismissibleMenu(open, setOpen, containerRef) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutsideClick = event => { if (!containerRef.current?.contains(event.target)) setOpen(false); };
+    const closeOnEscape = event => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => { document.removeEventListener("pointerdown", closeOnOutsideClick); document.removeEventListener("keydown", closeOnEscape); };
+  }, [containerRef, open, setOpen]);
+}
+function MailboxMark({ mailbox, personalMailbox, personalImageUrl = "", className = "" }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const context = mailboxContext(mailbox, personalMailbox);
+  const showPersonalImage = context.kind === "personal" && personalImageUrl && !imageFailed;
+  return showPersonalImage
+    ? <span className={`inbox-workspace-mark inbox-workspace-mark-photo ${className}`.trim()} aria-hidden="true"><img src={personalImageUrl} alt="" onError={() => setImageFailed(true)} /></span>
+    : context.kind === "personal" ? <span className={`inbox-workspace-mark ${className}`.trim()} aria-hidden="true">P</span> : <span className={`inbox-workspace-mark inbox-workspace-mark-logo ${className}`.trim()} aria-hidden="true"><img src={mailboxLogoUrl(mailbox)} alt="" /></span>;
+}
+function MailboxContextBar({ mailbox, personalMailbox, personalName, personalImageUrl = "", mailboxes = [], onSelect, isLoading = false }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  useDismissibleMenu(open, setOpen, containerRef);
   if (isLoading) return <div className="inbox-mailbox-workspace is-loading" aria-label="Loading mailboxes" aria-busy="true">
-    <div className="inbox-mailbox-workspace-head">
-      <div className="inbox-mailbox-tabs pp-section-tabs inbox-mailbox-tabs-skeleton" aria-hidden="true"><span /><span /></div>
-      <div className="inbox-mailbox-actions"><span className="inbox-skeleton inbox-skeleton-sync" aria-hidden="true" /><span className="inbox-skeleton inbox-skeleton-sync" aria-hidden="true" /></div>
-    </div>
-    <div className="inbox-mailbox-panel-stack" aria-hidden="true"><div className="inbox-mailbox-panel inbox-mailbox-panel-skeleton is-active"><div className="inbox-mailbox-row"><span className="inbox-workspace-mark inbox-skeleton" /><span className="inbox-workspace-copy"><i className="inbox-skeleton inbox-skeleton-line inbox-skeleton-line-name" /><i className="inbox-skeleton inbox-skeleton-line inbox-skeleton-line-address" /></span></div></div></div>
+    <div className="inbox-account-context-row" aria-hidden="true"><span className="inbox-workspace-mark inbox-skeleton" /><span className="inbox-workspace-copy"><i className="inbox-skeleton inbox-skeleton-line inbox-skeleton-line-name" /><i className="inbox-skeleton inbox-skeleton-line inbox-skeleton-line-address" /></span></div>
   </div>;
-  const personal = mailboxes.find(email => email.toLowerCase() === personalMailbox.toLowerCase());
-  const shared = mailboxes.filter(email => email.toLowerCase() !== personalMailbox.toLowerCase());
-  const activeGroup = personal && selected === personal ? "personal" : "shared";
-  return <div className="inbox-mailbox-workspace" aria-label="Mailbox workspace">
-    <div className="inbox-mailbox-workspace-head">
-      <div className="inbox-mailbox-tabs pp-section-tabs" role="tablist" aria-label="Mailbox type">
-        {personal && <button type="button" role="tab" aria-selected={activeGroup === "personal"} className={activeGroup === "personal" ? "is-active" : ""} onClick={() => onSelect(personal)}><span>Personal</span></button>}
-        {!!shared.length && <button type="button" role="tab" aria-selected={activeGroup === "shared"} className={activeGroup === "shared" ? "is-active" : ""} onClick={() => onSelect(shared.includes(selected) ? selected : shared[0])}><span>Shared</span></button>}
-      </div>
-      <div className="inbox-mailbox-actions">{syncButton}{collapseButton}</div>
+  const context = mailboxContext(mailbox, personalMailbox);
+  const label = context.kind === "personal" ? personalName || "Personal" : context.label;
+  const selectMailbox = nextMailbox => { setOpen(false); if (nextMailbox !== mailbox) onSelect?.(nextMailbox); };
+  return <div className="inbox-mailbox-workspace inbox-account-context" aria-label="Selected mail account">
+    <div className="inbox-account-context-row" ref={containerRef}>
+      <button type="button" className={`inbox-account-trigger${open ? " is-open" : ""}`} aria-label="Change mail account" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} title="Change mail account">
+        <MailboxMark mailbox={mailbox} personalMailbox={personalMailbox} personalImageUrl={personalImageUrl} />
+        <span className="inbox-workspace-copy"><strong>{label}</strong><small>{mailbox}</small></span>
+        <CaretDown size={15} className="inbox-account-trigger-caret" aria-hidden="true" />
+      </button>
+      {open && <div className="inbox-account-menu" role="menu" aria-label="Choose mail account">
+        <span className="inbox-account-menu-heading">Switch account</span>
+        {mailboxes.map(option => {
+          const optionContext = mailboxContext(option, personalMailbox);
+          const optionLabel = optionContext.kind === "personal" ? personalName || "Personal" : optionContext.label;
+          const selected = option === mailbox;
+          return <button type="button" role="menuitemradio" aria-checked={selected} className={`inbox-account-option${selected ? " is-selected" : ""}`} key={option} onClick={() => selectMailbox(option)}>
+            <MailboxMark mailbox={option} personalMailbox={personalMailbox} personalImageUrl={personalImageUrl} className="inbox-account-option-mark" />
+            <span className="inbox-account-option-copy"><strong>{optionLabel}</strong><small>{option}</small></span>
+            {selected && <Check size={15} weight="bold" aria-hidden="true" />}
+          </button>;
+        })}
+      </div>}
     </div>
-    <div className="inbox-mailbox-panel-stack" style={{ "--inbox-mailbox-row-count": activeGroup === "shared" ? Math.max(1, shared.length) : 1 }}>
-      {personal && <div className={`inbox-mailbox-panel inbox-mailbox-panel-personal${activeGroup === "personal" ? " is-active" : ""}`} role="tabpanel" aria-hidden={activeGroup !== "personal"}><button type="button" className="inbox-mailbox-row is-selected" aria-pressed="true" onClick={() => onSelect(personal)}><span className="inbox-workspace-mark">P</span><span className="inbox-workspace-copy"><strong>{personalName || "Your mailbox"}</strong><small>{personal}</small></span></button></div>}
-      {!!shared.length && <div className={`inbox-mailbox-panel inbox-mailbox-panel-shared${activeGroup === "shared" ? " is-active" : ""}`} role="tabpanel" aria-hidden={activeGroup !== "shared"}>{shared.map(email => { const context = mailboxContext(email, personalMailbox); const iconUrl = email.toLowerCase().startsWith("manarah@") ? manarahIconUrl : karamahIconUrl; return <button type="button" key={email} className={`inbox-mailbox-row${selected === email ? " is-selected" : ""}`} aria-pressed={selected === email} onClick={() => onSelect(email)}><span className="inbox-workspace-mark inbox-workspace-mark-logo" aria-hidden="true"><img src={iconUrl} alt="" /></span><span className="inbox-workspace-copy"><strong>{context.label}</strong><small>{email}</small></span></button>; })}</div>}
+  </div>;
+}
+
+function MailFolderSelect({ folders, selected, onSelect, unreadOnly = false, onToggleUnread }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  useDismissibleMenu(open, setOpen, containerRef);
+  const activeFolder = folders.find(folder => folder.id === selected) || folders[0] || { id:"", label:"No folders" };
+  const chooseFolder = nextFolder => { setOpen(false); if (nextFolder !== selected) onSelect(nextFolder); };
+  return <nav className="inbox-folder-select" aria-label="Mail folders">
+    <div className="inbox-folder-select-label"><FolderSimple size={15} /><span>Folder</span></div>
+    <div className="inbox-folder-select-control" ref={containerRef}>
+      <button type="button" className={`inbox-folder-trigger${open ? " is-open" : ""}`} aria-label="Choose a mail folder" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+        <span>{activeFolder.label}</span><CaretDown size={14} aria-hidden="true" />
+      </button>
+      {open && <div className="inbox-folder-menu" role="listbox" aria-label="Choose a mail folder">
+        {folders.map(folder => <button type="button" role="option" aria-selected={selected === folder.id} key={folder.id} className={`inbox-folder-option${selected === folder.id ? " is-selected" : ""}`} onClick={() => chooseFolder(folder.id)}>
+          <span>{folder.label}</span>{selected === folder.id && <Check size={14} weight="bold" aria-hidden="true" />}
+        </button>)}
+      </div>}
     </div>
+    <button type="button" className={`inbox-folder-unread-toggle${unreadOnly ? " is-active" : ""}`} aria-label="Show unread only" aria-pressed={unreadOnly} title={unreadOnly ? "Show all messages" : "Show unread only"} onClick={onToggleUnread}><EnvelopeSimple size={15} /><span>Unread</span></button>
+  </nav>;
+}
+
+function InboxRowsSkeleton() {
+  return <div className="inbox-rows-skeleton" role="status" aria-live="polite">
+    <span className="sr-only">Loading conversations</span>
+    {["one", "two", "three", "four", "five", "six"].map((row, index) => <div className="inbox-skeleton-row" aria-hidden="true" key={row}>
+      <span className="inbox-skeleton inbox-skeleton-avatar" />
+      <span className="inbox-skeleton-row-copy">
+        <span className="inbox-skeleton-row-top"><span className={`inbox-skeleton inbox-skeleton-line inbox-skeleton-sender is-${index % 3}`} /><span className="inbox-skeleton inbox-skeleton-line inbox-skeleton-date" /></span>
+        <span className="inbox-skeleton inbox-skeleton-line inbox-skeleton-subject" />
+        <span className="inbox-skeleton inbox-skeleton-line inbox-skeleton-preview" />
+      </span>
+    </div>)}
   </div>;
 }
 
@@ -328,9 +392,6 @@ function compactHtmlBody(value) {
   trimTrailing(root);
   return root.innerHTML.trim();
 }
-function InboxSidebarToggle({ collapsed, onClick }) {
-  return <button type="button" className="inbox-sidebar-toggle pp-btn" onClick={onClick} aria-pressed={collapsed} aria-label={collapsed ? "Show conversation list" : "Expand reading pane"} title={collapsed ? "Show conversation list" : "Expand reading pane"}><SidebarSimple size={18} weight="regular" /></button>;
-}
 function compactTextBody(value) {
   return String(value || "")
     .replace(/\r\n/g, "\n")
@@ -454,12 +515,15 @@ function MessageCard({ message, conversation, currentUser, onReply, onForward, i
 }
 export default function ContactsPage() {
   const toast = useToast(), queryClient = useQueryClient(), { access, user, loading: authLoading } = useAuth();
+  const profileQuery = useMyProfile();
   const chatUser = useMemo(() => user ? { ...user, displayName: user.displayName || user.email } : user, [user]);
   const [searchParams, setSearchParams] = useSearchParams();
   const routeFolder = searchParams.get("folder") || "Inbox";
+  const routeMailbox = String(searchParams.get("mailbox") || "").toLowerCase();
   const routeSearch = searchParams.get("search") || "";
   const [folder, setFolder] = useState(routeFolder);
-  const inbox = useInbox(folder), statusMutation = useSetInboxStatus(), publishTyping = useSetInboxTyping();
+  const [mailbox, setMailbox] = useState(routeMailbox);
+  const inbox = useInbox(folder, mailbox), statusMutation = useSetInboxStatus(), publishTyping = useSetInboxTyping();
   const mailboxLoading = authLoading || inbox.isLoading || !inbox.data;
   const configuredMailboxes = useMemo(() => {
     if (mailboxLoading) return [];
@@ -469,13 +533,14 @@ export default function ContactsPage() {
   }, [access, inbox.data?.mailboxes, mailboxLoading]);
   const folders = Array.isArray(inbox.data?.folders) && inbox.data.folders.length ? inbox.data.folders : [{ id:"all", label:"All mail" }, { id:"Inbox", label:"Inbox" }, { id:"Sent", label:"Sent" }, { id:"Junk", label:"Junk" }, { id:"Deleted", label:"Deleted" }, { id:"Starred", label:"Starred" }];
   const personalMailbox = String(user?.email || "").toLowerCase();
+  const personalImageUrl = typeof profileQuery.data?.profile?.image === "string" ? profileQuery.data.profile.image : "";
   const readableMailboxes = useMemo(() => configuredMailboxes.filter(email => email.toLowerCase() === personalMailbox || canInbox(access, "read", mailboxKey(email))), [access, configuredMailboxes, personalMailbox]);
   const writableMailboxes = useMemo(() => configuredMailboxes.filter(email => email.toLowerCase() === personalMailbox || canInbox(access, "write", mailboxKey(email))), [access, configuredMailboxes, personalMailbox]);
   const canWrite = writableMailboxes.length > 0;
   const storageScope = (user?.email || "workspace").toLowerCase();
   const mailboxStorageKey = `admin-inbox-mailbox:${storageScope}`;
   const tabStorageKey = `admin-inbox-tab:${storageScope}`;
-  const [selected, setSelected] = useState(""), [mailbox, setMailbox] = useState(""), [tab, setTab] = useState("all"), [search, setSearch] = useState(routeSearch), [filters, setFilters] = useState({ sortOrder:"newest", read:"all", direction:"all", sender:"", subject:"" }), [sampleMessages, setSampleMessages] = useState({}), [sampleStatuses, setSampleStatuses] = useState({}), [sampleUnread, setSampleUnread] = useState({}), [sampleBranches, setSampleBranches] = useState([]), [newDraft, setNewDraft] = useState(null), [sidebarCollapsed, setSidebarCollapsed] = useState(() => storedValue("admin-inbox-sidebar", "expanded") === "collapsed");
+  const [selected, setSelected] = useState(""), [tab, setTab] = useState("all"), [search, setSearch] = useState(routeSearch), [filters, setFilters] = useState({ sortOrder:"newest", read:"all", direction:"all", sender:"", subject:"" }), [sampleMessages, setSampleMessages] = useState({}), [sampleStatuses, setSampleStatuses] = useState({}), [sampleUnread, setSampleUnread] = useState({}), [sampleBranches, setSampleBranches] = useState([]), [newDraft, setNewDraft] = useState(null);
   const activeMailboxContext = mailboxContext(mailbox, personalMailbox);
   const [readerOpen, setReaderOpen] = useState(false), [historyOpen, setHistoryOpen] = useState(false), [chatMode, setChatMode] = useState(false), [chatViewMounted, setChatViewMounted] = useState(false), [replyContext, setReplyContext] = useState(null), [typingParticipant, setTypingParticipant] = useState(null), [composeExpanded, setComposeExpanded] = useState(() => typeof window === "undefined" || !window.matchMedia("(max-width:767px)").matches), [emailZoom, setEmailZoom] = useState(1), [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const typingChannel = useRef(null), typingStopTimer = useRef(null), typingExpiryTimer = useRef(null), composeInteractionUntil = useRef(0), typingClientId = useRef(`typing-${Math.random().toString(36).slice(2)}`);
@@ -528,18 +593,26 @@ export default function ContactsPage() {
     return import.meta.env.DEV && !inbox.isLoading && !inbox.isError && !liveThreads.length ? samples : liveThreads;
   }, [inbox.data, inbox.isLoading, inbox.isError, readableMailboxes, sampleStatuses, sampleUnread, sampleBranches]);
   useEffect(() => {
-    if (!readableMailboxes.length) { setMailbox(""); return; }
+    if (!readableMailboxes.length) { if (!mailbox) setMailbox(""); return; }
     const saved = storedValue(mailboxStorageKey, "");
-    if (!readableMailboxes.includes(mailbox)) setMailbox(readableMailboxes.includes(saved) ? saved : readableMailboxes[0]);
-  }, [mailboxStorageKey, readableMailboxes, mailbox]);
-  const selectFolder = nextFolder => { setFolder(nextFolder); setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("folder", nextFolder); return next; }, { replace:true }); };
+    const nextMailbox = readableMailboxes.includes(routeMailbox) ? routeMailbox : readableMailboxes.includes(mailbox) ? mailbox : readableMailboxes.includes(saved) ? saved : readableMailboxes[0];
+    if (nextMailbox !== mailbox) setMailbox(nextMailbox);
+  }, [mailboxStorageKey, readableMailboxes, mailbox, routeMailbox]);
+  const selectFolder = nextFolder => { setFolder(nextFolder); setSelected(""); setReaderOpen(false); setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("folder", nextFolder); return next; }, { replace:true }); };
+  const selectMailbox = nextMailbox => {
+    if (!readableMailboxes.includes(nextMailbox) || nextMailbox === mailbox) return;
+    setMailbox(nextMailbox);
+    setSelected("");
+    setReaderOpen(false);
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("mailbox", nextMailbox); return next; }, { replace:true });
+  };
   useEffect(() => { if (routeFolder !== folder) setFolder(routeFolder); }, [routeFolder, folder]);
+  useEffect(() => { if (routeMailbox && routeMailbox !== mailbox && readableMailboxes.includes(routeMailbox)) setMailbox(routeMailbox); }, [routeMailbox, mailbox, readableMailboxes]);
   useEffect(() => { if (routeSearch !== search) setSearch(routeSearch); }, [routeSearch, search]);
   useEffect(() => { if (!folders.some(item => item.id === folder)) selectFolder("Inbox"); }, [folder, folders]);
   useEffect(() => { const saved = storedValue(tabStorageKey, "all"); if (["all", "open", "closed"].includes(saved)) setTab(saved); }, [tabStorageKey]);
   useEffect(() => { if (mailbox) { try { localStorage.setItem(mailboxStorageKey, mailbox); } catch {} } }, [mailbox, mailboxStorageKey]);
   useEffect(() => { try { localStorage.setItem(tabStorageKey, tab); } catch {} }, [tab, tabStorageKey]);
-  useEffect(() => { try { localStorage.setItem("admin-inbox-sidebar", sidebarCollapsed ? "collapsed" : "expanded"); } catch {} }, [sidebarCollapsed]);
   const visible = useMemo(() => threads.filter(thread => {
     const senderHaystack = (thread.participantName + " " + thread.participantEmail).toLowerCase();
     const subjectHaystack = String(thread.subject || "").toLowerCase();
@@ -664,16 +737,17 @@ export default function ContactsPage() {
   const backButton = <button type="button" className="inbox-back inbox-editor-icon" aria-label="Back to conversations" onClick={backToList}><ArrowLeft size={18} /></button>;
   return <div className="pp-page inbox-page">
     {canWrite && <PageHeaderActions><button type="button" className="pp-btn pp-btn-primary" onClick={() => openDraft()}><Plus size={16} />New email</button></PageHeaderActions>}
-    <div className={"inbox-shell pp-panel" + (readerOpen ? " is-reading" : "") + (sidebarCollapsed ? " is-sidebar-collapsed" : "")}>
+    <div className={"inbox-shell pp-panel" + (readerOpen ? " is-reading" : "")}>
       <aside className="inbox-list" aria-label="Conversations">
         <div className="inbox-list-head inbox-mailbox-head">
-          <MailboxWorkspace mailboxes={readableMailboxes} personalMailbox={personalMailbox} personalName={chatUser?.displayName || personalMailbox} selected={mailbox} onSelect={nextMailbox => setMailbox(nextMailbox)} isLoading={mailboxLoading} collapseButton={<InboxSidebarToggle collapsed={sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)} />} />
+          <MailboxContextBar mailbox={mailbox} personalMailbox={personalMailbox} personalName={chatUser?.displayName || personalMailbox} personalImageUrl={personalImageUrl} mailboxes={readableMailboxes} onSelect={selectMailbox} isLoading={mailboxLoading} />
+          <MailFolderSelect folders={folders} selected={folder} onSelect={selectFolder} unreadOnly={filters.read === "unread"} onToggleUnread={() => setFilters(current => ({ ...current, read: current.read === "unread" ? "all" : "unread" }))} />
         </div>
         <div className="inbox-list-tabs-row"><div className="inbox-list-tabs pp-section-tabs" role="group" aria-label="Mail view">
           {["all", "open", "closed"].map(status => <button type="button" key={status} aria-pressed={tab === status} onClick={() => setTab(status)}>{status === "all" ? "All mail" : status === "open" ? "Open" : "Closed"}<span className="inbox-count">{status === "all" ? threads.filter(thread => thread.mailbox === mailbox).length : threads.filter(thread => thread.mailbox === mailbox && thread.status === status).length}</span></button>)}
         </div></div>
         <div className="inbox-rows">
-          {inbox.isLoading ? <p className="inbox-list-empty" role="status">Loading conversations…</p> : inbox.isError ? <div className="inbox-list-empty" role="alert"><p>Couldn’t load conversations.</p><button type="button" className="pp-btn" onClick={() => inbox.refetch()}>Try again</button></div> : visible.length ? visible.map(thread => <button type="button" key={thread.id} aria-current={selected === thread.id ? "true" : undefined} className={"inbox-row" + (selected === thread.id ? " is-selected" : "") + (thread.unreadCount > 0 ? " is-unread" : "")} onClick={() => { setSelected(thread.id); setReaderOpen(true); }}>
+          {inbox.isLoading ? <InboxRowsSkeleton /> : inbox.isError ? <div className="inbox-list-empty" role="alert"><p>Couldn’t load conversations.</p><button type="button" className="pp-btn" onClick={() => inbox.refetch()}>Try again</button></div> : visible.length ? visible.map(thread => <button type="button" key={thread.id} aria-current={selected === thread.id ? "true" : undefined} className={"inbox-row" + (selected === thread.id ? " is-selected" : "") + (thread.unreadCount > 0 ? " is-unread" : "")} onClick={() => { setSelected(thread.id); setReaderOpen(true); }}>
             <Avatar name={thread.participantName} email={thread.participantEmail} unread={thread.unreadCount > 0} />
             <span className="inbox-row-copy"><span className="inbox-row-top"><strong>{thread.participantName || thread.participantEmail}</strong><time dateTime={thread.lastMessageAt} title={timeLabel(thread.lastMessageAt)}>{listTimeLabel(thread.lastMessageAt)}</time></span><span className="inbox-row-subject">{thread.subject}</span><span className="inbox-row-preview">{thread.preview || thread.participantEmail}</span>{thread.unreadCount > 0 && <span className="sr-only">Unread</span>}</span>
           </button>) : <p className="inbox-list-empty">{hasMailQuery ? "No matching conversations." : "No " + tab + " conversations in this mailbox."}</p>}
@@ -684,7 +758,7 @@ export default function ContactsPage() {
           <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>New email</h2><p className={`inbox-mailbox-context-line is-${activeMailboxContext.kind}`}><strong>{activeMailboxContext.label}</strong><span>{mailbox}</span></p></div><button type="button" className="inbox-editor-icon" onClick={() => { setSelected(visible[0]?.id || ""); setReaderOpen(false); }} aria-label="Cancel new email"><X size={18} /></button></div>
           <Composer mailbox={(writableMailboxes.includes(mailbox) ? mailbox : writableMailboxes[0]) || mailbox} mailboxes={[(writableMailboxes.includes(mailbox) ? mailbox : writableMailboxes[0]) || mailbox]} personalMailbox={personalMailbox} initialDraft={newDraft} canWrite={canWrite} onSent={onSent} branchFromMessage={newDraft?.branchFromMessage} branchFromThreadId={newDraft?.branchFromThreadId} />
         </> : conversation ? <>
-          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2><p className={`inbox-mailbox-context-line is-${mailboxContext(conversation.mailbox, personalMailbox).kind}`}><strong>{mailboxContext(conversation.mailbox, personalMailbox).label}</strong><span>{conversation.mailbox}</span>{conversation.isSample && <em>Preview</em>}</p></div><div className="inbox-title-actions"><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!writableMailboxes.includes(conversation.mailbox) || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label><button type="button" className="inbox-mode-toggle" aria-label={chatMode ? "Switch to email view" : "Switch to chat mode"} aria-pressed={chatMode} title={chatMode ? "Switch to email view" : "Switch to chat mode"} onClick={toggleChatMode}>{chatMode ? <ChatCircleDots size={15} /> : <EnvelopeSimple size={15} />}<span className="inbox-mode-current">{chatMode ? "Chat" : "Email"}</span></button></div></div>
+          <div className="inbox-titlebar">{backButton}<div className="inbox-title-copy"><h2 tabIndex={-1}>{conversation.subject}</h2><p className={`inbox-mailbox-context-line is-${mailboxContext(conversation.mailbox, personalMailbox).kind}`}><strong>{mailboxContext(conversation.mailbox, personalMailbox).label}</strong><span>{conversation.mailbox}</span>{conversation.isSample && <em>Preview</em>}</p></div><div className="inbox-title-actions"><label className="inbox-status"><select aria-label="Conversation status" value={conversation.status} onChange={event => changeStatus(event.target.value)} disabled={!writableMailboxes.includes(conversation.mailbox) || statusMutation.isPending}><option value="open">Open</option><option value="closed">Closed</option></select><CaretDown size={13} /></label><button type="button" className="inbox-mode-toggle" aria-label={chatMode ? "Use email view" : "Use chat mode"} aria-pressed={chatMode} title={chatMode ? "Use email view" : "Use chat mode"} onClick={toggleChatMode}>{chatMode ? <ChatCircleDots size={15} /> : <EnvelopeSimple size={15} />}<span className="inbox-mode-current">{chatMode ? "Chat" : "Email"}</span></button></div></div>
           <div className="inbox-view-switcher">
             <div className={"inbox-view-pane inbox-chat-view" + (chatMode ? " is-active" : "")} aria-hidden={!chatMode}>{chatViewMounted && <ChatThread messages={messages} currentUser={chatUser} typingParticipant={typingParticipant} onScroll={collapseComposeOnScroll} />}</div>
             <div className={"inbox-view-pane inbox-email-view" + (!chatMode ? " is-active" : "")} aria-hidden={chatMode}>

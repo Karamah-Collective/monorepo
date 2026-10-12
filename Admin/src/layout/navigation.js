@@ -77,7 +77,7 @@ export const NAV_GROUPS = [
   },
   {
     label: "Communications",
-    links: [{ to: "/contacts", label: "Inbox", icon: "mail", count: "unrepliedContacts", hidden: true, description: "One shared inbox for Website, Maps, Forms, and Links." }],
+    links: [{ to: "/contacts", label: "Email", icon: "mail", count: "unrepliedContacts", description: "One shared inbox for Website, Maps, Forms, and Links." }],
   },
   {
     label: "Maps / configuration",

@@ -209,6 +209,7 @@ async function setInboxTyping(db, data, actor, env, access) {
 }
 async function listInboxWithGmail(db, url, actor, env, access, context) {
   const folder = url.searchParams.get("folder") || "all";
+  const selectedMailbox = url.searchParams.get("mailbox") || "";
   const personalMailbox = await personalMailboxFor(db, env, actor);
   const configured = await configuredInboxMailboxes(db, env, actor);
   const automaticSyncTasks = [];
@@ -233,9 +234,9 @@ async function listInboxWithGmail(db, url, actor, env, access, context) {
         body: JSON.stringify({ type: "inbox.updated", imported: updates.reduce((sum, result) => sum + result.imported, 0), at: Date.now() }),
       }).catch(() => {}));
     }
-    return listInbox(db, access, configured, personalMailbox, folder);
+    return listInbox(db, access, configured, personalMailbox, folder, selectedMailbox);
   }
-  return listInbox(db, access, configured, personalMailbox, folder);
+  return listInbox(db, access, configured, personalMailbox, folder, selectedMailbox);
 }
 const syncGmail = (db, env, mailbox) => syncGmailFull(db, env, { mailbox: mailbox === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX });
 const syncPersonalGmail = (db, env, actor) => syncGmailFull(db, env, { ownerUid: actor?.uid });

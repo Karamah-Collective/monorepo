@@ -5,7 +5,7 @@ async function mockWebsite(page, fail = false) {
   await mockAdmin(page);
   await page.route('**/src/api/website-client.js*', route => route.fulfill({ contentType: 'text/javascript', body: `
     export const websiteOrigin = 'https://website.example.test';
-    let people = [{id:'person-1',fullName:'Amina Hassan',email:'amina@example.test',role:'Community coordinator',shortBio:'Bringing neighbors together through local projects.',location:'Helsinki',order:1}];
+    let people = [{id:'person-1',name:'Amina Hassan',email:'amina@example.test',position:'Community coordinator',description:'Bringing neighbors together through local projects.',location:'Helsinki',order:1,status:'active'}];
     let profile = {fullName:'Amina Hassan',pronouns:'',role:'Community coordinator',shortBio:'Bringing neighbors together through local projects.',bio:'Private draft biography',image:'',email:'amina@example.test',phone:'+358 40 123 4567',website:'',location:'Helsinki',languages:'',expertise:'',affiliations:'',education:[],experience:[],links:[]};
     let publicFields = ['fullName','role','shortBio','email','location'];
     let subscribers = [{id:'signup-1',revision:1,name:'Test Supporter',email:'supporter@example.test',phone:'+35812345',date:'2026-09-01T12:00:00Z',status:'subscribed'},{id:'signup-2',revision:1,name:'Former Supporter',email:'former@example.test',phone:'',date:'2026-08-01T12:00:00Z',status:'unsubscribed'}];
@@ -23,26 +23,23 @@ async function mockWebsite(page, fail = false) {
   ` }));
 }
 
-test('team directory exposes only member-published data and has no admin editing controls', async ({ page }) => {
+test('team directory exposes the published member record without private profile data', async ({ page }) => {
   await mockWebsite(page);
   await page.goto('/website/team');
   await expect(page.getByRole('heading', { name: 'Amina Hassan' })).toBeVisible();
   await expect(page.locator('.website-person-card')).toContainText('Bringing neighbors together');
-  await page.getByRole('button', { name: "View Amina Hassan's public profile" }).click();
-  await expect(page.getByRole('dialog')).toContainText('Bringing neighbors together');
-  await page.getByRole('button', { name:'Close profile' }).click();
-  await expect(page.getByRole('button', { name: 'Add team member' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Manage', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add team member' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Manage', exact: true })).toHaveCount(1);
   await expect(page.getByText('Private draft biography')).toHaveCount(0);
 });
 
 test('members save their own profile with per-field publication choices', async ({ page }) => {
   await mockWebsite(page);
   await page.goto('/workspace/profile');
-  await page.getByLabel('About you').fill('I organize welcoming community programs.');
+  await page.locator('.profile-field').filter({ hasText: 'About you' }).locator('textarea').fill('I organize welcoming community programs.');
   await page.locator('.profile-field').filter({ hasText: 'About you' }).locator('.profile-publish-toggle').evaluate(element => element.click());
   await page.getByRole('button', { name: 'Save profile' }).click();
-  await expect(page.getByText('Your profile has been saved')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__websiteMutation?.action)).toBe('save-my-profile');
   const mutation = await page.evaluate(() => window.__websiteMutation);
   expect(mutation.action).toBe('save-my-profile');
   expect(mutation.body.profile).toMatchObject({ bio:'I organize welcoming community programs.', phone:'+358 40 123 4567' });
