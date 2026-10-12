@@ -52,15 +52,98 @@ export async function listInbox(db, access, configured = INBOX_MAILBOXES, person
   const available = accessibleInboxMailboxes(access, "read", personalMailbox).filter(mailbox => configured.includes(mailbox));
   const filter = inboxWhere(access, "read", configured, personalMailbox, selectedMailbox);
   const selectedFolder = clean(folder, 160) || "all";
-  const folderValues = [...filter.values];
-  const folderSql = selectedFolder.toLowerCase() === "all" ? "" : ` AND (EXISTS (SELECT 1 FROM inbox_messages fm JOIN json_each(fm.labels_json) fj ON true WHERE fm.thread_id=t.id AND fj.value=?) OR (?='Inbox' AND NOT EXISTS (SELECT 1 FROM inbox_messages unl WHERE unl.thread_id=t.id AND unl.labels_json <> '[]')) OR (?='Sent' AND EXISTS (SELECT 1 FROM inbox_messages sm WHERE sm.thread_id=t.id AND sm.direction='outbound')))`;
-  if (folderSql) folderValues.push(selectedFolder, selectedFolder, selectedFolder);
-  const { results = [] } = await db.prepare(`SELECT t.*, COALESCE(NULLIF((SELECT m.text_body FROM inbox_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC LIMIT 1),''), CASE WHEN EXISTS (SELECT 1 FROM inbox_messages am WHERE am.thread_id=t.id AND am.attachments_json <> '[]') THEN 'Attachment' ELSE '' END) AS last_message_preview, (SELECT COUNT(*) FROM inbox_messages m WHERE m.thread_id=t.id AND m.direction='outbound' AND (m.message_kind IS NULL OR m.message_kind='email')) AS outbound_count FROM inbox_threads t WHERE ${filter.sql}${folderSql} ORDER BY t.status,t.last_message_at DESC LIMIT 250`).bind(...folderValues).all();
+  const selectedFolderKey = selectedFolder.toLowerCase();
+  const now = new Date().toISOString();
+  const queryValues = [...filter.values];
+  const visibilitySql = selectedFolderKey === "snoozed" ? "" : " AND (t.snoozed_until='' OR t.snoozed_until <= ?)";
+  if (visibilitySql) queryValues.push(now);
+  let folderSql = "";
+  if (selectedFolderKey === "snoozed") {
+    folderSql = " AND t.snoozed_until > ?";
+    queryValues.push(now);
+  } else if (selectedFolderKey === "starred") {
+    folderSql = " AND (t.starred=1 OR EXISTS (SELECT 1 FROM inbox_messages sf JOIN json_each(sf.labels_json) sj ON true WHERE sf.thread_id=t.id AND lower(sj.value)='starred'))";
+  } else if (selectedFolderKey !== "all") {
+    folderSql = ` AND (EXISTS (SELECT 1 FROM inbox_messages fm JOIN json_each(fm.labels_json) fj ON true WHERE fm.thread_id=t.id AND fj.value=?) OR (?='Inbox' AND NOT EXISTS (SELECT 1 FROM inbox_messages unl WHERE unl.thread_id=t.id AND unl.labels_json <> '[]')) OR (?='Sent' AND EXISTS (SELECT 1 FROM inbox_messages sm WHERE sm.thread_id=t.id AND sm.direction='outbound')))`;
+    queryValues.push(selectedFolder, selectedFolder, selectedFolder);
+  }
+  const { results = [] } = await db.prepare(`SELECT t.*, COALESCE(NULLIF((SELECT m.text_body FROM inbox_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC LIMIT 1),''), CASE WHEN EXISTS (SELECT 1 FROM inbox_messages am WHERE am.thread_id=t.id AND am.attachments_json <> '[]') THEN 'Attachment' ELSE '' END) AS last_message_preview, (SELECT COUNT(*) FROM inbox_messages m WHERE m.thread_id=t.id AND m.direction='outbound' AND (m.message_kind IS NULL OR m.message_kind='email')) AS outbound_count, (SELECT m.direction FROM inbox_messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_direction, EXISTS (SELECT 1 FROM inbox_messages am WHERE am.thread_id=t.id AND am.attachments_json <> '[]') AS has_attachments FROM inbox_threads t WHERE ${filter.sql}${visibilitySql}${folderSql} ORDER BY t.status,t.last_message_at DESC LIMIT 250`).bind(...queryValues).all();
   const { results: labelRows = [] } = await db.prepare(`SELECT DISTINCT fj.value AS folder FROM inbox_messages fm JOIN inbox_threads t ON t.id=fm.thread_id JOIN json_each(fm.labels_json) fj ON true WHERE ${filter.sql} AND fj.value<>'' ORDER BY fj.value`).bind(...filter.values).all();
-  const standardFolders = [{ id:"all", label:"All mail" }, { id:"Inbox", label:"Inbox" }, { id:"Sent", label:"Sent" }, { id:"Junk", label:"Junk" }, { id:"Deleted", label:"Deleted" }, { id:"Starred", label:"Starred" }];
+  const standardFolders = [{ id:"all", label:"All mail" }, { id:"Inbox", label:"Inbox" }, { id:"Sent", label:"Sent" }, { id:"Junk", label:"Junk" }, { id:"Deleted", label:"Deleted" }, { id:"Starred", label:"Starred" }, { id:"Snoozed", label:"Snoozed" }];
   const standardIds = new Set(standardFolders.map(item => item.id.toLowerCase()));
   const customFolders = labelRows.map(row => clean(row.folder, 160)).filter(value => value && !standardIds.has(value.toLowerCase())).map(value => ({ id:value, label:value }));
-  return { mailboxes: available, folders:[...standardFolders, ...customFolders], selectedFolder, threads: results.map(row => ({ id: row.id, subject: row.subject || "(No subject)", participantEmail: row.participant_email, participantName: row.participant_name, mailbox: row.mailbox, source: row.source, hasOutbound: Number(row.outbound_count) > 0, status: row.status, unreadCount: row.unread_count, lastMessageAt: row.last_message_at, preview: clean(row.last_message_preview, 240) })) };
+  return { mailboxes: available, folders:[...standardFolders, ...customFolders], selectedFolder, threads: results.map(row => ({ id: row.id, subject: row.subject || "(No subject)", participantEmail: row.participant_email, participantName: row.participant_name, mailbox: row.mailbox, source: row.source, hasOutbound: Number(row.outbound_count) > 0, lastMessageDirection: row.last_message_direction || "", hasAttachments: Boolean(row.has_attachments), status: row.status, unreadCount: row.unread_count, starred: Number(row.starred) === 1, snoozedUntil: row.snoozed_until || "", assignedTo: row.assigned_to || "", assignedName: row.assigned_name || "", lastMessageAt: row.last_message_at, preview: clean(row.last_message_preview, 240) })) };
+}
+
+async function inboxThreadForWrite(db, threadId, access, personalMailbox = "") {
+  const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=?").bind(clean(threadId, 100)).first();
+  if (!thread || !canInboxMailbox(access, thread.mailbox, "write", personalMailbox)) return null;
+  return thread;
+}
+
+export async function setInboxStar(db, data, access, personalMailbox = "") {
+  const thread = await inboxThreadForWrite(db, data.threadId, access, personalMailbox);
+  if (!thread) return { error: "Conversation not found." };
+  const starred = data.starred === true || data.starred === 1 || data.starred === "1";
+  await db.prepare("UPDATE inbox_threads SET starred=? WHERE id=?").bind(starred ? 1 : 0, thread.id).run();
+  return { success: true, starred };
+}
+
+export async function setInboxSnooze(db, data, access, personalMailbox = "") {
+  const thread = await inboxThreadForWrite(db, data.threadId, access, personalMailbox);
+  if (!thread) return { error: "Conversation not found." };
+  const rawUntil = clean(data.until, 60);
+  if (!rawUntil) {
+    await db.prepare("UPDATE inbox_threads SET snoozed_until='' WHERE id=?").bind(thread.id).run();
+    return { success: true, snoozedUntil: "" };
+  }
+  const until = new Date(rawUntil);
+  if (!Number.isFinite(until.getTime()) || until.getTime() <= Date.now() || until.getTime() > Date.now() + 1000 * 60 * 60 * 24 * 90) return { error: "Choose a snooze time within the next 90 days." };
+  const snoozedUntil = until.toISOString();
+  await db.prepare("UPDATE inbox_threads SET snoozed_until=? WHERE id=?").bind(snoozedUntil, thread.id).run();
+  return { success: true, snoozedUntil };
+}
+
+export async function assignInboxThread(db, data, actor, access, personalMailbox = "") {
+  const thread = await inboxThreadForWrite(db, data.threadId, access, personalMailbox);
+  if (!thread) return { error: "Conversation not found." };
+  const assignee = clean(data.assignee, 254).toLowerCase();
+  if (!assignee) {
+    await db.prepare("UPDATE inbox_threads SET assigned_to='', assigned_name='' WHERE id=?").bind(thread.id).run();
+    return { success: true, assignedTo: "", assignedName: "" };
+  }
+  const member = assignee === String(actor?.email || "").toLowerCase()
+    ? { email: actor.email, display_name: actor.name || actor.email }
+    : await db.prepare("SELECT email,display_name FROM admin_role_members WHERE lower(email)=? LIMIT 1").bind(assignee).first();
+  if (!member?.email) return { error: "That team member cannot be assigned this conversation." };
+  await db.prepare("UPDATE inbox_threads SET assigned_to=?, assigned_name=? WHERE id=?").bind(String(member.email).toLowerCase(), clean(member.display_name || member.email, 120), thread.id).run();
+  return { success: true, assignedTo: String(member.email).toLowerCase(), assignedName: clean(member.display_name || member.email, 120) };
+}
+
+export async function bulkUpdateInbox(db, data, actor, access, personalMailbox = "") {
+  const ids = [...new Set((Array.isArray(data.threadIds) ? data.threadIds : []).map(value => clean(value, 100)).filter(Boolean))].slice(0, 100);
+  const action = clean(data.action, 40);
+  if (!ids.length || !["read", "close", "open", "star", "unstar", "assign-self", "unassign"].includes(action)) return { error: "Choose conversations and a valid action." };
+  const placeholders = ids.map(() => "?").join(",");
+  const { results = [] } = await db.prepare(`SELECT id,mailbox FROM inbox_threads WHERE id IN (${placeholders})`).bind(...ids).all();
+  const allowed = results.filter(thread => canInboxMailbox(access, thread.mailbox, "write", personalMailbox)).map(thread => thread.id);
+  if (!allowed.length) return { error: "You cannot update those conversations." };
+  const values = allowed.map(() => "?").join(",");
+  const bind = [...allowed];
+  let sql = "";
+  if (action === "read") sql = `UPDATE inbox_threads SET unread_count=0 WHERE id IN (${values})`;
+  if (action === "close" || action === "open") sql = `UPDATE inbox_threads SET status=? WHERE id IN (${values})`, bind.unshift(action);
+  if (action === "star" || action === "unstar") sql = `UPDATE inbox_threads SET starred=? WHERE id IN (${values})`, bind.unshift(action === "star" ? 1 : 0);
+  if (action === "assign-self") sql = `UPDATE inbox_threads SET assigned_to=?, assigned_name=? WHERE id IN (${values})`, bind.unshift(String(actor?.email || "").toLowerCase(), clean(actor?.name || actor?.email, 120));
+  if (action === "unassign") sql = `UPDATE inbox_threads SET assigned_to='', assigned_name='' WHERE id IN (${values})`;
+  await db.prepare(sql).bind(...bind).run();
+  return { success: true, updated: allowed.length };
+}
+
+export async function listInboxAssignees(db, access) {
+  if (!hasInboxPermission(access, "read")) return { members: [] };
+  const { results = [] } = await db.prepare("SELECT email,display_name FROM admin_role_members ORDER BY lower(display_name),lower(email)").all();
+  return { members: results.map(member => ({ email:String(member.email || "").toLowerCase(), name:clean(member.display_name || member.email, 120) })).filter(member => member.email) };
 }
 export async function setInboxStatus(db, data, access, personalMailbox = "") {
   const threadId = clean(data.threadId, 80);

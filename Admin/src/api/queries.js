@@ -25,6 +25,7 @@ export const useInbox = (folder = "all", mailboxOrOptions = "", maybeOptions = {
   });
 };
 export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: previous => previous });
+export const useInboxMembers = () => useQuery({ queryKey: ["inbox-members"], queryFn: () => apiGet("inbox-members"), staleTime: 5 * 60 * 1000 });
 export const useInboxTyping = (threadId) => useQuery({ queryKey: ["inbox-typing", threadId], queryFn: () => apiGet("inbox-typing", { threadId }), enabled: !!threadId, staleTime: 0, refetchInterval: 1_200, refetchIntervalInBackground: true, refetchOnWindowFocus: true, retry: 0 });
 export const useAdminWishes = () => useQuery({ queryKey: ["admin-wishes"], queryFn: () => apiGet("admin-wishes") });
 export const useAdminEvents = () => useQuery({ queryKey: ["admin-events"], queryFn: () => apiGet("admin-events") });
@@ -80,6 +81,10 @@ export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]
 export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);
 export const useSetInboxStatus = () => useAdminMutation("inbox-status", ["inbox"]);
 export const useAddInboxNote = () => useAdminMutation("inbox-note", ["inbox"]);
+export const useSetInboxStar = () => useAdminMutation("inbox-star", ["inbox"]);
+export const useSnoozeInbox = () => useAdminMutation("inbox-snooze", ["inbox"]);
+export const useAssignInbox = () => useAdminMutation("inbox-assign", ["inbox"]);
+export const useBulkInbox = () => useAdminMutation("inbox-bulk", ["inbox"]);
 export const useSetInboxTyping = () => useMutation({ mutationFn: body => apiPost("inbox-typing", body) });
 export const useUpdateWishApproved = () => useAdminMutation("update-wish-approved", ["admin-wishes", "admin-stats"]);
 export const useUpdateWishImplemented = () => useAdminMutation("update-wish-implemented", ["admin-wishes"]);

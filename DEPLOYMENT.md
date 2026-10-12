@@ -401,11 +401,12 @@ does not require Google Pub/Sub or a Workspace administrator:
 `active Admin Inbox WebSocket → Durable Object alarm (30s) → Gmail history.list → D1 → live admin WebSocket`
 
 Apply the pending inbox migrations `Maps/migrations/0042_*.sql` through
-`Maps/migrations/0045_gmail_push_sync.sql` to each environment's D1 database
+`Maps/migrations/0046_inbox_workflow_tools.sql` to each environment's D1 database
 before deploying the new Maps code. They add cross-device admin actor data,
-mail labels, the shared mailbox access update, and Gmail history cursors/watch
-expiry; they do not store Gmail access tokens in the browser. Review migration
-0044 separately: it expands the `contact-agent` role to manage both shared
+mail labels, the shared mailbox access update, Gmail history cursors/watch
+expiry, and inbox workflow metadata for starring, snoozing, and assignment;
+they do not store Gmail access tokens in the browser. Review migration 0044
+separately: it expands the `contact-agent` role to manage both shared
 mailboxes and should only be applied after that permission change is approved.
 
 ### One-time production setup (automatic History API mode)

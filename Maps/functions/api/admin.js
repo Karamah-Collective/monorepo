@@ -47,7 +47,7 @@ import { enrichFromMapsLink, forwardGeocode } from "../_google-maps.js";
 import { readAdminAppSettings, saveAppSettings } from "../_app-settings.js";
 import { getAnalyticsDashboard } from "../_analytics.js";
 import { getSystemHealth } from "../_uptimerobot.js";
-import { addInboxNote, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, listInbox, replyInbox, setInboxStatus } from "../_inbox.js";
+import { addInboxNote, assignInboxThread, bulkUpdateInbox, canInboxMailbox, composeInbox, configuredInboxMailboxes, getInboxThread, hasInboxPermission, listInbox, listInboxAssignees, replyInbox, setInboxSnooze, setInboxStar, setInboxStatus } from "../_inbox.js";
 import { CONTACT_MAILBOX, disconnectGmail, disconnectPersonalGmail, gmailStatus, personalGmailStatus, startGmailOAuth, startPersonalGmailOAuth, MANARAH_MAILBOX } from "../_gmail.js";
 import { syncGmailFull, syncGmailHistory } from "../_gmail-sync.js";
 import { deleteLinkHubLink, getAdminLinkHub, saveLinkHubLink, saveLinkHubSettings } from "../_link-hub.js";
@@ -152,8 +152,9 @@ function permissionForAction(action) {
   if (action.includes("app-settings")) return action.startsWith("admin-") ? "maps.settings.read" : "maps.settings.write";
   return action === "admin-places" ? "maps.places.read" : "maps.places.write";
 }
+const INBOX_WRITE_ACTIONS = ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note", "inbox-star", "inbox-snooze", "inbox-assign", "inbox-bulk"];
 function inboxActionAllowed(access, action) {
-  const write = ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action);
+  const write = INBOX_WRITE_ACTIONS.includes(action);
   return hasInboxPermission(access, write ? "write" : "read");
 }
 async function personalMailboxFor(db, env, actor) {
@@ -172,7 +173,7 @@ async function authenticateAuthorized(request, env, action, data = {}) {
     : action === "contact-gmail-status" ? canInboxMailbox(access, CONTACT_MAILBOX, "read", personal)
     : sharedGmailManagement ? action === "gmail-disconnect" ? auth.actor.email === INITIAL_ADMIN_EMAIL : sharedMailbox === CONTACT_MAILBOX ? canInboxMailbox(access, CONTACT_MAILBOX, "write", personal) : auth.actor.email === INITIAL_ADMIN_EMAIL
     : action === "gmail-sync" ? canInboxMailbox(access, sharedMailbox, "read", personal)
-    : action.startsWith("inbox-") ? hasInboxPermission(access, ["inbox-reply", "inbox-compose", "inbox-status", "inbox-note"].includes(action) ? "write" : "read", personal)
+    : action.startsWith("inbox-") ? hasInboxPermission(access, INBOX_WRITE_ACTIONS.includes(action) ? "write" : "read", personal)
     : allows(access,permissionForAction(action));
   return access && allowed ? { ...auth, actor:{...auth.actor,name:auth.actor.name || access.displayName || auth.actor.email}, access } : { ok:false,status:403,error:"Your role does not allow this action." };
 }
@@ -717,6 +718,7 @@ const GET_ACTIONS = {
   "admin-contact": (db) => getAdminContacts(db),
   "inbox-list": listInboxWithGmail,
   "inbox-thread": async (db, url, actor, env, access) => getInboxThread(db, url.searchParams.get("threadId"), access, await personalMailboxFor(db, env, actor)),
+  "inbox-members": (db, _url, _actor, _env, access) => listInboxAssignees(db, access),
   "inbox-typing": getInboxTyping,
   "admin-wishes": (db) => getAdminWishes(db),
   "pending-events": (db) => getPendingEvents(db),
@@ -1401,6 +1403,10 @@ const POST_ACTIONS = {
   "inbox-compose": async (db, data, env, actor, access) => composeInbox(db, env, data, actor, access, await personalMailboxFor(db, env, actor)),
   "inbox-status": async (db, data, env, actor, access) => setInboxStatus(db, data, access, await personalMailboxFor(db, env, actor)),
   "inbox-note": async (db, data, env, actor, access) => addInboxNote(db, data, actor, access, await personalMailboxFor(db, env, actor)),
+  "inbox-star": async (db, data, env, actor, access) => setInboxStar(db, data, access, await personalMailboxFor(db, env, actor)),
+  "inbox-snooze": async (db, data, env, actor, access) => setInboxSnooze(db, data, access, await personalMailboxFor(db, env, actor)),
+  "inbox-assign": async (db, data, env, actor, access) => assignInboxThread(db, data, actor, access, await personalMailboxFor(db, env, actor)),
+  "inbox-bulk": async (db, data, env, actor, access) => bulkUpdateInbox(db, data, actor, access, await personalMailboxFor(db, env, actor)),
   "inbox-typing": (db, data, env, actor, access) => setInboxTyping(db, data, actor, env, access),
   "update-wish-approved": (db, data) => updateWishApproved(db, data.wishId, data.value),
   "update-wish-implemented": (db, data) => updateWishImplemented(db, data.wishId, data.value),
