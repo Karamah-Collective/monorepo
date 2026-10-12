@@ -1,0 +1,3 @@
+# Copy to Admin/.dev.vars when running the Pages Functions locally.
+# The Vite-only Admin dev server does not read this file.
+MAPS_ORIGIN=http://127.0.0.1:8788

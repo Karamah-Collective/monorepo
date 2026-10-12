@@ -50,6 +50,7 @@ import {
   QrCode,
   UserCircle,
   Heartbeat,
+  Key,
 } from "@phosphor-icons/react";
 
 const wrap = (Component) =>
@@ -109,6 +110,7 @@ export const Icons = Object.fromEntries(
     qr: QrCode,
     profile: UserCircle,
     pulse: Heartbeat,
+    key: Key,
   }).map(([key, component]) => [key, wrap(component)]),
 );
 export const CloseIcon = wrap(X);

@@ -9,7 +9,7 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 const assets = ['index.html','404.html','manifest.json','sw.js','_headers','_routes.json','kc_logo_big.inline.svg','LOGO - Manarah.svg','src','data','scripts/transit-cache.json'];
 for (const item of assets) {
-  await cp(path.join(root,item), path.join(output,item), {recursive:true, filter: source => !source.endsWith('config.local.js') && !source.endsWith('.bak')});
+  await cp(path.join(root,item), path.join(output,item), {recursive:true, filter: source => !source.endsWith('config.local.js') && !source.endsWith('.bak') && !source.endsWith('package.json')});
 }
 const version = getBuildVersion();
 const swPath = path.join(output, 'sw.js');

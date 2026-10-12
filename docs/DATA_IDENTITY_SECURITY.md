@@ -129,6 +129,30 @@ Never solve a public-data issue by sending a private record and relying on the f
 
 `.dev.vars`, `.env.local`, local state, downloaded Firebase native configuration, and backups are ignored for a reason. Before committing, inspect `git status`; when reviewing, ensure a diff has not added values that resemble a token, key, email list, or production export.
 
+### Remote Admin MCP
+
+Admin MCP is a separate OAuth 2.1/PKCE trust boundary. The browser consent
+page uses the existing Firebase sign-in, but an MCP client receives only a
+short-lived access token and rotating refresh token for its named connection.
+Firebase ID tokens are never forwarded to Maps, Website, or Forms as MCP
+credentials. The gateway stores only SHA-256 hashes of OAuth codes and tokens
+and evaluates the current role against connection grants on every request.
+
+Owner services accept only a short-lived HMAC assertion from the gateway. The
+assertion contains the actor, connection ID, and effective permission set; it
+is rejected without the shared `MCP_INTERNAL_SIGNING_KEY`. Forms additionally
+checks form ownership/collaboration, and mailbox-scoped inbox operations retain
+their existing mailbox checks.
+
+MCP tools are generated from `shared/admin-access.mjs`. A descriptor is not a
+substitute for the owner API check: Maps, Website, and Forms repeat action
+authorization and resource ownership checks. Risky tools return a short-lived
+confirmation challenge bound to the exact action payload before a write,
+publish, send, role change, Gmail change, delete, or upload can run. Audit
+entries identify source, connection, client, action, actor, and redacted
+details; bearer tokens, Firebase tokens, passwords, email bodies, and uploaded
+content must never be stored in audit detail.
+
 ## 8. Input, file, and external-service safety
 
 ### Input validation

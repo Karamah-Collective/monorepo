@@ -28,6 +28,7 @@ import "./styles/section-tabs.css";
 import "./styles/forms.css";
 import "./styles/inbox.css";
 import "./styles/access.css";
+import "./styles/mcp.css";
 import "./styles/profile.css";
 import "./styles/weekly-report.css";
 import "./styles/edge-insets.css";

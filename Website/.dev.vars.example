@@ -7,3 +7,6 @@ RECAPTCHA_SECRET_KEY=
 BREVO_API_KEY=
 # Optional: exact trusted HTTPS Admin preview origins, comma-separated.
 ADMIN_ALLOWED_ORIGINS=
+
+# Must match Maps/.dev.vars for local MCP service assertions.
+MCP_INTERNAL_SIGNING_KEY=local-mcp-signing-key-change-me-32-characters

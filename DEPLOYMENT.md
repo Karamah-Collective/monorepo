@@ -173,6 +173,40 @@ VITE_WEBSITE_ORIGIN=https://karamahcollective.com
 
 These are public API origins, without trailing paths. They contain no secrets and are embedded at build time. Rebuild Admin after changing them.
 
+### Admin MCP: remote, role-scoped automation
+
+The Admin Pages project exposes the Streamable HTTP MCP resource at
+`https://admin.karamahcollective.com/mcp`. OAuth metadata is available at
+`/.well-known/oauth-protected-resource/mcp` and
+`/.well-known/oauth-authorization-server`; the protocol endpoints are
+`/oauth/authorize`, `/oauth/token`, `/oauth/register`, and `/oauth/revoke`.
+
+Apply `Maps/migrations/0047_admin_mcp.sql` to both the production and Preview
+shared Maps D1 databases. It is forward-only and stores only hashes for OAuth
+codes and access/refresh tokens. Each client registration must use HTTPS or a
+loopback redirect URI; authorization requires PKCE S256.
+
+Set these values in Maps, Website, and Forms for each environment, using
+different secrets for Preview and Production:
+
+| Project | Name | Purpose |
+| --- | --- | --- |
+| Maps | `MCP_INTERNAL_SIGNING_KEY` | HMAC key for short-lived gateway assertions |
+| Website | `MCP_INTERNAL_SIGNING_KEY` | Verifies assertions from Maps MCP |
+| Forms | `MCP_INTERNAL_SIGNING_KEY` | Verifies Forms and media assertions |
+| Maps | `WEBSITE_ORIGIN`, `FORMS_ORIGIN` | Owner-service HTTPS origins used by MCP |
+| Admin | `MAPS_ORIGIN` | Maps MCP/OAuth proxy origin |
+
+The signing key must be at least 32 characters and must be identical only
+within one environment. Do not put it in a `VITE_*` variable or browser code.
+For local development, use Maps 8788, Website 8789, and Forms 8791 and set
+the owner origins explicitly. After migration, verify metadata, consent, token
+exchange, filtered `tools/list`, a confirmed write, live role downgrade, and
+connection revocation in both environments. Configure Cloudflare edge rate
+limits for `/mcp`, `/oauth/register`, `/oauth/token`, and `/oauth/authorize`
+before exposing the production hostname; keep registration and token routes
+stricter than normal tool calls.
+
 ### Links: create the shared-D1 project
 
 Create a fourth Pages project with the Links column settings above and attach
@@ -207,7 +241,7 @@ before the first deploy. Optionally set `FIREBASE_PROJECT_ID` only when the
 environment uses a Firebase project other than `halal-map-karamah`.
 Set `ADMIN_ACCESS_URL` only when the Forms deployment should resolve
 administrator roles from a non-production Admin API; production defaults to
-`https://karamahcollective.com/api/admin`.
+`https://admin.karamahcollective.com/api/admin`.
 
 Run `npm run migrate:form-links -- --remote` to create three-character short
 links that redirect to the long canonical form URLs.

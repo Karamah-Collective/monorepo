@@ -146,6 +146,7 @@ export const NAV_GROUPS = [
       },
       { to: "/analytics", label: "Analytics", icon: "dashboard", permission: "analytics.read", description: "Review Manarah product activity and traffic totals." },
       { to: "/workspace/access", label: "Roles & access", icon: "shield", permission: "dashboard.view", description: "Manage your profile and workspace roles." },
+      { to: "/workspace/mcp", label: "MCP access", icon: "key", permission: "dashboard.view", description: "Authorize and revoke role-scoped MCP connections." },
     ],
   },
 ];

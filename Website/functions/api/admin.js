@@ -1,17 +1,22 @@
 import { verifyFirebaseIdToken } from '../../../shared/firebase-verify.mjs';
 import { websiteDataRequest, WebsiteDataError } from '../_website-data.js';
 import { validateWebsiteContent, publicWebsiteContent } from '../../assets/js/content-schema.mjs';
+import { actionDescriptor, descriptorIsAllowed, ROLE_PERMISSIONS } from '../../../shared/admin-access.mjs';
+import { mcpActorFromAssertion, verifyMcpAssertion } from '../../../shared/mcp-internal.mjs';
 
 const origins=['https://admin.karamahcollective.com','https://admin.maps.karamahcollective.com','http://localhost:5173','http://127.0.0.1:5173'];
-const reads=new Set(['admin-team','admin-subscribers','admin-content','my-profile','maps-admin']);
-const writes=new Set(['save-person','delete-person','save-my-profile','unsubscribe','delete-subscriber','save-content','maps-admin']);
+export const WEBSITE_READ_ACTIONS=new Set(['admin-team','admin-subscribers','admin-content','my-profile','maps-admin']);
+export const WEBSITE_WRITE_ACTIONS=new Set(['save-person','delete-person','save-my-profile','unsubscribe','delete-subscriber','save-content','maps-admin']);
 const mapsAdminOrigin=env=>String(env.MAPS_ADMIN_ORIGIN||'https://maps.karamahcollective.com').replace(/\/$/,'');
 const initialAdminEmail='moontasir@karamahcollective.com';
-async function hasWebsiteAccess(env,actor){
-  if(actor.email?.toLowerCase()===initialAdminEmail)return true;
-  if(!env?.DB?.prepare)return false;
-  const row=await env.DB.prepare("SELECT r.permissions FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
-  try{const permissions=JSON.parse(row?.permissions||'[]');return permissions.includes('*')||permissions.includes('website.*')||permissions.some(value=>value.startsWith('website.'));}catch{return false;}
+async function currentRolePermissions(env,actor){
+  if(actor.email?.toLowerCase()===initialAdminEmail)return ['*'];
+  if(!env?.DB?.prepare)return [];
+  const row=await env.DB.prepare("SELECT m.role_id,r.permissions FROM admin_role_members m LEFT JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
+  if(!row)return [];
+  let permissions=[]; try{permissions=JSON.parse(row.permissions||'[]');}catch{}
+  if(row.role_id==='contact-agent')permissions.push('inbox.contact.read','inbox.contact.write','inbox.manarah.read','inbox.manarah.write');
+  return permissions.length?permissions:(ROLE_PERMISSIONS[row.role_id]||[]);
 }
 function allowedOrigins(env={}) {
   return [...origins,...(env.ADMIN_ALLOWED_ORIGINS||'').split(',').map(value=>value.trim()).filter(value=>/^https:\/\/[^/]+$/.test(value))];
@@ -66,27 +71,32 @@ export async function onRequest(context) {
   if(!['GET','POST'].includes(request.method))return response(request,{error:'Method not allowed'},405);
   const origin=request.headers.get('Origin');
   if(origin&&!allowedOrigins(env).includes(origin))return response(request,{error:'Origin not allowed'},403);
+  const assertion=await verifyMcpAssertion(request.headers.get('X-MCP-Assertion'),env.MCP_INTERNAL_SIGNING_KEY);
   const match=/^Bearer ([^\s]+)$/.exec(request.headers.get('Authorization')||'');
-  if(!match||match[1].length>4096)return response(request,{error:'Sign in to access website administration.'},401);
+  if(!assertion&&!match||match?.[1].length>4096)return response(request,{error:'Sign in to access website administration.'},401);
   try {
-    const actor=await verifyFirebaseIdToken(match[1],env);
+    const actor=assertion?mcpActorFromAssertion(assertion):await verifyFirebaseIdToken(match[1],env);
     if(!actor)return response(request,{error:'Your session expired. Sign in again.'},401);
-    if(!actor.emailVerified||!actor.email?.toLowerCase().endsWith('@karamahcollective.com'))return response(request,{error:'A verified Karamah team account is required.'},403);
+    if(!assertion&&(!actor.emailVerified||!actor.email?.toLowerCase().endsWith('@karamahcollective.com')))return response(request,{error:'A verified Karamah team account is required.'},403);
+    const rolePermissions=await currentRolePermissions(env,actor);
+    if(!rolePermissions.length)return response(request,{error:'Your role does not allow website administration.'},403);
     let data,action;
-    if(request.method==='GET'){data={};action=new URL(request.url).searchParams.get('action');if(!reads.has(action))return response(request,{error:'Unknown read action'},400);}
+    if(request.method==='GET'){data={};action=new URL(request.url).searchParams.get('action');if(!WEBSITE_READ_ACTIONS.has(action))return response(request,{error:'Unknown read action'},400);}
     else {
       const raw=await request.text();if(raw.length>150000)return response(request,{error:'Request too large'},413);
       try{data=JSON.parse(raw);}catch{return response(request,{error:'Invalid JSON'},400);}
       if(!data||typeof data!=='object'||Array.isArray(data))return response(request,{error:'Invalid request'},400);
-      action=data.action;if(!writes.has(action))return response(request,{error:'Unknown write action'},400);
+      action=data.action;if(!WEBSITE_WRITE_ACTIONS.has(action))return response(request,{error:'Unknown write action'},400);
       const error=action==='maps-admin'?null:validateWrite(action,data);if(error)return response(request,{error},400);
       if(action==='save-content')data.content=publicWebsiteContent(data.content);
     }
-    if(action==='maps-admin')return proxyMapsAdmin(request,env,match[1],data);
+    if(action==='maps-admin')return assertion?response(request,{error:'Maps operations must use the Maps MCP gateway.'},403):proxyMapsAdmin(request,env,match[1],data);
+    const descriptor=actionDescriptor(action,'website');
+    if(!descriptor)return response(request,{error:'Unknown website action'},400);
+    if(!descriptorIsAllowed(descriptor,rolePermissions,assertion?assertion.permissions:null))return response(request,{error:'Your role does not allow this website action.'},403);
     if(action==='my-profile'||action==='save-my-profile') {
       return response(request,await websiteDataRequest(env,action,{...data,actor:{uid:actor.uid,email:actor.email,name:actor.name||''}}));
     }
-    if(!await hasWebsiteAccess(env,actor))return response(request,{error:'Your role does not allow website administration.'},403);
     const payload={id:data.id,revision:data.revision,person:data.person,content:data.content,actor:{email:actor.email,name:actor.name||''}};
     return response(request,await websiteDataRequest(env,action,payload));
   } catch(error) { return response(request,{error:error instanceof WebsiteDataError?error.message:'Website administration is temporarily unavailable.'},error instanceof WebsiteDataError?error.status:502); }

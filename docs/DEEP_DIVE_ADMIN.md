@@ -16,6 +16,21 @@ Maps owns places, submissions, events, reviews, settings, analytics, health, rep
 
 Admin is dense and operational: reuse tokens, tables, status badges, dark mode, responsive layout, focus states, and confirmation patterns. Every mutation needs pending/failed/success feedback and server enforcement.
 
+## Role-scoped MCP
+
+The Admin MCP page at `/workspace/mcp` manages named OAuth connections. A
+connection's selected grants are capped by the user's current role; an
+administrator may explicitly choose `admin:*` to follow all current and future
+capabilities. The consent route at `/mcp/authorize` is Firebase-backed and
+shows the live permission set before issuing a one-time authorization code.
+
+The remote endpoint is `/mcp` on the Admin domain. It uses Streamable HTTP and
+registers typed tools from the shared action registry. Tools disappear from
+`tools/list` and fail closed when a role is downgraded, even if their OAuth
+connection remains active. Destructive or external-side-effect tools require
+an exact, short-lived confirmation challenge. Administrators can revoke one
+connection without affecting another.
+
 ## Test and release
 
 Run `npm run build:admin` and `npm run test:admin`, plus affected owner API tests. Verify an authorized sign-in, changed workspace, safe mutation/read, loading/error state, and denied access. Cloudflare Pages serves Admin `dist`; Firebase authorized domains, public API origins, and owner services must match production.

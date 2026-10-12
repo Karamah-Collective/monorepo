@@ -56,6 +56,13 @@ import {
   formAnalytics, getForm, getVersion, listForms, listSubmissions, publishForm,
   saveForm, setFormStatus,
 } from "../_forms-admin.js";
+import {
+  DEFAULT_ROLE_ID,
+  ROLE_PERMISSIONS,
+  actionDescriptor,
+  allowsPermissions,
+  parsePermissions,
+} from "../../../shared/admin-access.mjs";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
@@ -89,10 +96,6 @@ async function authenticateAdmin(request, env) {
   return { ok: true, actor: { uid: verified.uid, email: verified.email.toLowerCase(), name: verified.name || "" } };
 }
 
-const EVERYONE_PERMISSIONS = ["dashboard.view","maps.places.read","links.qr","forms.create","access.view","access.request"];
-const ROLE_PERMISSIONS = { administrator:["*"], "map-editor":["maps.*"], "content-editor":["website.*","links.*","forms.*","reports.write"], moderator:["moderation.*","inbox.*"], viewer:[] };
-const DEFAULT_ROLE_ID = "viewer";
-function parsePermissions(raw, fallback=[]) { try { const value=JSON.parse(raw||"[]"); return Array.isArray(value) ? value.filter(v=>typeof v==="string") : fallback; } catch { return fallback; } }
 function effectiveRolePermissions(roleId, raw, fallback=[]) {
   const permissions = parsePermissions(raw, fallback);
   if (roleId !== "contact-agent") return permissions;
@@ -109,7 +112,7 @@ async function ensureDefaultRole(db, preferredRoleId = DEFAULT_ROLE_ID) {
   await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();
   return role || { id: DEFAULT_ROLE_ID, name: "Viewer", permissions: JSON.stringify(ROLE_PERMISSIONS.viewer) };
 }
-async function resolveAccess(db, actor) {
+export async function resolveAccess(db, actor) {
   const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m LEFT JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
   if (row?.name) return { roleId:row.role_id, roleName:row.name, permissions:effectiveRolePermissions(row.role_id, row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
   if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:"" };
@@ -121,11 +124,10 @@ async function resolveAccess(db, actor) {
   else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?, 'automatic default role',datetime('now'))").bind(actor.email,roleId,displayName).run();
   return { roleId, roleName:role.name, permissions:parsePermissions(role.permissions,ROLE_PERMISSIONS[roleId]||[]), displayName };
 }
-function allows(access, permission) {
-  const permissions=[...EVERYONE_PERMISSIONS,...(access?.permissions||[])], [area,resource,level]=permission.split(".");
-  return permissions.includes("*") || permissions.includes(permission) || (level && permissions.includes(`${area}.${resource}`)) || (level==="read" && permissions.includes(`${area}.${resource}.write`)) || (resource==="read" && (permissions.includes(`${area}.write`) || permissions.includes(`${area}.view`))) || permissions.includes(`${area}.*`);
-}
+function allows(access, permission) { return allowsPermissions(access?.permissions || [], permission); }
 function permissionForAction(action) {
+  const descriptor = actionDescriptor(action, "maps") || actionDescriptor(action);
+  if (descriptor?.permissions?.length) return descriptor.permissions[0];
   if (action === "save-my-profile") return "dashboard.view";
   if (["access-roles","access-members"].includes(action)) return "access.view";
   if (action === "request-access") return "access.request";
@@ -164,6 +166,7 @@ async function personalMailboxFor(db, env, actor) {
 async function authenticateAuthorized(request, env, action, data = {}) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
   const access=await resolveAccess(env.DB, auth.actor);
+  if (action.startsWith("mcp-")) return access && allows(access, "dashboard.view") ? { ...auth, actor:{...auth.actor,name:auth.actor.name || access.displayName || auth.actor.email}, access } : { ok:false,status:403,error:"Your role does not allow MCP management." };
   const personal = await personalMailboxFor(env.DB, env, auth.actor);
   const sharedMailbox = String(data.mailbox || "").toLowerCase() === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
   const personalAction = ["personal-gmail-status", "personal-gmail-oauth-start", "personal-gmail-disconnect", "personal-gmail-sync"].includes(action);
@@ -388,18 +391,29 @@ function extractTargetId(data) {
 }
 
 const AUDIT_DETAIL_NOISE_FIELDS = new Set(["action", "schema"]);
-function buildAuditDetail(data) {
+const AUDIT_REDACT_FIELDS = new Set([
+  "authorization", "access_token", "refresh_token", "id_token", "token", "password", "code", "code_verifier",
+  "body", "message", "text", "html", "content", "payload", "file", "image", "image_url",
+]);
+function redactAuditValue(value, key = "") {
+  if (AUDIT_REDACT_FIELDS.has(String(key).toLowerCase())) return "[redacted]";
+  if (typeof value === "string") return value.length > 500 ? `${value.slice(0, 500)}…` : value;
+  if (Array.isArray(value)) return value.slice(0, 30).map((item) => redactAuditValue(item));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).slice(0, 50).map(([childKey, childValue]) => [childKey, redactAuditValue(childValue, childKey)]));
+  }
+  return value;
+}
+export function buildAuditDetail(data) {
   const rest = {};
   for (const k of Object.keys(data)) {
     if (AUDIT_DETAIL_NOISE_FIELDS.has(k)) continue;
-    if (k === "link" && data.link?.image_url?.startsWith("data:image/")) {
-      rest[k] = { ...data.link, image_url: `[uploaded image: ${data.link.image_url.length} characters]` };
-    } else rest[k] = data[k];
+    rest[k] = redactAuditValue(data[k], k);
   }
   return JSON.stringify(rest);
 }
 
-async function logAdminAction(db, { action, actor, targetId, detail, success }) {
+export async function logAdminAction(db, { action, actor, targetId, detail, success }) {
   await db.prepare(
     "INSERT INTO audit_log (created_at, created_at_epoch, action, actor_uid, actor_email, actor_name, target_id, detail, success) VALUES (?,?,?,?,?,?,?,?,?)"
   ).bind(
@@ -625,7 +639,7 @@ async function getAdminReviews(db) {
   }));
 }
 
-async function getAdminReviewImage(db, env, imageId, headers) {
+export async function getAdminReviewImage(db, env, imageId, headers) {
   if (!env.MEDIA || !REVIEW_IMAGE_ID_RE.test(imageId)) return json({ error: "Image not found" }, 404, headers);
   const row = await db.prepare("SELECT object_key, content_type FROM review_images WHERE id = ?").bind(imageId).first();
   if (!row) return json({ error: "Image not found" }, 404, headers);
@@ -693,8 +707,16 @@ async function getAdminTypeStyles(db) {
   };
 }
 
-const GET_ACTIONS = {
+export const GET_ACTIONS = {
   "admin-access": (db, _url, actor) => getAccess(db, actor),
+  "mcp-consent-request": async (db, url, actor, env) => {
+    const { getMcpConsentRequest } = await import("../_mcp-auth.js");
+    return getMcpConsentRequest(db, url.searchParams.get("request"), actor, env);
+  },
+  "mcp-connections": async (db, _url, actor, _env, access) => {
+    const { listMcpConnections } = await import("../_mcp-auth.js");
+    return { connections: await listMcpConnections(db, actor, allows(access, "*")) };
+  },
   "gmail-status": (db, _url, _actor, env) => gmailStatus(db, env),
   "contact-gmail-status": (db, _url, _actor, env) => gmailStatus(db, env, CONTACT_MAILBOX),
   "personal-gmail-status": (db, _url, actor, env) => personalGmailStatus(db, env, actor),
@@ -732,6 +754,33 @@ const GET_ACTIONS = {
   "admin-type-styles": (db) => getAdminTypeStyles(db),
   "weekly-report-subscribers": (db) => getWeeklyReportSubscribers(db),
 };
+
+/**
+ * Server-side action execution shared by the Firebase Admin API and MCP.
+ * Authorization is deliberately performed by the caller so MCP can resolve
+ * its live role and connection grant before reaching the same handlers.
+ */
+export async function executeAdminAction({ action, method = "GET", data = {}, actor, access, env, context }) {
+  const handler = method === "GET" ? GET_ACTIONS[action] : POST_ACTIONS[action];
+  if (!handler) throw new Error("Unknown admin action");
+  const url = new URL("https://internal.karamahcollective.com/api/admin");
+  for (const [key, value] of Object.entries(data || {})) {
+    if (value !== undefined && value !== null && typeof value !== "object" && value !== "") url.searchParams.set(key, String(value));
+  }
+  const result = method === "GET"
+    ? await handler(env.DB, url, actor, env, access, context)
+    : await handler(env.DB, { ...data, action }, env, actor, access);
+  if (method !== "GET" && action !== "inbox-typing") {
+    await logAdminAction(env.DB, {
+      action,
+      actor,
+      targetId: extractTargetId(data),
+      detail: buildAuditDetail({ ...data, source: "mcp" }),
+      success: !!result?.success,
+    });
+  }
+  return result;
+}
 
 export async function onRequestGet(context) {
   const { env, request } = context;
@@ -1359,7 +1408,15 @@ async function rejectEid(db, rowId) {
   return meta.rows_written > 0 ? { success: true } : { error: "Row not found (may already be processed)" };
 }
 
-const POST_ACTIONS = {
+export const POST_ACTIONS = {
+  "mcp-consent": async (db, data, _env, actor) => {
+    const { completeMcpConsent } = await import("../_mcp-auth.js");
+    return completeMcpConsent(db, data, actor);
+  },
+  "mcp-revoke-connection": async (db, data, _env, actor, access) => {
+    const { revokeMcpConnection } = await import("../_mcp-auth.js");
+    return revokeMcpConnection(db, data.connectionId, actor, allows(access, "*"));
+  },
   "gmail-oauth-start": (db, data, env, actor) => startGmailOAuth(db, env, actor, data.returnTo, data.mailbox),
   "gmail-sync": (db, data, env) => syncGmail(db, env, data.mailbox),
   "gmail-disconnect": (db, data) => disconnectGmail(db, data.mailbox),

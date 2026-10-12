@@ -31,6 +31,8 @@ import AccessPage from "./pages/AccessPage.jsx";
 import WeeklyReportPage from "./pages/WeeklyReportPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import AnalyticsPage from "./pages/AnalyticsPage.jsx";
+import McpAccessPage from "./pages/McpAccessPage.jsx";
+import McpConsentPage from "./pages/McpConsentPage.jsx";
 
 export default function App() {
   return (
@@ -39,6 +41,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/mcp/authorize" element={<McpConsentPage />} />
 
         <Route element={<AuthGuard />}>
           <Route element={<AppLayout />}>
@@ -59,6 +62,7 @@ export default function App() {
             <Route path="/workspace/preferences" element={<AdminPreferencesPage />} />
             <Route path="/workspace/profile" element={<ProfilePage />} />
             <Route path="/workspace/access" element={<AccessPage />} />
+            <Route path="/workspace/mcp" element={<McpAccessPage />} />
             <Route path="/workspace/weekly-report" element={<WeeklyReportPage />} />
             <Route path="/log" element={<LogPage />} />
             <Route path="/website/team" element={<WebsiteTeamPage />} />

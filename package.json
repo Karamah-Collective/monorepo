@@ -2,6 +2,10 @@
   "name": "karamah-monorepo",
   "private": true,
   "version": "1.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.76"
+  },
   "workspaces": [
     "Maps",
     "Website",
@@ -32,6 +36,7 @@
     "test:website:ui": "playwright test --config Website/tests/playwright.config.js",
     "test:links": "playwright test --config Links/tests/playwright.config.js",
     "test:forms": "node --test Forms/tests/*.test.mjs",
+    "test:mcp": "node --test tests/admin-mcp-*.test.mjs",
     "test:forms:ui": "playwright test --config Forms/tests/playwright.config.js",
     "check": "node tooling/check-layout.mjs",
     "docs:check": "node tooling/check-docs.mjs",

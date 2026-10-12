@@ -1,0 +1,5 @@
+# Copy to Forms/.dev.vars for local API development. Never commit credentials.
+
+# Must match Maps/.dev.vars for local MCP service assertions.
+MCP_INTERNAL_SIGNING_KEY=local-mcp-signing-key-change-me-32-characters
+ADMIN_ACCESS_URL=http://127.0.0.1:5173/api/admin
