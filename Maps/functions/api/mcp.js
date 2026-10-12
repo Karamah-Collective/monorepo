@@ -87,13 +87,16 @@ function securitySchemes(descriptor) {
   return [{ type: "oauth2", scopes: [...new Set(scopes)] }];
 }
 
-function addOpenAiSecuritySchemes(server, descriptors) {
+const profileSecuritySchemes = [{ type: "oauth2", scopes: ["offline_access"] }];
+
+function addOpenAiSecuritySchemes(server, descriptors, extraTools = {}) {
   // The current MCP SDK stores OpenAI's securitySchemes extension separately
   // from the standard tool metadata. Wrap tools/list so ChatGPT receives the
   // extension at the top level, as required by its plugin authentication flow.
   const handler = server.server?._requestHandlers?.get("tools/list");
   if (typeof handler !== "function") return;
   const byName = new Map(descriptors.map((descriptor) => [descriptor.name, securitySchemes(descriptor)]));
+  for (const [name, schemes] of Object.entries(extraTools)) byName.set(name, schemes);
   server.server.removeRequestHandler("tools/list");
   server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
     const result = await handler(request, extra);
@@ -105,6 +108,30 @@ function addOpenAiSecuritySchemes(server, descriptors) {
       })),
     };
   });
+}
+
+function registerProfileTool(server, auth) {
+  const profile = {
+    id: String(auth.actor.uid || `email:${String(auth.actor.email || "").trim().toLowerCase()}`),
+    ...(auth.access?.displayName ? { name: String(auth.access.displayName) } : {}),
+    ...(auth.actor.email ? { email: String(auth.actor.email) } : {}),
+    nickname: "Karamah Admin",
+  };
+  server.registerTool("get_profile", {
+    title: "Get authenticated profile",
+    description: "Return the stable profile represented by this Karamah Admin connection. Use this to identify the connected Admin account before using other tools.",
+    inputSchema: {},
+    outputSchema: {
+      id: z.string().min(1),
+      name: z.string().optional(),
+      email: z.string().email().optional(),
+      nickname: z.string().optional(),
+    },
+    _meta: { "openai/profile": true, securitySchemes: profileSecuritySchemes },
+  }, async () => ({
+    structuredContent: profile,
+    content: [{ type: "text", text: JSON.stringify(profile) }],
+  }));
 }
 
 async function recordMcpEvent(env, auth, action, detail, success) {
@@ -297,7 +324,8 @@ export async function onRequest(context) {
       }
     });
   }
-  addOpenAiSecuritySchemes(server, descriptors);
+  registerProfileTool(server, auth);
+  addOpenAiSecuritySchemes(server, descriptors, { get_profile: profileSecuritySchemes });
 
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
