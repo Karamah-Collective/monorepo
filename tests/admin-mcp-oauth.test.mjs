@@ -5,6 +5,8 @@ import {
   beginMcpAuthorization,
   completeMcpConsent,
   exchangeMcpToken,
+  mcpMetadata,
+  oauthMetadata,
   refreshMcpToken,
   registerMcpClient,
   revokeMcpToken,
@@ -74,6 +76,30 @@ async function challenge(value) {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
+test("OAuth discovery advertises persistent refresh access", () => {
+  const metadata = oauthMetadata({ MCP_AUTHORIZATION_SERVER_URL: "https://admin.karamahcollective.com" });
+  const protectedResource = mcpMetadata({ MCP_RESOURCE_URL: "https://admin.karamahcollective.com/mcp" });
+  assert.ok(metadata.scopes_supported.includes("offline_access"));
+  assert.ok(protectedResource.scopes_supported.includes("offline_access"));
+  assert.ok(metadata.grant_types_supported.includes("refresh_token"));
+});
+
+test("offline-only OAuth requests still open Admin capability consent", async () => {
+  const db = fixture();
+  const client = await registerMcpClient(db, { client_name: "Offline scope test", redirect_uris: ["http://127.0.0.1:4444/callback"] });
+  const requestUrl = await beginMcpAuthorization(db, {
+    client_id: client.client_id,
+    redirect_uri: client.redirect_uris[0],
+    code_challenge: await challenge("offline-verifier"),
+    code_challenge_method: "S256",
+    scope: "offline_access",
+  });
+  const requestId = new URL(requestUrl).searchParams.get("request");
+  const requested = JSON.parse(db.tables.requests.get(requestId).requested_scopes);
+  assert.ok(requested.includes("offline_access"));
+  assert.ok(requested.includes("admin:*"));
+});
+
 test("OAuth authorization validates redirect URI and PKCE, then rotates refresh tokens", async () => {
   const db = fixture();
   const client = await registerMcpClient(db, { client_name: "Lifecycle test", redirect_uris: ["http://127.0.0.1:4444/callback"] });
@@ -86,6 +112,7 @@ test("OAuth authorization validates redirect URI and PKCE, then rotates refresh 
   const code = redirect.searchParams.get("code");
   const tokens = await exchangeMcpToken(db, { code, client_id: client.client_id, redirect_uri: client.redirect_uris[0], code_verifier: verifier });
   assert.equal(tokens.token_type, "Bearer");
+  assert.match(tokens.scope, /(^| )offline_access( |$)/);
   await assert.rejects(() => exchangeMcpToken(db, { code, client_id: client.client_id, redirect_uri: client.redirect_uris[0], code_verifier: verifier }), /Invalid authorization code/);
   const rotated = await refreshMcpToken(db, { refresh_token: tokens.refresh_token, client_id: client.client_id });
   assert.notEqual(rotated.refresh_token, tokens.refresh_token);

@@ -13,6 +13,7 @@ const ACCESS_TOKEN_TTL = 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 const AUTH_REQUEST_TTL = 10 * 60 * 1000;
 const CODE_TTL = 60 * 1000;
+const OFFLINE_ACCESS_SCOPE = "offline_access";
 
 function base64Url(bytes) {
   let value = "";
@@ -82,7 +83,10 @@ export function mcpMetadata(env = {}) {
   return {
     resource,
     authorization_servers: [authorization],
-    scopes_supported: ["admin:*", ...MCP_PERMISSION_CATALOG.map(mcpScope)],
+    // ChatGPT requires the OAuth server to advertise refresh-token access.
+    // This is a protocol scope, not an Admin permission and is never stored
+    // as a connection grant.
+    scopes_supported: [OFFLINE_ACCESS_SCOPE, "admin:*", ...MCP_PERMISSION_CATALOG.map(mcpScope)],
     bearer_methods_supported: ["header"],
   };
 }
@@ -125,7 +129,11 @@ export async function beginMcpAuthorization(db, params, env = {}) {
   const redirectUris = json(client.redirect_uris, []);
   if (!redirectUris.includes(redirectUri)) throw new Error("The redirect URI is not registered for this client.");
   const requestedScopes = uniqueStrings(String(params.scope || "").split(/\s+/));
-  if (!requestedScopes.length) requestedScopes.push("admin:*", ...MCP_PERMISSION_CATALOG.map(mcpScope));
+  const requestedAdminScope = requestedScopes.some((scope) => scope === "admin:*" || scope.startsWith("admin:"));
+  // Some MCP clients request only offline_access and leave the actual Admin
+  // grant selection to the signed-in consent screen. Keep that flow usable by
+  // presenting the full role-filtered Admin catalog in that case.
+  if (!requestedAdminScope) requestedScopes.push("admin:*", ...MCP_PERMISSION_CATALOG.map(mcpScope));
   if (requestedScopes.length > 100) throw new Error("Too many requested MCP scopes.");
   const requestId = `req_${randomMcpToken(18)}`;
   await db.prepare(`INSERT INTO admin_mcp_authorization_requests
@@ -190,7 +198,9 @@ function tokenResponse(accessToken, refreshToken, grants) {
     token_type: "Bearer",
     expires_in: Math.floor(ACCESS_TOKEN_TTL / 1000),
     refresh_token: refreshToken,
-    scope: scopeList(grants).join(" "),
+    // Every connection receives a rotating refresh token, so expose the
+    // corresponding OAuth scope alongside the role-scoped Admin grants.
+    scope: [OFFLINE_ACCESS_SCOPE, ...scopeList(grants)].join(" "),
   };
 }
 
