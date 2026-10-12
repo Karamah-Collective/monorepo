@@ -239,7 +239,7 @@ async function issueTokens(db, connectionId, grants, resource, rotatedFrom = "")
   const issued = now();
   await db.prepare("INSERT INTO admin_mcp_tokens (token_hash,connection_id,token_type,expires_at,rotated_from,created_at) VALUES (?,?, 'access',?,?,?)")
     .bind(await hashMcpToken(accessToken), connectionId, issued + ACCESS_TOKEN_TTL, rotatedFrom || null, issued).run();
-  await db.prepare("INSERT INTO admin_mcp_tokens (token_hash,connection_id,token_type,expires_at,created_at) VALUES (?,?, 'refresh',?,?,?)")
+  await db.prepare("INSERT INTO admin_mcp_tokens (token_hash,connection_id,token_type,expires_at,created_at) VALUES (?,?, 'refresh',?,?)")
     .bind(await hashMcpToken(refreshToken), connectionId, issued + REFRESH_TOKEN_TTL, issued).run();
   return tokenResponse(accessToken, refreshToken, grants, resource);
 }
