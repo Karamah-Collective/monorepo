@@ -110,13 +110,23 @@ function addOpenAiSecuritySchemes(server, descriptors, extraTools = {}) {
   });
 }
 
-function registerProfileTool(server, auth) {
-  const profile = {
+function unauthorizedToolResult(env) {
+  return {
+    isError: true,
+    ...toolResult({ error: "OAuth authorization required." }),
+    _meta: {
+      "mcp/www_authenticate": `Bearer error="invalid_token", error_description="OAuth authorization required.", resource_metadata="${protectedResourceMetadataUrl(env)}"`,
+    },
+  };
+}
+
+function registerProfileTool(server, auth, env) {
+  const profile = auth ? {
     id: String(auth.actor.uid || `email:${String(auth.actor.email || "").trim().toLowerCase()}`),
     ...(auth.access?.displayName ? { name: String(auth.access.displayName) } : {}),
     ...(auth.actor.email ? { email: String(auth.actor.email) } : {}),
     nickname: "Karamah Admin",
-  };
+  } : null;
   server.registerTool("get_profile", {
     title: "Get authenticated profile",
     description: "Return the stable profile represented by this Karamah Admin connection. Use this to identify the connected Admin account before using other tools.",
@@ -129,6 +139,7 @@ function registerProfileTool(server, auth) {
     },
     _meta: { "openai/profile": true, securitySchemes: profileSecuritySchemes },
   }, async () => {
+    if (!auth) return unauthorizedToolResult(env);
     await recordMcpEvent(auth.env, auth, "profile.read", { profileId: profile.id }, true);
     return {
       structuredContent: profile,
@@ -318,16 +329,21 @@ export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...corsHeaders(request), "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id", "Access-Control-Max-Age": "86400" } });
   const auth = await authenticated(request, env);
-  if (!auth) {
+  // ChatGPT performs the MCP protocol handshake and tools/list before it has
+  // attached the OAuth access token. Keep discovery public, while every tool
+  // invocation still returns an OAuth challenge and every authenticated
+  // invocation is filtered by the live role/grant intersection below.
+  if (!auth && request.method !== "POST") {
     if (env.DB) await recordMcpAuthFailure(env, request);
     return new Response(JSON.stringify({ error: "Bearer authorization required." }), { status: 401, headers: { ...corsHeaders(request), "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${protectedResourceMetadataUrl(env)}", scope="offline_access"` } });
   }
 
   const server = new McpServer({ name: "Karamah Admin", version: "1.0.0" }, {
-    instructions: "Role-scoped Karamah Admin operations. The available tools reflect the current role and this connection's selected MCP grants.",
+    instructions: "Role-scoped Karamah Admin operations. Authenticate before calling tools; authenticated tool execution is filtered by the current role and this connection's selected MCP grants.",
     maxToolInputElements: 500,
   });
-  const descriptors = ADMIN_ACTIONS.filter((descriptor) => descriptor.exposeMcp !== false && descriptorIsAllowed(descriptor, auth.access.permissions, auth.grants));
+  const allDescriptors = ADMIN_ACTIONS.filter((descriptor) => descriptor.exposeMcp !== false);
+  const descriptors = auth ? allDescriptors.filter((descriptor) => descriptorIsAllowed(descriptor, auth.access.permissions, auth.grants)) : allDescriptors;
   for (const descriptor of descriptors) {
     const schemes = securitySchemes(descriptor);
     server.registerTool(descriptor.name, {
@@ -339,6 +355,7 @@ export async function onRequest(context) {
       _meta: { securitySchemes: schemes },
     }, async (args) => {
       try {
+        if (!auth) return unauthorizedToolResult(env);
         const value = await executeTool(descriptor, args || {}, auth, env);
         return toolResult(value);
       } catch (error) {
@@ -347,7 +364,7 @@ export async function onRequest(context) {
       }
     });
   }
-  registerProfileTool(server, { ...auth, env });
+  registerProfileTool(server, auth ? { ...auth, env } : null, env);
   addOpenAiSecuritySchemes(server, descriptors, { get_profile: profileSecuritySchemes });
 
   const transport = new WebStandardStreamableHTTPServerTransport({

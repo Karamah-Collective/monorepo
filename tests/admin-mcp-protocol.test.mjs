@@ -27,10 +27,12 @@ function dbFixture() {
   };
 }
 
-async function call(method, body) {
+async function call(method, body, authorization = "Bearer protocol-access") {
+  const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
+  if (authorization) headers.Authorization = authorization;
   return onRequest({
     request: new Request("https://admin.karamahcollective.com/api/mcp", {
-      method, headers: { Authorization: "Bearer protocol-access", "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: JSON.stringify(body),
+      method, headers, body: JSON.stringify(body),
     }), env: { DB: dbFixture() },
   });
 }
@@ -64,4 +66,22 @@ test("MCP Streamable HTTP initializes and filters typed tools", async () => {
 });
 test("access tokens are looked up by hash, never by plaintext", async () => {
   assert.notEqual(await hashMcpToken("protocol-access"), "protocol-access");
+});
+
+test("MCP discovery can complete before OAuth, but tool calls return an OAuth challenge", async () => {
+  const initialization = await call("POST", { jsonrpc: "2.0", id: 10, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "pre-auth client", version: "1" } } }, null);
+  assert.equal(initialization.status, 200);
+  const initialized = await initialization.json();
+  assert.equal(initialized.error, undefined);
+
+  const listing = await call("POST", { jsonrpc: "2.0", id: 11, method: "tools/list", params: {} }, null);
+  assert.equal(listing.status, 200);
+  const list = await listing.json();
+  assert.ok(list.result?.tools?.some(tool => tool.name === "maps.places.list"));
+
+  const invocation = await call("POST", { jsonrpc: "2.0", id: 12, method: "tools/call", params: { name: "maps.places.list", arguments: {} } }, null);
+  assert.equal(invocation.status, 200);
+  const response = await invocation.json();
+  assert.equal(response.result?.isError, true);
+  assert.match(response.result?._meta?.["mcp/www_authenticate"] || "", /resource_metadata=/);
 });
