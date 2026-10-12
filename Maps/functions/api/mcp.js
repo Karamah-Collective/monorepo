@@ -128,10 +128,13 @@ function registerProfileTool(server, auth) {
       nickname: z.string().optional(),
     },
     _meta: { "openai/profile": true, securitySchemes: profileSecuritySchemes },
-  }, async () => ({
-    structuredContent: profile,
-    content: [{ type: "text", text: JSON.stringify(profile) }],
-  }));
+  }, async () => {
+    await recordMcpEvent(auth.env, auth, "profile.read", { profileId: profile.id }, true);
+    return {
+      structuredContent: profile,
+      content: [{ type: "text", text: JSON.stringify(profile) }],
+    };
+  });
 }
 
 async function recordMcpEvent(env, auth, action, detail, success) {
@@ -145,6 +148,25 @@ async function recordMcpEvent(env, auth, action, detail, success) {
     });
   } catch (error) {
     console.error("MCP audit event failed", error);
+  }
+}
+
+async function recordMcpAuthFailure(env, request) {
+  try {
+    await logAdminAction(env.DB, {
+      action: "mcp.authentication.failed",
+      actor: { uid: "", email: "", name: "" },
+      targetId: "",
+      detail: buildAuditDetail({
+        source: "mcp",
+        method: request.method,
+        path: new URL(request.url).pathname,
+        hasBearer: /^Bearer\s+/i.test(request.headers.get("Authorization") || ""),
+      }),
+      success: false,
+    });
+  } catch (error) {
+    console.error("MCP authentication audit failed", error);
   }
 }
 
@@ -297,6 +319,7 @@ export async function onRequest(context) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...corsHeaders(request), "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id", "Access-Control-Max-Age": "86400" } });
   const auth = await authenticated(request, env);
   if (!auth) {
+    if (env.DB) await recordMcpAuthFailure(env, request);
     return new Response(JSON.stringify({ error: "Bearer authorization required." }), { status: 401, headers: { ...corsHeaders(request), "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${protectedResourceMetadataUrl(env)}", scope="offline_access"` } });
   }
 
@@ -324,7 +347,7 @@ export async function onRequest(context) {
       }
     });
   }
-  registerProfileTool(server, auth);
+  registerProfileTool(server, { ...auth, env });
   addOpenAiSecuritySchemes(server, descriptors, { get_profile: profileSecuritySchemes });
 
   const transport = new WebStandardStreamableHTTPServerTransport({
