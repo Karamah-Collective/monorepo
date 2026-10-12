@@ -53,6 +53,9 @@ test("MCP Streamable HTTP initializes and filters typed tools", async () => {
   const formUpdate = result.result?.tools?.find(tool => tool.name === "forms.update");
   assert.ok(formUpdate?.inputSchema?.properties?.id);
   assert.ok(formUpdate?.inputSchema?.properties?.revision);
+  const placeList = result.result?.tools?.find(tool => tool.name === "maps.places.list");
+  assert.deepEqual(placeList?.securitySchemes, [{ type: "oauth2", scopes: ["admin:maps.places.read"] }]);
+  assert.deepEqual(placeList?._meta?.securitySchemes, [{ type: "oauth2", scopes: ["admin:maps.places.read"] }]);
 });
 test("access tokens are looked up by hash, never by plaintext", async () => {
   assert.notEqual(await hashMcpToken("protocol-access"), "protocol-access");

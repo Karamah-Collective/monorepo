@@ -1,10 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
   ADMIN_ACTIONS,
   accessibleMcpPermissions,
   descriptorIsAllowed,
+  mcpScope,
   mcpGrantAllows,
 } from "../../../shared/admin-access.mjs";
 import { signMcpAssertion } from "../../../shared/mcp-internal.mjs";
@@ -77,6 +79,32 @@ function inputSchema(descriptor) {
 
 function descriptorForTool(toolName) {
   return ADMIN_ACTIONS.find((item) => item.name === toolName) || null;
+}
+
+function securitySchemes(descriptor) {
+  const permissions = descriptor?.permissions || [];
+  const scopes = permissions.includes("*") ? ["admin:*"] : permissions.map(mcpScope);
+  return [{ type: "oauth2", scopes: [...new Set(scopes)] }];
+}
+
+function addOpenAiSecuritySchemes(server, descriptors) {
+  // The current MCP SDK stores OpenAI's securitySchemes extension separately
+  // from the standard tool metadata. Wrap tools/list so ChatGPT receives the
+  // extension at the top level, as required by its plugin authentication flow.
+  const handler = server.server?._requestHandlers?.get("tools/list");
+  if (typeof handler !== "function") return;
+  const byName = new Map(descriptors.map((descriptor) => [descriptor.name, securitySchemes(descriptor)]));
+  server.server.removeRequestHandler("tools/list");
+  server.server.setRequestHandler(ListToolsRequestSchema, async (request, extra) => {
+    const result = await handler(request, extra);
+    return {
+      ...result,
+      tools: (result.tools || []).map((tool) => ({
+        ...tool,
+        securitySchemes: byName.get(tool.name) || [{ type: "oauth2", scopes: [] }],
+      })),
+    };
+  });
 }
 
 async function recordMcpEvent(env, auth, action, detail, success) {
@@ -242,7 +270,7 @@ export async function onRequest(context) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...corsHeaders(request), "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id", "Access-Control-Max-Age": "86400" } });
   const auth = await authenticated(request, env);
   if (!auth) {
-    return new Response(JSON.stringify({ error: "Bearer authorization required." }), { status: 401, headers: { ...corsHeaders(request), "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${protectedResourceMetadataUrl(env)}"` } });
+    return new Response(JSON.stringify({ error: "Bearer authorization required." }), { status: 401, headers: { ...corsHeaders(request), "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${protectedResourceMetadataUrl(env)}", scope="offline_access"` } });
   }
 
   const server = new McpServer({ name: "Karamah Admin", version: "1.0.0" }, {
@@ -251,11 +279,14 @@ export async function onRequest(context) {
   });
   const descriptors = ADMIN_ACTIONS.filter((descriptor) => descriptor.exposeMcp !== false && descriptorIsAllowed(descriptor, auth.access.permissions, auth.grants));
   for (const descriptor of descriptors) {
+    const schemes = securitySchemes(descriptor);
     server.registerTool(descriptor.name, {
       title: descriptor.title,
       description: `${descriptor.description}${descriptor.dangerous ? " Requires an explicit short-lived confirmation before execution." : ""}`,
       inputSchema: inputSchema(descriptor),
       annotations: { destructiveHint: descriptor.dangerous, readOnlyHint: descriptor.method === "GET" && !descriptor.dangerous, openWorldHint: descriptor.owner !== "maps" },
+      // Preserve the extension for MCP clients that read it from _meta.
+      _meta: { securitySchemes: schemes },
     }, async (args) => {
       try {
         const value = await executeTool(descriptor, args || {}, auth, env);
@@ -266,6 +297,7 @@ export async function onRequest(context) {
       }
     });
   }
+  addOpenAiSecuritySchemes(server, descriptors);
 
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,

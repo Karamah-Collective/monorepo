@@ -3,8 +3,8 @@ import { beginMcpAuthorization, exchangeMcpToken, mcpMetadata, oauthMetadata, re
 function headers() {
   return { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "https://admin.karamahcollective.com", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
 }
-function failure(message, status = 400) {
-  return Response.json({ error: message }, { status, headers: headers() });
+function failure(message, status = 400, env = {}) {
+  return Response.json({ error: message, iss: String(env.MCP_AUTHORIZATION_SERVER_URL || "https://admin.karamahcollective.com").replace(/\/$/, "") }, { status, headers: headers() });
 }
 async function body(request) {
   const contentType = request.headers.get("content-type") || "";
@@ -21,13 +21,13 @@ export async function onRequestGet({ request, env }) {
   const operation = new URL(request.url).searchParams.get("operation") || "";
   if (operation === "protected-resource") return Response.json(mcpMetadata(env), { headers: headers() });
   if (operation === "authorization-server") return Response.json(oauthMetadata(env), { headers: headers() });
-  if (operation !== "authorize") return failure("Unknown OAuth metadata operation.", 404);
+  if (operation !== "authorize") return failure("Unknown OAuth metadata operation.", 404, env);
   try {
     const url = new URL(request.url);
     const location = await beginMcpAuthorization(env.DB, Object.fromEntries(url.searchParams), env);
     return Response.redirect(location, 302);
   } catch (error) {
-    return failure(error?.message || "Invalid authorization request.");
+    return failure(error?.message || "Invalid authorization request.", 400, env);
   }
 }
 
@@ -41,8 +41,8 @@ export async function onRequestPost({ request, env }) {
     if (operation === "token") {
       if (data.grant_type && !["authorization_code", "refresh_token"].includes(data.grant_type)) return failure("Unsupported grant type.");
       const result = data.grant_type === "refresh_token"
-        ? await refreshMcpToken(env.DB, data)
-        : await exchangeMcpToken(env.DB, data);
+        ? await refreshMcpToken(env.DB, data, env)
+        : await exchangeMcpToken(env.DB, data, env);
       return Response.json(result, { headers: headers() });
     }
     if (operation === "revoke") return Response.json(await revokeMcpToken(env.DB, data), { headers: headers() });

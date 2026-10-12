@@ -1409,9 +1409,9 @@ async function rejectEid(db, rowId) {
 }
 
 export const POST_ACTIONS = {
-  "mcp-consent": async (db, data, _env, actor) => {
+  "mcp-consent": async (db, data, env, actor) => {
     const { completeMcpConsent } = await import("../_mcp-auth.js");
-    return completeMcpConsent(db, data, actor);
+    return completeMcpConsent(db, data, actor, env);
   },
   "mcp-revoke-connection": async (db, data, _env, actor, access) => {
     const { revokeMcpConnection } = await import("../_mcp-auth.js");

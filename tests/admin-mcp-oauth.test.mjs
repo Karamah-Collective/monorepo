@@ -82,6 +82,7 @@ test("OAuth discovery advertises persistent refresh access", () => {
   assert.ok(metadata.scopes_supported.includes("offline_access"));
   assert.ok(protectedResource.scopes_supported.includes("offline_access"));
   assert.ok(metadata.grant_types_supported.includes("refresh_token"));
+  assert.equal(metadata.authorization_response_iss_parameter_supported, true);
 });
 
 test("offline-only OAuth requests still open Admin capability consent", async () => {
@@ -100,6 +101,18 @@ test("offline-only OAuth requests still open Admin capability consent", async ()
   assert.ok(requested.includes("admin:*"));
 });
 
+test("OAuth resource indicators are restricted to the MCP resource", async () => {
+  const db = fixture();
+  const client = await registerMcpClient(db, { client_name: "Resource test", redirect_uris: ["http://127.0.0.1:4444/callback"] });
+  await assert.rejects(() => beginMcpAuthorization(db, {
+    client_id: client.client_id,
+    redirect_uri: client.redirect_uris[0],
+    code_challenge: "challenge",
+    code_challenge_method: "S256",
+    resource: "https://other.example/mcp",
+  }), /resource does not match/);
+});
+
 test("OAuth authorization validates redirect URI and PKCE, then rotates refresh tokens", async () => {
   const db = fixture();
   const client = await registerMcpClient(db, { client_name: "Lifecycle test", redirect_uris: ["http://127.0.0.1:4444/callback"] });
@@ -109,6 +122,7 @@ test("OAuth authorization validates redirect URI and PKCE, then rotates refresh 
   const consent = await completeMcpConsent(db, { requestId, selectedScopes: ["admin:maps.places.read"] }, { uid: "uid-1", email: "tester@karamahcollective.com", name: "Test" });
   const redirect = new URL(consent.redirectUri);
   assert.equal(redirect.searchParams.get("state"), "state-1");
+  assert.equal(redirect.searchParams.get("iss"), "https://admin.karamahcollective.com");
   const code = redirect.searchParams.get("code");
   const tokens = await exchangeMcpToken(db, { code, client_id: client.client_id, redirect_uri: client.redirect_uris[0], code_verifier: verifier });
   assert.equal(tokens.token_type, "Bearer");

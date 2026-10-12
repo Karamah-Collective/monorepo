@@ -77,9 +77,24 @@ function scopeList(grants) {
   return grants.map(mcpScope);
 }
 
+function resourceUrl(env = {}) {
+  return String(env.MCP_RESOURCE_URL || `${ADMIN_ORIGIN}/mcp`).replace(/\/$/, "");
+}
+
+function authorizationOrigin(env = {}) {
+  return String(env.MCP_AUTHORIZATION_SERVER_URL || ADMIN_ORIGIN).replace(/\/$/, "");
+}
+
+function requestedResource(value, env = {}) {
+  const resource = String(value || "").trim();
+  const expected = resourceUrl(env);
+  if (resource && resource !== expected) throw new Error("The OAuth resource does not match this MCP server.");
+  return expected;
+}
+
 export function mcpMetadata(env = {}) {
-  const resource = String(env.MCP_RESOURCE_URL || `${ADMIN_ORIGIN}/mcp`).replace(/\/$/, "");
-  const authorization = String(env.MCP_AUTHORIZATION_SERVER_URL || ADMIN_ORIGIN).replace(/\/$/, "");
+  const resource = resourceUrl(env);
+  const authorization = authorizationOrigin(env);
   return {
     resource,
     authorization_servers: [authorization],
@@ -92,9 +107,10 @@ export function mcpMetadata(env = {}) {
 }
 
 export function oauthMetadata(env = {}) {
-  const origin = String(env.MCP_AUTHORIZATION_SERVER_URL || ADMIN_ORIGIN).replace(/\/$/, "");
+  const origin = authorizationOrigin(env);
   return {
     issuer: origin,
+    authorization_response_iss_parameter_supported: true,
     authorization_endpoint: `${origin}/oauth/authorize`,
     token_endpoint: `${origin}/oauth/token`,
     registration_endpoint: `${origin}/oauth/register`,
@@ -111,12 +127,22 @@ export async function registerMcpClient(db, data) {
   const name = clientName(data.client_name || data.clientName);
   const redirectValue = data.redirect_uris || data.redirectUris || data.redirect_uri;
   const redirectUris = uniqueStrings(Array.isArray(redirectValue) ? redirectValue : [redirectValue]);
+  const authMethod = String(data.token_endpoint_auth_method || "none");
+  if (authMethod !== "none") throw new Error("Only public PKCE clients using token_endpoint_auth_method=none are supported.");
   if (redirectUris.length > 20 || redirectUris.some((uri) => uri.length > 2048 || !redirectIsSafe(uri))) throw new Error("Register one to twenty HTTPS or loopback redirect URIs.");
   const clientId = `mcp_${randomMcpToken(18)}`;
   await db.prepare("INSERT INTO admin_mcp_clients (client_id,client_name,redirect_uris,metadata,created_at,updated_at) VALUES (?,?,?,?,datetime('now'),datetime('now'))")
     .bind(clientId, name, JSON.stringify(redirectUris), JSON.stringify(data || {})).run();
   await auditMcp(db, "client.register", {}, { clientId, clientName: name, redirectUris });
-  return { client_id: clientId, client_name: name, redirect_uris: redirectUris, token_endpoint_auth_method: "none" };
+  return {
+    client_id: clientId,
+    client_name: name,
+    redirect_uris: redirectUris,
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+    client_id_issued_at: Math.floor(now() / 1000),
+  };
 }
 
 export async function beginMcpAuthorization(db, params, env = {}) {
@@ -124,6 +150,7 @@ export async function beginMcpAuthorization(db, params, env = {}) {
   const redirectUri = String(params.redirect_uri || "").trim();
   const challenge = String(params.code_challenge || "").trim();
   if (!clientId || clientId.length > 200 || !redirectUri || redirectUri.length > 2048 || !challenge || challenge.length > 200 || String(params.state || "").length > 512 || params.code_challenge_method !== "S256" || (params.response_type && params.response_type !== "code")) throw new Error("OAuth authorization requires response_type=code and PKCE S256.");
+  requestedResource(params.resource, env);
   const client = await db.prepare("SELECT client_id,client_name,redirect_uris FROM admin_mcp_clients WHERE client_id=?").bind(clientId).first();
   if (!client) throw new Error("Unknown OAuth client.");
   const redirectUris = json(client.redirect_uris, []);
@@ -141,7 +168,7 @@ export async function beginMcpAuthorization(db, params, env = {}) {
     VALUES (?,?,?,?,?,?,?,?,?)`)
     .bind(requestId, clientId, redirectUri, String(params.state || ""), challenge, "S256", JSON.stringify(requestedScopes), client.client_name || "", now() + AUTH_REQUEST_TTL).run();
   await auditMcp(db, "authorization.started", {}, { clientId, clientName: client.client_name || "", requestId, requestedScopes });
-  const origin = String(env.MCP_AUTHORIZATION_SERVER_URL || ADMIN_ORIGIN).replace(/\/$/, "");
+  const origin = authorizationOrigin(env);
   return `${origin}/mcp/authorize?request=${encodeURIComponent(requestId)}`;
 }
 
@@ -164,11 +191,11 @@ export async function getMcpConsentRequest(db, requestId, actor, env = {}) {
     redirectUri: row.redirect_uri,
     state: row.state,
     access: { roleId: access.roleId, roleName: access.roleName, permissions: access.permissions },
-    resource: String(env.MCP_RESOURCE_URL || `${ADMIN_ORIGIN}/mcp`).replace(/\/$/, ""),
+    resource: resourceUrl(env),
   };
 }
 
-export async function completeMcpConsent(db, data, actor) {
+export async function completeMcpConsent(db, data, actor, env = {}) {
   const row = await db.prepare("SELECT * FROM admin_mcp_authorization_requests WHERE id=? AND consumed_at IS NULL AND expires_at>? ").bind(String(data.requestId || ""), now()).first();
   if (!row) throw new Error("This MCP authorization request has expired.");
   const access = await resolveAccess(db, actor);
@@ -188,6 +215,7 @@ export async function completeMcpConsent(db, data, actor) {
   await auditMcp(db, "authorization.completed", actor, { clientId: row.client_id, requestId: row.id, grants: scopeList(grants) });
   const redirect = new URL(row.redirect_uri);
   redirect.searchParams.set("code", code);
+  redirect.searchParams.set("iss", authorizationOrigin(env));
   if (row.state) redirect.searchParams.set("state", row.state);
   return { redirectUri: redirect.toString(), grants: scopeList(grants) };
 }
@@ -215,7 +243,8 @@ async function issueTokens(db, connectionId, grants, rotatedFrom = "") {
   return tokenResponse(accessToken, refreshToken, grants);
 }
 
-export async function exchangeMcpToken(db, data) {
+export async function exchangeMcpToken(db, data, env = {}) {
+  requestedResource(data.resource, env);
   const row = await db.prepare("SELECT * FROM admin_mcp_authorization_codes WHERE code_hash=? AND used_at IS NULL AND expires_at>? ").bind(await hashMcpToken(data.code), now()).first();
   if (!row || row.client_id !== String(data.client_id || "") || row.redirect_uri !== String(data.redirect_uri || "")) throw new Error("Invalid authorization code.");
   const expected = base64Url(await digest(String(data.code_verifier || "")));
@@ -234,7 +263,8 @@ export async function exchangeMcpToken(db, data) {
   return issueTokens(db, connectionId, grants);
 }
 
-export async function refreshMcpToken(db, data) {
+export async function refreshMcpToken(db, data, env = {}) {
+  requestedResource(data.resource, env);
   const row = await db.prepare(`SELECT t.*,c.status,c.client_id,c.grants FROM admin_mcp_tokens t
     JOIN admin_mcp_connections c ON c.id=t.connection_id
     WHERE t.token_hash=? AND t.token_type='refresh' AND t.revoked_at IS NULL AND t.expires_at>?`).bind(await hashMcpToken(data.refresh_token), now()).first();
