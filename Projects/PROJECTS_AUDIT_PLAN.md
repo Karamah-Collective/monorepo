@@ -40,8 +40,8 @@ rules. No unsafe bulk merge was made just to reduce the file count.
 ## Loop 4 - validation evidence
 
 - [x] Focused board, view-header, and client-normalization tests.
-- [x] Complete Projects test suite: 295 files and 1,522 tests passed.
-- [x] Production build: Vite completed successfully in 28.36 seconds.
+- [x] Complete Projects test suite: 296 files and 1,524 tests passed.
+- [x] Production build: Vite completed successfully in 26.18 seconds.
 - [x] Playwright smoke checks: 4 passed at desktop and mobile sizes.
 - [x] Production bundle scan for local-only/test-only leakage and removed
       API-key features.
@@ -65,6 +65,24 @@ rules. No unsafe bulk merge was made just to reduce the file count.
 - [x] Complete Projects suite rerun: 295 files and 1,522 tests passed.
 - [x] Rebuilt the production bundle and reran the desktop/mobile Playwright
       smoke suite after the change.
+
+## Loop 6 - actionable workspace timeline
+
+- [x] Removed the standalone date-input/range pane from the workspace timeline;
+      navigation, today, and zoom now live in one compact control row.
+- [x] Reused the tested Gantt task bar for every expanded project/person task
+      row, making timeline tasks draggable, resizable, and openable instead of
+      leaving the workspace timeline as a read-only summary.
+- [x] Kept people-mode hierarchy explicit: person -> project -> task, with
+      resolved workspace member names and connector lines for depth.
+- [x] Added measured timeline grid width to task-bar geometry so drag and resize
+      use the actual rendered pixels-per-day at each zoom level.
+- [x] Added workspace timeline regression coverage for people name resolution,
+      hierarchy expansion, task opening, compact controls, and removal of the
+      old date-input pane.
+- [x] Focused board/timeline regression suite: 4 files and 28 tests passed.
+- [x] Complete Projects suite rerun after the new coverage: 296 files and 1,524
+      tests passed.
 
 ## Known non-blocking follow-up
 
@@ -90,9 +108,11 @@ rules. No unsafe bulk merge was made just to reduce the file count.
 - Existing persisted compatibility identifiers are retained where changing them
   would invalidate stored editor content or local user preferences. They are not
   rendered as product branding; visible labels use `Projects`.
-- `npm --prefix Projects run typecheck` still reports 131 legacy adapter/router
-  diagnostics. The drag change introduced no additional type errors; this needs
-  a dedicated boundary-typing pass before strict CI can be enabled.
+- `npm --prefix Projects run typecheck` still reports the same legacy
+  adapter/router diagnostics, including the pre-existing `workspaceId` mismatch
+  in the shared keyboard-shortcut boundary. The board/timeline changes and the
+  new timeline test introduce no diagnostics; this needs a dedicated
+  boundary-typing pass before strict CI can be enabled.
 
 ## Guardrails
 

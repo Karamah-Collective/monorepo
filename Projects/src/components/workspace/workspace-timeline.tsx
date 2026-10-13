@@ -19,11 +19,19 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
 import getTasks from "@/fetchers/task/get-tasks";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import {
   buildGanttTimeline,
@@ -32,26 +40,20 @@ import {
 } from "@/components/gantt/timeline";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { getStatusLabel } from "@/lib/i18n/domain";
+import type Task from "@/types/task";
 
 const LABEL_WIDTH_REM = 17;
 const DEFAULT_DAY_WIDTH_REM = 2.75;
 const MIN_DAY_WIDTH_REM = 1.25;
 const MAX_DAY_WIDTH_REM = 6;
 
-type WorkspaceTask = {
+type WorkspaceTask = Partial<Task> & {
   id: string;
   title: string;
-  number?: number | string | null;
-  status?: string | null;
-  userId?: string | null;
-  assigneeId?: string | null;
   assigneeUid?: string | null;
   assigneeName?: string | null;
   assigneeEmail?: string | null;
   userEmail?: string | null;
-  startDate?: string | null;
-  dueDate?: string | null;
 };
 
 type WorkspaceMember = {
@@ -62,10 +64,11 @@ type WorkspaceMember = {
   } | null;
 };
 
-type ScheduledTask = WorkspaceTask & {
+type ScheduledTask = Task & {
   projectId: string;
   projectName: string;
   projectSlug: string;
+  assigneeEmail?: string | null;
   scheduleStart: Date;
   scheduleEnd: Date;
 };
@@ -103,6 +106,8 @@ type TimelineRowProps = {
   expandable?: boolean;
   onToggle?: () => void;
   onOpenTask?: (task: ScheduledTask) => void;
+  pixelsPerDay: number;
+  isMobile: boolean;
   kind: "project" | "person" | "task";
 };
 
@@ -179,6 +184,8 @@ function TimelineRow({
   expandable = false,
   onToggle,
   onOpenTask,
+  pixelsPerDay,
+  isMobile,
   kind,
 }: TimelineRowProps) {
   const range = getRange(tasks);
@@ -191,7 +198,7 @@ function TimelineRow({
     <div
       className={cn(
         "projects-timeline-row grid min-w-max border-b border-border/70",
-        isTask ? "min-h-10" : "min-h-12 bg-card/35",
+        isTask ? "min-h-11" : "min-h-12 bg-card/35",
         depth > 0 && "bg-muted/10",
       )}
       style={{
@@ -252,23 +259,29 @@ function TimelineRow({
       </div>
 
       <TimelineTrack timeline={timeline}>
-        <button
-          type="button"
-          className={cn(
-            "z-[1] h-5 min-w-0 truncate rounded-md border px-2 text-left text-xs font-medium transition-[filter,transform] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring",
-            kind === "person" && "border-primary/25 bg-primary/20 text-primary",
-            kind === "project" && "border-primary/20 bg-primary/15 text-primary",
-            kind === "task" && "border-border bg-muted text-foreground",
-          )}
-          style={getBarStyle(range, timeline)}
-          onClick={() => {
-            if (isTask && onOpenTask) onOpenTask(tasks[0]);
-            else onToggle?.();
-          }}
-          title={isTask ? label : `${label}: ${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}`}
-        >
-          {isTask ? getStatusLabel(tasks[0].status || "to-do") : `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}`}
-        </button>
+        {isTask ? (
+          <GanttTaskBar
+            task={tasks[0]}
+            timeline={timeline}
+            pixelsPerDay={pixelsPerDay}
+            isMobile={isMobile}
+            onOpenTask={() => onOpenTask?.(tasks[0])}
+          />
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              "z-[1] h-5 min-w-0 truncate rounded-md border px-2 text-left text-xs font-medium transition-[filter,transform] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring",
+              kind === "person" && "border-primary/25 bg-primary/20 text-primary",
+              kind === "project" && "border-primary/20 bg-primary/15 text-primary",
+            )}
+            style={getBarStyle(range, timeline)}
+            onClick={onToggle}
+            title={`${label}: ${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}`}
+          >
+            {`${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}`}
+          </button>
+        )}
       </TimelineTrack>
     </div>
   );
@@ -297,15 +310,35 @@ function collectTasks(
       (assigneeId ? memberNames.get(assigneeId) : null) ||
       (assigneeId ? memberNames.get(assigneeId.toLowerCase()) : null) ||
       (assigneeEmail ? memberNames.get(assigneeEmail) : null) ||
-      (assigneeEmail ? memberNames.get(assigneeEmail.toLowerCase()) : null);
+      (assigneeEmail ? memberNames.get(assigneeEmail.toLowerCase()) : null) ||
+      null;
     const start = parseTaskDate(task.startDate ?? null) ?? parseTaskDate(task.dueDate ?? null);
     const end = parseTaskDate(task.dueDate ?? null) ?? parseTaskDate(task.startDate ?? null);
     if (!start || !end) return [];
-    return [{
+    const normalizedTask: Task = {
       ...task,
+      id: task.id,
+      title: task.title,
+      number: typeof task.number === "number" ? task.number : null,
+      description: task.description ?? "",
+      status: task.status ?? "to-do",
+      priority: task.priority ?? "no-priority",
+      startDate: task.startDate ?? null,
+      dueDate: task.dueDate ?? null,
+      position: task.position ?? 0,
+      createdAt: task.createdAt ?? new Date().toISOString(),
+      userId: assigneeId,
       assigneeId,
       assigneeName,
-      assigneeEmail,
+      projectId: project.id,
+      labels: task.labels ?? [],
+      externalLinks: task.externalLinks ?? [],
+    };
+    return [{
+      ...normalizedTask,
+      assigneeId,
+      assigneeName,
+      assigneeEmail: assigneeEmail ?? null,
       projectId: project.id,
       projectName: project.name,
       projectSlug: project.slug || project.id,
@@ -359,6 +392,7 @@ export function WorkspaceTimeline({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { data: projects = [], isLoading: projectsLoading } = useGetProjects({
     workspaceId,
@@ -394,6 +428,10 @@ export function WorkspaceTimeline({
   const [dayColumnWidthRem, setDayColumnWidthRem] = useState(
     DEFAULT_DAY_WIDTH_REM,
   );
+  const timelineGridRef = useRef<HTMLDivElement>(null);
+  const [pixelsPerDay, setPixelsPerDay] = useState(
+    DEFAULT_DAY_WIDTH_REM * 16,
+  );
 
   const scheduledTasks = useMemo(
     () =>
@@ -414,6 +452,21 @@ export function WorkspaceTimeline({
       ),
     [dayColumnWidthRem, requestedStart, scheduledTasks, weekStartsOn],
   );
+  useLayoutEffect(() => {
+    const element = timelineGridRef.current;
+    if (!element || !timeline?.days.length) return;
+
+    const update = () => {
+      const width = element.getBoundingClientRect().width;
+      if (width > 0) setPixelsPerDay(width / timeline.days.length);
+    };
+
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [timeline]);
   const projectRows = useMemo(
     () => projects
       .map((project) => ({
@@ -490,7 +543,7 @@ export function WorkspaceTimeline({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-3 py-2">
+      <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-border/80 px-3 py-1.5">
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -501,16 +554,17 @@ export function WorkspaceTimeline({
           >
             <ChevronLeft aria-hidden="true" />
           </Button>
-          <input
-            type="date"
-            aria-label="Timeline start date"
-            className="h-8 min-w-0 rounded-md border border-border bg-background px-2 font-mono text-sm tabular-nums text-foreground outline-none transition-[border-color,box-shadow] focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-            value={format(timeline.rangeStart, "yyyy-MM-dd")}
-            onChange={(event) => {
-              const date = parseTaskDate(event.target.value);
-              if (date) showDate(date);
-            }}
-          />
+          <Button
+            variant="outline"
+            size="xs"
+            className="h-8 touch-manipulation"
+            aria-label="Jump to today"
+            title="Jump to today"
+            onClick={jumpToToday}
+          >
+            <Calendar aria-hidden="true" />
+            <span className="hidden sm:inline">Jump to today</span>
+          </Button>
           <Button
             variant="outline"
             size="icon-sm"
@@ -521,30 +575,10 @@ export function WorkspaceTimeline({
             <ChevronRight aria-hidden="true" />
           </Button>
         </div>
-      </div>
-
-      <div className="flex min-h-10 items-center justify-between gap-2 border-b border-border/80 px-3 py-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">Workspace timeline</p>
-          <p className="font-mono text-xs tabular-nums text-muted-foreground">
-            {scheduledTasks.length} scheduled tasks / {mode === "projects" ? projectRows.length : peopleRows.length} {mode}
-          </p>
-        </div>
-        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-          <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-            {format(timeline.rangeStart, "MMM d")} - {format(timeline.rangeEnd, "MMM d, yyyy")}
+        <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5">
+          <span className="hidden shrink-0 font-mono text-xs tabular-nums text-muted-foreground sm:inline">
+            {scheduledTasks.length} tasks · {mode === "projects" ? projectRows.length : peopleRows.length} {mode}
           </span>
-          <Button
-            variant="outline"
-            size="xs"
-            className="h-8"
-            aria-label="Jump to today"
-            title="Jump to today"
-            onClick={jumpToToday}
-          >
-            <Calendar aria-hidden="true" />
-            <span className="hidden sm:inline">Jump to today</span>
-          </Button>
           <div className="flex h-8 items-center gap-1 rounded-md border border-border bg-background px-1.5">
             <ZoomOut className="size-3.5 text-muted-foreground" aria-hidden="true" />
             <input
@@ -571,7 +605,11 @@ export function WorkspaceTimeline({
             <div className="sticky left-0 z-30 border-r border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground">
               {mode === "projects" ? "Project" : "Person"}
             </div>
-            <div className="grid" style={{ gridTemplateColumns: timeline.gridTemplateColumns }}>
+            <div
+              ref={timelineGridRef}
+              className="grid"
+              style={{ gridTemplateColumns: timeline.gridTemplateColumns }}
+            >
               {timeline.days.map((day, index) => {
                 const showMonth = index === 0 || !isSameMonth(day, timeline.days[index - 1] || day);
                 const weekStart = day.getDay() === weekStartsOn;
@@ -624,6 +662,8 @@ export function WorkspaceTimeline({
                       expandable
                       expanded={isExpanded}
                       onToggle={() => toggle(key)}
+                      pixelsPerDay={pixelsPerDay}
+                      isMobile={isMobile}
                     />
                     {isExpanded && tasks.map((task) => (
                       <TimelineRow
@@ -635,6 +675,8 @@ export function WorkspaceTimeline({
                         depth={1}
                         kind="task"
                         onOpenTask={openTask}
+                        pixelsPerDay={pixelsPerDay}
+                        isMobile={isMobile}
                       />
                     ))}
                   </div>
@@ -663,6 +705,8 @@ export function WorkspaceTimeline({
                       expandable
                       expanded={personExpanded}
                       onToggle={() => toggle(personRowKey)}
+                      pixelsPerDay={pixelsPerDay}
+                      isMobile={isMobile}
                     />
                     {personExpanded && groupedProjects.map(([projectId, group]) => {
                       const projectKey = `${personRowKey}:project:${projectId}`;
@@ -679,6 +723,8 @@ export function WorkspaceTimeline({
                             expandable
                             expanded={projectExpanded}
                             onToggle={() => toggle(projectKey)}
+                            pixelsPerDay={pixelsPerDay}
+                            isMobile={isMobile}
                           />
                           {projectExpanded && group.tasks.map((task) => (
                             <TimelineRow
@@ -690,6 +736,8 @@ export function WorkspaceTimeline({
                               depth={2}
                               kind="task"
                               onOpenTask={openTask}
+                              pixelsPerDay={pixelsPerDay}
+                              isMobile={isMobile}
                             />
                           ))}
                         </div>

@@ -365,7 +365,7 @@ function KanbanBoard({
         dropAnimation={reduceMotion ? null : dropAnimation}
       >
         {activeTask ? (
-          <div className="pointer-events-none rotate-1 scale-[1.03] shadow-lg transition-[rotate,scale] duration-150 ease-out starting:rotate-0 starting:scale-100 motion-reduce:transition-none">
+          <div className="pointer-events-none shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <TaskCardContent
                 task={activeTask}
