@@ -12,6 +12,7 @@ const wrangler=path.join(root,'node_modules/wrangler/bin/wrangler.js');
 const localState=path.join(root,'Maps','.wrangler','state');
 const gmailEventsCwd=path.join(root,'Maps');
 const gmailEventsVars=path.join(root,'Maps','workers','gmail-events','.dev.vars');
+const adminIntegrationsVars=path.join(root,'Maps','workers','admin-integrations','.dev.vars');
 const mapsVars=path.join(root,'Maps','.dev.vars');
 const children=new Set(), watchers=new Set();
 let stopping=false, keepAlive;
@@ -56,14 +57,16 @@ async function waitUntilReady(port,child,label) {
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
 try {
   const target=process.argv[2]||'all';
-  if(!['all','admin','maps','website','links','forms'].includes(target))throw new Error('Use maps, website, links, forms, or admin.');
+  if(!['all','admin','maps','website','links','forms','projects'].includes(target))throw new Error('Use maps, website, links, forms, projects, or admin.');
   if(target!=='maps') await copyFile(path.join(root,'shared','brand','karamah-logo.svg'),path.join(root,'Website','assets','images','karamah-logo.svg'));
-  if(['all','admin','maps'].includes(target)) {
+  if(['all','admin','maps','projects'].includes(target)) {
     // The Worker config lives below Maps, so Wrangler looks for .dev.vars in
     // that config directory. Mirror the local Maps variables there at start
     // up; this file is gitignored and is never used in production.
     try { await copyFile(mapsVars, gmailEventsVars); } catch {}
+    try { await copyFile(mapsVars, adminIntegrationsVars); } catch {}
     if(!await busy(8792)) { const child=launch(wrangler,['dev','workers/gmail-events/index.js','--config','workers/gmail-events/wrangler.toml','--port','8792','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8792,child,'Gmail events'); }
+    if(!await busy(8793)) { const child=launch(wrangler,['dev','workers/admin-integrations/index.js','--config','workers/admin-integrations/wrangler.toml','--port','8793','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8793,child,'Admin integrations'); }
     if(!await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const pagesArgs=['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState,'--do','INBOX_REALTIME=InboxRealtime@manarah-gmail-events'];const child=launch(wrangler,pagesArgs,path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
   }
   if(['all','admin','website'].includes(target) && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
@@ -76,9 +79,8 @@ try {
     await waitUntilReady(8790,child,'Links');
   }
   if(['all','admin','forms'].includes(target) && !await busy(8791)) {
-    // Forms Pages dev uses the shared local Wrangler state below. The base
-    // schema is re-runnable, but SQLite cannot re-add a column, so inspect
-    // the schema before applying that one incremental migration.
+    // Forms owns its own local D1 and R2 state. Keep its schema separate from
+    // the Admin control plane, just as in production.
     const formsCwd=path.join(root,'Forms'), migrationArgs=['d1','execute','forms-db','--local','--persist-to',localState];
     await run(wrangler,[...migrationArgs,'--file',path.join(root,'Maps','migrations','0021_forms.sql')],formsCwd);
     const columns=await run(wrangler,[...migrationArgs,'--command','PRAGMA table_info(forms)'],formsCwd,true);
@@ -98,7 +100,13 @@ try {
     const child=launch(vite,['--host','0.0.0.0','--strictPort'],path.join(root,'Admin'));
     await waitUntilReady(5173,child,'Admin');
   }
-  console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Forms: http://127.0.0.1:8791 · Admin: http://127.0.0.1:5173');
+  if(['all','projects'].includes(target) && !await busy(5184)) {
+    const projectsRequire=createRequire(path.join(root,'Projects/package.json'));
+    const vite=path.join(path.dirname(projectsRequire.resolve('vite/package.json')),'bin/vite.js');
+    const child=launch(vite,['--host','0.0.0.0','--strictPort'],path.join(root,'Projects'));
+    await waitUntilReady(5184,child,'Projects');
+  }
+  console.log('Maps: http://127.0.0.1:8788 · Website: http://127.0.0.1:8789 · Links: http://127.0.0.1:8790 · Forms: http://127.0.0.1:8791 · Admin integrations: http://127.0.0.1:8793 · Admin: http://127.0.0.1:5173 · Projects: http://127.0.0.1:5184');
   // Keep `npm run dev` attached when every service was already running. Without
   // this handle Node exits immediately because it has no child process to own.
   keepAlive=setInterval(()=>{},60_000);

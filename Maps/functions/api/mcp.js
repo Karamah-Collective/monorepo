@@ -29,6 +29,7 @@ const SERVICE_ORIGINS = {
   website: "https://karamahcollective.com",
   forms: "https://forms.karamahcollective.com",
 };
+const adminDb = (env) => env.ADMIN_DB;
 
 const commonInput = {
   confirmationId: z.string().max(180).optional(),
@@ -150,7 +151,7 @@ function registerProfileTool(server, auth, env) {
 
 async function recordMcpEvent(env, auth, action, detail, success) {
   try {
-    await logAdminAction(env.DB, {
+    await logAdminAction(adminDb(env), {
       action: `mcp.${action}`,
       actor: { ...auth.actor, name: auth.access?.displayName || auth.actor.name || "" },
       targetId: auth.connection?.id || "",
@@ -164,7 +165,7 @@ async function recordMcpEvent(env, auth, action, detail, success) {
 
 async function recordMcpAuthFailure(env, request) {
   try {
-    await logAdminAction(env.DB, {
+    await logAdminAction(adminDb(env), {
       action: "mcp.authentication.failed",
       actor: { uid: "", email: "", name: "" },
       targetId: "",
@@ -184,7 +185,7 @@ async function recordMcpAuthFailure(env, request) {
 async function createConfirmation(env, auth, toolName, args) {
   const id = `confirm_${crypto.randomUUID()}`;
   const createdAt = Date.now();
-  await env.DB.prepare(`INSERT INTO admin_mcp_confirmations
+  await adminDb(env).prepare(`INSERT INTO admin_mcp_confirmations
     (id,connection_id,action,payload_hash,expires_at,created_at) VALUES (?,?,?,?,?,?)`)
     .bind(id, auth.connection.id, toolName, await payloadHash(auth.connection.id, toolName, args), createdAt + CONFIRMATION_TTL, createdAt).run();
   await recordMcpEvent(env, auth, "confirmation_requested", { action: toolName, confirmationId: id }, true);
@@ -200,11 +201,11 @@ async function createConfirmation(env, auth, toolName, args) {
 async function consumeConfirmation(env, auth, toolName, args) {
   const confirmationId = String(args.confirmationId || "");
   if (!confirmationId || args.confirm !== true) return createConfirmation(env, auth, toolName, args);
-  const row = await env.DB.prepare(`SELECT id,payload_hash,expires_at,consumed_at FROM admin_mcp_confirmations
+  const row = await adminDb(env).prepare(`SELECT id,payload_hash,expires_at,consumed_at FROM admin_mcp_confirmations
     WHERE id=? AND connection_id=? AND action=?`).bind(confirmationId, auth.connection.id, toolName).first();
   if (!row || row.consumed_at || Number(row.expires_at) <= Date.now()) throw new Error("Confirmation is missing, expired, or already used.");
   if (row.payload_hash !== await payloadHash(auth.connection.id, toolName, args)) throw new Error("Confirmation does not match the exact tool payload.");
-  const update = await env.DB.prepare("UPDATE admin_mcp_confirmations SET consumed_at=? WHERE id=? AND consumed_at IS NULL AND expires_at>?").bind(Date.now(), confirmationId, Date.now()).run();
+  const update = await adminDb(env).prepare("UPDATE admin_mcp_confirmations SET consumed_at=? WHERE id=? AND consumed_at IS NULL AND expires_at>?").bind(Date.now(), confirmationId, Date.now()).run();
   if (!update.meta?.changes) throw new Error("Confirmation was already used.");
   await recordMcpEvent(env, auth, "confirmation_consumed", { action: toolName, confirmationId }, true);
   return null;
@@ -311,7 +312,15 @@ async function executeTool(descriptor, args, auth, env) {
     const confirmation = await consumeConfirmation(env, auth, descriptor.name, args);
     if (confirmation) return confirmation;
   }
-  const result = descriptor.owner === "maps" ? await invokeMaps(descriptor, args, auth, env) : await invokeService(descriptor.owner, descriptor, args, auth, env);
+  // Maps, Website, and Forms have their own service boundaries and receive a
+  // signed internal assertion. Project and Operations actions live behind the
+  // Admin control plane itself and must use the same dispatcher as the Admin
+  // UI rather than being mistaken for a Forms service call.
+  const result = descriptor.owner === "maps"
+    ? await invokeMaps(descriptor, args, auth, env)
+    : ["website", "forms"].includes(descriptor.owner)
+      ? await invokeService(descriptor.owner, descriptor, args, auth, env)
+      : await executeAdminAction({ action: descriptor.action, method: descriptor.method, data: actionPayload(args), actor: auth.actor, access: auth.access, env });
   await recordMcpEvent(env, auth, descriptor.name, { action: descriptor.name, args, result: result?.success === false ? "failed" : "completed" }, result?.success !== false);
   return result;
 }
@@ -321,8 +330,8 @@ function toolResult(value) {
 }
 
 async function authenticated(request, env) {
-  if (!env.DB) return null;
-  return authenticateMcpBearer(env.DB, request.headers.get("Authorization"));
+  if (!adminDb(env)) return null;
+  return authenticateMcpBearer(adminDb(env), request.headers.get("Authorization"));
 }
 
 export async function onRequest(context) {
@@ -334,7 +343,7 @@ export async function onRequest(context) {
   // invocation still returns an OAuth challenge and every authenticated
   // invocation is filtered by the live role/grant intersection below.
   if (!auth && request.method !== "POST") {
-    if (env.DB) await recordMcpAuthFailure(env, request);
+    if (adminDb(env)) await recordMcpAuthFailure(env, request);
     return new Response(JSON.stringify({ error: "Bearer authorization required." }), { status: 401, headers: { ...corsHeaders(request), "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${protectedResourceMetadataUrl(env)}", scope="offline_access"` } });
   }
 

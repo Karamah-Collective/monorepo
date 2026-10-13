@@ -10,9 +10,9 @@ Karamah Collective serves several different audiences. Visitors discovering hala
 
 | Product | Audience | Public responsibility | Cloudflare project root | Primary data |
 | --- | --- | --- | --- | --- |
-| Manarah / Maps | Community visitors | Map, places, prayer context, directions, community contribution | `Maps/` | Shared D1, `manarah-media` R2 |
-| Website | Public visitors | Organisational site, team, published content, contact and updates | `Website/` | Shared D1 |
-| Links | Public visitors | Branded link hub and redirect tracking | `Links/` | Shared D1 |
+| Manarah / Maps | Community visitors | Map, places, prayer context, directions, community contribution | `Maps/` | `halal-finder-db`, `manarah-media` R2 |
+| Website | Public visitors | Organisational site, team, published content, contact and updates | `Website/` | `karamah-admin-db` |
+| Links | Public visitors | Branded link hub and redirect tracking | `Links/` | `karamah-admin-db` |
 | Forms | Respondents | Published forms, conditional paths, submissions and upload experience | `Forms/` | Forms D1, `forms-media` R2 |
 | Admin | Authorized staff | Control surface for the above products | `Admin/` | Uses owner APIs; no separate application database |
 
@@ -46,19 +46,19 @@ Cloudflare matches a request to a static file first where appropriate and to a f
 
 ## 3. Data topology and ownership
 
-Two database domains exist:
+Three database domains exist:
 
 ```text
-halal-finder-db (shared)                   forms-db (dedicated)
-----------------------------------          --------------------------------
-places, events, reviews                    form definitions
-website people/content/subscribers          immutable published versions
-link hub settings and links                 submissions and answers
-admin roles, access, profiles               respondent file metadata
-analytics cache/snapshots                   public presentation assets
+halal-finder-db (Manarah)                  karamah-admin-db (Admin)       forms-db (dedicated)
+----------------------------------         --------------------------     ---------------------
+places, events, reviews                    website content/team           form definitions
+community moderation                       links and QR configuration     immutable versions
+map settings and map media                 roles, access, profiles        submissions and answers
+                                           inbox/Gmail, MCP, audit         respondent file metadata
+                                           reports and shared settings    presentation assets
 ```
 
-The shared D1 database originated with Manarah. It is now also the authoritative store for Website content, the Links hub, and staff access control. Its migrations remain under `Maps/migrations/` for historical continuity. This location does not mean a Maps-only change: inspect the migration name and affected tables before editing or applying it.
+`halal-finder-db` is the Manarah source of truth. `karamah-admin-db` is the Admin control-plane source of truth for Website, Links, staff access, inbox/Gmail, MCP, reports, and audit data. Their migrations remain under `Maps/migrations/` for historical continuity. This location does not mean a migration is Maps-only: inspect the affected tables before editing or applying it.
 
 Forms has a separate D1 database because its response data and file lifecycle form a distinct privacy boundary. Its schema migrations are also stored under `Maps/migrations/` (`0021` onward), while `Forms/` owns the public API and runtime binding. This arrangement is documented so a future maintainer does not mistake the folder layout for the trust boundary.
 
@@ -68,7 +68,7 @@ R2 stores binary media rather than putting files in SQLite:
 * Forms `MEDIA` is the private `forms-media` bucket for presentation assets and respondent uploads.
 * Public handlers return only explicitly allowed, immutable presentation assets. Respondent uploads are never made readable through Forms’ public media endpoint.
 
-Production and Preview bind to separate D1 databases and R2 buckets. Local Pages development persists into local Wrangler state. Treat all three environments as different data universes.
+Production uses the named databases above. Local Pages development persists into local Wrangler state. Preview bindings are intentionally not part of the current free-tier setup; do not create additional preview D1 databases without revisiting the quota decision.
 
 ## 4. Request flows
 

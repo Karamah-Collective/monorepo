@@ -18,14 +18,18 @@ The browser is always an untrusted caller. A logged-in person can change JavaScr
 
 ## 2. Data stores and ownership
 
-### Shared D1: `halal-finder-db`
+### Manarah D1: `halal-finder-db`
 
-This database is bound as `DB` in Maps, Website, and Links deployments. It owns:
+This database is bound as `DB` in Maps. It owns:
 
 * Manarah/community data such as places, app links, events, reviews, moderation records, media references, settings, and related taxonomy.
-* Website people, content, subscribers, and audit records.
-* Link hub settings, links, style/content additions, and public ordering state.
-* Workspace access foundations: roles, role memberships/settings, access requests, member profiles, weekly report settings/subscribers, and analytics cache/snapshots.
+
+### Admin D1: `karamah-admin-db`
+
+This database is bound as `ADMIN_DB` in Maps and `DB` in Website and Links. It
+owns Website people/content/subscribers, Link hub data, workspace roles and
+profiles, audit records, inbox/Gmail, MCP/OAuth, reports, and the deferred
+Operations/revision schemas.
 
 Although migration files are under `Maps/migrations/`, every table has a domain owner. Follow the owner API when reading or writing data. For example, a Website content page should call the Website data layer; a public Links page should call its public hub endpoint; Admin should call authenticated owner endpoints.
 
@@ -56,7 +60,7 @@ Rules for migrations:
 1. Do not edit an already-applied migration. Add the next migration instead.
 2. Prefer additive changes and safe backfills. A production table may already contain real data.
 3. Test locally through the repository tooling before remote execution.
-4. Review both Production and Preview database targets; they are intentionally different.
+4. Review the single production database target; do not create preview D1 databases unless the deployment plan explicitly changes.
 5. Update the owner API validation and public projections alongside schema changes.
 6. Document operational/manual migration steps in the relevant application docs or `DEPLOYMENT.md`.
 

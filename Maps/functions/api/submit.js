@@ -524,7 +524,7 @@ export async function onRequestPost(context) {
     } else if (formType === "contact") {
       result = await sendContactEmail(env, data);
       if (!result?.error) {
-        await ingestInbox(env.DB, { from: { name: data.name, email: data.email }, mailbox: "manarah@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
+        if (env.ADMIN_DB) await ingestInbox(env.ADMIN_DB, { from: { name: data.name, email: data.email }, mailbox: "manarah@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
       }
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();

@@ -42,6 +42,20 @@ test("sidebar collapse persists and search supports the keyboard", async ({
   );
 });
 
+test("projects overview hands detailed work to the separate app", async ({
+  page,
+}) => {
+  await mockAdmin(page, {
+    "project-list": { projects: [{ id: "project-1", name: "Website refresh", key: "WEB", description: "Content work.", visibility: "workspace" }] },
+    "project-get": { project: { id: "project-1", name: "Website refresh", key: "WEB", description: "Content work.", visibility: "workspace" }, role: "manager", taskCount: 1 },
+  });
+  await page.goto("/workspace/projects");
+  await expect(page.getByRole("heading", { name: "Projects overview" })).toBeVisible();
+  const open = page.getByRole("link", { name: /Open project workspace/ });
+  await expect(open).toHaveAttribute("target", "_blank");
+  await expect(open).toHaveAttribute("href", /5184\/workspace\/projects\/project-1/);
+});
+
 test("collection search, column filtering, keyboard sorting, density and pagination", async ({
   page,
 }) => {
@@ -555,6 +569,16 @@ test("dashboard failure presents an actionable retry", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Try again", exact: true }),
   ).toBeVisible();
+});
+
+test("deferred Operations surfaces stay hidden until rollout", async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto("/workspace/queue");
+  await expect(page.getByRole("heading", { name: "That workspace page is not available." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Work queue", exact: true })).toHaveCount(0);
+  await page.goto("/workspace/history");
+  await expect(page.getByRole("heading", { name: "That workspace page is not available." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "History & rollback", exact: true })).toHaveCount(0);
 });
 
 for (const width of [390, 1440])

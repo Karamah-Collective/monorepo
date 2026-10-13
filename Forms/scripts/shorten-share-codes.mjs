@@ -8,6 +8,7 @@ const repo = path.resolve(root, "..");
 const wrangler = path.join(repo, "node_modules", "wrangler", "bin", "wrangler.js");
 const alphabet = "abcdefghijklmnopqrstuvwxyz123456789";
 const mode = process.argv.includes("--remote") ? "--remote" : "--local";
+const databaseName = process.env.FORMS_DB_NAME || "forms-db";
 const persist = mode === "--local" ? ["--persist-to", path.join(repo, "Maps", ".wrangler", "state")] : [];
 
 function run(args) {
@@ -27,8 +28,8 @@ function nextShort(used) {
   used.add(value); return value;
 }
 
-await run(["d1", "execute", "forms-db", mode, ...persist, "--file", path.join(repo, "Maps", "migrations", "0024_form_share_code_aliases.sql")]);
-const result = JSON.parse(await run(["d1", "execute", "forms-db", mode, ...persist, "--json", "--command", "SELECT f.id,f.share_code,a.code alias_code FROM forms f LEFT JOIN form_share_code_aliases a ON a.form_id=f.id WHERE f.status != 'deleted'"]));
+await run(["d1", "execute", databaseName, mode, ...persist, "--file", path.join(repo, "Maps", "migrations", "0024_form_share_code_aliases.sql")]);
+const result = JSON.parse(await run(["d1", "execute", databaseName, mode, ...persist, "--json", "--command", "SELECT f.id,f.share_code,a.code alias_code FROM forms f LEFT JOIN form_share_code_aliases a ON a.form_id=f.id WHERE f.status != 'deleted'"]));
 const byForm = new Map();
 for (const row of result[0]?.results || []) {
   const form = byForm.get(row.id) || { id: row.id, shareCode: row.share_code, aliases: [] };
@@ -48,5 +49,5 @@ for (const form of forms) {
   if (!form.aliases.includes(short)) statements.push(`INSERT INTO form_share_code_aliases (code,form_id,created_at) VALUES (${sql(short)},${sql(form.id)},${sql(new Date().toISOString())})`);
   if (!isLong(canonical)) throw new Error(`Form ${form.id} has no long canonical share code to preserve.`);
 }
-if (statements.length) await run(["d1", "execute", "forms-db", mode, ...persist, "--command", statements.join(";")]);
+if (statements.length) await run(["d1", "execute", databaseName, mode, ...persist, "--command", statements.join(";")]);
 console.log(`Prepared ${forms.length} short form link${forms.length === 1 ? "" : "s"} in ${mode.slice(2)} D1; each redirects to its long canonical URL.`);

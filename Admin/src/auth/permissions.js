@@ -5,6 +5,20 @@ export const EVERYONE_PERMISSIONS = [
   "forms.create",
   "access.view",
   "access.request",
+  "operations.projects.read",
+  "operations.projects.write",
+  "operations.projects.manage_members",
+  "operations.tasks.read",
+  "operations.tasks.create",
+  "operations.tasks.write",
+  "operations.tasks.assign",
+  "operations.tasks.delete",
+  "operations.tasks.comment",
+  "operations.tasks.relate",
+  "operations.tasks.attach",
+  "operations.tasks.bulk",
+  "operations.milestones.read",
+  "operations.milestones.write",
 ];
 
 export function can(access, permission) {
@@ -27,11 +41,15 @@ export function canInbox(access, level = "read", mailbox = "") {
 }
 
 export function canRoute(access, path) {
-  return path === "/contacts" ? true : can(access, ROUTE_PERMISSION[path] || "read");
+  if (path === "/contacts") return true;
+  if (path === "/workspace/projects" || path.startsWith("/workspace/projects/") || path === "/workspace/my-work" || path.startsWith("/workspace/tasks/")) {
+    return can(access, "operations.projects.read");
+  }
+  return can(access, ROUTE_PERMISSION[path] || "read");
 }
 
 export const ROUTE_PERMISSION = {
   "/": "dashboard.view", "/places": "maps.places.read", "/events": "maps.events.read", "/eid": "maps.eid.read", "/social-videos": "maps.social.read", "/type-styles": "maps.styles.read", "/app-settings": "maps.settings.read",
   "/submissions/new": "moderation.places.read", "/submissions/edits": "moderation.places.read", "/events/edits": "moderation.events.read", "/reviews": "moderation.reviews.read", "/wishes": "moderation.wishes.read", "/contacts": "inbox.read",
-  "/website/content": "website.content.read", "/website/team": "website.team.read", "/website/subscribers": "website.subscribers.read", "/links": "links.read", "/links/qr": "links.qr", "/forms": "forms.create", "/log": "activity.read", "/analytics": "analytics.read", "/workspace/preferences": "dashboard.view", "/workspace/weekly-report": "reports.read", "/workspace/access": "access.view", "/workspace/mcp": "dashboard.view",
+  "/website/content": "website.content.read", "/website/team": "website.team.read", "/website/subscribers": "website.subscribers.read", "/links": "links.read", "/links/qr": "links.qr", "/forms": "forms.create", "/log": "activity.read", "/analytics": "analytics.read", "/workspace/preferences": "dashboard.view", "/workspace/weekly-report": "reports.read", "/workspace/access": "access.view", "/workspace/mcp": "dashboard.view", "/workspace/projects": "operations.projects.read",
 };

@@ -28,7 +28,7 @@ function keyTimestamp(kind, value) {
 }
 
 const expired = objects.filter(({ key }) => {
-  const match = /^(daily|weekly|monthly)\/(\d{4}-\d{2}(?:-\d{2}|-W\d{2})?)\/(?:halal-finder-db|forms-db)\.sql$/.exec(key || "");
+  const match = /^(daily|weekly|monthly)\/(\d{4}-\d{2}(?:-\d{2}|-W\d{2})?)\/(?:halal-finder-db|karamah-admin-db)\.sql$/.exec(key || "");
   if (!match) return false;
   const timestamp = keyTimestamp(match[1], match[2]);
   return Number.isFinite(timestamp) && now - timestamp > limits[match[1]];

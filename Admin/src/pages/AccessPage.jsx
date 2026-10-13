@@ -12,6 +12,7 @@ const capabilities = [
   ["Moderation", [["moderation.places", "Place submissions"], ["moderation.events", "Event edits"], ["moderation.reviews", "Reviews"], ["moderation.wishes", "Wishes"]]],
   ["Communications", [["inbox.contact", "Contact inbox"], ["inbox.manarah", "Manarah inbox"]]],
   ["Publishing", [["website.content", "Website content"], ["website.team", "Team directory"], ["website.subscribers", "Update signups"], ["links", "Link hub"]]],
+  ["Projects", [["operations.projects", "Projects"], ["operations.tasks", "Project tasks"], ["operations.milestones", "Milestones"]]],
 ];
 const everyone = [
   ["forms.create", "Create and manage personal forms", "Share a form to add co-owners"],

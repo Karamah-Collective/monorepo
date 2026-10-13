@@ -13,14 +13,39 @@ export const EVERYONE_PERMISSIONS = [
   "forms.create",
   "access.view",
   "access.request",
+  "operations.tasks.read",
+  "operations.tasks.write",
+  "operations.tasks.assign",
+  "operations.projects.read",
+  "operations.projects.write",
+  "operations.projects.manage_members",
+  "operations.tasks.create",
+  "operations.tasks.delete",
+  "operations.tasks.comment",
+  "operations.tasks.relate",
+  "operations.tasks.attach",
+  "operations.tasks.bulk",
+  "operations.milestones.read",
+  "operations.milestones.write",
+  "operations.google.connect",
+  "operations.google.sync",
+  "operations.approvals.read",
+  "operations.approvals.resolve",
+  "operations.history.read",
+  "operations.rollback",
+  "operations.settings.write",
 ];
 
 export const ROLE_PERMISSIONS = {
   administrator: ["*"],
-  "map-editor": ["maps.*"],
-  "content-editor": ["website.*", "links.*", "forms.*", "reports.write"],
-  moderator: ["moderation.*", "inbox.*"],
-  viewer: [],
+  // Projects are a shared Karamah surface. Project-level membership and
+  // visibility still decide what a person can see or mutate inside a project;
+  // these baseline grants only make the project workspace available to every
+  // normal Admin role, including its MCP connection.
+  "map-editor": ["maps.*", "operations.tasks.read", "operations.tasks.write", "operations.tasks.assign", "operations.projects.read", "operations.projects.write", "operations.tasks.create", "operations.tasks.comment", "operations.tasks.relate", "operations.tasks.attach", "operations.milestones.read", "operations.milestones.write"],
+  "content-editor": ["website.*", "links.*", "forms.*", "reports.write", "operations.tasks.read", "operations.tasks.write", "operations.tasks.assign", "operations.projects.read", "operations.projects.write", "operations.tasks.create", "operations.tasks.comment", "operations.tasks.relate", "operations.tasks.attach", "operations.milestones.read", "operations.milestones.write"],
+  moderator: ["moderation.*", "inbox.*", "operations.tasks.read", "operations.tasks.write", "operations.tasks.assign", "operations.projects.read", "operations.projects.write", "operations.tasks.create", "operations.tasks.comment", "operations.tasks.relate", "operations.tasks.attach", "operations.milestones.read", "operations.milestones.write"],
+  viewer: ["operations.tasks.read", "operations.projects.read", "operations.projects.write", "operations.tasks.create", "operations.tasks.write", "operations.tasks.comment", "operations.tasks.relate", "operations.tasks.attach", "operations.milestones.read", "operations.milestones.write"],
 };
 
 export const DEFAULT_ROLE_ID = "viewer";
@@ -77,6 +102,21 @@ export const MCP_PERMISSION_CATALOG = [
   "forms.create",
   "links.qr",
   "access.request",
+  "operations.projects.read",
+  "operations.projects.write",
+  "operations.projects.manage_members",
+  "operations.tasks.read",
+  "operations.tasks.write",
+  "operations.tasks.create",
+  "operations.tasks.delete",
+  "operations.tasks.comment",
+  "operations.tasks.relate",
+  "operations.tasks.attach",
+  "operations.tasks.bulk",
+  "operations.milestones.read",
+  "operations.milestones.write",
+  "operations.google.connect",
+  "operations.google.sync",
 ];
 
 const action = (name, config = {}) => ({
@@ -212,6 +252,103 @@ const mapsWrite = [
   action("inbox-bulk", { name: "inbox.bulk_update", title: "Bulk update inbox threads", permissions: ["inbox.contact.write", "inbox.manarah.write"], dangerous: true, schema: { threadIds: "array" } }),
 ];
 
+const operationsRead = [
+  action("operations-summary", { name: "workspace.operations.summary", title: "Read operations summary", permissions: ["operations.tasks.read"] }),
+  action("operations-tasks-list", { name: "workspace.operations.tasks.list", title: "List legacy operations tasks", permissions: ["operations.tasks.read"] }),
+  action("operations-task-get", { name: "workspace.operations.tasks.get", title: "Read a legacy operations task", permissions: ["operations.tasks.read"], schema: { id: "string" } }),
+  action("operations-approvals-list", { name: "workspace.approvals.list", title: "List workspace approvals", permissions: ["operations.approvals.read"] }),
+  action("operations-history-list", { name: "workspace.history.list", title: "List record history", permissions: ["operations.history.read"], schema: { domain: "string", recordType: "string", recordId: "string" } }),
+  action("operations-history-diff", { name: "workspace.history.diff", title: "Compare record revisions", permissions: ["operations.history.read"], schema: { domain: "string", recordType: "string", recordId: "string", fromRevision: "number", toRevision: "number" } }),
+  action("operations-settings-get", { name: "workspace.operations.settings", title: "Read operations settings", permissions: ["operations.tasks.read"] }),
+];
+
+const operationsWrite = [
+  action("operations-task-create", { method: "POST", name: "workspace.operations.tasks.create", title: "Create a legacy operations task", permissions: ["operations.tasks.write"], schema: { title: "string", domain: "string", taskType: "string", sourceType: "string", sourceId: "string" } }),
+  action("operations-task-update", { method: "POST", name: "workspace.operations.tasks.update", title: "Update a legacy operations task", permissions: ["operations.tasks.write"], schema: { id: "string", status: "string", priority: "string", dueAt: "string" } }),
+  action("operations-task-assign", { method: "POST", name: "workspace.operations.tasks.assign", title: "Assign a legacy operations task", permissions: ["operations.tasks.assign"], schema: { id: "string", assigneeUid: "string", assigneeEmail: "string" } }),
+  action("operations-tasks-bulk", { method: "POST", name: "workspace.operations.tasks.bulk_update", title: "Bulk update legacy operations tasks", permissions: ["operations.tasks.write"], dangerous: true, schema: { requestId: "string", taskIds: "array", changes: "object" } }),
+  action("operations-approval-create", { method: "POST", name: "workspace.approvals.create", title: "Request workspace approval", permissions: ["operations.tasks.write"], dangerous: true, schema: { action: "string", targetType: "string", targetId: "string", payload: "object" } }),
+  action("operations-approval-resolve", { method: "POST", name: "workspace.approvals.resolve", title: "Resolve workspace approval", permissions: ["operations.approvals.resolve"], dangerous: true, schema: { id: "string", decision: "string", reason: "string" } }),
+  action("operations-history-record", { method: "POST", name: "workspace.history.record", title: "Record a revision", permissions: ["operations.history.read"], schema: { domain: "string", recordType: "string", recordId: "string", snapshot: "object" } }),
+  action("operations-history-rollback", { method: "POST", name: "workspace.history.rollback", title: "Restore a historical revision", permissions: ["operations.rollback"], dangerous: true, schema: { domain: "string", recordType: "string", recordId: "string", revision: "number" } }),
+  action("operations-settings-update", { method: "POST", name: "workspace.operations.settings.update", title: "Update operations settings", permissions: ["operations.settings.write"], dangerous: true, schema: { approvalPolicy: "object", draftRetentionDays: "number" } }),
+];
+
+const projectActions = [
+  action("project-list", { name: "workspace.projects.list", title: "List projects", permissions: ["operations.projects.read", "operations.tasks.read"] }),
+  action("project-search", { name: "workspace.search", title: "Search projects and tasks", permissions: ["operations.projects.read", "operations.tasks.read"], schema: { query: "string" } }),
+  action("project-get", { name: "workspace.projects.get", title: "Read a project", permissions: ["operations.projects.read", "operations.tasks.read"], schema: { projectId: "string" } }),
+  action("project-summary", { name: "workspace.projects.summary", title: "Read project summary", permissions: ["operations.projects.read", "operations.tasks.read"], schema: { projectId: "string" } }),
+  action("project-create", { method: "POST", name: "workspace.projects.create", title: "Create a project", permissions: ["operations.projects.write", "operations.tasks.write"], schema: { name: "string", key: "string", description: "string" } }),
+  action("project-update", { method: "POST", name: "workspace.projects.update", title: "Update a project", permissions: ["operations.projects.write", "operations.tasks.write"], dangerous: true, schema: { projectId: "string", expectedRevision: "number", name: "string", visibility: "string" } }),
+  action("project-archive", { method: "POST", name: "workspace.projects.archive", title: "Archive a project", permissions: ["operations.projects.write", "operations.tasks.write"], dangerous: true, schema: { projectId: "string", expectedRevision: "number" } }),
+  action("project-tasks-list", { name: "workspace.tasks.list", title: "List project tasks", permissions: ["operations.tasks.read"], schema: { projectId: "string", status: "string", assignee: "string" } }),
+  action("project-task-get", { name: "workspace.tasks.get", title: "Read a project task", permissions: ["operations.tasks.read"], schema: { id: "string" } }),
+  action("project-task-duplicate", { method: "POST", name: "workspace.tasks.duplicate", title: "Duplicate a project task", permissions: ["operations.tasks.create", "operations.tasks.write"], schema: { id: "string", title: "string" } }),
+  action("project-tasks-create", { method: "POST", name: "workspace.tasks.create", title: "Create a project task", permissions: ["operations.tasks.create", "operations.tasks.write"], schema: { projectId: "string", title: "string", description: "string", priority: "string" } }),
+  action("project-task-update", { method: "POST", name: "workspace.tasks.update", title: "Update a project task", permissions: ["operations.tasks.write"], schema: { id: "string", expectedRevision: "number", title: "string", statusCategory: "string", columnId: "string" } }),
+  action("project-task-assign", { method: "POST", name: "workspace.tasks.assign", title: "Assign a project task", permissions: ["operations.tasks.assign"], schema: { id: "string", expectedRevision: "number", assigneeUid: "string", assigneeEmail: "string" } }),
+  action("project-task-delete", { method: "POST", name: "workspace.tasks.delete", title: "Delete a project task", permissions: ["operations.tasks.delete", "operations.tasks.write"], dangerous: true, schema: { id: "string", expectedRevision: "number", reason: "string" } }),
+  action("project-tasks-bulk", { method: "POST", name: "workspace.tasks.bulk_update", title: "Bulk update project tasks", permissions: ["operations.tasks.bulk", "operations.tasks.write"], dangerous: true, schema: { idempotencyKey: "string", taskIds: "array", changes: "object" } }),
+  action("project-task-comment", { method: "POST", name: "workspace.tasks.comments.create", title: "Comment on a project task", permissions: ["operations.tasks.comment", "operations.tasks.write"], schema: { taskId: "string", body: "string" } }),
+  action("project-task-comments-list", { name: "workspace.tasks.comments.list", title: "List task comments", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-task-comment-update", { method: "POST", name: "workspace.tasks.comments.update", title: "Edit a task comment", permissions: ["operations.tasks.comment", "operations.tasks.write"], schema: { id: "string", body: "string" } }),
+  action("project-task-comment-delete", { method: "POST", name: "workspace.tasks.comments.delete", title: "Delete a task comment", permissions: ["operations.tasks.comment", "operations.tasks.write"], dangerous: true, schema: { id: "string" } }),
+  action("project-milestones-list", { name: "workspace.milestones.list", title: "List project milestones", permissions: ["operations.milestones.read"], schema: { projectId: "string" } }),
+  action("project-milestone-create", { method: "POST", name: "workspace.milestones.create", title: "Create a project milestone", permissions: ["operations.milestones.write"], schema: { projectId: "string", name: "string", dueAt: "string" } }),
+  action("project-milestone-update", { method: "POST", name: "workspace.milestones.update", title: "Update a project milestone", permissions: ["operations.milestones.write"], schema: { id: "string", expectedRevision: "number", name: "string", dueAt: "string", status: "string" } }),
+  action("project-milestone-delete", { method: "POST", name: "workspace.milestones.delete", title: "Delete a project milestone", permissions: ["operations.milestones.write"], dangerous: true, schema: { id: "string", expectedRevision: "number" } }),
+  action("project-task-activity", { name: "workspace.tasks.activity.list", title: "Read project task activity", permissions: ["operations.history.read"], schema: { taskId: "string" } }),
+  action("project-members-list", { name: "workspace.projects.members.list", title: "List project members", permissions: ["operations.projects.read"], schema: { projectId: "string" } }),
+  action("project-columns-list", { name: "workspace.projects.columns.list", title: "List project columns", permissions: ["operations.projects.read"], schema: { projectId: "string" } }),
+  action("project-relations-list", { name: "workspace.tasks.relations.list", title: "List task relations", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-task-links-list", { name: "workspace.tasks.links.list", title: "List task links", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-labels-list", { name: "workspace.tasks.labels.list", title: "List project labels", permissions: ["operations.tasks.read"], schema: { projectId: "string" } }),
+  action("project-member-update", { method: "POST", name: "workspace.projects.members.update", title: "Update project membership", permissions: ["operations.projects.manage_members", "operations.projects.write"], dangerous: true, schema: { projectId: "string", member: "object" } }),
+  action("project-member-remove", { method: "POST", name: "workspace.projects.members.remove", title: "Remove a project member", permissions: ["operations.projects.manage_members", "operations.projects.write"], dangerous: true, schema: { projectId: "string", email: "string" } }),
+  action("project-column-create", { method: "POST", name: "workspace.projects.columns.create", title: "Create a project column", permissions: ["operations.projects.write", "operations.tasks.write"], schema: { projectId: "string", name: "string", statusCategory: "string" } }),
+  action("project-column-update", { method: "POST", name: "workspace.projects.columns.update", title: "Update a project column", permissions: ["operations.projects.write", "operations.tasks.write"], schema: { id: "string", name: "string", position: "number" } }),
+  action("project-column-delete", { method: "POST", name: "workspace.projects.columns.delete", title: "Delete a project column", permissions: ["operations.projects.write", "operations.tasks.write"], dangerous: true, schema: { id: "string" } }),
+  action("project-relation-create", { method: "POST", name: "workspace.tasks.relations.create", title: "Create a task relation", permissions: ["operations.tasks.relate", "operations.tasks.write"], schema: { taskId: "string", relatedTaskId: "string", relationType: "string" } }),
+  action("project-relation-delete", { method: "POST", name: "workspace.tasks.relations.delete", title: "Delete a task relation", permissions: ["operations.tasks.relate", "operations.tasks.write"], dangerous: true, schema: { taskId: "string", relatedTaskId: "string", relationType: "string" } }),
+  action("project-label-save", { method: "POST", name: "workspace.tasks.labels.create", title: "Create or update a project label", permissions: ["operations.projects.write"], schema: { projectId: "string", id: "string", name: "string", color: "string" } }),
+  action("project-label-attach", { method: "POST", name: "workspace.tasks.labels.update", title: "Attach a task label", permissions: ["operations.tasks.write"], schema: { taskId: "string", labelId: "string", name: "string", color: "string" } }),
+  action("project-label-detach", { method: "POST", name: "workspace.tasks.labels.detach", title: "Detach a task label", permissions: ["operations.tasks.write"], schema: { taskId: "string", labelId: "string" } }),
+  action("project-label-delete", { method: "POST", name: "workspace.tasks.labels.delete", title: "Delete a project label", permissions: ["operations.projects.write"], dangerous: true, schema: { projectId: "string", id: "string" } }),
+  action("project-task-link-save", { method: "POST", name: "workspace.tasks.links.save", title: "Save a task link", permissions: ["operations.tasks.write"], schema: { taskId: "string", url: "string", title: "string" } }),
+  action("project-task-link-delete", { method: "POST", name: "workspace.tasks.links.delete", title: "Delete a task link", permissions: ["operations.tasks.write"], dangerous: true, schema: { taskId: "string", id: "string" } }),
+  action("project-saved-views-list", { name: "workspace.views.list", title: "List project views", permissions: ["operations.tasks.read"], schema: { projectId: "string" } }),
+  action("project-saved-view-save", { method: "POST", name: "workspace.views.save", title: "Save a project view", permissions: ["operations.tasks.write"], schema: { projectId: "string", name: "string", viewType: "string", filters: "object" } }),
+  action("project-saved-view-delete", { method: "POST", name: "workspace.views.delete", title: "Delete a saved project view", permissions: ["operations.tasks.write"], dangerous: true, schema: { id: "string" } }),
+  action("project-task-time-list", { name: "workspace.tasks.time.list", title: "List task time entries", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-task-time-save", { method: "POST", name: "workspace.tasks.time.save", title: "Record task time", permissions: ["operations.tasks.write"], schema: { taskId: "string", durationMinutes: "number", note: "string" } }),
+  action("project-task-attachments-list", { name: "workspace.tasks.attachments.list", title: "List task attachments", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-task-attachment-get", { name: "workspace.tasks.attachments.get", title: "Download a task attachment", permissions: ["operations.tasks.read"], schema: { id: "string" } }),
+  action("project-task-attachment-upload", { method: "POST", name: "workspace.tasks.attachments.upload", title: "Upload a task attachment", permissions: ["operations.tasks.attach"], schema: { taskId: "string", fileName: "string", mimeType: "string", contentBase64: "string" } }),
+  action("project-task-attachment-delete", { method: "POST", name: "workspace.tasks.attachments.delete", title: "Delete a task attachment", permissions: ["operations.tasks.attach"], dangerous: true, schema: { id: "string" } }),
+  action("project-custom-fields-list", { name: "workspace.projects.custom_fields.list", title: "List project custom fields", permissions: ["operations.projects.read"], schema: { projectId: "string" } }),
+  action("project-custom-field-save", { method: "POST", name: "workspace.projects.custom_fields.save", title: "Save a project custom field", permissions: ["operations.projects.write"], schema: { projectId: "string", name: "string", fieldType: "string", options: "array" } }),
+  action("project-custom-field-delete", { method: "POST", name: "workspace.projects.custom_fields.delete", title: "Delete a project custom field", permissions: ["operations.projects.write"], dangerous: true, schema: { id: "string" } }),
+  action("project-task-custom-value-save", { method: "POST", name: "workspace.tasks.custom_fields.update", title: "Update a task custom field", permissions: ["operations.tasks.write"], schema: { taskId: "string", fieldId: "string", value: "string" } }),
+  action("project-task-watchers-list", { name: "workspace.tasks.watchers.list", title: "List task watchers", permissions: ["operations.tasks.read"], schema: { taskId: "string" } }),
+  action("project-task-watcher-update", { method: "POST", name: "workspace.tasks.watchers.update", title: "Update task watchers", permissions: ["operations.tasks.write"], schema: { taskId: "string", email: "string", remove: "boolean" } }),
+  action("project-notifications-list", { name: "workspace.notifications.list", title: "List project notifications", permissions: ["operations.tasks.read"] }),
+  action("project-notifications-read", { method: "POST", name: "workspace.notifications.read", title: "Mark project notifications read", permissions: ["operations.tasks.read"], schema: { id: "string", all: "boolean" } }),
+  action("project-task-templates-list", { name: "workspace.tasks.templates.list", title: "List task templates", permissions: ["operations.projects.read"], schema: { projectId: "string" } }),
+  action("project-task-template-save", { method: "POST", name: "workspace.tasks.templates.save", title: "Save a task template", permissions: ["operations.projects.write"], schema: { projectId: "string", id: "string", name: "string", description: "string", payload: "object" } }),
+  action("project-task-template-delete", { method: "POST", name: "workspace.tasks.templates.delete", title: "Delete a task template", permissions: ["operations.projects.write"], dangerous: true, schema: { id: "string" } }),
+  action("project-task-from-template", { method: "POST", name: "workspace.tasks.templates.create_task", title: "Create a task from a template", permissions: ["operations.tasks.create", "operations.tasks.write"], schema: { templateId: "string", title: "string", assigneeEmail: "string", dueAt: "string" } }),
+  action("project-webhooks-list", { name: "workspace.projects.webhooks.list", title: "List project webhooks", permissions: ["operations.projects.write"], schema: { projectId: "string" } }),
+  action("project-webhook-save", { method: "POST", name: "workspace.projects.webhooks.save", title: "Save a project webhook", permissions: ["operations.projects.write"], dangerous: true, schema: { projectId: "string", id: "string", url: "string", secret: "string", eventTypes: "array", active: "boolean" } }),
+  action("project-webhook-delete", { method: "POST", name: "workspace.projects.webhooks.delete", title: "Delete a project webhook", permissions: ["operations.projects.write"], dangerous: true, schema: { id: "string" } }),
+];
+
+const googleWorkspaceActions = [
+  action("google-tasks-status", { name: "workspace.google_tasks.status", title: "Read Google Tasks connection", permissions: ["operations.google.connect"] }),
+  action("google-tasks-oauth-start", { method: "POST", name: "workspace.google_tasks.connect", title: "Connect Google Tasks", permissions: ["operations.google.connect"], dangerous: true, schema: { returnTo: "string" } }),
+  action("google-tasks-sync", { method: "POST", name: "workspace.google_tasks.sync", title: "Sync Google Tasks", permissions: ["operations.google.sync"], dangerous: true, schema: { ownerUid: "string" } }),
+];
+
 const websiteActions = [
   action("admin-team", { owner: "website", name: "website.team.list", title: "List website team", permissions: ["website.team.read"] }),
   action("admin-subscribers", { owner: "website", name: "website.subscribers.list", title: "List website subscribers", permissions: ["website.subscribers.read"] }),
@@ -229,7 +366,7 @@ const formsMcpOnly = [
   action("forms-asset-upload", { owner: "forms", method: "POST", name: "forms.assets.upload", title: "Upload form media", permissions: ["forms.assets.write", "forms.write", "forms.create"], resourceAware: true, dangerous: true, mcpOnly: true, schema: { formId: "string", file: "string", contentType: "string", alt: "string" } }),
 ];
 
-export const ADMIN_ACTIONS = [...mapsRead, ...mapsWrite, ...websiteActions, ...formsMcpOnly];
+export const ADMIN_ACTIONS = [...mapsRead, ...mapsWrite, ...operationsRead, ...operationsWrite, ...projectActions, ...googleWorkspaceActions, ...websiteActions, ...formsMcpOnly];
 
 export function parsePermissions(raw, fallback = []) {
   try {
@@ -274,7 +411,7 @@ export function permissionFromMcpScope(scope) {
 
 export function normalizeMcpGrants(scopes) {
   const values = Array.isArray(scopes) ? scopes : String(scopes || "").split(/\s+/);
-  return [...new Set(values.map(permissionFromMcpScope).filter((value) => value === "*" || value === "admin:*" || MCP_PERMISSION_CATALOG.includes(value) || /^(maps|moderation|inbox|website|forms|links|reports|analytics|activity|access)\.[a-z_-]+\.\*$/.test(value)))];
+  return [...new Set(values.map(permissionFromMcpScope).filter((value) => value === "*" || value === "admin:*" || MCP_PERMISSION_CATALOG.includes(value) || /^(maps|moderation|inbox|website|forms|links|reports|analytics|activity|access|operations)\.[a-z_-]+(?:\.[a-z_-]+)?\.\*$/.test(value)))];
 }
 
 export function mcpGrantAllows(grants, required) {
@@ -294,5 +431,5 @@ export function descriptorIsAllowed(descriptor, accessPermissions, mcpGrants = n
 }
 
 export function validatePermissionName(permission) {
-  return permission === "*" || MCP_PERMISSION_CATALOG.includes(permission) || /^(maps|moderation|inbox|website|forms|links|reports|analytics|activity|access)\.[a-z_-]+\.\*$/.test(permission);
+  return permission === "*" || MCP_PERMISSION_CATALOG.includes(permission) || /^(maps|moderation|inbox|website|forms|links|reports|analytics|activity|access|operations)\.[a-z_-]+(?:\.[a-z_-]+)?\.\*$/.test(permission);
 }

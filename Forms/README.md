@@ -10,7 +10,7 @@ From the repository root:
 npm run dev:forms
 ```
 
-The public app runs at `http://127.0.0.1:8791`. Admin development also starts Forms automatically. Apply the shared D1 schema through `node Maps/scripts/local-db.mjs`; new installations need `Maps/migrations/0021_forms.sql` through `0024_form_share_code_aliases.sql`, followed by `0030_form_collaborators.sql`.
+The public app runs at `http://127.0.0.1:8791`. Admin development also starts Forms automatically. Forms data remains in its own local `forms-db`; the Admin control-plane setup is separate.
 
 ## Cloudflare bindings
 
@@ -26,12 +26,9 @@ Configure the Forms Pages project with its dedicated data stores:
    `Forms` root directory, build command `npm ci --prefix .. && npm run build`,
    and build output directory `dist`. Set `NODE_VERSION=22` and
    `SKIP_DEPENDENCY_INSTALL=true` for both Preview and Production.
-2. Bind `forms-db` as `DB` and `forms-media` as `MEDIA` for Production. Use
-   separate preview-only stores for Preview so test submissions cannot enter
-   production data.
-3. Apply `Maps/migrations/0021_forms.sql` to the matching D1 database before
-   the first deploy. The Forms API intentionally fails closed while `DB` or
-   `MEDIA` are missing.
+2. Bind `forms-db` as `DB` and `forms-media` as `MEDIA` for Production.
+3. Apply the Forms migrations before the first deploy. The Forms API intentionally fails closed while `DB`
+   or `MEDIA` are missing.
 4. Add `FIREBASE_PROJECT_ID=halal-map-karamah` only if the default Firebase
    project is not correct for this environment. No Firebase client secret is
    stored in Pages; the public client configuration remains in `auth.js`.
@@ -63,4 +60,4 @@ npm run test:forms
 npm run test:forms:ui
 ```
 
-Before deployment, apply `Maps/migrations/0021_forms.sql` through `Maps/migrations/0024_form_share_code_aliases.sql`, then `Maps/migrations/0030_form_collaborators.sql`, to the matching Forms D1 database. Run `npm run migrate:form-links -- --remote` after applying `0024` to create three-character short links that redirect to the long canonical URLs.
+Before deployment, run the unified Admin backfill described in `DEPLOYMENT.md`. Run `npm run migrate:form-links -- --remote` after cutover to create three-character short links that redirect to the long canonical form URLs.

@@ -12,7 +12,7 @@ AuthContext` and `AuthGuard` provide browser UX. Clients attach Firebase bearer 
 
 React Query manages cache keys, refetch, mutation invalidation, loading, empty, and error states. API modules own transport/error normalization; pages should not duplicate token or URL policy.
 
-Maps owns places, submissions, events, reviews, settings, analytics, health, reports, and access. Website owns content/team/subscribers. Links owns hub settings/links. Forms owns editor/publishing/responses/exports/collaboration. Workspace owns profile/preferences/logs/reports/access.
+Maps owns places, submissions, events, reviews, settings, analytics, health, and map moderation. Admin D1 owns access, Website content/team/subscribers, Links hub data, inbox/Gmail, MCP, reports, and audit records. Forms owns editor/publishing/responses/exports/collaboration in its dedicated D1/R2 boundary. Workspace owns profile/preferences/logs and the deferred Operations surface.
 
 Admin is dense and operational: reuse tokens, tables, status badges, dark mode, responsive layout, focus states, and confirmation patterns. Every mutation needs pending/failed/success feedback and server enforcement.
 

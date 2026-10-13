@@ -373,3 +373,30 @@
 .permission-row{min-height:48px}
 .permission-cell span{min-height:36px;transition:background-color 180ms var(--ease),border-color 180ms var(--ease),color 180ms var(--ease),transform 150ms var(--ease)}
 @media(max-width:767px){.permission-cell span,.access-role-builder .access-permissions label{min-height:42px}.access-role-builder .access-permissions label{padding:9px 12px}}
+
+/* Collapsed navigation is a short set of primary destinations, not a squeezed copy of the full menu. */
+@media (min-width:768px) {
+  .nav-is-collapsed .pp-nav-links {
+    padding: 10px 0;
+  }
+  .nav-is-collapsed .nav-group {
+    margin: 0 0 3px;
+  }
+  .nav-is-collapsed .nav-group + .nav-group {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .nav-is-collapsed .pp-nav-link {
+    justify-content: center;
+    min-height: 38px;
+    margin: 2px 0;
+    padding: 9px 0;
+    border-radius: 8px;
+  }
+  .nav-is-collapsed .pp-nav-link:not(.active):hover {
+    background: var(--nav-hover);
+  }
+  .nav-is-collapsed .nav-bottom {
+    padding-top: 6px;
+  }
+}

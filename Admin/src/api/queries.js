@@ -41,6 +41,15 @@ export const useAdminAppSettings = () => useQuery({ queryKey: ["admin-app-settin
 export const useWeeklyReportSubscribers = () => useQuery({ queryKey: ["weekly-report-subscribers"], queryFn: () => apiGet("weekly-report-subscribers") });
 export const useMapAnalytics = (days) => useQuery({ queryKey: ["map-analytics", days], queryFn: () => apiGet("analytics-dashboard", { days }), staleTime: 5 * 60 * 1000 });
 export const useSystemHealth = () => useQuery({ queryKey: ["system-health", "24h"], queryFn: () => apiGet("system-health", { days: 1 }), staleTime: 2 * 60 * 1000, retry: 0 });
+export const useOperationsSummary = (options = {}) => useQuery({ queryKey: ["operations-summary"], queryFn: () => apiGet("operations-summary"), staleTime: 20_000, ...options });
+export const useOperationsTasks = (filters = {}, options = {}) => useQuery({ queryKey: ["operations-tasks", filters], queryFn: () => apiGet("operations-tasks-list", filters), staleTime: 15_000, ...options });
+export const useOperationsTask = (id, options = {}) => useQuery({ queryKey: ["operations-task", id], queryFn: () => apiGet("operations-task-get", { id }), enabled: !!id, ...options });
+export const useOperationsApprovals = (options = {}) => useQuery({ queryKey: ["operations-approvals"], queryFn: () => apiGet("operations-approvals-list"), staleTime: 15_000, ...options });
+export const useOperationsHistory = (params, options = {}) => useQuery({ queryKey: ["operations-history", params], queryFn: () => apiGet("operations-history-list", params), enabled: !!params?.recordId, ...options });
+export const useProjects = (options = {}) => useQuery({ queryKey: ["projects"], queryFn: () => apiGet("project-list"), staleTime: 20_000, ...options });
+export const useProject = (projectId, options = {}) => useQuery({ queryKey: ["project", projectId], queryFn: () => apiGet("project-get", { projectId }), enabled: !!projectId, ...options });
+export const useProjectTasks = (filters = {}, options = {}) => useQuery({ queryKey: ["project-tasks", filters], queryFn: () => apiGet("project-tasks-list", filters), enabled: !!filters.projectId, staleTime: 10_000, ...options });
+export const useProjectTask = (id, options = {}) => useQuery({ queryKey: ["project-task", id], queryFn: () => apiGet("project-task-get", { id }), enabled: !!id, ...options });
 
 // ── Mutations — every one invalidates the queries it can affect, so a
 // pending row disappearing / stats changing shows up immediately without
@@ -110,3 +119,19 @@ export const useSaveWeeklyReportSubscriber = () => useAdminMutation("save-weekly
 export const useSaveWeeklyReportSettings = () => useAdminMutation("save-weekly-report-settings", ["weekly-report-subscribers"]);
 export const useUnsubscribeWeeklyReportSubscriber = () => useAdminMutation("unsubscribe-weekly-report-subscriber", ["weekly-report-subscribers"]);
 export const useDeleteWeeklyReportSubscriber = () => useAdminMutation("delete-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useCreateOperationsTask = () => useAdminMutation("operations-task-create", ["operations-tasks", "operations-summary"]);
+export const useUpdateOperationsTask = () => useAdminMutation("operations-task-update", ["operations-tasks", "operations-task", "operations-summary"]);
+export const useAssignOperationsTask = () => useAdminMutation("operations-task-assign", ["operations-tasks", "operations-task", "operations-summary"]);
+export const useBulkUpdateOperationsTasks = () => useAdminMutation("operations-tasks-bulk", ["operations-tasks", "operations-summary"]);
+export const useResolveOperationsApproval = () => useAdminMutation("operations-approval-resolve", ["operations-approvals", "operations-tasks", "operations-summary"]);
+export const useRollbackOperationsRevision = () => useAdminMutation("operations-history-rollback", ["operations-history", "operations-tasks", "operations-summary"]);
+export const useCreateProject = () => useAdminMutation("project-create", ["projects"]);
+export const useUpdateProject = () => useAdminMutation("project-update", ["projects", "project"]);
+export const useCreateProjectTask = () => useAdminMutation("project-tasks-create", ["project-tasks", "project", "projects"]);
+export const useUpdateProjectTask = () => useAdminMutation("project-task-update", ["project-task", "project-tasks", "project"]);
+export const useDeleteProjectTask = () => useAdminMutation("project-task-delete", ["project-task", "project-tasks", "project"]);
+export const useBulkUpdateProjectTasks = () => useAdminMutation("project-tasks-bulk", ["project-tasks", "project"]);
+export const useAddProjectTaskComment = () => useAdminMutation("project-task-comment", ["project-task"]);
+export const useGoogleTasksStatus = (options = {}) => useQuery({ queryKey: ["google-tasks-status"], queryFn: () => apiGet("google-tasks-status"), staleTime: 30_000, ...options });
+export const useStartGoogleTasksOAuth = () => useMutation({ mutationFn: body => apiPost("google-tasks-oauth-start", body) });
+export const useSyncGoogleTasks = () => useAdminMutation("google-tasks-sync", ["google-tasks-status", "project-tasks"]);

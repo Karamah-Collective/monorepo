@@ -33,6 +33,11 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import AnalyticsPage from "./pages/AnalyticsPage.jsx";
 import McpAccessPage from "./pages/McpAccessPage.jsx";
 import McpConsentPage from "./pages/McpConsentPage.jsx";
+import OperationsQueuePage from "./pages/OperationsQueuePage.jsx";
+import OperationsHistoryPage from "./pages/OperationsHistoryPage.jsx";
+import { OPERATIONS_UI_ENABLED } from "./config/features.js";
+import { PROJECTS_UI_ENABLED } from "./config/features.js";
+import { ProjectsHandoffPage, ProjectsOverviewPage } from "./pages/ProjectsOverviewPage.jsx";
 
 export default function App() {
   return (
@@ -63,6 +68,12 @@ export default function App() {
             <Route path="/workspace/profile" element={<ProfilePage />} />
             <Route path="/workspace/access" element={<AccessPage />} />
             <Route path="/workspace/mcp" element={<McpAccessPage />} />
+            {OPERATIONS_UI_ENABLED && <Route path="/workspace/queue" element={<OperationsQueuePage />} />}
+            {OPERATIONS_UI_ENABLED && <Route path="/workspace/history" element={<OperationsHistoryPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/projects" element={<ProjectsOverviewPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/projects/:projectId" element={<ProjectsHandoffPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/my-work" element={<ProjectsHandoffPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/tasks/:taskId" element={<ProjectsHandoffPage />} />}
             <Route path="/workspace/weekly-report" element={<WeeklyReportPage />} />
             <Route path="/log" element={<LogPage />} />
             <Route path="/website/team" element={<WebsiteTeamPage />} />

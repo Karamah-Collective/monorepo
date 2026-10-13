@@ -12,7 +12,7 @@ Pages Functions run in the Workers-style V8 runtime, not a long-running Node ser
 
 ### Cloudflare D1
 
-D1 is the SQLite-compatible database used through the server-side `DB` binding. `halal-finder-db` is the shared domain for Maps, Website, Links, access/roles, and analytics-support data. `forms-db` is dedicated to form definitions, immutable versions, submissions, answers, file metadata, assets, and collaborators. Browser code never connects directly to D1.
+D1 is the SQLite-compatible database used through server-side bindings. `halal-finder-db` is reserved for Manarah maps, moderation, map settings, and map analytics lookups. `karamah-admin-db` owns shared Admin control-plane data for Website, Links, access/roles, inbox/Gmail, MCP, reports, and audit records. `forms-db` is dedicated to form definitions, immutable versions, submissions, answers, file metadata, assets, and collaborators. Browser code never connects directly to D1.
 
 Use prepared statements with bound parameters; schema changes are forward-only numbered migrations in `Maps/migrations/`. Production, Preview, and local environments must remain isolated. A deployed function can build successfully but still fail if its project has the wrong D1 binding, so verify the real product flow after binding changes.
 

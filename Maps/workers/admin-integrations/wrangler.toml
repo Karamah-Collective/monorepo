@@ -1,0 +1,15 @@
+name = "karamah-admin-integrations"
+main = "index.js"
+compatibility_date = "2026-08-04"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "karamah-admin-db"
+database_id = "a52a5509-eabd-44a1-979c-c4491e3ca1a8"
+
+[[d1_databases]]
+binding = "PROJECTS_DB"
+database_name = "karamah-projects-db"

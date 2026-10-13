@@ -67,9 +67,10 @@ For the Links Pages project connected to this monorepo, use:
 | Build output directory | `dist` |
 | Environment variables | `NODE_VERSION=22`, `SKIP_DEPENDENCY_INSTALL=true` |
 
-In the Pages project, add a D1 binding named exactly `DB`. Bind Production to
-`halal-finder-db` and Preview to `halal-finder-db-preview`, then redeploy so the
-binding reaches the Functions runtime. Add `links.karamahcollective.com` through
+In the Pages project, add a D1 binding named exactly `DB` and bind Production to
+`karamah-admin-db`, then redeploy so the binding reaches the Functions runtime.
+This setup intentionally does not require a preview D1 database. Add
+`links.karamahcollective.com` through
 the Pages project's Custom domains screen. Do not create only a standalone DNS
 record; associate the domain with the Pages project first.
 

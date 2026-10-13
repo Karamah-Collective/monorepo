@@ -39,9 +39,9 @@ jobs:
 
           mkdir -p backup-out
           npx wrangler d1 export halal-finder-db --remote --config Maps/wrangler.toml --output "backup-out/halal-finder-db.sql"
-          npx wrangler d1 export forms-db --remote --config Forms/wrangler.toml --output "backup-out/forms-db.sql"
+          npx wrangler d1 export karamah-admin-db --remote --config Maps/wrangler.toml --output "backup-out/karamah-admin-db.sql"
 
-          for db in halal-finder-db forms-db; do
+          for db in halal-finder-db karamah-admin-db; do
             npx wrangler r2 object put "${BACKUP_BUCKET}/daily/${day}/${db}.sql" --file "backup-out/${db}.sql" --remote
             npx wrangler r2 object put "${BACKUP_BUCKET}/weekly/${week}/${db}.sql" --file "backup-out/${db}.sql" --remote
             npx wrangler r2 object put "${BACKUP_BUCKET}/monthly/${month}/${db}.sql" --file "backup-out/${db}.sql" --remote

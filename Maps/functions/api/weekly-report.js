@@ -32,6 +32,10 @@ function clean(value) {
   return (value || "").toString().trim();
 }
 
+function adminDb(env) {
+  return env.ADMIN_DB;
+}
+
 function number(value) {
   const n = Number(value || 0);
   return Number.isFinite(n) ? n : 0;
@@ -73,7 +77,7 @@ function fallbackRecipients(env) {
 
 async function reportRecipients(env) {
   try {
-    const { results } = await env.DB.prepare(
+    const { results } = await adminDb(env).prepare(
       "SELECT email, display_name, unsubscribe_token FROM weekly_report_subscribers WHERE status='subscribed' ORDER BY lower(email)"
     ).all();
     return results.map((row) => ({
@@ -142,7 +146,7 @@ function normalizeReportSettings(row = {}) {
 
 async function reportSettings(env) {
   try {
-    const row = await env.DB.prepare("SELECT * FROM weekly_report_settings WHERE id=1").first();
+    const row = await adminDb(env).prepare("SELECT * FROM weekly_report_settings WHERE id=1").first();
     return normalizeReportSettings(row || {});
   } catch {
     return { ...DEFAULT_REPORT_SETTINGS };
@@ -279,7 +283,7 @@ async function getPendingSnapshot(db) {
   };
 }
 
-async function getCommunityMetrics(db, window) {
+async function getCommunityMetrics(db, auditDb, window) {
   const { since, until } = window;
   const [users, submittedPlaces, submittedEdits, reviews, events, eventEdits, eidSubmissions, audit, snapshot] = await Promise.all([
     countFirstSeenAccounts(db, since, until),
@@ -289,7 +293,7 @@ async function getCommunityMetrics(db, window) {
     countRowsInWindow(db, "SELECT created_at AS timestamp FROM events", since, until),
     countRowsInWindow(db, "SELECT timestamp FROM event_edits", since, until),
     countRowsInWindow(db, "SELECT timestamp FROM eid_new", since, until),
-    countAuditActions(db, ["approve-new", "approve-edit", "reject-new", "reject-edit"], since, until),
+    countAuditActions(auditDb, ["approve-new", "approve-edit", "reject-new", "reject-edit"], since, until),
     getPendingSnapshot(db),
   ]);
 
@@ -889,12 +893,12 @@ async function sendBrevoEmail(env, email, recipient) {
 }
 
 async function unsubscribeByToken(env, token) {
-  if (!env.DB) return { status: 503, title: "Report unavailable", message: "The report service is temporarily unavailable." };
+  if (!adminDb(env)) return { status: 503, title: "Report unavailable", message: "The report service is temporarily unavailable." };
   const cleanToken = clean(token);
   if (!cleanToken) return { status: 400, title: "Missing unsubscribe link", message: "This unsubscribe link is incomplete." };
-  const row = await env.DB.prepare("SELECT email FROM weekly_report_subscribers WHERE unsubscribe_token=?").bind(cleanToken).first();
+  const row = await adminDb(env).prepare("SELECT email FROM weekly_report_subscribers WHERE unsubscribe_token=?").bind(cleanToken).first();
   if (!row) return { status: 404, title: "Link not found", message: "This unsubscribe link is no longer active." };
-  await env.DB.prepare("UPDATE weekly_report_subscribers SET status='unsubscribed',unsubscribed_at=datetime('now'),updated_at=datetime('now') WHERE unsubscribe_token=?").bind(cleanToken).run();
+  await adminDb(env).prepare("UPDATE weekly_report_subscribers SET status='unsubscribed',unsubscribed_at=datetime('now'),updated_at=datetime('now') WHERE unsubscribe_token=?").bind(cleanToken).run();
   return { status: 200, title: "Unsubscribed", message: `${row.email} will no longer receive the Manarah weekly report.` };
 }
 
@@ -920,7 +924,7 @@ export async function onRequestPost(context) {
   const headers = { "Content-Type": "application/json" };
 
   if (!isAuthorized(request, env)) return json({ error: "Unauthorized" }, 401, headers);
-  if (!env.DB) return json({ error: "Missing DB binding" }, 500, headers);
+  if (!env.DB || !adminDb(env)) return json({ error: "Missing DB binding" }, 500, headers);
 
   let body = {};
   try {
@@ -962,9 +966,9 @@ export async function onRequestPost(context) {
     }
     const windows = makeComparisonWindows();
     const [currentCommunity, previousCommunity, baselineCommunity, currentAnalytics, previousAnalytics, baselineAnalytics] = await Promise.all([
-      getCommunityMetrics(env.DB, windows.current),
-      getCommunityMetrics(env.DB, windows.previous),
-      getCommunityMetrics(env.DB, windows.baseline),
+      getCommunityMetrics(env.DB, adminDb(env), windows.current),
+      getCommunityMetrics(env.DB, adminDb(env), windows.previous),
+      getCommunityMetrics(env.DB, adminDb(env), windows.baseline),
       runCloudflareQuery(env, windows.current),
       runCloudflareQuery(env, windows.previous),
       runCloudflareQuery(env, windows.baseline),
@@ -1005,7 +1009,7 @@ export async function onRequestPost(context) {
         deliveries.push(await sendBrevoEmail(env, buildEmail(report, recipient, origin, settings), recipient));
       }
       try {
-        await env.DB.prepare("UPDATE weekly_report_settings SET last_sent_at=datetime('now'),updated_at=datetime('now') WHERE id=1").run();
+        await adminDb(env).prepare("UPDATE weekly_report_settings SET last_sent_at=datetime('now'),updated_at=datetime('now') WHERE id=1").run();
       } catch {
         /* Older deployments can still send through the fallback recipient before this table exists. */
       }

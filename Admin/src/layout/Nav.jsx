@@ -47,13 +47,14 @@ export default function Nav({ open, collapsed, onCollapse, onSearch, navRef }) {
           const isCommunications = group.label === "Communications";
           const permittedLinks = group.links.filter(link => link.permission ? canRoute(access, link.permission) : canRoute(access, link.to));
           const links = permittedLinks.filter(link => !link.hidden);
-          if (!links.length && !(isCommunications && permittedLinks.length)) return null;
-          const active = links.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
+          const visibleLinks = collapsed ? links.filter(link => link.compact) : links;
+          if (!visibleLinks.length && !(isCommunications && permittedLinks.length)) return null;
+          const active = visibleLinks.some(link => location.pathname === link.to || (!link.end && location.pathname.startsWith(`${link.to}/`)));
           const isClosed = Boolean(group.label) && closedGroups.has(group.label) && !active;
           return (
           <section className={`nav-group${!group.label ? " nav-group-root" : ""}${isClosed ? " is-collapsed" : ""}`} key={group.label || "overview"}>
             {group.label && <button className="nav-group-label" type="button" onClick={() => setClosedGroups(current => { const next = new Set(current); if (next.has(group.label)) next.delete(group.label); else next.add(group.label); return next; })} aria-expanded={!isClosed}><span>{group.label}</span><Icons.right size={13} /></button>}
-            <div className="nav-group-links"><div className="nav-group-links-inner">{links.map((link) => {
+            <div className="nav-group-links"><div className="nav-group-links-inner">{visibleLinks.map((link) => {
               const Icon = Icons[link.icon];
               return (
                 <NavLink

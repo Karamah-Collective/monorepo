@@ -33,7 +33,7 @@ export async function onRequestPost({ request, env }) {
   const url = new URL(request.url);
   const expectedToken = String(env.GMAIL_PUBSUB_TOKEN || "");
   const expectedTopic = String(env.GMAIL_PUBSUB_TOPIC || "");
-  if (!env.DB || !expectedToken || !sameSecret(url.searchParams.get("token"), expectedToken)) return new Response(null, { status: 401 });
+  if (!env.ADMIN_DB || !expectedToken || !sameSecret(url.searchParams.get("token"), expectedToken)) return new Response(null, { status: 401 });
   if (expectedTopic && request.headers.get("X-Goog-Topic") !== expectedTopic) return new Response(null, { status: 401 });
   let envelope;
   try { envelope = await request.json(); } catch { return new Response(null, { status: 400 }); }
@@ -43,7 +43,7 @@ export async function onRequestPost({ request, env }) {
   const emailAddress = String(notification.emailAddress || "").toLowerCase();
   const historyId = String(notification.historyId || "");
   if (!emailAddress || !historyId) return new Response(null, { status: 204 });
-  const result = await syncGmailNotification(env.DB, env, emailAddress, historyId);
+  const result = await syncGmailNotification(env.ADMIN_DB, env, emailAddress, historyId);
   if (result.error) return new Response(JSON.stringify({ error: result.error }), { status: 500, headers: { "content-type": "application/json" } });
   await notifyRealtime(env, { type: "inbox.updated", mailbox: emailAddress, imported: result.imported || 0, historyId: result.historyId || historyId, at: Date.now() });
   return new Response(null, { status: 204 });

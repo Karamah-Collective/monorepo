@@ -12,7 +12,7 @@ Preserve progressive enhancement, reduced-motion support, focus behavior, mobile
 
 Website has separate public and private projections. `content.js` and `team.js` expose only active/published safe records. `admin.js` verifies Firebase identity and authorizes staff operations. `contact.js` validates public contact data and follows configured delivery/storage policy. `config.js` exposes only client-safe values.
 
-Shared D1 stores Website people, content, subscribers, and audit records. `_website-data.js` is the D1 data layer. `_sheets.js` and `reference/google_apps_script.js` remain compatibility paths; they have independent deployments and must not become an accidental second source of truth for new work.
+`karamah-admin-db` stores Website people, content, subscribers, and audit records. `_website-data.js` is the D1 data layer. `_sheets.js` and `reference/google_apps_script.js` remain compatibility paths; they have independent deployments and must not become an accidental second source of truth for new work.
 
 ## Services, tests, deployment
 

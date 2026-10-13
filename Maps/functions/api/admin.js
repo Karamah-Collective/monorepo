@@ -62,13 +62,101 @@ import {
   actionDescriptor,
   allowsPermissions,
   parsePermissions,
+  validatePermissionName,
 } from "../../../shared/admin-access.mjs";
+import {
+  bulkUpdateOperationsTasks,
+  createOperationsApproval,
+  createOperationsTask,
+  diffOperationsHistory,
+  getOperationsSettings,
+  getOperationsSummary,
+  getOperationsTask,
+  listOperationsApprovals,
+  listOperationsHistory,
+  listOperationsTasks,
+  recordOperationsRevision,
+  resolveOperationsApproval,
+  rollbackOperationsHistory,
+  saveOperationsSettings,
+  updateOperationsTask,
+} from "../_operations.js";
+import {
+  addProjectTaskComment,
+  listProjectTaskComments,
+  updateProjectTaskComment,
+  deleteProjectTaskComment,
+  bulkUpdateProjectTasks,
+  createProject,
+  createProjectMilestone,
+  updateProjectMilestone,
+  deleteProjectMilestone,
+  createProjectTask,
+  deleteProjectTask,
+  getProjectTask,
+  getProjectWorkspace,
+  listProjectActivity,
+  listProjectColumns,
+  listProjectLabels,
+  listProjectMembers,
+  removeProjectMember,
+  listProjectMilestones,
+  listProjectRelations,
+  listProjectTasks,
+  projectSummary,
+  listProjectSavedViews,
+  saveProjectSavedView,
+  deleteProjectSavedView,
+  duplicateProjectTask,
+  listProjectTimeEntries,
+  saveProjectTimeEntry,
+  listProjectAttachments,
+  getProjectAttachment,
+  createProjectAttachment,
+  deleteProjectAttachment,
+  listProjectCustomFields,
+  saveProjectCustomField,
+  deleteProjectCustomField,
+  saveProjectTaskCustomValue,
+  listProjectNotifications,
+  markProjectNotificationsRead,
+  listProjectTaskWatchers,
+  updateProjectTaskWatcher,
+  listProjects,
+  searchProjectWorkspace,
+  updateProject,
+  updateProjectTask,
+  updateProjectColumn,
+  deleteProjectColumn,
+  updateProjectMember,
+  attachProjectLabel,
+  createProjectColumn,
+  createProjectRelation,
+  deleteProjectRelation,
+  listProjectTaskLinks,
+  saveProjectTaskLink,
+  deleteProjectTaskLink,
+  saveProjectLabel,
+  detachProjectLabel,
+  deleteProjectLabel,
+  listProjectTaskTemplates,
+  saveProjectTaskTemplate,
+  deleteProjectTaskTemplate,
+  createProjectTaskFromTemplate,
+  listProjectWebhooks,
+  saveProjectWebhook,
+  deleteProjectWebhook,
+} from "../_projects.js";
+import { enqueueGoogleTaskSync, googleTasksStatus, startGoogleTasksOAuth, syncGoogleTasksForOwner } from "../_google-workspace.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
   "https://admin.maps.karamahcollective.com",
+  "https://projects.karamahcollective.com",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://localhost:5184",
+  "http://127.0.0.1:5184",
 ];
 function adminAllowedOrigin(request, env = {}) {
   const origin = request.headers.get("Origin") || "";
@@ -127,7 +215,7 @@ export async function resolveAccess(db, actor) {
 function allows(access, permission) { return allowsPermissions(access?.permissions || [], permission); }
 function permissionForAction(action) {
   const descriptor = actionDescriptor(action, "maps") || actionDescriptor(action);
-  if (descriptor?.permissions?.length) return descriptor.permissions[0];
+  if (descriptor?.permissions?.length) return descriptor.permissions;
   if (action === "save-my-profile") return "dashboard.view";
   if (["access-roles","access-members"].includes(action)) return "access.view";
   if (action === "request-access") return "access.request";
@@ -159,19 +247,38 @@ function inboxActionAllowed(access, action) {
   const write = INBOX_WRITE_ACTIONS.includes(action);
   return hasInboxPermission(access, write ? "write" : "read");
 }
+function adminDb(env) {
+  const db = env.ADMIN_DB;
+  if (!db) throw new Error("Admin database is not configured");
+  return db;
+}
+function projectsDb(env) {
+  const db = env.PROJECTS_DB;
+  if (!db) throw new Error("Projects database is not configured");
+  return db;
+}
+function operationsDb(env) {
+  return adminDb(env);
+}
+function parseOperationsJson(value, fallback = {}) { try { return typeof value === "string" ? JSON.parse(value) : (value ?? fallback); } catch { return fallback; } }
+async function recordRevisionBestEffort(env, data, actor) {
+  try { return await recordOperationsRevision(operationsDb(env), data, actor); } catch (error) { console.error("Operations revision record failed", String(error?.message || error)); return null; }
+}
 async function personalMailboxFor(db, env, actor) {
   const status = await personalGmailStatus(db, env, actor);
   return status.connected ? status.accountEmail : "";
 }
 async function authenticateAuthorized(request, env, action, data = {}) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
-  const access=await resolveAccess(env.DB, auth.actor);
+  const access=await resolveAccess(adminDb(env), auth.actor);
   if (action.startsWith("mcp-")) return access && allows(access, "dashboard.view") ? { ...auth, actor:{...auth.actor,name:auth.actor.name || access.displayName || auth.actor.email}, access } : { ok:false,status:403,error:"Your role does not allow MCP management." };
-  const personal = await personalMailboxFor(env.DB, env, auth.actor);
+  const personal = await personalMailboxFor(adminDb(env), env, auth.actor);
   const sharedMailbox = String(data.mailbox || "").toLowerCase() === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
   const personalAction = ["personal-gmail-status", "personal-gmail-oauth-start", "personal-gmail-disconnect", "personal-gmail-sync"].includes(action);
   const sharedGmailManagement = ["gmail-oauth-start", "gmail-disconnect"].includes(action);
-  const allowed = personalAction ? true
+  const projectAction = PROJECT_DATABASE_ACTIONS.has(action);
+  const allowed = projectAction ? true
+    : personalAction ? true
     : action === "inbox-list" ? true
     : action === "contact-gmail-status" ? canInboxMailbox(access, CONTACT_MAILBOX, "read", personal)
     : sharedGmailManagement ? action === "gmail-disconnect" ? auth.actor.email === INITIAL_ADMIN_EMAIL : sharedMailbox === CONTACT_MAILBOX ? canInboxMailbox(access, CONTACT_MAILBOX, "write", personal) : auth.actor.email === INITIAL_ADMIN_EMAIL
@@ -182,7 +289,7 @@ async function authenticateAuthorized(request, env, action, data = {}) {
 }
 async function authenticateWorkspaceMember(request, env) {
   const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
-  const access=await resolveAccess(env.DB, auth.actor);
+  const access=await resolveAccess(adminDb(env), auth.actor);
   return access ? { ...auth, actor:{...auth.actor,name:access.displayName||auth.actor.name}, access } : { ok:false,status:403,error:"Your account does not have a workspace role." };
 }
 async function getAccess(db, actor) { return { access:(await resolveAccess(db,actor))||{roleId:"",roleName:"No role",permissions:[]} }; }
@@ -248,7 +355,7 @@ async function getAccessRoles(db) { const {results}=await db.prepare("SELECT id,
 async function getAccessMembers(db) { const {results}=await db.prepare("SELECT m.email,m.display_name,m.role_id,r.name role_name,m.created_at FROM admin_role_members m JOIN admin_roles r ON r.id=m.role_id ORDER BY m.email").all(); return {members:results.map(r=>({email:r.email,displayName:firstName(r.display_name,r.email),roleId:r.role_id,roleName:r.role_name,createdAt:r.created_at}))}; }
 async function getAccessSettings(db) { const row=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first(); return {defaultRoleId:row?.default_role_id||"viewer"}; }
 async function saveAccessSettings(db,data) { const roleId=String(data.defaultRoleId||""); if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid default role."};await db.prepare("INSERT INTO admin_role_settings (id,default_role_id) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET default_role_id=excluded.default_role_id").bind(roleId).run();return {success:true}; }
-async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?data.role.permissions.filter(p=>/^(activity\.(read|write)|analytics\.(read|write)|reports\.(read|write)|maps\.(places|events|eid|social|styles|settings)\.(read|write)|moderation\.(places|events|reviews|wishes|contacts)\.(read|write)|inbox\.(contact|manarah)\.(read|write)|website\.(content|team|subscribers)\.(read|write)|links\.(read|write)|forms\.(read|write))$/.test(p)):[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
+async function saveAccessRole(db,data) { const id=String(data.role?.id||"").trim().toLowerCase().replace(/[^a-z0-9-]/g,"-").slice(0,60),name=String(data.role?.name||"").trim().slice(0,80),description=String(data.role?.description||"").trim().slice(0,240),permissions=Array.isArray(data.role?.permissions)?[...new Set(data.role.permissions.filter(p=>validatePermissionName(p) && p !== "*"))]:[]; if(!id||!name||!permissions.length||ROLE_PERMISSIONS[id])return {error:"Enter a unique role name and at least one permission."}; await db.prepare("INSERT INTO admin_roles (id,name,description,permissions,is_preset,updated_at) VALUES (?,?,?,?,0,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,permissions=excluded.permissions,updated_at=excluded.updated_at").bind(id,name,description,JSON.stringify(permissions)).run();return {success:true}; }
 async function saveAccessMember(db,data,actor) { const email=String(data.member?.email||"").trim().toLowerCase(),roleId=String(data.member?.roleId||"").trim(),displayName=firstName(data.member?.displayName,email); if(!/^[^\s@]+@karamahcollective\.com$/i.test(email))return {error:"Use a @karamahcollective.com email address."};if(!await db.prepare("SELECT id FROM admin_roles WHERE id=?").bind(roleId).first())return {error:"Choose a valid role."};const existing=await db.prepare("SELECT email FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).first();if(existing)await db.prepare("UPDATE admin_role_members SET role_id=?,added_by=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(roleId,actor.email,email).run();else await db.prepare("INSERT INTO admin_role_members (email,role_id,display_name,added_by,updated_at) VALUES (?,?,?,?,datetime('now'))").bind(email,roleId,displayName,actor.email).run();return {success:true}; }
 async function saveMyProfile(db,data,actor) { const displayName=firstName(data.displayName,actor.email);await resolveAccess(db,actor);await db.prepare("UPDATE admin_role_members SET display_name=?,updated_at=datetime('now') WHERE lower(email)=lower(?)").bind(displayName,actor.email).run();return {success:true,displayName}; }
 async function deleteAccessMember(db,data) { const email=String(data.email||"").trim().toLowerCase();if(email===INITIAL_ADMIN_EMAIL)return {error:"The initial administrator cannot be removed."};await db.prepare("DELETE FROM admin_role_members WHERE lower(email)=lower(?)").bind(email).run();return {success:true}; }
@@ -753,7 +860,80 @@ export const GET_ACTIONS = {
   "admin-social-videos": (db) => listAllSocialVideos(db),
   "admin-type-styles": (db) => getAdminTypeStyles(db),
   "weekly-report-subscribers": (db) => getWeeklyReportSubscribers(db),
+  "operations-summary": (db, _url, actor, env, access) => getOperationsSummary(operationsDb(env), db, actor, access),
+  "operations-tasks-list": (db, url, actor, env, access) => listProjectTasks(operationsDb(env), { ...Object.fromEntries(url.searchParams.entries()), projectId: url.searchParams.get("projectId") || "project-admin-operations" }, actor, access),
+  "operations-task-get": (db, url, actor, env, access) => getProjectTask(operationsDb(env), url.searchParams.get("id"), actor, access),
+  "operations-approvals-list": (_db, _url, actor, env, access) => listOperationsApprovals(operationsDb(env), actor, access),
+  "operations-history-list": (_db, url, _actor, env) => listOperationsHistory(operationsDb(env), Object.fromEntries(url.searchParams.entries())),
+  "operations-history-diff": (_db, url, _actor, env) => diffOperationsHistory(operationsDb(env), Object.fromEntries(url.searchParams.entries())),
+  "operations-settings-get": (_db, _url, _actor, env) => getOperationsSettings(operationsDb(env)),
+  "project-list": (db, _url, actor, _env, access) => listProjects(db, actor, access),
+  "project-search": (db, url, actor, _env, access) => searchProjectWorkspace(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-get": (db, url, actor, _env, access) => getProjectWorkspace(db, url.searchParams.get("projectId"), actor, access),
+  "project-summary": (db, url, actor, _env, access) => projectSummary(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-tasks-list": (db, url, actor, _env, access) => listProjectTasks(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-get": (db, url, actor, _env, access) => getProjectTask(db, url.searchParams.get("id"), actor, access),
+  "project-milestones-list": (db, url, actor, _env, access) => listProjectMilestones(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-comments-list": (db, url, actor, _env, access) => listProjectTaskComments(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-activity": (db, url, actor, _env, access) => listProjectActivity(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "google-tasks-status": (db, _url, actor, env) => googleTasksStatus(db, env, actor),
+  "project-members-list": (db, url, actor, _env, access) => listProjectMembers(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-columns-list": (db, url, actor, _env, access) => listProjectColumns(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-relations-list": (db, url, actor, _env, access) => listProjectRelations(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-labels-list": (db, url, actor, _env, access) => listProjectLabels(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-links-list": (db, url, actor, _env, access) => listProjectTaskLinks(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-saved-views-list": (db, url, actor, _env, access) => listProjectSavedViews(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-time-list": (db, url, actor, _env, access) => listProjectTimeEntries(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-attachments-list": (db, url, actor, _env, access) => listProjectAttachments(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-attachment-get": (db, url, actor, env, access) => getProjectAttachment(db, Object.fromEntries(url.searchParams.entries()), actor, access, env.ADMIN_MEDIA),
+  "project-custom-fields-list": (db, url, actor, _env, access) => listProjectCustomFields(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-task-watchers-list": (db, url, actor, _env, access) => listProjectTaskWatchers(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-notifications-list": (db, _url, actor, _env, access) => listProjectNotifications(db, {}, actor, access),
+  "project-task-templates-list": (db, url, actor, _env, access) => listProjectTaskTemplates(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-webhooks-list": (db, url, actor, _env, access) => listProjectWebhooks(db, Object.fromEntries(url.searchParams.entries()), actor, access),
 };
+
+// These actions read/write the Admin control plane. Map moderation and map
+// settings deliberately remain on env.DB, which is halal-finder-db.
+const ADMIN_DATABASE_ACTIONS = new Set([
+  "admin-access", "mcp-consent-request", "mcp-connections", "gmail-status", "contact-gmail-status",
+  "personal-gmail-status", "access-roles", "access-members", "access-settings", "admin-link-hub",
+  "inbox-list", "inbox-thread", "inbox-members", "inbox-typing", "weekly-report-subscribers", "admin-log",
+  "mcp-consent", "mcp-revoke-connection", "gmail-oauth-start", "gmail-sync", "gmail-disconnect",
+  "personal-gmail-oauth-start", "personal-gmail-sync", "personal-gmail-disconnect", "save-access-role",
+  "save-access-member", "save-my-profile", "save-access-settings", "delete-access-member", "request-access",
+  "forms-create", "forms-save", "forms-publish", "forms-status", "forms-duplicate", "forms-delete",
+  "forms-delete-submission", "save-link-hub-settings", "save-link-hub-link", "delete-link-hub-link",
+  "save-weekly-report-settings", "save-weekly-report-subscriber", "unsubscribe-weekly-report-subscriber",
+  "delete-weekly-report-subscriber", "operations-summary", "operations-tasks-list", "operations-task-get",
+  "operations-approvals-list", "operations-history-list", "operations-history-diff", "operations-settings-get",
+  "operations-task-create", "operations-task-update", "operations-task-assign", "operations-tasks-bulk",
+  "operations-approval-create", "operations-approval-resolve", "operations-history-record",
+  "operations-history-rollback", "operations-settings-update",
+]);
+// Project data has its own privacy boundary and database. Authentication,
+// Admin roles, MCP clients, and audit records remain in karamah-admin-db.
+const PROJECT_DATABASE_ACTIONS = new Set([
+  "project-list", "project-search", "project-get", "project-summary", "project-tasks-list", "project-task-get", "project-milestones-list", "project-task-comments-list", "project-task-activity",
+  "project-members-list", "project-columns-list", "project-relations-list", "project-labels-list", "project-task-links-list", "project-saved-views-list", "project-task-time-list", "project-task-attachments-list", "project-task-attachment-get", "project-custom-fields-list", "project-task-watchers-list", "project-notifications-list",
+  "project-task-templates-list", "project-webhooks-list",
+  "project-create", "project-update", "project-archive", "project-tasks-create", "project-task-update", "project-task-delete",
+  "project-tasks-bulk", "project-task-comment", "project-task-comment-update", "project-task-comment-delete", "project-task-duplicate", "project-task-assign", "project-milestone-create", "project-milestone-update", "project-milestone-delete", "project-member-update", "project-member-remove", "project-column-create", "project-column-update", "project-column-delete", "project-relation-create", "project-relation-delete", "project-task-link-save", "project-task-link-delete", "project-label-save", "project-label-attach", "project-label-detach", "project-label-delete", "project-saved-view-save", "project-saved-view-delete", "project-task-time-save", "project-task-attachment-upload", "project-task-attachment-delete", "project-custom-field-save", "project-custom-field-delete", "project-task-custom-value-save", "project-task-watcher-update", "project-notifications-read", "project-task-template-save", "project-task-template-delete", "project-task-from-template", "project-webhook-save", "project-webhook-delete",
+  "google-tasks-status", "google-tasks-oauth-start", "google-tasks-sync",
+]);
+const FORMS_DATABASE_ACTIONS = new Set([
+  "forms-list", "forms-get", "forms-version", "forms-submissions", "forms-analytics", "forms-export",
+  "forms-create", "forms-save", "forms-publish", "forms-status", "forms-duplicate", "forms-delete",
+  "forms-delete-submission",
+]);
+function databaseForAdminAction(env, action) {
+  if (FORMS_DATABASE_ACTIONS.has(action)) {
+    if (!env.FORMS_DB) throw new Error("Forms database is not configured");
+    return env.FORMS_DB;
+  }
+  if (PROJECT_DATABASE_ACTIONS.has(action)) return projectsDb(env);
+  return ADMIN_DATABASE_ACTIONS.has(action) ? adminDb(env) : env.DB;
+}
 
 /**
  * Server-side action execution shared by the Firebase Admin API and MCP.
@@ -767,11 +947,12 @@ export async function executeAdminAction({ action, method = "GET", data = {}, ac
   for (const [key, value] of Object.entries(data || {})) {
     if (value !== undefined && value !== null && typeof value !== "object" && value !== "") url.searchParams.set(key, String(value));
   }
+  const handlerDb = databaseForAdminAction(env, action);
   const result = method === "GET"
-    ? await handler(env.DB, url, actor, env, access, context)
-    : await handler(env.DB, { ...data, action }, env, actor, access);
+    ? await handler(handlerDb, url, actor, env, access, context)
+    : await handler(handlerDb, { ...data, action }, env, actor, access);
   if (method !== "GET" && action !== "inbox-typing") {
-    await logAdminAction(env.DB, {
+    await logAdminAction(adminDb(env), {
       action,
       actor,
       targetId: extractTargetId(data),
@@ -785,20 +966,21 @@ export async function executeAdminAction({ action, method = "GET", data = {}, ac
 export async function onRequestGet(context) {
   const { env, request } = context;
   const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Vary": "Origin", "Access-Control-Allow-Origin": adminAllowedOrigin(request, env) };
-  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
+  if (!env.DB || !env.ADMIN_DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "";
   const handler = GET_ACTIONS[action];
   const isReviewImage = action === "admin-review-image";
   if (!handler && !isReviewImage) return json({ error: "Unknown admin action" }, 400, headers);
+  if (PROJECT_DATABASE_ACTIONS.has(action) && !env.PROJECTS_DB) return json({ error: "Projects database is not configured." }, 503, headers);
 
   const auth = await authenticateAuthorized(request, env, action);
   if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
 
   try {
     if (isReviewImage) return await getAdminReviewImage(env.DB, env, url.searchParams.get("id") || "", headers);
-    return json(await handler(env.DB, url, auth.actor, env, auth.access, context), 200, headers);
+    return json(await handler(databaseForAdminAction(env, action), url, auth.actor, env, auth.access, context), 200, headers);
   } catch (err) {
     const message = String(err?.message || err || "");
     if (message.includes("weekly_report_") || message.includes("analytics_cache") || message.includes("analytics_daily_snapshots")) {
@@ -1408,6 +1590,11 @@ async function rejectEid(db, rowId) {
   return meta.rows_written > 0 ? { success: true } : { error: "Row not found (may already be processed)" };
 }
 
+async function queueGoogleTaskProjection(env, result, actor) {
+  if (result?.task) await enqueueGoogleTaskSync(projectsDb(env), result.task, actor).catch(() => {});
+  return result;
+}
+
 export const POST_ACTIONS = {
   "mcp-consent": async (db, data, env, actor) => {
     const { completeMcpConsent } = await import("../_mcp-auth.js");
@@ -1430,20 +1617,20 @@ export const POST_ACTIONS = {
   "delete-access-member": (db, data) => deleteAccessMember(db, data),
   "request-access": (db, data, env, actor) => requestAccess(db, data, env, actor),
   "forms-create": (db, data, _env, actor) => createForm(db, data, actor),
-  "forms-save": (db, data, _env, actor) => saveForm(db, data, actor),
-  "forms-publish": (db, data, _env, actor) => publishForm(db, data, actor),
+  "forms-save": async (db, data, env, actor) => { const result = await saveForm(db, data, actor); if (result.success) await recordRevisionBestEffort(env, { domain: "forms", recordType: "form", recordId: data.id, state: "draft", snapshot: data.schema, changeSummary: "Saved form draft", sourceAction: "forms-save" }, actor); return result; },
+  "forms-publish": async (db, data, env, actor) => { const result = await publishForm(db, data, actor); if (result.success) { const row = await db.prepare("SELECT draft_schema_json FROM forms WHERE id=?").bind(data.id).first(); await recordRevisionBestEffort(env, { domain: "forms", recordType: "form", recordId: data.id, state: "published", snapshot: parseOperationsJson(row?.draft_schema_json, {}), changeSummary: `Published form version ${result.versionNumber}`, sourceAction: "forms-publish" }, actor); } return result; },
   "forms-status": (db, data, _env, actor) => setFormStatus(db, data, actor),
   "forms-duplicate": (db, data, _env, actor) => duplicateForm(db, data, actor),
   "forms-delete": (db, data, _env, actor) => deleteForm(db, data, actor),
   "forms-delete-submission": (db, data, env) => deleteSubmission(db, data, env),
-  "save-link-hub-settings": (db, data) => saveLinkHubSettings(db, data),
-  "save-link-hub-link": (db, data) => saveLinkHubLink(db, data),
+  "save-link-hub-settings": async (db, data, env, actor) => { const result = await saveLinkHubSettings(db, data); if (result.success) await recordRevisionBestEffort(env, { domain: "links", recordType: "hub-settings", recordId: "1", state: "draft", snapshot: result.settings, changeSummary: "Saved link hub settings", sourceAction: "save-link-hub-settings" }, actor); return result; },
+  "save-link-hub-link": async (db, data, env, actor) => { const result = await saveLinkHubLink(db, data); if (result.success) await recordRevisionBestEffort(env, { domain: "links", recordType: "link", recordId: result.link?.id || data.link?.id, state: "draft", snapshot: result.link, changeSummary: "Saved link", sourceAction: "save-link-hub-link" }, actor); return result; },
   "delete-link-hub-link": (db, data) => deleteLinkHubLink(db, data),
   "save-weekly-report-settings": (db, data) => saveWeeklyReportSettings(db, data),
   "save-weekly-report-subscriber": (db, data, _env, actor) => saveWeeklyReportSubscriber(db, data, actor),
   "unsubscribe-weekly-report-subscriber": (db, data) => unsubscribeWeeklyReportSubscriber(db, data),
   "delete-weekly-report-subscriber": (db, data) => deleteWeeklyReportSubscriber(db, data),
-  "update-app-settings": (db, data) => saveAppSettings(db, data),
+  "update-app-settings": async (db, data, env, actor) => { const result = await saveAppSettings(db, data); if (result?.settings) await recordRevisionBestEffort(env, { domain: "maps", recordType: "app-settings", recordId: "1", state: "draft", snapshot: result.settings, changeSummary: "Saved map settings", sourceAction: "update-app-settings" }, actor); return result; },
   "approve-new": (db, data, env) => approveNew(db, data.rowId, env),
   "reject-new": (db, data) => rejectNew(db, data.rowId, data.reason || ""),
   "approve-edit": (db, data) => approveEdit(db, data.rowId),
@@ -1483,12 +1670,66 @@ export const POST_ACTIONS = {
   "reject-eid": (db, data) => rejectEid(db, data.rowId),
   "upsert-social-video": (db, data) => upsertSocialVideo(db, data.video || data),
   "delete-social-video": (db, data) => deleteSocialVideo(db, data.videoId || data.id),
+  "operations-task-create": async (_db, data, env, actor, access) => queueGoogleTaskProjection(env, await createProjectTask(operationsDb(env), { ...data, projectId: data.projectId || "project-admin-operations" }, actor, access), actor),
+  "operations-task-update": async (_db, data, env, actor, access) => queueGoogleTaskProjection(env, await updateProjectTask(operationsDb(env), data, actor, access), actor),
+  "operations-task-assign": async (_db, data, env, actor, access) => queueGoogleTaskProjection(env, await updateProjectTask(operationsDb(env), { ...data, assigneeUid: data.assigneeUid, assigneeEmail: data.assigneeEmail, statusCategory: data.statusCategory || "assigned" }, actor, access), actor),
+  "operations-tasks-bulk": (_db, data, env, actor, access) => bulkUpdateProjectTasks(operationsDb(env), data, actor, access),
+  "operations-approval-create": (_db, data, env, actor) => createOperationsApproval(operationsDb(env), data, actor),
+  "operations-approval-resolve": (_db, data, env, actor, access) => resolveOperationsApproval(operationsDb(env), data, actor, access),
+  "operations-history-record": (_db, data, env, actor) => recordOperationsRevision(operationsDb(env), data, actor),
+  "operations-history-rollback": (_db, data, env, actor) => rollbackOperationsHistory(operationsDb(env), data, actor),
+  "operations-settings-update": (_db, data, env, actor) => saveOperationsSettings(operationsDb(env), data, actor),
+  "project-create": (db, data, env, actor, access) => createProject(db, data, actor, access),
+  "project-update": (db, data, env, actor, access) => updateProject(db, data, actor, access),
+  "project-archive": (db, data, env, actor, access) => updateProject(db, { ...data, archived: true }, actor, access),
+  "project-tasks-create": async (db, data, env, actor, access) => queueGoogleTaskProjection(env, await createProjectTask(db, data, actor, access), actor),
+  "project-task-update": async (db, data, env, actor, access) => queueGoogleTaskProjection(env, await updateProjectTask(db, data, actor, access), actor),
+  "project-task-assign": async (db, data, env, actor, access) => queueGoogleTaskProjection(env, await updateProjectTask(db, data, actor, access), actor),
+  "project-task-delete": (db, data, env, actor, access) => deleteProjectTask(db, data, actor, access),
+  "project-tasks-bulk": (db, data, env, actor, access) => bulkUpdateProjectTasks(db, data, actor, access),
+  "project-task-comment": (db, data, env, actor, access) => addProjectTaskComment(db, data, actor, access),
+  "project-task-comment-update": (db, data, env, actor, access) => updateProjectTaskComment(db, data, actor, access),
+  "project-task-comment-delete": (db, data, env, actor, access) => deleteProjectTaskComment(db, data, actor, access),
+  "project-task-duplicate": (db, data, env, actor, access) => duplicateProjectTask(db, data, actor, access),
+  "project-milestone-create": (db, data, env, actor, access) => createProjectMilestone(db, data, actor, access),
+  "project-milestone-update": (db, data, env, actor, access) => updateProjectMilestone(db, data, actor, access),
+  "project-milestone-delete": (db, data, env, actor, access) => deleteProjectMilestone(db, data, actor, access),
+  "google-tasks-oauth-start": (db, data, env, actor) => startGoogleTasksOAuth(db, env, actor, data.returnTo),
+  "google-tasks-sync": (db, data, env, actor) => syncGoogleTasksForOwner(db, env, actor.uid),
+  "project-member-update": (db, data, env, actor, access) => updateProjectMember(db, data, actor, access),
+  "project-member-remove": (db, data, env, actor, access) => removeProjectMember(db, data, actor, access),
+  "project-column-create": (db, data, env, actor, access) => createProjectColumn(db, data, actor, access),
+  "project-column-update": (db, data, env, actor, access) => updateProjectColumn(db, data, actor, access),
+  "project-column-delete": (db, data, env, actor, access) => deleteProjectColumn(db, data, actor, access),
+  "project-relation-create": (db, data, env, actor, access) => createProjectRelation(db, data, actor, access),
+  "project-relation-delete": (db, data, env, actor, access) => deleteProjectRelation(db, data, actor, access),
+  "project-task-link-save": (db, data, env, actor, access) => saveProjectTaskLink(db, data, actor, access),
+  "project-task-link-delete": (db, data, env, actor, access) => deleteProjectTaskLink(db, data, actor, access),
+  "project-label-save": (db, data, env, actor, access) => saveProjectLabel(db, data, actor, access),
+  "project-label-attach": (db, data, env, actor, access) => attachProjectLabel(db, data, actor, access),
+  "project-label-detach": (db, data, env, actor, access) => detachProjectLabel(db, data, actor, access),
+  "project-label-delete": (db, data, env, actor, access) => deleteProjectLabel(db, data, actor, access),
+  "project-saved-view-save": (db, data, env, actor, access) => saveProjectSavedView(db, data, actor, access),
+  "project-saved-view-delete": (db, data, env, actor, access) => deleteProjectSavedView(db, data, actor, access),
+  "project-task-time-save": (db, data, env, actor, access) => saveProjectTimeEntry(db, data, actor, access),
+  "project-task-attachment-upload": (db, data, env, actor, access) => createProjectAttachment(db, data, actor, access, env.ADMIN_MEDIA),
+  "project-task-attachment-delete": (db, data, env, actor, access) => deleteProjectAttachment(db, data, actor, access, env.ADMIN_MEDIA),
+  "project-custom-field-save": (db, data, env, actor, access) => saveProjectCustomField(db, data, actor, access),
+  "project-custom-field-delete": (db, data, env, actor, access) => deleteProjectCustomField(db, data, actor, access),
+  "project-task-custom-value-save": (db, data, env, actor, access) => saveProjectTaskCustomValue(db, data, actor, access),
+  "project-task-watcher-update": (db, data, env, actor, access) => updateProjectTaskWatcher(db, data, actor, access),
+  "project-notifications-read": (db, data, env, actor) => markProjectNotificationsRead(db, data, actor),
+  "project-task-template-save": (db, data, env, actor, access) => saveProjectTaskTemplate(db, data, actor, access),
+  "project-task-template-delete": (db, data, env, actor, access) => deleteProjectTaskTemplate(db, data, actor, access),
+  "project-task-from-template": (db, data, env, actor, access) => createProjectTaskFromTemplate(db, data, actor, access),
+  "project-webhook-save": (db, data, env, actor, access) => saveProjectWebhook(db, data, actor, access, env.PROJECT_WEBHOOK_ENCRYPTION_KEY || env.MCP_INTERNAL_SIGNING_KEY),
+  "project-webhook-delete": (db, data, env, actor, access) => deleteProjectWebhook(db, data, actor, access),
 };
 
 export async function onRequestPost(context) {
   const { env, request } = context;
   const headers = { "Content-Type": "application/json", "Cache-Control": "no-store", "Vary": "Origin", "Access-Control-Allow-Origin": adminAllowedOrigin(request, env) };
-  if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
+  if (!env.DB || !env.ADMIN_DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
 
   let data;
   try { data = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
@@ -1496,18 +1737,19 @@ export async function onRequestPost(context) {
   if (data.action === "log-auth-event") {
     const auth = await authenticateWorkspaceMember(request, env);
     if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
-    return json(await handleLogAuthEvent(env.DB, auth.actor, data), 200, headers);
+    return json(await handleLogAuthEvent(adminDb(env), auth.actor, data), 200, headers);
   }
 
   const handler = POST_ACTIONS[data.action];
   if (!handler) return json({ error: "Unknown admin action" }, 400, headers);
+  if (PROJECT_DATABASE_ACTIONS.has(data.action) && !env.PROJECTS_DB) return json({ error: "Projects database is not configured." }, 503, headers);
 
   const auth = await authenticateAuthorized(request, env, data.action, data);
   if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
 
   let result;
   try {
-    result = await handler(env.DB, data, env, auth.actor, auth.access);
+    result = await handler(databaseForAdminAction(env, data.action), data, env, auth.actor, auth.access);
   } catch (err) {
     const message = String(err?.message || err || "");
     console.error("Admin action failed", { action: data.action, actor: auth.actor.email, message });
@@ -1518,7 +1760,7 @@ export async function onRequestPost(context) {
   }
 
   try {
-    if (data.action !== "inbox-typing") await logAdminAction(env.DB, {
+    if (data.action !== "inbox-typing") await logAdminAction(adminDb(env), {
       action: data.action, actor: auth.actor,
       targetId: extractTargetId(data), detail: buildAuditDetail(data), success: !!result.success,
     });

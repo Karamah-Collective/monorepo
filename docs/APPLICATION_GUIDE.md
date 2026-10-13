@@ -165,7 +165,7 @@ Contains cross-app invariants only: Firebase verification, Forms schema/logic, a
 
 ### `Maps/migrations/`
 
-Contains forward-only migrations for the shared D1 database and the historically colocated Forms schema. Read the migration sequence and `DEPLOYMENT.md` before applying any file remotely. Never edit a migration that may already be applied.
+Contains forward-only migrations for the Manarah/Admin databases and the historically colocated Forms schema. Read the migration sequence and `DEPLOYMENT.md` before applying any file remotely. Never edit a migration that may already be applied.
 
 ## Decision checklist
 

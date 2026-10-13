@@ -1,5 +1,7 @@
 import { beginMcpAuthorization, exchangeMcpToken, mcpMetadata, oauthMetadata, registerMcpClient, refreshMcpToken, revokeMcpToken } from "../_mcp-auth.js";
 
+const adminDb = (env) => env.ADMIN_DB;
+
 function headers() {
   return { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "https://admin.karamahcollective.com", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
 }
@@ -24,7 +26,7 @@ export async function onRequestGet({ request, env }) {
   if (operation !== "authorize") return failure("Unknown OAuth metadata operation.", 404, env);
   try {
     const url = new URL(request.url);
-    const location = await beginMcpAuthorization(env.DB, Object.fromEntries(url.searchParams), env);
+    const location = await beginMcpAuthorization(adminDb(env), Object.fromEntries(url.searchParams), env);
     return Response.redirect(location, 302);
   } catch (error) {
     return failure(error?.message || "Invalid authorization request.", 400, env);
@@ -32,20 +34,20 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!env.DB) return failure("Service temporarily unavailable.", 503);
+  if (!adminDb(env)) return failure("Service temporarily unavailable.", 503);
   let data;
   try { data = await body(request); } catch { return failure("Invalid request body."); }
   const operation = String(data.operation || new URL(request.url).searchParams.get("operation") || "");
   try {
-    if (operation === "register") return Response.json(await registerMcpClient(env.DB, data), { status: 201, headers: headers() });
+    if (operation === "register") return Response.json(await registerMcpClient(adminDb(env), data), { status: 201, headers: headers() });
     if (operation === "token") {
       if (data.grant_type && !["authorization_code", "refresh_token"].includes(data.grant_type)) return failure("Unsupported grant type.");
       const result = data.grant_type === "refresh_token"
-        ? await refreshMcpToken(env.DB, data, env)
-        : await exchangeMcpToken(env.DB, data, env);
+        ? await refreshMcpToken(adminDb(env), data, env)
+        : await exchangeMcpToken(adminDb(env), data, env);
       return Response.json(result, { headers: headers() });
     }
-    if (operation === "revoke") return Response.json(await revokeMcpToken(env.DB, data), { headers: headers() });
+    if (operation === "revoke") return Response.json(await revokeMcpToken(adminDb(env), data), { headers: headers() });
     return failure("Unknown OAuth operation.", 404);
   } catch (error) {
     const message = String(error?.message || "OAuth request failed.");
