@@ -72,6 +72,7 @@ vi.mock("./column", () => ({
   ),
 }));
 vi.mock("./task-card", () => ({ default: () => null }));
+vi.mock("./task-card/task-card-content", () => ({ default: () => null }));
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({
     children,

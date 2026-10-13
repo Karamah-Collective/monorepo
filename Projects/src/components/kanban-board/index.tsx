@@ -39,7 +39,7 @@ import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
-import TaskCard from "./task-card";
+import TaskCardContent from "./task-card/task-card-content";
 
 type KanbanBoardProps = {
   project: ProjectWithTasks;
@@ -360,11 +360,19 @@ function KanbanBoard({
           </div>
         </div>
       </div>
-      <DragOverlay dropAnimation={reduceMotion ? null : dropAnimation}>
+      <DragOverlay
+        adjustScale={false}
+        dropAnimation={reduceMotion ? null : dropAnimation}
+      >
         {activeTask ? (
-          <div className="rotate-1 scale-[1.03] shadow-lg transition-[rotate,scale] duration-150 ease-out starting:rotate-0 starting:scale-100 motion-reduce:transition-none">
+          <div className="pointer-events-none rotate-1 scale-[1.03] shadow-lg transition-[rotate,scale] duration-150 ease-out starting:rotate-0 starting:scale-100 motion-reduce:transition-none">
             <div className="ring-2 ring-ring/35 rounded-lg">
-              <TaskCard task={activeTask} isFinalColumn={activeIsFinal} />
+              <TaskCardContent
+                task={activeTask}
+                disableDragDrop
+                isFinalColumn={activeIsFinal}
+                isDragging
+              />
             </div>
           </div>
         ) : null}
