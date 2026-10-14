@@ -102,7 +102,7 @@ export default function ProjectLayout({
   return (
     <Layout>
       <Layout.Header
-        className={cn("h-11 border-border/80 px-2", {
+        className={cn("h-11 border-border/80", {
           "bg-card/90 backdrop-blur": !!background,
         })}
       >

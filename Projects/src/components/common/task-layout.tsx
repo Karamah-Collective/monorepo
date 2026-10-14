@@ -61,7 +61,7 @@ export default function TaskLayout({
     <div data-task-view className="contents">
       <Layout className="flex flex-col lg:flex-row">
         <div className="flex min-h-0 flex-1 flex-col">
-          <Layout.Header className="h-11 border-border/80 px-2">
+          <Layout.Header className="h-11 border-border/80">
             <div className="flex w-full items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <TooltipProvider>
