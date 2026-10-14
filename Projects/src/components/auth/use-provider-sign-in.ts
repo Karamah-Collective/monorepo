@@ -10,6 +10,7 @@ type ProviderSignInOptions = {
   errorCallbackURL: string;
   captcha: AuthCaptcha;
   getName: (provider: AuthProvider) => string;
+  onSuccess?: () => void;
 };
 
 export function useProviderSignIn({
@@ -17,6 +18,7 @@ export function useProviderSignIn({
   errorCallbackURL,
   captcha,
   getName,
+  onSuccess,
 }: ProviderSignInOptions) {
   const { t } = useTranslation();
   const [pending, setPending] = useState<AuthProvider | null>(null);
@@ -38,6 +40,13 @@ export function useProviderSignIn({
                 options,
               );
         if (result.error) throw new Error(result.error.message);
+        // Firebase completes the popup without a browser redirect. Clear the
+        // pending state and let the caller move the SPA to its destination.
+        // Leaving this pending was the cause of the permanent spinner shown
+        // after a successful Google account selection.
+        setPending(null);
+        captcha.reset();
+        onSuccess?.();
         return true;
       } catch (error) {
         toast.error(
@@ -50,7 +59,7 @@ export function useProviderSignIn({
         return false;
       }
     },
-    [callbackURL, errorCallbackURL, captcha, getName, t],
+    [callbackURL, errorCallbackURL, captcha, getName, onSuccess, t],
   );
 
   return { pending, signIn };

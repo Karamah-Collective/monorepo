@@ -93,6 +93,7 @@ function SignUp() {
     errorCallbackURL: `${baseUrl}/auth/sign-up`,
     captcha,
     getName,
+    onSuccess: () => void navigate({ to: destination }),
   });
   const guest = useGuestSignIn(captcha, () => navigate({ to: "/dashboard" }));
   const busy = providerSignIn.pending !== null || guest.isPending;

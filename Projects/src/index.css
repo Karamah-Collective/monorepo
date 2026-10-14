@@ -66,6 +66,18 @@ input:-webkit-autofill:active {
 
 @custom-variant dark (&:is(.dark *));
 
+/* The shared mark is dark by default. Auth is rendered before the rest of the
+   shell is mounted, so keep the contrast rule explicit instead of relying on
+   an inherited text color or a theme-specific background. */
+.auth-brand-logo {
+  filter: none;
+  transition: filter 160ms ease, opacity 160ms ease;
+}
+
+.dark .auth-brand-logo {
+  filter: invert(1);
+}
+
 /* Gives small icon-only controls a 44px touch target on touch screens without
    changing their visual size (same idea as Button's pointer-coarse ::after).
    The element must be positioned (`relative` or `absolute`). */

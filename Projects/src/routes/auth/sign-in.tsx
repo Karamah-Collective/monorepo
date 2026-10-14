@@ -82,6 +82,7 @@ function SignIn() {
       errorCallbackURL: `${baseUrl}/auth/sign-in`,
       captcha,
       getName,
+      onSuccess: () => void navigate({ to: destination }),
     });
   const guest = useGuestSignIn(captcha, () => navigate({ to: destination }));
   const autoLogin =

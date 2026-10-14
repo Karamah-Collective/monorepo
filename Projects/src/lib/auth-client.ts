@@ -26,10 +26,41 @@ const workspace = {
 
 let firebaseUser: FirebaseUser | null | undefined;
 const listeners = new Set<() => void>();
-onAuthStateChanged(auth, (user) => {
+function publishFirebaseUser(user: FirebaseUser | null) {
   firebaseUser = user || null;
   for (const listener of listeners) listener();
-});
+}
+
+onAuthStateChanged(auth, publishFirebaseUser);
+
+const GOOGLE_SIGN_IN_TIMEOUT_MS = 45_000;
+
+async function signInWithGooglePopup() {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      signInWithPopup(auth, googleProvider),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              "Google sign-in did not finish. Check the Firebase authorized domains and try again.",
+            ),
+          );
+        }, GOOGLE_SIGN_IN_TIMEOUT_MS);
+      }),
+    ]);
+
+    // Firebase normally publishes this through onAuthStateChanged on the next
+    // turn. Publish the resolved credential immediately as well, so the
+    // Projects route guard and auth provider cannot observe a stale signed-out
+    // snapshot after the popup has already completed.
+    publishFirebaseUser(result.user);
+    return result.user;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -220,8 +251,8 @@ export const authClient: any = {
   signIn: {
     social: async () => {
       try {
-        await signInWithPopup(auth, googleProvider);
-        return { data: sessionValue(), error: null };
+        const user = await signInWithGooglePopup();
+        return { data: sessionValue(user), error: null };
       } catch (error) {
         return {
           data: null,
