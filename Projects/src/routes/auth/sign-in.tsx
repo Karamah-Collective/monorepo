@@ -73,7 +73,7 @@ function SignIn() {
   const destination =
     redirectPath ??
     (invitationId ? `/invitation/accept/${invitationId}` : "/dashboard");
-  const baseUrl = import.meta.env.VITE_CLIENT_URL;
+  const baseUrl = import.meta.env.VITE_CLIENT_URL || window.location.origin;
   const providers = externalInvitation ? [] : getProviders(config);
   const emailMethod = externalInvitation ? "password" : getEmailMethod(config);
   const getName = useProviderName(config?.customOAuthName);

@@ -615,8 +615,8 @@ and Preview build variables**:
 
 | Name | Required | Value / rule |
 | --- | --- | --- |
-| `VITE_ADMIN_ORIGIN` | Yes | `https://admin.karamahcollective.com`; no trailing slash |
-| `VITE_CLIENT_URL` | Yes for hosted auth/invitation links | `https://projects.karamahcollective.com`; no trailing slash |
+| `VITE_ADMIN_ORIGIN` | Recommended | `https://admin.karamahcollective.com`; no trailing slash. Hosted Projects safely defaults to this canonical origin if the variable is omitted. |
+| `VITE_CLIENT_URL` | Recommended for hosted auth/invitation links | `https://projects.karamahcollective.com`; no trailing slash. Hosted auth falls back to the current browser origin if omitted. |
 | `VITE_TURNSTILE_SITE_KEY` | Optional | Set only when the Projects auth/API configuration requires Cloudflare Turnstile. The UI hides the CAPTCHA when this is absent. |
 | `VITE_SENTRY_DSN` | Optional | Public Sentry browser DSN, only if Projects error reporting is enabled. |
 | `VITE_DEMO_MODE` | No for real deployments | Leave unset or set `false`. Never enable it on the production project. |

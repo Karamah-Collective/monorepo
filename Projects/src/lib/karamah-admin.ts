@@ -1,12 +1,9 @@
-import { auth } from "../firebase.js";
+import { ADMIN_ORIGIN, auth } from "../firebase.js";
 
-const adminOrigin = import.meta.env.VITE_ADMIN_ORIGIN || "";
+const adminOrigin = (import.meta.env.VITE_ADMIN_ORIGIN || ADMIN_ORIGIN).replace(/\/+$/, "");
 
 function adminEndpoint(): string {
   if (import.meta.env.DEV) return "/api/admin";
-  if (!adminOrigin) {
-    throw new Error("VITE_ADMIN_ORIGIN must be configured for the hosted Projects app.");
-  }
   return new URL("/api/admin", adminOrigin).toString();
 }
 
