@@ -1,9 +1,10 @@
 name = "maps"
 compatibility_date = "2026-08-04"
 
-# Local development configuration only. No pages_build_output_dir: deployed
-# Pages bindings stay managed in the Cloudflare dashboard. DB is Manarah-only;
-# ADMIN_DB is the unified Admin control plane. See ../DEPLOYMENT.md.
+# Local development configuration and a checked-in reference for the Pages
+# bindings. Production Pages settings must still be kept in sync in Cloudflare.
+# DB is Manarah-only; ADMIN_DB is the unified Admin control plane. See
+# ../DEPLOYMENT.md.
 [[d1_databases]]
 binding = "DB"
 database_name = "halal-finder-db"
@@ -16,11 +17,11 @@ database_id = "a52a5509-eabd-44a1-979c-c4491e3ca1a8"
 
 # Projects are a separate privacy boundary. Create the production database
 # as `karamah-projects-db`, then bind it as PROJECTS_DB in the Maps/Admin
-# Pages deployment. The ID is intentionally omitted here so local setup works
-# before the production database is created.
+# Pages deployment.
 [[d1_databases]]
 binding = "PROJECTS_DB"
 database_name = "karamah-projects-db"
+database_id = "6c48dbaa-e83a-46f8-aa89-8131f7e5a12c"
 migrations_dir = "project-migrations"
 
 [[d1_databases]]
