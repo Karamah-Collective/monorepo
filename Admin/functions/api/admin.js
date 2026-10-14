@@ -32,6 +32,17 @@ function applyCors(responseHeaders, request) {
  */
 export async function onRequest(context) {
   const { request, env } = context;
+
+  // Answer the browser preflight at this boundary. Forwarding OPTIONS to the
+  // Maps service makes the Projects -> Admin contract depend on a second
+  // deployment's CORS behavior and can turn every API call into "Failed to
+  // fetch" before the actual request is sent.
+  if (request.method === "OPTIONS") {
+    const responseHeaders = new Headers();
+    applyCors(responseHeaders, request);
+    return new Response(null, { status: 204, headers: responseHeaders });
+  }
+
   const headers = new Headers(request.headers);
   headers.delete("host");
 

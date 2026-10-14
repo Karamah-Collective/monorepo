@@ -33,13 +33,18 @@ export async function requestAdmin({
       if (value === undefined || value === null || value === "") continue;
       url.searchParams.set(key, String(value));
     }
-    return fetch(url, { headers, credentials: "include" });
+    // Projects authenticates with the Firebase bearer token above. Keep
+    // browser cookies for local same-origin development, but do not request
+    // cross-origin credentials in production: the Admin proxy intentionally
+    // does not expose cookies and browsers reject the response as CORS when
+    // `credentials: "include"` is used without Allow-Credentials.
+    return fetch(url, { headers, credentials: "same-origin" });
   }
 
   return fetch(url, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    credentials: "include",
+    credentials: "same-origin",
     body: JSON.stringify({ action, ...body }),
   });
 }
