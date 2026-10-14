@@ -29,6 +29,7 @@ type PasswordSignUpValues = { name: string; email: string; password: string };
 type PasswordSignUpFormProps = {
   defaultEmail?: string;
   invitationId?: string;
+  readOnlyEmail?: boolean;
   captcha: AuthCaptchaState;
   disabled?: boolean;
   onSuccess: () => void;
@@ -37,6 +38,7 @@ type PasswordSignUpFormProps = {
 export function PasswordSignUpForm({
   defaultEmail,
   invitationId,
+  readOnlyEmail = false,
   captcha,
   disabled = false,
   onSuccess,
@@ -133,6 +135,8 @@ export function PasswordSignUpForm({
                   type="email"
                   autoComplete="email"
                   placeholder={t("auth:forms.emailPlaceholder")}
+                  readOnly={readOnlyEmail}
+                  aria-readonly={readOnlyEmail || undefined}
                   {...field}
                 />
               </FormControl>

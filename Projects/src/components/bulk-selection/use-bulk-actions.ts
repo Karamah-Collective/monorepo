@@ -64,8 +64,13 @@ export function useBulkActions(
       await action();
       toast.success(success, { icon });
       clearSelection();
-    } catch (_error) {
-      toast.error(error);
+    } catch (caughtError) {
+      toast.error(error, {
+        description:
+          caughtError instanceof Error && caughtError.message
+            ? caughtError.message
+            : undefined,
+      });
     }
   };
 
@@ -160,8 +165,11 @@ export function useBulkActions(
           });
           setDeleteCount(null);
           clearSelection();
-        } catch (_error) {
-          toast.error(t("tasks:bulk.deleteError"));
+        } catch (error) {
+          toast.error(t("tasks:bulk.deleteError"), {
+            description:
+              error instanceof Error && error.message ? error.message : undefined,
+          });
         }
       },
     },

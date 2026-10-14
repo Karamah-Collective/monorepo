@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import useCreateCustomField from "@/hooks/mutations/custom-field/use-create-custom-field";
 import useUpdateCustomField from "@/hooks/mutations/custom-field/use-update-custom-field";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type CustomFieldDialogProps = {
   projectId: string;
@@ -80,24 +80,25 @@ export function CustomFieldDialog({
     try {
       if (field) {
         await updateField({ id: field.id, data: toUpdatePayload(form) });
-        toast.success(t("settings:customFields.updateSuccess"));
+        toast.success(t("settings:customFields.updateSuccess"), {
+          description: toastSubject(form.name),
+        });
       } else {
         await createField(toCreatePayload(form, projectId));
         toast.success(t("settings:customFields.createSuccess"), {
+          description: toastSubject(form.name),
           icon: ListPlusIcon,
         });
       }
       onOpenChange(false);
     } catch (error) {
       toast.error(
-        errorMessage(
-          error,
-          t(
-            field
-              ? "settings:customFields.updateError"
-              : "settings:customFields.createError",
-          ),
+        t(
+          field
+            ? "settings:customFields.updateError"
+            : "settings:customFields.createError",
         ),
+        { description: errorMessage(error, "") },
       );
     }
   };

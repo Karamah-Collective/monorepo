@@ -15,6 +15,19 @@ type ToastOptions = {
   cancel?: ToastAction;
 };
 
+const MAX_SUBJECT_LENGTH = 96;
+const TOAST_TIMEOUT = 4500;
+
+function toastSubject(value: string | null | undefined) {
+  const subject = value?.trim().replace(/\s+/g, " ");
+  if (!subject) return undefined;
+  const truncated =
+    subject.length > MAX_SUBJECT_LENGTH
+      ? `${subject.slice(0, MAX_SUBJECT_LENGTH - 3)}...`
+      : subject;
+  return `"${truncated}"`;
+}
+
 let repeat = 0;
 
 function addToast(
@@ -29,6 +42,7 @@ function addToast(
   return toastManager.add({
     id,
     title,
+    timeout: TOAST_TIMEOUT,
     data: { repeat, icon: options?.icon },
     description: options?.description,
     type: variant,
@@ -59,6 +73,7 @@ const loading: ToastFn = (title, options) =>
   toastManager.add({
     title,
     description: options?.description,
+    timeout: 0,
     type: "loading",
   });
 const dismiss = (id?: ToastId) => {
@@ -77,4 +92,4 @@ const toast = Object.assign(message, {
 });
 
 export type { ToastOptions };
-export { toast };
+export { toast, toastSubject };

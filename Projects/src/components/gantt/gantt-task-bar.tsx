@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { cn } from "@/lib/cn";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 
 const CLICK_MOVE_THRESHOLD_PX = 4;
@@ -155,13 +155,18 @@ export function GanttTaskBar({
           startDate: toIsoDay(nextStart),
           dueDate: toIsoDay(nextEnd),
         });
+        toast.success(t("tasks:gantt.updateDatesSuccess"), {
+          description: [
+            toastSubject(task.title),
+            `${nextStart.toLocaleDateString()} → ${nextEnd.toLocaleDateString()}`,
+          ].join(" · "),
+        });
         return true;
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("tasks:gantt.updateDatesError"),
-        );
+        toast.error(t("tasks:gantt.updateDatesError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
         return false;
       }
     },

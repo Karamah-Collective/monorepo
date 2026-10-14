@@ -50,14 +50,6 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
     isLoading: false,
   }),
 }));
-const myAccess = vi.fn(() => ({
-  isPending: false,
-  isError: false,
-  data: { projectAccess: "all", projectIds: [] as string[] },
-}));
-vi.mock("@/hooks/queries/workspace-users/use-get-my-project-access", () => ({
-  default: () => myAccess(),
-}));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("./invitation-link-field", () => ({ default: () => null }));
 function wrapper({ children }: PropsWithChildren) {
@@ -117,7 +109,8 @@ describe("invitation email delivery errors", () => {
     );
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        "The invitation email could not be sent.",
+        "team:inviteModal.error",
+        { description: "The invitation email could not be sent." },
       ),
     );
     expect(toast.success).not.toHaveBeenCalled();
@@ -149,78 +142,36 @@ describe("invitation project access", () => {
     submit();
     await waitFor(() =>
       expect(inviteMember).toHaveBeenCalledWith(
-        expect.objectContaining({ projectAccess: "all", projectIds: [] }),
+        expect.objectContaining({
+          projectAccess: "all",
+          projectIds: [],
+          workspaceRole: "member",
+          projectRoles: {},
+        }),
       ),
     );
   });
 
-  it("starts a limited inviter on selected projects", async () => {
-    myAccess.mockReturnValue({
-      isPending: false,
-      isError: false,
-      data: { projectAccess: "selected", projectIds: ["project-a"] },
-    });
+  it("keeps workspace access available from the workspace invite dialog", async () => {
     render(<InviteTeamMemberModal open onClose={vi.fn()} />, { wrapper });
     await fillEmail();
 
-    expect(
-      screen.getByRole("radio", { name: /team:projectAccess.allProjects/ }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
-      screen.getByRole("radio", {
-        name: /team:projectAccess.selectedProjects/,
-      }),
-    ).toHaveAttribute("aria-checked", "true");
-    myAccess.mockReturnValue({
-      isPending: false,
-      isError: false,
-      data: { projectAccess: "all", projectIds: [] },
-    });
+    expect(screen.getByRole("combobox", { name: "Workspace access" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Project access for Alpha" })).toBeEnabled();
   });
 
-  it("waits for the inviter's own access before sending", async () => {
-    myAccess.mockReturnValue({
-      isPending: true,
-      isError: false,
-      data: undefined as unknown as {
-        projectAccess: string;
-        projectIds: string[];
-      },
-    });
+  it("sends a project-level override alongside workspace access", async () => {
     render(<InviteTeamMemberModal open onClose={vi.fn()} />, { wrapper });
     await fillEmail();
-
-    expect(
-      screen.getByRole("button", { name: "team:inviteModal.sendInvitation" }),
-    ).toBeDisabled();
-    myAccess.mockReturnValue({
-      isPending: false,
-      isError: false,
-      data: { projectAccess: "all", projectIds: [] },
-    });
-  });
-
-  it("requires a project before inviting with selected access", async () => {
-    render(<InviteTeamMemberModal open onClose={vi.fn()} />, { wrapper });
-    await fillEmail();
-    fireEvent.click(
-      screen.getByRole("radio", {
-        name: /team:projectAccess.selectedProjects/,
-      }),
-    );
-    submit();
-    expect(
-      await screen.findByText("team:projectAccess.selectAtLeastOne"),
-    ).toBeVisible();
-    expect(inviteMember).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("checkbox", { name: "Beta" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Project access for Beta" }));
     submit();
     await waitFor(() =>
       expect(inviteMember).toHaveBeenCalledWith(
         expect.objectContaining({
           projectAccess: "selected",
           projectIds: ["project-b"],
+          workspaceRole: "member",
+          projectRoles: { "project-b": "viewer" },
         }),
       ),
     );

@@ -1,6 +1,12 @@
 import { client } from "@karamah/projects-libs";
 
 import { HttpError } from "@/lib/http-error";
+import { collectionResponse } from "@/lib/collection-response";
+
+export type CustomFieldFilterValue = {
+  fieldId: string;
+  values: string[];
+};
 
 async function getCustomFieldFilterValues({
   projectId,
@@ -17,7 +23,14 @@ async function getCustomFieldFilterValues({
     throw await HttpError.fromResponse(response);
   }
 
-  return response.json();
+  const data = await response.json();
+  return collectionResponse<CustomFieldFilterValue>(data, [
+    "values",
+    "filterValues",
+    "data",
+    "items",
+    "results",
+  ]);
 }
 
 export default getCustomFieldFilterValues;

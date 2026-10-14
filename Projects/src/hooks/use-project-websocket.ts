@@ -1,4 +1,4 @@
-import { applyBoardReorder } from "@/components/kanban-board/apply-reorder";
+import { applyBoardReorder } from "@/components/kanban-board/board-model";
 import {
   getBoardCacheVersion,
   markBoardCacheChanged,

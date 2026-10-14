@@ -1,5 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   addDays,
   differenceInCalendarDays,
@@ -357,27 +358,61 @@ export function WorkspaceTimelineModeToggle({
   mode: WorkspaceTimelineMode;
   onChange: (mode: WorkspaceTimelineMode) => void;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-background p-0.5" role="group" aria-label="Timeline grouping">
       <Button
-        variant={mode === "projects" ? "secondary" : "ghost"}
+        variant="ghost"
         size="xs"
+        className={cn("relative isolate", mode === "projects" && "text-foreground")}
         aria-pressed={mode === "projects"}
+        aria-label="Group by project"
         title="Group by project"
         onClick={() => onChange("projects")}
       >
-        <FolderKanban aria-hidden="true" />
-        <span className="hidden sm:inline">Projects</span>
+        {mode === "projects" && (
+          <motion.span
+            layoutId="workspace-timeline-mode-active"
+            className="absolute inset-0 -z-10 rounded-md bg-accent shadow-xs/5"
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.2, ease: [0.23, 1, 0.32, 1] }
+            }
+            aria-hidden="true"
+          />
+        )}
+        <span className="relative z-10 inline-flex items-center gap-1.5">
+          <FolderKanban aria-hidden="true" />
+          <span className="hidden sm:inline">Projects</span>
+        </span>
       </Button>
       <Button
-        variant={mode === "people" ? "secondary" : "ghost"}
+        variant="ghost"
         size="xs"
+        className={cn("relative isolate", mode === "people" && "text-foreground")}
         aria-pressed={mode === "people"}
+        aria-label="Group by person"
         title="Group by person"
         onClick={() => onChange("people")}
       >
-        <UserRound aria-hidden="true" />
-        <span className="hidden sm:inline">People</span>
+        {mode === "people" && (
+          <motion.span
+            layoutId="workspace-timeline-mode-active"
+            className="absolute inset-0 -z-10 rounded-md bg-accent shadow-xs/5"
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.2, ease: [0.23, 1, 0.32, 1] }
+            }
+            aria-hidden="true"
+          />
+        )}
+        <span className="relative z-10 inline-flex items-center gap-1.5">
+          <UserRound aria-hidden="true" />
+          <span className="hidden sm:inline">People</span>
+        </span>
       </Button>
     </div>
   );

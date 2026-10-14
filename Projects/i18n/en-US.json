@@ -290,7 +290,7 @@
 			"pageTitleAccept": "Accept Invitation",
 			"pageTitleError": "Invitation Error",
 			"pageTitleInvalid": "Invalid Invitation",
-			"joinWorkspace": "Join {{workspaceName}}",
+			"joinWorkspace": "Join workspace",
 			"createAccount": "Create account",
 			"signIn": "Sign in",
 			"toast": {
@@ -316,7 +316,7 @@
 			},
 			"invalid": {
 				"title": "This invitation is no longer valid",
-				"description": "It may have been accepted or canceled. Ask a workspace admin for a new one."
+				"description": "It may have been accepted or canceled. Ask the person who invited you for a new one."
 			},
 			"loadFailed": {
 				"title": "Couldn't load this invitation",
@@ -1686,6 +1686,10 @@
 			"copy": "Copy link",
 			"toastUpdated": "Visibility updated",
 			"toastUpdateError": "Failed to update visibility",
+			"memberAccessUpdated": "Project access updated",
+			"memberAccessError": "Failed to update project access",
+			"memberRemoved": "Project member removed",
+			"memberRemoveError": "Failed to remove project member",
 			"thisWorkspace": "this workspace",
 			"membersTitle": "{{workspace}} members",
 			"membersDescription": "Workspace-visible projects are available to every Karamah member.",
@@ -1710,9 +1714,12 @@
 			"noProjects": "No projects"
 		},
 		"columnEditor": {
+			"createSuccess": "Column created",
 			"toastCreateError": "Failed to create column",
+			"updateSuccess": "Column updated",
 			"toastRenameError": "Failed to update column",
 			"toastUpdateError": "Failed to update column",
+			"deleteSuccess": "Column deleted",
 			"toastDeleteError": "Failed to delete column",
 			"pickIconTitle": "Pick column icon",
 			"searchIconsPlaceholder": "Search icons...",
@@ -1727,6 +1734,7 @@
 			"deleteTitle": "Delete “{{name}}”?",
 			"deleteDescription": "Columns that still have tasks can't be deleted. Move those tasks first.",
 			"deleteConfirm": "Delete column",
+			"reorderSuccess": "Column order updated",
 			"reorderError": "Failed to reorder columns"
 		},
 		"customFields": {
@@ -1740,6 +1748,7 @@
 			"deleting": "Deleting...",
 			"deleteSuccess": "Custom field deleted.",
 			"deleteError": "Failed to delete custom field.",
+			"reorderSuccess": "Custom field order updated",
 			"reorderError": "Failed to reorder fields",
 			"moreOptions": "+{{hiddenCount}} more",
 			"clearDefault": "Clear default",
@@ -2078,6 +2087,8 @@
 			"import": "Import"
 		},
 		"workflowEditor": {
+			"toastSaved": "Automation rule saved",
+			"toastRemoved": "Automation rule removed",
 			"toastError": "Failed to update rule",
 			"events": {
 				"branch_push": "Branch pushed",
@@ -2635,6 +2646,11 @@
 			"taskUnavailable": "This task is no longer available.",
 			"taskLoadError": "This task couldn’t be loaded.",
 			"actionError": "Couldn't update your inbox. Try again.",
+			"markedRead": "Notification marked as read",
+			"markedUnread": "Notification marked as unread",
+			"markedAllRead": "All notifications marked as read",
+			"clearedAll": "All notifications cleared",
+			"deleted": "Notification deleted",
 			"readCleared": "Deleted read notifications"
 		}
 	},
@@ -2912,6 +2928,9 @@
 			"title": "Relations",
 			"tasksInProject": "Tasks in project",
 			"linkError": "Failed to link task",
+			"linkSuccess": "Task linked",
+			"removeSuccess": "Task relation removed",
+			"removeError": "Failed to remove task relation",
 			"empty": "No related tasks",
 			"searchPlaceholder": "Search tasks to link...",
 			"noTasksFound": "No tasks found",
@@ -2936,6 +2955,9 @@
 			"addAction": "Add",
 			"empty": "No subtasks yet",
 			"createError": "Failed to create subtask",
+			"createSuccess": "Subtask created",
+			"statusUpdated": "Subtask status updated",
+			"assigneeUpdated": "Subtask assignee updated",
 			"deleteSuccess": "Task deleted successfully",
 			"deleteError": "Failed to delete task",
 			"deleteDialogTitle": "Delete Task?",
@@ -2971,19 +2993,26 @@
 		"popover": {
 			"assignee": {
 				"unassigned": "Unassigned",
+				"updateSuccess": "Task assignee updated",
 				"updateError": "Failed to update task assignee"
 			},
 			"status": {
+				"updateSuccess": "Task status updated",
 				"updateError": "Failed to update task status"
 			},
 			"priority": {
+				"updateSuccess": "Task priority updated",
 				"updateError": "Failed to update task priority"
 			},
 			"dueDate": {
+				"updateSuccess": "Task due date updated",
+				"cleared": "No due date",
 				"updateError": "Failed to update task due date",
 				"clear": "Clear date"
 			},
 			"startDate": {
+				"updateSuccess": "Task start date updated",
+				"cleared": "No start date",
 				"updateError": "Failed to update task start date",
 				"clear": "Clear start date"
 			},
@@ -2993,6 +3022,8 @@
 				"create": "Create \"{{name}}\"",
 				"chooseColor": "Choose color",
 				"updateError": "Failed to update label",
+				"attachSuccess": "Label added to task",
+				"detachSuccess": "Label removed from task",
 				"createSuccess": "Label created and added",
 				"createError": "Failed to create label",
 				"colors": {
@@ -3090,6 +3121,7 @@
 			"noTasksFound": "No tasks found",
 			"taskHeader": "Task",
 			"updateDatesError": "Failed to update task dates",
+			"updateDatesSuccess": "Task dates updated",
 			"resizeStart": "Resize start date",
 			"resizeDue": "Resize due date",
 			"taskAriaLabel": "{{title}}: open or drag to move",
@@ -3112,6 +3144,8 @@
 		},
 		"archive": {
 			"success": "Archived {{count}} tasks",
+			"error": "Failed to archive tasks",
+			"processing": "Archiving tasks...",
 			"confirmTitle_one": "Archive {{count}} completed task?",
 			"confirmTitle_other": "Archive {{count}} completed tasks?",
 			"confirmDescription": "They leave the board and move to the Archived section of the backlog."
@@ -3224,6 +3258,7 @@
 			"missingRequired_one": "{{count}} required field is empty",
 			"missingRequired_other": "{{count}} required fields are empty",
 			"saveError": "Couldn't save {{field}}",
+			"saveSuccess": "Custom field updated",
 			"moreFields_one": "{{count}} more field",
 			"moreFields_other": "{{count}} more fields",
 			"manage": "Manage fields"
@@ -3234,6 +3269,7 @@
 		"descriptionLoading": "Loading description…",
 		"descriptionLoadError": "The description could not be loaded. Retry to load the current version.",
 		"board": {
+			"reorderSuccess": "Task position updated",
 			"reorderFailed": "Could not move task. Please try again.",
 			"keyboardInstructions": "Press Space to preview and Enter to open this task. Use Alt or Option with the arrow keys to move it."
 		},
@@ -3349,6 +3385,7 @@
 			},
 			"noDueDate": "No due date",
 			"reorderHandle": "Reorder project",
+			"reorderSuccess": "Project order updated",
 			"reorderError": "Failed to reorder projects",
 			"unavailable": {
 				"noAccessTitle": "You don't have access to this project",

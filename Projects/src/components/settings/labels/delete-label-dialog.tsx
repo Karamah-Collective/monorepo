@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ConfirmDialog } from "@/components/settings/confirm-dialog";
 import type { WorkspaceLabel } from "@/components/settings/labels/workspace-label";
 import useDeleteLabel from "@/hooks/mutations/label/use-delete-label";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type DeleteLabelDialogProps = {
   open: boolean;
@@ -26,15 +26,15 @@ export function DeleteLabelDialog({
     try {
       await deleteLabel.mutateAsync({ id: label.id });
       toast.success(t("settings:workspaceLabels.deleteSuccess"), {
+        description: toastSubject(label.name),
         icon: Trash2Icon,
       });
       onOpenChange(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:workspaceLabels.deleteError"),
-      );
+      toast.error(t("settings:workspaceLabels.deleteError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

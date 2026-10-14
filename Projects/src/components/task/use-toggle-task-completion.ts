@@ -26,11 +26,10 @@ export function useToggleTaskCompletion() {
       }
       await updateTaskStatus({ ...task, status: nextColumn.slug });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.status.updateError"),
-      );
+      toast.error(t("tasks:popover.status.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 }

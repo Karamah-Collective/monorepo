@@ -100,11 +100,12 @@ const primaryKeys = {
   project_custom_fields: ["id"], project_task_custom_values: ["task_id", "field_id"],
   project_task_templates: ["id"], project_webhooks: ["id"],
   project_member_permissions: ["project_id", "email"],
+  project_invitations: ["id"],
 };
 const tables = Object.keys(primaryKeys);
 
 async function applySchema() {
-  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql"]) {
+  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql", "0004_workspace_access.sql", "0005_external_project_invitations.sql", "0006_project_invitation_overrides.sql"]) {
     const schema = await readFile(path.join(root, "Maps", "project-migrations", migrationName), "utf8");
     await executeFile(target, schema, migrationName.replace(/\.sql$/, ""));
     console.log("Applied project schema " + migrationName + " to " + target + ".");

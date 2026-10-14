@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   deleteNotification: vi.fn(),
   clearRead: vi.fn(),
   message: vi.fn(),
+  success: vi.fn(),
   error: vi.fn(),
 }));
 
@@ -26,15 +27,15 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/hooks/mutations/notification/use-mark-notification-as-read", () => ({
-  default: () => ({ mutate: mocks.markAsRead }),
+  default: () => ({ mutateAsync: mocks.markAsRead }),
 }));
 vi.mock(
   "@/hooks/mutations/notification/use-mark-notification-as-unread",
-  () => ({ default: () => ({ mutate: mocks.markAsUnread }) }),
+  () => ({ default: () => ({ mutateAsync: mocks.markAsUnread }) }),
 );
 vi.mock(
   "@/hooks/mutations/notification/use-mark-all-notifications-as-read",
-  () => ({ default: () => ({ mutate: mocks.markAllAsRead }) }),
+  () => ({ default: () => ({ mutateAsync: mocks.markAllAsRead }) }),
 );
 vi.mock("@/hooks/mutations/notification/use-delete-notification", () => ({
   default: () => ({ mutateAsync: mocks.deleteNotification }),
@@ -43,7 +44,7 @@ vi.mock("@/hooks/mutations/notification/use-clear-read-notifications", () => ({
   default: () => ({ mutateAsync: mocks.clearRead }),
 }));
 vi.mock("@/lib/toast", () => ({
-  toast: { message: mocks.message, error: mocks.error },
+  toast: { message: mocks.message, success: mocks.success, error: mocks.error },
 }));
 
 const notification = (id: string, isRead: boolean) =>
@@ -86,6 +87,9 @@ const press = (init: KeyboardEventInit) =>
   fireEvent.keyDown(document.body, init);
 
 beforeEach(() => {
+  mocks.markAsRead.mockResolvedValue({ success: true });
+  mocks.markAsUnread.mockResolvedValue({ success: true });
+  mocks.markAllAsRead.mockResolvedValue({ success: true });
   mocks.deleteNotification.mockResolvedValue({ success: true });
   mocks.clearRead.mockResolvedValue({ success: true });
 });
@@ -164,6 +168,9 @@ describe("useInboxShortcuts", () => {
     press({ key: "e", code: "KeyE" });
     await act(async () => {});
 
-    expect(mocks.error).toHaveBeenCalledWith("notifications:inbox.actionError");
+    expect(mocks.error).toHaveBeenCalledWith(
+      "notifications:inbox.actionError",
+      expect.objectContaining({ description: "Gone" }),
+    );
   });
 });

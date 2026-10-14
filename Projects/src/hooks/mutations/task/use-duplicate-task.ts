@@ -3,7 +3,7 @@ import { CopyPlusIcon } from "lucide-react";
 import { invalidateMyWork } from "@/lib/invalidate-my-work";
 import { useTranslation } from "react-i18next";
 import duplicateTask from "@/fetchers/task/duplicate-task";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 export function useDuplicateTask() {
   const { t } = useTranslation();
@@ -14,7 +14,10 @@ export function useDuplicateTask() {
     onSuccess: (task) => {
       invalidateMyWork(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success(t("tasks:duplicate.success"), { icon: CopyPlusIcon });
+      toast.success(t("tasks:duplicate.success"), {
+        description: toastSubject(task.title),
+        icon: CopyPlusIcon,
+      });
       queryClient.invalidateQueries({
         queryKey: ["tasks", task.projectId],
       });
@@ -25,9 +28,10 @@ export function useDuplicateTask() {
       });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:duplicate.error"),
-      );
+      toast.error(t("tasks:duplicate.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     },
   });
 }

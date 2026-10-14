@@ -7,10 +7,12 @@ import queryClient from "@/query-client";
 type InviteWorkspaceUserRequest = {
   workspaceId: string;
   email: string;
-  role: "admin" | "member" | "owner";
+  role: "none" | "viewer" | "admin" | "member" | "owner";
+  workspaceRole?: "none" | "viewer" | "member" | "admin" | "owner" | null;
   resend?: boolean;
   projectAccess?: "all" | "selected";
   projectIds?: string[];
+  projectRoles?: Record<string, "viewer" | "contributor" | "manager" | "project-admin">;
 };
 
 function useInviteWorkspaceUser() {
@@ -20,16 +22,19 @@ function useInviteWorkspaceUser() {
       workspaceId,
       email,
       role,
+      workspaceRole,
       resend,
       projectAccess,
       projectIds,
+      projectRoles,
     }: InviteWorkspaceUserRequest) => {
       const { data, error } = await authClient.organization.inviteMember({
         email,
         role,
+        workspaceRole,
         organizationId: workspaceId,
         resend,
-        ...(projectAccess ? { projectAccess, projectIds } : {}),
+        ...(projectAccess ? { projectAccess, projectIds, projectRoles } : {}),
       });
 
       if (error?.code === "INVITATION_EMAIL_FAILED") {

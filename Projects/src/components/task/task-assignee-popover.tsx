@@ -40,11 +40,10 @@ export default function TaskAssigneePopover({
     try {
       await updateTaskAssignee({ ...task, userId });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.assignee.updateError"),
-      );
+      toast.error(t("tasks:popover.assignee.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

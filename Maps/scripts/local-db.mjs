@@ -38,13 +38,13 @@ async function executeSql(sql, databaseName = database) {
   return runLocal(["--file", file], databaseName);
 }
 
-async function collectKnownColumns() {
-  const [tables] = await runLocal(["--command", "SELECT name FROM sqlite_master WHERE type='table'"]);
+async function collectKnownColumns(databaseName = database) {
+  const [tables] = await runLocal(["--command", "SELECT name FROM sqlite_master WHERE type='table'"], databaseName);
   const known = new Set();
   for (const table of tables.results) {
     if (table.name.startsWith("sqlite_") || table.name.startsWith("_cf_")) continue;
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table.name)) continue;
-    const [columns] = await runLocal(["--command", `PRAGMA table_info(${table.name})`]);
+    const [columns] = await runLocal(["--command", `PRAGMA table_info(${table.name})`], databaseName);
     for (const column of columns.results) known.add(`${table.name}.${column.name}`);
   }
   return known;
@@ -271,12 +271,25 @@ async function setupLocalProjectsDatabase() {
   await runLocal(["--command", "CREATE TABLE IF NOT EXISTS project_local_migrations (name TEXT PRIMARY KEY)"], projectsDatabase);
   const [applied] = await runLocal(["--command", "SELECT name FROM project_local_migrations"], projectsDatabase);
   const done = new Set(applied.results.map((row) => row.name));
-  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql"]) {
+  const collectProjectInvitationColumns = async () => {
+    const [columns] = await runLocal(["--command", "PRAGMA table_info(project_invitations)"], projectsDatabase);
+    return new Set((columns.results || []).map((column) => `project_invitations.${column.name}`));
+  };
+  let known = await collectProjectInvitationColumns();
+  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql", "0004_workspace_access.sql", "0005_external_project_invitations.sql", "0006_project_invitation_overrides.sql"]) {
     if (done.has(migrationName)) continue;
-    const migration = await readFile(path.join(root, "project-migrations", migrationName), "utf8");
-    await executeSql(migration, projectsDatabase);
+    let migration = await readFile(path.join(root, "project-migrations", migrationName), "utf8");
+    migration = migration.replace(/ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)[^;]+;/gi, (statement, table, column) => {
+      const key = `${table}.${column}`;
+      if (known.has(key)) return "";
+      known.add(key);
+      return statement;
+    });
+    const executableSql = migration.replace(/--.*$/gm, "").trim();
+    if (executableSql) await executeSql(migration, projectsDatabase);
     await executeSql("INSERT OR IGNORE INTO project_local_migrations (name) VALUES (" + quote(migrationName) + ");", projectsDatabase);
     console.info("Local Projects database migration: " + migrationName);
+    known = await collectProjectInvitationColumns();
   }
 }
 

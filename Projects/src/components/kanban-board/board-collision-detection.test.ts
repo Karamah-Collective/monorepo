@@ -1,6 +1,6 @@
 import type { ClientRect, DroppableContainer } from "@dnd-kit/core";
 import { describe, expect, it } from "vitest";
-import { boardCollisionDetection } from "./board-collision-detection";
+import { boardCollisionDetection } from "./board-model";
 
 function rect(left: number, top: number, width: number, height: number) {
   return {
@@ -32,13 +32,19 @@ const columnData = {
   },
 } as Record<string, unknown>;
 
+const taskData = new Set(["scrolled", "c", "d"]);
+
 function detect(pointer: { x: number; y: number } | null) {
   const droppableContainers = [...rects.keys()].map(
     (id) =>
       ({
         id,
         disabled: false,
-        data: { current: columnData[id] },
+        data: {
+          current: taskData.has(id)
+            ? { type: "task", task: { id } }
+            : columnData[id],
+        },
       }) as unknown as DroppableContainer,
   );
   return boardCollisionDetection({

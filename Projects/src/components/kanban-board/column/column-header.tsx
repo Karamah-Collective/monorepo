@@ -6,7 +6,7 @@ import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import { ArchiveTasksModal } from "../../shared/modals/archive-tasks-modal";
@@ -22,38 +22,51 @@ export function ColumnHeader({
 }: ColumnHeaderProps) {
   const { t } = useTranslation();
   const { project, setProject } = useProjectStore();
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutateAsync: updateTask } = useUpdateTask();
   const { canUpdateTasks, canCreateTasks } = useWorkspacePermission();
   const canTask = canUpdateTasks();
   const canCreate = canCreateTasks();
 
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
-  const handleConfirmArchive = () => {
+  const handleConfirmArchive = async () => {
     if (disableCollectionActions || !column.isFinal || !project) return;
+
+    setIsArchiving(true);
 
     const updatedProject = produce(project, (draft) => {
       const archivedColumn = draft?.columns?.find(
         (col) => col.id === column.id,
       );
       if (!archivedColumn) return;
-
-      for (const task of archivedColumn.tasks) {
-        updateTask({
-          ...task,
-          status: "archived",
-        });
-      }
-
       archivedColumn.tasks = [];
     });
 
-    setProject(updatedProject);
-    toast.success(t("tasks:archive.success", { count: column.tasks.length }), {
-      icon: ArchiveIcon,
-    });
-    setIsArchiveModalOpen(false);
+    try {
+      await Promise.all(
+        column.tasks.map((task) =>
+          updateTask({
+            ...task,
+            status: "archived",
+          }),
+        ),
+      );
+      setProject(updatedProject);
+      toast.success(t("tasks:archive.success", { count: column.tasks.length }), {
+        description: toastSubject(column.name),
+        icon: ArchiveIcon,
+      });
+      setIsArchiveModalOpen(false);
+    } catch (error) {
+      toast.error(t("tasks:archive.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   return (
@@ -108,6 +121,7 @@ export function ColumnHeader({
         disabled={disableCollectionActions}
         onConfirm={handleConfirmArchive}
         taskCount={column.tasks.length}
+        pending={isArchiving}
       />
     </div>
   );

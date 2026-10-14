@@ -7,13 +7,12 @@ import { useRepositoryConnections } from "@/components/project/automations/use-r
 import { planRuleChange } from "@/components/project/automations/plan-rule-change";
 import type { RepositoryProviderId } from "@/components/project/automations/repository-providers";
 import type { WorkflowEvent } from "@/components/project/automations/workflow-events";
-import { errorMessage } from "@/components/project/error-message";
 import { useDeleteWorkflowRule } from "@/hooks/mutations/workflow-rule/use-delete-workflow-rule";
 import { useUpsertWorkflowRule } from "@/hooks/mutations/workflow-rule/use-upsert-workflow-rule";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useGetWorkflowRules } from "@/hooks/queries/workflow-rule/use-get-workflow-rules";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type AutomationsSectionProps = {
   projectId: string;
@@ -47,12 +46,25 @@ export function AutomationsSection({ projectId }: AutomationsSectionProps) {
             columnId: change.columnId,
           },
         });
+        toast.success(t("settings:workflowEditor.toastSaved"), {
+          description: toastSubject(
+            `${provider} · ${t(`settings:workflowEditor.events.${event}`)}`,
+          ),
+        });
       }
       if (change.type === "delete") {
         await deleteRule({ id: change.id, projectId });
+        toast.success(t("settings:workflowEditor.toastRemoved"), {
+          description: toastSubject(
+            `${provider} · ${t(`settings:workflowEditor.events.${event}`)}`,
+          ),
+        });
       }
     } catch (error) {
-      toast.error(errorMessage(error, t("settings:workflowEditor.toastError")));
+      toast.error(t("settings:workflowEditor.toastError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

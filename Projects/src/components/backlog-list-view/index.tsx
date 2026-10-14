@@ -23,7 +23,9 @@ import { useTaskViewShortcuts } from "@/components/project/task-view-keys/use-ta
 import { cn } from "@/lib/cn";
 import useBacklogBulkSelectionStore from "@/store/backlog-bulk-selection";
 import useProjectStore from "@/store/project";
+import { toast, toastSubject } from "@/lib/toast";
 import type { ProjectWithTasks } from "@/types/project";
+import type Task from "@/types/task";
 import BacklogBulkToolbar from "../bulk-selection/backlog-bulk-toolbar";
 import CreateTaskModal from "../shared/modals/create-task-modal";
 import BacklogSection from "./backlog-section";
@@ -39,7 +41,7 @@ function BacklogListView({
 }: BacklogListViewProps) {
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutateAsync: updateTaskAsync } = useUpdateTask();
   const setProject = useProjectStore((state) => state.setProject);
   const setAvailableTasks = useBacklogBulkSelectionStore(
     (state) => state.setAvailableTasks,
@@ -128,6 +130,7 @@ function BacklogListView({
     );
 
     if (!activeTask) return;
+    const updates: Task[] = [];
 
     let targetSection = overId;
     if (overId !== "planned" && overId !== "archived") {
@@ -187,7 +190,7 @@ function BacklogListView({
             : draft.archivedTasks || [];
 
         finalTasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             position: index,
           });
@@ -207,7 +210,7 @@ function BacklogListView({
             : draft.archivedTasks || [];
 
         updatedTasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             status: targetSection,
             position: index,
@@ -220,7 +223,7 @@ function BacklogListView({
             : draft.archivedTasks || [];
 
         sourceTasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             position: index,
           });
@@ -228,7 +231,23 @@ function BacklogListView({
       }
     });
 
+    if (updates.length === 0) return;
     setProject(updatedProject);
+    void Promise.all(updates.map((task) => updateTaskAsync(task)))
+      .then(() => {
+        toast.success(t("tasks:board.reorderSuccess"), {
+          description: [toastSubject(activeTask.title), targetSection]
+            .filter(Boolean)
+            .join(" → "),
+        });
+      })
+      .catch((error) => {
+        setProject(project);
+        toast.error(t("tasks:board.reorderFailed"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
+      });
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {

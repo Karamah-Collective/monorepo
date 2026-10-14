@@ -33,6 +33,7 @@ type Task = {
   position: number | null;
   createdAt: string;
   updatedAt?: string;
+  completedAt?: string | null;
   userId: string | null;
   assigneeId: string | null;
   assigneeName: string | null;

@@ -29,7 +29,7 @@ import useCreateProject from "@/hooks/mutations/project/use-create-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -73,7 +73,10 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
 
     try {
       const { id } = await mutateAsync();
-      toast.success("Project created successfully", { icon: SquarePlusIcon });
+      toast.success(t("common:modals.createProject.successToast"), {
+        description: toastSubject(name),
+        icon: SquarePlusIcon,
+      });
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
 
       navigate({
@@ -86,11 +89,10 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
 
       handleClose();
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createProject.errorToast"),
-      );
+      toast.error(t("common:modals.createProject.errorToast"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

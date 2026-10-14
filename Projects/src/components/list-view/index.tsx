@@ -21,10 +21,11 @@ import { priorityColorsTaskCard } from "@/constants/priority-colors";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useTaskViewShortcuts } from "@/components/project/task-view-keys/use-task-view-shortcuts";
 import { cn } from "@/lib/cn";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
+import type Task from "@/types/task";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import { ArchiveTasksModal } from "../shared/modals/archive-tasks-modal";
 import CreateTaskModal from "../shared/modals/create-task-modal";
@@ -48,7 +49,7 @@ function ListView({
     (state) => state.setAvailableTasks,
   );
   const clearFocus = useBulkSelectionStore((state) => state.clearFocus);
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutateAsync: updateTaskAsync } = useUpdateTask();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<
@@ -66,6 +67,7 @@ function ListView({
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [columnToArchive, setColumnToArchive] = useState<string | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const archiveColumn = project.columns.find(
     (column) => column.id === columnToArchive,
   );
@@ -127,6 +129,13 @@ function ListView({
   const moveTask = (activeTaskId: string, overId: string) => {
     if (disableDragDrop || !project?.columns) return;
 
+    const activeTask = project.columns
+      .flatMap((column) => column.tasks)
+      .find((task) => task.id === activeTaskId);
+    if (!activeTask) return;
+    const updates: Task[] = [];
+    let destinationName = "";
+
     const updatedProject = produce(project, (draft) => {
       const sourceColumn = draft?.columns?.find((col) =>
         col.tasks.some((task) => task.id === activeTaskId),
@@ -137,6 +146,7 @@ function ListView({
       );
 
       if (!sourceColumn || !destinationColumn) return;
+      destinationName = destinationColumn.name;
 
       const sourceTaskIndex = sourceColumn.tasks.findIndex(
         (task) => task.id === activeTaskId,
@@ -157,7 +167,7 @@ function ListView({
         destinationColumn.tasks.splice(destinationIndex, 0, task);
 
         destinationColumn.tasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             status: destinationColumn.slug,
             position: index,
@@ -176,7 +186,7 @@ function ListView({
         destinationColumn.tasks.splice(destinationIndex, 0, task);
 
         destinationColumn.tasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             status: destinationColumn.slug,
             position: index,
@@ -184,7 +194,7 @@ function ListView({
         });
 
         sourceColumn.tasks.forEach((t, index) => {
-          updateTask({
+          updates.push({
             ...t,
             position: index,
           });
@@ -192,7 +202,23 @@ function ListView({
       }
     });
 
+    if (updates.length === 0) return;
     setProject(updatedProject);
+    void Promise.all(updates.map((task) => updateTaskAsync(task)))
+      .then(() => {
+        toast.success(t("tasks:board.reorderSuccess"), {
+          description: [toastSubject(activeTask.title), destinationName]
+            .filter(Boolean)
+            .join(" → "),
+        });
+      })
+      .catch((error) => {
+        setProject(project);
+        toast.error(t("tasks:board.reorderFailed"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
+      });
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -253,33 +279,43 @@ function ListView({
     [disableCollectionActions],
   );
 
-  const handleConfirmArchive = () => {
+  const handleConfirmArchive = async () => {
     if (disableCollectionActions || !archiveColumn?.isFinal) return;
+
+    setIsArchiving(true);
 
     const updatedProject = produce(project, (draft) => {
       const archivedColumn = draft?.columns?.find(
         (col) => col.id === columnToArchive,
       );
       if (!archivedColumn) return;
-
-      for (const task of archivedColumn.tasks) {
-        updateTask({
-          ...task,
-          status: "archived",
-        });
-      }
-
       archivedColumn.tasks = [];
     });
 
-    setProject(updatedProject);
-    toast.success(
-      t("tasks:archive.success", { count: archiveColumn.tasks.length }),
-      { icon: ArchiveIcon },
-    );
-
-    setIsArchiveModalOpen(false);
-    setColumnToArchive(null);
+    try {
+      await Promise.all(
+        archiveColumn.tasks.map((task) =>
+          updateTaskAsync({
+            ...task,
+            status: "archived",
+          }),
+        ),
+      );
+      setProject(updatedProject);
+      toast.success(
+        t("tasks:archive.success", { count: archiveColumn.tasks.length }),
+        { description: toastSubject(archiveColumn.name), icon: ArchiveIcon },
+      );
+      setIsArchiveModalOpen(false);
+      setColumnToArchive(null);
+    } catch (error) {
+      toast.error(t("tasks:archive.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   if (!project?.columns) {
@@ -371,6 +407,7 @@ function ListView({
         disabled={disableCollectionActions}
         onConfirm={handleConfirmArchive}
         taskCount={archiveColumn?.tasks.length ?? 0}
+      pending={isArchiving}
       />
 
       <BulkToolbar />

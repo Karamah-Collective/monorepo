@@ -31,7 +31,6 @@ const PROJECT_SECTIONS = [
   { id: "workflow", labelKey: "settings:projectWorkflow.title" },
   { id: "custom-fields", labelKey: "settings:projectCustomFields.title" },
   { id: "visibility", labelKey: "settings:projectVisibility.title" },
-  { id: "integrations", labelKey: "settings:projectIntegrations.title" },
   { id: "calendar", labelKey: "settings:calendarFeeds.title" },
 ] as const;
 

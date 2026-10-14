@@ -4,6 +4,7 @@ import { useTaskCustomFields } from "./use-task-custom-fields";
 
 const mutateAsync = vi.fn();
 const toastError = vi.fn();
+const toastSuccess = vi.fn();
 const field = {
   id: "customer",
   projectId: "project-1",
@@ -38,7 +39,10 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canUpdateTasks: () => true }),
 }));
 vi.mock("@/lib/toast", () => ({
-  toast: { error: (...args: unknown[]) => toastError(...args) },
+  toast: {
+    error: (...args: unknown[]) => toastError(...args),
+    success: (...args: unknown[]) => toastSuccess(...args),
+  },
 }));
 
 afterEach(() => {
@@ -78,6 +82,9 @@ describe("useTaskCustomFields", () => {
       await result.current.save(result.current.fields[0], "");
     });
     expect(result.current.values.customer).toBe("Acme");
-    expect(toastError).toHaveBeenCalledWith("This custom field is required");
+    expect(toastError).toHaveBeenCalledWith(
+      "tasks:customFields.saveError",
+      expect.objectContaining({ description: "This custom field is required" }),
+    );
   });
 });

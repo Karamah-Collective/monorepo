@@ -9,8 +9,8 @@ import { ColumnSortHint } from "./column-sort-hint";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
-  activeTaskId: string | null;
   sortHint?: string;
+  isDropTarget?: boolean;
   disableDragDrop?: boolean;
   disableSorting?: boolean;
   disableCollectionActions?: boolean;
@@ -37,12 +37,13 @@ export const columnVariants = cva(
       {
         isDropzoneOver: false,
         backgroundImage: false,
-        class: "bg-board-lane",
+        class: "border border-transparent bg-board-lane",
       },
       {
         isDropzoneOver: true,
         backgroundImage: false,
-        class: "bg-board-lane ring-2 ring-board-card-ring",
+        class:
+          "border border-board-card-focus bg-board-lane ring-2 ring-board-card-ring bg-board-card-selected",
       },
       {
         isDropzoneOver: false,
@@ -54,7 +55,7 @@ export const columnVariants = cva(
         isDropzoneOver: true,
         backgroundImage: true,
         class:
-          "border border-border/70 bg-background ring-2 ring-focus/60 before:bg-accent/60",
+          "border border-board-card-focus bg-background ring-2 ring-board-card-ring before:bg-board-card-selected",
       },
     ],
   },
@@ -62,8 +63,8 @@ export const columnVariants = cva(
 
 function Column({
   column,
-  activeTaskId,
   sortHint,
+  isDropTarget = false,
   disableDragDrop = false,
   disableSorting = false,
   disableCollectionActions = false,
@@ -78,7 +79,7 @@ function Column({
     <div
       ref={setNodeRef}
       className={columnVariants({
-        isDropzoneOver: isOver,
+        isDropzoneOver: isOver || isDropTarget,
         backgroundImage: !!background,
       })}
     >
@@ -91,7 +92,6 @@ function Column({
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1.5 pt-1.5 pb-1.5 [-webkit-overflow-scrolling:touch]">
         <ColumnDropzone
           column={column}
-          activeTaskId={activeTaskId}
           disableDragDrop={disableDragDrop}
           disableSorting={disableSorting}
         />

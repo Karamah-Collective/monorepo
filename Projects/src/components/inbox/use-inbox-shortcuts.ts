@@ -33,9 +33,9 @@ export function useInboxShortcuts({
   onSelect,
 }: InboxShortcutsOptions) {
   const { t } = useTranslation();
-  const { mutate: markAsRead } = useMarkNotificationAsRead();
-  const { mutate: markAsUnread } = useMarkNotificationAsUnread();
-  const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead(workspaceId);
+  const { mutateAsync: markAsRead } = useMarkNotificationAsRead();
+  const { mutateAsync: markAsUnread } = useMarkNotificationAsUnread();
+  const { mutateAsync: markAllAsRead } = useMarkAllNotificationsAsRead(workspaceId);
   const { mutateAsync: deleteNotification } = useDeleteNotification();
   const { mutateAsync: clearRead } = useClearReadNotifications(workspaceId);
 
@@ -59,14 +59,36 @@ export function useInboxShortcuts({
 
   useShortcut(
     "toggleNotificationRead",
-    () => {
+    async () => {
       if (!selected) return;
-      if (selected.isRead) markAsUnread(selected.id);
-      else markAsRead(selected.id);
+      try {
+        if (selected.isRead) {
+          await markAsUnread(selected.id);
+          toast.success(t("notifications:inbox.markedUnread"));
+        } else {
+          await markAsRead(selected.id);
+          toast.success(t("notifications:inbox.markedRead"));
+        }
+      } catch (error) {
+        toast.error(t("notifications:inbox.actionError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
+      }
     },
     { enabled: Boolean(selected) },
   );
-  useShortcut("markAllNotificationsRead", () => markAllAsRead(), {
+  useShortcut("markAllNotificationsRead", async () => {
+    try {
+      await markAllAsRead();
+      toast.success(t("notifications:inbox.markedAllRead"));
+    } catch (error) {
+      toast.error(t("notifications:inbox.actionError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    }
+  }, {
     enabled: notifications.some((notification) => !notification.isRead),
   });
 
@@ -78,8 +100,12 @@ export function useInboxShortcuts({
       try {
         await deleteNotification(selected.id);
         select(next);
-      } catch {
-        toast.error(t("notifications:inbox.actionError"));
+        toast.success(t("notifications:inbox.deleted"));
+      } catch (error) {
+        toast.error(t("notifications:inbox.actionError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       }
     },
     { enabled: Boolean(selected) },
@@ -92,8 +118,11 @@ export function useInboxShortcuts({
         toast.message(t("notifications:inbox.readCleared"), {
           icon: Trash2Icon,
         });
-      } catch {
-        toast.error(t("notifications:inbox.actionError"));
+      } catch (error) {
+        toast.error(t("notifications:inbox.actionError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       }
     },
     { enabled: notifications.some((notification) => notification.isRead) },

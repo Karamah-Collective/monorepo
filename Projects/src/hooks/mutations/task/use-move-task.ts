@@ -3,7 +3,7 @@ import { FolderInputIcon } from "lucide-react";
 import { invalidateMyWork } from "@/lib/invalidate-my-work";
 import { useTranslation } from "react-i18next";
 import moveTask from "@/fetchers/task/move-task";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 export function useMoveTask() {
   const { t } = useTranslation();
@@ -13,7 +13,10 @@ export function useMoveTask() {
     mutationFn: moveTask,
     onSuccess: (result, variables) => {
       invalidateMyWork(queryClient);
-      toast.success(t("tasks:move.success"), { icon: FolderInputIcon });
+      toast.success(t("tasks:move.success"), {
+        description: toastSubject(result.task?.title),
+        icon: FolderInputIcon,
+      });
       queryClient.invalidateQueries({
         queryKey: ["external-links", variables.taskId],
       });
@@ -37,9 +40,10 @@ export function useMoveTask() {
       });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:move.error"),
-      );
+      toast.error(t("tasks:move.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     },
   });
 }

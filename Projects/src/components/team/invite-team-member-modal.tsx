@@ -7,10 +7,10 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
-import useGetMyProjectAccess from "@/hooks/queries/workspace-users/use-get-my-project-access";
+import { useProjectMemberDirectory } from "@/hooks/queries/workspace-users/use-project-member-directory";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -31,14 +31,9 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import InvitationLinkField from "./invitation-link-field";
-import {
-  ALL_PROJECTS_ACCESS,
-  type ProjectAccessValue,
-  SELECTED_PROJECTS_ACCESS,
-} from "./project-access/project-access-value";
-import { isProjectAccessComplete } from "./project-access/is-project-access-complete";
-import { toProjectAccessRequest } from "./project-access/to-project-access-request";
-import ProjectAccessFields from "./project-access-fields";
+import WorkspaceProjectAccessFields, {
+  type WorkspaceProjectAccessValue,
+} from "./workspace-project-access-fields";
 
 type Props = {
   open: boolean;
@@ -57,28 +52,26 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id;
-  const { canInviteUsers } = useWorkspacePermission();
+  const { canInviteUsers, isCheckingPermissions } = useWorkspacePermission();
   const canInvite = canInviteUsers();
   const [createdInvitation, setCreatedInvitation] = useState<{
     id: string;
     email: string;
   } | null>(null);
-  const myAccess = useGetMyProjectAccess(workspaceId ?? "", open);
-  const isMyAccessPending = myAccess.isPending;
-  const inviterLimited =
-    myAccess.isError || myAccess.data?.projectAccess === "selected";
-  const [chosenAccess, setProjectAccess] = useState<ProjectAccessValue | null>(
-    null,
-  );
-  const projectAccess =
-    chosenAccess ??
-    (inviterLimited ? SELECTED_PROJECTS_ACCESS : ALL_PROJECTS_ACCESS);
+  const [chosenAccess, setProjectAccess] =
+    useState<WorkspaceProjectAccessValue | null>(null);
   const [showProjectAccessError, setShowProjectAccessError] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
     workspaceId: workspaceId ?? "",
     includeArchived: true,
     enabled: open,
   });
+  const workspaceProjects = (projects ?? []) as readonly {
+    id: string;
+    name: string;
+    archivedAt?: string | null;
+  }[];
 
   const form = useForm<TeamMemberFormValues>({
     resolver: standardSchemaResolver(teamMemberSchema),
@@ -86,6 +79,13 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
       email: "",
     },
   });
+  const emailValue = form.watch("email");
+  const { data: directoryMembers = [], isFetching: isFetchingDirectory } =
+    useProjectMemberDirectory(workspaceId ?? "", emailValue, open);
+  const projectAccess = chosenAccess ?? {
+    workspaceRole: "member",
+    projectRoles: {},
+  } satisfies WorkspaceProjectAccessValue;
 
   const onSubmit = async ({ email }: TeamMemberFormValues) => {
     if (!workspaceId) {
@@ -99,42 +99,52 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
       toast.error(t("team:inviteModal.error"));
       return;
     }
-    const access = toProjectAccessRequest(
-      projectAccess,
-      (projects ?? []).map((project) => project.id),
+    const availableProjectIds = new Set(workspaceProjects.map((project) => project.id));
+    const projectRoles = Object.fromEntries(
+      Object.entries(projectAccess.projectRoles).filter(([projectId]) =>
+        availableProjectIds.has(projectId),
+      ),
     );
-    if (!isProjectAccessComplete(access)) {
+    const projectIds = Object.keys(projectRoles);
+    const workspaceRole = projectAccess.workspaceRole;
+    if (workspaceRole === "none" && projectIds.length === 0) {
       setShowProjectAccessError(true);
       return;
     }
     try {
       const invitation = await mutateAsync({
-        email,
+        email: email.trim().toLowerCase(),
         workspaceId,
-        role: "member",
-        ...access,
+        role: workspaceRole,
+        workspaceRole,
+        projectAccess: projectIds.length ? "selected" : "all",
+        projectIds,
+        projectRoles,
       }); // TODO: role and email
       await queryClient.refetchQueries({
         queryKey: ["workspace-users", workspaceId],
       });
 
-      toast.success(t("team:inviteModal.success"), { icon: SendIcon });
+      toast.success(t("team:inviteModal.success"), {
+        description: toastSubject(email),
+        icon: SendIcon,
+      });
 
-      // The link is the only delivery channel when SMTP is unconfigured, so the
-      // modal stays open on it instead of closing. If the API ever stops
-      // returning an id, fall back to the previous close-on-success behaviour.
+      // Keep the one-use link visible so the inviter can verify or copy the exact invitation.
       if (invitation?.id) {
         setCreatedInvitation({ id: invitation.id, email });
         form.reset();
         setProjectAccess(null);
+        setShowSuggestions(false);
         return;
       }
 
       closeModal();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("team:inviteModal.error"),
-      );
+      toast.error(t("team:inviteModal.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
@@ -153,6 +163,7 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
     form.reset();
     setProjectAccess(null);
     setShowProjectAccessError(false);
+    setShowSuggestions(false);
   };
 
   return (
@@ -198,27 +209,59 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("team:inviteModal.emailLabel")}</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder={t("team:inviteModal.emailPlaceholder")}
-                          autoFocus
-                        />
-                      </FormControl>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder={t("team:inviteModal.emailPlaceholder")}
+                            autoFocus
+                            autoComplete="off"
+                            onFocus={() => setShowSuggestions(true)}
+                            onChange={(event) => {
+                              field.onChange(event);
+                              setShowSuggestions(true);
+                            }}
+                          />
+                        </FormControl>
+                        {showSuggestions && emailValue.trim() && directoryMembers.length > 0 ? (
+                            <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                            {directoryMembers.map((member) => (
+                              <button
+                                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                                key={member.id}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                  form.setValue("email", member.email, { shouldValidate: true });
+                                  setShowSuggestions(false);
+                                }}
+                              >
+                                <span className="flex min-w-0 flex-1 flex-col">
+                                  <span className="truncate font-medium">{member.name}</span>
+                                  <span className="truncate text-xs text-muted-foreground">{member.email}</span>
+                                </span>
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Karamah</span>
+                              </button>
+                            ))}
+                            </div>
+                          ) : isFetchingDirectory && emailValue.trim() ? (
+                            <p className="absolute inset-x-0 top-full z-20 mt-1 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-lg">Searching colleagues…</p>
+                          ) : null}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <ProjectAccessFields
-                  allowAll={!inviterLimited}
+                <WorkspaceProjectAccessFields
+                  allowWorkspaceAccess={canInvite && !isCheckingPermissions}
                   value={projectAccess}
                   onChange={(next) => {
                     setProjectAccess(next);
                     setShowProjectAccessError(false);
                   }}
-                  projects={projects}
+                  projects={workspaceProjects}
                   isLoadingProjects={isLoadingProjects}
-                  disabled={form.formState.isSubmitting || isMyAccessPending}
+                  disabled={form.formState.isSubmitting || isCheckingPermissions}
                   error={
                     showProjectAccessError
                       ? t("team:projectAccess.selectAtLeastOne")
@@ -236,7 +279,7 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!workspaceId || !canInvite || isMyAccessPending}
+                  disabled={!workspaceId || !canInvite || isCheckingPermissions}
                 >
                   {t("team:inviteModal.sendInvitation")}
                 </Button>

@@ -5,7 +5,6 @@ import { ColumnListHeader } from "@/components/project/columns/column-list-heade
 import { ColumnListSkeleton } from "@/components/project/columns/column-list-skeleton";
 import { ColumnRow } from "@/components/project/columns/column-row";
 import type { ProjectColumn } from "@/components/project/columns/types";
-import { errorMessage } from "@/components/project/error-message";
 import { toPositions } from "@/components/project/sortable/apply-order";
 import { SortableList } from "@/components/project/sortable/sortable-list";
 import { useSortableOrder } from "@/components/project/sortable/use-sortable-order";
@@ -17,7 +16,7 @@ import { useReorderColumns } from "@/hooks/mutations/column/use-reorder-columns"
 import { useUpdateColumn } from "@/hooks/mutations/column/use-update-column";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type ColumnListProps = {
   projectId: string;
@@ -41,8 +40,12 @@ export function ColumnList({ projectId }: ColumnListProps) {
   const { ordered, move } = useSortableOrder(columns, async (next) => {
     try {
       await reorderColumns({ projectId, columns: toPositions(next) });
+      toast.success(t("settings:columnEditor.reorderSuccess"));
     } catch (error) {
-      toast.error(errorMessage(error, t("settings:columnEditor.reorderError")));
+      toast.error(t("settings:columnEditor.reorderError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   });
 
@@ -53,9 +56,15 @@ export function ColumnList({ projectId }: ColumnListProps) {
   ) => {
     try {
       await updateColumn({ id, projectId, data });
+      toast.success(t("settings:columnEditor.updateSuccess"), {
+        description: toastSubject(data.name ?? columns.find((column) => column.id === id)?.name),
+      });
       return true;
     } catch (error) {
-      toast.error(errorMessage(error, t(fallbackKey)));
+      toast.error(t(fallbackKey), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
       return false;
     }
   };
@@ -63,11 +72,15 @@ export function ColumnList({ projectId }: ColumnListProps) {
   const create = async (data: { name: string; icon: string }) => {
     try {
       await createColumn({ projectId, data });
+      toast.success(t("settings:columnEditor.createSuccess"), {
+        description: toastSubject(data.name),
+      });
       return true;
     } catch (error) {
-      toast.error(
-        errorMessage(error, t("settings:columnEditor.toastCreateError")),
-      );
+      toast.error(t("settings:columnEditor.toastCreateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
       return false;
     }
   };
@@ -76,11 +89,15 @@ export function ColumnList({ projectId }: ColumnListProps) {
     if (!pendingDelete) return;
     try {
       await deleteColumn({ id: pendingDelete.id, projectId });
+      toast.success(t("settings:columnEditor.deleteSuccess"), {
+        description: toastSubject(pendingDelete.name),
+      });
       setPendingDelete(null);
     } catch (error) {
-      toast.error(
-        errorMessage(error, t("settings:columnEditor.toastDeleteError")),
-      );
+      toast.error(t("settings:columnEditor.toastDeleteError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

@@ -9,7 +9,7 @@ import {
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 import { statusMenuOptions } from "./menus/status-menu-options";
 
@@ -27,7 +27,9 @@ export default function SubtaskStatusPopover({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data: columns = [] } = useGetColumns(projectId);
-  const { mutateAsync: updateTaskStatus } = useUpdateTaskStatus();
+  const { mutateAsync: updateTaskStatus } = useUpdateTaskStatus({
+    notify: false,
+  });
   const { canUpdateTasks } = useWorkspacePermission();
 
   if (!canUpdateTasks()) return <>{children}</>;
@@ -42,6 +44,12 @@ export default function SubtaskStatusPopover({
       await Promise.all(
         tasks.map((task) => updateTaskStatus({ ...task, status })),
       );
+      toast.success(t("tasks:subtasks.statusUpdated"), {
+        description: [
+          `${tasks.length} ${t("tasks:subtasks.title").toLowerCase()}`,
+          toastSubject(status),
+        ].join(" → "),
+      });
     } catch (error) {
       toast.error(
         error instanceof Error

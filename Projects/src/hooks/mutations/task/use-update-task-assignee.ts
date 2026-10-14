@@ -1,14 +1,22 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { invalidateMyWork } from "@/lib/invalidate-my-work";
 import updateTaskAssignee from "@/fetchers/task/update-task-assignee";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 
-export function useUpdateTaskAssignee() {
+export function useUpdateTaskAssignee({ notify = true }: { notify?: boolean } = {}) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (task: Task) => updateTaskAssignee(task.id, task),
     onSuccess: (_, variables) => {
+      if (notify) {
+        toast.success(t("tasks:popover.assignee.updateSuccess"), {
+          description: toastSubject(variables.title),
+        });
+      }
       invalidateMyWork(queryClient);
       queryClient.invalidateQueries({
         queryKey: ["task", variables.id],

@@ -3,7 +3,7 @@ import { LockKeyholeIcon } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type { Project } from "@/types/project";
 
 export function useToggleProjectPublic(
@@ -38,14 +38,14 @@ export function useToggleProjectPublic(
         }),
       ]);
       toast.success(t("settings:projectVisibility.toastUpdated"), {
+        description: toastSubject(project.name),
         icon: LockKeyholeIcon,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:projectVisibility.toastUpdateError"),
-      );
+      toast.error(t("settings:projectVisibility.toastUpdateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     } finally {
       savingRef.current = false;
     }

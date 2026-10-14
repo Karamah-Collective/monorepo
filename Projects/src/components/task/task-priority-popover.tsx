@@ -36,11 +36,10 @@ export default function TaskPriorityPopover({
     try {
       await updateTaskPriority({ ...task, priority });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.priority.updateError"),
-      );
+      toast.error(t("tasks:popover.priority.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

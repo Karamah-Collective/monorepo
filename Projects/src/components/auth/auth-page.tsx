@@ -7,6 +7,7 @@ type AuthPageProps = {
   description?: ReactNode;
   notice?: ReactNode;
   children?: ReactNode;
+  showAdminLink?: boolean;
 };
 
 export function AuthPage({
@@ -14,6 +15,7 @@ export function AuthPage({
   description,
   notice,
   children,
+  showAdminLink = true,
 }: AuthPageProps) {
   return (
     <main className="h-svh w-full overflow-y-auto bg-background">
@@ -39,7 +41,7 @@ export function AuthPage({
             {children}
           </div>
         </div>
-        <AuthLegalFooter />
+        <AuthLegalFooter showAdminLink={showAdminLink} />
       </div>
     </main>
   );

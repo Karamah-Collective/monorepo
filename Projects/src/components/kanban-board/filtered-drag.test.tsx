@@ -60,14 +60,17 @@ vi.mock("./column", () => ({
   default: ({
     column,
     sortHint,
+    isDropTarget,
   }: {
     column: { id: string; tasks: { id: string }[] };
     sortHint?: string;
+    isDropTarget?: boolean;
   }) => (
     <div
       data-testid={`column-${column.id}`}
       data-task-ids={column.tasks.map((task) => task.id).join(",")}
       data-sort-hint={sortHint}
+      data-drop-target={isDropTarget ? "true" : undefined}
     />
   ),
 }));
@@ -292,6 +295,13 @@ describe("cross-column dragging", () => {
 
     fireEvent.click(view.getByText("start"));
     fireEvent.click(view.getByText("over-c"));
+    expect(view.getByTestId("column-doing")).toHaveAttribute(
+      "data-drop-target",
+      "true",
+    );
+    expect(view.getByTestId("column-todo")).not.toHaveAttribute(
+      "data-drop-target",
+    );
     expect(shownIds(view, "todo")).toBe("a");
     expect(shownIds(view, "doing")).toBe("c,d");
 
@@ -307,6 +317,7 @@ describe("cross-column dragging", () => {
       id: "a",
       position: 1,
       status: "doing",
+      columnId: "doing",
     });
     expect(shownIds(view, "doing")).toBe("c,d");
   });

@@ -24,12 +24,11 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useShortcut } from "@/lib/shortcuts/use-shortcut";
 import type { ShortcutId } from "@/lib/shortcuts/catalog";
 import { authClient } from "@/lib/auth-client";
-import { hasInstanceAdminRole } from "@/lib/instance-admin";
+import { isKaramahEmail } from "@/lib/is-karamah-email";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import CreateProjectModal from "../shared/modals/create-project-modal";
 
@@ -53,10 +52,7 @@ function CommandPalette() {
   const location = useLocation();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
-  const { data: config } = useGetConfig();
-  const isAdmin = hasInstanceAdminRole(session?.user?.role);
-  const canCreateWorkspace =
-    isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
+  const canCreateWorkspace = isKaramahEmail(session?.user?.email);
   const [open, setOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);

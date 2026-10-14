@@ -59,7 +59,7 @@ import { useShortcut } from "@/lib/shortcuts/use-shortcut";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateMedium } from "@/lib/format";
 import { EASE_OUT_CSS } from "@/lib/motion";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute(
@@ -199,9 +199,17 @@ function RouteComponent() {
     setDroppedOrder(reordered.map((project) => project.id));
 
     reorderProjects(workspaceId, reordered, {
-      onError: () => {
+      onSuccess: () => {
+        toast.success(t("workspace:projects.reorderSuccess"), {
+          description: toastSubject(reordered[newIndex]?.name),
+        });
+      },
+      onError: (error) => {
         setDroppedOrder(null);
-        toast.error(t("workspace:projects.reorderError"));
+        toast.error(t("workspace:projects.reorderError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       },
     });
   };

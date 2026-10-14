@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/popover";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 
 type TaskStartDatePopoverProps = {
@@ -32,12 +32,20 @@ export default function TaskStartDatePopover({
         ...task,
         startDate: date?.toISOString() ?? null,
       });
+      toast.success(t("tasks:popover.startDate.updateSuccess"), {
+        description: [
+          toastSubject(task.title),
+          date?.toLocaleDateString() ?? t("tasks:popover.startDate.cleared"),
+        ].join(" → "),
+      });
       setOpen(false);
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.startDate.updateError"),
+        t("tasks:popover.startDate.updateError"),
+        {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        },
       );
     }
   };

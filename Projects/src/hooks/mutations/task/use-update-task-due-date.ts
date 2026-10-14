@@ -3,12 +3,15 @@ import {
   markBoardCacheChanged,
 } from "@/lib/board-cache-version";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { invalidateMyWork } from "@/lib/invalidate-my-work";
 import updateTaskDueDate from "@/fetchers/task/update-task-due-date";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 import { updateBoardTaskCache } from "@/lib/update-board-task-cache";
 
 export function useUpdateTaskDueDate() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -20,6 +23,16 @@ export function useUpdateTaskDueDate() {
       };
     },
     onSuccess: (updated, variables, context) => {
+      toast.success(t("tasks:popover.dueDate.updateSuccess"), {
+        description: [
+          toastSubject(variables.title),
+          updated.dueDate
+            ? new Date(updated.dueDate).toLocaleDateString()
+            : t("tasks:popover.dueDate.cleared"),
+        ]
+          .filter(Boolean)
+          .join(" → "),
+      });
       invalidateMyWork(queryClient);
       queryClient.invalidateQueries({
         queryKey: ["task", variables.id],

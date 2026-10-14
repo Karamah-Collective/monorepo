@@ -50,8 +50,8 @@ test("projects overview hands detailed work to the separate app", async ({
     "project-get": { project: { id: "project-1", name: "Website refresh", key: "WEB", description: "Content work.", visibility: "workspace" }, role: "manager", taskCount: 1 },
   });
   await page.goto("/workspace/projects");
-  await expect(page.getByRole("heading", { name: "Projects overview" })).toBeVisible();
-  const open = page.getByRole("link", { name: /Open project workspace/ });
+  await expect(page.getByRole("heading", { name: "Project control plane" })).toBeVisible();
+  const open = page.getByRole("link", { name: /Open in Projects/ }).first();
   await expect(open).toHaveAttribute("target", "_blank");
   await expect(open).toHaveAttribute("href", /5184\/workspace\/projects\/project-1/);
 });

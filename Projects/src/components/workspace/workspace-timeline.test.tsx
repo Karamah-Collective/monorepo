@@ -115,7 +115,10 @@ vi.mock("@/components/ui/button", () => ({
   }) => <button {...props}>{children}</button>,
 }));
 
-import { WorkspaceTimeline } from "./workspace-timeline";
+import {
+  WorkspaceTimeline,
+  WorkspaceTimelineModeToggle,
+} from "./workspace-timeline";
 
 describe("WorkspaceTimeline", () => {
   beforeEach(() => {
@@ -167,6 +170,33 @@ describe("WorkspaceTimeline", () => {
     expect(screen.getByTestId("timeline-task-task-a")).toHaveAttribute(
       "data-pixels-per-day",
       "37",
+    );
+  });
+
+  it("moves the active background between project and people grouping", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <WorkspaceTimelineModeToggle mode="projects" onChange={onChange} />,
+    );
+
+    expect(screen.getByRole("button", { name: "Group by project" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Group by person" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Group by person" }));
+    expect(onChange).toHaveBeenCalledWith("people");
+
+    rerender(
+      <WorkspaceTimelineModeToggle mode="people" onChange={onChange} />,
+    );
+    expect(screen.getByRole("button", { name: "Group by person" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
   });
 });

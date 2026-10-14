@@ -27,11 +27,11 @@ describe("getSettingsBreadcrumb", () => {
     expect(
       getSettingsBreadcrumb(
         nav,
-        "/dashboard/settings/projects/p1/integrations",
+        "/dashboard/settings/projects/p1/workflow",
       ),
     ).toEqual({
       section: "Kaneo Web",
-      page: "settings:projectIntegrations.title",
+      page: "settings:projectWorkflow.title",
     });
   });
 

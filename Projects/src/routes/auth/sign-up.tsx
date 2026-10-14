@@ -76,6 +76,7 @@ function SignUp() {
   }, [isInstanceStatusError, instanceStatusError, t]);
 
   const invitationId = search.invitationId;
+  const externalInvitation = Boolean(invitationId);
   const isInstanceAdminSetup = instanceStatus?.hasUsers === false;
   const destination = invitationId
     ? `/invitation/accept/${invitationId}`
@@ -85,8 +86,8 @@ function SignUp() {
     !config?.disableRegistration ||
     Boolean(invitationId) ||
     isInstanceAdminSetup;
-  const emailMethod = getSignUpEmailMethod(config, isInstanceAdminSetup);
-  const providers = selfServiceAllowed ? getProviders(config) : [];
+  const emailMethod = externalInvitation ? "password" : getSignUpEmailMethod(config, isInstanceAdminSetup);
+  const providers = externalInvitation ? [] : selfServiceAllowed ? getProviders(config) : [];
   const getName = useProviderName(config?.customOAuthName);
   const providerSignIn = useProviderSignIn({
     callbackURL: `${baseUrl}${destination}`,
@@ -152,6 +153,7 @@ function SignUp() {
           <PasswordSignUpForm
             defaultEmail={search.email}
             invitationId={invitationId}
+            readOnlyEmail={externalInvitation}
             captcha={captcha}
             disabled={busy}
             onSuccess={() => navigate({ to: destination })}

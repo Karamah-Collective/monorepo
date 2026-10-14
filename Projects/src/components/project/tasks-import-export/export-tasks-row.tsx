@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsRow } from "@/components/settings/settings-row";
 import { Button } from "@/components/ui/button";
 import useExportTasks from "@/hooks/mutations/task/use-export-tasks";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type { ProjectWithTasks } from "@/types/project";
 
 type ExportTasksRowProps = {
@@ -16,8 +16,8 @@ export function ExportTasksRow({ project }: ExportTasksRowProps) {
   const { mutateAsync: exportTasks, isPending } = useExportTasks();
 
   const handleExport = async () => {
+    const loadingToast = toast.loading(t("settings:tasksImportExport.exporting"));
     try {
-      toast.loading(t("settings:tasksImportExport.exporting"));
       const exportData = await exportTasks(project.id);
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: "application/json",
@@ -25,13 +25,17 @@ export function ExportTasksRow({ project }: ExportTasksRowProps) {
 
       saveAs(blob, `${project.slug}-tasks-export.json`);
 
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.success(t("settings:tasksImportExport.exportSuccess"), {
+        description: toastSubject(project.name),
         icon: DownloadIcon,
       });
     } catch (error) {
-      toast.dismiss();
-      toast.error(t("settings:tasksImportExport.exportError"));
+      toast.dismiss(loadingToast);
+      toast.error(t("settings:tasksImportExport.exportError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
       console.error(error);
     }
   };

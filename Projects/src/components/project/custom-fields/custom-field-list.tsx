@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import useDeleteCustomField from "@/hooks/mutations/custom-field/use-delete-custom-field";
 import { useReorderCustomFields } from "@/hooks/mutations/custom-field/use-reorder-custom-field";
 import useGetCustomFieldsByProject from "@/hooks/queries/custom-field/use-get-custom-fields-by-project";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type CustomFieldListProps = {
   projectId: string;
@@ -44,8 +44,11 @@ export function CustomFieldList({
   const { ordered, move } = useSortableOrder(fields, async (next) => {
     try {
       await reorderFields({ projectId, fields: toPositions(next) });
+      toast.success(t("settings:customFields.reorderSuccess"));
     } catch (error) {
-      toast.error(errorMessage(error, t("settings:customFields.reorderError")));
+      toast.error(t("settings:customFields.reorderError"), {
+        description: errorMessage(error, ""),
+      });
     }
   });
 
@@ -55,10 +58,13 @@ export function CustomFieldList({
       await deleteField({ id: pendingDelete.id });
       setPendingDelete(null);
       toast.success(t("settings:customFields.deleteSuccess"), {
+        description: toastSubject(pendingDelete.name),
         icon: Trash2Icon,
       });
     } catch (error) {
-      toast.error(errorMessage(error, t("settings:customFields.deleteError")));
+      toast.error(t("settings:customFields.deleteError"), {
+        description: errorMessage(error, ""),
+      });
     }
   };
 

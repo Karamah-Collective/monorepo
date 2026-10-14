@@ -60,4 +60,17 @@ describe("toProjectsTask", () => {
       assigneeName: "Another person",
     });
   });
+
+  it("keeps the task identifier source fields available for workspace views", () => {
+    expect(
+      toProjectsTask({
+        id: "task-3",
+        projectId: "project-1",
+        taskNumber: 3,
+      }),
+    ).toMatchObject({
+      projectId: "project-1",
+      number: 3,
+    });
+  });
 });

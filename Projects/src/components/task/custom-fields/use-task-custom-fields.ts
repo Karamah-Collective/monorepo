@@ -5,7 +5,7 @@ import useSetCustomFieldValue from "@/hooks/mutations/custom-field/use-set-custo
 import useGetCustomFieldValuesByTask from "@/hooks/queries/custom-field/use-get-custom-field-values-by-task";
 import useGetCustomFieldsByProject from "@/hooks/queries/custom-field/use-get-custom-fields-by-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type StoredValue = { fieldId: string; value: string | null };
 
@@ -63,13 +63,15 @@ export function useTaskCustomFields(taskId: string, projectId: string) {
         value,
         projectId,
       });
+      toast.success(t("tasks:customFields.saveSuccess"), {
+        description: toastSubject(field.name),
+      });
     } catch (error) {
       setPending(({ [field.id]: _, ...rest }) => rest);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:customFields.saveError", { field: field.name }),
-      );
+      toast.error(t("tasks:customFields.saveError", { field: field.name }), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

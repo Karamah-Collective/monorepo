@@ -15,6 +15,7 @@ export const Route = createFileRoute("/auth/reset-password")({
   component: ResetPassword,
   validateSearch: z.object({
     token: z.string().optional(),
+    oobCode: z.string().optional(),
     error: z.string().optional(),
   }),
 });
@@ -28,7 +29,8 @@ function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [invalidToken, setInvalidToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const invalidLink = !search.token || Boolean(search.error) || invalidToken;
+  const resetToken = search.oobCode || search.token;
+  const invalidLink = !resetToken || Boolean(search.error) || invalidToken;
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -46,7 +48,7 @@ function ResetPassword() {
     try {
       const result = await authClient.resetPassword({
         newPassword: password,
-        token: search.token,
+        token: resetToken,
       });
       if (result.error) {
         if (result.error.code === "INVALID_TOKEN") setInvalidToken(true);

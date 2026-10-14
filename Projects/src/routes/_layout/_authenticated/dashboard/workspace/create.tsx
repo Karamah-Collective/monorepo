@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
 import { authClient } from "@/lib/auth-client";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/create",
@@ -40,7 +40,10 @@ function RouteComponent() {
 
     try {
       const createdWorkspace = await mutateAsync({ name, description });
-      toast.success(t("workspace:create.success"), { icon: SquarePlusIcon });
+      toast.success(t("workspace:create.success"), {
+        description: toastSubject(name),
+        icon: SquarePlusIcon,
+      });
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
       await authClient.organization.setActive({
@@ -55,9 +58,10 @@ function RouteComponent() {
         replace: true,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("workspace:create.error"),
-      );
+      toast.error(t("workspace:create.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

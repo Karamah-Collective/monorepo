@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
 import { authClient } from "@/lib/auth-client";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type CreateWorkspaceModalProps = {
   open: boolean;
@@ -58,6 +58,7 @@ function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProps) {
     try {
       const createdWorkspace = await mutateAsync({ name, description });
       toast.success(t("common:modals.createWorkspace.successToast"), {
+        description: toastSubject(name),
         icon: SquarePlusIcon,
       });
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
@@ -75,11 +76,10 @@ function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProps) {
 
       handleClose();
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createWorkspace.errorToast"),
-      );
+      toast.error(t("common:modals.createWorkspace.errorToast"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

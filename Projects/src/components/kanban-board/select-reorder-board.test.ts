@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { ProjectWithTasks } from "@/types/project";
-import { selectReorderBoard } from "./select-reorder-board";
+import { selectReorderBoard } from "./board-model";
 
 it("includes a newly created local card without replacing newer cached metadata", () => {
   const cached = {

@@ -8,7 +8,7 @@ const links = [
 
 const linkClassName = "transition-colors hover:text-foreground";
 
-export function AuthLegalFooter() {
+export function AuthLegalFooter({ showAdminLink = true }: { showAdminLink?: boolean }) {
   const { t } = useTranslation();
   const { data: config } = useGetConfig();
 
@@ -27,14 +27,16 @@ export function AuthLegalFooter() {
           {t(link.labelKey)}
         </a>
       ))}
-      <a
-        href="https://admin.karamahcollective.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={linkClassName}
-      >
-        admin.karamahcollective.com
-      </a>
+      {showAdminLink ? (
+        <a
+          href="https://admin.karamahcollective.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClassName}
+        >
+          admin.karamahcollective.com
+        </a>
+      ) : null}
     </footer>
   );
 }

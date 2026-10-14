@@ -34,11 +34,10 @@ export default function TaskDueDatePopover({
       });
       setOpen(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.dueDate.updateError"),
-      );
+      toast.error(t("tasks:popover.dueDate.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

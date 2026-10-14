@@ -7,7 +7,7 @@ import type {
 } from "@/fetchers/integration-sync/types";
 import { useSaveSyncRules } from "@/hooks/mutations/integration-sync/use-save-sync-rules";
 import { useSyncPreview } from "@/hooks/queries/integration-sync/use-sync-preview";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import { LabelRuleEditor } from "./label-rule-editor";
 
 export function SyncRulesEditor({
@@ -179,8 +179,18 @@ export function SyncRulesEditor({
                 { rules, previewToken: preview.data.previewToken },
                 {
                   onSuccess: () => {
-                    toast.success(t("settings:syncRules.saved"));
+                    toast.success(t("settings:syncRules.saved"), {
+                      description: toastSubject(param.provider),
+                    });
                     onDone();
+                  },
+                  onError: (error) => {
+                    toast.error(t("settings:syncRules.saveError"), {
+                      description:
+                        error instanceof Error && error.message
+                          ? error.message
+                          : undefined,
+                    });
                   },
                 },
               );

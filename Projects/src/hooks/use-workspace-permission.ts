@@ -94,7 +94,7 @@ export function useWorkspacePermission() {
     member: activeMember,
     role,
     isOwner: role === "owner",
-    isAdmin: role === "owner" || role === "admin",
+    isAdmin: role === "owner" || role === "admin" || can.manageSettings,
     // True while the first capability fetch is in flight. Useful for hiding
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves. A failed check settles to

@@ -146,6 +146,25 @@ import {
   listProjectWebhooks,
   saveProjectWebhook,
   deleteProjectWebhook,
+  listProjectWorkspaces,
+  getProjectWorkspaceAccount,
+  listProjectWorkspaceMembers,
+  listProjectMemberDirectory,
+  listProjectWorkspaceRoles,
+  getProjectWorkspaceCapabilities,
+  checkProjectWorkspacePermission,
+  createProjectWorkspace,
+  updateProjectWorkspace,
+  deleteProjectWorkspace,
+  updateProjectWorkspaceMember,
+  getProjectInvitation,
+  listProjectWorkspaceInvitations,
+  acceptProjectInvitation,
+  cancelProjectInvitation,
+  removeProjectWorkspaceMember,
+  createProjectWorkspaceRole,
+  updateProjectWorkspaceRole,
+  deleteProjectWorkspaceRole,
 } from "../_projects.js";
 import { enqueueGoogleTaskSync, googleTasksStatus, startGoogleTasksOAuth, syncGoogleTasksForOwner } from "../_google-workspace.js";
 
@@ -179,9 +198,22 @@ async function authenticateAdmin(request, env) {
   const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
   if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
   if (!verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
-  if (!verified.email.endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for admin access" };
+  if (!String(verified.email).toLowerCase().endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for Projects access" };
 
   return { ok: true, actor: { uid: verified.uid, email: verified.email.toLowerCase(), name: verified.name || "" } };
+}
+async function authenticateProjectsActor(request, env) {
+  const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
+  if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
+  const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
+  if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
+  if (!verified.emailVerified) return { ok: false, status: 403, error: "Verify your email address before using Projects." };
+  const email = String(verified.email).toLowerCase();
+  const isKaramah = email.endsWith(ADMIN_EMAIL_DOMAIN) || email.endsWith("@karamah.local");
+  if (!isKaramah && verified.signInProvider !== "password") {
+    return { ok: false, status: 403, error: "External collaborators must use the invitation email and password login." };
+  }
+  return { ok: true, actor: { uid: verified.uid, email, name: verified.name || "" } };
 }
 
 function effectiveRolePermissions(roleId, raw, fallback=[]) {
@@ -269,14 +301,16 @@ async function personalMailboxFor(db, env, actor) {
   return status.connected ? status.accountEmail : "";
 }
 async function authenticateAuthorized(request, env, action, data = {}) {
-  const auth=await authenticateAdmin(request, env); if (!auth.ok) return auth;
-  const access=await resolveAccess(adminDb(env), auth.actor);
+  const projectAction = PROJECT_DATABASE_ACTIONS.has(action);
+  const auth=await (projectAction ? authenticateProjectsActor(request, env) : authenticateAdmin(request, env)); if (!auth.ok) return auth;
+  const access = projectAction
+    ? { roleId: "projects-user", roleName: "Projects User", permissions: [], displayName: firstName(auth.actor.name, auth.actor.email) }
+    : await resolveAccess(adminDb(env), auth.actor);
   if (action.startsWith("mcp-")) return access && allows(access, "dashboard.view") ? { ...auth, actor:{...auth.actor,name:auth.actor.name || access.displayName || auth.actor.email}, access } : { ok:false,status:403,error:"Your role does not allow MCP management." };
-  const personal = await personalMailboxFor(adminDb(env), env, auth.actor);
+  const personal = projectAction ? null : await personalMailboxFor(adminDb(env), env, auth.actor);
   const sharedMailbox = String(data.mailbox || "").toLowerCase() === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX;
   const personalAction = ["personal-gmail-status", "personal-gmail-oauth-start", "personal-gmail-disconnect", "personal-gmail-sync"].includes(action);
   const sharedGmailManagement = ["gmail-oauth-start", "gmail-disconnect"].includes(action);
-  const projectAction = PROJECT_DATABASE_ACTIONS.has(action);
   const allowed = projectAction ? true
     : personalAction ? true
     : action === "inbox-list" ? true
@@ -867,7 +901,20 @@ export const GET_ACTIONS = {
   "operations-history-list": (_db, url, _actor, env) => listOperationsHistory(operationsDb(env), Object.fromEntries(url.searchParams.entries())),
   "operations-history-diff": (_db, url, _actor, env) => diffOperationsHistory(operationsDb(env), Object.fromEntries(url.searchParams.entries())),
   "operations-settings-get": (_db, _url, _actor, env) => getOperationsSettings(operationsDb(env)),
-  "project-list": (db, _url, actor, _env, access) => listProjects(db, actor, access),
+  "project-workspace-list": (db, _url, actor) => listProjectWorkspaces(db, actor),
+  "project-workspace-get": (db, url, actor) => getProjectWorkspaceAccount(db, { workspaceId: url.searchParams.get("workspaceId") }, actor),
+  "project-workspace-members-list": (db, url, actor) => listProjectWorkspaceMembers(db, Object.fromEntries(url.searchParams.entries()), actor),
+  "project-workspace-invitations-list": (db, url, actor) => listProjectWorkspaceInvitations(db, Object.fromEntries(url.searchParams.entries()), actor),
+  "project-member-directory": (db, url, actor, env) => listProjectMemberDirectory(db, Object.fromEntries(url.searchParams.entries()), actor, env),
+  "project-invitation-get": (db, url) => getProjectInvitation(db, { invitationId: url.searchParams.get("invitationId") }),
+  "project-workspace-roles-list": (db, url, actor) => listProjectWorkspaceRoles(db, Object.fromEntries(url.searchParams.entries()), actor),
+  "project-workspace-capabilities": (db, url, actor) => getProjectWorkspaceCapabilities(db, Object.fromEntries(url.searchParams.entries()), actor),
+  "project-workspace-permission-check": (db, url, actor) => {
+    let permissions = {};
+    try { permissions = JSON.parse(url.searchParams.get("permissions") || "{}"); } catch { /* invalid checks are denied by the workspace handler */ }
+    return checkProjectWorkspacePermission(db, { organizationId: url.searchParams.get("organizationId"), permissions }, actor);
+  },
+  "project-list": (db, url, actor, _env, access) => listProjects(db, actor, access, Object.fromEntries(url.searchParams.entries())),
   "project-search": (db, url, actor, _env, access) => searchProjectWorkspace(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-get": (db, url, actor, _env, access) => getProjectWorkspace(db, url.searchParams.get("projectId"), actor, access),
   "project-summary": (db, url, actor, _env, access) => projectSummary(db, Object.fromEntries(url.searchParams.entries()), actor, access),
@@ -914,6 +961,8 @@ const ADMIN_DATABASE_ACTIONS = new Set([
 // Project data has its own privacy boundary and database. Authentication,
 // Admin roles, MCP clients, and audit records remain in karamah-admin-db.
 const PROJECT_DATABASE_ACTIONS = new Set([
+  "project-invitation-get", "project-workspace-list", "project-workspace-get", "project-workspace-members-list", "project-workspace-invitations-list", "project-member-directory", "project-workspace-roles-list", "project-workspace-capabilities", "project-workspace-permission-check",
+  "project-workspace-create", "project-workspace-update", "project-workspace-delete", "project-workspace-member-update", "project-workspace-member-remove", "project-workspace-role-create", "project-workspace-role-update", "project-workspace-role-delete", "project-invitation-accept", "project-invitation-cancel",
   "project-list", "project-search", "project-get", "project-summary", "project-tasks-list", "project-task-get", "project-milestones-list", "project-task-comments-list", "project-task-activity",
   "project-members-list", "project-columns-list", "project-relations-list", "project-labels-list", "project-task-links-list", "project-saved-views-list", "project-task-time-list", "project-task-attachments-list", "project-task-attachment-get", "project-custom-fields-list", "project-task-watchers-list", "project-notifications-list",
   "project-task-templates-list", "project-webhooks-list",
@@ -974,6 +1023,11 @@ export async function onRequestGet(context) {
   const isReviewImage = action === "admin-review-image";
   if (!handler && !isReviewImage) return json({ error: "Unknown admin action" }, 400, headers);
   if (PROJECT_DATABASE_ACTIONS.has(action) && !env.PROJECTS_DB) return json({ error: "Projects database is not configured." }, 503, headers);
+
+  if (action === "project-invitation-get") {
+    try { return json(await handler(databaseForAdminAction(env, action), url, null, env, null, context), 200, headers); }
+    catch { return json({ valid: false, invitation: null }, 200, headers); }
+  }
 
   const auth = await authenticateAuthorized(request, env, action);
   if (!auth.ok) return json({ error: auth.error }, auth.status, headers);
@@ -1679,6 +1733,16 @@ export const POST_ACTIONS = {
   "operations-history-record": (_db, data, env, actor) => recordOperationsRevision(operationsDb(env), data, actor),
   "operations-history-rollback": (_db, data, env, actor) => rollbackOperationsHistory(operationsDb(env), data, actor),
   "operations-settings-update": (_db, data, env, actor) => saveOperationsSettings(operationsDb(env), data, actor),
+  "project-workspace-create": (db, data, _env, actor) => createProjectWorkspace(db, data, actor),
+  "project-workspace-update": (db, data, _env, actor) => updateProjectWorkspace(db, data, actor),
+  "project-workspace-delete": (db, data, _env, actor) => deleteProjectWorkspace(db, data, actor),
+  "project-workspace-member-update": (db, data, env, actor) => updateProjectWorkspaceMember(db, data, actor, env),
+  "project-invitation-accept": (db, data, _env, actor) => acceptProjectInvitation(db, data, actor),
+  "project-invitation-cancel": (db, data, _env, actor, access) => cancelProjectInvitation(db, data, actor, access),
+  "project-workspace-member-remove": (db, data, _env, actor) => removeProjectWorkspaceMember(db, data, actor),
+  "project-workspace-role-create": (db, data, _env, actor) => createProjectWorkspaceRole(db, data, actor),
+  "project-workspace-role-update": (db, data, _env, actor) => updateProjectWorkspaceRole(db, data, actor),
+  "project-workspace-role-delete": (db, data, _env, actor) => deleteProjectWorkspaceRole(db, data, actor),
   "project-create": (db, data, env, actor, access) => createProject(db, data, actor, access),
   "project-update": (db, data, env, actor, access) => updateProject(db, data, actor, access),
   "project-archive": (db, data, env, actor, access) => updateProject(db, { ...data, archived: true }, actor, access),
@@ -1696,7 +1760,7 @@ export const POST_ACTIONS = {
   "project-milestone-delete": (db, data, env, actor, access) => deleteProjectMilestone(db, data, actor, access),
   "google-tasks-oauth-start": (db, data, env, actor) => startGoogleTasksOAuth(db, env, actor, data.returnTo),
   "google-tasks-sync": (db, data, env, actor) => syncGoogleTasksForOwner(db, env, actor.uid),
-  "project-member-update": (db, data, env, actor, access) => updateProjectMember(db, data, actor, access),
+  "project-member-update": (db, data, env, actor, access) => updateProjectMember(db, data, actor, access, env),
   "project-member-remove": (db, data, env, actor, access) => removeProjectMember(db, data, actor, access),
   "project-column-create": (db, data, env, actor, access) => createProjectColumn(db, data, actor, access),
   "project-column-update": (db, data, env, actor, access) => updateProjectColumn(db, data, actor, access),

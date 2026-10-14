@@ -22,7 +22,7 @@ import { cn } from "@/lib/cn";
 import { isKeyboardFocus } from "@/lib/is-keyboard-focus";
 import { isOwnDomEvent } from "@/lib/is-own-dom-event";
 import { isTaskCompleted } from "@/lib/due-date-status";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import useBacklogBulkSelectionStore from "@/store/backlog-bulk-selection";
 import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
@@ -139,11 +139,15 @@ const BacklogTaskRow = memo(function BacklogTaskRow({
   const handleDeleteTask = async () => {
     try {
       await deleteTask(task.id);
-      toast.success(t("tasks:delete.success"), { icon: Trash2Icon });
+      toast.success(t("tasks:delete.success"), {
+        description: toastSubject(task.title),
+        icon: Trash2Icon,
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:delete.error"),
-      );
+      toast.error(t("tasks:delete.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

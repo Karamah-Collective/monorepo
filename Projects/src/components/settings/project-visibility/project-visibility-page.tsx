@@ -35,6 +35,7 @@ import useGetProject from "@/hooks/queries/project/use-get-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { getInitials } from "@/lib/get-initials";
 import { requestAdminJson } from "@/lib/karamah-admin";
+import { toast, toastSubject } from "@/lib/toast";
 
 const PROJECT_PERMISSION_OPTIONS = [
   ["can_view_project", "View project"],
@@ -64,16 +65,17 @@ function ProjectMembersPanel({
   projectId: string;
   enabled: boolean;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
   const members = useQuery({
     queryKey: ["project-members", projectId],
     enabled: enabled && !!projectId,
-    queryFn: () => requestAdminJson<{ members: Array<Record<string, unknown>> }>({ action: "project-members-list", query: { projectId } }),
+    queryFn: () => requestAdminJson<{ members: Array<Record<string, unknown>>; invitations?: Array<Record<string, unknown>> }>({ action: "project-members-list", query: { projectId } }),
   });
   const save = useMutation({
-    mutationFn: (member: Record<string, unknown>) => requestAdminJson({ action: "project-member-update", method: "POST", body: { projectId, member } }),
+    mutationFn: (member: Record<string, unknown>) => requestAdminJson<{ external?: boolean }>({ action: "project-member-update", method: "POST", body: { projectId, member } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-members", projectId] }),
   });
   const remove = useMutation({
@@ -81,11 +83,33 @@ function ProjectMembersPanel({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-members", projectId] }),
   });
 
+  const saveMember = (member: Record<string, unknown>) => {
+    save.mutate(member, {
+      onSuccess: (result) => {
+        toast.success(t("settings:projectVisibility.memberAccessUpdated"), {
+          description: [
+            toastSubject(String(member.email || "")),
+            result?.external ? "Invitation sent" : String(member.role || "viewer"),
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        });
+      },
+      onError: (error) => {
+        toast.error(t("settings:projectVisibility.memberAccessError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
+      },
+    });
+  };
+
   if (!enabled) return null;
+  const pendingInvitations = members.data?.invitations || [];
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim()) return;
-    save.mutate({ email: email.trim().toLowerCase(), role });
+    saveMember({ email: email.trim().toLowerCase(), role });
     setEmail("");
   };
 
@@ -102,7 +126,7 @@ function ProjectMembersPanel({
           <Input
             aria-label="Member email"
             type="email"
-            placeholder="name@karamahcollective.com"
+            placeholder="name@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -151,11 +175,12 @@ function ProjectMembersPanel({
                   : {};
               const memberEmail = String(member.email || "");
               const memberRole = String(member.role || "viewer");
+              const isExternal = Boolean(member.isExternal);
               const taskVisibility = String(
                 member.taskVisibility || permissions.task_visibility || "all",
               );
               const update = (changes: Record<string, unknown>) =>
-                save.mutate({
+                saveMember({
                   email: memberEmail,
                   role: memberRole,
                   ...permissions,
@@ -173,8 +198,9 @@ function ProjectMembersPanel({
                       <AvatarFallback>{getInitials(memberEmail, "?")}</AvatarFallback>
                     </Avatar>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {memberEmail}
+                      <span className="flex items-center gap-2 truncate text-sm font-medium">
+                        <span className="truncate">{memberEmail}</span>
+                        {isExternal ? <Badge variant="outline" size="sm">External</Badge> : null}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                         {memberRole} · {TASK_VISIBILITY_OPTIONS.find(([value]) => value === taskVisibility)?.[1] ?? "Custom visibility"}
@@ -193,7 +219,25 @@ function ProjectMembersPanel({
                       title={`Remove ${memberEmail}`}
                       onClick={(event) => {
                         event.preventDefault();
-                        remove.mutate(memberEmail);
+                        remove.mutate(memberEmail, {
+                          onSuccess: () => {
+                            toast.success(
+                              t("settings:projectVisibility.memberRemoved"),
+                              { description: toastSubject(memberEmail) },
+                            );
+                          },
+                          onError: (error) => {
+                            toast.error(
+                              t("settings:projectVisibility.memberRemoveError"),
+                              {
+                                description:
+                                  error instanceof Error && error.message
+                                    ? error.message
+                                    : undefined,
+                              },
+                            );
+                          },
+                        });
                       }}
                     >
                       <Trash2 aria-hidden="true" />
@@ -258,6 +302,17 @@ function ProjectMembersPanel({
                     </div>
                   </div>
                 </details>
+              );
+            })}
+            {pendingInvitations.map((invitation) => {
+              const invitationEmail = String(invitation.email || "");
+              return (
+                <div className="flex items-center gap-3 px-3 py-3" key={`invite-${invitation.id}`}>
+                  <MailPlus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-sm">{invitationEmail}</span>
+                  <Badge variant="outline" size="sm">External · pending</Badge>
+                  <span className="hidden text-xs text-muted-foreground sm:inline">{String(invitation.role || "viewer")}</span>
+                </div>
               );
             })}
           </div>

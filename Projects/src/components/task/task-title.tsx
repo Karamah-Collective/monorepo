@@ -10,6 +10,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import debounce from "@/lib/debounce";
 import { stripLineBreaks } from "@/lib/strip-line-breaks";
+import { toast } from "@/lib/toast";
 
 type TaskTitleProps = {
   taskId: string;
@@ -64,10 +65,13 @@ export default function TaskTitle({ taskId, size = "md" }: TaskTitleProps) {
             title,
           });
         } catch (error) {
-          console.error("Failed to update title:", error);
+          toast.error(t("tasks:update.error"), {
+            description:
+              error instanceof Error && error.message ? error.message : undefined,
+          });
         }
       }, 800),
-    [],
+    [t],
   );
 
   const title = form.watch("title");

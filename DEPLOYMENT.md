@@ -2,7 +2,12 @@
 
 ## 1. Cloudflare build settings
 
-Use **six separate Cloudflare Pages projects connected to this same GitHub repository**. Each project builds its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
+Use six Git-connected Cloudflare Pages projects connected to this same GitHub repository (Maps, Website, Admin, Links, Forms, and Projects). Each app builds from its own folder. This is Cloudflare's supported [monorepo configuration](https://developers.cloudflare.com/pages/configuration/monorepos/).
+
+The live Projects Pages project is named `projects` and serves
+`projects.karamahcollective.com`. A separate older project named
+`karamah-projects` exists as Direct Upload, but it is not the live target and
+must not receive production uploads.
 
 Branch policy:
 
@@ -41,6 +46,63 @@ both generated branches. Publish more than one generated branch only when the
 user explicitly names each target.
 
 ### Release discipline
+
+### What belongs in each branch
+
+Do not treat the three branches as three copies of the same working tree:
+
+| Location | What belongs there | What does not belong there |
+| --- | --- | --- |
+| Local working tree | Any work currently being developed or tested locally, including unfinished experiments and user-specific files | Anything that has not been reviewed for release |
+| `main` | The reviewed source of truth, documentation, migrations, tests, and buildable app code intended for collaboration | Local-only secrets, `.dev.vars`, auth storage, temporary screenshots, unfinished experiments, or unrelated work |
+| `preview` | The deploy-agent-generated preview tree, created only from an approved `main` source commit | Hand-edited source, unrelated local changes, or a manually copied app folder |
+| `deploy` | The deploy-agent-generated production tree, created only from an approved `main` source commit | Preview-only experiments, hand-edited generated files, or unreviewed local work |
+
+The promotion direction is one-way for a release: reviewed local changes are
+selected into a source commit on `main`, and only that commit is synchronized
+to the explicitly requested generated branch. A change being present on
+`main` does not authorize publishing it to `preview` or `deploy`; a change in
+the local working tree does not authorize putting it on `main`.
+
+Before selecting files, inspect the worktree and the source diff:
+
+```powershell
+git status --short
+git diff --stat
+git diff -- <intended paths>
+```
+
+Stage only the release scope. Do not use `git add .` for a release when the
+working tree contains unrelated work:
+
+```powershell
+git add <intended paths>
+npm run deploy:agent -- commit --subject "feat: concise release summary" --body "Explain the user-visible change and any operational setup required."
+```
+
+Then validate the source commit before generating a branch:
+
+```powershell
+npm run deploy:agent -- plan main
+npm run deploy:agent -- validate main
+```
+
+Only after validation, synchronize the named target. These commands are
+mutating when `--push` is supplied, so leave `--push` off for a dry review:
+
+```powershell
+# Preview request only
+npm run deploy:agent -- sync preview
+
+# Production request only
+npm run deploy:agent -- sync deploy
+
+# Add --push only after reviewing the generated diff and validation output.
+```
+
+Never run both sync commands by habit. A production request synchronizes
+`deploy` and skips `preview`; a preview request synchronizes `preview` and
+skips `deploy`; a main-only request synchronizes neither generated branch.
 
 ### Documentation gate
 
@@ -164,25 +226,16 @@ The existing Gmail OAuth connection is not silently expanded. Create the
 private R2 bucket `karamah-admin-media` and bind it as `ADMIN_MEDIA` before
 enabling task attachments.
 
-Cloudflare currently has five Git-connected Pages projects for this repository
-(Maps, Website, Admin, Links, and Forms), which fills the documented
-per-repository Pages project limit on the current account. Projects is therefore
-published as the Direct Upload project `karamah-projects` for the first release.
-Direct Upload projects cannot later be converted to Git integration. If the
-account limit is raised, create a replacement Git-connected Projects Pages
-project from the dashboard; otherwise use this Wrangler upload command for
-each reviewed production release:
+The current Cloudflare account lists six Git-connected Pages projects for this
+repository, including the live Projects project named `projects`. Keep its
+Production branch set to `deploy`, its Preview branch set to `preview`, its
+root directory set to `Projects`, and its output directory set to `dist`.
+The old Direct Upload project `karamah-projects` is not part of this release
+path. Do not upload new production builds to it.
 
-```powershell
-$env:VITE_ADMIN_ORIGIN = "https://admin.karamahcollective.com"
-$env:VITE_CLIENT_URL = "https://projects.karamahcollective.com"
-npm run build:projects
-npx wrangler pages deploy Projects/dist --project-name karamah-projects --branch deploy
-```
-
-The two `VITE_*` values are public build configuration, not secrets. Do not put
-D1 credentials, Firebase service-account keys, MCP signing keys, or Admin bearer
-tokens in the Projects Pages variables.
+The Projects `VITE_*` values are public build configuration, not secrets. Do
+not put D1 credentials, Firebase service-account keys, MCP signing keys, or
+Admin bearer tokens in the Projects Pages variables.
 
 The script reads Admin-owned data from `halal-finder-db` and the existing
 Operations database, writes to `karamah-admin-db`, and prints target row
@@ -249,9 +302,37 @@ Optional build variables, useful while testing a replacement Website project:
 ```text
 VITE_MAPS_ORIGIN=https://maps.karamahcollective.com
 VITE_WEBSITE_ORIGIN=https://karamahcollective.com
+VITE_PROJECTS_APP_URL=https://projects.karamahcollective.com
+VITE_FORMS_ORIGIN=https://forms.karamahcollective.com
+VITE_LINKS_ORIGIN=https://links.karamahcollective.com
 ```
 
-These are public API origins, without trailing paths. They contain no secrets and are embedded at build time. Rebuild Admin after changing them.
+For the current Admin Pages project, configure these **Production and Preview
+build variables** explicitly:
+
+| Name | Required for current production | Purpose |
+| --- | --- | --- |
+| `VITE_MAPS_ORIGIN` | Yes | Public Maps/Admin API origin used by browser API calls. |
+| `VITE_WEBSITE_ORIGIN` | Yes if Website administration is used | Website API origin used by Website content and team controls. |
+| `VITE_PROJECTS_APP_URL` | Yes for the Projects handoff | URL opened by Admin's Projects pages and links. |
+| `VITE_FORMS_ORIGIN` | Required when Admin links to the deployed Forms app | Public Forms origin. |
+| `VITE_LINKS_ORIGIN` | Required when Link Hub uses the deployed Links app | Public Links origin. |
+
+These are public origins, without trailing paths. They are not secrets and are
+embedded into the Admin build. Firebase's browser configuration is currently
+compiled from `Admin/src/firebase.js`; there is no Firebase service-account
+secret to add to the Admin Pages variables. Keep Firebase authorized domains
+configured separately in Firebase Authentication.
+
+In **Admin → Settings → Variables and Secrets**, set the runtime variable
+`MAPS_ORIGIN=https://maps.karamahcollective.com` for Pages Functions. Admin's
+`/api/admin`, MCP proxy, and inbox-event proxy use it to reach Maps. It is a
+runtime variable, not a `VITE_*` browser build variable. The Admin Pages app
+does not need a D1 binding for the current proxy architecture; D1 bindings
+belong to Maps.
+
+Rebuild Admin after changing any `VITE_*` value. Updating only a Pages runtime
+variable does not change values already embedded in the browser bundle.
 
 ### Admin MCP: remote, role-scoped automation
 
@@ -520,6 +601,87 @@ and project settings.
 For local work, node Maps/scripts/local-db.mjs creates the local Projects D1
 state and role-varied mock projects. Run npm run dev:projects and open
 http://127.0.0.1:5184.
+
+### Projects Pages variables and bindings
+
+Projects is a browser application. It does not receive D1 credentials, Firebase
+service-account keys, MCP signing keys, Admin bearer tokens, or Brevo
+credentials. Its browser requests go to the authenticated Admin API, and the
+Projects database is accessed by the Maps Pages Functions through
+`PROJECTS_DB`.
+
+In the **Projects Pages project** (`projects`), set these **Production
+and Preview build variables**:
+
+| Name | Required | Value / rule |
+| --- | --- | --- |
+| `VITE_ADMIN_ORIGIN` | Yes | `https://admin.karamahcollective.com`; no trailing slash |
+| `VITE_CLIENT_URL` | Yes for hosted auth/invitation links | `https://projects.karamahcollective.com`; no trailing slash |
+| `VITE_TURNSTILE_SITE_KEY` | Optional | Set only when the Projects auth/API configuration requires Cloudflare Turnstile. The UI hides the CAPTCHA when this is absent. |
+| `VITE_SENTRY_DSN` | Optional | Public Sentry browser DSN, only if Projects error reporting is enabled. |
+| `VITE_DEMO_MODE` | No for real deployments | Leave unset or set `false`. Never enable it on the production project. |
+| `VITE_API_URL` | Normally no | Leave unset. The hosted app falls back to the Admin origin; setting this overrides that path and is only for a deliberate API topology. |
+
+Do not put `BREVO_API_KEY` or `PROJECTS_ORIGIN` in the Projects Pages
+project. The invitation email is sent by `Maps/functions/_project-email.js`,
+so those are **Maps Pages runtime variables**:
+
+| Project | Name | Type | Value / rule |
+| --- | --- | --- | --- |
+| Maps | `BREVO_API_KEY` | Secret | Brevo HTTP API key for the account that can send as `projects@karamahcollective.com`; do not use the SMTP password (`xsmtpsib-...`). |
+| Maps | `PROJECTS_ORIGIN` | Variable | `https://projects.karamahcollective.com`; no trailing slash. |
+| Maps | `PROJECTS_DB` | D1 binding | Production database `karamah-projects-db`, binding name exactly `PROJECTS_DB`. |
+| Maps | `ADMIN_DB` | D1 binding | Production database `karamah-admin-db`, binding name exactly `ADMIN_DB`. |
+| Maps | `DB` | D1 binding | Existing `halal-finder-db`, binding name exactly `DB`. Required because the same Admin Function handles other application areas. |
+| Maps | `ADMIN_MEDIA` | R2 binding | Existing private `karamah-admin-media` bucket, required for project attachments if enabled. |
+
+`PROJECTS_DB` is not a Pages variable typed as text. It must be a Cloudflare
+D1 binding in the Maps Pages project for the environment that serves the
+request. Apply the project migrations before the first release:
+
+```powershell
+node scripts/migrate-projects-db.mjs --remote --confirm
+```
+
+Set `BREVO_API_KEY` as a secret in **Maps → Settings → Variables and Secrets**
+for the relevant environment. The sender domain and sender mailbox must be
+verified in Brevo. The API key must be Brevo's HTTP API-key format, not its
+SMTP password format. After changing a Pages variable or secret, rebuild or
+redeploy the affected app; browser `VITE_*` values are embedded at build time.
+
+### Projects Git-connected release
+
+Projects follows the same generated-branch release path as the other apps. The
+Pages project must have `Production branch=deploy`, `Preview branch=preview`,
+root directory `Projects`, build command `npm ci --prefix .. && npm run build`,
+and output directory `dist`. Cloudflare reads the public `VITE_*` values from
+the selected environment during its build.
+
+After the reviewed source commit is on `main`, generate and publish only the
+requested branch:
+
+```powershell
+# Production request only
+npm run deploy:agent -- sync deploy --push
+
+# Preview request only
+npm run deploy:agent -- sync preview --push
+```
+
+Do not run both commands unless both environments were explicitly requested.
+Cloudflare then builds the `projects` Pages project from the selected branch.
+The `karamah-projects` Direct Upload project is not used by these commands.
+
+Verify the deployed Projects app after upload:
+
+```powershell
+Invoke-WebRequest https://projects.karamahcollective.com/auth/sign-in -UseBasicParsing
+```
+
+Then sign in through the browser and check one read path and one write path:
+open a workspace, open a project, move a task between columns, reload, and
+confirm the new state persists. Also send one invitation test only after
+verifying that `BREVO_API_KEY` is present on Maps.
 
 ## 6. Gmail automatic inbox sync
 

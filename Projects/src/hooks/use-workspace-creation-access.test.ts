@@ -31,8 +31,8 @@ describe("useWorkspaceCreationAccess", () => {
     });
   });
 
-  it("does not restrict a refreshed multi-role user that includes admin", async () => {
-    useAuth.mockReturnValue({ user: { role: "user" } });
+  it("allows any signed-in Karamah user", async () => {
+    useAuth.mockReturnValue({ user: { email: "viewer@karamahcollective.com" }, isLoading: false });
     getSession.mockResolvedValue({
       data: { user: { role: "user,admin" } },
       error: null,
@@ -45,8 +45,8 @@ describe("useWorkspaceCreationAccess", () => {
     expect(result.current.canCreateWorkspace).toBe(true);
   });
 
-  it("restricts a refreshed non-admin when creation is disabled", async () => {
-    useAuth.mockReturnValue({ user: { role: "user" } });
+  it("does not use the Admin-panel role or creation flag", async () => {
+    useAuth.mockReturnValue({ user: { email: "viewer@karamahcollective.com", role: "viewer" }, isLoading: false });
     getSession.mockResolvedValue({
       data: { user: { role: "user" } },
       error: null,
@@ -55,12 +55,12 @@ describe("useWorkspaceCreationAccess", () => {
     const { result } = renderHook(() => useWorkspaceCreationAccess());
 
     await waitFor(() => expect(result.current.isDecided).toBe(true));
-    expect(result.current.isCreationRestricted).toBe(true);
-    expect(result.current.canCreateWorkspace).toBe(false);
+    expect(result.current.isCreationRestricted).toBe(false);
+    expect(result.current.canCreateWorkspace).toBe(true);
   });
 
   it("falls back to the cached multi-role admin when the refresh fails", async () => {
-    useAuth.mockReturnValue({ user: { role: "user,admin" } });
+    useAuth.mockReturnValue({ user: { email: "viewer@karamahcollective.com" }, isLoading: false });
     getSession.mockRejectedValue(new Error("network"));
 
     const { result } = renderHook(() => useWorkspaceCreationAccess());

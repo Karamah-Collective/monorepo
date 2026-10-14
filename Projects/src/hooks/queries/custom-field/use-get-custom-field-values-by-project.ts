@@ -1,16 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import getCustomFieldValuesByProject from "@/fetchers/custom-field/get-custom-field-values-by-project";
 
-export type CustomFieldValue = {
-  id: string;
-  taskId: string;
-  fieldId: string;
-  value: string | null;
-  fieldName: string;
-  fieldPosition: number;
-  fieldType: string;
-  fieldOptions: unknown;
-};
+export type { CustomFieldValue } from "@/fetchers/custom-field/get-custom-field-values-by-project";
 
 function useGetCustomFieldValuesByProject(projectId: string) {
   return useQuery<CustomFieldValue[]>({

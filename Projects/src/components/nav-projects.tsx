@@ -67,7 +67,7 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { EASE_OUT_CSS } from "@/lib/motion";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type { ProjectWithTasks } from "@/types/project";
 import CreateProjectModal from "./shared/modals/create-project-modal";
 import {
@@ -217,8 +217,16 @@ export function NavProjects() {
     const reordered = arrayMove(projects, oldIndex, newIndex);
 
     reorderProjects(workspace.id, reordered, {
-      onError: () => {
-        toast.error(t("workspace:projects.reorderError"));
+      onSuccess: () => {
+        toast.success(t("workspace:projects.reorderSuccess"), {
+          description: toastSubject(reordered[newIndex]?.name),
+        });
+      },
+      onError: (error) => {
+        toast.error(t("workspace:projects.reorderError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       },
     });
   };

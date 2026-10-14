@@ -1,4 +1,4 @@
-import { Trash2Icon } from "lucide-react";
+import { Calendar, Trash2Icon } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskPullRequests } from "@/components/task/task-pull-requests";
@@ -27,9 +27,10 @@ import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
+import { formatDateMedium } from "@/lib/format";
 import { isOwnDomEvent } from "@/lib/is-own-dom-event";
 import { isTaskCompleted } from "@/lib/due-date-status";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -50,7 +51,7 @@ function TaskCardContent({
   isFinalColumn,
   isDragging,
 }: TaskCardContentProps) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { project } = useProjectStore();
   const taskIsCompleted =
     isFinalColumn ?? isTaskCompleted(task.status, project?.columns);
@@ -95,11 +96,15 @@ function TaskCardContent({
   const handleDeleteTask = async () => {
     try {
       await deleteTask(task.id);
-      toast.success(t("tasks:delete.success"), { icon: Trash2Icon });
+      toast.success(t("tasks:delete.success"), {
+        description: toastSubject(task.title),
+        icon: Trash2Icon,
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:delete.error"),
-      );
+      toast.error(t("tasks:delete.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
@@ -121,7 +126,7 @@ function TaskCardContent({
             onPointerLeave={() => setIsPressed(false)}
             onPointerCancel={() => setIsPressed(false)}
             className={cn(
-              "group relative flex flex-col rounded-[10px] border p-3 transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out",
+              "group relative flex h-[98px] min-w-0 flex-col overflow-hidden rounded-[10px] border p-3 transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out",
               isPressed && "scale-[0.98]",
               disableDragDrop ? "cursor-default" : "cursor-move",
               taskIsCompleted
@@ -172,36 +177,44 @@ function TaskCardContent({
 
             <div
               className={cn(
-                "line-clamp-3 break-words text-[13px] leading-[18px]",
+                "min-w-0 truncate text-[13px] leading-[18px]",
                 showIdRow && "mt-1",
                 taskIsCompleted
                   ? "text-board-title-done"
                   : "font-medium text-board-title",
               )}
+              title={task.title}
             >
               {task.title}
             </div>
 
-            {!taskIsCompleted && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-1 empty:hidden">
-                {showPriority && hasPriority && <PriorityChip task={task} />}
-                {showDueDates && <DueDateChip task={task} />}
-                <SubtasksChip task={task} workspaceId={workspaceId} />
-                {showTaskItemCounts && <ChecklistChip task={task} />}
-                <TaskPullRequests
-                  externalLinks={task.externalLinks}
-                  className={cn(taskChipClass, "bg-transparent font-normal")}
+            <div className="mt-2.5 flex h-5.5 min-h-5.5 flex-nowrap items-center gap-1 overflow-hidden">
+              {taskIsCompleted ? (
+                <CompletionDateChip
+                  task={task}
+                  locale={i18n.resolvedLanguage}
                 />
-                {showLabels && (
-                  <LabelChips task={task} workspaceId={workspaceId} />
-                )}
-                <CardFieldList
-                  fields={cardFields}
-                  max={2}
-                  className="contents"
-                />
-              </div>
-            )}
+              ) : (
+                <>
+                  {showPriority && hasPriority && <PriorityChip task={task} />}
+                  {showDueDates && <DueDateChip task={task} />}
+                  <SubtasksChip task={task} workspaceId={workspaceId} />
+                  {showTaskItemCounts && <ChecklistChip task={task} />}
+                  <TaskPullRequests
+                    externalLinks={task.externalLinks}
+                    className={cn(taskChipClass, "bg-transparent font-normal")}
+                  />
+                  {showLabels && (
+                    <LabelChips task={task} workspaceId={workspaceId} />
+                  )}
+                  <CardFieldList
+                    fields={cardFields}
+                    max={2}
+                    className="contents"
+                  />
+                </>
+              )}
+            </div>
           </div>
         </ContextMenuTrigger>
 
@@ -251,6 +264,55 @@ function TaskCardContent({
       )}
     </>
   );
+}
+
+function CompletionDateChip({ task, locale }: { task: Task; locale?: string }) {
+  const date = task.completedAt || task.updatedAt || task.createdAt;
+
+  return (
+    <time
+      dateTime={date}
+      title={formatDateMedium(date, locale)}
+      className={cn(
+        taskChipClass,
+        "cursor-default capitalize hover:border-chip-border hover:bg-transparent",
+      )}
+    >
+      <Calendar className="text-chip-icon" />
+      {formatRelativeCalendarDate(date, locale)}
+    </time>
+  );
+}
+
+function formatRelativeCalendarDate(value: string, locale?: string) {
+  const dayFormatter = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
+  const getDay = (date: Date) => {
+    const parts = Object.fromEntries(
+      dayFormatter
+        .formatToParts(date)
+        .map(({ type, value: partValue }) => [type, partValue]),
+    );
+
+    return Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+    );
+  };
+
+  const dayDifference = Math.round(
+    (getDay(new Date()) - getDay(new Date(value))) / 86_400_000,
+  );
+  const formatter = new Intl.RelativeTimeFormat(locale, {
+    numeric:
+      dayDifference === 0 || Math.abs(dayDifference) === 1 ? "auto" : "always",
+  });
+
+  return formatter.format(-dayDifference, "day");
 }
 
 export default memo(TaskCardContent);

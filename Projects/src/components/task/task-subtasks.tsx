@@ -23,7 +23,7 @@ import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-rela
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import queryClient from "@/query-client";
 import type Task from "@/types/task";
 import { SectionAddButton } from "./sections/section-add-button";
@@ -260,8 +260,14 @@ export default function TaskSubtasks({
 
       setNewTitle("");
       setIsAdding(false);
-    } catch {
-      toast.error(t("tasks:subtasks.createError"));
+      toast.success(t("tasks:subtasks.createSuccess"), {
+        description: toastSubject(newTask.title),
+      });
+    } catch (error) {
+      toast.error(t("tasks:subtasks.createError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
@@ -276,13 +282,17 @@ export default function TaskSubtasks({
         next.delete(deleteTaskId);
         return next;
       });
-      toast.success(t("tasks:subtasks.deleteSuccess"), { icon: Trash2Icon });
+      toast.success(t("tasks:subtasks.deleteSuccess"), {
+        description: toastSubject(
+          subtasks.find((item) => item.task.id === deleteTaskId)?.task.title,
+        ),
+        icon: Trash2Icon,
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:subtasks.deleteError"),
-      );
+      toast.error(t("tasks:subtasks.deleteError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     } finally {
       setDeleteTaskId(null);
     }

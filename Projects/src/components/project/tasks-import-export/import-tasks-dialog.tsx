@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import useImportTasks from "@/hooks/mutations/task/use-import-tasks";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 const EXAMPLE_FORMAT = `{
   "tasks": [
@@ -51,6 +51,7 @@ export function ImportTasksDialog({
   const { mutateAsync: importTasks, isPending } = useImportTasks();
 
   const importFile = async (file: File) => {
+    let loadingToast: string | undefined;
     try {
       const tasks = parseTasksImport(await file.text());
 
@@ -59,19 +60,21 @@ export function ImportTasksDialog({
         return;
       }
 
-      toast.loading(t("settings:tasksImportExport.importing"));
+      loadingToast = toast.loading(
+        t("settings:tasksImportExport.importing"),
+      );
 
       const result = await importTasks({ projectId, tasks });
 
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
 
       onOpenChange(false);
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.success(
         t("settings:tasksImportExport.importSuccess", {
           count: result.results.successful,
         }),
-        { icon: UploadIcon },
+        { description: toastSubject(file.name), icon: UploadIcon },
       );
 
       if (result.results.failed > 0) {
@@ -82,8 +85,11 @@ export function ImportTasksDialog({
         );
       }
     } catch (error) {
-      toast.dismiss();
-      toast.error(t("settings:tasksImportExport.importError"));
+      toast.dismiss(loadingToast);
+      toast.error(t("settings:tasksImportExport.importError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
       console.error(error);
     }
   };

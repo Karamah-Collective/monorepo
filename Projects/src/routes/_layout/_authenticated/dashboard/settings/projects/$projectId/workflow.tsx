@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import { AutomationsSection } from "@/components/project/automations/automations-section";
 import { ColumnList } from "@/components/project/columns/column-list";
 import { AutosaveNote } from "@/components/settings/autosave-note";
 import { SettingsPage } from "@/components/settings/settings-page";
@@ -30,12 +29,6 @@ function RouteComponent() {
           description={t("settings:projectWorkflow.columnsDescription")}
         >
           <ColumnList projectId={projectId} />
-        </SettingsSection>
-        <SettingsSection
-          title={t("settings:projectWorkflow.automationTitle")}
-          description={t("settings:projectWorkflow.automationDescription")}
-        >
-          <AutomationsSection projectId={projectId} />
         </SettingsSection>
       </SettingsPage>
     </>

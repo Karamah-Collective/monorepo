@@ -15,6 +15,7 @@ import useClearNotifications from "@/hooks/mutations/notification/use-clear-noti
 import useMarkAllNotificationsAsRead from "@/hooks/mutations/notification/use-mark-all-notifications-as-read";
 import { useLocalDay } from "@/hooks/use-local-day";
 import { cn } from "@/lib/cn";
+import { toast } from "@/lib/toast";
 import type { Notification } from "@/types/notification";
 import {
   filterNotifications,
@@ -41,8 +42,33 @@ export function InboxList({
   const day = useLocalDay();
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead(workspaceId);
-  const { mutate: clearAll } = useClearNotifications(workspaceId);
+  const { mutateAsync: markAllAsRead } = useMarkAllNotificationsAsRead(workspaceId);
+  const { mutateAsync: clearAll } = useClearNotifications(workspaceId);
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+      toast.success(t("notifications:inbox.markedAllRead"));
+    } catch (error) {
+      toast.error(t("notifications:inbox.actionError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await clearAll();
+      setShowClearDialog(false);
+      toast.success(t("notifications:inbox.clearedAll"));
+    } catch (error) {
+      toast.error(t("notifications:inbox.actionError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    }
+  };
 
   const unreadCount = notifications.filter(
     (notification) => !notification.isRead,
@@ -114,7 +140,7 @@ export function InboxList({
             variant="ghost"
             size="xs"
             disabled={unreadCount === 0}
-            onClick={() => markAllAsRead()}
+            onClick={() => void handleMarkAllAsRead()}
             className="text-muted-foreground"
           >
             <CheckCheck />
@@ -184,17 +210,13 @@ export function InboxList({
             <AlertDialogClose render={<Button variant="outline" size="sm" />}>
               {t("common:actions.cancel")}
             </AlertDialogClose>
-            <AlertDialogClose
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => clearAll()}
-                />
-              }
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => void handleClearAll()}
             >
               {t("common:actions.clearAll")}
-            </AlertDialogClose>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

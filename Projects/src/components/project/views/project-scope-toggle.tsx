@@ -38,10 +38,13 @@ export function ProjectScopeToggle({
     });
   }, [currentView, reduceMotion]);
 
-  const isActive = (view: ProjectView) =>
-    view === "board"
-      ? !onBacklog && (tasksView === "board" || tasksView === "list")
+  const isActive = (view: ProjectView) => {
+    if (view === "backlog") return onBacklog;
+    if (onBacklog) return false;
+    return view === "board"
+      ? tasksView === "board" || tasksView === "list"
       : view === tasksView;
+  };
 
   return (
     <nav

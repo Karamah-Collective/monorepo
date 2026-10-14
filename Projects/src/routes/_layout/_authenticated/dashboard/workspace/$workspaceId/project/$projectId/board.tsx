@@ -214,6 +214,7 @@ function RouteComponent() {
             viewMode === "board" ? (
               <KanbanBoard
                 project={sortedProject}
+                workspaceId={workspaceId}
                 disableCollectionActions={boardFetching || boardError}
                 disableDragDrop={
                   boardFetching ||

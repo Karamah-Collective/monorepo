@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { UserRoundIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
@@ -71,15 +70,11 @@ export function TaskShortcuts({
       if (!task || !user) return;
       try {
         await updateAssignee({ ...task, userId: user.id });
-        toast.message(t("tasks:shortcuts.assignedToMe"), {
-          icon: UserRoundIcon,
-        });
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("tasks:popover.assignee.updateError"),
-        );
+        toast.error(t("tasks:popover.assignee.updateError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       }
     },
     assignable,
@@ -92,11 +87,10 @@ export function TaskShortcuts({
       try {
         await updateDueDate({ ...task, dueDate: null });
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t("tasks:popover.dueDate.updateError"),
-        );
+        toast.error(t("tasks:popover.dueDate.updateError"), {
+          description:
+            error instanceof Error && error.message ? error.message : undefined,
+        });
       }
     },
     editable,

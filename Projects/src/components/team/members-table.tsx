@@ -20,7 +20,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type {
   WorkspaceUser,
   WorkspaceUserInvitation,
@@ -137,14 +137,16 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     try {
       await updateMemberRole({ workspaceId, memberId: member.id, role });
       toast.success(t("team:membersTable.roleUpdateSuccess"), {
+        description: [toastSubject(member.user.name), role]
+          .filter(Boolean)
+          .join(" → "),
         icon: ShieldCheckIcon,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("team:membersTable.roleUpdateError"),
-      );
+      toast.error(t("team:membersTable.roleUpdateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
@@ -156,14 +158,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         userId: memberToDelete.user.email,
       });
       toast.success(t("team:membersTable.removeSuccess"), {
+        description: toastSubject(memberToDelete.user.email),
         icon: UserMinusIcon,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("team:membersTable.removeError"),
-      );
+      toast.error(t("team:membersTable.removeError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     } finally {
       setMemberToDelete(null);
     }
@@ -177,14 +179,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         workspaceId,
       });
       toast.success(t("team:membersTable.cancelInviteSuccess"), {
+        description: toastSubject(invitationToCancel.email),
         icon: MailXIcon,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("team:membersTable.cancelInviteError"),
-      );
+      toast.error(t("team:membersTable.cancelInviteError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     } finally {
       setInvitationToCancel(null);
     }
@@ -237,6 +239,11 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         <span className="truncate text-sm font-medium">
                           {member.user.name}
                         </span>
+                        {member.isExternal ? (
+                          <Badge variant="outline" size="sm">
+                            External
+                          </Badge>
+                        ) : null}
                         {isSelf ? (
                           <span className="text-xs text-muted-foreground">
                             ({t("team:members.you", { defaultValue: "You" })})
@@ -351,6 +358,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         {t("team:invitations.pendingBadge", {
                           defaultValue: "pending",
                         })}
+                      </Badge>
+                      <Badge variant="outline" size="sm">
+                        External
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground">

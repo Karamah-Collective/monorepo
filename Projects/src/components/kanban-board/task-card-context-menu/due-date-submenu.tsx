@@ -37,9 +37,10 @@ export function DueDateSubmenu({ task }: { task: Task }) {
         dueDate: date?.toISOString() ?? null,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:dueDate.updateError"),
-      );
+      toast.error(t("tasks:dueDate.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

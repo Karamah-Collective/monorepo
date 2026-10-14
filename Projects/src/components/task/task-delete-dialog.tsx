@@ -54,9 +54,10 @@ export default function TaskDeleteDialog({
       handle.close();
       onDeleted();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:delete.error"),
-      );
+      toast.error(t("tasks:delete.error"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

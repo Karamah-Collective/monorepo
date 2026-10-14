@@ -4,7 +4,13 @@ import { HttpError } from "@/lib/http-error";
 export type TaskReorder = {
   projectId: string;
   expectedTasks?: { id: string; position: number | null; status: string; revision?: number }[];
-  tasks: { id: string; position: number; status?: string; expectedRevision?: number }[];
+  tasks: {
+    id: string;
+    position: number;
+    status?: string;
+    columnId?: string;
+    expectedRevision?: number;
+  }[];
 };
 export default async function reorderTasks(json: TaskReorder) {
   const response = await client.task.reorder.$post({ json });

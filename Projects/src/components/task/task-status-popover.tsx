@@ -39,11 +39,10 @@ export default function TaskStatusPopover({
     try {
       await updateTaskStatus({ ...task, status });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.status.updateError"),
-      );
+      toast.error(t("tasks:popover.status.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

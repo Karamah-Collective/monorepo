@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe("SettingsNavProject", () => {
   it("starts expanded on one of its own pages and marks that page", () => {
-    renderProject("/dashboard/settings/projects/p1/integrations");
+    renderProject("/dashboard/settings/projects/p1/workflow");
 
     expect(
       screen
@@ -49,7 +49,7 @@ describe("SettingsNavProject", () => {
     ).toBe("true");
     expect(
       screen
-        .getByRole("link", { name: "settings:projectIntegrations.title" })
+        .getByRole("link", { name: "settings:projectWorkflow.title" })
         .getAttribute("data-active"),
     ).toBe("true");
   });

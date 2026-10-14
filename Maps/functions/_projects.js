@@ -1,6 +1,8 @@
 import { allowsPermissions } from "../../shared/admin-access.mjs";
+import { sendProjectInvitationEmail } from "./_project-email.js";
 
 export const PROJECT_ROLES = ["viewer", "contributor", "manager", "project-admin"];
+export const WORKSPACE_ROLES = ["viewer", "member", "admin", "owner"];
 export const TASK_STATUSES = ["inbox", "assigned", "in_progress", "blocked", "completed", "cancelled"];
 export const TASK_PRIORITIES = ["low", "normal", "high", "urgent"];
 export const TASK_VISIBILITY = ["all", "assigned", "own"];
@@ -14,8 +16,80 @@ const safe = (value, max = 5000) => String(value ?? "").replace(/[\u0000-\u001f]
 const now = () => new Date().toISOString();
 const newId = (prefix) => `${prefix}_${crypto.randomUUID()}`;
 const json = (value, fallback = {}) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
+const PROJECT_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const isAdmin = (access) => access?.permissions?.includes("*");
 const has = (access, permission, aliases = []) => isAdmin(access) || [permission, ...aliases].some(item => allowsPermissions(access?.permissions || [], item));
+
+const WORKSPACE_PERMISSION_KEYS = [
+  "project.create", "project.read", "project.update", "project.delete", "project.share",
+  "task.create", "task.read", "task.update", "task.delete", "task.assign",
+  "label.create", "label.read", "label.update", "label.delete",
+  "workspace.read", "workspace.update", "workspace.delete", "workspace.manage_settings",
+  "member.read", "member.create", "member.update", "member.delete", "invitation.create",
+];
+const DEFAULT_WORKSPACE_ROLE_PERMISSIONS = {
+  viewer: ["project.read", "task.read", "label.read", "workspace.read", "member.read"],
+  member: ["project.create", "project.read", "task.create", "task.read", "task.update", "label.create", "label.read", "label.update", "label.delete", "workspace.read", "member.read"],
+  admin: ["project.create", "project.read", "project.update", "project.delete", "project.share", "task.create", "task.read", "task.update", "task.delete", "task.assign", "label.create", "label.read", "label.update", "label.delete", "workspace.read", "workspace.update", "workspace.manage_settings", "member.read", "member.update", "member.delete", "invitation.create"],
+};
+const WORKSPACE_PERMISSION_ALIASES = {
+  "workspace.read": ["organization.read", "ac.read"],
+  "workspace.update": ["organization.update"],
+  "workspace.delete": ["organization.delete"],
+  "workspace.manage_settings": ["organization.update", "ac.create", "ac.update", "ac.delete"],
+  "invitation.create": ["member.create", "invitation.create"],
+};
+
+function fullWorkspacePermissions() {
+  return Object.fromEntries(WORKSPACE_PERMISSION_KEYS.map(key => [key, true]));
+}
+function workspaceRolePermissions(role, row = null) {
+  if (role === "owner") return fullWorkspacePermissions();
+  const raw = row?.permissions ? json(row.permissions, []) : DEFAULT_WORKSPACE_ROLE_PERMISSIONS[role] || [];
+  const granted = new Set(Array.isArray(raw) ? raw : []);
+  return Object.fromEntries(WORKSPACE_PERMISSION_KEYS.map(key => [key, granted.has("*") || granted.has(key) || (WORKSPACE_PERMISSION_ALIASES[key] || []).some(alias => granted.has(alias))]));
+}
+function workspaceRoleIsPreset(role, row) {
+  if (!WORKSPACE_ROLES.includes(role) || !row?.permissions || !DEFAULT_WORKSPACE_ROLE_PERMISSIONS[role]) return false;
+  const current = new Set(json(row.permissions, []));
+  const expected = new Set(DEFAULT_WORKSPACE_ROLE_PERMISSIONS[role]);
+  return current.size === expected.size && [...expected].every(permission => current.has(permission));
+}
+function workspaceAllows(workspaceAccess, permission) {
+  return workspaceAccess?.permissions?.[permission] === true || Object.entries(WORKSPACE_PERMISSION_ALIASES).some(([canonical, aliases]) => aliases.includes(permission) && workspaceAccess?.permissions?.[canonical] === true);
+}
+function workspaceRoleForProject(role) {
+  return role === "admin" ? "project-admin" : role === "member" ? "contributor" : "viewer";
+}
+function projectPermissionsFromWorkspace(access) {
+  const permissions = normalizeProjectPermissions("viewer");
+  permissions.can_view_project = workspaceAllows(access, "project.read");
+  permissions.can_read_tasks = workspaceAllows(access, "task.read");
+  permissions.can_create_tasks = workspaceAllows(access, "task.create");
+  permissions.can_edit_own_tasks = workspaceAllows(access, "task.update");
+  permissions.can_edit_any_tasks = workspaceAllows(access, "task.update");
+  permissions.can_assign_tasks = workspaceAllows(access, "task.assign");
+  permissions.can_comment = workspaceAllows(access, "task.update");
+  permissions.can_relate = workspaceAllows(access, "task.update");
+  permissions.can_attach = workspaceAllows(access, "task.update");
+  permissions.can_manage_members = workspaceAllows(access, "project.share") || workspaceAllows(access, "member.update");
+  permissions.can_manage_project = workspaceAllows(access, "project.update") || workspaceAllows(access, "project.delete");
+  return permissions;
+}
+function workspacePermissionList(permission = {}) {
+  return Object.entries(permission || {}).flatMap(([resource, actions]) =>
+    Array.isArray(actions) ? actions.map(action => `${resource}.${action}`) : [],
+  );
+}
+function workspacePermissionObject(values = []) {
+  const permission = {};
+  for (const value of values) {
+    const [resource, action] = String(value).split(".");
+    if (!resource || !action) continue;
+    permission[resource] = [...new Set([...(permission[resource] || []), action])];
+  }
+  return permission;
+}
 
 function roleRank(role) { return { viewer: 1, contributor: 2, manager: 3, "project-admin": 4 }[role] || 0; }
 function actorEmail(actor) { return safe(actor?.email, 240).toLowerCase(); }
@@ -67,14 +141,550 @@ function taskFromRow(row) {
 }
 
 async function getProject(db, projectId) { return db.prepare("SELECT * FROM projects WHERE id=?").bind(safe(projectId, 180)).first(); }
+async function getWorkspace(db, workspaceId) { return db.prepare("SELECT * FROM project_workspaces WHERE id=?").bind(safe(workspaceId, 180)).first(); }
 async function getMembership(db, projectId, actor) { return db.prepare("SELECT * FROM project_members WHERE project_id=? AND lower(email)=lower(?)").bind(projectId, actorEmail(actor)).first(); }
+async function getWorkspaceMembership(db, workspaceId, actor) {
+  try {
+    return await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(workspaceId, actorEmail(actor)).first();
+  } catch {
+    return null;
+  }
+}
 async function getMemberPermission(db, projectId, email) {
   try { return await db.prepare("SELECT * FROM project_member_permissions WHERE project_id=? AND lower(email)=lower(?)").bind(projectId, email).first(); } catch { return null; }
+}
+
+function workspaceFromRow(row, access = null) {
+  if (!row) return null;
+  const slug = safe(row.name, 120).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || row.id;
+  return {
+    id: row.id, name: row.name, slug, logo: null,
+    metadata: row.description ? { description: row.description } : null,
+    description: row.description || "", visibility: row.visibility, archivedAt: row.archived_at,
+    createdBy: { uid: row.created_by_uid, email: row.created_by_email },
+    createdAt: row.created_at, updatedAt: row.updated_at, role: access?.role || null,
+  };
+}
+function workspaceMemberFromRow(row) {
+  return {
+    id: row.email, organizationId: row.workspace_id, workspaceId: row.workspace_id,
+    userId: row.user_uid || row.email, role: row.role,
+    createdAt: row.created_at, updatedAt: row.updated_at,
+    isExternal: !isKaramahEmail(row.email),
+    user: { id: row.user_uid || row.email, name: row.display_name || row.email.split("@")[0], email: row.email, image: null },
+  };
+}
+function projectInvitationFromRow(row) {
+  const expiresAt = row.expires_at || null;
+  return {
+    id: row.id,
+    email: row.email,
+    workspaceId: row.workspace_id || row.project_workspace_id || null,
+    projectId: row.project_id || null,
+    workspaceName: row.workspace_name || "",
+    projectName: row.project_name || "",
+    scope: row.project_id ? "project" : "workspace",
+    role: row.project_role || row.workspace_role || "viewer",
+    workspaceRole: row.workspace_role || null,
+    projectRole: row.project_role || null,
+    permissions: json(row.project_permissions_json, {}),
+    taskVisibility: TASK_VISIBILITY.includes(row.project_task_visibility) ? row.project_task_visibility : "all",
+    selectedProjectIds: json(row.selected_project_ids_json, []),
+    projectRoles: json(row.project_roles_json, {}),
+    invitedByEmail: row.invited_by_email || "",
+    inviterName: row.invited_by_email ? row.invited_by_email.split("@")[0] : "Karamah Collective",
+    createdAt: row.created_at,
+    expiresAt,
+    sentAt: row.sent_at || null,
+    status: row.status,
+    expired: Boolean(expiresAt && Date.parse(expiresAt) <= Date.now()),
+    isExternal: true,
+  };
+}
+async function invitationAccessFromRow(db, row) {
+  const invitation = projectInvitationFromRow(row);
+  if (invitation.scope === "project") {
+    return {
+      workspaceRole: null,
+      inheritedProjectRole: null,
+      projectOverrides: [{
+        id: invitation.projectId,
+        name: invitation.projectName || "Project",
+        role: invitation.projectRole || "viewer",
+      }],
+      appliesToAllProjects: false,
+    };
+  }
+
+  const projectIds = Array.isArray(invitation.selectedProjectIds)
+    ? invitation.selectedProjectIds.filter(Boolean)
+    : [];
+  let projects = [];
+  if (projectIds.length && invitation.workspaceId) {
+    const placeholders = projectIds.map(() => "?").join(",");
+    const result = await db.prepare(
+      `SELECT id,name FROM projects WHERE workspace_id=? AND id IN (${placeholders})`,
+    ).bind(invitation.workspaceId, ...projectIds).all();
+    const names = new Map((result.results || []).map((project) => [project.id, project.name]));
+    projects = projectIds
+      .filter((projectId) => names.has(projectId))
+      .map((projectId) => ({
+        id: projectId,
+        name: names.get(projectId),
+        role: invitation.projectRoles?.[projectId] || workspaceRoleForProject(invitation.workspaceRole || "viewer"),
+      }));
+  }
+
+  return {
+    workspaceRole: invitation.workspaceRole,
+    inheritedProjectRole: invitation.workspaceRole
+      ? workspaceRoleForProject(invitation.workspaceRole)
+      : null,
+    projectOverrides: projects,
+    appliesToAllProjects: Boolean(invitation.workspaceRole),
+  };
+}
+async function getProjectInvitationRow(db, invitationId) {
+  return db.prepare(`SELECT i.*,w.name AS workspace_name,p.name AS project_name,p.workspace_id AS project_workspace_id
+    FROM project_invitations i
+    LEFT JOIN project_workspaces w ON w.id=i.workspace_id
+    LEFT JOIN projects p ON p.id=i.project_id
+    WHERE i.id=?`).bind(safe(invitationId, 180)).first();
+}
+function validExternalEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !isKaramahEmail(email);
+}
+async function listPendingProjectInvitations(db, column, value) {
+  const result = await db.prepare(`SELECT i.*,w.name AS workspace_name,p.name AS project_name,p.workspace_id AS project_workspace_id
+    FROM project_invitations i
+    LEFT JOIN project_workspaces w ON w.id=i.workspace_id
+    LEFT JOIN projects p ON p.id=i.project_id
+    WHERE i.${column}=? AND i.status='pending' AND i.expires_at>? ORDER BY i.created_at DESC`).bind(value, now()).all();
+  return (result.results || []).map(projectInvitationFromRow);
+}
+async function getWorkspaceAccess(db, workspaceId, actor) {
+  const workspace = await getWorkspace(db, workspaceId);
+  if (!workspace) return null;
+  const membership = await getWorkspaceMembership(db, workspaceId, actor);
+  const owner = actorEmail(actor) === actorEmail({ email: workspace.created_by_email }) || actorUid(actor) === safe(workspace.created_by_uid, 180);
+  if (owner || membership?.role === "owner") return { workspace, role: "owner", permissions: fullWorkspacePermissions(), owner: true };
+  if (membership?.role) {
+    const role = safe(membership.role, 80);
+    const roleRow = await db.prepare("SELECT * FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(workspaceId, role).first();
+    return { workspace, role, permissions: workspaceRolePermissions(role, roleRow), owner: false, preset: workspaceRoleIsPreset(role, roleRow) };
+  }
+  try {
+    const projectMembership = await db.prepare(`SELECT 1 FROM project_members m
+      INNER JOIN projects p ON p.id=m.project_id
+      WHERE p.workspace_id=? AND lower(m.email)=lower(?) LIMIT 1`).bind(workspaceId, actorEmail(actor)).first();
+    if (projectMembership) return { workspace, role: "viewer", permissions: workspaceRolePermissions("viewer"), owner: false, preset: true, projectScoped: true };
+  } catch { /* Older local databases may not have the project tables yet. */ }
+  // The original shared workspace remains visible to verified Karamah users.
+  // Newly-created workspaces require an explicit workspace membership.
+  if (workspaceId === "workspace-default" && isKaramahActor(actor)) {
+    return { workspace, role: "member", permissions: workspaceRolePermissions("member"), owner: false, preset: true };
+  }
+  return null;
+}
+async function requireWorkspace(db, workspaceId, actor, permission = "workspace.read") {
+  const access = await getWorkspaceAccess(db, workspaceId, actor);
+  if (!access) return { error: "Workspace not found or you do not have access to it.", status: 403 };
+  if (!workspaceAllows(access, permission)) return { error: "You do not have access to this workspace action.", status: 403 };
+  return access;
+}
+
+export async function listProjectWorkspaces(db, actor) {
+  const { results } = await db.prepare("SELECT * FROM project_workspaces WHERE archived_at IS NULL ORDER BY created_at ASC,id ASC").all();
+  const workspaces = [];
+  for (const row of results || []) {
+    const access = await getWorkspaceAccess(db, row.id, actor);
+    if (access) workspaces.push(workspaceFromRow(row, access));
+  }
+  return { workspaces };
+}
+export async function listProjectWorkspaceMembers(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "member.read");
+  if (allowed.error) return allowed;
+  if (allowed.projectScoped) return { error: "Project-only collaborators cannot view workspace membership.", status: 403 };
+  const result = await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? ORDER BY lower(email)").bind(data.workspaceId).all();
+  const members = (result.results || []).map(workspaceMemberFromRow);
+  if (data.workspaceId === "workspace-default" && !members.some(member => member.user.email === actorEmail(actor))) {
+    members.push(workspaceMemberFromRow({
+      email: actorEmail(actor), user_uid: actorUid(actor), workspace_id: data.workspaceId,
+      role: allowed.role, created_at: allowed.workspace.created_at, updated_at: allowed.workspace.updated_at,
+    }));
+  }
+  return { members };
+}
+export async function listProjectWorkspaceInvitations(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "member.read");
+  if (allowed.error) return allowed;
+  if (allowed.projectScoped) return { invitations: [] };
+  return { invitations: await listPendingProjectInvitations(db, "workspace_id", data.workspaceId) };
+}
+export async function listProjectMemberDirectory(db, data, actor, env) {
+  if (!isKaramahActor(actor)) return { members: [] };
+  const query = safe(data.search, 120).toLowerCase();
+  const directory = new Map();
+  const add = (row) => {
+    const email = actorEmail({ email: row.email });
+    if (!email || !isKaramahEmail(email)) return;
+    const name = safe(row.display_name || row.name || email.split("@")[0], 160);
+    if (query && !`${name} ${email}`.toLowerCase().includes(query)) return;
+    directory.set(email, {
+      id: row.user_uid || row.user_id || email,
+      name,
+      email,
+    });
+  };
+  try {
+    const result = await db.prepare(`SELECT DISTINCT email,user_uid FROM project_workspace_members
+      WHERE workspace_id=? AND lower(email) LIKE '%@karamah%' ORDER BY lower(email)`).bind(data.workspaceId).all();
+    for (const row of result.results || []) add(row);
+  } catch { /* Older local schemas may not have workspace memberships yet. */ }
+  try {
+    const result = await db.prepare(`SELECT DISTINCT m.email,m.user_uid FROM project_members m
+      INNER JOIN projects p ON p.id=m.project_id
+      WHERE p.workspace_id=? AND lower(m.email) LIKE '%@karamah%' ORDER BY lower(m.email)`).bind(data.workspaceId).all();
+    for (const row of result.results || []) add(row);
+  } catch { /* Older local schemas may not have project memberships yet. */ }
+  try {
+    if (env?.ADMIN_DB) {
+      const result = await env.ADMIN_DB.prepare(`SELECT email,display_name FROM admin_role_members
+        WHERE lower(email) LIKE '%@karamahcollective.com' ORDER BY lower(display_name),lower(email)`).all();
+      for (const row of result.results || []) add(row);
+    }
+  } catch { /* Admin DB is optional in lightweight local tests. */ }
+  return {
+    members: [...directory.values()]
+      .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email))
+      .slice(0, 20),
+  };
+}
+export async function getProjectWorkspaceAccount(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor);
+  if (allowed.error) return allowed;
+  const members = allowed.projectScoped ? { members: [] } : await listProjectWorkspaceMembers(db, data, actor);
+  const invitations = allowed.projectScoped ? { invitations: [] } : await listProjectWorkspaceInvitations(db, data, actor);
+  const projects = await listProjects(db, actor, null, data);
+  return { workspace: workspaceFromRow(allowed.workspace, allowed), members: members.members || [], invitations: invitations.invitations || [], projects: projects.projects || [], role: allowed.role, permissions: allowed.permissions };
+}
+export async function createProjectWorkspace(db, data, actor) {
+  if (!isKaramahActor(actor)) return { error: "A Karamah email is required.", status: 403 };
+  const name = safe(data.name, 160);
+  if (!name) return { error: "A workspace name is required." };
+  const workspaceId = newId("workspace");
+  const timestamp = now();
+  try {
+    await db.prepare("INSERT INTO project_workspaces (id,name,description,visibility,created_by_uid,created_by_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").bind(workspaceId, name, safe(data.description, 1000), "workspace", actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
+    await db.batch([
+      db.prepare("INSERT INTO project_workspace_roles (workspace_id,id,name,description,permissions,is_system) VALUES (?,?,?,?,?,1)").bind(workspaceId, "viewer", "Viewer", "Can view workspace projects and tasks.", JSON.stringify(DEFAULT_WORKSPACE_ROLE_PERMISSIONS.viewer)),
+      db.prepare("INSERT INTO project_workspace_roles (workspace_id,id,name,description,permissions,is_system) VALUES (?,?,?,?,?,1)").bind(workspaceId, "member", "Member", "Can work on workspace projects and tasks.", JSON.stringify(DEFAULT_WORKSPACE_ROLE_PERMISSIONS.member)),
+      db.prepare("INSERT INTO project_workspace_roles (workspace_id,id,name,description,permissions,is_system) VALUES (?,?,?,?,?,1)").bind(workspaceId, "admin", "Admin", "Can manage workspace projects, settings, and members.", JSON.stringify(DEFAULT_WORKSPACE_ROLE_PERMISSIONS.admin)),
+      db.prepare("INSERT INTO project_workspace_members (workspace_id,user_uid,email,role,created_by_uid,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(workspaceId, actorUid(actor), actorEmail(actor), "owner", actorUid(actor), timestamp, timestamp),
+    ]);
+    return { success: true, workspace: workspaceFromRow(await getWorkspace(db, workspaceId), { role: "owner" }) };
+  } catch (error) {
+    return { error: String(error?.message || "Could not create workspace.") };
+  }
+}
+export async function updateProjectWorkspace(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "workspace.update");
+  if (allowed.error) return allowed;
+  const name = data.name !== undefined ? safe(data.name, 160) : allowed.workspace.name;
+  if (!name) return { error: "A workspace name is required." };
+  const description = data.description !== undefined ? safe(data.description, 1000) : allowed.workspace.description;
+  await db.prepare("UPDATE project_workspaces SET name=?,description=?,updated_at=? WHERE id=?").bind(name, description, now(), data.workspaceId).run();
+  return { success: true, workspace: workspaceFromRow(await getWorkspace(db, data.workspaceId), allowed) };
+}
+export async function deleteProjectWorkspace(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "workspace.delete");
+  if (allowed.error) return allowed;
+  if (data.workspaceId === "workspace-default") return { error: "The default workspace cannot be deleted.", status: 409 };
+  await db.prepare("UPDATE project_workspaces SET archived_at=?,updated_at=? WHERE id=?").bind(allowed.workspace.archived_at || now(), now(), data.workspaceId).run();
+  return { success: true };
+}
+export async function getProjectInvitation(db, data) {
+  const row = await getProjectInvitationRow(db, data.invitationId);
+  if (!row) return { valid: false, invitation: null };
+  const invitation = projectInvitationFromRow(row);
+  const access = await invitationAccessFromRow(db, row);
+  const valid = row.status === "pending" && !invitation.expired && invitation.isExternal;
+  return { valid, invitation: { ...invitation, access }, reason: valid ? null : row.status === "pending" ? "This invitation has expired." : "This invitation is no longer available." };
+}
+async function createProjectInvitation(db, data, actor, env) {
+  const scope = data.projectId ? "project" : "workspace";
+  const email = actorEmail({ email: data.email });
+  if (!validExternalEmail(email)) return { error: "External collaborators must use a non-Karamah email address." };
+
+  let workspace;
+  let project;
+  if (scope === "project") {
+    const allowed = await requireProject(db, data.projectId, actor, data.access, "project-admin");
+    if (allowed.error) return allowed;
+    if (!allowed.permissions.can_manage_members) return { error: "You cannot manage project members.", status: 403 };
+    project = allowed.project;
+    workspace = await getWorkspace(db, project.workspace_id);
+  } else {
+    const allowed = await requireWorkspace(db, data.workspaceId, actor, "invitation.create");
+    if (allowed.error) return allowed;
+    workspace = allowed.workspace;
+  }
+  if (!workspace || (scope === "project" && (!project || project.workspace_id !== workspace.id))) return { error: "The invitation target was not found.", status: 404 };
+
+  const requestedWorkspaceRole = scope === "workspace" ? safe(data.workspaceRole, 80) : "";
+  const workspaceRole = requestedWorkspaceRole && requestedWorkspaceRole !== "none"
+    ? requestedWorkspaceRole
+    : null;
+  const projectRole = scope === "project" ? (PROJECT_ROLES.includes(data.projectRole) ? data.projectRole : "viewer") : null;
+  if (workspaceRole) {
+    const customRole = await db.prepare("SELECT id FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(workspace.id, workspaceRole).first();
+    if (!WORKSPACE_ROLES.includes(workspaceRole) && !customRole) return { error: "Choose a valid workspace role." };
+  }
+  const permissions = scope === "project" ? normalizeProjectPermissions(projectRole, data.permissions || {}) : {};
+  const selectedProjectIds = scope === "workspace" && data.projectAccess === "selected"
+    ? (Array.isArray(data.projectIds) ? data.projectIds.map(projectId => safe(projectId, 180)).filter(Boolean) : [])
+    : [];
+  const projectRoles = {};
+  const projectOverrides = [];
+  for (const projectId of selectedProjectIds) {
+    const selectedProject = await getProject(db, projectId);
+    if (!selectedProject || selectedProject.workspace_id !== workspace.id) continue;
+    const requestedRole = data.projectRoles?.[projectId];
+    projectRoles[projectId] = PROJECT_ROLES.includes(requestedRole)
+      ? requestedRole
+      : workspaceRole
+        ? workspaceRoleForProject(workspaceRole)
+        : "viewer";
+    projectOverrides.push({ id: selectedProject.id, name: selectedProject.name, role: projectRoles[projectId] });
+  }
+  const invitationId = newId("invite");
+  const expiresAt = new Date(Date.now() + PROJECT_INVITATION_TTL_MS).toISOString();
+  await db.prepare(`INSERT INTO project_invitations
+    (id,workspace_id,project_id,email,workspace_role,project_role,project_permissions_json,project_task_visibility,selected_project_ids_json,project_roles_json,status,invited_by_uid,invited_by_email,expires_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?,?,?)`)
+    .bind(invitationId, scope === "workspace" ? workspace.id : null, scope === "project" ? project.id : null, email, workspaceRole, projectRole,
+      JSON.stringify(permissions), permissions.task_visibility || "all", JSON.stringify(Object.keys(projectRoles)), JSON.stringify(projectRoles), actorUid(actor), actorEmail(actor), expiresAt).run();
+
+  const emailResult = await sendProjectInvitationEmail(env, {
+    email,
+    invitationId,
+    workspaceName: workspace.name,
+    projectName: project?.name || "",
+    role: projectRole || workspaceRole || "viewer",
+    access: {
+      workspaceRole: scope === "workspace" ? workspaceRole : null,
+      inheritedProjectRole: scope === "workspace" && workspaceRole ? workspaceRoleForProject(workspaceRole) : null,
+      projectOverrides: scope === "project"
+        ? [{ id: project.id, name: project.name, role: projectRole }]
+        : projectOverrides,
+      appliesToAllProjects: scope === "workspace" && Boolean(workspaceRole),
+    },
+  });
+  if (emailResult.error) {
+    await db.prepare("UPDATE project_invitations SET last_error=? WHERE id=?").bind(emailResult.error, invitationId).run();
+    return emailResult;
+  }
+  await db.prepare("UPDATE project_invitations SET sent_at=? WHERE id=?").bind(now(), invitationId).run();
+  const invitationRow = await getProjectInvitationRow(db, invitationId);
+  return { success: true, external: true, invitation: { ...projectInvitationFromRow(invitationRow), access: await invitationAccessFromRow(db, invitationRow) } };
+}
+export async function listProjectInvitations(db, data, actor, access) {
+  const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed;
+  const invitations = allowed.permissions.can_manage_members ? await listPendingProjectInvitations(db, "project_id", data.projectId) : [];
+  return { invitations };
+}
+export async function acceptProjectInvitation(db, data, actor) {
+  const row = await getProjectInvitationRow(db, data.invitationId);
+  if (!row) return { error: "Invitation not found.", status: 404 };
+  const invitation = projectInvitationFromRow(row);
+  if (row.status !== "pending") return { error: "This invitation is no longer available.", status: 409 };
+  if (invitation.expired) return { error: "This invitation has expired.", status: 410 };
+  if (actorEmail(actor) !== actorEmail({ email: row.email })) return { error: "This invitation belongs to a different email address.", status: 403 };
+  const timestamp = now();
+  const statements = [];
+  if (row.workspace_id) {
+    const workspaceRole = WORKSPACE_ROLES.includes(row.workspace_role) ? row.workspace_role : null;
+    if (workspaceRole) {
+      statements.push(db.prepare(`INSERT INTO project_workspace_members (workspace_id,user_uid,email,role,created_by_uid,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?) ON CONFLICT(workspace_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=excluded.updated_at`)
+        .bind(row.workspace_id, actorUid(actor), row.email, workspaceRole, row.invited_by_uid, timestamp, timestamp));
+    }
+    const projectRoles = json(row.project_roles_json, {});
+    for (const projectId of json(row.selected_project_ids_json, [])) {
+      const safeProjectId = safe(projectId, 180);
+      if (!safeProjectId) continue;
+      const role = PROJECT_ROLES.includes(projectRoles[safeProjectId])
+        ? projectRoles[safeProjectId]
+        : workspaceRoleForProject(workspaceRole || "viewer");
+      statements.push(db.prepare(`INSERT INTO project_members (project_id,user_uid,email,role,created_by_uid,updated_at)
+        SELECT id,?,?,?,?,? FROM projects WHERE id=? AND workspace_id=?
+        ON CONFLICT(project_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=excluded.updated_at`)
+        .bind(actorUid(actor), row.email, role, row.invited_by_uid, timestamp, safeProjectId, row.workspace_id));
+      const permissions = normalizeProjectPermissions(role);
+      statements.push(db.prepare(`INSERT INTO project_member_permissions (project_id,email,${PROJECT_PERMISSION_KEYS.join(",")},task_visibility,updated_at)
+        SELECT id,?,?,?,?,?,?,?,?,?,?,?,?,?,? FROM projects WHERE id=? AND workspace_id=?
+        ON CONFLICT(project_id,email) DO UPDATE SET ${PROJECT_PERMISSION_KEYS.map(key => `${key}=excluded.${key}`).join(",")},task_visibility=excluded.task_visibility,updated_at=excluded.updated_at`)
+        .bind(row.email, ...PROJECT_PERMISSION_KEYS.map(key => permissions[key] ? 1 : 0), permissions.task_visibility, timestamp, safeProjectId, row.workspace_id));
+    }
+  } else if (row.project_id) {
+    const role = PROJECT_ROLES.includes(row.project_role) ? row.project_role : "viewer";
+    const permissions = normalizeProjectPermissions(role, json(row.project_permissions_json, {}));
+    statements.push(db.prepare(`INSERT INTO project_members (project_id,user_uid,email,role,created_by_uid,updated_at)
+      VALUES (?,?,?,?,?,?) ON CONFLICT(project_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=excluded.updated_at`)
+      .bind(row.project_id, actorUid(actor), row.email, role, row.invited_by_uid, timestamp));
+    statements.push(db.prepare(`INSERT INTO project_member_permissions (project_id,email,${PROJECT_PERMISSION_KEYS.join(",")},task_visibility,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(project_id,email) DO UPDATE SET ${PROJECT_PERMISSION_KEYS.map(key => `${key}=excluded.${key}`).join(",")},task_visibility=excluded.task_visibility,updated_at=excluded.updated_at`)
+      .bind(row.project_id, row.email, ...PROJECT_PERMISSION_KEYS.map(key => permissions[key] ? 1 : 0), permissions.task_visibility, timestamp));
+  }
+  statements.push(db.prepare("UPDATE project_invitations SET status='accepted',accepted_at=?,accepted_uid=?,last_error='' WHERE id=? AND status='pending'").bind(timestamp, actorUid(actor), row.id));
+  await db.batch(statements);
+  return { success: true, invitation: { ...invitation, status: "accepted", acceptedAt: timestamp }, workspaceId: row.workspace_id || row.project_workspace_id || null };
+}
+export async function cancelProjectInvitation(db, data, actor, access) {
+  const row = await getProjectInvitationRow(db, data.invitationId);
+  if (!row || row.status !== "pending") return { success: true };
+  const allowed = row.workspace_id
+    ? await requireWorkspace(db, row.workspace_id, actor, "invitation.create")
+    : await requireProject(db, row.project_id, actor, access, "project-admin");
+  if (allowed.error) return allowed;
+  if (!row.workspace_id && !allowed.permissions.can_manage_members) return { error: "You cannot manage project members.", status: 403 };
+  await db.prepare("UPDATE project_invitations SET status='canceled' WHERE id=?").bind(row.id).run();
+  return { success: true, invitationId: row.id };
+}
+export async function updateProjectWorkspaceMember(db, data, actor, env) {
+  const member = data.member || data;
+  const email = actorEmail({ email: member.email });
+  const existing = await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(data.workspaceId, email).first();
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, existing ? "member.update" : (isKaramahEmail(email) ? "member.create" : "invitation.create"));
+  if (allowed.error) return allowed;
+  const requestedRole = safe(member.role || data.workspaceRole || "viewer", 80);
+  const role = requestedRole === "none" ? null : requestedRole;
+  const customRole = role
+    ? await db.prepare("SELECT id FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(data.workspaceId, role).first()
+    : null;
+  if (role && !WORKSPACE_ROLES.includes(role) && !customRole) return { error: "Choose a valid workspace role." };
+  if (role === "owner" && !allowed.owner) return { error: "Only the workspace owner can grant ownership.", status: 403 };
+  const selectedProjectIds = data.projectAccess === "selected" && Array.isArray(data.projectIds)
+    ? data.projectIds.map((projectId) => safe(projectId, 180)).filter(Boolean)
+    : [];
+  const projectRoles = data.projectRoles && typeof data.projectRoles === "object" ? data.projectRoles : {};
+  if (!role && selectedProjectIds.length === 0) return { error: "Choose workspace access or at least one project." };
+  if (!existing && !isKaramahEmail(email)) {
+    return createProjectInvitation(db, {
+      ...data,
+      email,
+      workspaceRole: role,
+      projectRoles,
+      projectIds: selectedProjectIds,
+      projectAccess: selectedProjectIds.length ? "selected" : data.projectAccess,
+    }, actor, env);
+  }
+  if (!isKaramahEmail(email) && !existing) return { error: "External invitation could not be created." };
+  if (!role && existing) {
+    if (existing.role === "owner" || email === actorEmail({ email: allowed.workspace.created_by_email })) {
+      return { error: "The workspace owner cannot be changed to project-only access.", status: 409 };
+    }
+    await db.prepare("DELETE FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)")
+      .bind(data.workspaceId, email).run();
+  }
+  if (role) {
+    await db.prepare("INSERT INTO project_workspace_members (workspace_id,user_uid,email,role,created_by_uid,created_at,updated_at) VALUES (?,?,?,?,?,?,datetime('now')) ON CONFLICT(workspace_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=datetime('now')").bind(data.workspaceId, safe(member.userUid, 180), email, role, actorUid(actor), now()).run();
+  }
+  // Workspace membership already grants the role across every project. Only
+  // selected projects become project-level overrides; "all" stays inherited
+  // so later workspace role changes continue to apply.
+  if (selectedProjectIds.length) {
+    for (const projectId of selectedProjectIds) {
+      const project = await getProject(db, projectId);
+      if (!project || project.workspace_id !== data.workspaceId) continue;
+      const requestedProjectRole = projectRoles[projectId];
+      const projectRole = PROJECT_ROLES.includes(requestedProjectRole)
+        ? requestedProjectRole
+        : workspaceRoleForProject(role || "viewer");
+      const permissions = normalizeProjectPermissions(projectRole);
+      await db.prepare("INSERT INTO project_members (project_id,user_uid,email,role,created_by_uid,updated_at) VALUES (?,?,?,?,?,datetime('now')) ON CONFLICT(project_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=datetime('now')").bind(projectId, safe(member.userUid, 180), email, projectRole, actorUid(actor)).run();
+      await db.prepare(`INSERT INTO project_member_permissions (project_id,email,${PROJECT_PERMISSION_KEYS.join(",")},task_visibility,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(project_id,email) DO UPDATE SET ${PROJECT_PERMISSION_KEYS.map(key => `${key}=excluded.${key}`).join(",")},task_visibility=excluded.task_visibility,updated_at=datetime('now')`)
+        .bind(projectId, email, ...PROJECT_PERMISSION_KEYS.map(key => permissions[key] ? 1 : 0), permissions.task_visibility).run();
+    }
+  }
+  const row = await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(data.workspaceId, email).first();
+  return { success: true, member: row ? workspaceMemberFromRow(row) : { id: email, organizationId: data.workspaceId, workspaceId: data.workspaceId, userId: safe(member.userUid, 180) || email, role: "none", createdAt: null, updatedAt: now(), isExternal: false, user: { id: safe(member.userUid, 180) || email, name: email.split("@")[0], email, image: null } } };
+}
+export async function removeProjectWorkspaceMember(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "member.delete");
+  if (allowed.error) return allowed;
+  const email = actorEmail({ email: data.email });
+  const member = await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(data.workspaceId, email).first();
+  if (!member) return { success: true };
+  if (member.role === "owner" || email === actorEmail({ email: allowed.workspace.created_by_email })) return { error: "The workspace owner cannot be removed.", status: 409 };
+  await db.prepare("DELETE FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(data.workspaceId, email).run();
+  return { success: true };
+}
+export async function listProjectWorkspaceRoles(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor);
+  if (allowed.error) return allowed;
+  const result = await db.prepare("SELECT * FROM project_workspace_roles WHERE workspace_id=? ORDER BY is_system DESC,name").bind(data.workspaceId).all();
+  return { roles: (result.results || []).map(row => ({ id: row.id, organizationId: row.workspace_id, role: row.id, name: row.name, description: row.description, permission: workspacePermissionObject(json(row.permissions, [])), createdAt: row.created_at, updatedAt: row.updated_at })) };
+}
+export async function createProjectWorkspaceRole(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.organizationId || data.workspaceId, actor, "workspace.manage_settings");
+  if (allowed.error) return allowed;
+  const workspaceId = data.organizationId || data.workspaceId;
+  const role = safe(data.role || data.name, 80).toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  if (!role || WORKSPACE_ROLES.includes(role)) return { error: "Choose a unique custom role name." };
+  const existing = await db.prepare("SELECT id FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(workspaceId, role).first();
+  if (existing) return { error: "That workspace role already exists." };
+  const permissions = workspacePermissionList(data.permission);
+  await db.prepare("INSERT INTO project_workspace_roles (workspace_id,id,name,description,permissions,is_system) VALUES (?,?,?,?,?,0)").bind(workspaceId, role, safe(data.name || data.role, 120), safe(data.description, 500), JSON.stringify(permissions)).run();
+  return { success: true, role: (await listProjectWorkspaceRoles(db, { workspaceId }, actor)).roles.find(item => item.id === role) };
+}
+export async function updateProjectWorkspaceRole(db, data, actor) {
+  const workspaceId = data.organizationId || data.workspaceId;
+  const allowed = await requireWorkspace(db, workspaceId, actor, "workspace.manage_settings");
+  if (allowed.error) return allowed;
+  const role = safe(data.roleName || data.role, 80);
+  if (!role || role === "owner") return { error: "The owner role cannot be changed here." };
+  const existing = await db.prepare("SELECT * FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(workspaceId, role).first();
+  if (!existing) return { error: "Workspace role not found.", status: 404 };
+  const permissions = data.data?.permission || data.permission || workspacePermissionObject(json(existing.permissions, []));
+  await db.prepare("UPDATE project_workspace_roles SET permissions=?,updated_at=? WHERE workspace_id=? AND id=?").bind(JSON.stringify(workspacePermissionList(permissions)), now(), workspaceId, role).run();
+  return { success: true, role: (await listProjectWorkspaceRoles(db, { workspaceId }, actor)).roles.find(item => item.id === role) };
+}
+export async function deleteProjectWorkspaceRole(db, data, actor) {
+  const workspaceId = data.organizationId || data.workspaceId;
+  const allowed = await requireWorkspace(db, workspaceId, actor, "workspace.manage_settings");
+  if (allowed.error) return allowed;
+  const role = safe(data.roleName || data.role, 80);
+  if (!role || WORKSPACE_ROLES.includes(role)) return { error: "Default workspace roles cannot be deleted." };
+  const used = await db.prepare("SELECT 1 FROM project_workspace_members WHERE workspace_id=? AND role=? LIMIT 1").bind(workspaceId, role).first();
+  if (used) return { error: "Move members to another role before deleting this role.", status: 409 };
+  await db.prepare("DELETE FROM project_workspace_roles WHERE workspace_id=? AND id=?").bind(workspaceId, role).run();
+  return { success: true };
+}
+export async function getProjectWorkspaceCapabilities(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor);
+  if (allowed.error) return allowed;
+  const can = permission => workspaceAllows(allowed, permission);
+  return {
+    manageProjects: can("project.create") && can("project.update") && can("project.delete"), createProjects: can("project.create"), updateProjects: can("project.update"), shareProjects: can("project.share"), deleteProjects: can("project.delete"),
+    updateTasks: can("task.update"), createTasks: can("task.create"), deleteTasks: can("task.delete"), assignTasks: can("task.assign"),
+    createLabels: can("label.create"), updateLabels: can("label.update"), deleteLabels: can("label.delete"),
+    manageWorkspace: can("workspace.update") || can("workspace.manage_settings"), manageSettings: can("workspace.manage_settings"), deleteWorkspace: can("workspace.delete"),
+    inviteUsers: can("invitation.create") || can("member.create"), manageTeam: can("member.update") && can("member.delete"), updateMembers: can("member.update"), removeMembers: can("member.delete"),
+  };
+}
+export async function checkProjectWorkspacePermission(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.organizationId || data.workspaceId, actor);
+  if (allowed.error) return allowed;
+  const requests = data.permissions || {};
+  const success = Object.entries(requests).every(([resource, actions]) => Array.isArray(actions) && actions.every(action => workspaceAllows(allowed, `${resource}.${action}`)));
+  return { success };
 }
 export async function getProjectAccess(db, projectId, actor, access) {
   const project = await getProject(db, projectId);
   if (!project) return null;
-  if (isAdmin(access)) return { project, role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all", owner: false };
   const member = await getMembership(db, projectId, actor);
   const owner = actorEmail(actor) === actorEmail({ email: project.created_by_email }) || actorUid(actor) === safe(project.created_by_uid, 180);
   if (owner) return { project, role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all", owner: true };
@@ -83,11 +693,23 @@ export async function getProjectAccess(db, projectId, actor, access) {
     const permissions = normalizeProjectPermissions(member.role, row);
     return { project, role: member.role, permissions, taskVisibility: permissions.task_visibility, owner: false };
   }
-  // Workspace-visible projects are open for contribution to every verified
-  // Karamah account. Restricted projects use explicit member permissions.
-  if (project.visibility !== "restricted" && isKaramahActor(actor)) {
-    const permissions = normalizeProjectPermissions("contributor");
-    return { project, role: "contributor", permissions, taskVisibility: "all", owner: false };
+  const workspaceAccess = await getWorkspaceAccess(db, project.workspace_id, actor);
+  if (workspaceAccess?.owner) {
+    return { project, role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all", owner: true };
+  }
+  // Workspace membership is the default access for every project in the
+  // workspace, including restricted projects. An explicit project membership
+  // above remains the project-only override.
+  if (workspaceAccess) {
+    if (workspaceAccess.projectScoped) return null;
+    if (!workspaceAllows(workspaceAccess, "project.read")) return null;
+    const isBuiltInRole = workspaceAccess.preset === true;
+    const permissions = isBuiltInRole
+      ? normalizeProjectPermissions(workspaceRoleForProject(workspaceAccess.role))
+      : projectPermissionsFromWorkspace(workspaceAccess);
+    if (!permissions.can_view_project) return null;
+    const role = permissions.can_manage_project ? "project-admin" : permissions.can_edit_any_tasks ? "manager" : permissions.can_create_tasks || permissions.can_edit_own_tasks ? "contributor" : "viewer";
+    return { project, role, permissions, taskVisibility: permissions.task_visibility, owner: false };
   }
   return null;
 }
@@ -169,16 +791,20 @@ async function ensureProject(db) {
   */
 }
 
-export async function listProjects(db, actor, access) {
+export async function listProjects(db, actor, access, data = {}) {
   await ensureProject(db);
   const { results } = await db.prepare("SELECT * FROM projects WHERE archived_at IS NULL ORDER BY updated_at DESC").all();
   const projects = [];
-  for (const row of results || []) if (await projectRole(db, row.id, actor, access)) projects.push(projectFromRow(row));
+  for (const row of results || []) {
+    if (data.workspaceId && row.workspace_id !== safe(data.workspaceId, 180)) continue;
+    const projectAccess = await getProjectAccess(db, row.id, actor, access);
+    if (canProjectCapability(projectAccess, "viewer")) projects.push(projectFromRow(row));
+  }
   return { projects };
 }
 export async function searchProjectWorkspace(db, data, actor, access) {
   const query = safe(data.query || data.search, 120).toLowerCase(); if (!query) return { projects: [], tasks: [] };
-  const projectsResult = await listProjects(db, actor, access); const projects = projectsResult.projects || []; const taskMatches = [];
+  const projectsResult = await listProjects(db, actor, access, data); const projects = projectsResult.projects || []; const taskMatches = [];
   for (const project of projects.slice(0, 40)) {
     const allowed = await requireProject(db, project.id, actor, access); if (allowed.error) continue;
     const [visibilitySql, visibilityBind] = taskVisibilityClause(allowed, actor); const needle = `%${query}%`;
@@ -200,10 +826,12 @@ export async function getProjectWorkspace(db, projectId, actor, access) {
   return { project: projectFromRow(allowed.project), role: allowed.role, permissions: allowed.permissions, taskVisibility: allowed.taskVisibility, columns: (columns.results || []).map(columnFromRow), milestones: milestones.results || [], labels: labels.results || [], taskCount: Number(count?.count || 0) };
 }
 export async function createProject(db, data, actor, access) {
-  if (!isKaramahActor(actor) && !has(access, "operations.projects.write", ["operations.tasks.write"])) return { error: "You cannot create projects." };
+  const workspaceId = safe(data.workspaceId || "workspace-default", 180);
+  const workspaceAccess = await requireWorkspace(db, workspaceId, actor, "project.create");
+  if (workspaceAccess.error) return workspaceAccess;
   const name = safe(data.name, 160); if (!name) return { error: "A project name is required." };
   const key = safe(data.key || name.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 16), 32).toUpperCase() || "PROJECT";
-  const projectId = newId("project"); const workspaceId = "workspace-default"; const timestamp = now();
+  const projectId = newId("project"); const timestamp = now();
   try {
     await db.prepare("INSERT INTO projects (id,workspace_id,name,key,description,visibility,created_by_uid,created_by_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(projectId, workspaceId, name, key, safe(data.description, 1000), data.visibility === "restricted" ? "restricted" : "workspace", actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
     for (const [index, [suffix, label, status]] of [["inbox","Inbox","inbox"],["progress","In progress","in_progress"],["blocked","Blocked","blocked"],["done","Done","completed"],["cancelled","Cancelled","cancelled"]].entries()) await db.prepare("INSERT INTO project_columns (id,project_id,name,status_category,position) VALUES (?,?,?,?,?)").bind(`${projectId}-${suffix}`, projectId, label, status, (index + 1) * 10).run();
@@ -256,7 +884,7 @@ export async function getProjectTask(db, taskId, actor, access) {
 }
 export async function createProjectTask(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access, "contributor"); if (allowed.error) return allowed;
-  if (!allowed.permissions.can_create_tasks && !has(access, "operations.tasks.create", ["operations.tasks.write"])) return { error: "You cannot create tasks." };
+  if (!allowed.permissions.can_create_tasks && !(data.projectId === "project-admin-operations" && has(access, "operations.tasks.create", ["operations.tasks.write"]))) return { error: "You cannot create tasks." };
   const column = data.columnId ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, data.projectId).first() : await db.prepare("SELECT * FROM project_columns WHERE project_id=? ORDER BY position LIMIT 1").bind(data.projectId).first();
   if (!column) return { error: "A valid project column is required." };
   const title = safe(data.title, 240); if (!title) return { error: "A task title is required." };
@@ -278,7 +906,7 @@ export async function updateProjectTask(db, data, actor, access) {
   if (Number(data.expectedRevision) !== Number(task.revision)) return { error: "Task changed. Refresh and try again.", status: 409, conflict: taskFromRow(task) };
   const isOwn = task.assignee_uid === actorUid(actor) || task.assignee_email === actorEmail(actor) || task.created_by_uid === actorUid(actor) || task.created_by_email === actorEmail(actor);
   const isAssignmentOnly = Object.keys(data).every(key => ["id", "expectedRevision", "assigneeUid", "assigneeEmail", "statusCategory", "status", "note"].includes(key));
-  const canEdit = isAdmin(access) || allowed.permissions.can_edit_any_tasks || (allowed.permissions.can_edit_own_tasks && isOwn) || (allowed.permissions.can_assign_tasks && isAssignmentOnly);
+  const canEdit = allowed.permissions.can_edit_any_tasks || (allowed.permissions.can_edit_own_tasks && isOwn) || (allowed.permissions.can_assign_tasks && isAssignmentOnly);
   if (!canEdit) return { error: "You do not have write access to this task.", status: 403 };
   if (data.assigneeEmail !== undefined) {
     const assigneeEmail = actorEmail({ email: data.assigneeEmail });
@@ -377,21 +1005,26 @@ export async function listProjectMembers(db, data, actor, access) {
   const result = await db.prepare("SELECT m.user_uid,m.email,m.role,m.created_at,m.updated_at,p.* FROM project_members m LEFT JOIN project_member_permissions p ON p.project_id=m.project_id AND lower(p.email)=lower(m.email) WHERE m.project_id=? ORDER BY lower(m.email)").bind(data.projectId).all();
   return { members: (result.results || []).map(member => ({
     userUid: member.user_uid, email: member.email, role: member.role, createdAt: member.created_at, updatedAt: member.updated_at,
+    isExternal: !isKaramahEmail(member.email),
     permissions: normalizeProjectPermissions(member.role, member), taskVisibility: TASK_VISIBILITY.includes(member.task_visibility) ? member.task_visibility : "all",
-  })) };
+  })), invitations: await listProjectInvitations(db, data, actor, access).then(result => result.invitations || []) };
 }
-export async function updateProjectMember(db, data, actor, access) {
+export async function updateProjectMember(db, data, actor, access, env) {
   const allowed = await requireProject(db, data.projectId, actor, access, "project-admin"); if (allowed.error) return allowed;
   if (!allowed.permissions.can_manage_members) return { error: "You cannot manage project members.", status: 403 };
   const member = data.member || data; const targetEmail = actorEmail({ email: member.email }); const role = PROJECT_ROLES.includes(member.role) ? member.role : "viewer";
-  if (!targetEmail || !isKaramahEmail(targetEmail)) return { error: "A Karamah email is required." };
   const permissions = normalizeProjectPermissions(role, member.permissions || member);
+  const existing = await db.prepare("SELECT email FROM project_members WHERE project_id=? AND lower(email)=lower(?)").bind(data.projectId, targetEmail).first();
+  if (!existing && !isKaramahEmail(targetEmail)) {
+    return createProjectInvitation(db, { ...data, email: targetEmail, projectRole: role, permissions }, actor, env);
+  }
+  if (!targetEmail) return { error: "A valid email address is required." };
   await db.prepare("INSERT INTO project_members (project_id,user_uid,email,role,created_by_uid,updated_at) VALUES (?,?,?,?,?,datetime('now')) ON CONFLICT(project_id,email) DO UPDATE SET user_uid=excluded.user_uid,role=excluded.role,updated_at=datetime('now')").bind(data.projectId, safe(member.userUid, 180), targetEmail, role, actorUid(actor)).run();
   await db.prepare(`INSERT INTO project_member_permissions (project_id,email,${PROJECT_PERMISSION_KEYS.join(",")},task_visibility,updated_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
     ON CONFLICT(project_id,email) DO UPDATE SET ${PROJECT_PERMISSION_KEYS.map(key => `${key}=excluded.${key}`).join(",")},task_visibility=excluded.task_visibility,updated_at=datetime('now')`)
     .bind(data.projectId, targetEmail, ...PROJECT_PERMISSION_KEYS.map(key => permissions[key] ? 1 : 0), permissions.task_visibility).run();
-  return { success: true, member: { projectId: data.projectId, userUid: safe(member.userUid, 180), email: targetEmail, role, permissions, taskVisibility: permissions.task_visibility } };
+  return { success: true, external: !isKaramahEmail(targetEmail), member: { projectId: data.projectId, userUid: safe(member.userUid, 180), email: targetEmail, role, isExternal: !isKaramahEmail(targetEmail), permissions, taskVisibility: permissions.task_visibility } };
 }
 export async function removeProjectMember(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access, "project-admin"); if (allowed.error) return allowed;

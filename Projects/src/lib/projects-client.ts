@@ -1,4 +1,5 @@
 import { requestAdmin } from "./karamah-admin";
+import { collectionResponse } from "./collection-response";
 import type { ClientResponse } from "hono/client";
 
 type ProjectsArgs = {
@@ -22,6 +23,10 @@ type ProjectsEndpoint = ((
 // compatibility type so the copied fetchers do not infer every response as
 // `never` when the generated Projects API package is not present.
 type AdminResult = Record<string, unknown> & { __httpStatus?: number };
+
+function resultCollection<T>(result: unknown, key: string): T[] {
+  return collectionResponse<T>(result, [key]);
+}
 
 function response(body: unknown, status = 200): Response {
   let payload = body;
@@ -223,6 +228,15 @@ function toProjectsNotification(value: unknown): Record<string, unknown> {
 
 function toProjectsCustomField(value: unknown): Record<string, unknown> {
   const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  let options: unknown = source.options;
+  if (!Array.isArray(options) && typeof source.options_json === "string") {
+    try {
+      options = JSON.parse(source.options_json);
+    } catch {
+      options = [];
+    }
+  }
+  options = collectionResponse(options, ["options", "values", "data"]);
   return {
     ...source,
     id: source.id,
@@ -231,7 +245,7 @@ function toProjectsCustomField(value: unknown): Record<string, unknown> {
     type: source.type || source.fieldType || source.field_type || "text",
     required: Boolean(source.required),
     defaultValue: source.defaultValue ?? source.default_value ?? null,
-    options: source.options ?? (typeof source.options_json === "string" ? [] : source.options_json) ?? null,
+    options,
     position: Number(source.position || 0),
     createdAt: source.createdAt || source.created_at || null,
     updatedAt: source.updatedAt || source.updated_at || source.created_at || null,
@@ -340,29 +354,50 @@ async function adminCall(
   } catch {
     return { error: "The Admin service returned an invalid response." };
   }
-  if (!raw.ok) return { ...result, __httpStatus: raw.status };
+  if (!raw.ok || result.error) {
+    return {
+      ...result,
+      __httpStatus: raw.status >= 400 ? raw.status : Number(result.status || 400),
+    };
+  }
   return result;
 }
 
 async function workspaceTasks(args: ProjectsArgs): Promise<AdminResult> {
   const projectsResult = await adminCall("project-list", args);
-  const projects = Array.isArray(projectsResult.projects) ? projectsResult.projects : [];
+  const projects = resultCollection<Record<string, unknown>>(projectsResult, "projects");
   if (projectsResult.error) return projectsResult;
+  const projectById = new Map(
+    projects
+      .map((project) => toProjectsProject(project))
+      .filter(Boolean)
+      .map((project) => [String(project?.id), project] as const),
+  );
   const pages = await Promise.all(
     projects.map((project) => {
       const projectId = clean((project as Record<string, unknown>).id);
       return projectId
-        ? adminCall("project-tasks-list", { query: { projectId } })
+        ? adminCall("project-tasks-list", { query: { projectId, assignee: "me" } })
         : Promise.resolve({ tasks: [] } as AdminResult);
     }),
   );
-  const tasks = pages.flatMap((page) => (Array.isArray(page.tasks) ? page.tasks : [])).map(toProjectsTask);
+  const tasks = pages
+    .flatMap((page) => resultCollection<Record<string, unknown>>(page, "tasks"))
+    .map((task) => {
+      const normalized = toProjectsTask(task);
+      const project = projectById.get(String(normalized.projectId));
+      return {
+        ...normalized,
+        projectSlug: project?.slug || project?.key || normalized.projectId,
+        projectName: project?.name || normalized.projectId,
+      };
+    });
   return { tasks, total: tasks.length };
 }
 
 async function workspaceLabels(args: ProjectsArgs): Promise<Record<string, unknown>[]> {
   const projectsResult = await adminCall("project-list", args);
-  const projects = Array.isArray(projectsResult.projects) ? projectsResult.projects : [];
+  const projects = resultCollection<Record<string, unknown>>(projectsResult, "projects");
   const pages = await Promise.all(
     projects.map((project) => {
       const projectId = clean((project as Record<string, unknown>).id);
@@ -371,7 +406,7 @@ async function workspaceLabels(args: ProjectsArgs): Promise<Record<string, unkno
         : Promise.resolve({ labels: [] } as AdminResult);
     }),
   );
-  const labels = pages.flatMap((page) => (Array.isArray(page.labels) ? page.labels : [])).map(toProjectsLabel);
+  const labels = pages.flatMap((page) => resultCollection<Record<string, unknown>>(page, "labels")).map(toProjectsLabel);
   return [...new Map(labels.map((label) => [String(label.id), label])).values()];
 }
 
@@ -383,8 +418,8 @@ async function boardResponse(projectId: string, args: ProjectsArgs): Promise<Adm
     }),
   ]);
   if (workspace.error || taskResult.error) return workspace.error ? workspace : taskResult;
-  const tasks = (Array.isArray(taskResult.tasks) ? taskResult.tasks : []).map(toProjectsTask);
-  const rawColumns = Array.isArray(workspace.columns) ? workspace.columns : [];
+  const tasks = resultCollection<Record<string, unknown>>(taskResult, "tasks").map(toProjectsTask);
+  const rawColumns = resultCollection<Record<string, unknown>>(workspace, "columns");
   const columns = rawColumns.map((column) => toProjectsColumn(
     column,
     tasks.filter((task) => task.columnId === (column as Record<string, unknown>).id),
@@ -420,7 +455,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
 
   if (route === "/project" && method === "GET") {
     const result = await adminCall("project-list", args);
-    return response(result.error ? result : (Array.isArray(result.projects) ? result.projects.map(toProjectsProject).filter(Boolean) : []));
+    return response(result.error ? result : resultCollection(result, "projects").map(toProjectsProject).filter(Boolean));
   }
   if (route === "/project" && method === "POST") {
     const result = await adminCall("project-create", args, {}, "POST");
@@ -430,7 +465,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     // Project positions are not yet persisted by the Admin project schema.
     // Return the canonical list so Projects can reconcile its optimistic order.
     const result = await adminCall("project-list", args);
-    return response(result.error ? result : (Array.isArray(result.projects) ? result.projects.map(toProjectsProject).filter(Boolean) : []));
+    return response(result.error ? result : resultCollection(result, "projects").map(toProjectsProject).filter(Boolean));
   }
   if (path[0] === "project" && path.length === 2) {
     if (method === "GET") {
@@ -455,11 +490,11 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   if (path[0] === "task" && path[1] === "tasks" && method === "GET") return response(await boardResponse(id || "", args));
   if (path[0] === "task" && path[1] === "description-matches" && method === "GET") {
     const result = await adminCall("project-tasks-list", { query: { projectId: id, search: clean(queryValue(args, "query")) } });
-    return response(result.error ? result : { ids: (Array.isArray(result.tasks) ? result.tasks : []).map((task) => (task as Record<string, unknown>).id), nextCursor: null });
+    return response(result.error ? result : { ids: resultCollection<Record<string, unknown>>(result, "tasks").map((task) => task.id), nextCursor: null });
   }
   if (path[0] === "task" && path[1] === "export" && method === "GET") {
     const result = await adminCall("project-tasks-list", { query: { projectId: id } });
-    return response(result.error ? result : { projectId: id, tasks: (Array.isArray(result.tasks) ? result.tasks : []).map(toProjectsTask) });
+    return response(result.error ? result : { projectId: id, tasks: resultCollection(result, "tasks").map(toProjectsTask) });
   }
   if (path[0] === "task" && path[1] === "import" && method === "POST") {
     const source = args.json || {};
@@ -480,7 +515,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     }));
     return response({ success: results.every((item) => item.success), results: { successful: results.filter((item) => item.success).length, failed: results.filter((item) => !item.success).length, errors: results.filter((item) => !item.success) } });
   }
-  if (path[0] === "task" && path.length === 2 && method === "POST") {
+  if (path[0] === "task" && path.length === 2 && path[1] !== "reorder" && method === "POST") {
     const result = await adminCall("project-tasks-create", args, { projectId: id }, "POST");
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
@@ -527,29 +562,38 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     const tasks = Array.isArray(source.tasks) ? source.tasks : [];
     const results = await Promise.all(tasks.map(async (task) => {
       const item = task && typeof task === "object" ? task as Record<string, unknown> : {};
-      const result = await adminCall("project-task-update", args, {
+      const result = await adminCall("project-task-update", { json: {
         id: item.id,
         position: item.position,
         statusCategory: item.status,
+        columnId: item.columnId,
         expectedRevision: item.expectedRevision ?? item.revision,
-      }, "POST");
-      return { id: item.id, success: !result.error, error: result.error || null };
+      } }, {}, "POST");
+      return {
+        id: item.id,
+        success: !result.error,
+        error: result.error || null,
+        status: result.__httpStatus,
+      };
     }));
-    return response({ success: results.every((item) => item.success), results });
+    const failed = results.find((item) => !item.success);
+    return response({
+      success: !failed,
+      results,
+      ...(failed?.status ? { __httpStatus: failed.status } : {}),
+    });
   }
-  if (path[0] === "task" && path[1] === "assigned" && method === "GET") return response(await adminCall("project-tasks-list", args, { assignee: "me" }));
-
   if (path[0] === "activity" && path[1] === "workspace" && method === "GET") return response([]);
   if (path[0] === "activity" && method === "GET") {
     const result = await adminCall("project-task-activity", args, { taskId: id });
-    return response(result.error ? result : (Array.isArray(result.events) ? result.events.map(toProjectsActivity) : []));
+    return response(result.error ? result : resultCollection(result, "events").map(toProjectsActivity));
   }
   if (path[0] === "activity" && path[1] === "comment" && method === "POST") return response(await adminCall("project-task-comment", args, {}, "POST"));
   if (path[0] === "activity" && path[1] === "comment" && method === "PUT") return response(await adminCall("project-task-comment-update", args, { id }, "POST"));
   if (path[0] === "activity" && path[1] === "comment" && method === "DELETE") return response(await adminCall("project-task-comment-delete", args, { id }, "POST"));
   if (path[0] === "comment" && method === "GET") {
     const result = await adminCall("project-task-comments-list", args, { taskId: id });
-    return response(result.error ? result : (Array.isArray(result.comments) ? result.comments.map(toProjectsComment) : []));
+    return response(result.error ? result : resultCollection(result, "comments").map(toProjectsComment));
   }
   if (path[0] === "comment" && method === "POST") return response(await adminCall("project-task-comment", args, { taskId: id }, "POST"));
   if (path[0] === "comment" && method === "PUT") return response(await adminCall("project-task-comment-update", args, { id }, "POST"));
@@ -557,7 +601,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
 
   if (path[0] === "column" && path.length === 2 && method === "GET") {
     const result = await adminCall("project-columns-list", args, { projectId: id });
-    return response(result.error ? result : (Array.isArray(result.columns) ? result.columns.map((column) => toProjectsColumn(column)) : []));
+    return response(result.error ? result : resultCollection(result, "columns").map((column) => toProjectsColumn(column)));
   }
   if (path[0] === "column" && path.length === 2 && method === "POST") {
     const result = await adminCall("project-column-create", args, { projectId: id }, "POST");
@@ -595,7 +639,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   }
   if (path[0] === "label" && path[1] === "task" && method === "GET") {
     const result = await adminCall("project-task-get", args, { id }, "GET");
-    return response(result.error ? result : (Array.isArray(result.labels) ? result.labels.map(toProjectsLabel) : []));
+    return response(result.error ? result : resultCollection(result, "labels").map(toProjectsLabel));
   }
   if (path[0] === "label" && path[1] === "task" && method === "POST") return response(await adminCall("project-label-attach", args, {}, "POST"));
   if (path[0] === "label" && path[1] === "task" && method === "DELETE") return response(await adminCall("project-label-detach", args, {}, "POST"));
@@ -611,7 +655,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
 
   if (path[0] === "task-relation" && method === "GET") {
     const result = await adminCall("project-relations-list", args, { taskId: id });
-    return response(result.error ? result : (Array.isArray(result.relations) ? result.relations.map(toProjectsRelation) : []));
+    return response(result.error ? result : resultCollection(result, "relations").map(toProjectsRelation));
   }
   if (path[0] === "task-relation" && ["POST", "PUT"].includes(method)) {
     const source = args.json || {};
@@ -636,7 +680,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
 
   if (path[0] === "external-link" && path[1] === "task" && method === "GET") {
     const result = await adminCall("project-task-links-list", args, { taskId: id });
-    return response(result.error ? result : (Array.isArray(result.links) ? result.links.map(toProjectsExternalLink) : []));
+    return response(result.error ? result : resultCollection(result, "links").map(toProjectsExternalLink));
   }
   if (path[0] === "external-link" && path[1] === "task" && path.length === 3 && method === "POST") {
     const result = await adminCall("project-task-link-save", args, { taskId: id }, "POST");
@@ -650,11 +694,11 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   if (path[0] === "custom-field" && path[1] === "project" && path[3] === "filter-values" && method === "GET") return response([]);
   if (path[0] === "custom-field" && path[1] === "project" && method === "GET") {
     const result = await adminCall("project-custom-fields-list", args, { projectId: id });
-    return response(result.error ? result : (Array.isArray(result.fields) ? result.fields.map(toProjectsCustomField) : []));
+    return response(result.error ? result : resultCollection(result, "fields").map(toProjectsCustomField));
   }
   if (path[0] === "custom-field" && path[1] === "task" && method === "GET") {
     const result = await adminCall("project-task-get", args, { id }, "GET");
-    const fields = Array.isArray(result.customFields) ? result.customFields : [];
+    const fields = resultCollection(result, "customFields");
     return response(result.error ? result : fields.map(toProjectsCustomField));
   }
   if (path[0] === "custom-field" && path.length === 1 && method === "POST") {
@@ -685,15 +729,19 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   if (path[0] === "search" && method === "GET") return response(await adminCall("project-search", args));
   if (path[0] === "milestone" && method === "GET") {
     const result = await adminCall("project-milestones-list", args, { projectId });
-    return response(result.error ? result : (Array.isArray(result.milestones) ? result.milestones : []));
+    return response(result.error ? result : resultCollection(result, "milestones"));
   }
   if (path[0] === "milestone" && method === "POST") return response(await adminCall("project-milestone-create", args, { projectId }, "POST"));
   if (path[0] === "milestone" && ["PUT", "PATCH"].includes(method)) return response(await adminCall("project-milestone-update", args, { id }, "POST"));
   if (path[0] === "milestone" && method === "DELETE") return response(await adminCall("project-milestone-delete", args, { id, expectedRevision: bodyValue(args, "expectedRevision") ?? bodyValue(args, "revision") }, "POST"));
 
   if (path[0] === "workspace" && path.includes("members") && !path.includes("project-access") && method === "GET") {
-    const result = await adminCall("project-members-list", args, { projectId: projectId || clean(queryValue(args, "projectId")) || "" });
-    return response(result.error ? result : (Array.isArray(result.members) ? result.members : []));
+    const requestedProjectId = projectId || clean(queryValue(args, "projectId"));
+    const workspaceId = clean(param.workspaceId) || clean(path[1]) || clean(queryValue(args, "workspaceId"));
+    const result = requestedProjectId
+      ? await adminCall("project-members-list", args, { projectId: requestedProjectId })
+      : await adminCall("project-workspace-members-list", args, { workspaceId });
+    return response(result.error ? result : resultCollection(result, "members"));
   }
   if (path[0] === "workspace" && path.includes("project-access") && method === "GET") {
     return response({ error: "Project access is managed from each project's settings." }, 410);
@@ -702,37 +750,13 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response({ error: "Project access is managed from each project's settings." }, 410);
   }
   if (path[0] === "workspace" && path.includes("capabilities") && method === "GET") {
-    const accessResult = await adminCall("admin-access", args);
-    const permissions = Array.isArray((accessResult.access as Record<string, unknown> | undefined)?.permissions)
-      ? ((accessResult.access as Record<string, unknown>).permissions as string[])
-      : [];
-    const allowed = (permission: string) => permissions.some((candidate) => candidate === "*" || candidate === permission || (candidate.endsWith(".*") && permission.startsWith(candidate.slice(0, -1))));
-    return response({
-      manageProjects: allowed("operations.projects.write"),
-      createProjects: allowed("operations.projects.write"),
-      updateProjects: allowed("operations.projects.write"),
-      shareProjects: allowed("operations.projects.write"),
-      deleteProjects: allowed("operations.projects.write"),
-      updateTasks: allowed("operations.tasks.write"),
-      createTasks: allowed("operations.tasks.create") || allowed("operations.tasks.write"),
-      deleteTasks: allowed("operations.tasks.delete") || allowed("operations.tasks.write"),
-      assignTasks: allowed("operations.tasks.assign"),
-      createLabels: allowed("operations.projects.write"),
-      updateLabels: allowed("operations.tasks.write"),
-      deleteLabels: allowed("operations.projects.write"),
-      manageWorkspace: allowed("operations.projects.write"),
-      manageSettings: allowed("operations.settings.write"),
-      deleteWorkspace: allowed("operations.projects.write"),
-      inviteUsers: allowed("operations.projects.manage_members"),
-      manageTeam: allowed("operations.projects.manage_members"),
-      updateMembers: allowed("operations.projects.manage_members"),
-      removeMembers: allowed("operations.projects.manage_members"),
-    });
+    const workspaceId = clean(param.workspaceId) || clean(path[1]) || clean(queryValue(args, "workspaceId"));
+    return response(await adminCall("project-workspace-capabilities", args, { workspaceId }));
   }
 
   if (path[0] === "time-entry" && path[1] === "task" && method === "GET") {
     const result = await adminCall("project-task-time-list", args, { taskId: id });
-    return response(result.error ? result : (Array.isArray(result.entries) ? result.entries.map(toProjectsTimeEntry) : []));
+    return response(result.error ? result : resultCollection(result, "entries").map(toProjectsTimeEntry));
   }
   if (path[0] === "time-entry" && method === "POST") {
     const result = await adminCall("project-task-time-save", args, {}, "POST");
@@ -740,7 +764,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   }
   if (path[0] === "notification" && method === "GET") {
     const result = await adminCall("project-notifications-list", args);
-    return response(result.error ? result : (Array.isArray(result.notifications) ? result.notifications.map(toProjectsNotification) : []));
+    return response(result.error ? result : resultCollection(result, "notifications").map(toProjectsNotification));
   }
   if (path[0] === "notification" && ["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
     const notificationId = clean(param.id) || id;

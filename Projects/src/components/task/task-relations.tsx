@@ -42,7 +42,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 import { ReferenceAssigneeButton } from "./sections/reference-assignee-button";
 import { ReferenceStatusButton } from "./sections/reference-status-button";
@@ -217,13 +217,32 @@ export default function TaskRelations({
       }
       setCommandOpen(false);
       setSearchQuery("");
-    } catch {
-      toast.error(t("tasks:relations.linkError"));
+      toast.success(t("tasks:relations.linkSuccess"), {
+        description: toastSubject(
+          allTasks.find((item) => item.id === pickedTaskId)?.title,
+        ),
+      });
+    } catch (error) {
+      toast.error(t("tasks:relations.linkError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
-  const handleRemoveRelation = (relationId: string) => {
-    deleteRelation.mutate(relationId);
+  const handleRemoveRelation = async (relationId: string) => {
+    const linkedTask = linkedRelations.find((relation) => relation.id === relationId);
+    try {
+      await deleteRelation.mutateAsync(relationId);
+      toast.success(t("tasks:relations.removeSuccess"), {
+        description: toastSubject(linkedTask?.task.title),
+      });
+    } catch (error) {
+      toast.error(t("tasks:relations.removeError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
+    }
   };
 
   const handleNavigateToTask = (linkedTaskId: string) => {

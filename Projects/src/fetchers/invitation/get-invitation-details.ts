@@ -1,6 +1,16 @@
-import { client } from "@karamah/projects-libs";
+import { requestAdminJson } from "@/lib/karamah-admin";
 
-import { HttpError } from "@/lib/http-error";
+export type InvitationAccess = {
+  workspaceRole: string | null;
+  inheritedProjectRole: string | null;
+  projectOverrides: Array<{
+    id: string;
+    name: string;
+    role: string;
+  }>;
+  appliesToAllProjects: boolean;
+};
+
 export type InvitationDetails = {
   id: string;
   email: string;
@@ -9,6 +19,13 @@ export type InvitationDetails = {
   expiresAt: string;
   status: string;
   expired: boolean;
+  workspaceId?: string | null;
+  projectId?: string | null;
+  projectName?: string;
+  scope?: "workspace" | "project";
+  role?: string;
+  isExternal?: boolean;
+  access?: InvitationAccess;
 };
 
 export type GetInvitationDetailsResponse = {
@@ -20,16 +37,5 @@ export type GetInvitationDetailsResponse = {
 export async function getInvitationDetails(
   invitationId: string,
 ): Promise<GetInvitationDetailsResponse> {
-  const response = await client.invitation.public[":id"].$get({
-    param: {
-      id: invitationId,
-    },
-  });
-
-  if (!response.ok) {
-    throw await HttpError.fromResponse(response);
-  }
-
-  const result = await response.json();
-  return result;
+  return requestAdminJson<GetInvitationDetailsResponse>({ action: "project-invitation-get", query: { invitationId } });
 }

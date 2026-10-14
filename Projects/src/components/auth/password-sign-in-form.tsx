@@ -29,6 +29,7 @@ type PasswordSignInValues = { email: string; password: string };
 
 type PasswordSignInFormProps = {
   defaultEmail?: string;
+  readOnlyEmail?: boolean;
   canResetPassword?: boolean;
   captcha: AuthCaptchaState;
   disabled?: boolean;
@@ -37,6 +38,7 @@ type PasswordSignInFormProps = {
 
 export function PasswordSignInForm({
   defaultEmail,
+  readOnlyEmail = false,
   canResetPassword = false,
   captcha,
   disabled = false,
@@ -104,6 +106,8 @@ export function PasswordSignInForm({
                   type="email"
                   autoComplete="email"
                   placeholder={t("auth:forms.emailPlaceholder")}
+                  readOnly={readOnlyEmail}
+                  aria-readonly={readOnlyEmail || undefined}
                   {...field}
                 />
               </FormControl>

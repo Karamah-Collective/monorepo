@@ -8,6 +8,7 @@ type ArchiveTasksModalProps = {
   onClose: () => void;
   onConfirm: () => void;
   taskCount: number;
+  pending?: boolean;
 };
 
 export function ArchiveTasksModal({
@@ -16,6 +17,7 @@ export function ArchiveTasksModal({
   onClose,
   onConfirm,
   taskCount,
+  pending = false,
 }: ArchiveTasksModalProps) {
   const { t } = useTranslation();
   const [shownCount, setShownCount] = useState(taskCount);
@@ -31,7 +33,9 @@ export function ArchiveTasksModal({
       description={t("tasks:archive.confirmDescription")}
       confirmLabel={t("tasks:actions.archive")}
       destructive={false}
-      confirmDisabled={disabled}
+      confirmDisabled={disabled || pending}
+      pending={pending}
+      pendingLabel={t("tasks:archive.processing")}
       onConfirm={onConfirm}
     />
   );

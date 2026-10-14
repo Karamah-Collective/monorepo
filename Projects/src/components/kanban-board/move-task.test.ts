@@ -1,7 +1,6 @@
-import { applyBoardReorder, rollbackBoardReorder } from "./apply-reorder";
+import { applyBoardReorder, moveBoardTask, rollbackBoardReorder } from "./board-model";
 import { describe, expect, it } from "vitest";
 import type { ProjectWithTasks } from "@/types/project";
-import { moveBoardTask } from "./move-task";
 
 function board() {
   return {
@@ -55,11 +54,12 @@ describe("board moves", () => {
       id: "a",
       position: 1,
       status: "doing",
+      columnId: "doing",
     });
     expect(
       moved.tasks.every((task) =>
         Object.keys(task).every((key) =>
-          ["id", "position", "status"].includes(key),
+          ["id", "position", "status", "columnId"].includes(key),
         ),
       ),
     ).toBe(true);
@@ -71,7 +71,7 @@ describe("board moves", () => {
 
   it("updates only the moved task on a board sorted by task number", () => {
     expect(moveBoardTask(board(), "a", "doing", true)?.tasks).toEqual([
-      { id: "a", position: 1, status: "doing" },
+      { id: "a", position: 1, status: "doing", columnId: "doing" },
     ]);
   });
 

@@ -63,7 +63,11 @@ export function NewCalendarFeedForm({
       });
       onClose();
     },
-    onError: () => toast.error(t("settings:calendarFeeds.createError")),
+    onError: (error) =>
+      toast.error(t("settings:calendarFeeds.createError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      }),
   });
 
   const createDisabled =

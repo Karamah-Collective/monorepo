@@ -51,6 +51,12 @@ input:-webkit-autofill:active {
   animation: projects-route-enter 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+/* Keep the content width stable while route data loads and the scrollbar
+   appears. Without this reservation, every page shifts a few pixels right. */
+[data-slot="sidebar-inset"] {
+  scrollbar-gutter: stable;
+}
+
 .projects-timeline-row {
   animation: projects-timeline-row-enter 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }

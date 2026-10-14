@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 
 const toastManager = Toast.createToastManager();
 const anchoredToastManager = Toast.createToastManager();
+const TOAST_TIMEOUT = 4500;
 
 const TOAST_ICONS = {
   error: CircleAlertIcon,
@@ -42,7 +43,11 @@ function ToastProvider({
   ...props
 }: ToastProviderProps) {
   return (
-    <Toast.Provider toastManager={toastManager} {...props}>
+    <Toast.Provider
+      toastManager={toastManager}
+      {...props}
+      timeout={props.timeout ?? TOAST_TIMEOUT}
+    >
       {children}
       <Toasts position={position} />
     </Toast.Provider>
@@ -182,7 +187,11 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
 
 function AnchoredToastProvider({ children, ...props }: Toast.Provider.Props) {
   return (
-    <Toast.Provider toastManager={anchoredToastManager} {...props}>
+    <Toast.Provider
+      toastManager={anchoredToastManager}
+      {...props}
+      timeout={props.timeout ?? TOAST_TIMEOUT}
+    >
       {children}
       <AnchoredToasts />
     </Toast.Provider>

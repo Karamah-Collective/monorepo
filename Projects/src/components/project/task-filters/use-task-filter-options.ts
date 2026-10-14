@@ -4,6 +4,7 @@ import useGetCustomFieldFilterValues from "@/hooks/queries/custom-field/use-get-
 import useGetCustomFieldsByProject from "@/hooks/queries/custom-field/use-get-custom-fields-by-project";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { collectionResponse } from "@/lib/collection-response";
 
 export type TaskFilterOptions = ReturnType<typeof useTaskFilterOptions>;
 
@@ -15,7 +16,13 @@ export function useTaskFilterOptions(projectId: string, workspaceId: string) {
 
   const customFields = useMemo<CustomFieldDefinition[]>(
     () =>
-      rawCustomFields.map((field, index) => ({
+      collectionResponse<CustomFieldDefinition>(rawCustomFields, [
+        "fields",
+        "customFields",
+        "data",
+        "items",
+        "results",
+      ]).map((field, index) => ({
         ...field,
         type: field.type as CustomFieldDefinition["type"],
         options: Array.isArray(field.options)
@@ -27,7 +34,13 @@ export function useTaskFilterOptions(projectId: string, workspaceId: string) {
   );
 
   const usedCustomFieldValues = useMemo<Record<string, string[]>>(
-    () => Object.fromEntries(filterValues.map((f) => [f.fieldId, f.values])),
+    () =>
+      Object.fromEntries(
+        collectionResponse<{ fieldId: string; values: string[] }>(
+          filterValues,
+          ["values", "filterValues", "data", "items", "results"],
+        ).map((f) => [f.fieldId, Array.isArray(f.values) ? f.values : []]),
+      ),
     [filterValues],
   );
 

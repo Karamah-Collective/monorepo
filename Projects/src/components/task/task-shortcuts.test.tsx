@@ -163,9 +163,6 @@ describe("TaskShortcuts", () => {
     expect(mocks.updateAssignee).toHaveBeenCalledWith(
       expect.objectContaining({ id: "task-1", userId: "user-1" }),
     );
-    expect(mocks.message).toHaveBeenCalledWith("tasks:shortcuts.assignedToMe", {
-      icon: expect.anything(),
-    });
   });
 
   it("removes the due date", async () => {

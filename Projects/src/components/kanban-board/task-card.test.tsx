@@ -66,7 +66,10 @@ vi.mock("./task-card-context-menu/task-card-context-menu-content", () => ({
   default: () => null,
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const queryClient = new QueryClient();
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -98,4 +101,35 @@ it("keeps details in the rendered open column despite a final column sharing its
   view.rerender(<TaskCard task={task} isFinalColumn />);
   expect(screen.queryByText("Regression label")).not.toBeInTheDocument();
   expect(screen.getByText("Open work")).toBeVisible();
+});
+
+it("keeps final cards the same height and shows their completion date", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
+
+  const task: Task = {
+    id: "done-task",
+    title: "A completed task with a title that should stay on one line",
+    status: "done",
+    projectId: "project",
+    number: 2,
+    description: null,
+    priority: null,
+    startDate: null,
+    dueDate: null,
+    position: 1,
+    createdAt: "2026-10-01T00:00:00Z",
+    completedAt: "2026-10-13T12:00:00Z",
+    userId: null,
+    assigneeId: null,
+    assigneeName: null,
+  };
+
+  render(<TaskCard task={task} isFinalColumn />, { wrapper });
+
+  const title = screen.getByText(task.title);
+  expect(title).toHaveClass("truncate");
+  expect(title).toHaveAttribute("title", task.title);
+  expect(screen.getByText("yesterday")).toBeVisible();
+  expect(title.parentElement).toHaveClass("h-[98px]");
 });

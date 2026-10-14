@@ -16,7 +16,7 @@ import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-wor
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getTaskLabelOptions } from "@/lib/get-task-label-options";
 import { resolveLabelColor } from "@/lib/label-color";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
 
 const labelColors = [
@@ -113,22 +113,31 @@ function TaskLabelsMenu({ task, workspaceId, onClose }: TaskLabelsMenuProps) {
     );
     if (!workspaceLabel) return;
     try {
+      let successKey: "attachSuccess" | "detachSuccess";
       if (assignedNames.has(workspaceLabel.name)) {
         const taskLabel = taskLabels.find(
           (label) => label.name === workspaceLabel.name,
         );
-        if (taskLabel?.id) await detachLabel({ labelId: taskLabel.id });
+        if (!taskLabel?.id) return;
+        await detachLabel({ labelId: taskLabel.id });
+        successKey = "detachSuccess";
       } else {
         if (workspaceLabel.taskId !== null) return;
         await attachLabel({ labelId: workspaceLabel.id, taskId: task.id });
+        successKey = "attachSuccess";
       }
       await refreshTasks();
+      toast.success(t(`tasks:popover.labels.${successKey}`), {
+        description: [toastSubject(task.title), workspaceLabel.name]
+          .filter(Boolean)
+          .join(" → "),
+        icon: TagIcon,
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.labels.updateError"),
-      );
+      toast.error(t("tasks:popover.labels.updateError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 
@@ -143,13 +152,17 @@ function TaskLabelsMenu({ task, workspaceId, onClose }: TaskLabelsMenuProps) {
       });
       await attachLabel({ labelId: created.id, taskId: task.id });
       await refreshTasks();
-      toast.success(t("tasks:popover.labels.createSuccess"), { icon: TagIcon });
+      toast.success(t("tasks:popover.labels.createSuccess"), {
+        description: [toastSubject(task.title), created.name]
+          .filter(Boolean)
+          .join(" → "),
+        icon: TagIcon,
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.labels.createError"),
-      );
+      toast.error(t("tasks:popover.labels.createError"), {
+        description:
+          error instanceof Error && error.message ? error.message : undefined,
+      });
     }
   };
 

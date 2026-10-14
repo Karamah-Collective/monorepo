@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useUpdateLabel from "@/hooks/mutations/label/use-update-label";
-import { toast } from "@/lib/toast";
+import { toast, toastSubject } from "@/lib/toast";
 
 type LabelFormProps = {
   label: WorkspaceLabel | null;
@@ -51,24 +51,30 @@ export function LabelForm({ label, workspaceId, onClose }: LabelFormProps) {
       if (label) {
         await updateLabel.mutateAsync({ id: label.id, name: trimmed, color });
         toast.success(t("settings:workspaceLabels.updateSuccess"), {
+          description: toastSubject(trimmed),
           icon: TagIcon,
         });
       } else {
         await createLabel.mutateAsync({ name: trimmed, color, workspaceId });
         toast.success(t("settings:workspaceLabels.createSuccess"), {
+          description: toastSubject(trimmed),
           icon: TagIcon,
         });
       }
       onClose();
     } catch (submitError) {
       toast.error(
-        submitError instanceof Error
-          ? submitError.message
-          : t(
-              isEditing
-                ? "settings:workspaceLabels.updateError"
-                : "settings:workspaceLabels.createError",
-            ),
+        t(
+          isEditing
+            ? "settings:workspaceLabels.updateError"
+            : "settings:workspaceLabels.createError",
+        ),
+        {
+          description:
+            submitError instanceof Error && submitError.message
+              ? submitError.message
+              : undefined,
+        },
       );
     }
   };

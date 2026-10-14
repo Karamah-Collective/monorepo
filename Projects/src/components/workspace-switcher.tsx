@@ -18,27 +18,22 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { Kbd } from "@/components/ui/kbd";
 import { getModifierKeyText } from "@/lib/shortcuts/platform";
 import { useShortcut } from "@/lib/shortcuts/use-shortcut";
 import { authClient } from "@/lib/auth-client";
-import { hasInstanceAdminRole } from "@/lib/instance-admin";
+import { isKaramahEmail } from "@/lib/is-karamah-email";
 import type { Workspace } from "@/types/workspace";
 import CreateWorkspaceModal from "./shared/modals/create-workspace-modal";
 
 export function WorkspaceSwitcher() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
-
   const { data: workspaces } = useGetWorkspaces();
   const { data: session } = authClient.useSession();
-  const { data: config } = useGetConfig();
-  const isAdmin = hasInstanceAdminRole(session?.user?.role);
-  const canCreateWorkspace =
-    isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
+  const canCreateWorkspace = isKaramahEmail(session?.user?.email);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] =
@@ -96,9 +91,7 @@ export function WorkspaceSwitcher() {
 
   useShortcut("switchWorkspace", () => setIsOpen(true));
 
-  if (!workspace) {
-    return null;
-  }
+  if (!workspace) return null;
 
   return (
     <>
@@ -114,7 +107,7 @@ export function WorkspaceSwitcher() {
                   />
                 }
               >
-                <div className="flex items-center min-w-0 w-full">
+                <div className="flex min-w-0 w-full items-center">
                   <span
                     className={`truncate text-sm font-medium text-foreground ${isSwitching ? "opacity-50" : ""}`}
                   >
@@ -125,7 +118,7 @@ export function WorkspaceSwitcher() {
                   <Spinner className="ml-1 size-3.5 text-foreground/70" />
                 ) : (
                   <ChevronDown
-                    className="ml-1 size-3.5 text-foreground/70 opacity-90 group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:rotate-180 transition-[rotate,opacity] duration-200 ease-out"
+                    className="ml-1 size-3.5 text-foreground/70 opacity-90 transition-[rotate,opacity] duration-200 ease-out group-hover:opacity-100 data-[state=open]:rotate-180 data-[state=open]:opacity-100"
                     data-state={isOpen ? "open" : "closed"}
                   />
                 )}
@@ -187,7 +180,6 @@ export function WorkspaceSwitcher() {
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
-
       </div>
 
       <CreateWorkspaceModal

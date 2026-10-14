@@ -26,7 +26,9 @@ export default function SubtaskAssigneePopover({
 }: SubtaskAssigneePopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
+  const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee({
+    notify: false,
+  });
   const { data: members = [] } = useGetMembersOfProjects({
     workspaceId,
     projectIds: tasks.map((task) => task.projectId),
@@ -45,6 +47,9 @@ export default function SubtaskAssigneePopover({
       await Promise.all(
         tasks.map((task) => updateTaskAssignee({ ...task, userId })),
       );
+      toast.success(t("tasks:subtasks.assigneeUpdated"), {
+        description: `${tasks.length} ${t("tasks:subtasks.title").toLowerCase()}`,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error

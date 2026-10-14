@@ -68,13 +68,14 @@ function SignIn() {
   const lastUsed = authClient.getLastUsedLoginMethod();
 
   const invitationId = search.invitationId;
+  const externalInvitation = Boolean(invitationId);
   const redirectPath = getSafeRedirectPath(search.redirect);
   const destination =
     redirectPath ??
     (invitationId ? `/invitation/accept/${invitationId}` : "/dashboard");
   const baseUrl = import.meta.env.VITE_CLIENT_URL;
-  const providers = getProviders(config);
-  const emailMethod = getEmailMethod(config);
+  const providers = externalInvitation ? [] : getProviders(config);
+  const emailMethod = externalInvitation ? "password" : getEmailMethod(config);
   const getName = useProviderName(config?.customOAuthName);
   const { pending: providerPending, signIn: signInWithProvider } =
     useProviderSignIn({
@@ -89,6 +90,7 @@ function SignIn() {
     !captcha.siteKey &&
     Boolean(config?.customOAuthAutoLogin && config?.hasCustomOAuth) &&
     !search.error &&
+    !externalInvitation &&
     !autoLoginFailed;
 
   useEffect(() => {
@@ -214,7 +216,8 @@ function SignIn() {
         {emailMethod === "password" ? (
           <PasswordSignInForm
             defaultEmail={search.email}
-            canResetPassword={config?.hasSmtp}
+            readOnlyEmail={externalInvitation}
+            canResetPassword={Boolean(config?.hasSmtp && !externalInvitation)}
             captcha={captcha}
             disabled={busy}
             onSuccess={() => navigate({ to: destination })}

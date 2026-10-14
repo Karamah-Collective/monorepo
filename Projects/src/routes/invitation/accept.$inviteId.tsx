@@ -30,6 +30,7 @@ function AcceptInvitation() {
   const navigate = useNavigate();
   const [isAccepting, setIsAccepting] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
   const { session, isLoading: isSessionLoading } = useSettledSession();
   const {
     data: invitationData,
@@ -56,7 +57,7 @@ function AcceptInvitation() {
     return (
       <>
         <PageTitle title={t("auth:invitation.pageTitleAccept")} />
-        <AuthPage title={t("auth:invitation.pageTitleAccept")}>
+        <AuthPage title={t("auth:invitation.pageTitleAccept")} showAdminLink={false}>
           <AuthFormSkeleton />
         </AuthPage>
       </>
@@ -70,6 +71,7 @@ function AcceptInvitation() {
         <AuthPage
           title={t("auth:invitation.loadFailed.title")}
           description={t("auth:invitation.loadFailed.description")}
+          showAdminLink={false}
         >
           {goToProjects}
         </AuthPage>
@@ -96,6 +98,7 @@ function AcceptInvitation() {
                 })
               : t("auth:invitation.invalid.description")
           }
+          showAdminLink={false}
         >
           {goToProjects}
         </AuthPage>
@@ -103,9 +106,9 @@ function AcceptInvitation() {
     );
   }
 
-  const title = t("auth:invitation.joinWorkspace", {
-    workspaceName: invitation.workspaceName,
-  });
+  const title = invitation.projectName
+    ? `Join ${invitation.projectName}`
+    : t("auth:invitation.joinWorkspace");
   const description = t("auth:invitation.description", {
     inviterName: invitation.inviterName,
   });
@@ -122,7 +125,7 @@ function AcceptInvitation() {
     return (
       <>
         <PageTitle title={t("auth:invitation.pageTitleAccept")} />
-        <AuthPage title={title} description={description}>
+        <AuthPage title={title} description={description} showAdminLink={false}>
           <div className="flex flex-col gap-4">
             <AuthDetails
               rows={[
@@ -160,6 +163,35 @@ function AcceptInvitation() {
   const isRecipient =
     session.user.email.toLowerCase() === invitation.email.toLowerCase();
 
+  if (isRecipient && invitation.isExternal && session.user.emailVerified === false) {
+    const resendVerification = async () => {
+      setIsSendingVerification(true);
+      const result = await authClient.sendEmailVerification({ continueUrl: window.location.href });
+      if (result.error) toast.error(result.error.message || "Could not send the verification email.");
+      else toast.success("Verification email sent. Check your inbox, then choose ‘I have verified’.");
+      setIsSendingVerification(false);
+    };
+    return (
+      <>
+        <PageTitle title={t("auth:invitation.pageTitleAccept")} />
+        <AuthPage title={title} description={description} showAdminLink={false}>
+          <div className="flex flex-col gap-4">
+            <AuthDetails rows={[invitedBy, { label: t("auth:invitation.sentTo"), value: invitation.email }, expires]} />
+            <Alert variant="warning">
+              <TriangleAlert />
+              <AlertTitle>Verify your email before joining</AlertTitle>
+              <AlertDescription>We sent a verification link to {session.user.email}. Verification is required for external collaborators.</AlertDescription>
+            </Alert>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" loading={isSendingVerification} onClick={resendVerification}>Resend email</Button>
+              <Button size="lg" disabled={isSendingVerification} onClick={() => void authClient.reload()}>I have verified</Button>
+            </div>
+          </div>
+        </AuthPage>
+      </>
+    );
+  }
+
   const accept = async () => {
     setIsAccepting(true);
     try {
@@ -171,7 +203,7 @@ function AcceptInvitation() {
         setIsAccepting(false);
         return;
       }
-      const workspaceId = data?.invitation.organizationId ?? "";
+      const workspaceId = data?.workspaceId ?? data?.invitation?.workspaceId ?? data?.invitation?.organizationId ?? "";
       await authClient.organization.setActive({ organizationId: workspaceId });
       toast.success(t("auth:invitation.toast.acceptSuccess"), {
         icon: UserCheckIcon,
@@ -207,7 +239,7 @@ function AcceptInvitation() {
   return (
     <>
       <PageTitle title={t("auth:invitation.pageTitleAccept")} />
-      <AuthPage title={title} description={description}>
+      <AuthPage title={title} description={description} showAdminLink={false}>
         <div className="flex flex-col gap-4">
           {isRecipient ? (
             <AuthDetails

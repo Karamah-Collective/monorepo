@@ -1,5 +1,6 @@
 import { client } from "@karamah/projects-libs";
 import type { InferRequestType } from "hono/client";
+import { collectionResponse } from "@/lib/collection-response";
 import { HttpError } from "@/lib/http-error";
 
 export type GetProjectsRequest = InferRequestType<
@@ -28,12 +29,7 @@ async function getProjects({
   // The project hooks consume a collection directly. Keep this boundary
   // defensive because the Admin adapter may return an envelope while an
   // older local worker is still running during development.
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object" && "projects" in data) {
-    const projects = (data as { projects?: unknown }).projects;
-    return Array.isArray(projects) ? projects : [];
-  }
-  return [];
+  return collectionResponse(data, ["projects", "data", "items", "results"]);
 }
 
 export default getProjects;
