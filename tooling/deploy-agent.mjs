@@ -248,14 +248,20 @@ async function syncBranch(branch, push) {
   const files = deployFileList();
 
   git(["read-tree", "--empty"], { env });
-  for (const file of files) {
-    const entry = git(["ls-tree", "HEAD", "--", file]);
-    const match = entry.match(/^(\d+)\s+blob\s+([0-9a-f]+)\t(.+)$/);
-    if (!match) throw new Error(`Could not read tree entry for ${file}`);
-    git(["update-index", "--add", "--cacheinfo", `${match[1]},${match[2]},${file}`], {
-      env,
-    });
-  }
+  const entries = git(["ls-tree", "-r", "--full-tree", "HEAD", "--", ...DEPLOY_FILES])
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(line => {
+      const match = line.match(/^(\d+)\s+blob\s+([0-9a-f]+)\t(.+)$/);
+      if (!match || SECRET_OR_LOCAL.test(match[3])) return null;
+      return `${match[1]} ${match[2]}\t${match[3]}`;
+    })
+    .filter(Boolean);
+  if (!entries.length) throw new Error("Could not build the deployment tree");
+  git(["update-index", "--add", "--index-info"], {
+    env,
+    input: entries.join("\n") + "\n",
+  });
 
   const readmeBlob = git(["hash-object", "-w", "--stdin"], {
     input: deployBranchReadme(),
