@@ -230,6 +230,18 @@ describe("OnboardingFlow steps", () => {
     expect(m.createStarterProject).not.toHaveBeenCalled();
   });
 
+  it("stays on the project step when the starter project cannot be created", async () => {
+    m.createStarterProject.mockRejectedValueOnce(
+      new Error("Projects database is not configured."),
+    );
+    await createWorkspace();
+
+    expect(
+      screen.getByText("auth:onboarding.project.title"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("auth:onboarding.ready.title")).toBeNull();
+  });
+
   it("signs out from the footer", async () => {
     render(<OnboardingFlow />);
     await settled();
@@ -441,7 +453,7 @@ describe("OnboardingFlow access", () => {
     expect(restricted()).not.toBeInTheDocument();
   });
 
-  it("explains the restriction instead of offering a flow that would fail", async () => {
+  it("does not restrict workspace creation from the admin-panel setting", async () => {
     m.config.mockReturnValue({
       data: { disableWorkspaceCreation: true },
       isPending: false,
@@ -449,11 +461,8 @@ describe("OnboardingFlow access", () => {
     render(<OnboardingFlow />);
     await settled();
 
-    expect(restricted()).toBeInTheDocument();
-    expect(creationForm()).not.toBeInTheDocument();
-    expect(
-      screen.getByText("auth:onboarding.restrictedCheckInvitations"),
-    ).toBeInTheDocument();
+    expect(creationForm()).toBeInTheDocument();
+    expect(restricted()).not.toBeInTheDocument();
   });
 
   it("still offers the flow to an instance admin when creation is restricted", async () => {
@@ -507,12 +516,10 @@ describe("OnboardingFlow access", () => {
     expect(creationForm()).toBeInTheDocument();
   });
 
-  it("re-reads the role past the cookie cache, once", async () => {
+  it("does not read the admin-panel role for workspace creation", async () => {
     const { rerender } = render(<OnboardingFlow />);
     await settled();
-    expect(m.getSession).toHaveBeenCalledWith({
-      query: { disableCookieCache: true },
-    });
+    expect(m.getSession).not.toHaveBeenCalled();
 
     m.getSession.mockClear();
     rerender(<OnboardingFlow />);

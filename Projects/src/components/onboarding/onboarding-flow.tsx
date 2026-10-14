@@ -142,7 +142,7 @@ export function OnboardingFlow() {
         workspaceId: workspace.id,
         name: projectName.trim(),
         tasks: starterTasks(t, usage),
-      }).catch(() => null);
+      });
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
 
       let trialState: TrialState = { kind: "none" };
