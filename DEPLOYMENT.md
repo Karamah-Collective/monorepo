@@ -164,6 +164,26 @@ The existing Gmail OAuth connection is not silently expanded. Create the
 private R2 bucket `karamah-admin-media` and bind it as `ADMIN_MEDIA` before
 enabling task attachments.
 
+Cloudflare currently has five Git-connected Pages projects for this repository
+(Maps, Website, Admin, Links, and Forms), which fills the documented
+per-repository Pages project limit on the current account. Projects is therefore
+published as the Direct Upload project `karamah-projects` for the first release.
+Direct Upload projects cannot later be converted to Git integration. If the
+account limit is raised, create a replacement Git-connected Projects Pages
+project from the dashboard; otherwise use this Wrangler upload command for
+each reviewed production release:
+
+```powershell
+$env:VITE_ADMIN_ORIGIN = "https://admin.karamahcollective.com"
+$env:VITE_CLIENT_URL = "https://projects.karamahcollective.com"
+npm run build:projects
+npx wrangler pages deploy Projects/dist --project-name karamah-projects --branch deploy
+```
+
+The two `VITE_*` values are public build configuration, not secrets. Do not put
+D1 credentials, Firebase service-account keys, MCP signing keys, or Admin bearer
+tokens in the Projects Pages variables.
+
 The script reads Admin-owned data from `halal-finder-db` and the existing
 Operations database, writes to `karamah-admin-db`, and prints target row
 counts. It does not copy Forms tables. Do not drop old Admin tables until the
