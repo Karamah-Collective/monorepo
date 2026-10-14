@@ -448,6 +448,7 @@ Under each Pages project's **Build watch paths**, include:
 | Admin | `Admin/*`, `Maps/src/app-settings-schema.js`, `Maps/src/app-controls-schema.js`, `Website/assets/js/content-schema.mjs`, `package.json`, `package-lock.json` |
 | Links | `Links/*`, `Maps/functions/_link-hub.js`, `Maps/functions/api/admin.js`, `Maps/migrations/0050_admin_database_schema.sql`, `package.json`, `package-lock.json` |
 | Forms | `Forms/*`, `shared/forms-domain.mjs`, `shared/firebase-verify.mjs`, `Maps/functions/_forms-admin.js`, `Maps/functions/api/admin.js`, `Maps/functions/api/form-asset.js`, `Maps/migrations/0050_admin_database_schema.sql`, `package.json`, `package-lock.json` |
+| Projects | `Projects/*`, `shared/*`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 
