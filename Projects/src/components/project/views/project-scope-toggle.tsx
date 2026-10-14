@@ -46,7 +46,7 @@ export function ProjectScopeToggle({
   return (
     <nav
       aria-label={t("tasks:view.heading")}
-      className="flex w-full min-w-0 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-border/80 bg-background p-0.5 [scrollbar-width:none] dark:bg-input/32 [&::-webkit-scrollbar]:hidden"
+      className="inline-flex w-max min-w-0 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-border/80 bg-background p-0.5 [scrollbar-width:none] dark:bg-input/32 [&::-webkit-scrollbar]:hidden"
     >
       {PROJECT_VIEWS.filter((view) => view.id !== "list").map((layout) => {
         const Icon = layout.icon;

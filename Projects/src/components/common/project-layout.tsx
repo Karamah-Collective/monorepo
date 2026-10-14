@@ -146,7 +146,7 @@ export default function ProjectLayout({
           </div>
 
           {showViews && (
-            <div className="min-w-0 flex-1 items-center md:max-w-[34rem]">
+            <div className="flex min-w-0 shrink items-center">
               <ProjectScopeToggle
                 workspaceId={workspaceId}
                 projectId={projectId}

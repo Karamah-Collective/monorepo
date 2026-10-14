@@ -105,6 +105,7 @@ vi.mock("@dnd-kit/core", () => ({
         <button onClick={drop("b")}>drop</button>
         <button onClick={drop("a")}>drop-on-card</button>
         <button onClick={drop("c")}>drop-c</button>
+        <button onClick={drop("doing")}>drop-doing</button>
         <button onClick={() => onDragEnd({ active: { id: "a" }, over: null })}>
           drop-gap
         </button>
@@ -284,39 +285,40 @@ function savedIds(columnIndex: number) {
 }
 
 describe("cross-column dragging", () => {
-  it("previews the card in the hovered card's slot and drops it there", () => {
+  it("keeps the card anchored while dragging and commits it to the hovered column", () => {
     const project = crossColumnBoard();
     mocks.project = project;
     const view = render(<KanbanBoard project={project} />);
 
     fireEvent.click(view.getByText("start"));
     fireEvent.click(view.getByText("over-c"));
-    expect(shownIds(view, "todo")).toBe("");
-    expect(shownIds(view, "doing")).toBe("a,c,d");
+    expect(shownIds(view, "todo")).toBe("a");
+    expect(shownIds(view, "doing")).toBe("c,d");
 
-    fireEvent.click(view.getByText("drop-on-card"));
-    expect(savedIds(1)).toEqual(["a", "c", "d"]);
-    expect(mocks.setProject.mock.calls[0][0].columns[1].tasks[0].priority).toBe(
-      "low",
-    );
+    fireEvent.click(view.getByText("drop-c"));
+    expect(savedIds(1)).toEqual(["c", "a", "d"]);
+    expect(
+      mocks.setProject.mock.calls[0][0].columns[1].tasks.find(
+        (task: { id: string }) => task.id === "a",
+      ).priority,
+    ).toBe("low");
     expect(mocks.reorder).toHaveBeenCalledOnce();
     expect(mocks.reorder.mock.calls[0][0].tasks).toContainEqual({
       id: "a",
-      position: 0,
+      position: 1,
       status: "doing",
     });
     expect(shownIds(view, "doing")).toBe("c,d");
   });
 
-  it("applies a final sortable hover inside the destination column", () => {
+  it("appends to a destination when released over the column itself", () => {
     const project = crossColumnBoard();
     mocks.project = project;
     const view = render(<KanbanBoard project={project} />);
 
     fireEvent.click(view.getByText("start"));
-    fireEvent.click(view.getByText("over-c"));
-    fireEvent.click(view.getByText("drop-c"));
-    expect(savedIds(1)).toEqual(["c", "a", "d"]);
+    fireEvent.click(view.getByText("drop-doing"));
+    expect(savedIds(1)).toEqual(["c", "d", "a"]);
   });
 
   it("leaves the board unchanged when the card returns to its column", () => {
@@ -348,7 +350,7 @@ describe("cross-column dragging", () => {
     expect(mocks.reorder).not.toHaveBeenCalled();
   });
 
-  it("cancels a previewed move released outside every column", () => {
+  it("cancels a cross-column move released outside every column", () => {
     const project = crossColumnBoard();
     mocks.project = project;
     const view = render(<KanbanBoard project={project} />);
@@ -373,14 +375,15 @@ describe("cross-column dragging", () => {
     expect(mocks.reorder).not.toHaveBeenCalled();
   });
 
-  it("drops the preview once dragging is disabled mid-drag", () => {
+  it("drops the pending move once dragging is disabled mid-drag", () => {
     const project = crossColumnBoard();
     mocks.project = project;
     const view = render(<KanbanBoard project={project} />);
 
     fireEvent.click(view.getByText("start"));
     fireEvent.click(view.getByText("over-c"));
-    expect(shownIds(view, "doing")).toBe("a,c,d");
+    expect(shownIds(view, "todo")).toBe("a");
+    expect(shownIds(view, "doing")).toBe("c,d");
 
     view.rerender(<KanbanBoard project={project} disableDragDrop />);
     fireEvent.click(view.getByText("over-c"));
@@ -407,10 +410,11 @@ describe("cross-column dragging", () => {
     } as (typeof updated.columns)[number]["tasks"][number]);
     mocks.project = updated;
     view.rerender(<KanbanBoard project={updated} />);
-    expect(shownIds(view, "doing")).toBe("a,c,d,e");
+    expect(shownIds(view, "todo")).toBe("a");
+    expect(shownIds(view, "doing")).toBe("c,d,e");
 
-    fireEvent.click(view.getByText("drop-on-card"));
-    expect(savedIds(1)).toEqual(["a", "c", "d", "e"]);
+    fireEvent.click(view.getByText("drop-c"));
+    expect(savedIds(1)).toEqual(["c", "a", "d", "e"]);
   });
 });
 

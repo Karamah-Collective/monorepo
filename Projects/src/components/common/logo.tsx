@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import useProjectStore from "@/store/project";
+import karamahLogoUrl from "../../../../shared/brand/karamah-logo.svg";
 
 type LogoProps = {
   className?: string;
@@ -17,14 +18,9 @@ export function Logo({ className = "" }: LogoProps) {
       className={`w-auto ${className}`}
     >
       <img
-        src="/logo-dark.svg"
-        alt="Projects"
-        className="h-6 w-auto dark:hidden"
-      />
-      <img
-        src="/logo-light.svg"
-        alt="Projects"
-        className="hidden h-6 w-auto dark:block"
+        src={karamahLogoUrl}
+        alt="Karamah"
+        className="size-8 object-contain dark:invert"
       />
     </Link>
   );

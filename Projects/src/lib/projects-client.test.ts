@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { toProjectsTask } from "./projects-client";
+import { toProjectsColumn, toProjectsTask } from "./projects-client";
+
+describe("toProjectsColumn", () => {
+  it("uses the Admin status category as the board move slug", () => {
+    expect(
+      toProjectsColumn({
+        id: "column-in-progress",
+        name: "In progress",
+        statusCategory: "in_progress",
+      }),
+    ).toMatchObject({
+      id: "column-in-progress",
+      slug: "in_progress",
+    });
+  });
+
+  it("keeps explicit legacy slugs when present", () => {
+    expect(
+      toProjectsColumn({
+        id: "column-in-progress",
+        slug: "doing",
+        statusCategory: "in_progress",
+      }),
+    ).toMatchObject({ slug: "doing" });
+  });
+});
 
 describe("toProjectsTask", () => {
   it("preserves Admin assignee identities for project and workspace views", () => {

@@ -119,3 +119,26 @@ rules. No unsafe bulk merge was made just to reduce the file count.
 - Do not merge files solely to reduce a file count; preserve domain boundaries.
 - Do not change the existing Projects interaction model while fixing layout bugs.
 - Do not add local-testing affordances to the production UI.
+
+## Loop 7 - board, topbar, and identity correction
+
+- [x] Corrected the Admin-to-Projects column adapter so board moves submit the
+      workflow `statusCategory` instead of the Admin column row ID. This fixes
+      cross-column cards being written optimistically and then returning to the
+      source column after refresh.
+- [x] Removed cross-column preview reparenting from the live board. The active
+      sortable remains in its source lane until release, while `DragOverlay`
+      owns the pointer-following visual. This prevents dnd-kit from losing the
+      activator offset when the dragged card crosses a lane.
+- [x] Made the project view switcher content-sized so the top bar does not draw
+      unused tab space beside Gantt.
+- [x] Made Firebase Google sign-in the first full-width authentication action,
+      even when the copied Projects config has stale provider flags.
+- [x] Replaced visible Projects auth/onboarding logo surfaces and the favicon
+      with the shared Karamah mark.
+- [x] Focused board, adapter, auth, timeline, and Gantt suite: 5 files and 47
+      tests passed.
+- [x] Complete Projects suite: 296 files and 1,528 tests passed.
+- [x] Production build: Vite completed successfully in 30.73 seconds.
+- [x] Playwright smoke checks: 4 passed at desktop and mobile sizes.
+- [x] Repository layout and deployed-asset check passed.

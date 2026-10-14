@@ -14,7 +14,10 @@ type Config = GetConfigResponse | undefined;
 export function getProviders(config: Config): AuthProvider[] {
   if (!config) return [];
   const providers: [AuthProvider, boolean][] = [
-    ["google", config.hasGoogleSignIn],
+    // Projects uses the Karamah Firebase project for identity. Keep Google
+    // available even when the copied Projects config still reports the old
+    // Better Auth provider flags.
+    ["google", true],
     ["github", config.hasGithubSignIn],
     ["discord", config.hasDiscordSignIn],
     ["custom", config.hasCustomOAuth],

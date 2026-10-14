@@ -145,6 +145,8 @@ function SignIn() {
   }
 
   const busy = providerPending !== null || guest.isPending;
+  const googleProviders = providers.filter((provider) => provider === "google");
+  const secondaryProviders = providers.filter((provider) => provider !== "google");
   const errorMessage = search.error
     ? t(
         `auth:signIn.errors.${search.error.replace(/[._]+/g, "_").toLowerCase()}`,
@@ -177,6 +179,21 @@ function SignIn() {
           ) : null
         }
       >
+        {googleProviders.length > 0 ? (
+          <ProviderButtons
+            providers={googleProviders}
+            layout="stacked"
+            getName={getName}
+            lastUsed={lastUsed}
+            pending={providerPending}
+            disabled={captcha.pending || guest.isPending}
+            onSelect={(provider) => void signInWithProvider(provider)}
+          />
+        ) : null}
+        {googleProviders.length > 0 &&
+        (emailMethod || secondaryProviders.length > 0) ? (
+          <AuthDivider />
+        ) : null}
         {emailMethod === "code" ? (
           <EmailCodeForm
             defaultEmail={search.email}
@@ -202,15 +219,15 @@ function SignIn() {
             onSuccess={() => navigate({ to: destination })}
           />
         ) : null}
-        {emailMethod && providers.length > 0 ? <AuthDivider /> : null}
+        {emailMethod && secondaryProviders.length > 0 ? <AuthDivider /> : null}
         {!emailMethod && captcha.siteKey ? (
           <div className="pb-3">
             <AuthCaptcha captcha={captcha} />
           </div>
         ) : null}
-        {providers.length > 0 ? (
+        {secondaryProviders.length > 0 ? (
           <ProviderButtons
-            providers={providers}
+            providers={secondaryProviders}
             layout={emailMethod ? "compact" : "stacked"}
             getName={getName}
             lastUsed={lastUsed}

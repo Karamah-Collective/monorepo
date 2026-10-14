@@ -87,12 +87,19 @@ vi.mock("@/store/user-preferences", () => ({
 vi.mock("@/components/gantt/gantt-task-bar", () => ({
   GanttTaskBar: ({
     task,
+    pixelsPerDay,
     onOpenTask,
   }: {
     task: { id: string; title: string };
+    pixelsPerDay: number;
     onOpenTask: () => void;
   }) => (
-    <button type="button" data-testid={`timeline-task-${task.id}`} onClick={onOpenTask}>
+    <button
+      type="button"
+      data-testid={`timeline-task-${task.id}`}
+      data-pixels-per-day={pixelsPerDay}
+      onClick={onOpenTask}
+    >
       {task.title}
     </button>
   ),
@@ -117,6 +124,7 @@ describe("WorkspaceTimeline", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("resolves people, expands the hierarchy, and opens actionable task bars", () => {
@@ -142,10 +150,23 @@ describe("WorkspaceTimeline", () => {
   });
 
   it("keeps the old date-input pane out while exposing compact navigation and zoom", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function () {
+        return this.hasAttribute("data-day")
+          ? ({ width: 37 } as DOMRect)
+          : ({ width: 0 } as DOMRect);
+      },
+    );
     render(<WorkspaceTimeline workspaceId="workspace-a" mode="projects" />);
 
     expect(screen.queryByLabelText("Timeline start date")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jump to today" })).toBeVisible();
     expect(screen.getByRole("slider", { name: "Timeline zoom" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Community campaign" }));
+    expect(screen.getByTestId("timeline-task-task-a")).toHaveAttribute(
+      "data-pixels-per-day",
+      "37",
+    );
   });
 });

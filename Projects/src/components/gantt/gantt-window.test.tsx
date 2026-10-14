@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import {
   afterEach,
@@ -193,5 +199,30 @@ describe("Gantt window UI", () => {
     expect(
       container.querySelectorAll('[style*="repeat(91,"]').length,
     ).toBeGreaterThan(0);
+  });
+
+  it("keeps a dragged task anchored when the timeline scrolls under the pointer", async () => {
+    m.tasks = [task("Move me", "2026-10-12", "2026-10-13")];
+    const { container } = show();
+    const scrollContainer = container.querySelector<HTMLElement>(
+      "[data-timeline-scroll]",
+    );
+    const taskBar = screen.getByRole("button", {
+      name: "tasks:gantt.taskAriaLabel",
+    });
+
+    expect(scrollContainer).not.toBeNull();
+    if (!scrollContainer) return;
+    scrollContainer.scrollLeft = 0;
+    fireEvent.pointerDown(taskBar, {
+      button: 0,
+      clientX: 100,
+    });
+    scrollContainer.scrollLeft = 44;
+    fireEvent.pointerMove(taskBar, { clientX: 100 });
+    fireEvent.pointerUp(taskBar, { clientX: 100 });
+
+    await waitFor(() => expect(m.update).toHaveBeenCalledOnce());
+    expect(new Date(m.update.mock.calls[0][0].startDate).getDate()).toBe(13);
   });
 });

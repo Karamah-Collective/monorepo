@@ -55,6 +55,55 @@ function toIsoDay(d: Date) {
   return startOfDay(d).toISOString();
 }
 
+function getTimelineScrollState(target: EventTarget | null) {
+  const element = (target as HTMLElement | null)?.closest?.<HTMLElement>(
+    "[data-timeline-scroll]",
+  );
+  return {
+    element: element ?? null,
+    scrollLeft: element?.scrollLeft ?? 0,
+  };
+}
+
+function getDragDeltaPixels({
+  clientX,
+  originX,
+  originScrollLeft,
+  scrollElement,
+}: {
+  clientX: number;
+  originX: number;
+  originScrollLeft: number;
+  scrollElement: HTMLElement | null;
+}) {
+  const scrollDelta =
+    (scrollElement?.scrollLeft ?? originScrollLeft) - originScrollLeft;
+  return clientX - originX + scrollDelta;
+}
+
+function getDragDeltaDays({
+  clientX,
+  originX,
+  originScrollLeft,
+  scrollElement,
+  pixelsPerDay,
+}: {
+  clientX: number;
+  originX: number;
+  originScrollLeft: number;
+  scrollElement: HTMLElement | null;
+  pixelsPerDay: number;
+}) {
+  return Math.round(
+    getDragDeltaPixels({
+      clientX,
+      originX,
+      originScrollLeft,
+      scrollElement,
+    }) / Math.max(pixelsPerDay, 1),
+  );
+}
+
 export function GanttTaskBar({
   task,
   timeline,
@@ -128,6 +177,8 @@ export function GanttTaskBar({
     event.preventDefault();
     event.stopPropagation();
     const originX = event.clientX;
+    const { element: scrollElement, scrollLeft: originScrollLeft } =
+      getTimelineScrollState(event.currentTarget);
     const initialStart = task.scheduleStart;
     const initialEnd = task.scheduleEnd;
     const startIdx = differenceInCalendarDays(
@@ -137,7 +188,13 @@ export function GanttTaskBar({
     const endIdx = differenceInCalendarDays(initialEnd, timeline.rangeStart);
 
     const onMove = (ev: PointerEvent) => {
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextStartIdx = startIdx + deltaDays;
       nextStartIdx = Math.max(0, Math.min(nextStartIdx, endIdx));
       const nextStart = timeline.days[nextStartIdx] ?? initialStart;
@@ -153,7 +210,13 @@ export function GanttTaskBar({
         setDragDisplay(null);
         return;
       }
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextStartIdx = startIdx + deltaDays;
       nextStartIdx = Math.max(0, Math.min(nextStartIdx, endIdx));
       const nextStart = timeline.days[nextStartIdx] ?? initialStart;
@@ -178,6 +241,8 @@ export function GanttTaskBar({
     event.preventDefault();
     event.stopPropagation();
     const originX = event.clientX;
+    const { element: scrollElement, scrollLeft: originScrollLeft } =
+      getTimelineScrollState(event.currentTarget);
     const initialStart = task.scheduleStart;
     const initialEnd = task.scheduleEnd;
     const startIdx = differenceInCalendarDays(
@@ -187,7 +252,13 @@ export function GanttTaskBar({
     const endIdx = differenceInCalendarDays(initialEnd, timeline.rangeStart);
 
     const onMove = (ev: PointerEvent) => {
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextEndIdx = endIdx + deltaDays;
       nextEndIdx = Math.max(startIdx, Math.min(nextEndIdx, trackCount - 1));
       const nextEnd = timeline.days[nextEndIdx] ?? initialEnd;
@@ -203,7 +274,13 @@ export function GanttTaskBar({
         setDragDisplay(null);
         return;
       }
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextEndIdx = endIdx + deltaDays;
       nextEndIdx = Math.max(startIdx, Math.min(nextEndIdx, trackCount - 1));
       const nextEnd = timeline.days[nextEndIdx] ?? initialEnd;
@@ -228,6 +305,8 @@ export function GanttTaskBar({
     if (event.button !== 0) return;
     event.preventDefault();
     const originX = event.clientX;
+    const { element: scrollElement, scrollLeft: originScrollLeft } =
+      getTimelineScrollState(event.currentTarget);
     const initialStart = task.scheduleStart;
     const initialEnd = task.scheduleEnd;
     if (!startIsVisible || !endIsVisible) {
@@ -241,7 +320,13 @@ export function GanttTaskBar({
     );
 
     const onMove = (ev: PointerEvent) => {
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextStartIdx = startIdx + deltaDays;
       const maxStart = trackCount - 1 - durationDays;
       nextStartIdx = Math.max(0, Math.min(nextStartIdx, maxStart));
@@ -258,8 +343,21 @@ export function GanttTaskBar({
         setDragDisplay(null);
         return;
       }
-      const moved = Math.abs(ev.clientX - originX);
-      const deltaDays = Math.round((ev.clientX - originX) / pxPerDay);
+      const moved = Math.abs(
+        getDragDeltaPixels({
+          clientX: ev.clientX,
+          originX,
+          originScrollLeft,
+          scrollElement,
+        }),
+      );
+      const deltaDays = getDragDeltaDays({
+        clientX: ev.clientX,
+        originX,
+        originScrollLeft,
+        scrollElement,
+        pixelsPerDay: pxPerDay,
+      });
       let nextStartIdx = startIdx + deltaDays;
       const maxStart = trackCount - 1 - durationDays;
       nextStartIdx = Math.max(0, Math.min(nextStartIdx, maxStart));

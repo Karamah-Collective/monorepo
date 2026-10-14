@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AuthLegalFooter } from "./auth-legal-footer";
+import karamahLogoUrl from "../../../../shared/brand/karamah-logo.svg";
 
 type AuthPageProps = {
   title: string;
@@ -21,9 +22,9 @@ export function AuthPage({
           <div className="flex w-full max-w-[360px] flex-col">
             <div className="flex flex-col gap-5 pb-8">
               <img
-                src="/favicon.svg"
-                alt=""
-                className="size-10 shrink-0 rounded-lg border border-border"
+                src={karamahLogoUrl}
+                alt="Karamah"
+                className="size-10 shrink-0 object-contain"
               />
               <div className="flex flex-col gap-1.5">
                 <h1 className="font-semibold text-[22px] text-foreground leading-7 tracking-[-0.02em]">

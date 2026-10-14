@@ -26,7 +26,6 @@ import { rollbackBoardReorder } from "./apply-reorder";
 import { boardCollisionDetection } from "./board-collision-detection";
 import { findTaskColumn } from "./drag-preview/find-task-column";
 import { moveBoardTask } from "./move-task";
-import { useDragPreview } from "./drag-preview/use-drag-preview";
 import { useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useTaskViewShortcuts } from "@/components/project/task-view-keys/use-task-view-shortcuts";
@@ -66,7 +65,6 @@ function KanbanBoard({
   const [activeIsFinal, setActiveIsFinal] = useState<boolean | undefined>();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sortHintColumnId, setSortHintColumnId] = useState<string | null>(null);
-  const dragPreview = useDragPreview(project);
   const { t } = useTranslation();
   const { mutate: reorder, isPending: isReordering } = useMutation({
     mutationFn: ({
@@ -171,21 +169,18 @@ function KanbanBoard({
   const resetDrag = () => {
     setActiveId(null);
     setSortHintColumnId(null);
-    dragPreview.clear();
   };
 
   const isDropBlocked = () =>
     disableDragDrop ||
     isReordering;
 
-  const handleDragOver = ({ active, over }: DragOverEvent) => {
+  const handleDragOver = ({ over }: DragOverEvent) => {
     if (!over || isDropBlocked()) {
       setSortHintColumnId(null);
-      dragPreview.clear();
       return;
     }
     if (!isAutomaticallySorted) {
-      dragPreview.hover(active, over);
       return;
     }
     setSortHintColumnId(
@@ -227,14 +222,14 @@ function KanbanBoard({
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const activeId = active.id.toString();
     const overId = over?.id.toString();
-    const placement = overId
-      ? dragPreview.getDropPlacement(activeId, overId)
-      : null;
     resetDrag();
     if (!overId) return;
-    if (placement)
-      commitMove(activeId, placement.overId, placement.insertAfterTarget);
-    else commitMove(activeId, overId);
+    // Keep the active sortable in its source column while dragging. Moving it
+    // into a rendered preview column changes the draggable DOM node under
+    // dnd-kit, which changes the activator offset and makes the overlay jump.
+    // The collision target already identifies the destination task/column, so
+    // commit the move once on release and let the overlay do the visual work.
+    commitMove(activeId, overId);
   };
 
   useTaskViewShortcuts({
@@ -327,7 +322,7 @@ function KanbanBoard({
           )}
         >
           <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
-            {(dragPreview.preview ?? project).columns.map((column) => (
+            {project.columns.map((column) => (
               <div
                 key={column.id}
                 className={cn(

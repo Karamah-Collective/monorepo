@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import karamahLogoUrl from "../../../../shared/brand/karamah-logo.svg";
 import { OnboardingProgress } from "./onboarding-progress";
 
 type OnboardingShellProps = {
@@ -41,9 +42,9 @@ export function OnboardingShell({
       >
         <header className="flex items-center justify-between gap-4">
           <img
-            src="/favicon.svg"
-            alt=""
-            className="size-8 rounded-lg border border-border"
+            src={karamahLogoUrl}
+            alt="Karamah"
+            className="size-8 object-contain"
           />
           {progress ? (
             <OnboardingProgress

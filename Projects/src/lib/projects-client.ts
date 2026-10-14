@@ -127,13 +127,18 @@ export function toProjectsTask(value: unknown): Record<string, unknown> {
   };
 }
 
-function toProjectsColumn(value: unknown, tasks: Record<string, unknown>[] = []): Record<string, unknown> {
+export function toProjectsColumn(value: unknown, tasks: Record<string, unknown>[] = []): Record<string, unknown> {
   const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const status = String(source.status || source.statusCategory || "inbox");
   return {
     ...source,
     id: source.id,
-    slug: source.slug || source.id,
+    // The Admin project API identifies columns by both their row id and the
+    // workflow status they represent. Board moves submit the status category,
+    // not the database row id, so never fall back to `id` when a category is
+    // available. Falling back to the id is retained for older Projects API
+    // responses that only exposed a slug.
+    slug: source.slug || source.statusCategory || source.status || source.id,
     name: source.name || status,
     icon: source.icon ?? null,
     isFinal: source.isFinal ?? ["completed", "cancelled"].includes(status),

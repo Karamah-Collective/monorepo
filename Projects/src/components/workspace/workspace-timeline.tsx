@@ -457,8 +457,17 @@ export function WorkspaceTimeline({
     if (!element || !timeline?.days.length) return;
 
     const update = () => {
-      const width = element.getBoundingClientRect().width;
-      if (width > 0) setPixelsPerDay(width / timeline.days.length);
+      const dayCell = element.querySelector<HTMLElement>("[data-day]");
+      const measuredCellWidth = dayCell?.getBoundingClientRect().width ?? 0;
+      if (measuredCellWidth > 0) {
+        setPixelsPerDay(measuredCellWidth);
+        return;
+      }
+
+      const rootFontSize = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      );
+      if (rootFontSize > 0) setPixelsPerDay(dayColumnWidthRem * rootFontSize);
     };
 
     update();
@@ -596,7 +605,7 @@ export function WorkspaceTimeline({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div data-timeline-scroll="" className="min-h-0 flex-1 overflow-auto">
         <div className="min-w-max">
           <div
             className="sticky top-0 z-20 grid border-b border-border bg-background/95 backdrop-blur"

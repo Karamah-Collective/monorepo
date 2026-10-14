@@ -81,6 +81,7 @@ function RouteComponent() {
   const taskColumnWidthRem = isMobile ? 12 : 14;
   const showTaskRail = !isMobile || isTaskRailOpen;
   const timelineTrackRef = useRef<HTMLDivElement>(null);
+  const timelineHeaderRef = useRef<HTMLDivElement>(null);
   const [pixelsPerDay, setPixelsPerDay] = useState(44);
   const todayCellRef = useRef<HTMLDivElement>(null);
   // Only auto-scroll once per visit to the view: re-running on every timeline
@@ -201,12 +202,28 @@ function RouteComponent() {
 
   useLayoutEffect(() => {
     const element = timelineTrackRef.current;
-    if (!element || !timeline) return;
+    const header = timelineHeaderRef.current;
+    if (!element || !timeline || !header) return;
 
     const update = () => {
       const count = timeline.days.length;
       if (count <= 0) return;
-      setPixelsPerDay(element.clientWidth / count);
+      const dayCell = header.querySelector<HTMLElement>("[data-day]");
+      const measuredCellWidth = dayCell?.getBoundingClientRect().width ?? 0;
+      if (measuredCellWidth > 0) {
+        setPixelsPerDay(measuredCellWidth);
+        return;
+      }
+
+      const rootFontSize = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      );
+      if (rootFontSize > 0) {
+        setPixelsPerDay(dayColumnWidthRem * rootFontSize);
+        return;
+      }
+
+      if (element.clientWidth > 0) setPixelsPerDay(element.clientWidth / count);
     };
 
     update();
@@ -381,6 +398,7 @@ function RouteComponent() {
         ) : (
           <div
             data-testid="gantt-scroll-container"
+            data-timeline-scroll=""
             className="min-h-0 flex-1 overflow-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
             style={{ scrollPaddingLeft: `${scrollPaddingLeftRem}rem` }}
           >
@@ -399,6 +417,7 @@ function RouteComponent() {
                   </div>
                 ) : null}
                 <div
+                  ref={timelineHeaderRef}
                   className="grid shrink-0"
                   style={{
                     gridTemplateColumns: timeline.gridTemplateColumns,

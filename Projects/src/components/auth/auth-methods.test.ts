@@ -34,6 +34,10 @@ function config(overrides: Partial<GetConfigResponse> = {}) {
 }
 
 describe("auth methods", () => {
+  it("keeps Firebase Google sign-in available as the primary provider", () => {
+    expect(getProviders(config({ hasGoogleSignIn: false }))).toContain("google");
+  });
+
   it("lists configured providers in a fixed order", () => {
     expect(
       getProviders(
