@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   toProjectsColumn,
+  toProjectsBulkChanges,
+  toProjectsMember,
   toProjectsProject,
+  toProjectsTaskBody,
+  toProjectsTaskStatus,
   toProjectsTask,
   withTaskConflictRetry,
 } from "./projects-client";
@@ -85,6 +89,32 @@ describe("toProjectsTask", () => {
       projectId: "project-1",
       number: 3,
     });
+  });
+});
+
+describe("Projects API compatibility", () => {
+  it("normalizes project members into the shape used by assignee pickers", () => {
+    expect(toProjectsMember({ userUid: "uid-1", email: "person@karamahcollective.com" })).toMatchObject({
+      id: "uid-1",
+      name: "person",
+      email: "person@karamahcollective.com",
+    });
+  });
+
+  it("sends canonical task assignment fields without legacy UI fields", () => {
+    const body = toProjectsTaskBody({ json: { userId: "uid-1", projectId: "project-1", expectedRevision: 4 } }, "task-1");
+    expect(body).toEqual({ id: "task-1", assigneeUid: "uid-1", expectedRevision: 4 });
+  });
+
+  it("translates bulk task operations into the Projects API vocabulary", () => {
+    expect(toProjectsBulkChanges({ operation: "updatePriority", value: "medium" })).toEqual({ priority: "medium" });
+    expect(toProjectsBulkChanges({ operation: "updateAssignee", value: "uid-1" })).toEqual({ assigneeUid: "uid-1" });
+    expect(toProjectsBulkChanges({ operation: "updateStatus", value: "archived" })).toEqual({ statusCategory: "cancelled" });
+  });
+
+  it("maps legacy board status actions to stored status categories", () => {
+    expect(toProjectsTaskStatus("planned")).toBe("inbox");
+    expect(toProjectsTaskStatus("archived")).toBe("cancelled");
   });
 });
 

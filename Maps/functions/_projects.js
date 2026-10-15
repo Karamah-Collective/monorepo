@@ -20,6 +20,11 @@ export function normalizeTaskPriority(value) {
   if (value === "no-priority" || value === "") return "normal";
   return TASK_PRIORITIES.includes(value) ? value : null;
 }
+export function normalizeTaskStatus(value) {
+  if (value === "planned") return "inbox";
+  if (value === "archived") return "cancelled";
+  return TASK_STATUSES.includes(value) ? value : null;
+}
 const PROJECT_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const isAdmin = (access) => access?.permissions?.includes("*");
 const has = (access, permission, aliases = []) => isAdmin(access) || [permission, ...aliases].some(item => allowsPermissions(access?.permissions || [], item));
@@ -100,6 +105,11 @@ function actorEmail(actor) { return safe(actor?.email, 240).toLowerCase(); }
 function actorUid(actor) { return safe(actor?.uid, 180); }
 function isKaramahEmail(email) { return email.endsWith("@karamahcollective.com") || email.endsWith("@karamah.local"); }
 function isKaramahActor(actor) { return isKaramahEmail(actorEmail(actor)); }
+export function taskAssignmentMatchesActor(data, actor) {
+  const targetUid = safe(data?.assigneeUid, 180);
+  const targetEmail = actorEmail({ email: data?.assigneeEmail });
+  return [actorUid(actor), actorEmail(actor)].some((identity) => identity && (identity === targetUid || identity === targetEmail));
+}
 function canProjectRole(role, minimum) { return roleRank(role) >= roleRank(minimum); }
 export function rolePermissions(role) {
   const contributor = ["can_create_tasks", "can_edit_own_tasks", "can_comment", "can_relate", "can_attach"];
@@ -177,6 +187,26 @@ function workspaceMemberFromRow(row) {
     isExternal: !isKaramahEmail(row.email),
     user: { id: row.user_uid || row.email, name: row.display_name || row.email.split("@")[0], email: row.email, image: null },
   };
+}
+
+async function assigneeEmailFor(db, projectId, userUid, email) {
+  const direct = actorEmail({ email });
+  if (direct) return direct;
+  const uid = safe(userUid, 180);
+  if (!uid) return "";
+  if (isKaramahEmail(uid)) return uid;
+  try {
+    const member = await db.prepare("SELECT email FROM project_members WHERE project_id=? AND user_uid=?").bind(projectId, uid).first();
+    if (member?.email) return actorEmail(member);
+  } catch { /* Older project databases may not have user_uid populated. */ }
+  try {
+    const project = await getProject(db, projectId);
+    const member = project?.workspace_id
+      ? await db.prepare("SELECT email FROM project_workspace_members WHERE workspace_id=? AND user_uid=?").bind(project.workspace_id, uid).first()
+      : null;
+    if (member?.email) return actorEmail(member);
+  } catch { /* Assignment still works with the stable UID when the lookup is unavailable. */ }
+  return "";
 }
 function projectInvitationFromRow(row) {
   const expiresAt = row.expires_at || null;
@@ -862,7 +892,7 @@ export async function listProjectTasks(db, data, actor, access) {
   const where = ["project_id=?", visibilitySql]; const bind = [data.projectId, ...visibilityBind];
   if (data.status) { where.push("status_category=?"); bind.push(safe(data.status, 40)); }
   if (data.columnId) { where.push("column_id=?"); bind.push(safe(data.columnId, 180)); }
-  if (data.assignee === "me") { where.push("lower(assignee_email)=lower(?)"); bind.push(actorEmail(actor)); }
+  if (data.assignee === "me") { where.push("(assignee_uid=? OR lower(assignee_email)=lower(?))"); bind.push(actorUid(actor), actorEmail(actor)); }
   const requestedPriority = normalizeTaskPriority(data.priority);
   if (requestedPriority) { where.push("priority=?"); bind.push(requestedPriority); }
   if (data.search) { const q = `%${safe(data.search, 100).toLowerCase()}%`; where.push("(lower(title) LIKE ? OR lower(description) LIKE ?)"); bind.push(q, q); }
@@ -890,16 +920,22 @@ export async function getProjectTask(db, taskId, actor, access) {
 export async function createProjectTask(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access, "contributor"); if (allowed.error) return allowed;
   if (!allowed.permissions.can_create_tasks && !(data.projectId === "project-admin-operations" && has(access, "operations.tasks.create", ["operations.tasks.write"]))) return { error: "You cannot create tasks." };
-  const column = data.columnId ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, data.projectId).first() : await db.prepare("SELECT * FROM project_columns WHERE project_id=? ORDER BY position LIMIT 1").bind(data.projectId).first();
+  const requestedStatus = normalizeTaskStatus(data.statusCategory || data.status);
+  const column = data.columnId
+    ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, data.projectId).first()
+    : requestedStatus
+      ? await db.prepare("SELECT * FROM project_columns WHERE project_id=? AND status_category=? ORDER BY position LIMIT 1").bind(data.projectId, requestedStatus).first()
+      : await db.prepare("SELECT * FROM project_columns WHERE project_id=? ORDER BY position LIMIT 1").bind(data.projectId).first();
   if (!column) return { error: "A valid project column is required." };
   const title = safe(data.title, 240); if (!title) return { error: "A task title is required." };
-  const assigneeEmail = actorEmail({ email: data.assigneeEmail });
+  const assigneeUid = safe(data.assigneeUid, 180);
+  const assigneeEmail = await assigneeEmailFor(db, data.projectId, assigneeUid, data.assigneeEmail);
   if (assigneeEmail && !isKaramahEmail(assigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
   const milestoneId = safe(data.milestoneId, 180) || null;
   if (milestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(milestoneId, data.projectId).first()) return { error: "The milestone does not belong to this project.", status: 400 };
   const id = newId("task"); const timestamp = now();
   await db.prepare(`INSERT INTO project_tasks (id,project_id,task_number,title,description,column_id,status_category,priority,assignee_uid,assignee_email,start_at,due_at,milestone_id,source_domain,source_type,source_id,source_action,dedupe_key,position,created_by_uid,created_by_email,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, normalizeTaskPriority(data.priority) || "normal", safe(data.assigneeUid, 180), assigneeEmail, data.startAt || null, data.dueAt || null, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, Number(data.position || 0), actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, normalizeTaskPriority(data.priority) || "normal", assigneeUid, assigneeEmail, data.startAt || null, data.dueAt || null, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, Number(data.position || 0), actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
   await event(db, id, "created", "", column.status_category, "", actor);
   return { success: true, task: taskFromRow(await getTask(db, id)) };
 }
@@ -911,20 +947,28 @@ export async function updateProjectTask(db, data, actor, access) {
   if (Number(data.expectedRevision) !== Number(task.revision)) return { error: "Task changed. Refresh and try again.", status: 409, conflict: taskFromRow(task) };
   const isOwn = task.assignee_uid === actorUid(actor) || task.assignee_email === actorEmail(actor) || task.created_by_uid === actorUid(actor) || task.created_by_email === actorEmail(actor);
   const isAssignmentOnly = Object.keys(data).every(key => ["id", "expectedRevision", "assigneeUid", "assigneeEmail", "statusCategory", "status", "note"].includes(key));
-  const canEdit = allowed.permissions.can_edit_any_tasks || (allowed.permissions.can_edit_own_tasks && isOwn) || (allowed.permissions.can_assign_tasks && isAssignmentOnly);
+  const isSelfAssignment = isAssignmentOnly && taskAssignmentMatchesActor(data, actor);
+  const canEdit = allowed.permissions.can_edit_any_tasks || (allowed.permissions.can_edit_own_tasks && (isOwn || isSelfAssignment)) || (allowed.permissions.can_assign_tasks && isAssignmentOnly);
   if (!canEdit) return { error: "You do not have write access to this task.", status: 403 };
-  if (data.assigneeEmail !== undefined) {
-    const assigneeEmail = actorEmail({ email: data.assigneeEmail });
-    if (assigneeEmail && !isKaramahEmail(assigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
-  }
+  const assignmentChanged = data.assigneeUid !== undefined || data.assigneeEmail !== undefined;
+  const nextAssigneeUid = data.assigneeUid !== undefined ? safe(data.assigneeUid, 180) : task.assignee_uid;
+  const nextAssigneeEmail = assignmentChanged
+    ? await assigneeEmailFor(db, task.project_id, nextAssigneeUid, data.assigneeEmail)
+    : task.assignee_email;
+  if (nextAssigneeEmail && !isKaramahEmail(nextAssigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
   if (data.milestoneId !== undefined) {
     const milestoneId = safe(data.milestoneId, 180);
     if (milestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(milestoneId, task.project_id).first()) return { error: "The milestone does not belong to this project.", status: 400 };
   }
-  const column = data.columnId ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, task.project_id).first() : null;
-  const status = column?.status_category || (TASK_STATUSES.includes(data.statusCategory || data.status) ? (data.statusCategory || data.status) : task.status_category);
+  const requestedStatus = normalizeTaskStatus(data.statusCategory || data.status);
+  const column = data.columnId
+    ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, task.project_id).first()
+    : requestedStatus
+      ? await db.prepare("SELECT * FROM project_columns WHERE project_id=? AND status_category=? ORDER BY position LIMIT 1").bind(task.project_id, requestedStatus).first()
+      : null;
+  const status = column?.status_category || requestedStatus || task.status_category;
   const priority = data.priority === undefined ? task.priority : (normalizeTaskPriority(data.priority) || task.priority);
-  const values = [data.title !== undefined ? safe(data.title, 240) : task.title, data.description !== undefined ? safe(data.description, 10000) : task.description, column?.id || task.column_id, status, priority, data.assigneeUid !== undefined ? safe(data.assigneeUid, 180) : task.assignee_uid, data.assigneeEmail !== undefined ? actorEmail({ email: data.assigneeEmail }) : task.assignee_email, data.startAt !== undefined ? data.startAt || null : task.start_at, data.dueAt !== undefined ? data.dueAt || null : task.due_at, data.milestoneId !== undefined ? safe(data.milestoneId, 180) || null : task.milestone_id, data.position !== undefined ? Number(data.position) : Number(task.position || 0), status === "completed" ? (task.completed_at || now()) : null, Number(task.revision || 1) + 1, now(), task.id];
+  const values = [data.title !== undefined ? safe(data.title, 240) : task.title, data.description !== undefined ? safe(data.description, 10000) : task.description, column?.id || task.column_id, status, priority, nextAssigneeUid, nextAssigneeEmail, data.startAt !== undefined ? data.startAt || null : task.start_at, data.dueAt !== undefined ? data.dueAt || null : task.due_at, data.milestoneId !== undefined ? safe(data.milestoneId, 180) || null : task.milestone_id, data.position !== undefined ? Number(data.position) : Number(task.position || 0), status === "completed" ? (task.completed_at || now()) : null, Number(task.revision || 1) + 1, now(), task.id];
   await db.prepare("UPDATE project_tasks SET title=?,description=?,column_id=?,status_category=?,priority=?,assignee_uid=?,assignee_email=?,start_at=?,due_at=?,milestone_id=?,position=?,completed_at=?,revision=?,updated_at=? WHERE id=?").bind(...values).run();
   if (status !== task.status_category) await event(db, task.id, "status", task.status_category, status, data.note, actor);
   if (priority !== task.priority) await event(db, task.id, "priority", task.priority, priority, data.note, actor);
@@ -945,8 +989,13 @@ export async function deleteProjectTask(db, data, actor, access) {
 export async function bulkUpdateProjectTasks(db, data, actor, access) {
   const requestId = safe(data.idempotencyKey || data.requestId, 220); if (!requestId) return { error: "idempotencyKey is required." };
   const prior = await db.prepare("SELECT result_json FROM project_task_idempotency WHERE request_id=? AND actor_uid=?").bind(requestId, actorUid(actor)).first(); if (prior) return json(prior.result_json, { success: false });
+  const changes = data.changes && typeof data.changes === "object" ? data.changes : {};
   const ids = [...new Set((Array.isArray(data.taskIds) ? data.taskIds : []).map(item => safe(item, 220)).filter(Boolean))].slice(0, 100); const results = [];
-  for (const id of ids) { const result = await updateProjectTask(db, { ...data.changes, id }, actor, access); results.push({ taskId: id, success: !!result.success, error: result.error || null, conflict: result.conflict || null }); }
+  for (const id of ids) {
+    const current = await getTask(db, id);
+    const result = await updateProjectTask(db, { ...changes, id, ...(changes.expectedRevision == null && current ? { expectedRevision: current.revision } : {}) }, actor, access);
+    results.push({ taskId: id, success: !!result.success, error: result.error || null, conflict: result.conflict || null });
+  }
   const output = { success: results.every(item => item.success), results, succeeded: results.filter(item => item.success).length, failed: results.filter(item => !item.success).length };
   await db.prepare("INSERT INTO project_task_idempotency (request_id,actor_uid,action,result_json) VALUES (?,?,?,?)").bind(requestId, actorUid(actor), safe(data.action || "bulk_update", 120), JSON.stringify(output)).run();
   return output;
@@ -1008,7 +1057,28 @@ export async function listProjectActivity(db, data, actor, access) { const task 
 export async function listProjectMembers(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed;
   const result = await db.prepare("SELECT m.user_uid,m.email,m.role,m.created_at,m.updated_at,p.* FROM project_members m LEFT JOIN project_member_permissions p ON p.project_id=m.project_id AND lower(p.email)=lower(m.email) WHERE m.project_id=? ORDER BY lower(m.email)").bind(data.projectId).all();
-  return { members: (result.results || []).map(member => ({
+  const members = new Map((result.results || []).map((member) => [actorEmail(member), member]));
+  const workspaceAccess = allowed.project.visibility === "workspace"
+    ? await getWorkspaceAccess(db, allowed.project.workspace_id, actor)
+    : null;
+  if (workspaceAccess) {
+    try {
+      const workspaceMembers = await db.prepare("SELECT user_uid,email,role,created_at,updated_at FROM project_workspace_members WHERE workspace_id=? ORDER BY lower(email)").bind(allowed.project.workspace_id).all();
+      for (const member of workspaceMembers.results || []) {
+        const email = actorEmail(member);
+        if (email && !members.has(email)) members.set(email, { ...member, role: member.role === "owner" ? "project-admin" : workspaceRoleForProject(member.role) });
+      }
+    } catch { /* Keep explicit project members working on older project databases. */ }
+    if (!members.has(actorEmail(actor))) members.set(actorEmail(actor), {
+      user_uid: actorUid(actor), email: actorEmail(actor), role: workspaceAccess.role === "owner" ? "project-admin" : workspaceRoleForProject(workspaceAccess.role),
+      created_at: allowed.project.created_at, updated_at: allowed.project.updated_at,
+    });
+  }
+  if (allowed.owner && !members.has(actorEmail(actor))) members.set(actorEmail(actor), {
+    user_uid: actorUid(actor), email: actorEmail(actor), role: "project-admin",
+    created_at: allowed.project.created_at, updated_at: allowed.project.updated_at,
+  });
+  return { members: [...members.values()].filter(member => member.email).map(member => ({
     userUid: member.user_uid, email: member.email, role: member.role, createdAt: member.created_at, updatedAt: member.updated_at,
     isExternal: !isKaramahEmail(member.email),
     permissions: normalizeProjectPermissions(member.role, member), taskVisibility: TASK_VISIBILITY.includes(member.task_visibility) ? member.task_visibility : "all",

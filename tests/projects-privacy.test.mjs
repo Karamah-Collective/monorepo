@@ -8,6 +8,7 @@ import {
   normalizeProjectExternalUrl,
   normalizeProjectPermissions,
   rolePermissions,
+  taskAssignmentMatchesActor,
   taskVisibilityClause,
 } from "../Maps/functions/_projects.js";
 
@@ -122,6 +123,13 @@ test("task visibility scopes separate all, assigned, and own work", () => {
   const [sql, binds] = taskVisibilityClause({ taskVisibility: "assigned" }, me);
   assert.match(sql, /assignee/);
   assert.equal(binds.length, 2);
+});
+
+test("contributors can self-assign by either stable UID or email", () => {
+  const me = actor();
+  assert.equal(taskAssignmentMatchesActor({ assigneeUid: me.uid }, me), true);
+  assert.equal(taskAssignmentMatchesActor({ assigneeEmail: me.email }, me), true);
+  assert.equal(taskAssignmentMatchesActor({ assigneeUid: "other" }, me), false);
 });
 
 test("relation reads do not reveal tasks outside a member's visibility scope", async () => {

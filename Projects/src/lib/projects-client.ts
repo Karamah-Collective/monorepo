@@ -132,6 +132,28 @@ export function toProjectsTask(value: unknown): Record<string, unknown> {
   };
 }
 
+export function toProjectsMember(value: unknown): Record<string, unknown> {
+  const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const user = source.user && typeof source.user === "object"
+    ? source.user as Record<string, unknown>
+    : null;
+  const email = String(source.email || user?.email || "");
+  const id = source.id || source.userId || source.userUid || user?.id || email;
+  return {
+    ...source,
+    id,
+    name: source.name || source.displayName || user?.name || (email ? email.split("@")[0] : ""),
+    email,
+    image: source.image ?? user?.image ?? null,
+  };
+}
+
+export function toProjectsTaskStatus(value: unknown): unknown {
+  if (value === "planned") return "inbox";
+  if (value === "archived") return "cancelled";
+  return value;
+}
+
 export function toProjectsColumn(value: unknown, tasks: Record<string, unknown>[] = []): Record<string, unknown> {
   const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const status = String(source.status || source.statusCategory || "inbox");
@@ -320,18 +342,60 @@ function bodyValue(args: ProjectsArgs, key: string): unknown {
   return args.json?.[key];
 }
 
-function taskBody(args: ProjectsArgs, id?: string): Record<string, unknown> {
+export function toProjectsTaskBody(args: ProjectsArgs, id?: string): Record<string, unknown> {
   const source = args.json || {};
+  const fields = { ...source };
+  const userId = fields.userId;
+  const userEmail = fields.userEmail;
+  const status = fields.status;
+  const statusCategory = fields.statusCategory;
+  const assigneeUid = fields.assigneeUid;
+  const assigneeEmail = fields.assigneeEmail;
+  const expectedRevision = fields.expectedRevision;
+  const revision = fields.revision;
+  const startAt = fields.startAt;
+  const startDate = fields.startDate;
+  const dueAt = fields.dueAt;
+  const dueDate = fields.dueDate;
+  delete fields.projectId;
+  delete fields.userId;
+  delete fields.userEmail;
+  delete fields.status;
+  delete fields.statusCategory;
+  delete fields.assigneeUid;
+  delete fields.assigneeEmail;
+  delete fields.expectedRevision;
+  delete fields.revision;
+  delete fields.startAt;
+  delete fields.startDate;
+  delete fields.dueAt;
+  delete fields.dueDate;
   return {
-    ...source,
+    ...fields,
     ...(id ? { id } : {}),
-    statusCategory: source.statusCategory ?? source.status,
-    assigneeUid: source.assigneeUid ?? source.userId,
-    assigneeEmail: source.assigneeEmail ?? source.userEmail,
-    expectedRevision: source.expectedRevision ?? source.revision,
-    startAt: source.startAt ?? source.startDate,
-    dueAt: source.dueAt ?? source.dueDate,
+    ...(statusCategory !== undefined || status !== undefined ? { statusCategory: toProjectsTaskStatus(statusCategory ?? status) } : {}),
+    ...(assigneeUid !== undefined || userId !== undefined ? { assigneeUid: assigneeUid ?? userId } : {}),
+    ...(assigneeEmail !== undefined || userEmail !== undefined ? { assigneeEmail: assigneeEmail ?? userEmail } : {}),
+    ...(expectedRevision !== undefined || revision !== undefined ? { expectedRevision: expectedRevision ?? revision } : {}),
+    ...(startAt !== undefined || startDate !== undefined ? { startAt: startAt ?? startDate } : {}),
+    ...(dueAt !== undefined || dueDate !== undefined ? { dueAt: dueAt ?? dueDate } : {}),
   };
+}
+
+export function toProjectsBulkChanges(source: Record<string, unknown>): Record<string, unknown> | null {
+  const value = source.value;
+  switch (source.operation) {
+    case "updateStatus":
+      return { statusCategory: toProjectsTaskStatus(value) };
+    case "updatePriority":
+      return { priority: value === "no-priority" ? "normal" : value };
+    case "updateAssignee":
+      return { assigneeUid: value || "" };
+    case "updateDueDate":
+      return { dueAt: value || null };
+    default:
+      return null;
+  }
 }
 
 async function adminCall(
@@ -543,7 +607,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response({ success: results.every((item) => item.success), results: { successful: results.filter((item) => item.success).length, failed: results.filter((item) => !item.success).length, errors: results.filter((item) => !item.success) } });
   }
   if (path[0] === "task" && path.length === 2 && path[1] !== "reorder" && method === "POST") {
-    const result = await adminCall("project-tasks-create", args, { projectId: id }, "POST");
+    const result = await adminCall("project-tasks-create", args, { projectId: id, ...toProjectsTaskBody(args) }, "POST");
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path.length === 2 && method === "GET") {
@@ -551,7 +615,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path.length === 2 && ["PUT", "PATCH"].includes(method)) {
-    const result = await adminCall("project-task-update", args, taskBody(args, id), "POST");
+    const result = await adminCall("project-task-update", args, toProjectsTaskBody(args, id), "POST");
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path.length === 2 && method === "DELETE") return response(await adminCall("project-task-delete", args, { id, expectedRevision: bodyValue(args, "expectedRevision") ?? bodyValue(args, "revision"), reason: bodyValue(args, "reason") }, "POST"));
@@ -570,15 +634,25 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path[1] === "assignee") {
-    const result = await adminTaskUpdate("project-task-assign", args, taskBody(args, id));
+    const result = await adminTaskUpdate("project-task-assign", args, toProjectsTaskBody(args, id));
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && ["status", "assignee", "priority", "title", "description", "due-date"].includes(path[1] || "")) {
-    const result = await adminTaskUpdate("project-task-update", args, taskBody(args, id));
+    const result = await adminTaskUpdate("project-task-update", args, toProjectsTaskBody(args, id));
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path[1] === "bulk") {
-    const result = await adminCall("project-tasks-bulk", args, { idempotencyKey: bodyValue(args, "idempotencyKey") || crypto.randomUUID() }, "POST");
+    const source = args.json || {};
+    const taskIds = Array.isArray(source.taskIds) ? source.taskIds : [];
+    if (source.operation === "addLabel" || source.operation === "removeLabel") {
+      const action = source.operation === "addLabel" ? "project-label-attach" : "project-label-detach";
+      const results = await Promise.all(taskIds.map((taskId) => adminCall(action, { json: { taskId, labelId: source.value } }, {}, "POST")));
+      const failed = results.filter((result) => result.error);
+      return response({ success: failed.length === 0, results: results.map((result, index) => ({ taskId: taskIds[index], success: !result.error, error: result.error || null })), updatedCount: results.length - failed.length });
+    }
+    const changes = toProjectsBulkChanges(source);
+    if (!changes) return response({ error: "Unsupported bulk task operation." }, 400);
+    const result = await adminCall("project-tasks-bulk", args, { changes, idempotencyKey: bodyValue(args, "idempotencyKey") || crypto.randomUUID() }, "POST");
     return response(result.error ? result : {
       ...result,
       updatedCount: Number(result.succeeded || 0),
@@ -768,7 +842,8 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     const result = requestedProjectId
       ? await adminCall("project-members-list", args, { projectId: requestedProjectId })
       : await adminCall("project-workspace-members-list", args, { workspaceId });
-    return response(result.error ? result : resultCollection(result, "members"));
+    const members = resultCollection(result, "members");
+    return response(result.error ? result : requestedProjectId ? members.map(toProjectsMember) : members);
   }
   if (path[0] === "workspace" && path.includes("project-access") && method === "GET") {
     return response({ error: "Project access is managed from each project's settings." }, 410);

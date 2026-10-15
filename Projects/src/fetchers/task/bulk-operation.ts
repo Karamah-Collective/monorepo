@@ -28,7 +28,11 @@ async function bulkOperation({
     throw await HttpError.fromResponse(response);
   }
 
-  return response.json();
+  const result = await response.json();
+  if (result && typeof result === "object" && "success" in result && result.success === false) {
+    throw new Error("One or more selected tasks could not be updated.");
+  }
+  return result;
 }
 
 export default bulkOperation;
