@@ -27,13 +27,13 @@ function dbFixture() {
   };
 }
 
-async function call(method, body, authorization = "Bearer protocol-access") {
+async function call(method, body, authorization = "Bearer protocol-access", env = { DB: dbFixture() }) {
   const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
   if (authorization) headers.Authorization = authorization;
   return onRequest({
     request: new Request("https://admin.karamahcollective.com/api/mcp", {
       method, headers, body: JSON.stringify(body),
-    }), env: { DB: dbFixture() },
+    }), env,
   });
 }
 
@@ -60,9 +60,23 @@ test("MCP Streamable HTTP initializes and filters typed tools", async () => {
   assert.deepEqual(placeList?.securitySchemes, [{ type: "oauth2", scopes: ["admin:maps.places.read"] }]);
   assert.deepEqual(placeList?._meta?.securitySchemes, [{ type: "oauth2", scopes: ["admin:maps.places.read"] }]);
   const profile = result.result?.tools?.find(tool => tool.name === "get_profile");
-  assert.deepEqual(profile?.securitySchemes, [{ type: "oauth2", scopes: ["offline_access"] }]);
+  assert.deepEqual(profile?.securitySchemes, [{ type: "oauth2", scopes: [] }]);
   assert.equal(profile?._meta?.["openai/profile"], true);
   assert.equal(profile?.outputSchema?.required?.includes("id"), true);
+});
+test("authenticated profile tool returns the connection identity", async () => {
+  const db = dbFixture();
+  const response = await call("POST", { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_profile", arguments: {} } }, "Bearer protocol-access", { DB: db, ADMIN_DB: db });
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.result?.isError, false);
+  assert.deepEqual(payload.result?.structuredContent, {
+    id: "uid-test",
+    name: "Tester",
+    email: "tester@karamahcollective.com",
+    nickname: "Karamah Admin",
+  });
+  assert.deepEqual(JSON.parse(payload.result?.content?.[0]?.text || "{}"), payload.result.structuredContent);
 });
 test("access tokens are looked up by hash, never by plaintext", async () => {
   assert.notEqual(await hashMcpToken("protocol-access"), "protocol-access");

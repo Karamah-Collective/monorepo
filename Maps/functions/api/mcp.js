@@ -88,7 +88,7 @@ function securitySchemes(descriptor) {
   return [{ type: "oauth2", scopes: [...new Set(scopes)] }];
 }
 
-const profileSecuritySchemes = [{ type: "oauth2", scopes: ["offline_access"] }];
+const profileSecuritySchemes = [{ type: "oauth2", scopes: [] }];
 
 function addOpenAiSecuritySchemes(server, descriptors, extraTools = {}) {
   // The current MCP SDK stores OpenAI's securitySchemes extension separately
@@ -122,27 +122,30 @@ function unauthorizedToolResult(env) {
 }
 
 function registerProfileTool(server, auth, env) {
-  const profile = auth ? {
-    id: String(auth.actor.uid || `email:${String(auth.actor.email || "").trim().toLowerCase()}`),
+  const profileId = String(auth?.actor?.uid || "").trim();
+  const profile = auth && profileId ? {
+    id: profileId,
     ...(auth.access?.displayName ? { name: String(auth.access.displayName) } : {}),
     ...(auth.actor.email ? { email: String(auth.actor.email) } : {}),
     nickname: "Karamah Admin",
   } : null;
   server.registerTool("get_profile", {
     title: "Get authenticated profile",
-    description: "Return the stable profile represented by this Karamah Admin connection. Use this to identify the connected Admin account before using other tools.",
+    description: "Return the stable profile represented by this request's authenticated credentials.",
     inputSchema: {},
     outputSchema: {
-      id: z.string().min(1),
+      id: z.string().min(1).regex(/\S/),
       name: z.string().optional(),
-      email: z.string().email().optional(),
+      email: z.string().optional(),
       nickname: z.string().optional(),
     },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     _meta: { "openai/profile": true, securitySchemes: profileSecuritySchemes },
   }, async () => {
-    if (!auth) return unauthorizedToolResult(env);
+    if (!profile) return auth ? { isError: true, content: [{ type: "text", text: "Profile identity unavailable." }] } : unauthorizedToolResult(env);
     await recordMcpEvent(auth.env, auth, "profile.read", { profileId: profile.id }, true);
     return {
+      isError: false,
       structuredContent: profile,
       content: [{ type: "text", text: JSON.stringify(profile) }],
     };
