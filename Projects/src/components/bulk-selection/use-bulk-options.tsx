@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getColumnIcon } from "@/lib/column";
+import { getAvatarToneClass } from "@/lib/avatar-tone";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
@@ -26,13 +27,15 @@ export function useBulkOptions(actions: BulkActions) {
       label: getPriorityLabel(priority),
       icon: getPriorityIcon(priority),
     }));
-    const memberOptions: OptionMenuItem[] = members.map((member) => ({
+    const memberOptions: OptionMenuItem[] = members.map((member, index) => ({
       value: member.id,
       label: member.name || t("common:people.someone"),
       icon: (
         <Avatar className="size-4">
           <AvatarImage src={member.image ?? ""} alt="" />
-          <AvatarFallback className="text-[8px]">
+          <AvatarFallback
+            className={`border text-[8px] ${getAvatarToneClass(member.id, index)}`}
+          >
             {getInitials(member.name)}
           </AvatarFallback>
         </Avatar>

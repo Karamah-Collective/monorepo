@@ -3,13 +3,19 @@ import { mockAdmin } from "./fixtures.js";
 
 test("MCP access lists a scoped connection and supports revocation", async ({ page }) => {
   await mockAdmin(page, {
-    "mcp-connections": { connections: [{ id: "connection-1", client_name: "Claude Desktop", actor_email: "amina@example.test", grants: ["admin:maps.places.read", "admin:website.content.write"], created_at: "2026-10-12T10:00:00Z", last_used_at: "2026-10-12T10:05:00Z", status: "active" }] },
+    "mcp-connections": { connections: [{ id: "connection-1", client_name: "Claude Desktop", actor_email: "amina@example.test", grants: ["admin:maps.places.read", "admin:website.content.write"], created_at: "2026-10-12T10:00:00Z", last_used_at: "2026-10-12T10:05:00Z", status: "active" }, { id: "connection-2", client_name: "Old Inspector", actor_email: "amina@example.test", grants: ["admin:maps.places.read"], created_at: "2026-10-11T10:00:00Z", status: "revoked", revoked_at: "2026-10-12T11:00:00Z" }] },
   });
   page.on("dialog", dialog => dialog.accept());
   await page.goto("/workspace/mcp");
   await expect(page.getByRole("heading", { name: "MCP access" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Claude Desktop" })).toBeVisible();
-  await expect(page.locator(".mcp-grants")).toContainText("maps · places · read");
+  await expect(page.locator(".mcp-grant").filter({ hasText: "maps · places · read" })).toBeVisible();
+  await expect(page.locator(".mcp-grant-group-label").first()).toContainText("Maps");
+  await expect(page.getByRole("tab", { name: /Active 1/ })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: /Revoked 1/ }).click();
+  await expect(page.getByRole("heading", { name: "Old Inspector" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Revoke" })).toHaveCount(0);
+  await page.getByRole("tab", { name: /Active 1/ }).click();
   await expect(page.getByRole("heading", { name: "Connect an AI client" })).toBeVisible();
   await expect(page.getByText("ChatGPT", { exact: true })).toBeVisible();
   await expect(page.getByText("Claude", { exact: true })).toBeVisible();

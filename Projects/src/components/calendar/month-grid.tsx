@@ -63,6 +63,7 @@ export default function MonthGrid({
                   className={cn(
                     "min-w-0 border-r border-border/60",
                     isWeekend(day) && "bg-muted/25",
+                    isToday(day) && "timeline-today-column",
                   )}
                 />
               ))}
@@ -78,7 +79,7 @@ export default function MonthGrid({
                       "flex size-5 items-center justify-center rounded-full text-[11px] font-medium",
                       !isSameMonth(day, visibleMonth) &&
                         "text-muted-foreground/60",
-                      isToday(day) && "bg-primary text-primary-foreground",
+                      isToday(day) && "timeline-today-marker",
                     )}
                   >
                     {format(day, "d")}

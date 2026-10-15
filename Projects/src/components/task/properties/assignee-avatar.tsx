@@ -2,6 +2,7 @@ import { UnassignedAvatar } from "@/components/common/unassigned-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
+import { getAvatarToneClass } from "@/lib/avatar-tone";
 
 type AssigneeAvatarProps = {
   name: string | null | undefined;
@@ -27,8 +28,9 @@ export function AssigneeAvatar({
       <AvatarImage src={image ?? ""} alt="" />
       <AvatarFallback
         className={cn(
-          "border border-avatar-border bg-avatar font-semibold text-[8px] text-avatar-foreground",
+          "border font-semibold text-[8px]",
           fallbackClassName,
+          getAvatarToneClass(name),
         )}
       >
         {getInitials(name)}

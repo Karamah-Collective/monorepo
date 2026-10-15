@@ -11,6 +11,7 @@ const APP_SCOPES = {
     label: "Maps",
     paths: ["Maps/", "shared/", "package.json", "package-lock.json"],
     checks: ["npm run build:maps", "npm run test:maps:smoke"],
+    fastChecks: ["npm run build:maps", "npm run test:maps:smoke", "npm run test:mcp"],
   },
   website: {
     label: "Website",
@@ -20,6 +21,7 @@ const APP_SCOPES = {
       "npm run test:website",
       "npm run test:website:ui",
     ],
+    fastChecks: ["npm run build:website", "npm run test:website"],
   },
   admin: {
     label: "Admin",
@@ -35,21 +37,25 @@ const APP_SCOPES = {
       "package-lock.json",
     ],
     checks: ["npm run build:admin", "npm run test:admin"],
+    fastChecks: ["npm run build:admin"],
   },
   links: {
     label: "Links",
     paths: ["Links/", "tooling/build-version.mjs", "shared/", "Maps/functions/_link-hub.js", "Maps/functions/api/admin.js", "Maps/migrations/0011_link_hub.sql", "Maps/migrations/0012_link_hub_content.sql", "Maps/migrations/0013_link_hub_card_overrides.sql", "Maps/migrations/0014_link_hub_optional_copy.sql", "Maps/migrations/0015_link_hub_socials.sql", "package.json", "package-lock.json"],
     checks: ["npm run build:links", "npm run test:links"],
+    fastChecks: ["npm run build:links"],
   },
   forms: {
     label: "Forms",
     paths: ["Forms/", "tooling/build-version.mjs", "shared/forms-domain.mjs", "shared/firebase-verify.mjs", "shared/brand/", "Maps/functions/_forms-admin.js", "Maps/functions/api/admin.js", "Maps/functions/api/form-asset.js", "Maps/migrations/0021_forms.sql", "Maps/migrations/0022_form_share_codes.sql", "Maps/migrations/0023_shorten_form_share_codes.sql", "Maps/migrations/0024_form_share_code_aliases.sql", "Maps/migrations/0030_form_collaborators.sql", "package.json", "package-lock.json"],
     checks: ["npm run build:forms", "npm run test:forms", "npm run test:forms:ui"],
+    fastChecks: ["npm run build:forms", "npm run test:forms"],
   },
   projects: {
     label: "Projects",
     paths: ["Projects/", "shared/", "package.json", "package-lock.json"],
     checks: ["npm run build:projects", "npm run test:projects", "npm run test:projects:ui"],
+    fastChecks: ["npm run build:projects", "npm run test:projects"],
   },
 };
 
@@ -161,6 +167,10 @@ function git(args, options = {}) {
 
 function run(command) {
   execSync(command, { cwd: repoRoot, stdio: "inherit", windowsHide: true });
+}
+
+function checksFor(scope, fast) {
+  return fast ? APP_SCOPES[scope].fastChecks : APP_SCOPES[scope].checks;
 }
 
 function changedFiles(base) {
@@ -291,21 +301,22 @@ function sourceCommit(subject, body) {
   git(["commit", "-m", subject, "-m", body]);
 }
 
-async function printPlan(base) {
+async function printPlan(base, fast = false) {
   const files = changedFiles(base);
   const scopes = detectScopes(files);
   console.log(`Changed files compared with ${base}: ${files.length || 0}`);
-  console.log(`Deployment scopes: ${scopes.length ? scopes.join(", ") : "none"}`);
+  console.log(`${fast ? "Fast " : ""}deployment scopes: ${scopes.length ? scopes.join(", ") : "none"}`);
   for (const scope of scopes) {
-    console.log(`${APP_SCOPES[scope].label}: ${APP_SCOPES[scope].checks.join(" && ")}`);
+    console.log(`${APP_SCOPES[scope].label}: ${checksFor(scope, fast).join(" && ")}`);
   }
   if (scopes.length) console.log(`Shared: ${SHARED_CHECKS.join(" && ")}`);
+  if (fast && scopes.length) console.log("Fast mode skips browser UI suites; source commit, shared checks, builds, and deterministic tests still run.");
 }
 
-async function validate(base) {
+async function validate(base, fast = false) {
   const scopes = detectScopes(changedFiles(base));
   const commands = new Set(SHARED_CHECKS);
-  for (const scope of scopes) for (const check of APP_SCOPES[scope].checks) commands.add(check);
+  for (const scope of scopes) for (const check of checksFor(scope, fast)) commands.add(check);
   if (!commands.size) {
     console.log("No deployable app changes detected.");
     return;
@@ -315,6 +326,7 @@ async function validate(base) {
 
 const [command = "plan", branchOrBase, ...rest] = process.argv.slice(2);
 const push = rest.includes("--push") || process.argv.includes("--push");
+const fast = rest.includes("--fast") || rest.includes("fast") || process.argv.includes("--fast");
 const optionValue = name => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : "";
@@ -323,14 +335,14 @@ const base = branchOrBase && !["preview", "deploy"].includes(branchOrBase)
   ? branchOrBase
   : "main";
 
-if (command === "plan") await printPlan(branchOrBase || "main");
-else if (command === "validate") await validate(branchOrBase || "main");
+if (command === "plan") await printPlan(branchOrBase || "main", fast);
+else if (command === "validate") await validate(branchOrBase || "main", fast);
 else if (command === "sync") await syncBranch(branchOrBase || "preview", push);
 else if (command === "commit") sourceCommit(optionValue("--subject"), optionValue("--body"));
 else {
   console.log("Usage:");
-  console.log("  npm run deploy:agent -- plan [base]");
-  console.log("  npm run deploy:agent -- validate [base]");
+  console.log("  npm run deploy:agent -- plan [base] [--fast]");
+  console.log("  npm run deploy:agent -- validate [base] [--fast]");
   console.log("  npm run deploy:agent -- sync preview [--push]");
   console.log("  npm run deploy:agent -- sync deploy [--push]");
   console.log("  npm run deploy:agent -- commit --subject <subject> --body <body>");

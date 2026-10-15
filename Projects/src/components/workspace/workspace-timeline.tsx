@@ -161,6 +161,7 @@ function TimelineTrack({
             className={cn(
               "border-r border-border/60",
               isWeekend(day) && "bg-muted/25",
+              isToday(day) && "timeline-today-column",
             )}
           />
         ))}
@@ -272,9 +273,9 @@ function TimelineRow({
           <button
             type="button"
             className={cn(
-              "z-[1] h-5 min-w-0 truncate rounded-md border px-2 text-left text-xs font-medium transition-[filter,transform] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring",
-              kind === "person" && "border-primary/25 bg-primary/20 text-primary",
-              kind === "project" && "border-primary/20 bg-primary/15 text-primary",
+              "z-[1] h-5 min-w-0 truncate rounded-md border px-2 text-left text-xs font-medium focus-visible:ring-2 focus-visible:ring-ring",
+              kind === "person" && "timeline-summary-person",
+              kind === "project" && "timeline-summary-project",
             )}
             style={getBarStyle(range, timeline)}
             onClick={onToggle}
@@ -668,6 +669,7 @@ export function WorkspaceTimeline({
                       "border-r border-border/60 py-2 text-center",
                       headerDensity === "day" && "px-1",
                       isWeekend(day) && "bg-muted/25",
+                      isToday(day) && "timeline-today-column",
                     )}
                     data-day=""
                     title={format(day, "EEEE, MMM d, yyyy")}
@@ -678,7 +680,7 @@ export function WorkspaceTimeline({
                     <div
                       className={cn(
                         "mx-auto flex size-6 items-center justify-center rounded-full font-mono text-xs font-medium tabular-nums",
-                        isToday(day) && "bg-foreground text-background",
+                        isToday(day) && "timeline-today-marker",
                         !showDay && "text-transparent",
                       )}
                     >

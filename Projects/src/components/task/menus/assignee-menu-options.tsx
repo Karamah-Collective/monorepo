@@ -1,6 +1,8 @@
 import type { OptionMenuItem } from "@/components/common/option-menu/option-menu-item";
 import { UnassignedAvatar } from "@/components/common/unassigned-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarToneClass } from "@/lib/avatar-tone";
+import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
 
 type AssignableMember = {
@@ -28,13 +30,15 @@ export function assigneeMenuOptions(
     : [];
   return [
     ...unassigned,
-    ...members.map((member) => ({
+    ...members.map((member, index) => ({
       value: member.id,
       label: member.name || member.email || "",
       icon: (
         <Avatar className="size-4">
           <AvatarImage src={member.image ?? ""} alt="" />
-          <AvatarFallback className="text-[8px]">
+          <AvatarFallback
+            className={cn("border text-[8px]", getAvatarToneClass(member.id, index))}
+          >
             {getInitials(member.name)}
           </AvatarFallback>
         </Avatar>

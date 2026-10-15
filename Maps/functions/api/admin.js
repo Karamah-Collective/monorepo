@@ -13,7 +13,7 @@
  * still just an opaque round-trip token from the dashboard's point of view.
  *
  * Auth: every request must carry `Authorization: Bearer <Firebase ID token>`
- * for an account whose email ends in `@karamahcollective.com` AND has a
+ * for an account whose email ends in `@karamahcollective.com`; password identities must have a
  * verified email (see `authenticateAdmin` below — the emailVerified check
  * matters because anyone can self-register any email string at signup;
  * only Firebase's verification-link flow actually proves mailbox
@@ -190,6 +190,9 @@ const MAX_MODERATION_REASON_LEN = 300;
 const REVIEW_STATUSES = new Set(["yes", "no", "pending"]);
 const IMAGE_STATUSES = new Set(["yes", "no"]);
 const REVIEW_IMAGE_ID_RE = /^[0-9a-f-]{36}$/i;
+function requiresEmailVerification(identity) {
+  return !identity?.signInProvider || identity.signInProvider === "password";
+}
 
 async function authenticateAdmin(request, env) {
   const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
@@ -197,7 +200,7 @@ async function authenticateAdmin(request, env) {
 
   const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
   if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
-  if (!verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
+  if (requiresEmailVerification(verified) && !verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
   if (!String(verified.email).toLowerCase().endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for Projects access" };
 
   return { ok: true, actor: { uid: verified.uid, email: verified.email.toLowerCase(), name: verified.name || "" } };
@@ -207,7 +210,7 @@ async function authenticateProjectsActor(request, env) {
   if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
   const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
   if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
-  if (!verified.emailVerified) return { ok: false, status: 403, error: "Verify your email address before using Projects." };
+  if (requiresEmailVerification(verified) && !verified.emailVerified) return { ok: false, status: 403, error: "Verify your email address before using Projects." };
   const email = String(verified.email).toLowerCase();
   const isKaramah = email.endsWith(ADMIN_EMAIL_DOMAIN) || email.endsWith("@karamah.local");
   if (!isKaramah && verified.signInProvider !== "password") {

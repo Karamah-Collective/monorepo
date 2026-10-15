@@ -27,7 +27,7 @@ export default function LoginPage() {
       await signIn(email.trim(), password);
       navigate(location.state?.from?.pathname || "/", { replace: true });
     } catch (err) {
-      setError("We could not sign you in. Check your email and password.");
+      setError(err?.message === "Email not verified" ? "Verify your email address before entering the admin panel." : "We could not sign you in. Check your email and password.");
     } finally {
       setSubmitting(false);
     }

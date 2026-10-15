@@ -95,7 +95,7 @@ export function HomeProjects({
                 </div>
                 <div className="h-1 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-foreground/80"
+                    className="project-progress-fill h-full rounded-full"
                     style={{ width: `${completionPercentage}%` }}
                   />
                 </div>

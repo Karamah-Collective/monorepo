@@ -9,7 +9,8 @@ export default function AuthGuard() {
 
   if (loading) return <BrandLoadingScreen />;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (!user.emailVerified) return <Navigate to="/verify-email" replace />;
+  const providerId = user.providerData?.[0]?.providerId;
+  if ((!providerId || providerId === "password") && !user.emailVerified) return <Navigate to="/verify-email" replace />;
   if (!access?.roleId) return <Navigate to="/login" state={{ accessDenied: true }} replace />;
   const requiredPath = location.pathname;
   if (!canRoute(access, requiredPath) && !(requiredPath.startsWith("/forms/") && can(access, "forms.create"))) return <Navigate to="/" replace />;

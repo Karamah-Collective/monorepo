@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/popover";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { getColumnIcon } from "@/lib/column";
+import { getAvatarToneClass } from "@/lib/avatar-tone";
 import { getStatusDisplayLabel } from "@/lib/i18n/domain";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
@@ -993,7 +994,12 @@ function CreateTaskModalContent({
                             src={selectedUser.image ?? ""}
                             alt={selectedUser.name}
                           />
-                          <AvatarFallback className="text-[10px] font-medium border border-border/30">
+                          <AvatarFallback
+                            className={cn(
+                              "border text-[10px] font-medium",
+                              getAvatarToneClass(selectedUser.id),
+                            )}
+                          >
                             {getInitials(selectedUser.name)}
                           </AvatarFallback>
                         </Avatar>
@@ -1029,7 +1035,7 @@ function CreateTaskModalContent({
                       </span>
                       {!selectedUser && <Check className="ml-auto h-4 w-4" />}
                     </button>
-                    {assigneeOptions.map((member) => (
+                    {assigneeOptions.map((member, index) => (
                       <button
                         key={member.id}
                         type="button"
@@ -1041,7 +1047,12 @@ function CreateTaskModalContent({
                             src={member.image ?? ""}
                             alt={member.name}
                           />
-                          <AvatarFallback className="text-xs font-medium border border-border/30">
+                          <AvatarFallback
+                            className={cn(
+                              "border text-xs font-medium",
+                              getAvatarToneClass(member.id, index),
+                            )}
+                          >
                             {getInitials(member.name)}
                           </AvatarFallback>
                         </Avatar>

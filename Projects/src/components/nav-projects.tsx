@@ -302,7 +302,7 @@ export function NavProjects() {
                               percentage={
                                 project.statistics.completionPercentage
                               }
-                              className="text-muted-foreground max-md:hidden group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0 group-has-data-popup-open/menu-item:opacity-0"
+                              className="project-progress-ring max-md:hidden group-focus-within/menu-item:opacity-0 group-hover/menu-item:opacity-0 group-has-data-popup-open/menu-item:opacity-0"
                             />
                           </SidebarMenuButton>
 

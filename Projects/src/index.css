@@ -61,6 +61,109 @@ input:-webkit-autofill:active {
   animation: projects-timeline-row-enter 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+.timeline-summary-project {
+  border-color: var(--timeline-project-border);
+  background: var(--timeline-project-bg);
+  color: var(--timeline-project-foreground);
+}
+
+.timeline-summary-person {
+  border-color: var(--timeline-person-border);
+  background: var(--timeline-person-bg);
+  color: var(--timeline-person-foreground);
+}
+
+.timeline-task-bar {
+  border-color: var(--timeline-task-border);
+  background: var(--timeline-task-bg);
+  color: var(--timeline-task-foreground);
+}
+
+.timeline-task-bar > button {
+  border-color: var(--timeline-task-border);
+  background: transparent;
+}
+
+.timeline-today-column {
+  border-right-color: var(--timeline-today-border);
+  background: var(--timeline-today-bg);
+}
+
+.timeline-today-marker {
+  background: var(--timeline-today-marker-bg);
+  color: var(--timeline-today-marker-foreground);
+  box-shadow: inset 0 0 0 1px var(--timeline-today-border);
+}
+
+.avatar-tone-sage {
+  border-color: var(--timeline-project-border);
+  background: var(--timeline-project-bg);
+  color: var(--timeline-project-foreground);
+}
+
+.avatar-tone-lavender {
+  border-color: var(--timeline-person-border);
+  background: var(--timeline-person-bg);
+  color: var(--timeline-person-foreground);
+}
+
+.avatar-tone-sky {
+  border-color: var(--timeline-task-border);
+  background: var(--timeline-task-bg);
+  color: var(--timeline-task-foreground);
+}
+
+.avatar-tone-sand {
+  border-color: var(--avatar-tone-sand-border);
+  background: var(--avatar-tone-sand-bg);
+  color: var(--avatar-tone-sand-foreground);
+}
+
+.avatar-tone-rose {
+  border-color: var(--avatar-tone-rose-border);
+  background: var(--avatar-tone-rose-bg);
+  color: var(--avatar-tone-rose-foreground);
+}
+
+.avatar-tone-slate {
+  border-color: var(--avatar-tone-slate-border);
+  background: var(--avatar-tone-slate-bg);
+  color: var(--avatar-tone-slate-foreground);
+}
+
+.calendar-task-status-to-do,
+.calendar-task-status-custom {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.calendar-task-status-in-progress {
+  border-color: var(--timeline-task-border);
+  background: var(--timeline-task-bg);
+  color: var(--timeline-task-foreground);
+}
+
+.calendar-task-status-in-review {
+  border-color: var(--timeline-person-border);
+  background: var(--timeline-person-bg);
+  color: var(--timeline-person-foreground);
+}
+
+.calendar-task-status-done {
+  border-color: var(--timeline-project-border);
+  background: var(--timeline-project-bg);
+  color: var(--timeline-project-foreground);
+}
+
+.project-progress-fill {
+  background: var(--timeline-project-border);
+}
+
+.project-progress-ring {
+  color: var(--timeline-project-foreground);
+}
+
 @media (prefers-reduced-motion: reduce) {
   :where(button, a, [role="button"], input, textarea, select),
     .projects-timeline-row,
@@ -266,8 +369,8 @@ input:-webkit-autofill:active {
   --border: --alpha(var(--color-black) / 8%);
   --card: var(--color-white);
   --card-foreground: var(--color-neutral-800);
-  --destructive: var(--color-red-500);
-  --destructive-foreground: var(--color-red-700);
+  --destructive: #b66f74;
+  --destructive-foreground: #98565b;
   --foreground: var(--color-neutral-800);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
@@ -313,6 +416,19 @@ input:-webkit-autofill:active {
   --board-card-selected-border: #00000038;
   --board-card-focus: #8a8a8a;
   --board-card-ring: #8a8a8a40;
+  --timeline-project-bg: #eef6f3;
+  --timeline-project-border: #b9d6ca;
+  --timeline-project-foreground: #3f5f56;
+  --timeline-person-bg: #f3f1f8;
+  --timeline-person-border: #d5cde4;
+  --timeline-person-foreground: #605976;
+  --timeline-task-bg: #eef5f9;
+  --timeline-task-border: #b9d3df;
+  --timeline-task-foreground: #3f5d6a;
+  --timeline-today-bg: #fff8f5;
+  --timeline-today-border: #efd2c6;
+  --timeline-today-marker-bg: #fbe9e2;
+  --timeline-today-marker-foreground: #9c5a48;
   --board-card-shadow: 0 1px 2px #0000000a;
   --board-card-done: #ffffff99;
   --board-card-done-border: #0000000f;
@@ -330,8 +446,17 @@ input:-webkit-autofill:active {
   --chip-icon: #8a8a8a;
   --priority-bar: #525252;
   --priority-bar-empty: #00000021;
-  --priority-urgent: #dc2626;
-  --due-overdue: #dc2626;
+  --priority-urgent: #ad6268;
+  --due-overdue: #a75e64;
+  --avatar-tone-sand-bg: #f7f1e8;
+  --avatar-tone-sand-border: #dfd0bc;
+  --avatar-tone-sand-foreground: #79634d;
+  --avatar-tone-rose-bg: #f7eded;
+  --avatar-tone-rose-border: #e3caca;
+  --avatar-tone-rose-foreground: #885c5f;
+  --avatar-tone-slate-bg: #eef0f2;
+  --avatar-tone-slate-border: #cdd4d8;
+  --avatar-tone-slate-foreground: #56646c;
   --avatar: #e5e5e5;
   --avatar-selected: #e0e0e0;
   --avatar-done: #ededed;
@@ -353,8 +478,8 @@ input:-webkit-autofill:active {
   --border: --alpha(var(--color-white) / 6%);
   --card: color-mix(in srgb, var(--background) 98%, var(--color-white));
   --card-foreground: var(--color-neutral-100);
-  --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
-  --destructive-foreground: var(--color-red-400);
+  --destructive: #bd8083;
+  --destructive-foreground: #dfadaf;
   --foreground: var(--color-neutral-100);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-400);
@@ -404,6 +529,19 @@ input:-webkit-autofill:active {
   --board-card-selected-border: #ffffff3d;
   --board-card-focus: #a3a3a3;
   --board-card-ring: #a3a3a333;
+  --timeline-project-bg: #263630;
+  --timeline-project-border: #4c6a5f;
+  --timeline-project-foreground: #bfd5c9;
+  --timeline-person-bg: #322f3d;
+  --timeline-person-border: #5c5570;
+  --timeline-person-foreground: #d1c9df;
+  --timeline-task-bg: #293a43;
+  --timeline-task-border: #496674;
+  --timeline-task-foreground: #bfd6e0;
+  --timeline-today-bg: #382b29;
+  --timeline-today-border: #694d47;
+  --timeline-today-marker-bg: #4b3531;
+  --timeline-today-marker-foreground: #e8b0a1;
   --board-card-shadow: 0 1px 2px #00000033, 0 4px 12px -4px #00000059;
   --board-card-done: #ffffff03;
   --board-card-done-border: #ffffff0a;
@@ -421,8 +559,17 @@ input:-webkit-autofill:active {
   --chip-icon: #8a8a8a;
   --priority-bar: #a3a3a3;
   --priority-bar-empty: #ffffff24;
-  --priority-urgent: #e5484d;
-  --due-overdue: #ff6467;
+  --priority-urgent: #ca8589;
+  --due-overdue: #ce8c90;
+  --avatar-tone-sand-bg: #3a352d;
+  --avatar-tone-sand-border: #625744;
+  --avatar-tone-sand-foreground: #d2b88d;
+  --avatar-tone-rose-bg: #3a2f30;
+  --avatar-tone-rose-border: #604347;
+  --avatar-tone-rose-foreground: #d29498;
+  --avatar-tone-slate-bg: #30373a;
+  --avatar-tone-slate-border: #536166;
+  --avatar-tone-slate-foreground: #b9c8cc;
   --avatar: #2e2e2e;
   --avatar-selected: #383838;
   --avatar-done: #222222;

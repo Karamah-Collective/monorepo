@@ -29,7 +29,7 @@ function LayoutHeader({ children, className }: HeaderProps) {
   return (
     <header
       className={cn(
-        "flex h-10 shrink-0 gap-2 transition-[width,height] ease-in-out group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-8 border-b border-border bg-card py-2 ps-2 pe-1",
+        "flex h-10 shrink-0 gap-2 transition-[width,height] ease-in-out group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-8 border-b border-border bg-card py-2 ps-2 pe-0",
         className,
       )}
     >

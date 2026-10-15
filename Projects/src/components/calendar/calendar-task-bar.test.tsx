@@ -91,11 +91,11 @@ describe("CalendarTaskBar", () => {
   });
 
   it.each([
-    ["to-do", "bg-slate-500/15"],
-    ["in-progress", "bg-blue-500/15"],
-    ["in-review", "bg-amber-500/15"],
-    ["done", "bg-emerald-500/15"],
-    ["custom-status", "bg-primary/12"],
+    ["to-do", "calendar-task-status-to-do"],
+    ["in-progress", "calendar-task-status-in-progress"],
+    ["in-review", "calendar-task-status-in-review"],
+    ["done", "calendar-task-status-done"],
+    ["custom-status", "calendar-task-status-custom"],
   ])("uses the %s status color", (status, expectedClass) => {
     render(
       <CalendarTaskBar

@@ -28,6 +28,20 @@ npm run deploy:agent -- sync deploy
 
 Add `--push` to the sync commands when you are ready to publish the generated branches.
 
+For a faster production release, append `fast` to the deployment request. The
+agent still runs the shared layout and documentation gates, every affected app's
+build, and deterministic tests; it skips only the browser UI suites:
+
+```powershell
+npm run deploy:agent -- plan main --fast
+npm run deploy:agent -- validate main --fast
+npm run deploy:agent -- sync deploy --push
+```
+
+This is a shorter release gate, not a bypass: commit and push the reviewed
+source changes to `main` first, then generate `deploy` from that commit. Use the
+full command when a UI change, auth flow, or other browser behavior is in scope.
+
 ### Deployment request routing
 
 Treat the user's requested target as authoritative. Always commit and push the

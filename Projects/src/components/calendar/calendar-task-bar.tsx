@@ -11,19 +11,16 @@ export type CalendarTask = PackableTask & {
 };
 
 const STATUS_CLASSES: Record<string, string> = {
-  "to-do":
-    "border-slate-500/35 bg-slate-500/15 hover:border-slate-500/50 hover:bg-slate-500/20",
-  "in-progress":
-    "border-blue-500/35 bg-blue-500/15 hover:border-blue-500/50 hover:bg-blue-500/20",
-  "in-review":
-    "border-amber-500/40 bg-amber-500/15 hover:border-amber-500/55 hover:bg-amber-500/20",
-  done: "border-emerald-500/35 bg-emerald-500/15 hover:border-emerald-500/50 hover:bg-emerald-500/20",
+  "to-do": "calendar-task-status-to-do",
+  "in-progress": "calendar-task-status-in-progress",
+  "in-review": "calendar-task-status-in-review",
+  done: "calendar-task-status-done",
 };
 
 export function getCalendarTaskStatusClass(status: string): string {
   return (
     STATUS_CLASSES[status] ??
-    "border-primary/25 bg-primary/12 hover:border-primary/40 hover:bg-primary/18"
+    "calendar-task-status-custom"
   );
 }
 
@@ -77,7 +74,7 @@ export default function CalendarTaskBar({
       data-task-status={task.status}
       onClick={() => onOpenTask(task.id)}
       className={cn(
-        "z-10 mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
+        "z-10 mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
         getCalendarTaskStatusClass(task.status),
         // Bars that run past a week edge lose their cap there so the two halves
         // read as one continuous span across rows.

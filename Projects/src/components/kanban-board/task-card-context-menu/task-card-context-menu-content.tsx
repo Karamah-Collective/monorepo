@@ -32,6 +32,7 @@ import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetProjectMembers from "@/hooks/queries/workspace-users/use-get-project-members";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
+import { getAvatarToneClass } from "@/lib/avatar-tone";
 import { generateLink } from "@/lib/generate-link";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
@@ -275,7 +276,7 @@ export default function TaskCardContextMenuContent({
                 {t("tasks:assignee.unassigned")}
               </ContextMenuCheckboxItem>
             )}
-            {usersOptions.map((user) => (
+            {usersOptions.map((user, index) => (
               <ContextMenuCheckboxItem
                 key={user.value}
                 checked={task.userId === user.value}
@@ -284,7 +285,9 @@ export default function TaskCardContextMenuContent({
               >
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
-                  <AvatarFallback className="text-xs font-medium border border-border/30">
+                  <AvatarFallback
+                    className={`border text-xs font-medium ${getAvatarToneClass(user.value, index)}`}
+                  >
                     {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>

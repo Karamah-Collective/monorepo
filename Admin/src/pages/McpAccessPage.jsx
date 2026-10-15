@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowSquareOut, CheckCircle, Copy, Key, LinkSimple, LockKey, ShieldCheck, Trash, WarningCircle } from "@phosphor-icons/react";
 import { apiGet, apiPost } from "../api/client.js";
@@ -69,8 +69,65 @@ function GuideLink({ href, children }) {
   return <a className="mcp-guide-link" href={href} target="_blank" rel="noreferrer">{children} <ArrowSquareOut size={13} /></a>;
 }
 
+const grantGroupLabels = {
+  activity: "Activity",
+  access: "Access",
+  analytics: "Analytics",
+  forms: "Forms",
+  inbox: "Inbox",
+  links: "Links",
+  maps: "Maps",
+  moderation: "Moderation",
+  operations: "Projects & operations",
+  reports: "Reports",
+  website: "Website",
+  workspace: "Workspace",
+};
+
+function grantGroups(grants = []) {
+  const groups = new Map();
+  for (const grant of grants) {
+    const key = grant === "admin:*" ? "workspace" : String(grant).replace(/^admin:/, "").split(".")[0] || "workspace";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(grant);
+  }
+  return [...groups.entries()];
+}
+
 function GrantPills({ grants = [] }) {
-  return <div className="mcp-grants">{grants.map(grant => <span className={grant === "admin:*" ? "mcp-grant mcp-grant-wide" : "mcp-grant"} key={grant}>{grant === "admin:*" ? "All current + future access" : label(grant)}</span>)}</div>;
+  return <div className="mcp-grant-groups" aria-label="Granted access">
+    {grantGroups(grants).map(([group, groupGrants]) => <div className="mcp-grant-group" key={group}>
+      <span className="mcp-grant-group-label">{grantGroupLabels[group] || group}</span>
+      <div className="mcp-grants">{groupGrants.map(grant => <span className={grant === "admin:*" ? "mcp-grant mcp-grant-wide" : "mcp-grant"} key={grant}>{grant === "admin:*" ? "All current + future access" : label(grant)}</span>)}</div>
+    </div>)}
+  </div>;
+}
+
+function ConnectionRow({ connection, first, onRevoke, revoking }) {
+  const revoked = connection.status === "revoked";
+  const [open, setOpen] = useState(first);
+  return <details className={`mcp-connection ${revoked ? "is-revoked" : ""}`} open={open} onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary className="mcp-connection-summary">
+      <div className="mcp-connection-identity">
+        <div className="mcp-connection-mark"><CheckCircle size={17} /></div>
+        <div>
+          <h3>{connection.client_name || "Unnamed MCP client"}</h3>
+          <p>{connection.actor_email} <b>·</b> Added {connection.created_at ? new Date(connection.created_at).toLocaleDateString() : "recently"}</p>
+        </div>
+      </div>
+      <span className="mcp-connection-summary-meta">{revoked ? "Revoked" : "Active"}</span>
+    </summary>
+    <div className="mcp-connection-body">
+      <div>
+        <span className="mcp-connection-detail-label">Granted access</span>
+        <GrantPills grants={connection.grants} />
+      </div>
+      <div className="mcp-connection-activity">
+        <div><span>{revoked ? "Revoked" : "Last used"}</span><strong>{revoked ? (connection.revoked_at ? new Date(connection.revoked_at).toLocaleDateString() : "Previously active") : connection.last_used_at ? new Date(connection.last_used_at).toLocaleString() : "Not used yet"}</strong></div>
+        {!revoked && <button className="mcp-revoke-button" type="button" disabled={revoking} onClick={() => { if (window.confirm(`Revoke ${connection.client_name || "this connection"}?`)) onRevoke(connection.id); }}><Trash size={15} />Revoke</button>}
+      </div>
+    </div>
+  </details>;
 }
 
 function ClientGuide({ endpoint }) {
@@ -94,7 +151,11 @@ export default function McpAccessPage() {
   const isAdmin = can(access, "*");
   const endpoint = `${window.location.origin}/mcp`;
   const connectionRows = connections.data?.connections || [];
-  const activeConnections = connectionRows.filter(connection => connection.status !== "revoked").length;
+  const activeRows = connectionRows.filter(connection => connection.status !== "revoked");
+  const revokedRows = connectionRows.filter(connection => connection.status === "revoked");
+  const [connectionView, setConnectionView] = useState("active");
+  const visibleConnections = connectionView === "revoked" ? revokedRows : activeRows;
+  const activeConnections = activeRows.length;
   const accessSummary = useMemo(() => isAdmin ? "Administrator role, full role ceiling" : "Role-scoped access only", [isAdmin]);
 
   return <div className="pp-page mcp-page">
@@ -104,8 +165,12 @@ export default function McpAccessPage() {
 
     <section className="mcp-facts" aria-label="MCP access summary"><div><span>Current role</span><strong>{access?.roleName || "Loading role"}</strong><small>{accessSummary}</small></div><div><span>Role grants</span><strong>{access?.permissions?.includes("*") ? "Full administrator" : `${access?.permissions?.length || 0} permissions`}</strong><small>Connection grants cannot exceed this set</small></div><div><span>Active connections</span><strong>{connections.isLoading ? "—" : activeConnections}</strong><small>Named clients with separate revoke controls</small></div></section>
 
-    <section className="mcp-section mcp-connections"><header className="mcp-section-header"><div><span className="mcp-kicker">AUTHORIZED CLIENTS</span><h2>Your connections</h2><p>Each client has its own grant set, token chain, and audit trail.</p></div><div className="mcp-connection-count"><Key size={15} /> {activeConnections} active</div></header>
-      {connections.isLoading ? <div className="mcp-loading"><span className="mcp-loading-bar" /><span className="mcp-loading-bar" /><span className="mcp-loading-bar" /></div> : connectionRows.length ? <div className="mcp-connection-list">{connectionRows.map(connection => <article className={`mcp-connection ${connection.status === "revoked" ? "is-revoked" : ""}`} key={connection.id}><div className="mcp-connection-identity"><div className="mcp-connection-mark"><CheckCircle size={17} /></div><div><h3>{connection.client_name || "Unnamed MCP client"}</h3><p>{connection.actor_email} <b>·</b> Added {connection.created_at ? new Date(connection.created_at).toLocaleDateString() : "recently"}</p><GrantPills grants={connection.grants} /></div></div><div className="mcp-connection-activity"><div><span>{connection.status === "revoked" ? "Revoked" : "Last used"}</span><strong>{connection.status === "revoked" ? (connection.revoked_at ? new Date(connection.revoked_at).toLocaleDateString() : "Previously active") : connection.last_used_at ? new Date(connection.last_used_at).toLocaleString() : "Not used yet"}</strong></div>{connection.status !== "revoked" && <button className="mcp-revoke-button" type="button" disabled={revoke.isPending} onClick={() => { if (window.confirm(`Revoke ${connection.client_name || "this connection"}?`)) revoke.mutate(connection.id); }}><Trash size={15} />Revoke</button>}</div></article>)}</div> : <div className="mcp-empty"><div className="mcp-empty-mark"><Key size={20} /></div><div><h3>No connections yet</h3><p>Connect an AI client using the server URL above. Its OAuth consent will appear here once approved.</p></div></div>}
+    <section className="mcp-section mcp-connections"><header className="mcp-section-header"><div><span className="mcp-kicker">AUTHORIZED CLIENTS</span><h2>Your connections</h2><p>Switch between active and revoked clients, then expand only the access details you need.</p></div><div className="mcp-connection-count"><Key size={15} /> {activeConnections} active</div></header>
+      <div className="mcp-connection-tabs" role="tablist" aria-label="Connection status">
+        <button type="button" role="tab" aria-selected={connectionView === "active"} className={connectionView === "active" ? "is-selected" : ""} onClick={() => setConnectionView("active")}>Active <b>{activeRows.length}</b></button>
+        <button type="button" role="tab" aria-selected={connectionView === "revoked"} className={connectionView === "revoked" ? "is-selected" : ""} onClick={() => setConnectionView("revoked")}>Revoked <b>{revokedRows.length}</b></button>
+      </div>
+      {connections.isLoading ? <div className="mcp-loading"><span className="mcp-loading-bar" /><span className="mcp-loading-bar" /><span className="mcp-loading-bar" /></div> : visibleConnections.length ? <div className="mcp-connection-list">{visibleConnections.map((connection, index) => <ConnectionRow connection={connection} first={index === 0} key={connection.id} onRevoke={id => revoke.mutate(id)} revoking={revoke.isPending} />)}</div> : <div className="mcp-empty"><div className="mcp-empty-mark"><Key size={20} /></div><div><h3>No {connectionView} connections</h3><p>{connectionView === "active" ? "Connect an AI client using the server URL above. Its OAuth consent will appear here once approved." : "Revoked clients will appear here so you can keep the active list focused."}</p></div></div>}
     </section>
 
     <ClientGuide endpoint={endpoint} />
