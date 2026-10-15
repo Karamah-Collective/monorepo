@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { CustomFieldChip } from "@/components/custom-fields/custom-field-chip";
 import {
   findMissingRequiredFields,
@@ -198,7 +197,6 @@ function CreateTaskModalContent({
     [t],
   );
   const location = useLocation();
-  const { user } = useAuth();
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id || "",
@@ -207,7 +205,7 @@ function CreateTaskModalContent({
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id || "",
   );
-  const { canCreateTasks, canCreateLabels, canAssignTasks } =
+  const { canCreateTasks, canCreateLabels, canAssignTasks, member } =
     useWorkspacePermission();
   const canCreateTaskCapability = canCreateTasks();
   const canCreateLabelCapability = canCreateLabels();
@@ -272,13 +270,13 @@ function CreateTaskModalContent({
         : workspaceAssigneeOptions;
       return canManageAssignments
         ? options
-        : options.filter((member) => member.id === user?.id);
+        : options.filter((candidate) => candidate.id === member?.userId);
     },
     [
       canManageAssignments,
       projectMembers,
       resolvedProjectId,
-      user?.id,
+      member?.userId,
       workspaceAssigneeOptions,
     ],
   );

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OptionMenu } from "@/components/common/option-menu/option-menu";
-import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   Popover,
   PopoverContent,
@@ -26,16 +25,17 @@ export default function TaskAssigneePopover({
   children,
 }: TaskAssigneePopoverProps) {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
   const { data: members = [] } = useGetProjectMembers({
     workspaceId,
     projectId: task.projectId,
   });
-  const { canAssignTasks, canUpdateTasks } = useWorkspacePermission();
+  const { canAssignTasks, canUpdateTasks, member } = useWorkspacePermission();
   const canManageAssignments = canAssignTasks();
-  const selfMember = members.find((member) => member.id === user?.id);
+  const selfMember = members.find(
+    (candidate) => candidate.id === member?.userId,
+  );
   const canSelfAssign = canUpdateTasks() && Boolean(selfMember);
 
   if (!canManageAssignments && !canSelfAssign) return <>{children}</>;

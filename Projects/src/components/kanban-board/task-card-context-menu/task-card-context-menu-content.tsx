@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ContextMenuCheckboxItem,
@@ -62,7 +61,6 @@ export default function TaskCardContextMenuContent({
   onDeleteClick,
 }: TaskCardContextMenuContentProps) {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { project } = useProjectStore();
   const queryClient = useQueryClient();
   const { data: columnsData = [] } = useGetColumns(taskCardContext.projectId);
@@ -91,27 +89,37 @@ export default function TaskCardContextMenuContent({
   const { mutateAsync: updateTaskTitle } = useUpdateTaskTitle();
   const { mutateAsync: updateTaskDescription } = useUpdateTaskDescription();
   const { mutate: duplicateTask } = useDuplicateTask();
-  const { canCreateTasks, canUpdateTasks, canDeleteTasks, canAssignTasks } =
-    useWorkspacePermission();
+  const {
+    canCreateTasks,
+    canUpdateTasks,
+    canDeleteTasks,
+    canAssignTasks,
+    member,
+  } = useWorkspacePermission();
   const canCreate = canCreateTasks();
   const canEdit = canUpdateTasks();
   const canDelete = canDeleteTasks();
   const canManageAssignments = canAssignTasks();
   const canSelfAssign =
-    canEdit && Boolean(projectMembers?.some((member) => member.id === user?.id));
+    canEdit &&
+    Boolean(
+      projectMembers?.some((candidate) => candidate.id === member?.userId),
+    );
   const canAssign = canManageAssignments || canSelfAssign;
 
   const usersOptions = useMemo(() => {
     const assignableMembers = canManageAssignments
       ? projectMembers
-      : projectMembers?.filter((member) => member.id === user?.id);
+      : projectMembers?.filter(
+          (candidate) => candidate.id === member?.userId,
+        );
     return assignableMembers?.map((member) => ({
       label: member.name || member.email,
       value: member.id,
       image: member.image ?? "",
       name: member.name,
     }));
-  }, [canManageAssignments, projectMembers, user?.id]);
+  }, [canManageAssignments, member?.userId, projectMembers]);
 
   const handleCopyTaskLink = () => {
     const path = getTaskPath({

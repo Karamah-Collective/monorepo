@@ -159,6 +159,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateTasks: () => true,
     canCreateLabels: () => true,
+    canAssignTasks: () => false,
+    member: { userId: "user-1" },
   }),
 }));
 
