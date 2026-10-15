@@ -363,6 +363,33 @@ async function adminCall(
   return result;
 }
 
+export async function withTaskConflictRetry(
+  run: (payload: Record<string, unknown>) => Promise<AdminResult>,
+  payload: Record<string, unknown>,
+): Promise<AdminResult> {
+  const result = await run(payload);
+  const conflict = result.conflict;
+  if (!result.error || Number(result.__httpStatus || result.status) !== 409 || !conflict || typeof conflict !== "object") {
+    return result;
+  }
+  const current = conflict as Record<string, unknown>;
+  return run({
+    ...payload,
+    expectedRevision: current.revision,
+  });
+}
+
+async function adminTaskUpdate(
+  action: string,
+  args: ProjectsArgs,
+  data: Record<string, unknown>,
+) {
+  return withTaskConflictRetry(
+    (payload) => adminCall(action, args, payload, "POST"),
+    data,
+  );
+}
+
 async function workspaceTasks(args: ProjectsArgs): Promise<AdminResult> {
   const projectsResult = await adminCall("project-list", args);
   const projects = resultCollection<Record<string, unknown>>(projectsResult, "projects");
@@ -534,20 +561,20 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   }
   if (path[0] === "task" && path[1] === "move") {
     const source = args.json || {};
-    const result = await adminCall("project-task-update", args, {
+    const result = await adminTaskUpdate("project-task-update", args, {
       id,
       statusCategory: source.destinationStatus || source.status || undefined,
       projectId: source.destinationProjectId,
       expectedRevision: source.expectedRevision ?? source.revision,
-    }, "POST");
+    });
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path[1] === "assignee") {
-    const result = await adminCall("project-task-assign", args, taskBody(args, id), "POST");
+    const result = await adminTaskUpdate("project-task-assign", args, taskBody(args, id));
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && ["status", "assignee", "priority", "title", "description", "due-date"].includes(path[1] || "")) {
-    const result = await adminCall("project-task-update", args, taskBody(args, id), "POST");
+    const result = await adminTaskUpdate("project-task-update", args, taskBody(args, id));
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path[1] === "bulk") {

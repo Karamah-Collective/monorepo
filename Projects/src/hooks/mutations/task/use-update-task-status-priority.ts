@@ -19,8 +19,16 @@ export function useUpdateTaskPriority() {
     mutationFn: (task: Task) => updateTaskPriority(task.id, task),
     onMutate: (task: Task) => {
       markBoardCacheChanged(queryClient, task.projectId, task.id);
+      const version = getBoardCacheVersion(queryClient, task.projectId, task.id);
+      updateBoardTaskCache(
+        queryClient,
+        task.projectId,
+        task.id,
+        { priority: task.priority === "no-priority" ? "no-priority" : task.priority, revision: Number(task.revision || 1) + 1 },
+        version,
+      );
       return {
-        version: getBoardCacheVersion(queryClient, task.projectId, task.id),
+        version,
       };
     },
     onSuccess: (updated, variables, context) => {

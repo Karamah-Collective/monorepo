@@ -2,7 +2,7 @@ import { client } from "@karamah/projects-libs";
 import { HttpError } from "@/lib/http-error";
 import type Task from "@/types/task";
 
-type UpdateTaskAssigneePayload = Pick<Task, "userId">;
+type UpdateTaskAssigneePayload = Pick<Task, "userId" | "revision">;
 
 async function updateTaskAssignee(
   taskId: string,

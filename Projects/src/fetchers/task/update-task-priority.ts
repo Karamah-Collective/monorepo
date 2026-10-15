@@ -11,7 +11,7 @@ async function updateTaskPriority(taskId: string, task: Task) {
   const response = await client.task.priority[":id"].$put({
     param: { id: taskId },
     json: {
-      priority: (task.priority || "") as UpdateTaskPriorityValue,
+      priority: (task.priority === "no-priority" ? "normal" : task.priority || "normal") as UpdateTaskPriorityValue,
       expectedRevision: task.revision,
     },
   });

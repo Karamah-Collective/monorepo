@@ -17,11 +17,8 @@ async function updateTask(taskId: string, task: Task) {
         ? undefined
         : task.description || "",
       status: task.status,
-      // The API validates priority against a picklist that has no empty
-      // member, so a task carrying no priority has to be sent as the explicit
-      // "no priority" value rather than "". Sending "" rejected the whole
-      // update, which is what broke dragging every imported task.
-      priority: (task.priority || "no-priority") as UpdateTaskPriority,
+      // The database stores the UI's "no priority" state as "normal".
+      priority: (task.priority === "no-priority" ? "normal" : task.priority || "normal") as UpdateTaskPriority,
       startDate: task.startDate?.toString(),
       dueDate: task.dueDate?.toString(),
       position: task.position ?? 0,

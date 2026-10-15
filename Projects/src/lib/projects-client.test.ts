@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { toProjectsColumn, toProjectsProject, toProjectsTask } from "./projects-client";
+import {
+  toProjectsColumn,
+  toProjectsProject,
+  toProjectsTask,
+  withTaskConflictRetry,
+} from "./projects-client";
 
 describe("toProjectsProject", () => {
   it("preserves the creator role returned beside a created project", () => {
@@ -80,5 +85,30 @@ describe("toProjectsTask", () => {
       projectId: "project-1",
       number: 3,
     });
+  });
+});
+
+describe("withTaskConflictRetry", () => {
+  it("replays a field update against the returned task revision", async () => {
+    const calls: Record<string, unknown>[] = [];
+    const result = await withTaskConflictRetry(async (payload) => {
+      calls.push(payload);
+      return calls.length === 1
+        ? {
+            error: "Task changed.",
+            __httpStatus: 409,
+            conflict: { id: "task-1", revision: 8, priority: "medium" },
+          }
+        : { task: { id: "task-1", revision: 9, statusCategory: "completed" } };
+    }, { id: "task-1", statusCategory: "completed", expectedRevision: 7 });
+
+    expect(result).toMatchObject({ task: { revision: 9 } });
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toMatchObject({
+      id: "task-1",
+      statusCategory: "completed",
+      expectedRevision: 8,
+    });
+    expect(calls[1]).not.toHaveProperty("priority");
   });
 });

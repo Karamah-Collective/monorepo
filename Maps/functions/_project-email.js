@@ -1,5 +1,6 @@
 const MAX_EMAIL_LENGTH = 254;
 const INVITATION_SENDER = "projects@karamahcollective.com";
+const BRAND_LOGO_URL = "https://maps.karamahcollective.com/kc_logo_big.inline.svg";
 const ROLE_LABELS = {
   viewer: "Viewer",
   member: "Member",
@@ -76,10 +77,10 @@ function accessText(rows) {
 }
 
 function accessHtml(rows) {
-  return rows.map((row) => `
-    <div style="padding:12px 0;border-bottom:1px solid #ecece8">
-      <div style="margin:0 0 3px;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#777772">${escapeHtml(row.label)}</div>
-      <div style="font-size:14px;line-height:1.45;color:#20201e">${escapeHtml(row.value)}</div>
+  return rows.map((row, index) => `
+    <div style="padding:14px 0${index ? ";border-top:1px solid #e6e5df" : ""}">
+      <div style="margin:0 0 5px;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#777772">${escapeHtml(row.label)}</div>
+      <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;line-height:1.5;color:#252522">${escapeHtml(row.value)}</div>
     </div>`).join("");
 }
 
@@ -125,28 +126,27 @@ export async function sendProjectInvitationEmail(env, {
       @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
     </style>
   </head>
-  <body style="margin:0;background:#f5f5f2;padding:32px 16px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#20201e">
-    <div style="max-width:560px;margin:0 auto">
-      <div style="padding:0 4px 16px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#20201e">KARAMAH</span>
-        <span style="font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:600;letter-spacing:.08em;color:#777772">PROJECTS</span>
+  <body style="margin:0;background:#f5f5f2;padding:32px 16px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#252522">
+    <div style="max-width:600px;margin:0 auto">
+      <div style="padding:0 4px 20px;display:flex;justify-content:space-between;align-items:center">
+        <img src="${BRAND_LOGO_URL}" alt="Karamah Collective" width="118" height="48" style="display:block;width:118px;height:48px;object-fit:contain;object-position:left center">
+        <span style="font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:#777772">PROJECTS / INVITATION</span>
       </div>
-      <div style="background:#fff;border:1px solid #e3e3de;border-radius:14px;overflow:hidden">
-        <div style="height:4px;background:#20201e"></div>
-        <div style="padding:32px">
-          <p style="margin:0 0 12px;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#777772">Project invitation</p>
-          <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;letter-spacing:-.03em;color:#20201e">You're invited to collaborate</h1>
-          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#4d4d48">You have been invited to collaborate in ${escapeHtml(scope)} on Karamah Projects.</p>
-          <div style="margin:0 0 24px;padding:4px 16px;border:1px solid #e3e3de;border-radius:10px;background:#fafaf8">
-            <p style="margin:8px 0 0;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#777772">Access you'll get</p>
+      <div style="background:#fffdfa;border:1px solid #e0dfd8;border-radius:16px;overflow:hidden">
+        <div style="padding:36px 34px 34px">
+          <p style="margin:0 0 12px;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#777772">A place to work together</p>
+          <h1 style="margin:0 0 14px;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:28px;line-height:1.18;letter-spacing:-.035em;color:#252522">You're invited to collaborate</h1>
+          <p style="margin:0 0 30px;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:15px;line-height:1.65;color:#55554f">You have been invited to collaborate in ${escapeHtml(scope)} on Karamah Projects.</p>
+          <div style="margin:0 0 30px;padding:0 18px;border-top:1px solid #deddd6;border-bottom:1px solid #deddd6">
+            <p style="margin:17px 0 0;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#777772">Access you'll get</p>
             ${accessHtml(accessRows)}
-            <div style="height:4px"></div>
           </div>
-          <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#20201e;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700">Accept invitation</a>
-          <p style="margin:24px 0 0;color:#777772;font-size:12px;line-height:1.55">This invitation expires in 7 days and is bound to ${escapeHtml(recipient)}.</p>
+          <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#08705b;color:#fffefa;padding:13px 19px;border-radius:9px;text-decoration:none;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700">Accept invitation</a>
+          <p style="margin:24px 0 0;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#777772;font-size:12px;line-height:1.6">This invitation is for ${escapeHtml(recipient)}.</p>
+          <p style="margin:8px 0 0;font-family:'Geist Mono','SFMono-Regular',Consolas,monospace;color:#777772;font-size:10px;line-height:1.5;letter-spacing:.08em;text-transform:uppercase">Expires in 7 days</p>
         </div>
       </div>
-      <p style="margin:16px 4px 0;color:#999992;font-size:11px;line-height:1.5">You received this email because someone invited you to Karamah Projects.</p>
+      <p style="margin:16px 4px 0;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#999992;font-size:11px;line-height:1.5">You received this email because someone invited you to Karamah Projects.</p>
     </div>
   </body>
 </html>`;

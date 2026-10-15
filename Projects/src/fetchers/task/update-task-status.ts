@@ -2,7 +2,7 @@ import { client } from "@karamah/projects-libs";
 import { HttpError } from "@/lib/http-error";
 import type Task from "@/types/task";
 
-type UpdateTaskStatusPayload = Pick<Task, "status">;
+type UpdateTaskStatusPayload = Pick<Task, "status" | "revision">;
 
 async function updateTaskStatus(taskId: string, task: UpdateTaskStatusPayload) {
   const response = await client.task.status[":id"].$put({

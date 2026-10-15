@@ -1,3 +1,7 @@
+import {
+  getBoardCacheVersion,
+  markBoardCacheChanged,
+} from "@/lib/board-cache-version";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { invalidateMyWork } from "@/lib/invalidate-my-work";
@@ -12,8 +16,24 @@ export function useUpdateTaskAssignee({ notify = true }: { notify?: boolean } = 
 
   return useMutation({
     mutationFn: (task: Task) => updateTaskAssignee(task.id, task),
-    onSuccess: (updated, variables) => {
-      updateBoardTaskCache(queryClient, variables.projectId, variables.id, updated);
+    onMutate: (task: Task) => {
+      markBoardCacheChanged(queryClient, task.projectId, task.id);
+      const version = getBoardCacheVersion(queryClient, task.projectId, task.id);
+      updateBoardTaskCache(
+        queryClient,
+        task.projectId,
+        task.id,
+        {
+          userId: task.userId,
+          assigneeId: task.userId,
+          revision: Number(task.revision || 1) + 1,
+        },
+        version,
+      );
+      return { version };
+    },
+    onSuccess: (updated, variables, context) => {
+      updateBoardTaskCache(queryClient, variables.projectId, variables.id, updated, context?.version);
       if (notify) {
         toast.success(t("tasks:popover.assignee.updateSuccess"), {
           description: toastSubject(variables.title),

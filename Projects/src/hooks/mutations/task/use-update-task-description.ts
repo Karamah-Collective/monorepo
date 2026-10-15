@@ -14,8 +14,16 @@ export function useUpdateTaskDescription() {
     mutationFn: (task: Task) => updateTaskDescription(task.id, task),
     onMutate: (task: Task) => {
       markBoardCacheChanged(queryClient, task.projectId, task.id);
+      const version = getBoardCacheVersion(queryClient, task.projectId, task.id);
+      updateBoardTaskCache(
+        queryClient,
+        task.projectId,
+        task.id,
+        { description: task.description, revision: Number(task.revision || 1) + 1 },
+        version,
+      );
       return {
-        version: getBoardCacheVersion(queryClient, task.projectId, task.id),
+        version,
       };
     },
     onSuccess: (updated, variables, context) => {

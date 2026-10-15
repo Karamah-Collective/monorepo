@@ -208,12 +208,23 @@ authoritative project schema is Maps/project-migrations/0001_project_workspace.s
 0002_project_productivity.sql, and 0003_project_member_permissions.sql. The
 second migration adds saved views, notifications, watchers, time entries,
 custom fields, templates, and webhook configuration. The third migration adds
-per-member read/write grants and task visibility scopes.
+per-member read/write grants and task visibility scopes. Migrations 0004 through
+0006 add workspace access and invitation overrides; 0007 adds the `medium`
+task-priority value used by the Projects board.
 Forms data is authoritative only in forms-db. The project backfill is copy-only
 and never deletes source rows. For the dedicated Projects database run:
 
 ```powershell
 node scripts/migrate-projects-db.mjs --remote --confirm
+```
+
+For an existing Projects database, apply only the new migration directly
+before releasing the matching application code. The copy-only setup script
+does not populate Wrangler's migration ledger, so do not replay the full
+migration directory against that database:
+
+```powershell
+npx wrangler d1 execute karamah-projects-db --remote --file Maps/project-migrations/0007_task_priority_medium.sql --config Maps/wrangler.toml --yes
 ```
 
 Do not apply 0052 to a new Projects database; it is retained only for
@@ -342,8 +353,9 @@ variable does not change values already embedded in the browser bundle.
 
 The Admin Pages project exposes the Streamable HTTP MCP resource at
 `https://admin.karamahcollective.com/mcp`. OAuth metadata is available at
-`/.well-known/oauth-protected-resource/mcp` and
-`/.well-known/oauth-authorization-server`; the protocol endpoints are
+`/.well-known/oauth-protected-resource/mcp`,
+`/.well-known/oauth-authorization-server`, and the compatible
+`/.well-known/openid-configuration` alias; the protocol endpoints are
 `/oauth/authorize`, `/oauth/token`, `/oauth/register`, and `/oauth/revoke`.
 
 MCP tables are part of the Admin schema migrations and are created in

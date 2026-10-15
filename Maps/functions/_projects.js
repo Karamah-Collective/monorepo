@@ -4,7 +4,7 @@ import { sendProjectInvitationEmail } from "./_project-email.js";
 export const PROJECT_ROLES = ["viewer", "contributor", "manager", "project-admin"];
 export const WORKSPACE_ROLES = ["viewer", "member", "admin", "owner"];
 export const TASK_STATUSES = ["inbox", "assigned", "in_progress", "blocked", "completed", "cancelled"];
-export const TASK_PRIORITIES = ["low", "normal", "high", "urgent"];
+export const TASK_PRIORITIES = ["low", "normal", "medium", "high", "urgent"];
 export const TASK_VISIBILITY = ["all", "assigned", "own"];
 export const PROJECT_PERMISSION_KEYS = [
   "can_view_project", "can_read_tasks", "can_create_tasks", "can_edit_own_tasks",
@@ -16,6 +16,10 @@ const safe = (value, max = 5000) => String(value ?? "").replace(/[\u0000-\u001f]
 const now = () => new Date().toISOString();
 const newId = (prefix) => `${prefix}_${crypto.randomUUID()}`;
 const json = (value, fallback = {}) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
+export function normalizeTaskPriority(value) {
+  if (value === "no-priority" || value === "") return "normal";
+  return TASK_PRIORITIES.includes(value) ? value : null;
+}
 const PROJECT_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const isAdmin = (access) => access?.permissions?.includes("*");
 const has = (access, permission, aliases = []) => isAdmin(access) || [permission, ...aliases].some(item => allowsPermissions(access?.permissions || [], item));
@@ -859,7 +863,8 @@ export async function listProjectTasks(db, data, actor, access) {
   if (data.status) { where.push("status_category=?"); bind.push(safe(data.status, 40)); }
   if (data.columnId) { where.push("column_id=?"); bind.push(safe(data.columnId, 180)); }
   if (data.assignee === "me") { where.push("lower(assignee_email)=lower(?)"); bind.push(actorEmail(actor)); }
-  if (data.priority) { where.push("priority=?"); bind.push(safe(data.priority, 40)); }
+  const requestedPriority = normalizeTaskPriority(data.priority);
+  if (requestedPriority) { where.push("priority=?"); bind.push(requestedPriority); }
   if (data.search) { const q = `%${safe(data.search, 100).toLowerCase()}%`; where.push("(lower(title) LIKE ? OR lower(description) LIKE ?)"); bind.push(q, q); }
   const result = await db.prepare(`SELECT * FROM project_tasks WHERE ${where.join(" AND ")} ORDER BY position,task_number DESC LIMIT 500`).bind(...bind).all();
   return { project: projectFromRow(allowed.project), role: allowed.role, permissions: allowed.permissions, taskVisibility: allowed.taskVisibility, tasks: (result.results || []).map(taskFromRow) };
@@ -894,7 +899,7 @@ export async function createProjectTask(db, data, actor, access) {
   if (milestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(milestoneId, data.projectId).first()) return { error: "The milestone does not belong to this project.", status: 400 };
   const id = newId("task"); const timestamp = now();
   await db.prepare(`INSERT INTO project_tasks (id,project_id,task_number,title,description,column_id,status_category,priority,assignee_uid,assignee_email,start_at,due_at,milestone_id,source_domain,source_type,source_id,source_action,dedupe_key,position,created_by_uid,created_by_email,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, TASK_PRIORITIES.includes(data.priority) ? data.priority : "normal", safe(data.assigneeUid, 180), assigneeEmail, data.startAt || null, data.dueAt || null, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, Number(data.position || 0), actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, normalizeTaskPriority(data.priority) || "normal", safe(data.assigneeUid, 180), assigneeEmail, data.startAt || null, data.dueAt || null, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, Number(data.position || 0), actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
   await event(db, id, "created", "", column.status_category, "", actor);
   return { success: true, task: taskFromRow(await getTask(db, id)) };
 }
@@ -918,7 +923,7 @@ export async function updateProjectTask(db, data, actor, access) {
   }
   const column = data.columnId ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, task.project_id).first() : null;
   const status = column?.status_category || (TASK_STATUSES.includes(data.statusCategory || data.status) ? (data.statusCategory || data.status) : task.status_category);
-  const priority = TASK_PRIORITIES.includes(data.priority) ? data.priority : task.priority;
+  const priority = data.priority === undefined ? task.priority : (normalizeTaskPriority(data.priority) || task.priority);
   const values = [data.title !== undefined ? safe(data.title, 240) : task.title, data.description !== undefined ? safe(data.description, 10000) : task.description, column?.id || task.column_id, status, priority, data.assigneeUid !== undefined ? safe(data.assigneeUid, 180) : task.assignee_uid, data.assigneeEmail !== undefined ? actorEmail({ email: data.assigneeEmail }) : task.assignee_email, data.startAt !== undefined ? data.startAt || null : task.start_at, data.dueAt !== undefined ? data.dueAt || null : task.due_at, data.milestoneId !== undefined ? safe(data.milestoneId, 180) || null : task.milestone_id, data.position !== undefined ? Number(data.position) : Number(task.position || 0), status === "completed" ? (task.completed_at || now()) : null, Number(task.revision || 1) + 1, now(), task.id];
   await db.prepare("UPDATE project_tasks SET title=?,description=?,column_id=?,status_category=?,priority=?,assignee_uid=?,assignee_email=?,start_at=?,due_at=?,milestone_id=?,position=?,completed_at=?,revision=?,updated_at=? WHERE id=?").bind(...values).run();
   if (status !== task.status_category) await event(db, task.id, "status", task.status_category, status, data.note, actor);
