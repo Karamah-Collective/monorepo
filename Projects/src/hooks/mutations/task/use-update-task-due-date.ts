@@ -43,6 +43,7 @@ export function useUpdateTaskDueDate() {
         variables.id,
         {
           dueDate: updated.dueDate,
+          revision: updated.revision,
         },
         context?.version,
       );

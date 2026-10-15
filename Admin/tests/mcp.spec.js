@@ -22,8 +22,12 @@ test("MCP consent shows requested scopes for the signed-in Firebase user", async
   await mockAdmin(page, {
     "mcp-consent-request": { requestId: "request-1", clientName: "Claude Desktop", requestedScopes: ["admin:maps.places.read", "admin:website.content.write"], availableScopes: ["admin:maps.places.read", "admin:website.content.write"], defaultScopes: ["admin:maps.places.read"], redirectUri: "http://127.0.0.1:4444/callback", access: { roleName: "Administrator" } },
   });
-  await page.goto("/mcp/authorize?request=request-1");
+  await page.goto("/mcp/authorize?request_id=request-1");
   await expect(page.getByRole("heading", { name: /Allow Claude Desktop/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Maps" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Website" })).toBeVisible();
+  await page.getByRole("button", { name: "Select all" }).click();
+  await expect(page.locator(".mcp-scope-list input").nth(1)).toBeChecked();
   await expect(page.getByText("maps · places · read")).toBeVisible();
   await expect(page.getByText("website · content · write")).toBeVisible();
   await expect(page.getByRole("button", { name: "Authorize connection" })).toBeEnabled();

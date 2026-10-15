@@ -28,6 +28,7 @@ export function useUpdateTaskDescription() {
         variables.id,
         {
           description: updated.description,
+          revision: updated.revision,
         },
         context?.version,
       );

@@ -52,7 +52,7 @@ function projectPayload(value: unknown): Record<string, unknown> | null {
     : source;
 }
 
-function toProjectsProject(value: unknown): Record<string, unknown> | null {
+export function toProjectsProject(value: unknown): Record<string, unknown> | null {
   const envelope = (value && typeof value === "object" && !Array.isArray(value))
     ? value as Record<string, unknown>
     : {};

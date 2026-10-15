@@ -4,6 +4,7 @@ import { invalidateMyWork } from "@/lib/invalidate-my-work";
 import updateTaskAssignee from "@/fetchers/task/update-task-assignee";
 import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
+import { updateBoardTaskCache } from "@/lib/update-board-task-cache";
 
 export function useUpdateTaskAssignee({ notify = true }: { notify?: boolean } = {}) {
   const { t } = useTranslation();
@@ -11,7 +12,8 @@ export function useUpdateTaskAssignee({ notify = true }: { notify?: boolean } = 
 
   return useMutation({
     mutationFn: (task: Task) => updateTaskAssignee(task.id, task),
-    onSuccess: (_, variables) => {
+    onSuccess: (updated, variables) => {
+      updateBoardTaskCache(queryClient, variables.projectId, variables.id, updated);
       if (notify) {
         toast.success(t("tasks:popover.assignee.updateSuccess"), {
           description: toastSubject(variables.title),

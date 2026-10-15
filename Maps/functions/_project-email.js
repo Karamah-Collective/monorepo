@@ -93,9 +93,8 @@ export async function sendProjectInvitationEmail(env, {
 }) {
   const recipient = clean(email, MAX_EMAIL_LENGTH).toLowerCase();
   const apiKey = clean(env?.BREVO_API_KEY, 300);
-  if (!apiKey || /^xsmtpsib-/i.test(apiKey)) {
-    return { error: "Project invitations are not configured. Add a Brevo HTTP API key as BREVO_API_KEY." };
-  }
+  if (!apiKey) return { error: "Project invitations are not configured. Add BREVO_API_KEY to the Maps Pages production secrets." };
+  if (/^xsmtpsib-/i.test(apiKey)) return { error: "BREVO_API_KEY on the Maps deployment is an SMTP password. Replace it with a Brevo HTTP API key." };
 
   const origin = clean(env?.PROJECTS_ORIGIN || "https://projects.karamahcollective.com", 300).replace(/\/+$/, "");
   const inviteUrl = `${origin}/invitation/accept/${encodeURIComponent(invitationId)}`;
@@ -184,7 +183,7 @@ export async function sendProjectInvitationEmail(env, {
       return { error: "Brevo rejected projects@karamahcollective.com. Verify the sender or karamahcollective.com domain in Brevo." };
     }
     if (response.status === 401 || response.status === 403 || message.includes("api key") || message.includes("authentication")) {
-      return { error: "Brevo rejected the email credentials. Check BREVO_API_KEY on the Projects deployment." };
+      return { error: "Brevo rejected the email credentials. Check BREVO_API_KEY on the Maps deployment." };
     }
     return { error: `Brevo could not send the invitation email (HTTP ${response.status}).` };
   }

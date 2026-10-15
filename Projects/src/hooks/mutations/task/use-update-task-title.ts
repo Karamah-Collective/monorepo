@@ -30,6 +30,7 @@ export function useUpdateTaskTitle() {
         variables.id,
         {
           title: updated.title,
+          revision: updated.revision,
         },
         context?.version,
       );

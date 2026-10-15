@@ -40,7 +40,7 @@ export function NavSecondary() {
             aria-label={t("navigation:userMenu.settings")}
             className="h-9 text-sm"
             onClick={() =>
-              navigate({ to: "/dashboard/settings/account/information" })
+              navigate({ to: "/dashboard/settings/workspace/general" })
             }
           >
             <Settings aria-hidden="true" />

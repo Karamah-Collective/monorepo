@@ -798,7 +798,7 @@ export async function listProjects(db, actor, access, data = {}) {
   for (const row of results || []) {
     if (data.workspaceId && row.workspace_id !== safe(data.workspaceId, 180)) continue;
     const projectAccess = await getProjectAccess(db, row.id, actor, access);
-    if (canProjectCapability(projectAccess, "viewer")) projects.push(projectFromRow(row));
+    if (canProjectCapability(projectAccess, "viewer")) projects.push({ ...projectFromRow(row), role: projectAccess.role, permissions: projectAccess.permissions, taskVisibility: projectAccess.taskVisibility });
   }
   return { projects };
 }
@@ -836,7 +836,7 @@ export async function createProject(db, data, actor, access) {
     await db.prepare("INSERT INTO projects (id,workspace_id,name,key,description,visibility,created_by_uid,created_by_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(projectId, workspaceId, name, key, safe(data.description, 1000), data.visibility === "restricted" ? "restricted" : "workspace", actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
     for (const [index, [suffix, label, status]] of [["inbox","Inbox","inbox"],["progress","In progress","in_progress"],["blocked","Blocked","blocked"],["done","Done","completed"],["cancelled","Cancelled","cancelled"]].entries()) await db.prepare("INSERT INTO project_columns (id,project_id,name,status_category,position) VALUES (?,?,?,?,?)").bind(`${projectId}-${suffix}`, projectId, label, status, (index + 1) * 10).run();
     await db.prepare("INSERT OR IGNORE INTO project_members (project_id,user_uid,email,role,created_by_uid) VALUES (?,?,?,?,?)").bind(projectId, actorUid(actor), actorEmail(actor), "project-admin", actorUid(actor)).run();
-    return { success: true, project: projectFromRow(await getProject(db, projectId)) };
+    return { success: true, project: projectFromRow(await getProject(db, projectId)), role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all" };
   } catch (error) { return { error: String(error?.message || "Could not create project.") }; }
 }
 export async function updateProject(db, data, actor, access) {

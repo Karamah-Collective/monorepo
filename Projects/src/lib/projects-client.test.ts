@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { toProjectsColumn, toProjectsTask } from "./projects-client";
+import { toProjectsColumn, toProjectsProject, toProjectsTask } from "./projects-client";
+
+describe("toProjectsProject", () => {
+  it("preserves the creator role returned beside a created project", () => {
+    expect(
+      toProjectsProject({ project: { id: "project-1", name: "Launch" }, role: "project-admin" }),
+    ).toMatchObject({ id: "project-1", role: "project-admin" });
+  });
+});
 
 describe("toProjectsColumn", () => {
   it("uses the Admin status category as the board move slug", () => {

@@ -42,6 +42,7 @@ export function useUpdateTaskPriority() {
         variables.id,
         {
           priority: updated.priority,
+          revision: updated.revision,
         },
         context?.version,
       );

@@ -5,6 +5,7 @@ import updateTaskStatus from "@/fetchers/task/update-task-status";
 import { getStatusLabel } from "@/lib/i18n/domain";
 import { toast, toastSubject } from "@/lib/toast";
 import type Task from "@/types/task";
+import { updateBoardTaskCache } from "@/lib/update-board-task-cache";
 
 export function useUpdateTaskStatus({ notify = true }: { notify?: boolean } = {}) {
   const { t } = useTranslation();
@@ -12,7 +13,8 @@ export function useUpdateTaskStatus({ notify = true }: { notify?: boolean } = {}
 
   return useMutation({
     mutationFn: (task: Task) => updateTaskStatus(task.id, task),
-    onSuccess: (_, variables) => {
+    onSuccess: (updated, variables) => {
+      updateBoardTaskCache(queryClient, variables.projectId, variables.id, updated);
       if (notify) {
         toast.success(t("tasks:popover.status.updateSuccess"), {
           description: [

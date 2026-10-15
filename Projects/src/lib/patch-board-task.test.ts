@@ -52,6 +52,14 @@ describe("bounded board cache updates", () => {
     client.clear();
   });
 
+  it("keeps the server revision for the next mutation", () => {
+    const client = new QueryClient();
+    client.setQueryData(["tasks", "p"], board());
+    updateBoardTaskCache(client, "p", "a", { title: "new", revision: 8 });
+    expect(client.getQueryData<ProjectWithTasks>(["tasks", "p"])?.columns[0].tasks[0].revision).toBe(8);
+    client.clear();
+  });
+
   it("lets a pending board load finish and applies only the newest local edit afterward", async () => {
     const client = new QueryClient();
     let finish!: (value: ProjectWithTasks) => void;
