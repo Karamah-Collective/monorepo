@@ -35,6 +35,7 @@ import { getColumnIcon } from "@/lib/column";
 import { generateLink } from "@/lib/generate-link";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
+import { isCurrentMember } from "@/lib/member-identity";
 import { getPriorityIcon } from "@/lib/priority";
 import { getTaskPath } from "@/lib/task-link";
 import { toast } from "@/lib/toast";
@@ -103,7 +104,7 @@ export default function TaskCardContextMenuContent({
   const canSelfAssign =
     canEdit &&
     Boolean(
-      projectMembers?.some((candidate) => candidate.id === member?.userId),
+      projectMembers?.some((candidate) => isCurrentMember(candidate, member)),
     );
   const canAssign = canManageAssignments || canSelfAssign;
 
@@ -111,7 +112,7 @@ export default function TaskCardContextMenuContent({
     const assignableMembers = canManageAssignments
       ? projectMembers
       : projectMembers?.filter(
-          (candidate) => candidate.id === member?.userId,
+          (candidate) => isCurrentMember(candidate, member),
         );
     return assignableMembers?.map((member) => ({
       label: member.name || member.email,
@@ -119,7 +120,7 @@ export default function TaskCardContextMenuContent({
       image: member.image ?? "",
       name: member.name,
     }));
-  }, [canManageAssignments, member?.userId, projectMembers]);
+  }, [canManageAssignments, member, projectMembers]);
 
   const handleCopyTaskLink = () => {
     const path = getTaskPath({

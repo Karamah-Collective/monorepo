@@ -235,7 +235,7 @@ async function ensureDefaultRole(db, preferredRoleId = DEFAULT_ROLE_ID) {
 export async function resolveAccess(db, actor) {
   const row=await db.prepare("SELECT m.role_id, m.display_name, r.name, r.permissions FROM admin_role_members m LEFT JOIN admin_roles r ON r.id=m.role_id WHERE lower(m.email)=lower(?)").bind(actor.email).first();
   if (row?.name) return { roleId:row.role_id, roleName:row.name, permissions:effectiveRolePermissions(row.role_id, row.permissions, ROLE_PERMISSIONS[row.role_id]||[]), displayName:firstName(row.display_name,actor.email) };
-  if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:"" };
+  if (actor.email === INITIAL_ADMIN_EMAIL) return { roleId:"administrator", roleName:"Administrator", permissions:["*"], displayName:firstName(actor.name,actor.email) };
   const setting=await db.prepare("SELECT default_role_id FROM admin_role_settings WHERE id=1").first();
   const role=await ensureDefaultRole(db, setting?.default_role_id);
   const roleId=role.id;

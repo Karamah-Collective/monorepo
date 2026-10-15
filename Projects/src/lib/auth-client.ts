@@ -15,6 +15,7 @@ import {
 import { useEffect, useSyncExternalStore } from "react";
 import { auth, googleProvider } from "../firebase.js";
 import { requestAdminJson } from "./karamah-admin";
+import { displayNameFromEmail } from "./display-name";
 import { isKaramahEmail } from "./is-karamah-email";
 
 type ProjectsUser = {
@@ -123,7 +124,7 @@ function subscribe(listener: () => void) { listeners.add(listener); return () =>
 function subscribeOrganizations(listener: () => void) { organizationListeners.add(listener); return () => organizationListeners.delete(listener); }
 function getSnapshot() { return firebaseUser; }
 function getOrganizationSnapshot() { return organizationState; }
-function mapUser(user: FirebaseUser): ProjectsUser { return { id: user.uid, name: user.displayName || user.email?.split("@")[0] || "Karamah user", email: user.email || "", image: user.photoURL, emailVerified: user.emailVerified }; }
+function mapUser(user: FirebaseUser): ProjectsUser { return { id: user.uid, name: user.displayName || displayNameFromEmail(user.email || "") || "Karamah user", email: user.email || "", image: user.photoURL, emailVerified: user.emailVerified }; }
 function sessionValue(user = firebaseUser) { return user ? { user: mapUser(user), session: { userId: user.uid } } : null; }
 function ok<T>(data: T) { return Promise.resolve({ data, error: null }); }
 function failure<T = null>(error: unknown, fallback = "Projects request failed.") { return Promise.resolve({ data: null as T | null, error: { message: error instanceof Error ? error.message : fallback, status: (error as { status?: number })?.status || 500 } }); }

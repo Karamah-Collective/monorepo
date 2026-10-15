@@ -1,5 +1,6 @@
 import { requestAdmin } from "./karamah-admin";
 import { collectionResponse } from "./collection-response";
+import { displayNameFromEmail } from "./display-name";
 import type { ClientResponse } from "hono/client";
 
 type ProjectsArgs = {
@@ -142,7 +143,7 @@ export function toProjectsMember(value: unknown): Record<string, unknown> {
   return {
     ...source,
     id,
-    name: source.name || source.displayName || user?.name || (email ? email.split("@")[0] : ""),
+    name: source.name || source.displayName || user?.name || displayNameFromEmail(email),
     email,
     image: source.image ?? user?.image ?? null,
   };
@@ -615,7 +616,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path.length === 2 && ["PUT", "PATCH"].includes(method)) {
-    const result = await adminCall("project-task-update", args, toProjectsTaskBody(args, id), "POST");
+    const result = await adminTaskUpdate("project-task-update", args, toProjectsTaskBody(args, id));
     return response(result.error ? result : toProjectsTask(result.task || result));
   }
   if (path[0] === "task" && path.length === 2 && method === "DELETE") return response(await adminCall("project-task-delete", args, { id, expectedRevision: bodyValue(args, "expectedRevision") ?? bodyValue(args, "revision"), reason: bodyValue(args, "reason") }, "POST"));
@@ -663,13 +664,17 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     const tasks = Array.isArray(source.tasks) ? source.tasks : [];
     const results = await Promise.all(tasks.map(async (task) => {
       const item = task && typeof task === "object" ? task as Record<string, unknown> : {};
-      const result = await adminCall("project-task-update", { json: {
+      const payload = {
         id: item.id,
         position: item.position,
         statusCategory: item.status,
         columnId: item.columnId,
         expectedRevision: item.expectedRevision ?? item.revision,
-      } }, {}, "POST");
+      };
+      const result = await withTaskConflictRetry(
+        (nextPayload) => adminCall("project-task-update", { json: nextPayload }, {}, "POST"),
+        payload,
+      );
       return {
         id: item.id,
         success: !result.error,

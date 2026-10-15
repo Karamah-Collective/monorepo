@@ -9,6 +9,7 @@ import {
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import useGetProjectMembers from "@/hooks/queries/workspace-users/use-get-project-members";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { isCurrentMember } from "@/lib/member-identity";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
 import { assigneeMenuOptions } from "./menus/assignee-menu-options";
@@ -34,7 +35,7 @@ export default function TaskAssigneePopover({
   const { canAssignTasks, canUpdateTasks, member } = useWorkspacePermission();
   const canManageAssignments = canAssignTasks();
   const selfMember = members.find(
-    (candidate) => candidate.id === member?.userId,
+    (candidate) => isCurrentMember(candidate, member),
   );
   const canSelfAssign = canUpdateTasks() && Boolean(selfMember);
 

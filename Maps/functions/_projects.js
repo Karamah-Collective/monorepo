@@ -16,6 +16,9 @@ const safe = (value, max = 5000) => String(value ?? "").replace(/[\u0000-\u001f]
 const now = () => new Date().toISOString();
 const newId = (prefix) => `${prefix}_${crypto.randomUUID()}`;
 const json = (value, fallback = {}) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
+function displayNameFromEmail(email) {
+  return String(email || "").split("@")[0].replace(/[._-]+/g, " ").trim().split(/\s+/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
+}
 export function normalizeTaskPriority(value) {
   if (value === "no-priority" || value === "") return "normal";
   return TASK_PRIORITIES.includes(value) ? value : null;
@@ -185,7 +188,7 @@ function workspaceMemberFromRow(row) {
     userId: row.user_uid || row.email, role: row.role,
     createdAt: row.created_at, updatedAt: row.updated_at,
     isExternal: !isKaramahEmail(row.email),
-    user: { id: row.user_uid || row.email, name: row.display_name || row.email.split("@")[0], email: row.email, image: null },
+    user: { id: row.user_uid || row.email, name: row.display_name || row.name || displayNameFromEmail(row.email), email: row.email, image: null },
   };
 }
 
@@ -363,7 +366,7 @@ export async function listProjectMemberDirectory(db, data, actor, env) {
   const add = (row) => {
     const email = actorEmail({ email: row.email });
     if (!email || !isKaramahEmail(email)) return;
-    const name = safe(row.display_name || row.name || email.split("@")[0], 160);
+    const name = safe(row.display_name || row.name || displayNameFromEmail(email), 160);
     if (query && !`${name} ${email}`.toLowerCase().includes(query)) return;
     directory.set(email, {
       id: row.user_uid || row.user_id || email,
@@ -644,7 +647,7 @@ export async function updateProjectWorkspaceMember(db, data, actor, env) {
     }
   }
   const row = await db.prepare("SELECT * FROM project_workspace_members WHERE workspace_id=? AND lower(email)=lower(?)").bind(data.workspaceId, email).first();
-  return { success: true, member: row ? workspaceMemberFromRow(row) : { id: email, organizationId: data.workspaceId, workspaceId: data.workspaceId, userId: safe(member.userUid, 180) || email, role: "none", createdAt: null, updatedAt: now(), isExternal: false, user: { id: safe(member.userUid, 180) || email, name: email.split("@")[0], email, image: null } } };
+  return { success: true, member: row ? workspaceMemberFromRow(row) : { id: email, organizationId: data.workspaceId, workspaceId: data.workspaceId, userId: safe(member.userUid, 180) || email, role: "none", createdAt: null, updatedAt: now(), isExternal: false, user: { id: safe(member.userUid, 180) || email, name: displayNameFromEmail(email), email, image: null } } };
 }
 export async function removeProjectWorkspaceMember(db, data, actor) {
   const allowed = await requireWorkspace(db, data.workspaceId, actor, "member.delete");

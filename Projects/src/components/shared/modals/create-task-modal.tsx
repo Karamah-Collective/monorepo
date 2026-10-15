@@ -70,6 +70,7 @@ import { cn } from "@/lib/cn";
 import { uploadDraftAsset } from "@/lib/upload-draft-asset";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
+import { isCurrentMember } from "@/lib/member-identity";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
@@ -251,6 +252,7 @@ function CreateTaskModalContent({
     () =>
       (workspaceUsers?.members ?? []).map((member) => ({
         id: member.userId,
+        email: member.user?.email,
         name: member.user?.name ?? "",
         image: member.user?.image ?? null,
       })),
@@ -264,19 +266,20 @@ function CreateTaskModalContent({
       const options = resolvedProjectId
         ? (projectMembers ?? []).map((member) => ({
             id: member.id,
+            email: member.email,
             name: member.name,
             image: member.image,
           }))
         : workspaceAssigneeOptions;
       return canManageAssignments
         ? options
-        : options.filter((candidate) => candidate.id === member?.userId);
+        : options.filter((candidate) => isCurrentMember(candidate, member));
     },
     [
       canManageAssignments,
       projectMembers,
       resolvedProjectId,
-      member?.userId,
+      member,
       workspaceAssigneeOptions,
     ],
   );

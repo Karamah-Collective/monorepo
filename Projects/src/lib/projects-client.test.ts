@@ -96,7 +96,7 @@ describe("Projects API compatibility", () => {
   it("normalizes project members into the shape used by assignee pickers", () => {
     expect(toProjectsMember({ userUid: "uid-1", email: "person@karamahcollective.com" })).toMatchObject({
       id: "uid-1",
-      name: "person",
+      name: "Person",
       email: "person@karamahcollective.com",
     });
   });

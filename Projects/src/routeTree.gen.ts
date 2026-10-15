@@ -14,6 +14,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as TestErrorRouteImport } from './routes/test-error'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/_layout/_authenticated'
 import { Route as AuthCheckEmailRouteImport } from './routes/auth/check-email'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
@@ -94,6 +95,11 @@ const DeviceRoute = DeviceRouteImport.update({
 const TestErrorRoute = TestErrorRouteImport.update({
   id: '/test-error',
   path: '/test-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutAuthenticatedRoute = LayoutAuthenticatedRouteImport.update({
@@ -464,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/device': typeof DeviceRouteWithChildren
   '/test-error': typeof TestErrorRoute
+  '/privacy': typeof PrivacyRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -525,6 +532,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/test-error': typeof TestErrorRoute
+  '/privacy': typeof PrivacyRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -587,6 +595,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/device': typeof DeviceRouteWithChildren
   '/test-error': typeof TestErrorRoute
+  '/privacy': typeof PrivacyRoute
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -652,6 +661,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/device'
     | '/test-error'
+    | '/privacy'
     | '/auth/check-email'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -713,6 +723,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/test-error'
+    | '/privacy'
     | '/auth/check-email'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/device'
     | '/test-error'
+    | '/privacy'
     | '/_layout/_authenticated'
     | '/auth/check-email'
     | '/auth/forgot-password'
@@ -839,6 +851,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   DeviceRoute: typeof DeviceRouteWithChildren
   TestErrorRoute: typeof TestErrorRoute
+  PrivacyRoute: typeof PrivacyRoute
   McpAuthorizeRoute: typeof McpAuthorizeRoute
   PublicProjectProjectIdRoute: typeof PublicProjectProjectIdRoute
   InvitationAcceptInviteIdRoute: typeof InvitationAcceptInviteIdRoute
@@ -879,6 +892,13 @@ declare module '@tanstack/react-router' {
       path: '/test-error'
       fullPath: '/test-error'
       preLoaderRoute: typeof TestErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_authenticated': {
@@ -1558,6 +1578,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   DeviceRoute: DeviceRouteWithChildren,
   TestErrorRoute: TestErrorRoute,
+  PrivacyRoute: PrivacyRoute,
   McpAuthorizeRoute: McpAuthorizeRoute,
   PublicProjectProjectIdRoute: PublicProjectProjectIdRoute,
   InvitationAcceptInviteIdRoute: InvitationAcceptInviteIdRoute,

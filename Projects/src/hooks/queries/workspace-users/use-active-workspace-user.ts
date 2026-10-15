@@ -21,7 +21,11 @@ export const useGetActiveWorkspaceUser = () => {
         throw new Error(error.message || "Failed to get active workspace user");
       }
 
-      return data.members.find((member) => member.userId === user?.id) ?? null;
+      return data.members.find(
+        (member) =>
+          member.userId === user?.id ||
+          (!!user?.email && member.user.email.toLowerCase() === user.email.toLowerCase()),
+      ) ?? null;
     },
   });
 };

@@ -3,7 +3,7 @@ import useGetConfig from "@/hooks/queries/config/use-get-config";
 
 const links = [
   { href: "https://admin.karamahcollective.com/terms", labelKey: "auth:page.terms" },
-  { href: "https://admin.karamahcollective.com/privacy", labelKey: "auth:page.privacy" },
+  { href: "/privacy", labelKey: "auth:page.privacy" },
 ] as const;
 
 const linkClassName = "transition-colors hover:text-foreground";

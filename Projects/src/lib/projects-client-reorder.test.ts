@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestAdmin = vi.hoisted(() => vi.fn());
 
 vi.mock("./karamah-admin", () => ({ requestAdmin }));
 
 import { client } from "./projects-client";
+
+beforeEach(() => requestAdmin.mockReset());
 
 describe("task reorder proxy", () => {
   it("sends each task move without the outer board payload", async () => {
@@ -76,5 +78,26 @@ describe("task reorder proxy", () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("retries a stale board move with the returned revision", async () => {
+    requestAdmin
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        error: "Task changed.",
+        status: 409,
+        conflict: { id: "task-1", revision: 4 },
+      }), { status: 409 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }));
+
+    const response = await client.task.reorder.$post({
+      json: {
+        projectId: "project-1",
+        tasks: [{ id: "task-1", position: 1, status: "in_progress", expectedRevision: 3 }],
+      },
+    });
+
+    expect(response.ok).toBe(true);
+    expect(requestAdmin).toHaveBeenCalledTimes(2);
+    expect(requestAdmin.mock.calls[1][0].body.expectedRevision).toBe(4);
   });
 });
