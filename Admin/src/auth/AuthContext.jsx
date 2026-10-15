@@ -45,6 +45,7 @@ export function AuthProvider({ children }) {
 
   async function signIn(email, password) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    await cred.user.getIdToken(true);
     await refreshAccess();
     await logAuthEvent("login");
     return cred.user;
@@ -56,6 +57,7 @@ export function AuthProvider({ children }) {
       await firebaseSignOut(auth);
       throw new Error(`Use a ${ADMIN_EMAIL_DOMAIN} Google Workspace account.`);
     }
+    await cred.user.getIdToken(true);
     await refreshAccess();
     await logAuthEvent("login");
     return cred.user;

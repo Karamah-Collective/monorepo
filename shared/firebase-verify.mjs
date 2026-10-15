@@ -21,6 +21,7 @@ const FIREBASE_PROJECT_ID = "halal-map-karamah";
 const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 const JWKS_CACHE_TTL_MS = 3_600_000; // 1 hour — mirrors the Cache-Control this endpoint itself sends
 const CLOCK_SKEW_TOLERANCE_S = 300; // 5 minutes, absorbs modest client/server clock drift
+const MAX_FIREBASE_ID_TOKEN_LEN = 8192;
 
 // Module-scoped cache — persists across requests within the same isolate,
 // avoiding a JWKS fetch on every single verification.
@@ -83,6 +84,7 @@ function _decodeJwtSegment(part) {
  */
 export async function verifyFirebaseIdToken(idToken, env) {
   if (!idToken || typeof idToken !== "string") return null;
+  if (idToken.length > MAX_FIREBASE_ID_TOKEN_LEN) return null;
 
   const parts = idToken.split(".");
   if (parts.length !== 3) return null;

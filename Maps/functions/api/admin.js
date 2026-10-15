@@ -185,7 +185,6 @@ function adminAllowedOrigin(request, env = {}) {
 
 const ADMIN_EMAIL_DOMAIN = "@karamahcollective.com"; // leading "@" is load-bearing — endsWith("karamahcollective.com") without it would let "user@evilkaramahcollective.com" through
 const INITIAL_ADMIN_EMAIL = "moontasir@karamahcollective.com";
-const MAX_ID_TOKEN_LEN = 2048;
 const MAX_MODERATION_REASON_LEN = 300;
 const REVIEW_STATUSES = new Set(["yes", "no", "pending"]);
 const IMAGE_STATUSES = new Set(["yes", "no"]);
@@ -198,7 +197,7 @@ async function authenticateAdmin(request, env) {
   const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
   if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
 
-  const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
+  const verified = await verifyFirebaseIdToken(match[1], env);
   if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
   if (requiresEmailVerification(verified) && !verified.emailVerified) return { ok: false, status: 403, error: "Email not verified" };
   if (!String(verified.email).toLowerCase().endsWith(ADMIN_EMAIL_DOMAIN)) return { ok: false, status: 403, error: "Not authorized for Projects access" };
@@ -208,7 +207,7 @@ async function authenticateAdmin(request, env) {
 async function authenticateProjectsActor(request, env) {
   const match = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
   if (!match) return { ok: false, status: 401, error: "Missing bearer token" };
-  const verified = await verifyFirebaseIdToken(truncate(match[1], MAX_ID_TOKEN_LEN), env);
+  const verified = await verifyFirebaseIdToken(match[1], env);
   if (!verified || !verified.email) return { ok: false, status: 401, error: "Invalid or expired token" };
   if (requiresEmailVerification(verified) && !verified.emailVerified) return { ok: false, status: 403, error: "Verify your email address before using Projects." };
   const email = String(verified.email).toLowerCase();

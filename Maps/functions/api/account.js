@@ -21,8 +21,7 @@
 import { verifyFirebaseIdToken } from "../_firebase-verify.js";
 import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
 
-const MAX_BODY_SIZE = 2048;
-const MAX_ID_TOKEN_LEN = 2048;
+const MAX_BODY_SIZE = 12_288;
 const MAX_PLACE_ID_LEN = 20;
 const MAX_PIN_NAME_LEN = 200;
 const SAVED_PLACE_KINDS = ["favorite", "pin", "home", "visited"];
@@ -37,7 +36,7 @@ const ERASE_TARGETS = [
 ];
 
 async function resolveEmailHash(idToken) {
-  const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
+  const cleanToken = (idToken || "").toString();
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;

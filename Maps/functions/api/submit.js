@@ -34,8 +34,7 @@ const MIN_SCORE = 0.5;
 const CONTACT_SUSPICIOUS_SCORE = 0.7;
 const MAX_FIELD_LEN = 500;
 const MAX_NOTES_LEN = 2000;
-const MAX_BODY_SIZE = 8192;
-const MAX_ID_TOKEN_LEN = 2048;
+const MAX_BODY_SIZE = 16_384;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUBMIT_ACTIONS = ["my-submitted-places", "my-submitted-edits"];
 const PROXIMITY_THRESHOLD = 0.0005; // ~50m, matches Code.gs
@@ -70,7 +69,7 @@ function isSupportedGoogleMapsLink(value) {
 }
 
 async function resolveFirebaseIdentity(idToken) {
-  const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
+  const cleanToken = (idToken || "").toString();
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;

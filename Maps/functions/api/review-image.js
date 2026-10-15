@@ -7,7 +7,6 @@ import { allowedOrigin, isLoopbackRequest, json, sha256, truncate } from "../_sh
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES_PER_REVIEW = 3;
-const MAX_TOKEN_LEN = 2048;
 const MAX_PHOTO_TAG_LEN = 32;
 const MULTIPART_OVERHEAD_BYTES = 16_384;
 const IMAGE_ID_RE = /^[0-9a-f-]{36}$/i;
@@ -27,7 +26,7 @@ const TYPES = new Map([
 
 async function _identityHash(token, request, localReview = false) {
   if (localReview && isLoopbackRequest(request)) return sha256(LOCAL_REVIEW_IDENTITY);
-  const clean = truncate((token || "").toString(), MAX_TOKEN_LEN);
+  const clean = (token || "").toString();
   if (!clean) return "";
   const verified = await verifyFirebaseIdToken(clean);
   if (!verified?.email || (verified.signInProvider === "password" && !verified.emailVerified)) return "";

@@ -5,7 +5,7 @@ const json = (request, data, status = 200) => Response.json(data, { status, head
 const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
 const admin = async (request, env) => {
   const token = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "")?.[1];
-  const user = token ? await verifyFirebaseIdToken(token.slice(0, 2048), env) : null;
+  const user = token ? await verifyFirebaseIdToken(token, env) : null;
   return user?.emailVerified && user.email.endsWith("@karamahcollective.com") ? user : null;
 };
 

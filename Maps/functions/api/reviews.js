@@ -17,11 +17,10 @@ import { allowedOrigin, isLoopbackRequest, truncate, sha256, json } from "../_sh
 import { parseGoogleReviewsField } from "../_google-maps.js";
 import { readAppSettings } from "../_app-settings.js";
 
-const MAX_BODY_SIZE = 4096;
+const MAX_BODY_SIZE = 12_288;
 const MAX_TEXT_LEN = 500;
 const MIN_TEXT_LEN = 20;
 const MAX_PLACE_ID_LEN = 6;
-const MAX_ID_TOKEN_LEN = 2048;
 const LOCAL_REVIEW_IDENTITY = "local-reviewer@loopback.invalid";
 
 // isUnverifiedPassword mirrors src/auth.js's isCurrentUserUnverifiedPassword()
@@ -33,7 +32,7 @@ async function resolveFirebaseIdentity(idToken, request, localReview = false) {
   if (localReview === true && isLoopbackRequest(request)) {
     return { emailHash: await sha256(LOCAL_REVIEW_IDENTITY), isUnverifiedPassword: false };
   }
-  const cleanToken = truncate((idToken || "").toString(), MAX_ID_TOKEN_LEN);
+  const cleanToken = (idToken || "").toString();
   if (!cleanToken) return null;
   const verified = await verifyFirebaseIdToken(cleanToken);
   if (!verified || !verified.email) return null;
