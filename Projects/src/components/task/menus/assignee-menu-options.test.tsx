@@ -29,4 +29,12 @@ describe("assigneeMenuOptions", () => {
   it("marks nothing when the selection is mixed", () => {
     expect(selectedValues(undefined)).toEqual([]);
   });
+
+  it("can hide unassign for self-assignment-only users", () => {
+    expect(
+      assigneeMenuOptions(members, null, "Unassigned", false).map(
+        (option) => option.value,
+      ),
+    ).toEqual(["user-1"]);
+  });
 });

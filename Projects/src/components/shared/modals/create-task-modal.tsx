@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { CustomFieldChip } from "@/components/custom-fields/custom-field-chip";
 import {
   findMissingRequiredFields,
@@ -197,6 +198,7 @@ function CreateTaskModalContent({
     [t],
   );
   const location = useLocation();
+  const { user } = useAuth();
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id || "",
@@ -205,9 +207,11 @@ function CreateTaskModalContent({
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id || "",
   );
-  const { canCreateTasks, canCreateLabels } = useWorkspacePermission();
+  const { canCreateTasks, canCreateLabels, canAssignTasks } =
+    useWorkspacePermission();
   const canCreateTaskCapability = canCreateTasks();
   const canCreateLabelCapability = canCreateLabels();
+  const canManageAssignments = canAssignTasks();
 
   const [title, setTitle] = useState("");
   const titleRef = useAutoGrowTextarea(title);
@@ -258,15 +262,25 @@ function CreateTaskModalContent({
     Boolean(resolvedProjectId) && projectMembers === undefined;
   const assigneeUnconfirmed = Boolean(assigneeId) && projectMembersPending;
   const assigneeOptions = useMemo(
-    () =>
-      resolvedProjectId
+    () => {
+      const options = resolvedProjectId
         ? (projectMembers ?? []).map((member) => ({
             id: member.id,
             name: member.name,
             image: member.image,
           }))
-        : workspaceAssigneeOptions,
-    [resolvedProjectId, projectMembers, workspaceAssigneeOptions],
+        : workspaceAssigneeOptions;
+      return canManageAssignments
+        ? options
+        : options.filter((member) => member.id === user?.id);
+    },
+    [
+      canManageAssignments,
+      projectMembers,
+      resolvedProjectId,
+      user?.id,
+      workspaceAssigneeOptions,
+    ],
   );
   const selectedUser =
     assigneeOptions.find((option) => option.id === assigneeId) ??

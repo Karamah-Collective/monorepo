@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OptionMenu } from "@/components/common/option-menu/option-menu";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   Popover,
   PopoverContent,
@@ -25,15 +26,19 @@ export default function TaskAssigneePopover({
   children,
 }: TaskAssigneePopoverProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
   const { data: members = [] } = useGetProjectMembers({
     workspaceId,
     projectId: task.projectId,
   });
-  const { canAssignTasks } = useWorkspacePermission();
+  const { canAssignTasks, canUpdateTasks } = useWorkspacePermission();
+  const canManageAssignments = canAssignTasks();
+  const selfMember = members.find((member) => member.id === user?.id);
+  const canSelfAssign = canUpdateTasks() && Boolean(selfMember);
 
-  if (!canAssignTasks()) return <>{children}</>;
+  if (!canManageAssignments && !canSelfAssign) return <>{children}</>;
 
   const changeAssignee = async (userId: string) => {
     setOpen(false);
@@ -55,9 +60,10 @@ export default function TaskAssigneePopover({
           label={t("tasks:assignee.label")}
           placeholder={t("tasks:bulk.assigneePlaceholder")}
           options={assigneeMenuOptions(
-            members,
+            canManageAssignments ? members : selfMember ? [selfMember] : [],
             task.userId ?? null,
             t("tasks:popover.assignee.unassigned"),
+            canManageAssignments,
           )}
           onSelect={changeAssignee}
         />

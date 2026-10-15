@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ContextMenuCheckboxItem,
@@ -61,6 +62,7 @@ export default function TaskCardContextMenuContent({
   onDeleteClick,
 }: TaskCardContextMenuContentProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { project } = useProjectStore();
   const queryClient = useQueryClient();
   const { data: columnsData = [] } = useGetColumns(taskCardContext.projectId);
@@ -94,16 +96,22 @@ export default function TaskCardContextMenuContent({
   const canCreate = canCreateTasks();
   const canEdit = canUpdateTasks();
   const canDelete = canDeleteTasks();
-  const canAssign = canAssignTasks();
+  const canManageAssignments = canAssignTasks();
+  const canSelfAssign =
+    canEdit && Boolean(projectMembers?.some((member) => member.id === user?.id));
+  const canAssign = canManageAssignments || canSelfAssign;
 
   const usersOptions = useMemo(() => {
-    return projectMembers?.map((member) => ({
+    const assignableMembers = canManageAssignments
+      ? projectMembers
+      : projectMembers?.filter((member) => member.id === user?.id);
+    return assignableMembers?.map((member) => ({
       label: member.name || member.email,
       value: member.id,
       image: member.image ?? "",
       name: member.name,
     }));
-  }, [projectMembers]);
+  }, [canManageAssignments, projectMembers, user?.id]);
 
   const handleCopyTaskLink = () => {
     const path = getTaskPath({
@@ -241,21 +249,23 @@ export default function TaskCardContextMenuContent({
             <span>{t("tasks:assignee.label")}</span>
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-48">
-            <ContextMenuCheckboxItem
-              checked={!task.userId}
-              onCheckedChange={() => handleChange("userId", "")}
-              closeOnClick
-            >
-              <div
-                className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-                title={t("tasks:assignee.unassigned")}
+            {canManageAssignments && (
+              <ContextMenuCheckboxItem
+                checked={!task.userId}
+                onCheckedChange={() => handleChange("userId", "")}
+                closeOnClick
               >
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  ?
-                </span>{" "}
-              </div>
-              {t("tasks:assignee.unassigned")}
-            </ContextMenuCheckboxItem>
+                <div
+                  className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
+                  title={t("tasks:assignee.unassigned")}
+                >
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    ?
+                  </span>{" "}
+                </div>
+                {t("tasks:assignee.unassigned")}
+              </ContextMenuCheckboxItem>
+            )}
             {usersOptions.map((user) => (
               <ContextMenuCheckboxItem
                 key={user.value}

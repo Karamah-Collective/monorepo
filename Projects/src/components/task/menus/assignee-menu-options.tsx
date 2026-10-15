@@ -14,14 +14,20 @@ export function assigneeMenuOptions(
   members: AssignableMember[],
   current: string | null | undefined,
   unassignedLabel: string,
+  allowUnassigned = true,
 ): OptionMenuItem[] {
+  const unassigned = allowUnassigned
+    ? [
+        {
+          value: "",
+          label: unassignedLabel,
+          icon: <UnassignedAvatar className="size-4 text-[8px]" />,
+          selected: current !== undefined && !current,
+        },
+      ]
+    : [];
   return [
-    {
-      value: "",
-      label: unassignedLabel,
-      icon: <UnassignedAvatar className="size-4 text-[8px]" />,
-      selected: current !== undefined && !current,
-    },
+    ...unassigned,
     ...members.map((member) => ({
       value: member.id,
       label: member.name || member.email || "",

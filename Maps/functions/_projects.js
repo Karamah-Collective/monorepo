@@ -929,6 +929,8 @@ export async function createProjectTask(db, data, actor, access) {
   if (!column) return { error: "A valid project column is required." };
   const title = safe(data.title, 240); if (!title) return { error: "A task title is required." };
   const assigneeUid = safe(data.assigneeUid, 180);
+  const requestedAssigneeEmail = actorEmail({ email: data.assigneeEmail });
+  if ((assigneeUid || requestedAssigneeEmail) && !allowed.permissions.can_assign_tasks && !taskAssignmentMatchesActor({ assigneeUid, assigneeEmail: requestedAssigneeEmail }, actor)) return { error: "You can only assign new tasks to yourself.", status: 403 };
   const assigneeEmail = await assigneeEmailFor(db, data.projectId, assigneeUid, data.assigneeEmail);
   if (assigneeEmail && !isKaramahEmail(assigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
   const milestoneId = safe(data.milestoneId, 180) || null;

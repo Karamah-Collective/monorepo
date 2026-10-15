@@ -37,7 +37,9 @@ export function TaskShortcuts({
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission();
   const active = { enabled: enabled && Boolean(task) };
   const editable = { enabled: active.enabled && canUpdateTasks() };
-  const assignable = { enabled: active.enabled && canAssignTasks() };
+  const assignable = {
+    enabled: active.enabled && (canAssignTasks() || canUpdateTasks()),
+  };
 
   const openTask = (id: string | undefined) => {
     if (!id) return;
