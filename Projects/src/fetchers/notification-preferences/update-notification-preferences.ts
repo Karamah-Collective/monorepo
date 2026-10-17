@@ -1,5 +1,4 @@
-import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError } from "@/lib/http-error";
+import { requestAdminJson } from "@/lib/karamah-admin";
 import type { NotificationPreferences } from "./get-notification-preferences";
 
 export type UpdateNotificationPreferencesRequest = {
@@ -24,20 +23,11 @@ export type UpdateNotificationPreferencesRequest = {
 async function updateNotificationPreferences(
   json: UpdateNotificationPreferencesRequest,
 ): Promise<NotificationPreferences> {
-  const response = await fetch(getApiUrl("/notification-preferences"), {
-    body: JSON.stringify(json),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    method: "PUT",
+  return requestAdminJson<NotificationPreferences>({
+    action: "project-notification-preferences-update",
+    body: json,
+    method: "POST",
   });
-
-  if (!response.ok) {
-    throw await HttpError.fromResponse(response);
-  }
-
-  return (await response.json()) as NotificationPreferences;
 }
 
 export default updateNotificationPreferences;

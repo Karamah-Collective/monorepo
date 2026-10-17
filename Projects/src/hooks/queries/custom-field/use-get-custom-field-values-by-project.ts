@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import getCustomFieldValuesByProject from "@/fetchers/custom-field/get-custom-field-values-by-project";
+import getCustomFieldValuesByProject, {
+  type CustomFieldValue,
+} from "@/fetchers/custom-field/get-custom-field-values-by-project";
 
 export type { CustomFieldValue } from "@/fetchers/custom-field/get-custom-field-values-by-project";
 

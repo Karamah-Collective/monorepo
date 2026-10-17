@@ -7,6 +7,7 @@ import {
   toProjectsTaskBody,
   toProjectsTaskStatus,
   toProjectsTask,
+  toProjectsLabel,
   withTaskConflictRetry,
 } from "./projects-client";
 
@@ -88,6 +89,15 @@ describe("toProjectsTask", () => {
     ).toMatchObject({
       projectId: "project-1",
       number: 3,
+    });
+  });
+});
+
+describe("toProjectsLabel", () => {
+  it("marks project labels as workspace-scoped when the API has no task id", () => {
+    expect(toProjectsLabel({ id: "label-1", project_id: "project-1", name: "Launch" })).toMatchObject({
+      projectId: "project-1",
+      taskId: null,
     });
   });
 });

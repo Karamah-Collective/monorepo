@@ -1,23 +1,14 @@
-import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError } from "@/lib/http-error";
+import { requestAdminJson } from "@/lib/karamah-admin";
 import type { NotificationPreferences } from "./get-notification-preferences";
 
 async function deleteNotificationWorkspaceRule(
   workspaceId: string,
 ): Promise<NotificationPreferences> {
-  const response = await fetch(
-    getApiUrl(`/notification-preferences/workspaces/${workspaceId}`),
-    {
-      credentials: "include",
-      method: "DELETE",
-    },
-  );
-
-  if (!response.ok) {
-    throw await HttpError.fromResponse(response);
-  }
-
-  return (await response.json()) as NotificationPreferences;
+  return requestAdminJson<NotificationPreferences>({
+    action: "project-notification-workspace-rule-delete",
+    body: { workspaceId },
+    method: "POST",
+  });
 }
 
 export default deleteNotificationWorkspaceRule;

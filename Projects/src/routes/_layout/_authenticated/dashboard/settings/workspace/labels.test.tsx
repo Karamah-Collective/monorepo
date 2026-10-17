@@ -72,6 +72,8 @@ vi.mock("@/hooks/mutations/label/use-delete-label", () => ({
 }));
 vi.mock("@/lib/toast", () => ({
   toast: { success: m.success, error: m.error },
+  toastSubject: (value: string | null | undefined) =>
+    value?.trim() ? `"${value.trim()}"` : undefined,
 }));
 
 const Component = Route.options.component as ComponentType;
@@ -206,7 +208,7 @@ describe("creating and editing labels", () => {
     );
     expect(m.success).toHaveBeenCalledWith(
       "settings:workspaceLabels.createSuccess",
-      { icon: expect.anything() },
+      { description: '"Design"', icon: expect.anything() },
     );
   });
 
@@ -261,7 +263,7 @@ describe("deleting workspace labels", () => {
     await waitFor(() => expect(m.remove).toHaveBeenCalledWith({ id: "bug" }));
     expect(m.success).toHaveBeenCalledWith(
       "settings:workspaceLabels.deleteSuccess",
-      { icon: expect.anything() },
+      { description: '"Bug"', icon: expect.anything() },
     );
   });
 
@@ -297,7 +299,7 @@ describe("deleting workspace labels", () => {
     await waitFor(() =>
       expect(m.success).toHaveBeenCalledWith(
         "settings:workspaceLabels.deleteSuccess",
-        { icon: expect.anything() },
+        { description: '"Old"', icon: expect.anything() },
       ),
     );
   });
@@ -317,7 +319,10 @@ describe("deleting workspace labels", () => {
       }),
     );
     await waitFor(() =>
-      expect(m.error).toHaveBeenCalledWith("Connection lost"),
+      expect(m.error).toHaveBeenCalledWith(
+        "settings:workspaceLabels.deleteError",
+        { description: "Connection lost" },
+      ),
     );
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(m.success).not.toHaveBeenCalled();

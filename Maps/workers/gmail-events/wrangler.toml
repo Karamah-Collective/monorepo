@@ -17,6 +17,14 @@ database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
 name = "INBOX_REALTIME"
 class_name = "InboxRealtime"
 
+[[durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["InboxRealtime"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ProjectRealtime"]

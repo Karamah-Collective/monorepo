@@ -1,15 +1,20 @@
 import { client } from "@karamah/projects-libs";
-import type { InferRequestType, InferResponseType } from "hono";
+import type { InferRequestType } from "hono";
 import { HttpError } from "@/lib/http-error";
 
 export type ListGiteaRepositoriesRequest = InferRequestType<
   (typeof client)["gitea-integration"]["repositories"]["$post"]
 >["json"];
 
-export type ListGiteaRepositoriesResponse = InferResponseType<
-  (typeof client)["gitea-integration"]["repositories"]["$post"],
-  200
->;
+export type ListGiteaRepositoriesResponse = {
+  repositories: Array<{
+    id: number;
+    name: string;
+    full_name: string;
+    private: boolean;
+    owner: { login: string };
+  }>;
+};
 
 async function listGiteaRepositories(
   data: ListGiteaRepositoriesRequest,

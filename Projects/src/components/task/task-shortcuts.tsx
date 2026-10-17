@@ -38,7 +38,10 @@ export function TaskShortcuts({
   const active = { enabled: enabled && Boolean(task) };
   const editable = { enabled: active.enabled && canUpdateTasks() };
   const assignable = {
-    enabled: active.enabled && (canAssignTasks() || canUpdateTasks()),
+    enabled: active.enabled && canAssignTasks(),
+  };
+  const branchCopyable = {
+    enabled: active.enabled && copyActions.canCopyBranch,
   };
 
   const openTask = (id: string | undefined) => {
@@ -148,7 +151,7 @@ export function TaskShortcuts({
   useShortcut("copyTaskTitle", copyActions.copyTitle, active);
   useShortcut("copyAsMarkdown", copyActions.copyMarkdown, active);
   useShortcut("copyTaskUrl", copyActions.copyLink, active);
-  useShortcut("copyBranchName", copyActions.copyBranch, active);
+  useShortcut("copyBranchName", copyActions.copyBranch, branchCopyable);
 
   return null;
 }

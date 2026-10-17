@@ -27,7 +27,7 @@ export function useDeleteTask() {
       });
 
       const { project, setProject } = useProjectStore.getState();
-      if (project?.id === deletedTask.projectId) {
+      if (project?.id === deletedTask.projectId && project) {
         setProject(removeTaskFromProject(project, deletedTask.id));
       }
     },

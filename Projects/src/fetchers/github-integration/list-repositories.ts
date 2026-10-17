@@ -1,13 +1,21 @@
 import { client } from "@karamah/projects-libs";
-import type { InferResponseType } from "hono";
 import { HttpError } from "@/lib/http-error";
 
-export type ListRepositoriesResponse = InferResponseType<
-  (typeof client)["github-integration"]["repositories"][":projectId"]["$get"],
-  200
->;
+export type GithubRepository = {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: { login: string };
+  description?: string | null;
+  updated_at?: string | null;
+  [key: string]: unknown;
+};
 
-export type GithubRepository = ListRepositoriesResponse["repositories"][number];
+export type ListRepositoriesResponse = {
+  repositories: GithubRepository[];
+  nextPage?: RepositoryPage | null;
+};
 
 export type RepositoryPage = {
   installationPage: number;

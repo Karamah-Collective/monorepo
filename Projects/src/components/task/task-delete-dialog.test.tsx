@@ -185,7 +185,9 @@ describe("TaskDeleteDialog", () => {
     await confirmDeletion();
 
     await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith("Delete denied"),
+      expect(mocks.error).toHaveBeenCalledWith("tasks:delete.error", {
+        description: "Delete denied",
+      }),
     );
     expect(mocks.success).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();

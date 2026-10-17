@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { authClient } from "@/lib/auth-client";
+import type { WorkspaceUser } from "@/types/workspace-user";
 
 export const useGetActiveWorkspaceUser = () => {
   const { user } = useAuth();
@@ -21,8 +22,8 @@ export const useGetActiveWorkspaceUser = () => {
         throw new Error(error.message || "Failed to get active workspace user");
       }
 
-      return data.members.find(
-        (member) =>
+      return (data.members as WorkspaceUser[]).find(
+        (member: WorkspaceUser) =>
           member.userId === user?.id ||
           (!!user?.email && member.user.email.toLowerCase() === user.email.toLowerCase()),
       ) ?? null;

@@ -31,7 +31,7 @@ vi.mock("@dnd-kit/core", async (original) => ({
 }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@/hooks/mutations/task/use-update-task", () => ({
-  useUpdateTask: () => ({ mutate: m.mutate }),
+  useUpdateTask: () => ({ mutateAsync: m.mutate }),
 }));
 vi.mock("@/store/project", () => ({
   default: () => ({ setProject: m.setProject }),
@@ -81,7 +81,7 @@ it("disables keyboard sensors and rejects drag completion on a partial board", (
   expect(m.setProject).not.toHaveBeenCalled();
 });
 
-it("blocks archive-all during pagination or errors, including an already-open confirmation", () => {
+it("blocks archive-all during pagination or errors, including an already-open confirmation", async () => {
   const column = {
     id: "done",
     name: "Done",
@@ -112,12 +112,16 @@ it("blocks archive-all during pagination or errors, including an already-open co
     true,
   );
   expect(m.archive.disabled).toBe(true);
-  act(() => m.archive.onConfirm?.());
+  await act(async () => {
+    await m.archive.onConfirm?.();
+  });
   expect(m.mutate).not.toHaveBeenCalled();
   expect(m.setProject).not.toHaveBeenCalled();
   rerender(<ListView project={complete} />);
   expect(m.archive.taskCount).toBe(2);
-  act(() => m.archive.onConfirm?.());
+  await act(async () => {
+    await m.archive.onConfirm?.();
+  });
   expect(m.mutate).toHaveBeenCalledTimes(2);
   expect(m.setProject).toHaveBeenCalledOnce();
 });

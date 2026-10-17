@@ -42,7 +42,7 @@ export function AssignedTaskRow({
       </span>
       {showLabels && task.labels.length > 0 && (
         <span className="hidden w-44 shrink-0 items-center gap-2.5 overflow-hidden lg:flex">
-          {task.labels.slice(0, 2).map((label) => (
+          {task.labels.slice(0, 2).map((label: AssignedTask["labels"][number]) => (
             <span
               key={label.id}
               className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs"

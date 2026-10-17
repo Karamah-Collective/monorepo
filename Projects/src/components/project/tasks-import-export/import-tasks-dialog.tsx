@@ -97,7 +97,12 @@ export function ImportTasksDialog({
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (file) void importFile(file);
+    if (!file) return;
+    if (!isJsonFile(file)) {
+      toast.error(t("settings:tasksImportExport.notJsonFile"));
+      return;
+    }
+    void importFile(file);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

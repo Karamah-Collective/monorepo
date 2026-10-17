@@ -1,3 +1,3 @@
-import type { getCalendarFeeds } from "@/fetchers/calendar-feed";
+import type { CalendarFeed as FetchCalendarFeed } from "@/fetchers/calendar-feed";
 
-export type CalendarFeed = Awaited<ReturnType<typeof getCalendarFeeds>>[number];
+export type CalendarFeed = FetchCalendarFeed;

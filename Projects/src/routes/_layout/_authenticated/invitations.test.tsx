@@ -14,6 +14,7 @@ const config = vi.fn();
 const authUser = vi.fn();
 const getSession = vi.fn();
 const pendingInvitations = vi.fn();
+const creationAccess = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => options,
@@ -26,6 +27,10 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
 
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => pendingInvitations(),
+}));
+
+vi.mock("@/hooks/use-workspace-creation-access", () => ({
+  default: () => creationAccess(),
 }));
 
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
@@ -72,6 +77,11 @@ beforeEach(() => {
     isPending: false,
   });
   pendingInvitations.mockReturnValue({ data: [], isLoading: false });
+  creationAccess.mockReturnValue({
+    isCreationRestricted: false,
+    isDecided: true,
+    canCreateWorkspace: true,
+  });
   // Better Auth resolves with `{ data, error }` and does not reject.
   getSession.mockResolvedValue({
     data: { user: { id: "u1", role: "user" } },
@@ -108,6 +118,7 @@ describe("InvitationsPage", () => {
         data: { disableWorkspaceCreation: true },
         isPending: false,
       });
+      creationAccess.mockReturnValue({ canCreateWorkspace: false });
 
       await renderPage(<InvitationsPage />);
 
@@ -120,6 +131,7 @@ describe("InvitationsPage", () => {
         data: { disableWorkspaceCreation: true },
         isPending: false,
       });
+      creationAccess.mockReturnValue({ canCreateWorkspace: true });
       getSession.mockResolvedValue({
         data: { user: { id: "u1", role: "admin" } },
         error: null,
@@ -150,6 +162,7 @@ describe("InvitationsPage", () => {
         data: { disableWorkspaceCreation: true },
         isPending: false,
       });
+      creationAccess.mockReturnValue({ canCreateWorkspace: false });
 
       await renderPage(<InvitationsPage />);
 
@@ -165,6 +178,7 @@ describe("InvitationsPage", () => {
         data: { disableWorkspaceCreation: true },
         isPending: false,
       });
+      creationAccess.mockReturnValue({ canCreateWorkspace: true });
       getSession.mockResolvedValue({
         data: { user: { id: "u1", role: "admin" } },
         error: null,
@@ -177,6 +191,7 @@ describe("InvitationsPage", () => {
 
     it("waits for the config rather than offering a skip it will withdraw", async () => {
       config.mockReturnValue({ data: undefined, isPending: true });
+      creationAccess.mockReturnValue({ canCreateWorkspace: false });
 
       await renderPage(<InvitationsPage />);
 
@@ -187,6 +202,7 @@ describe("InvitationsPage", () => {
       // Settled with no data is an error, not a restriction, and this page
       // has no view to fall back to.
       config.mockReturnValue({ data: undefined, isPending: false });
+      creationAccess.mockReturnValue({ canCreateWorkspace: true });
 
       await renderPage(<InvitationsPage />);
 

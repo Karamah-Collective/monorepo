@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
+import type { Workspace } from "@/lib/auth-client";
 import {
   createUniqueWorkspaceSlug,
   isWorkspaceSlugCollisionError,
@@ -32,7 +33,7 @@ function useCreateWorkspace() {
         ? slug
         : createUniqueWorkspaceSlug(
             name,
-            existingWorkspaces.map((workspace) => workspace.slug),
+            existingWorkspaces.map((workspace: Workspace) => workspace.slug),
           );
 
       for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -58,7 +59,7 @@ function useCreateWorkspace() {
         }
 
         workspaceSlug = createUniqueWorkspaceSlug(name, [
-          ...existingWorkspaces.map((workspace) => workspace.slug),
+          ...existingWorkspaces.map((workspace: Workspace) => workspace.slug),
           workspaceSlug,
         ]);
       }

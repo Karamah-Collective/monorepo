@@ -7,7 +7,7 @@ export type WorkspaceActivity = InferResponseType<
   200
 >[number];
 
-async function getWorkspaceActivities(workspaceId: string) {
+async function getWorkspaceActivities(workspaceId: string): Promise<WorkspaceActivity[]> {
   const response = await client.activity.workspace[":workspaceId"].$get({
     param: { workspaceId },
   });

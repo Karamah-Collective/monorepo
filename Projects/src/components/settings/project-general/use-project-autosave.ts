@@ -30,7 +30,7 @@ export function useProjectAutosave({
   const queryClient = useQueryClient();
   const { mutateAsync: updateProject } = useUpdateProject();
   const schema = useMemo(() => createProjectFormSchema(t), [t]);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<ProjectFormValues | null>(null);
   const inFlightSaveRef = useRef<Promise<boolean> | null>(null);

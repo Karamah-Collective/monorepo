@@ -29,7 +29,11 @@ vi.mock("@/lib/i18n", () => ({ i18n: { t: (key: string) => key } }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+  toastSubject: (value: string | null | undefined) =>
+    value?.trim() ? `"${value.trim()}"` : undefined,
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canManageProjects: () => m.canManage }),
 }));
@@ -150,7 +154,8 @@ describe("ColumnList", () => {
     );
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        "Cannot delete column that contains tasks.",
+        "settings:columnEditor.toastDeleteError",
+        { description: "Cannot delete column that contains tasks." },
       ),
     );
   });

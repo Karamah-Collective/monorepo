@@ -1,4 +1,9 @@
-type WorkflowColumn = { slug: string; isFinal: boolean };
+type WorkflowColumn = {
+  slug: string;
+  isFinal: boolean;
+  name?: string;
+  icon?: string | null;
+};
 
 export function getInitialTaskColumn<T extends WorkflowColumn>(
   columns: T[] | undefined,

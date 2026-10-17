@@ -6,6 +6,13 @@ function appUrl(path = "") {
   return PROJECTS_APP_URL.replace(/\/$/, "") + path;
 }
 
+function projectsPath({ workspaceId, projectId } = {}) {
+  const workspace = encodeURIComponent(workspaceId || "workspace-default");
+  return projectId
+    ? `/dashboard/workspace/${workspace}/project/${encodeURIComponent(projectId)}/board`
+    : `/dashboard/workspace/${workspace}/projects`;
+}
+
 function ProjectSummary({ project }) {
   const detail = useProject(project.id);
   const visibility = project.visibility === "restricted" ? "Private" : "Workspace";
@@ -34,7 +41,7 @@ function ProjectSummary({ project }) {
       </div>
       <a
         className="projects-overview-open"
-        href={appUrl(`/workspace/projects/${project.id}`)}
+        href={appUrl(projectsPath({ workspaceId: project.workspaceId, projectId: project.id }))}
         target="_blank"
         rel="noreferrer"
       >
@@ -50,7 +57,7 @@ export function ProjectsOverviewPage() {
   const restrictedCount = projectList.filter(
     (project) => project.visibility === "restricted",
   ).length;
-  const openUrl = appUrl("/workspace/projects");
+  const openUrl = appUrl(projectsPath({ workspaceId: projectList[0]?.workspaceId }));
 
   return (
     <main className="projects-overview-page">
@@ -147,7 +154,10 @@ export function ProjectsOverviewPage() {
 export function ProjectsHandoffPage() {
   const { projectId } = useParams();
   const detail = useProject(projectId);
-  const path = projectId ? `/workspace/projects/${projectId}` : "/workspace/projects";
+  const path = projectsPath({
+    workspaceId: detail.data?.project?.workspaceId,
+    projectId,
+  });
   const url = appUrl(path);
 
   return (

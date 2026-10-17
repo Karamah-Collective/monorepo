@@ -1,8 +1,8 @@
 import { client } from "@karamah/projects-libs";
 import { HttpError } from "@/lib/http-error";
-import type { SyncParams } from "./types";
+import type { SyncParams, SyncPreview } from "./types";
 
-export default async function getSyncRules(param: SyncParams, after?: string) {
+export default async function getSyncRules(param: SyncParams, after?: string): Promise<SyncPreview> {
   const response = await client["integration-sync"].project[":projectId"][
     ":provider"
   ].$get({ param, query: after ? { after } : {} });

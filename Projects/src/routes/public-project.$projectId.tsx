@@ -42,12 +42,12 @@ function RouteComponent() {
   const selectedTask = useMemo(() => {
     if (!selectedTaskId || !project) return null;
     for (const column of project.columns) {
-      const task = column.tasks.find((task) => task.id === selectedTaskId);
+      const task = column.tasks.find((task: Task) => task.id === selectedTaskId);
       if (task) return task;
     }
     return (
-      project.plannedTasks.find((task) => task.id === selectedTaskId) ??
-      project.archivedTasks.find((task) => task.id === selectedTaskId) ??
+      project.plannedTasks.find((task: Task) => task.id === selectedTaskId) ??
+      project.archivedTasks.find((task: Task) => task.id === selectedTaskId) ??
       null
     );
   }, [project, selectedTaskId]);

@@ -34,10 +34,13 @@ export function useTaskCopyActions({
   const { data: task } = useGetTask(taskId);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { data: workspace } = useActiveWorkspace();
-  const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
+  const { data: workspaceProjectData } = useGetProjects({ workspaceId });
+  const workspaceProjects = (workspaceProjectData ?? []).map(({ id, slug }) => ({ id, slug }));
   const { data: github } = useGetGithubIntegration(projectId);
   const { data: gitea } = useGetGiteaIntegration(projectId);
   const { data: gitlab } = useGetGitlabIntegration(projectId);
+  const branchPattern =
+    github?.branchPattern || gitea?.branchPattern || gitlab?.branchPattern;
 
   const copy = async (text: string, message: string, icon: LucideIcon) => {
     if (!text) return;
@@ -87,13 +90,12 @@ export function useTaskCopyActions({
       );
     },
     copyBranch: () => {
-      const pattern =
-        github?.branchPattern || gitea?.branchPattern || gitlab?.branchPattern;
       void copy(
-        generateBranchName(pattern, project?.slug, task?.number, task?.title),
+        generateBranchName(branchPattern, project?.slug, task?.number, task?.title),
         t("tasks:properties.taskBranchCopied"),
         GitBranchIcon,
       );
     },
+    canCopyBranch: Boolean(branchPattern && project?.slug && task?.number),
   };
 }

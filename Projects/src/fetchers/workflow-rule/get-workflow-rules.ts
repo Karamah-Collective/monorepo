@@ -2,7 +2,14 @@ import { client } from "@karamah/projects-libs";
 
 import { HttpError } from "@/lib/http-error";
 
-async function getWorkflowRules(projectId: string) {
+export type WorkflowRule = {
+  id: string;
+  integrationType: string;
+  eventType: string;
+  columnId: string;
+};
+
+async function getWorkflowRules(projectId: string): Promise<WorkflowRule[]> {
   const response = await client["workflow-rule"][":projectId"].$get({
     param: { projectId },
   });

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { useWorkspacesWithPermission } from "@/hooks/queries/workspace/use-workspaces-with-permission";
 import type { ProjectWithTasks } from "@/types/project";
+import type { Workspace } from "@/lib/auth-client";
 
 const PROJECT_MOVE_TARGET = {
   project: ["create"],
@@ -15,17 +16,17 @@ export function useProjectMoveTargets(
 ) {
   const { data: workspaces } = useGetWorkspaces();
   const moveCandidates = useMemo(
-    () => (workspaces ?? []).filter((item) => item.id !== project?.workspaceId),
+    () => (workspaces ?? []).filter((item: Workspace) => item.id !== project?.workspaceId),
     [workspaces, project?.workspaceId],
   );
   const moveCandidateIds = useMemo(
-    () => moveCandidates.map((item) => item.id),
+    () => moveCandidates.map((item: Workspace) => item.id),
     [moveCandidates],
   );
   const { allowed: canMoveInto, isError: moveTargetsFailed } =
     useWorkspacesWithPermission(moveCandidateIds, PROJECT_MOVE_TARGET);
   const moveTargets = useMemo(
-    () => moveCandidates.filter((item) => canMoveInto.has(item.id)),
+    () => moveCandidates.filter((item: Workspace) => canMoveInto.has(item.id)),
     [moveCandidates, canMoveInto],
   );
   const sourceWorkspaceIds = useMemo(

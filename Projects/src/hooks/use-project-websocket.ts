@@ -21,10 +21,12 @@ import {
   patchSyncTaskTitles,
 } from "@/lib/patch-sync-task-titles";
 
-export function getWsUrl(projectId: string) {
+export function getWsUrl(projectId: string, token = "") {
   const base = getApiUrl("ws");
   const wsBase = base.replace(/^http/, "ws");
-  return `${wsBase}/${encodeURIComponent(projectId)}?windowId=${encodeURIComponent(windowId)}`;
+  const params = new URLSearchParams({ windowId });
+  if (token) params.set("token", token);
+  return `${wsBase}/${encodeURIComponent(projectId)}?${params.toString()}`;
 }
 
 const MAX_RETRIES = 5;
@@ -154,10 +156,14 @@ export function useProjectWebSocket(projectId: string) {
       }
     }
 
-    function connect() {
+    async function connect() {
       if (disposed) return;
       retryTimeout = null;
-      const url = getWsUrl(projectId);
+      const token = authClient.getRealtimeToken
+        ? await authClient.getRealtimeToken().catch(() => "")
+        : "";
+      if (disposed) return;
+      const url = getWsUrl(projectId, token);
       const ws = new WebSocket(url);
       activeSocket = ws;
 
@@ -460,7 +466,7 @@ export function useProjectWebSocket(projectId: string) {
                               ...taskFields,
                               ...(!staleOwnCounts ? { subtaskCounts } : {}),
                               labels,
-                              externalLinks: externalLinks.map((link) => ({
+                              externalLinks: externalLinks.map((link: { metadata?: unknown }) => ({
                                 ...link,
                                 metadata:
                                   link.metadata &&

@@ -4,7 +4,14 @@ import { getApiUrl } from "./get-api-url";
 
 const endpoint = client["calendar-feed"].project[":projectId"];
 
-export async function getCalendarFeeds(projectId: string) {
+export type CalendarFeed = {
+  id: string;
+  token: string;
+  labelIds: string[];
+  timeZone: string;
+};
+
+export async function getCalendarFeeds(projectId: string): Promise<CalendarFeed[]> {
   const response = await endpoint.$get({ param: { projectId } });
   if (!response.ok) throw await HttpError.fromResponse(response);
   return response.json();

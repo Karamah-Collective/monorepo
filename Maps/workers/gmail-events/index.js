@@ -37,7 +37,13 @@ export class InboxRealtime extends DurableObject {
   }
 
   webSocketMessage(socket, message) {
-    if (String(message) === "ping") socket.send("pong");
+    if (String(message) === "ping") {
+      socket.send("pong");
+      return;
+    }
+    try {
+      if (JSON.parse(String(message))?.type === "ping") socket.send(JSON.stringify({ type: "pong" }));
+    } catch {}
   }
 
   async webSocketClose() {
@@ -57,6 +63,48 @@ export class InboxRealtime extends DurableObject {
 
     if (this.ctx.getWebSockets().length) await this.ctx.storage.setAlarm(Date.now() + ACTIVE_SYNC_INTERVAL_MS);
   }
+}
+
+// Project realtime uses the same lightweight fan-out behavior but must not
+// inherit InboxRealtime's Gmail sync alarm. A project board can create many
+// short-lived channels during a browser suite; scheduling a mailbox sync for
+// each of those channels eventually overwhelms the local Gmail worker.
+export class ProjectRealtime extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (request.method === "POST" && url.pathname === "/notify") {
+      const payload = await request.json().catch(() => null);
+      if (!payload) return new Response("Invalid event", { status: 400 });
+      const frame = JSON.stringify(payload);
+      for (const socket of this.ctx.getWebSockets()) {
+        try { socket.send(frame); } catch {}
+      }
+      return new Response("ok");
+    }
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") return new Response("WebSocket upgrade required.", { status: 426 });
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ connectedAt: Date.now() });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  webSocketMessage(socket, message) {
+    if (String(message) === "ping") {
+      socket.send("pong");
+      return;
+    }
+    try {
+      if (JSON.parse(String(message))?.type === "ping") socket.send(JSON.stringify({ type: "pong" }));
+    } catch {}
+  }
+
+  webSocketClose() {}
+  webSocketError() {}
 }
 
 async function notifyInbox(env, payload) {

@@ -100,4 +100,10 @@ describe("getWsUrl", () => {
       "ws://localhost:1337/api/ws/a%20b%2Fc%3Fd?windowId=test-window-id",
     );
   });
+
+  it("includes the Firebase token when one is available", () => {
+    expect(getWsUrl("project-123", "id-token&value")).toBe(
+      "ws://localhost:1337/api/ws/project-123?windowId=test-window-id&token=id-token%26value",
+    );
+  });
 });

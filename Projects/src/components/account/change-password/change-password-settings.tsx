@@ -13,7 +13,7 @@ export function ChangePasswordSettings() {
   const { data: accounts, isLoading, isError } = useListAccounts();
   const [open, setOpen] = useState(false);
   const hasPassword =
-    accounts?.some((account) => account.providerId === "credential") ?? false;
+    accounts?.some((account: { providerId?: string }) => account.providerId === "credential") ?? false;
 
   return (
     <SettingsSection title={t("settings:securityPage.sectionTitle")}>

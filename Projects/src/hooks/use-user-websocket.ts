@@ -10,10 +10,12 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { reconcileProjectAccess } from "@/lib/reconcile-project-access";
 
-export function getUserWsUrl() {
+export function getUserWsUrl(token = "") {
   const base = getApiUrl("ws");
   const wsBase = base.replace(/^http/, "ws");
-  return `${wsBase}/user?windowId=${encodeURIComponent(windowId)}`;
+  const params = new URLSearchParams({ windowId });
+  if (token) params.set("token", token);
+  return `${wsBase}/user?${params.toString()}`;
 }
 
 const MAX_RETRY_DELAY = 30_000;
@@ -74,10 +76,14 @@ export function useUserWebSocket() {
         .catch(() => {});
     }
 
-    function connect() {
+    async function connect() {
       if (disposed) return;
       retryTimeout = null;
-      const url = getUserWsUrl();
+      const token = authClient.getRealtimeToken
+        ? await authClient.getRealtimeToken().catch(() => "")
+        : "";
+      if (disposed) return;
+      const url = getUserWsUrl(token);
       const ws = new WebSocket(url);
       activeSocket = ws;
 

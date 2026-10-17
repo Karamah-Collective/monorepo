@@ -148,6 +148,7 @@ function TaskLabelsMenu({ task, workspaceId, onClose }: TaskLabelsMenuProps) {
       const created = await createLabel({
         name: newLabelName,
         color,
+        taskId: task.id,
         workspaceId,
       });
       await attachLabel({ labelId: created.id, taskId: task.id });

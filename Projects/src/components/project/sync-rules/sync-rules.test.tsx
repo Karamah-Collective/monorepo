@@ -53,7 +53,11 @@ vi.mock("@/fetchers/integration-sync/review-sync-resume", () => ({
 vi.mock("@/fetchers/integration-sync/resume-sync", () => ({
   default: mocks.resume,
 }));
-vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn() } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+  toastSubject: (value: string | null | undefined) =>
+    value?.trim() ? `"${value.trim()}"` : undefined,
+}));
 
 const param = { projectId: "project-1", provider: "gitea" as const };
 const saved: SyncPreview = {

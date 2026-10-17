@@ -54,6 +54,21 @@ async function waitUntilReady(port,child,label) {
   }
   throw new Error(`${label} did not become ready on port ${port}.`);
 }
+async function waitForProjectsRealtime(port) {
+  const deadline=Date.now()+30000;
+  while(Date.now()<deadline) {
+    try {
+      const response=await fetch(`http://127.0.0.1:${port}/api/ws/user`, { headers: { Origin:"http://127.0.0.1:5184" } });
+      // The route intentionally returns 426 without an upgrade. A 503 here
+      // means Pages started before the companion Durable Object worker was
+      // connected, which would make the first authenticated browser load
+      // fail its realtime handshake.
+      if(response.status!==503)return;
+    } catch {}
+    await delay(150);
+  }
+  throw new Error('Maps Projects realtime binding did not connect.');
+}
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
 try {
   const target=process.argv[2]||'all';
@@ -65,9 +80,12 @@ try {
     // up; this file is gitignored and is never used in production.
     try { await copyFile(mapsVars, gmailEventsVars); } catch {}
     try { await copyFile(mapsVars, adminIntegrationsVars); } catch {}
-    if(!await busy(8792)) { const child=launch(wrangler,['dev','workers/gmail-events/index.js','--config','workers/gmail-events/wrangler.toml','--port','8792','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8792,child,'Gmail events'); }
+    if(!await busy(8792)) { const child=launch(wrangler,['dev','workers/gmail-events/index.js','--config','workers/gmail-events/wrangler.toml','--name','manarah-gmail-events','--port','8792','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8792,child,'Gmail events'); }
     if(!await busy(8793)) { const child=launch(wrangler,['dev','workers/admin-integrations/index.js','--config','workers/admin-integrations/wrangler.toml','--port','8793','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8793,child,'Admin integrations'); }
-    if(!await busy(8788)) { console.log('Preparing the existing local Maps database…');await setupLocalDatabase();const pagesArgs=['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState,'--do','INBOX_REALTIME=InboxRealtime@manarah-gmail-events'];const child=launch(wrangler,pagesArgs,path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
+    // Keep an already-running local Maps worker from hiding pending Projects migrations.
+    console.log('Preparing the existing local Maps database…'); await setupLocalDatabase();
+    if(!await busy(8788)) { const pagesArgs=['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState,'--do','INBOX_REALTIME=InboxRealtime@manarah-gmail-events','--do','PROJECT_REALTIME=ProjectRealtime@manarah-gmail-events'];const child=launch(wrangler,pagesArgs,path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
+    await waitForProjectsRealtime(8788);
   }
   if(['all','admin','website'].includes(target) && !await busy(8789)) { const child=launch(wrangler,['pages','dev','.', '--port','8789','--ip','127.0.0.1','--persist-to',localState],path.join(root,'Website'));await waitUntilReady(8789,child,'Website'); }
   if(['all','admin','links'].includes(target) && !await busy(8790)) {

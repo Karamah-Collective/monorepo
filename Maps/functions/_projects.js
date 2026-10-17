@@ -11,11 +11,92 @@ export const PROJECT_PERMISSION_KEYS = [
   "can_edit_any_tasks", "can_assign_tasks", "can_comment", "can_relate", "can_attach",
   "can_manage_members", "can_manage_project",
 ];
+const PROJECT_CUSTOM_FIELD_TYPES = ["text", "number", "date", "select", "checkbox"];
 
 const safe = (value, max = 5000) => String(value ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
 const now = () => new Date().toISOString();
 const newId = (prefix) => `${prefix}_${crypto.randomUUID()}`;
 const json = (value, fallback = {}) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
+const bool = value => Boolean(Number(value));
+function validHttpUrl(value) {
+  try { const url = new URL(value); return url.protocol === "http:" || url.protocol === "https:"; } catch { return false; }
+}
+function normalizeProjectCustomFieldType(value) {
+  if (value === undefined || value === null || value === "") return "text";
+  const aliases = { dropdown: "select", multiselect: "select", boolean: "checkbox" };
+  const type = aliases[String(value)] || String(value);
+  return PROJECT_CUSTOM_FIELD_TYPES.includes(type) ? type : null;
+}
+function customFieldTypeForClient(row) {
+  if (row.field_type === "select") return Number(row.multiple) ? "multiselect" : "dropdown";
+  if (row.field_type === "checkbox") return "boolean";
+  return PROJECT_CUSTOM_FIELD_TYPES.includes(row.field_type) ? row.field_type : "text";
+}
+function customFieldFromRow(row) {
+  const type = customFieldTypeForClient(row);
+  return {
+    ...row,
+    id: row.id,
+    projectId: row.project_id,
+    type,
+    required: Boolean(Number(row.required || 0)),
+    defaultValue: row.default_value ?? null,
+    options: json(row.options_json, []),
+    position: Number(row.position || 0),
+    value: row.value_text ?? null,
+    fieldId: row.id,
+    fieldName: row.name,
+    fieldPosition: Number(row.position || 0),
+    fieldType: type,
+    fieldOptions: json(row.options_json, []),
+  };
+}
+function normalizeProjectCustomFieldValue(field, rawValue) {
+  const raw = rawValue === undefined || rawValue === null ? "" : String(rawValue);
+  if (!raw.trim()) return "";
+  const type = field.field_type;
+  if (type === "number") return Number.isFinite(Number(raw)) ? raw.trim() : null;
+  if (type === "date") return normalizeProjectDate(raw) ? raw.trim().slice(0, 10) : null;
+  if (type === "checkbox") return raw === "true" || raw === "false" ? raw : null;
+  if (type === "select") {
+    const options = json(field.options_json, []);
+    if (Number(field.multiple)) {
+      let values;
+      try { values = JSON.parse(raw); } catch { return null; }
+      if (!Array.isArray(values) || values.some(value => typeof value !== "string" || !options.includes(value))) return null;
+      return JSON.stringify([...new Set(values)]);
+    }
+    return options.includes(raw) ? raw : null;
+  }
+  return safe(raw, 2000);
+}
+function isDisallowedWebhookHost(hostname) {
+  const host = String(hostname || "").toLowerCase().replace(/\.$/, "");
+  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") || host.endsWith(".home.arpa") || host.endsWith(".lan")) return true;
+  if (host.includes(":")) return true;
+  const parts = host.split(".");
+  if (parts.length !== 4 || parts.some(part => !/^\d+$/.test(part))) return false;
+  const octets = parts.map(Number);
+  if (octets.some(part => part < 0 || part > 255)) return true;
+  const [first, second] = octets;
+  return first === 0 || first === 10 || first === 127 || first >= 224
+    || (first === 100 && second >= 64 && second <= 127)
+    || (first === 169 && second === 254)
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && second === 0)
+    || (first === 192 && second === 168)
+    || (first === 198 && (second === 18 || second === 19));
+}
+function base64(bytes) { return btoa(String.fromCharCode(...bytes)); }
+async function encryptNotificationSecret(env, value) {
+  const source = safe(env.PROJECT_NOTIFICATION_ENCRYPTION_KEY || env.PROJECT_WEBHOOK_ENCRYPTION_KEY || env.MCP_INTERNAL_SIGNING_KEY, 500);
+  if (!source) throw new Error("Notification secret encryption is not configured.");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  const key = await crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(value));
+  return `${base64(iv)}.${base64(new Uint8Array(encrypted))}`;
+}
 function displayNameFromEmail(email) {
   return String(email || "").split("@")[0].replace(/[._-]+/g, " ").trim().split(/\s+/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
 }
@@ -27,6 +108,38 @@ export function normalizeTaskStatus(value) {
   if (value === "planned") return "inbox";
   if (value === "archived") return "cancelled";
   return TASK_STATUSES.includes(value) ? value : null;
+}
+function normalizeProjectDate(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") return null;
+  const input = value.trim();
+  const datePart = /^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/.exec(input);
+  if (datePart) {
+    const calendar = new Date(Date.UTC(Number(datePart[1]), Number(datePart[2]) - 1, Number(datePart[3])));
+    if (calendar.getUTCFullYear() !== Number(datePart[1]) || calendar.getUTCMonth() !== Number(datePart[2]) - 1 || calendar.getUTCDate() !== Number(datePart[3])) return null;
+  }
+  const date = new Date(input);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+const PROJECT_POSITION_MAX = 1_000_000_000;
+function normalizeProjectPosition(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const position = Number(value);
+  return Number.isSafeInteger(position) && position >= 0 && position <= PROJECT_POSITION_MAX ? position : null;
+}
+function validateProjectDateRange(startAt, dueAt, label = "task") {
+  const start = normalizeProjectDate(startAt);
+  const due = normalizeProjectDate(dueAt);
+  const hasStart = startAt !== undefined && startAt !== null && String(startAt).trim() !== "";
+  const hasDue = dueAt !== undefined && dueAt !== null && String(dueAt).trim() !== "";
+  if ((hasStart && !start) || (hasDue && !due)) return { error: `Invalid ${label} date.`, status: 400 };
+  if (start && due && due < start) return { error: `The ${label} due date must be on or after its start date.`, status: 400 };
+  return { startAt: start, dueAt: due };
+}
+export function parseProjectTicket(value) {
+  const match = /^(.*)-(\d+)$/.exec(safe(value, 128));
+  if (!match || Number(match[2]) < 1) return null;
+  return { projectKey: match[1], taskNumber: Number(match[2]) };
 }
 const PROJECT_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const isAdmin = (access) => access?.permissions?.includes("*");
@@ -313,7 +426,7 @@ async function getWorkspaceAccess(db, workspaceId, actor) {
   try {
     const projectMembership = await db.prepare(`SELECT 1 FROM project_members m
       INNER JOIN projects p ON p.id=m.project_id
-      WHERE p.workspace_id=? AND lower(m.email)=lower(?) LIMIT 1`).bind(workspaceId, actorEmail(actor)).first();
+      WHERE p.workspace_id=? AND p.archived_at IS NULL AND lower(m.email)=lower(?) LIMIT 1`).bind(workspaceId, actorEmail(actor)).first();
     if (projectMembership) return { workspace, role: "viewer", permissions: workspaceRolePermissions("viewer"), owner: false, preset: true, projectScoped: true };
   } catch { /* Older local databases may not have the project tables yet. */ }
   // The original shared workspace remains visible to verified Karamah users.
@@ -480,13 +593,13 @@ async function createProjectInvitation(db, data, actor, env) {
   }
   const permissions = scope === "project" ? normalizeProjectPermissions(projectRole, data.permissions || {}) : {};
   const selectedProjectIds = scope === "workspace" && data.projectAccess === "selected"
-    ? (Array.isArray(data.projectIds) ? data.projectIds.map(projectId => safe(projectId, 180)).filter(Boolean) : [])
+    ? (Array.isArray(data.projectIds) ? [...new Set(data.projectIds.map(projectId => safe(projectId, 180)).filter(Boolean))] : [])
     : [];
   const projectRoles = {};
   const projectOverrides = [];
   for (const projectId of selectedProjectIds) {
     const selectedProject = await getProject(db, projectId);
-    if (!selectedProject || selectedProject.workspace_id !== workspace.id) continue;
+    if (!selectedProject || selectedProject.workspace_id !== workspace.id) return { error: "One or more selected projects are not in this workspace.", status: 400 };
     const requestedRole = data.projectRoles?.[projectId];
     projectRoles[projectId] = PROJECT_ROLES.includes(requestedRole)
       ? requestedRole
@@ -603,7 +716,7 @@ export async function updateProjectWorkspaceMember(db, data, actor, env) {
   if (role && !WORKSPACE_ROLES.includes(role) && !customRole) return { error: "Choose a valid workspace role." };
   if (role === "owner" && !allowed.owner) return { error: "Only the workspace owner can grant ownership.", status: 403 };
   const selectedProjectIds = data.projectAccess === "selected" && Array.isArray(data.projectIds)
-    ? data.projectIds.map((projectId) => safe(projectId, 180)).filter(Boolean)
+    ? [...new Set(data.projectIds.map((projectId) => safe(projectId, 180)).filter(Boolean))]
     : [];
   const projectRoles = data.projectRoles && typeof data.projectRoles === "object" ? data.projectRoles : {};
   if (!role && selectedProjectIds.length === 0) return { error: "Choose workspace access or at least one project." };
@@ -634,7 +747,7 @@ export async function updateProjectWorkspaceMember(db, data, actor, env) {
   if (selectedProjectIds.length) {
     for (const projectId of selectedProjectIds) {
       const project = await getProject(db, projectId);
-      if (!project || project.workspace_id !== data.workspaceId) continue;
+      if (!project || project.workspace_id !== data.workspaceId) return { error: "One or more selected projects are not in this workspace.", status: 400 };
       const requestedProjectRole = projectRoles[projectId];
       const projectRole = PROJECT_ROLES.includes(requestedProjectRole)
         ? requestedProjectRole
@@ -726,9 +839,10 @@ export async function getProjectAccess(db, projectId, actor, access) {
   const owner = actorEmail(actor) === actorEmail({ email: project.created_by_email }) || actorUid(actor) === safe(project.created_by_uid, 180);
   if (owner) return { project, role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all", owner: true };
   if (member?.role) {
-    const row = await getMemberPermission(db, projectId, actorEmail(actor));
-    const permissions = normalizeProjectPermissions(member.role, row);
-    return { project, role: member.role, permissions, taskVisibility: permissions.task_visibility, owner: false };
+    const role = PROJECT_ROLES.includes(member.role) ? member.role : "viewer";
+    const row = role === member.role ? await getMemberPermission(db, projectId, actorEmail(actor)) : null;
+    const permissions = normalizeProjectPermissions(role, row);
+    return { project, role, permissions, taskVisibility: permissions.task_visibility, owner: false };
   }
   const workspaceAccess = await getWorkspaceAccess(db, project.workspace_id, actor);
   if (workspaceAccess?.owner) {
@@ -872,6 +986,11 @@ export async function createProject(db, data, actor, access) {
   try {
     await db.prepare("INSERT INTO projects (id,workspace_id,name,key,description,visibility,created_by_uid,created_by_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(projectId, workspaceId, name, key, safe(data.description, 1000), data.visibility === "restricted" ? "restricted" : "workspace", actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
     for (const [index, [suffix, label, status]] of [["inbox","Inbox","inbox"],["progress","In progress","in_progress"],["blocked","Blocked","blocked"],["done","Done","completed"],["cancelled","Cancelled","cancelled"]].entries()) await db.prepare("INSERT INTO project_columns (id,project_id,name,status_category,position) VALUES (?,?,?,?,?)").bind(`${projectId}-${suffix}`, projectId, label, status, (index + 1) * 10).run();
+    // Project capabilities are evaluated from the workspace membership in the
+    // web client. A project creator must therefore also be a workspace member;
+    // preserve an existing owner/admin role and add a regular member only when
+    // the caller is not already enrolled in the workspace.
+    await db.prepare("INSERT OR IGNORE INTO project_workspace_members (workspace_id,user_uid,email,role,created_by_uid) VALUES (?,?,?,?,?)").bind(workspaceId, actorUid(actor), actorEmail(actor), "member", actorUid(actor)).run();
     await db.prepare("INSERT OR IGNORE INTO project_members (project_id,user_uid,email,role,created_by_uid) VALUES (?,?,?,?,?)").bind(projectId, actorUid(actor), actorEmail(actor), "project-admin", actorUid(actor)).run();
     return { success: true, project: projectFromRow(await getProject(db, projectId)), role: "project-admin", permissions: fullProjectPermissions(), taskVisibility: "all" };
   } catch (error) { return { error: String(error?.message || "Could not create project.") }; }
@@ -882,6 +1001,7 @@ export async function updateProject(db, data, actor, access) {
   if (data.expectedRevision == null || data.expectedRevision === "") return { error: "expectedRevision is required.", status: 428, conflict: projectFromRow(allowed.project) };
   if (Number(data.expectedRevision) !== Number(allowed.project.revision)) return { error: "Project changed. Refresh and try again.", status: 409, conflict: projectFromRow(allowed.project) };
   const name = data.name !== undefined ? safe(data.name, 160) : allowed.project.name;
+  if (!name) return { error: "A project name is required." };
   const description = data.description !== undefined ? safe(data.description, 1000) : allowed.project.description;
   const visibility = data.visibility === "restricted" ? "restricted" : data.visibility === "workspace" ? "workspace" : allowed.project.visibility;
   const archivedAt = data.archived ? (allowed.project.archived_at || now()) : data.archived === false ? null : allowed.project.archived_at;
@@ -918,12 +1038,37 @@ export async function getProjectTask(db, taskId, actor, access) {
     db.prepare("SELECT f.*,v.value_text FROM project_custom_fields f LEFT JOIN project_task_custom_values v ON v.field_id=f.id AND v.task_id=? WHERE f.project_id=? ORDER BY f.position,f.name").bind(taskId, task.project_id).all(),
   ]);
   const visibleRelations = await filterVisibleRelations(db, relations.results || [], allowed, actor);
-  return { task: taskFromRow(task), project: projectFromRow(allowed.project), role: allowed.role, permissions: allowed.permissions, comments: comments.results || [], labels: labels.results || [], relations: visibleRelations, links: links.results || [], events: events.results || [], customFields: (customFields.results || []).map(field => ({ ...field, options: json(field.options_json, []) })) };
+  return { task: taskFromRow(task), project: projectFromRow(allowed.project), role: allowed.role, permissions: allowed.permissions, comments: comments.results || [], labels: labels.results || [], relations: visibleRelations, links: links.results || [], events: events.results || [], customFields: (customFields.results || []).map(customFieldFromRow) };
+}
+export async function getProjectTaskByTicket(db, data, actor, access) {
+  const ticket = parseProjectTicket(data.ticketId);
+  const workspaceSlug = safe(data.workspaceSlug, 128).toLowerCase();
+  if (!ticket || !workspaceSlug) return { error: "Task not found.", status: 404 };
+  const result = await db.prepare(`SELECT t.*,p.workspace_id FROM project_tasks t JOIN projects p ON p.id=t.project_id WHERE lower(p.key)=lower(?) AND t.task_number=? AND p.archived_at IS NULL`).bind(ticket.projectKey, ticket.taskNumber).all();
+  const matches = [];
+  for (const row of result.results || []) {
+    const workspace = await getWorkspace(db, row.workspace_id);
+    if (workspaceFromRow(workspace)?.slug?.toLowerCase() !== workspaceSlug) continue;
+    const allowed = await requireProject(db, row.project_id, actor, access);
+    if (allowed.error || !canSeeTask(row, allowed, actor)) continue;
+    matches.push({ ...taskFromRow(row), workspaceId: row.workspace_id });
+  }
+  if (matches.length > 1) return { error: "This task link is ambiguous.", status: 409 };
+  if (!matches[0]) return { error: "Task not found.", status: 404 };
+  return { task: matches[0] };
 }
 export async function createProjectTask(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access, "contributor"); if (allowed.error) return allowed;
   if (!allowed.permissions.can_create_tasks && !(data.projectId === "project-admin-operations" && has(access, "operations.tasks.create", ["operations.tasks.write"]))) return { error: "You cannot create tasks." };
-  const requestedStatus = normalizeTaskStatus(data.statusCategory || data.status);
+  const requestedStatusValue = data.statusCategory ?? data.status;
+  const requestedStatus = requestedStatusValue === undefined ? null : normalizeTaskStatus(requestedStatusValue);
+  if (requestedStatusValue !== undefined && !requestedStatus) return { error: "Invalid task status.", status: 400 };
+  const requestedPriority = data.priority === undefined ? "normal" : normalizeTaskPriority(data.priority);
+  if (data.priority !== undefined && !requestedPriority) return { error: "Invalid task priority.", status: 400 };
+  const dates = validateProjectDateRange(data.startAt, data.dueAt);
+  if (dates.error) return dates;
+  const position = normalizeProjectPosition(data.position);
+  if (position === null) return { error: "Task position is invalid.", status: 400 };
   const column = data.columnId
     ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, data.projectId).first()
     : requestedStatus
@@ -938,9 +1083,19 @@ export async function createProjectTask(db, data, actor, access) {
   if (assigneeEmail && !isKaramahEmail(assigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
   const milestoneId = safe(data.milestoneId, 180) || null;
   if (milestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(milestoneId, data.projectId).first()) return { error: "The milestone does not belong to this project.", status: 400 };
+  const customValues = [];
+  for (const item of Array.isArray(data.customFields) ? data.customFields.slice(0, 100) : []) {
+    const field = await db.prepare("SELECT * FROM project_custom_fields WHERE id=? AND project_id=?").bind(item?.fieldId, data.projectId).first();
+    if (!field) return { error: "Custom field not found.", status: 404 };
+    const value = normalizeProjectCustomFieldValue(field, item?.value);
+    if (value === null) return { error: `Invalid value for custom field ${safe(field.name, 100)}.`, status: 400 };
+    if (Number(field.required) && !value) return { error: `A value is required for custom field ${safe(field.name, 100)}.`, status: 400 };
+    if (value) customValues.push({ fieldId: field.id, value });
+  }
   const id = newId("task"); const timestamp = now();
   await db.prepare(`INSERT INTO project_tasks (id,project_id,task_number,title,description,column_id,status_category,priority,assignee_uid,assignee_email,start_at,due_at,milestone_id,source_domain,source_type,source_id,source_action,dedupe_key,position,created_by_uid,created_by_email,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, normalizeTaskPriority(data.priority) || "normal", assigneeUid, assigneeEmail, data.startAt || null, data.dueAt || null, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, Number(data.position || 0), actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, data.projectId, await nextTaskNumber(db, data.projectId), title, safe(data.description, 10000), column.id, column.status_category, requestedPriority, assigneeUid, assigneeEmail, dates.startAt, dates.dueAt, milestoneId, safe(data.sourceDomain, 80), safe(data.sourceType, 120), safe(data.sourceId, 180), safe(data.sourceAction, 120), safe(data.dedupeKey, 300) || null, position, actorUid(actor), actorEmail(actor), timestamp, timestamp).run();
+  for (const item of customValues) await db.prepare("INSERT INTO project_task_custom_values (task_id,field_id,value_text,updated_by_uid,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(task_id,field_id) DO UPDATE SET value_text=excluded.value_text,updated_by_uid=excluded.updated_by_uid,updated_at=excluded.updated_at").bind(id, item.fieldId, item.value, actorUid(actor), timestamp).run();
   await event(db, id, "created", "", column.status_category, "", actor);
   return { success: true, task: taskFromRow(await getTask(db, id)) };
 }
@@ -951,33 +1106,61 @@ export async function updateProjectTask(db, data, actor, access) {
   if (data.expectedRevision == null || data.expectedRevision === "") return { error: "expectedRevision is required.", status: 428, conflict: taskFromRow(task) };
   if (Number(data.expectedRevision) !== Number(task.revision)) return { error: "Task changed. Refresh and try again.", status: 409, conflict: taskFromRow(task) };
   const isOwn = task.assignee_uid === actorUid(actor) || task.assignee_email === actorEmail(actor) || task.created_by_uid === actorUid(actor) || task.created_by_email === actorEmail(actor);
-  const isAssignmentOnly = Object.keys(data).every(key => ["id", "expectedRevision", "assigneeUid", "assigneeEmail", "statusCategory", "status", "note"].includes(key));
+  const isAssignmentOnly = Object.keys(data).every(key => ["id", "expectedRevision", "assigneeUid", "assigneeEmail"].includes(key))
+    && (data.assigneeUid !== undefined || data.assigneeEmail !== undefined);
   const isSelfAssignment = isAssignmentOnly && taskAssignmentMatchesActor(data, actor);
   const canEdit = allowed.permissions.can_edit_any_tasks || (allowed.permissions.can_edit_own_tasks && (isOwn || isSelfAssignment)) || (allowed.permissions.can_assign_tasks && isAssignmentOnly);
   if (!canEdit) return { error: "You do not have write access to this task.", status: 403 };
+  const requestedProjectId = data.projectId === undefined ? task.project_id : safe(data.projectId, 180) || task.project_id;
+  const moving = requestedProjectId && requestedProjectId !== task.project_id;
+  const destination = moving ? await requireProject(db, requestedProjectId, actor, access, "contributor") : allowed;
+  if (destination.error) return destination;
   const assignmentChanged = data.assigneeUid !== undefined || data.assigneeEmail !== undefined;
   const nextAssigneeUid = data.assigneeUid !== undefined ? safe(data.assigneeUid, 180) : task.assignee_uid;
   const nextAssigneeEmail = assignmentChanged
-    ? await assigneeEmailFor(db, task.project_id, nextAssigneeUid, data.assigneeEmail)
+    ? await assigneeEmailFor(db, requestedProjectId, nextAssigneeUid, data.assigneeEmail)
     : task.assignee_email;
   if (nextAssigneeEmail && !isKaramahEmail(nextAssigneeEmail)) return { error: "Tasks can only be assigned to Karamah members.", status: 400 };
-  if (data.milestoneId !== undefined) {
-    const milestoneId = safe(data.milestoneId, 180);
-    if (milestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(milestoneId, task.project_id).first()) return { error: "The milestone does not belong to this project.", status: 400 };
-  }
-  const requestedStatus = normalizeTaskStatus(data.statusCategory || data.status);
+  const nextMilestoneId = data.milestoneId !== undefined ? safe(data.milestoneId, 180) || null : moving ? null : task.milestone_id;
+  if (nextMilestoneId && !await db.prepare("SELECT id FROM project_milestones WHERE id=? AND project_id=?").bind(nextMilestoneId, requestedProjectId).first()) return { error: "The milestone does not belong to this project.", status: 400 };
+  const requestedStatusValue = data.statusCategory ?? data.status;
+  const requestedStatus = requestedStatusValue === undefined ? null : normalizeTaskStatus(requestedStatusValue);
+  if (requestedStatusValue !== undefined && !requestedStatus) return { error: "Invalid task status.", status: 400 };
+  const priority = data.priority === undefined ? task.priority : normalizeTaskPriority(data.priority);
+  if (data.priority !== undefined && !priority) return { error: "Invalid task priority.", status: 400 };
+  const datesChanged = data.startAt !== undefined || data.dueAt !== undefined;
+  const dates = datesChanged
+    ? validateProjectDateRange(data.startAt !== undefined ? data.startAt : task.start_at, data.dueAt !== undefined ? data.dueAt : task.due_at)
+    : { startAt: task.start_at || null, dueAt: task.due_at || null };
+  if (dates.error) return dates;
+  if (data.title !== undefined && !safe(data.title, 240)) return { error: "A task title is required." };
+  const position = normalizeProjectPosition(data.position, task.position == null ? 0 : Number(task.position));
+  if (position === null) return { error: "Task position is invalid.", status: 400 };
   const column = data.columnId
-    ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, task.project_id).first()
+    ? await db.prepare("SELECT * FROM project_columns WHERE id=? AND project_id=?").bind(data.columnId, requestedProjectId).first()
     : requestedStatus
-      ? await db.prepare("SELECT * FROM project_columns WHERE project_id=? AND status_category=? ORDER BY position LIMIT 1").bind(task.project_id, requestedStatus).first()
-      : null;
+      ? await db.prepare("SELECT * FROM project_columns WHERE project_id=? AND status_category=? ORDER BY position LIMIT 1").bind(requestedProjectId, requestedStatus).first()
+      : moving
+        ? await db.prepare("SELECT * FROM project_columns WHERE project_id=? ORDER BY position LIMIT 1").bind(requestedProjectId).first()
+        : null;
+  if (moving && !column) return { error: "A valid destination project column is required.", status: 400 };
+  if (data.columnId && !column) return { error: "The column does not belong to this project.", status: 400 };
   const status = column?.status_category || requestedStatus || task.status_category;
-  const priority = data.priority === undefined ? task.priority : (normalizeTaskPriority(data.priority) || task.priority);
-  const values = [data.title !== undefined ? safe(data.title, 240) : task.title, data.description !== undefined ? safe(data.description, 10000) : task.description, column?.id || task.column_id, status, priority, nextAssigneeUid, nextAssigneeEmail, data.startAt !== undefined ? data.startAt || null : task.start_at, data.dueAt !== undefined ? data.dueAt || null : task.due_at, data.milestoneId !== undefined ? safe(data.milestoneId, 180) || null : task.milestone_id, data.position !== undefined ? Number(data.position) : Number(task.position || 0), status === "completed" ? (task.completed_at || now()) : null, Number(task.revision || 1) + 1, now(), task.id];
-  await db.prepare("UPDATE project_tasks SET title=?,description=?,column_id=?,status_category=?,priority=?,assignee_uid=?,assignee_email=?,start_at=?,due_at=?,milestone_id=?,position=?,completed_at=?,revision=?,updated_at=? WHERE id=?").bind(...values).run();
+  const values = [requestedProjectId, moving ? await nextTaskNumber(db, requestedProjectId) : task.task_number, data.title !== undefined ? safe(data.title, 240) : task.title, data.description !== undefined ? safe(data.description, 10000) : task.description, column?.id || task.column_id, status, priority, nextAssigneeUid, nextAssigneeEmail, data.startAt !== undefined ? dates.startAt : task.start_at, data.dueAt !== undefined ? dates.dueAt : task.due_at, nextMilestoneId, position, status === "completed" ? (task.completed_at || now()) : null, Number(task.revision || 1) + 1, now(), task.id];
+  await db.prepare("UPDATE project_tasks SET project_id=?,task_number=?,title=?,description=?,column_id=?,status_category=?,priority=?,assignee_uid=?,assignee_email=?,start_at=?,due_at=?,milestone_id=?,position=?,completed_at=?,revision=?,updated_at=? WHERE id=?").bind(...values).run();
+  if (moving) {
+    const labels = await db.prepare("SELECT l.name FROM project_labels l JOIN project_task_labels tl ON tl.label_id=l.id WHERE tl.task_id=?").bind(task.id).all();
+    await db.prepare("DELETE FROM project_task_labels WHERE task_id=?").bind(task.id).run();
+    for (const label of labels.results || []) {
+      const destinationLabel = await db.prepare("SELECT id FROM project_labels WHERE project_id=? AND lower(name)=lower(?)").bind(requestedProjectId, label.name).first();
+      if (destinationLabel) await db.prepare("INSERT OR IGNORE INTO project_task_labels (task_id,label_id) VALUES (?,?)").bind(task.id, destinationLabel.id).run();
+    }
+    await db.prepare("DELETE FROM project_task_custom_values WHERE task_id=? AND field_id NOT IN (SELECT id FROM project_custom_fields WHERE project_id=? )").bind(task.id, requestedProjectId).run();
+  }
   if (status !== task.status_category) await event(db, task.id, "status", task.status_category, status, data.note, actor);
+  if (moving) await event(db, task.id, "project", task.project_id, requestedProjectId, data.note, actor);
   if (priority !== task.priority) await event(db, task.id, "priority", task.priority, priority, data.note, actor);
-  if ((values[6] || "") !== (task.assignee_email || "")) await notifyTask(db, { ...task, assignee_email: values[6] }, "assignment", "Task assigned", task.title, actor);
+  if ((values[8] || "") !== (task.assignee_email || "")) await notifyTask(db, { ...task, assignee_email: values[8], project_id: requestedProjectId }, "assignment", "Task assigned", task.title, actor);
   if (status === "completed" && task.status_category !== "completed") await notifyTask(db, task, "completed", "Task completed", task.title, actor);
   return { success: true, task: taskFromRow(await getTask(db, task.id)) };
 }
@@ -993,6 +1176,8 @@ export async function deleteProjectTask(db, data, actor, access) {
 }
 export async function bulkUpdateProjectTasks(db, data, actor, access) {
   const requestId = safe(data.idempotencyKey || data.requestId, 220); if (!requestId) return { error: "idempotencyKey is required." };
+  if (!Array.isArray(data.taskIds) || data.taskIds.length === 0) return { error: "At least one task is required.", status: 400 };
+  if (data.taskIds.length > 100) return { error: "A bulk request cannot include more than 100 tasks.", status: 400 };
   const prior = await db.prepare("SELECT result_json FROM project_task_idempotency WHERE request_id=? AND actor_uid=?").bind(requestId, actorUid(actor)).first(); if (prior) return json(prior.result_json, { success: false });
   const changes = data.changes && typeof data.changes === "object" ? data.changes : {};
   const ids = [...new Set((Array.isArray(data.taskIds) ? data.taskIds : []).map(item => safe(item, 220)).filter(Boolean))].slice(0, 100); const results = [];
@@ -1009,7 +1194,7 @@ export async function addProjectTaskComment(db, data, actor, access) {
   const task = await getTask(db, data.taskId); if (!task) return { error: "Task not found.", status: 404 };
   const allowed = await requireProject(db, task.project_id, actor, access, "contributor"); if (allowed.error) return allowed;
   if (!canSeeTask(task, allowed, actor) || !allowed.permissions.can_comment) return { error: "You cannot comment on this task.", status: 403 };
-  const body = safe(data.body, 5000); if (!body) return { error: "Comment text is required." };
+  const body = safe(data.body ?? data.comment, 5000); if (!body) return { error: "Comment text is required." };
   const comment = { id: newId("comment"), taskId: task.id, body, authorUid: actorUid(actor), authorEmail: actorEmail(actor), createdAt: now() };
   await db.prepare("INSERT INTO project_task_comments (id,task_id,body,author_uid,author_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(comment.id, task.id, body, comment.authorUid, comment.authorEmail, comment.createdAt, comment.createdAt).run();
   await event(db, task.id, "comment", "", "", body.slice(0, 120), actor); await notifyTask(db, task, "comment", "New task comment", body, actor); return { success: true, comment };
@@ -1041,14 +1226,18 @@ export async function deleteProjectTaskComment(db, data, actor, access) {
   return { success: true };
 }
 export async function listProjectMilestones(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed; const result = await db.prepare("SELECT * FROM project_milestones WHERE project_id=? ORDER BY due_at IS NULL,due_at,name").bind(data.projectId).all(); return { milestones: result.results || [] }; }
-export async function createProjectMilestone(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed; const milestone = { id: newId("milestone"), projectId: data.projectId, name: safe(data.name, 160), description: safe(data.description, 1000), startAt: data.startAt || null, dueAt: data.dueAt || null, status: "planned" }; if (!milestone.name) return { error: "Milestone name is required." }; await db.prepare("INSERT INTO project_milestones (id,project_id,name,description,start_at,due_at,created_by_uid) VALUES (?,?,?,?,?,?,?)").bind(milestone.id,milestone.projectId,milestone.name,milestone.description,milestone.startAt,milestone.dueAt,actorUid(actor)).run(); return { success: true, milestone }; }
+export async function createProjectMilestone(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed; const dates = validateProjectDateRange(data.startAt, data.dueAt, "milestone"); if (dates.error) return dates; const milestone = { id: newId("milestone"), projectId: data.projectId, name: safe(data.name, 160), description: safe(data.description, 1000), startAt: dates.startAt, dueAt: dates.dueAt, status: "planned" }; if (!milestone.name) return { error: "Milestone name is required." }; await db.prepare("INSERT INTO project_milestones (id,project_id,name,description,start_at,due_at,created_by_uid) VALUES (?,?,?,?,?,?,?)").bind(milestone.id,milestone.projectId,milestone.name,milestone.description,milestone.startAt,milestone.dueAt,actorUid(actor)).run(); return { success: true, milestone }; }
 export async function updateProjectMilestone(db, data, actor, access) {
   const row = await db.prepare("SELECT * FROM project_milestones WHERE id=?").bind(safe(data.id, 180)).first(); if (!row) return { error: "Milestone not found.", status: 404 };
   const allowed = await requireProject(db, row.project_id, actor, access, "manager"); if (allowed.error) return allowed;
   if (data.expectedRevision == null || data.expectedRevision === "") return { error: "expectedRevision is required.", status: 428, conflict: row };
   if (Number(data.expectedRevision) !== Number(row.revision || 1)) return { error: "Milestone changed. Refresh and try again.", status: 409, conflict: row };
+  const datesChanged = data.startAt !== undefined || data.dueAt !== undefined;
+  const dates = datesChanged ? validateProjectDateRange(data.startAt !== undefined ? data.startAt : row.start_at, data.dueAt !== undefined ? data.dueAt : row.due_at, "milestone") : { startAt: row.start_at || null, dueAt: row.due_at || null };
+  if (dates.error) return dates;
+  if (data.name !== undefined && !safe(data.name, 160)) return { error: "Milestone name is required." };
   const status = ["planned", "active", "completed", "cancelled"].includes(data.status) ? data.status : row.status;
-  await db.prepare("UPDATE project_milestones SET name=?,description=?,start_at=?,due_at=?,status=?,revision=revision+1,updated_at=? WHERE id=?").bind(data.name !== undefined ? safe(data.name, 160) : row.name, data.description !== undefined ? safe(data.description, 1000) : row.description, data.startAt !== undefined ? data.startAt || null : row.start_at, data.dueAt !== undefined ? data.dueAt || null : row.due_at, status, now(), row.id).run();
+  await db.prepare("UPDATE project_milestones SET name=?,description=?,start_at=?,due_at=?,status=?,revision=revision+1,updated_at=? WHERE id=?").bind(data.name !== undefined ? safe(data.name, 160) : row.name, data.description !== undefined ? safe(data.description, 1000) : row.description, data.startAt !== undefined ? dates.startAt : row.start_at, data.dueAt !== undefined ? dates.dueAt : row.due_at, status, now(), row.id).run();
   return { success: true, milestone: await db.prepare("SELECT * FROM project_milestones WHERE id=?").bind(row.id).first() };
 }
 export async function deleteProjectMilestone(db, data, actor, access) {
@@ -1115,8 +1304,8 @@ export async function removeProjectMember(db, data, actor, access) {
   return { success: true };
 }
 export async function listProjectColumns(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed; const result = await db.prepare("SELECT * FROM project_columns WHERE project_id=? ORDER BY position,id").bind(data.projectId).all(); return { columns: (result.results || []).map(columnFromRow) }; }
-export async function createProjectColumn(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed; const name = safe(data.name, 120); if (!name) return { error: "Column name is required." }; const column = { id: newId("column"), projectId: data.projectId, name, statusCategory: TASK_STATUSES.includes(data.statusCategory) ? data.statusCategory : "inbox", position: Number(data.position || 0) }; await db.prepare("INSERT INTO project_columns (id,project_id,name,status_category,position) VALUES (?,?,?,?,?)").bind(column.id,column.projectId,column.name,column.statusCategory,column.position).run(); return { success: true, column }; }
-export async function updateProjectColumn(db, data, actor, access) { const column = await db.prepare("SELECT * FROM project_columns WHERE id=?").bind(safe(data.id,180)).first(); if (!column) return { error: "Column not found.", status: 404 }; const allowed = await requireProject(db, column.project_id, actor, access, "manager"); if (allowed.error) return allowed; await db.prepare("UPDATE project_columns SET name=?,status_category=?,position=?,updated_at=datetime('now') WHERE id=?").bind(data.name !== undefined ? safe(data.name,120) : column.name, TASK_STATUSES.includes(data.statusCategory) ? data.statusCategory : column.status_category, data.position !== undefined ? Number(data.position) : column.position, column.id).run(); return { success: true, column: columnFromRow(await db.prepare("SELECT * FROM project_columns WHERE id=?").bind(column.id).first()) }; }
+export async function createProjectColumn(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed; const name = safe(data.name, 120); if (!name) return { error: "Column name is required." }; if (data.statusCategory !== undefined && !TASK_STATUSES.includes(data.statusCategory)) return { error: "Invalid column status category.", status: 400 }; const position = normalizeProjectPosition(data.position); if (position === null) return { error: "Column position is invalid.", status: 400 }; const column = { id: newId("column"), projectId: data.projectId, name, statusCategory: data.statusCategory === undefined ? "inbox" : data.statusCategory, position }; await db.prepare("INSERT INTO project_columns (id,project_id,name,status_category,position) VALUES (?,?,?,?,?)").bind(column.id,column.projectId,column.name,column.statusCategory,column.position).run(); return { success: true, column }; }
+export async function updateProjectColumn(db, data, actor, access) { const column = await db.prepare("SELECT * FROM project_columns WHERE id=?").bind(safe(data.id,180)).first(); if (!column) return { error: "Column not found.", status: 404 }; const allowed = await requireProject(db, column.project_id, actor, access, "manager"); if (allowed.error) return allowed; const name = data.name !== undefined ? safe(data.name,120) : column.name; if (!name) return { error: "Column name is required." }; if (data.statusCategory !== undefined && !TASK_STATUSES.includes(data.statusCategory)) return { error: "Invalid column status category.", status: 400 }; const position = normalizeProjectPosition(data.position, Number(column.position || 0)); if (position === null) return { error: "Column position is invalid.", status: 400 }; await db.prepare("UPDATE project_columns SET name=?,status_category=?,position=?,updated_at=datetime('now') WHERE id=?").bind(name, data.statusCategory === undefined ? column.status_category : data.statusCategory, position, column.id).run(); return { success: true, column: columnFromRow(await db.prepare("SELECT * FROM project_columns WHERE id=?").bind(column.id).first()) }; }
 export async function deleteProjectColumn(db, data, actor, access) {
   const column = await db.prepare("SELECT * FROM project_columns WHERE id=?").bind(safe(data.id, 180)).first();
   if (!column) return { error: "Column not found.", status: 404 };
@@ -1128,7 +1317,20 @@ export async function deleteProjectColumn(db, data, actor, access) {
   return { success: true };
 }
 export async function listProjectRelations(db, data, actor, access) { const task = await getTask(db, data.taskId); if (!task) return { error: "Task not found.", status: 404 }; const allowed = await requireProject(db, task.project_id, actor, access); if (allowed.error) return allowed; if (!canSeeTask(task, allowed, actor)) return { error: "You do not have access to this task.", status: 403 }; const result = await db.prepare("SELECT * FROM project_task_relations WHERE task_id=? OR related_task_id=? ORDER BY created_at").bind(task.id, task.id).all(); return { relations: await filterVisibleRelations(db, result.results || [], allowed, actor) }; }
-export async function createProjectRelation(db, data, actor, access) { const task = await getTask(db, data.taskId); const related = await getTask(db, data.relatedTaskId); if (!task || !related || task.project_id !== related.project_id) return { error: "Both tasks must exist in the same project." }; const allowed = await requireProject(db, task.project_id, actor, access, "contributor"); if (allowed.error) return allowed; if (!allowed.permissions.can_relate || !canSeeTask(task, allowed, actor) || !canSeeTask(related, allowed, actor)) return { error: "You cannot relate these tasks.", status: 403 }; const relation = ["blocks","blocked_by","relates_to","subtask"].includes(data.relationType) ? data.relationType : "relates_to"; if (task.id === related.id) return { error: "A task cannot relate to itself." }; await db.prepare("INSERT OR IGNORE INTO project_task_relations (task_id,related_task_id,relation_type,created_by_uid) VALUES (?,?,?,?)").bind(task.id, related.id, relation, actorUid(actor)).run(); return { success: true, relation: { taskId: task.id, relatedTaskId: related.id, relationType: relation } }; }
+export async function createProjectRelation(db, data, actor, access) {
+  const task = await getTask(db, data.taskId);
+  if (!task) return { error: "Both tasks must exist in the same project.", status: 404 };
+  const allowed = await requireProject(db, task.project_id, actor, access, "contributor");
+  if (allowed.error) return allowed;
+  if (!allowed.permissions.can_relate || !canSeeTask(task, allowed, actor)) return { error: "You cannot relate these tasks.", status: 403 };
+  const related = await getTask(db, data.relatedTaskId);
+  if (!related || related.project_id !== task.project_id || !canSeeTask(related, allowed, actor)) return { error: "Both tasks must exist in the same project.", status: 404 };
+  if (data.relationType !== undefined && !["blocks", "blocked_by", "relates_to", "subtask"].includes(data.relationType)) return { error: "Invalid task relation type.", status: 400 };
+  const relation = data.relationType === undefined ? "relates_to" : data.relationType;
+  if (task.id === related.id) return { error: "A task cannot relate to itself." };
+  await db.prepare("INSERT OR IGNORE INTO project_task_relations (task_id,related_task_id,relation_type,created_by_uid) VALUES (?,?,?,?)").bind(task.id, related.id, relation, actorUid(actor)).run();
+  return { success: true, relation: { taskId: task.id, relatedTaskId: related.id, relationType: relation } };
+}
 export async function deleteProjectRelation(db, data, actor, access) {
   const task = await getTask(db, data.taskId); if (!task) return { error: "Task not found.", status: 404 };
   const related = await getTask(db, data.relatedTaskId);
@@ -1188,17 +1390,40 @@ export async function deleteProjectTaskLink(db, data, actor, access) {
   return { success: true };
 }
 export async function listProjectLabels(db, data, actor, access) { const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed; const result = await db.prepare("SELECT * FROM project_labels WHERE project_id=? ORDER BY name").bind(data.projectId).all(); return { labels: result.results || [] }; }
+async function resolveProjectLabelId(db, data, actor, access) {
+  let projectId = safe(data.projectId, 180);
+  if (!projectId && data.id) {
+    const label = await db.prepare("SELECT project_id FROM project_labels WHERE id=?").bind(safe(data.id, 180)).first();
+    projectId = safe(label?.project_id, 180);
+  }
+  if (!projectId && data.taskId) {
+    const task = await getTask(db, data.taskId);
+    projectId = safe(task?.project_id, 180);
+  }
+  if (!projectId && data.workspaceId) {
+    const projects = await db.prepare("SELECT id FROM projects WHERE workspace_id=? AND archived_at IS NULL ORDER BY created_at,id").bind(safe(data.workspaceId, 180)).all();
+    for (const project of projects.results || []) {
+      const allowed = await requireProject(db, project.id, actor, access, "manager");
+      if (!allowed.error) return project.id;
+    }
+  }
+  return projectId || null;
+}
 export async function saveProjectLabel(db, data, actor, access) {
-  const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed;
-  const name = safe(data.name, 80); if (!name) return { error: "A label name is required." }; const existing = await db.prepare("SELECT id FROM project_labels WHERE project_id=? AND lower(name)=lower(?)").bind(data.projectId, name).first(); const requestedId = safe(data.id, 180); if (existing && requestedId && existing.id !== requestedId) return { error: "A label with this name already exists." }; const id = requestedId || existing?.id || newId("label");
-  await db.prepare("INSERT INTO project_labels (id,project_id,name,color) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,color=excluded.color").bind(id, data.projectId, name, safe(data.color || "#2b745c", 20)).run(); return { success: true, label: await db.prepare("SELECT * FROM project_labels WHERE id=?").bind(id).first() };
+  const projectId = await resolveProjectLabelId(db, data, actor, access);
+  if (!projectId) return { error: "You do not have access to create labels in this workspace.", status: 403 };
+  const allowed = await requireProject(db, projectId, actor, access, "manager"); if (allowed.error) return allowed;
+  const name = safe(data.name, 80); if (!name) return { error: "A label name is required." }; const existing = await db.prepare("SELECT id FROM project_labels WHERE project_id=? AND lower(name)=lower(?)").bind(projectId, name).first(); const requestedId = safe(data.id, 180); if (existing && requestedId && existing.id !== requestedId) return { error: "A label with this name already exists." }; const id = requestedId || existing?.id || newId("label");
+  await db.prepare("INSERT INTO project_labels (id,project_id,name,color) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,color=excluded.color").bind(id, projectId, name, safe(data.color || "#2b745c", 20)).run(); return { success: true, label: await db.prepare("SELECT * FROM project_labels WHERE id=?").bind(id).first() };
 }
 export async function detachProjectLabel(db, data, actor, access) {
   const task = await getTask(db, data.taskId); if (!task) return { error: "Task not found.", status: 404 }; const allowed = await projectTaskAccess(db, task.id, actor, access, "contributor"); if (allowed.error) return allowed; if (!allowed.permissions.can_edit_own_tasks && !allowed.permissions.can_edit_any_tasks) return { error: "You cannot edit labels on this task.", status: 403 };
   await db.prepare("DELETE FROM project_task_labels WHERE task_id=? AND label_id=?").bind(task.id, safe(data.labelId, 180)).run(); return { success: true };
 }
 export async function deleteProjectLabel(db, data, actor, access) {
-  const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed; const label = await db.prepare("SELECT id FROM project_labels WHERE id=? AND project_id=?").bind(safe(data.id, 180), data.projectId).first(); if (!label) return { error: "Label not found.", status: 404 }; await db.prepare("DELETE FROM project_labels WHERE id=?").bind(label.id).run(); return { success: true };
+  const projectId = await resolveProjectLabelId(db, data, actor, access);
+  if (!projectId) return { error: "Label not found.", status: 404 };
+  const allowed = await requireProject(db, projectId, actor, access, "manager"); if (allowed.error) return allowed; const label = await db.prepare("SELECT id FROM project_labels WHERE id=? AND project_id=?").bind(safe(data.id, 180), projectId).first(); if (!label) return { error: "Label not found.", status: 404 }; await db.prepare("DELETE FROM project_labels WHERE id=?").bind(label.id).run(); return { success: true };
 }
 export async function attachProjectLabel(db, data, actor, access) { const task = await getTask(db, data.taskId); if (!task) return { error: "Task not found.", status: 404 }; const allowed = await requireProject(db, task.project_id, actor, access, "contributor"); if (allowed.error) return allowed; if (!allowed.permissions.can_edit_own_tasks || !canSeeTask(task, allowed, actor)) return { error: "You cannot edit labels on this task.", status: 403 }; let label = data.labelId ? await db.prepare("SELECT * FROM project_labels WHERE id=? AND project_id=?").bind(data.labelId, task.project_id).first() : null; if (!label && data.name) { const labelId = newId("label"); await db.prepare("INSERT INTO project_labels (id,project_id,name,color) VALUES (?,?,?,?) ON CONFLICT(project_id,name) DO UPDATE SET color=excluded.color").bind(labelId, task.project_id, safe(data.name,80), safe(data.color || "#2b745c",20)).run(); label = await db.prepare("SELECT * FROM project_labels WHERE project_id=? AND lower(name)=lower(?)").bind(task.project_id, safe(data.name,80)).first(); } if (!label) return { error: "Label not found." }; await db.prepare("INSERT OR IGNORE INTO project_task_labels (task_id,label_id) VALUES (?,?)").bind(task.id,label.id).run(); return { success: true, label }; }
 
@@ -1240,7 +1465,9 @@ export async function listProjectWebhooks(db, data, actor, access) {
 }
 export async function saveProjectWebhook(db, data, actor, access, keyMaterial) {
   const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed;
-  let url; try { url = new URL(String(data.url || "")); } catch { return { error: "Webhook URL is invalid." }; } if (!["https:", "http:"].includes(url.protocol)) return { error: "Webhook URL must use HTTP or HTTPS." };
+  let url; try { url = new URL(String(data.url || "")); } catch { return { error: "Webhook URL is invalid.", status: 400 }; }
+  if (!["https:", "http:"].includes(url.protocol)) return { error: "Webhook URL must use HTTP or HTTPS.", status: 400 };
+  if (url.username || url.password || isDisallowedWebhookHost(url.hostname)) return { error: "Webhook URL targets a disallowed host.", status: 400 };
   const id = safe(data.id, 180) || newId("webhook"); const current = data.id ? await db.prepare("SELECT * FROM project_webhooks WHERE id=? AND project_id=?").bind(id, data.projectId).first() : null; if (data.secret && !keyMaterial) return { error: "Webhook encryption is not configured." }; const secretCiphertext = data.secret ? await encryptProjectWebhookSecret(safe(data.secret, 500), keyMaterial) : current?.secret_ciphertext || ""; const eventTypes = webhookEventList(data.eventTypes || current?.event_types_json || ["task.created", "task.updated", "task.completed"]);
   await db.prepare("INSERT INTO project_webhooks (id,project_id,url,secret_ciphertext,event_types_json,active,created_by_uid,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET url=excluded.url,secret_ciphertext=excluded.secret_ciphertext,event_types_json=excluded.event_types_json,active=excluded.active,updated_at=datetime('now')").bind(id, data.projectId, url.toString(), secretCiphertext, JSON.stringify(eventTypes), data.active === false ? 0 : 1, actorUid(actor)).run(); return { success: true, webhook: webhookFromRow(await db.prepare("SELECT * FROM project_webhooks WHERE id=?").bind(id).first()) };
 }
@@ -1296,7 +1523,8 @@ export async function saveProjectSavedView(db, data, actor, access) {
   const id = safe(data.id, 180) || newId("view");
   await db.prepare("INSERT INTO project_saved_views (id,project_id,owner_uid,name,view_type,filter_json,sort_json,shared,updated_at) VALUES (?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(project_id,owner_uid,name) DO UPDATE SET view_type=excluded.view_type,filter_json=excluded.filter_json,sort_json=excluded.sort_json,shared=excluded.shared,updated_at=datetime('now')")
     .bind(id, data.projectId, actorUid(actor), name, ["board", "list", "calendar", "timeline", "backlog"].includes(data.viewType) ? data.viewType : "board", JSON.stringify(data.filters || {}), JSON.stringify(data.sort || {}), data.shared ? 1 : 0).run();
-  return { success: true, view: { id, projectId: data.projectId, name, viewType: data.viewType || "board", filters: data.filters || {}, sort: data.sort || {}, shared: !!data.shared } };
+  const viewType = ["board", "list", "calendar", "timeline", "backlog"].includes(data.viewType) ? data.viewType : "board";
+  return { success: true, view: { id, projectId: data.projectId, name, viewType, filters: data.filters || {}, sort: data.sort || {}, shared: !!data.shared } };
 }
 export async function deleteProjectSavedView(db, data, actor, access) {
   const view = await db.prepare("SELECT * FROM project_saved_views WHERE id=?").bind(safe(data.id, 180)).first(); if (!view) return { error: "View not found.", status: 404 };
@@ -1325,9 +1553,14 @@ export async function saveProjectTimeEntry(db, data, actor, access) {
   const allowed = await projectTaskAccess(db, data.taskId, actor, access, "contributor"); if (allowed.error) return allowed;
   if (!allowed.permissions.can_edit_own_tasks) return { error: "You cannot log time on this task.", status: 403 };
   const id = safe(data.id, 180) || newId("time");
-  const start = data.startedAt || now();
-  const end = data.endedAt || null;
-  const duration = Number.isFinite(Number(data.durationMinutes)) ? Math.max(0, Math.round(Number(data.durationMinutes))) : end ? Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)) : 0;
+  const start = data.startedAt === undefined ? now() : normalizeProjectDate(data.startedAt);
+  const end = data.endedAt === undefined || data.endedAt === null || data.endedAt === "" ? null : normalizeProjectDate(data.endedAt);
+  if (!start || (data.endedAt !== undefined && data.endedAt !== null && data.endedAt !== "" && !end)) return { error: "Time entry dates are invalid.", status: 400 };
+  if (start && end && end < start) return { error: "A time entry must end on or after it starts.", status: 400 };
+  const hasDuration = data.durationMinutes !== undefined && data.durationMinutes !== null && data.durationMinutes !== "";
+  const requestedDuration = hasDuration ? Number(data.durationMinutes) : null;
+  if (hasDuration && (!Number.isFinite(requestedDuration) || requestedDuration < 0 || requestedDuration > 1_000_000)) return { error: "Time entry duration is invalid.", status: 400 };
+  const duration = hasDuration ? Math.round(requestedDuration) : end ? Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000) : 0;
   await db.prepare("INSERT INTO project_task_time_entries (id,task_id,user_uid,user_email,started_at,ended_at,duration_minutes,note,updated_at) VALUES (?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET ended_at=excluded.ended_at,duration_minutes=excluded.duration_minutes,note=excluded.note,updated_at=datetime('now')").bind(id, data.taskId, actorUid(actor), actorEmail(actor), start, end, duration, safe(data.note, 1000)).run();
   return { success: true, entry: await db.prepare("SELECT * FROM project_task_time_entries WHERE id=?").bind(id).first() };
 }
@@ -1370,14 +1603,57 @@ export async function deleteProjectAttachment(db, data, actor, access, media) {
 export async function listProjectCustomFields(db, data, actor, access) {
   const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed;
   const fields = await db.prepare("SELECT * FROM project_custom_fields WHERE project_id=? ORDER BY position,name").bind(data.projectId).all();
-  return { fields: (fields.results || []).map(field => ({ ...field, options: json(field.options_json, []) })) };
+  return { fields: (fields.results || []).map(customFieldFromRow) };
+}
+export async function listProjectCustomFieldValues(db, data, actor, access) {
+  const allowed = await requireProject(db, data.projectId, actor, access); if (allowed.error) return allowed;
+  const result = await db.prepare(`SELECT f.*,v.task_id,v.value_text,t.created_by_uid,t.created_by_email,t.assignee_uid,t.assignee_email
+    FROM project_custom_fields f
+    INNER JOIN project_tasks t ON t.project_id=f.project_id
+    INNER JOIN project_task_custom_values v ON v.field_id=f.id AND v.task_id=t.id
+    WHERE f.project_id=? ORDER BY t.id,f.position`).bind(data.projectId).all();
+  return { values: (result.results || []).filter(row => canSeeTask(row, allowed, actor)).map(row => ({
+    id: `${row.task_id}:${row.id}`, taskId: row.task_id, fieldId: row.id, value: row.value_text,
+    fieldName: row.name, fieldPosition: Number(row.position || 0), fieldType: customFieldTypeForClient(row), fieldOptions: json(row.options_json, []),
+  })) };
+}
+export async function listProjectCustomFieldFilterValues(db, data, actor, access) {
+  const result = await listProjectCustomFieldValues(db, data, actor, access);
+  if (result.error) return result;
+  const values = new Map();
+  for (const item of result.values || []) {
+    const current = values.get(item.fieldId) || new Set();
+    if (item.value) {
+      try {
+        const parsed = JSON.parse(item.value);
+        for (const value of Array.isArray(parsed) ? parsed : [item.value]) current.add(String(value));
+      } catch { current.add(item.value); }
+    }
+    values.set(item.fieldId, current);
+  }
+  return { values: [...values].map(([fieldId, fieldValues]) => ({ fieldId, values: [...fieldValues].sort() })) };
 }
 export async function saveProjectCustomField(db, data, actor, access) {
-  const allowed = await requireProject(db, data.projectId, actor, access, "manager"); if (allowed.error) return allowed;
-  const id = safe(data.id, 180) || newId("field"); const name = safe(data.name, 100); if (!name) return { error: "A field name is required." };
-  const fieldType = ["text", "number", "date", "select", "checkbox"].includes(data.fieldType) ? data.fieldType : "text";
-  await db.prepare("INSERT INTO project_custom_fields (id,project_id,name,field_type,options_json,position,created_by_uid,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,field_type=excluded.field_type,options_json=excluded.options_json,position=excluded.position,updated_at=datetime('now')").bind(id, data.projectId, name, fieldType, JSON.stringify(Array.isArray(data.options) ? data.options.slice(0, 30).map(item => safe(item, 80)) : []), Number(data.position || 0), actorUid(actor)).run();
-  return { success: true, field: await db.prepare("SELECT * FROM project_custom_fields WHERE id=?").bind(id).first() };
+  const id = safe(data.id, 180) || null;
+  const current = id ? await db.prepare("SELECT * FROM project_custom_fields WHERE id=?").bind(id).first() : null;
+  if (id && !current) return { error: "Custom field not found.", status: 404 };
+  const projectId = safe(data.projectId || current?.project_id, 180);
+  const allowed = await requireProject(db, projectId, actor, access, "manager"); if (allowed.error) return allowed;
+  const name = data.name === undefined ? safe(current?.name, 100) : safe(data.name, 100); if (!name) return { error: "A field name is required." };
+  const requestedType = data.type ?? data.fieldType;
+  const fieldType = normalizeProjectCustomFieldType(requestedType === undefined ? current?.field_type : requestedType);
+  if (!fieldType) return { error: "Invalid custom field type.", status: 400 };
+  const multiple = data.multiple === undefined ? Boolean(Number(current?.multiple || 0)) : Boolean(data.multiple);
+  if (multiple && fieldType !== "select") return { error: "Only dropdown fields can allow multiple values.", status: 400 };
+  const options = data.options === undefined ? json(current?.options_json, []) : (Array.isArray(data.options) ? data.options.slice(0, 30).map(item => safe(item, 80)).filter(Boolean) : []);
+  if (fieldType === "select" && options.length === 0) return { error: "Dropdown fields require at least one option.", status: 400 };
+  const position = normalizeProjectPosition(data.position, Number(current?.position || 0)); if (position === null) return { error: "Custom field position is invalid.", status: 400 };
+  const required = data.required === undefined ? Number(current?.required || 0) : (data.required ? 1 : 0);
+  const defaultValue = data.defaultValue === undefined ? current?.default_value || null : (data.defaultValue === null ? null : safe(data.defaultValue, 2000) || null);
+  if (required && !defaultValue) return { error: "Required custom fields need a default value.", status: 400 };
+  const fieldId = id || newId("field");
+  await db.prepare("INSERT INTO project_custom_fields (id,project_id,name,field_type,options_json,position,required,default_value,multiple,created_by_uid,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(id) DO UPDATE SET name=excluded.name,field_type=excluded.field_type,options_json=excluded.options_json,position=excluded.position,required=excluded.required,default_value=excluded.default_value,multiple=excluded.multiple,updated_at=datetime('now')").bind(fieldId, projectId, name, fieldType, JSON.stringify(options), position, required, defaultValue, multiple ? 1 : 0, actorUid(actor)).run();
+  return { success: true, field: customFieldFromRow(await db.prepare("SELECT * FROM project_custom_fields WHERE id=?").bind(fieldId).first()) };
 }
 export async function deleteProjectCustomField(db, data, actor, access) {
   const field = await db.prepare("SELECT * FROM project_custom_fields WHERE id=?").bind(safe(data.id, 180)).first();
@@ -1392,7 +1668,9 @@ export async function saveProjectTaskCustomValue(db, data, actor, access) {
   const isOwn = allowed.task.assignee_uid === actorUid(actor) || allowed.task.assignee_email === actorEmail(actor) || allowed.task.created_by_uid === actorUid(actor) || allowed.task.created_by_email === actorEmail(actor);
   if (!allowed.permissions.can_edit_any_tasks && !(allowed.permissions.can_edit_own_tasks && isOwn)) return { error: "You cannot edit custom fields on this task.", status: 403 };
   const field = await db.prepare("SELECT * FROM project_custom_fields WHERE id=? AND project_id=?").bind(data.fieldId, allowed.task.project_id).first(); if (!field) return { error: "Custom field not found.", status: 404 };
-  await db.prepare("INSERT INTO project_task_custom_values (task_id,field_id,value_text,updated_by_uid,updated_at) VALUES (?,?,?,?,datetime('now')) ON CONFLICT(task_id,field_id) DO UPDATE SET value_text=excluded.value_text,updated_by_uid=excluded.updated_by_uid,updated_at=datetime('now')").bind(data.taskId, field.id, safe(data.value, 2000), actorUid(actor)).run();
+  const value = normalizeProjectCustomFieldValue(field, data.value); if (value === null) return { error: "Invalid custom field value.", status: 400 };
+  if (Number(field.required) && !value) return { error: "A value is required for this custom field.", status: 400 };
+  await db.prepare("INSERT INTO project_task_custom_values (task_id,field_id,value_text,updated_by_uid,updated_at) VALUES (?,?,?,?,datetime('now')) ON CONFLICT(task_id,field_id) DO UPDATE SET value_text=excluded.value_text,updated_by_uid=excluded.updated_by_uid,updated_at=datetime('now')").bind(data.taskId, field.id, value, actorUid(actor)).run();
   return { success: true };
 }
 
@@ -1411,6 +1689,124 @@ export async function listProjectNotifications(db, _data, actor, access) {
     notifications.push(notification);
   }
   return { notifications, unread: notifications.filter(item => !item.read_at).length };
+}
+
+async function ensureProjectNotificationPreferences(db, actor) {
+  const uid = actorUid(actor);
+  await db.prepare("INSERT OR IGNORE INTO project_notification_preferences (owner_uid,owner_email) VALUES (?,?)").bind(uid, actorEmail(actor)).run();
+  return db.prepare("SELECT * FROM project_notification_preferences WHERE owner_uid=?").bind(uid).first();
+}
+function notificationPreferenceResult(row, rules) {
+  return {
+    emailAddress: row.owner_email || null,
+    emailEnabled: bool(row.email_enabled),
+    ntfyEnabled: bool(row.ntfy_enabled),
+    ntfyConfigured: Boolean(row.ntfy_server_url && row.ntfy_topic),
+    ntfyServerUrl: row.ntfy_server_url || null,
+    ntfyTopic: row.ntfy_topic || null,
+    ntfyTokenConfigured: Boolean(row.ntfy_token_ciphertext),
+    maskedNtfyToken: row.ntfy_token_ciphertext ? "••••" : null,
+    gotifyEnabled: bool(row.gotify_enabled),
+    gotifyConfigured: Boolean(row.gotify_server_url && row.gotify_token_ciphertext),
+    gotifyServerUrl: row.gotify_server_url || null,
+    gotifyTokenConfigured: Boolean(row.gotify_token_ciphertext),
+    maskedGotifyToken: row.gotify_token_ciphertext ? "••••" : null,
+    webhookEnabled: bool(row.webhook_enabled),
+    webhookConfigured: Boolean(row.webhook_url),
+    webhookUrl: row.webhook_url || null,
+    webhookSecretConfigured: Boolean(row.webhook_secret_ciphertext),
+    maskedWebhookSecret: row.webhook_secret_ciphertext ? "••••" : null,
+    taskAssignmentEnabled: bool(row.task_assignment_enabled),
+    taskCommentEnabled: bool(row.task_comment_enabled),
+    taskStatusChangeEnabled: bool(row.task_status_change_enabled),
+    dueDateReminderEnabled: bool(row.due_date_reminder_enabled),
+    dueDateReminderLeadTimeMinutes: Number(row.due_date_reminder_lead_time_minutes || 1440),
+    workspaces: rules,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+async function projectNotificationPreferencesResponse(db, actor) {
+  const row = await ensureProjectNotificationPreferences(db, actor);
+  const result = await db.prepare(`SELECT r.*,w.name AS workspace_name
+    FROM project_notification_workspace_rules r
+    INNER JOIN project_workspaces w ON w.id=r.workspace_id
+    WHERE r.owner_uid=? ORDER BY lower(w.name),w.id`).bind(actorUid(actor)).all();
+  const rules = [];
+  for (const rule of result.results || []) {
+    if (!(await getWorkspaceAccess(db, rule.workspace_id, actor))) continue;
+    rules.push({
+      id: `${rule.owner_uid}:${rule.workspace_id}`,
+      workspaceId: rule.workspace_id,
+      workspaceName: rule.workspace_name,
+      isActive: bool(rule.is_active),
+      emailEnabled: bool(rule.email_enabled),
+      ntfyEnabled: bool(rule.ntfy_enabled),
+      gotifyEnabled: bool(rule.gotify_enabled),
+      webhookEnabled: bool(rule.webhook_enabled),
+      projectMode: rule.project_mode === "selected" ? "selected" : "all",
+      selectedProjectIds: json(rule.selected_project_ids_json, []),
+      createdAt: rule.created_at,
+      updatedAt: rule.updated_at,
+    });
+  }
+  return notificationPreferenceResult(row, rules);
+}
+export async function getProjectNotificationPreferences(db, actor) {
+  return projectNotificationPreferencesResponse(db, actor);
+}
+export async function updateProjectNotificationPreferences(db, data, actor, env) {
+  const current = await ensureProjectNotificationPreferences(db, actor);
+  const urlValue = (value, existing, label) => {
+    if (value === undefined) return existing || null;
+    const candidate = safe(value, 1000);
+    if (!candidate) return null;
+    if (!validHttpUrl(candidate)) return { error: `${label} must be an HTTP or HTTPS URL.`, status: 400 };
+    return candidate;
+  };
+  const ntfyServerUrl = urlValue(data.ntfyServerUrl, current.ntfy_server_url, "ntfy server URL");
+  const gotifyServerUrl = urlValue(data.gotifyServerUrl, current.gotify_server_url, "Gotify server URL");
+  const webhookUrl = urlValue(data.webhookUrl, current.webhook_url, "Webhook URL");
+  for (const value of [ntfyServerUrl, gotifyServerUrl, webhookUrl]) if (value && value.error) return value;
+  const secret = async (value, existing) => {
+    if (value === undefined) return existing || "";
+    if (value === null || safe(value, 2000) === "") return "";
+    return encryptNotificationSecret(env, safe(value, 2000));
+  };
+  const ntfyToken = await secret(data.ntfyToken, current.ntfy_token_ciphertext);
+  const gotifyToken = await secret(data.gotifyToken, current.gotify_token_ciphertext);
+  const webhookSecret = await secret(data.webhookSecret, current.webhook_secret_ciphertext);
+  const lead = data.dueDateReminderLeadTimeMinutes === undefined
+    ? Number(current.due_date_reminder_lead_time_minutes || 1440)
+    : Number(data.dueDateReminderLeadTimeMinutes);
+  if (!Number.isInteger(lead) || lead < 60 || lead > 43200) return { error: "Due-date reminder lead time is invalid.", status: 400 };
+  const value = (key, fallback) => data[key] === undefined ? fallback : (data[key] ? 1 : 0);
+  await db.prepare(`UPDATE project_notification_preferences SET owner_email=?,email_enabled=?,ntfy_enabled=?,ntfy_server_url=?,ntfy_topic=?,ntfy_token_ciphertext=?,gotify_enabled=?,gotify_server_url=?,gotify_token_ciphertext=?,webhook_enabled=?,webhook_url=?,webhook_secret_ciphertext=?,task_assignment_enabled=?,task_comment_enabled=?,task_status_change_enabled=?,due_date_reminder_enabled=?,due_date_reminder_lead_time_minutes=?,updated_at=? WHERE owner_uid=?`)
+    .bind(actorEmail(actor), value("emailEnabled", current.email_enabled), value("ntfyEnabled", current.ntfy_enabled), ntfyServerUrl, data.ntfyTopic === undefined ? current.ntfy_topic || null : safe(data.ntfyTopic, 240) || null, ntfyToken, value("gotifyEnabled", current.gotify_enabled), gotifyServerUrl, gotifyToken, value("webhookEnabled", current.webhook_enabled), webhookUrl, webhookSecret, value("taskAssignmentEnabled", current.task_assignment_enabled), value("taskCommentEnabled", current.task_comment_enabled), value("taskStatusChangeEnabled", current.task_status_change_enabled), value("dueDateReminderEnabled", current.due_date_reminder_enabled), lead, now(), actorUid(actor)).run();
+  return projectNotificationPreferencesResponse(db, actor);
+}
+export async function upsertProjectNotificationWorkspaceRule(db, data, actor) {
+  const workspaceId = safe(data.workspaceId, 180);
+  const allowed = await requireWorkspace(db, workspaceId, actor, "workspace.read");
+  if (allowed.error) return allowed;
+  const projectMode = data.projectMode === "selected" ? "selected" : "all";
+  const selectedProjectIds = [...new Set((Array.isArray(data.selectedProjectIds) ? data.selectedProjectIds : []).map(value => safe(value, 180)).filter(Boolean))].slice(0, 100);
+  if (projectMode === "selected" && selectedProjectIds.length) {
+    const placeholders = selectedProjectIds.map(() => "?").join(",");
+    const result = await db.prepare(`SELECT id FROM projects WHERE workspace_id=? AND id IN (${placeholders})`).bind(workspaceId, ...selectedProjectIds).all();
+    if ((result.results || []).length !== selectedProjectIds.length) return { error: "One or more selected projects are not in this workspace.", status: 400 };
+  }
+  await ensureProjectNotificationPreferences(db, actor);
+  await db.prepare(`INSERT INTO project_notification_workspace_rules (owner_uid,workspace_id,is_active,email_enabled,ntfy_enabled,gotify_enabled,webhook_enabled,project_mode,selected_project_ids_json,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_uid,workspace_id) DO UPDATE SET is_active=excluded.is_active,email_enabled=excluded.email_enabled,ntfy_enabled=excluded.ntfy_enabled,gotify_enabled=excluded.gotify_enabled,webhook_enabled=excluded.webhook_enabled,project_mode=excluded.project_mode,selected_project_ids_json=excluded.selected_project_ids_json,updated_at=excluded.updated_at`)
+    .bind(actorUid(actor), workspaceId, data.isActive ? 1 : 0, data.emailEnabled ? 1 : 0, data.ntfyEnabled ? 1 : 0, data.gotifyEnabled ? 1 : 0, data.webhookEnabled ? 1 : 0, projectMode, JSON.stringify(selectedProjectIds), now()).run();
+  return projectNotificationPreferencesResponse(db, actor);
+}
+export async function deleteProjectNotificationWorkspaceRule(db, data, actor) {
+  const allowed = await requireWorkspace(db, data.workspaceId, actor, "workspace.read");
+  if (allowed.error) return allowed;
+  await db.prepare("DELETE FROM project_notification_workspace_rules WHERE owner_uid=? AND workspace_id=?").bind(actorUid(actor), safe(data.workspaceId, 180)).run();
+  return projectNotificationPreferencesResponse(db, actor);
 }
 export async function markProjectNotificationsRead(db, data, actor) {
   if (data.unread) await db.prepare("UPDATE project_notifications SET read_at=NULL WHERE id=? AND lower(recipient_email)=lower(?)").bind(data.id, actorEmail(actor)).run();

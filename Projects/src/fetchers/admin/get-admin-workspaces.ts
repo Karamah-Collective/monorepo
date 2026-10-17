@@ -3,9 +3,10 @@ import { HttpError } from "@/lib/http-error";
 import {
   ADMIN_WORKSPACES_PAGE_SIZE,
   ADMIN_WORKSPACES_SEARCH_MAX_LENGTH,
+  type AdminWorkspacesResponse,
 } from "./workspace-types";
 
-export async function getAdminWorkspaces(search: string, page: number) {
+export async function getAdminWorkspaces(search: string, page: number): Promise<AdminWorkspacesResponse> {
   const normalizedSearch = search
     .trim()
     .slice(0, ADMIN_WORKSPACES_SEARCH_MAX_LENGTH);

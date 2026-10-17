@@ -21,7 +21,7 @@ export function useProfileNameAutosave({
 }: UseProfileNameAutosaveOptions) {
   const { t } = useTranslation();
   const { mutateAsync: updateProfile } = useUpdateUserProfile();
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<ProfileFormValues | null>(null);
   const lastSavedRef = useRef<string | null>(null);

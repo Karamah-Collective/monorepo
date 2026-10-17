@@ -12,8 +12,8 @@ export function useSyncRules(param: SyncParams, after?: string) {
     ],
     queryFn: () => getSyncRules(param, after),
     placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[1] === param.projectId &&
-      previousQuery.queryKey[2] === param.provider
+      previousQuery?.queryKey?.[1] === param.projectId &&
+      previousQuery?.queryKey?.[2] === param.provider
         ? previousData
         : undefined,
   });

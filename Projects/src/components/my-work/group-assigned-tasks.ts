@@ -36,10 +36,10 @@ export function groupAssignedTasksByProject(
   const byProject = new Map<string, AssignedTaskGroup>();
 
   for (const task of tasks) {
-    const group = byProject.get(task.projectId) ?? {
+    const group: AssignedTaskGroup = byProject.get(task.projectId) ?? {
       id: task.projectId,
       title: task.projectName,
-      tasks: [],
+      tasks: [] as AssignedTask[],
     };
     group.tasks.push(task);
     byProject.set(task.projectId, group);

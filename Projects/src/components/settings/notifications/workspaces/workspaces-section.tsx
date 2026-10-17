@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsCard } from "@/components/settings/settings-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import type { NotificationPreferences } from "@/fetchers/notification-preferences/get-notification-preferences";
+import type { Workspace } from "@/lib/auth-client";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { getChannelAvailability } from "../get-channel-availability";
 import { WorkspaceRuleRow } from "./workspace-rule-row";
@@ -26,7 +27,7 @@ export function WorkspacesSection({ preferences }: WorkspacesSectionProps) {
       description={t("settings:notificationsPage.workspacesDescription")}
     >
       <SettingsCard>
-        {workspaces.map((workspace) => (
+        {workspaces.map((workspace: Workspace) => (
           <WorkspaceRuleRow
             key={workspace.id}
             availability={availability}

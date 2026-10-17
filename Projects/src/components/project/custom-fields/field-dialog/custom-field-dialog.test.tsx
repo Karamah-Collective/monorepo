@@ -33,7 +33,11 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => 1,
 }));
-vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+  toastSubject: (value: string | null | undefined) =>
+    value?.trim() ? `"${value.trim()}"` : undefined,
+}));
 vi.mock("@/hooks/mutations/custom-field/use-create-custom-field", () => ({
   default: () => ({ mutateAsync: m.createField, isPending: false }),
 }));
@@ -139,7 +143,7 @@ describe("CustomFieldDialog", () => {
     );
     expect(toast.success).toHaveBeenCalledWith(
       "settings:customFields.createSuccess",
-      { icon: expect.anything() },
+      { description: '"Size"', icon: expect.anything() },
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -221,7 +225,8 @@ describe("CustomFieldDialog", () => {
     );
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        'Can\'t remove "Web" because tasks still use it.',
+        "settings:customFields.updateError",
+        { description: 'Can\'t remove "Web" because tasks still use it.' },
       ),
     );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);

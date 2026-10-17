@@ -1,8 +1,12 @@
 import { client } from "@karamah/projects-libs";
 import { HttpError } from "@/lib/http-error";
-import { ADMIN_USERS_PAGE_SIZE, ADMIN_USERS_SEARCH_MAX_LENGTH } from "./types";
+import {
+  ADMIN_USERS_PAGE_SIZE,
+  ADMIN_USERS_SEARCH_MAX_LENGTH,
+  type AdminUsersResponse,
+} from "./types";
 
-export async function getAdminUsers(search: string, page: number) {
+export async function getAdminUsers(search: string, page: number): Promise<AdminUsersResponse> {
   const normalizedSearch = search
     .trim()
     .slice(0, ADMIN_USERS_SEARCH_MAX_LENGTH);

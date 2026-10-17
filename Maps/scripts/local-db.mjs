@@ -276,7 +276,7 @@ async function setupLocalProjectsDatabase() {
     return new Set((columns.results || []).map((column) => `project_invitations.${column.name}`));
   };
   let known = await collectProjectInvitationColumns();
-  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql", "0004_workspace_access.sql", "0005_external_project_invitations.sql", "0006_project_invitation_overrides.sql"]) {
+  for (const migrationName of ["0001_project_workspace.sql", "0002_project_productivity.sql", "0003_project_member_permissions.sql", "0004_workspace_access.sql", "0005_external_project_invitations.sql", "0006_project_invitation_overrides.sql", "0007_task_priority_medium.sql", "0008_notification_preferences.sql", "0009_custom_field_metadata.sql"]) {
     if (done.has(migrationName)) continue;
     let migration = await readFile(path.join(root, "project-migrations", migrationName), "utf8");
     migration = migration.replace(/ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)[^;]+;/gi, (statement, table, column) => {

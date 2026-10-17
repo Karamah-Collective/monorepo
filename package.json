@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "impeccable": "^4.5.2",
     "zod": "^3.25.76"
   },
   "workspaces": [
@@ -27,6 +28,7 @@
     "migrate:projects-db": "node scripts/migrate-projects-db.mjs",
     "migrate:projects-db:local": "node scripts/migrate-projects-db.mjs --local",
     "check:local": "node scripts/check-local-databases.mjs",
+    "cleanup:projects-live": "node scripts/cleanup-project-live-fixtures.mjs",
     "retire:admin-data": "node scripts/retire-legacy-admin-data.mjs",
     "setup:website": "node tooling/setup-website-env.mjs",
     "deploy:agent": "node tooling/deploy-agent.mjs",

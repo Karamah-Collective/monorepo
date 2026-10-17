@@ -20,7 +20,8 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5184,
     strictPort: true,
-    proxy: { "/api": { target: "http://127.0.0.1:8788", changeOrigin: true } },
+    hmr: process.env.PROJECTS_TEST_DISABLE_HMR === "1" ? false : undefined,
+    proxy: { "/api": { target: "http://127.0.0.1:8788", changeOrigin: true, ws: true } },
   },
   test: {
     environment: "jsdom",

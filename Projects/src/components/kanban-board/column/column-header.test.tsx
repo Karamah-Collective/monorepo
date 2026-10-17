@@ -19,7 +19,7 @@ const m = vi.hoisted(() => ({
   setProject: vi.fn(),
 }));
 vi.mock("@/hooks/mutations/task/use-update-task", () => ({
-  useUpdateTask: () => ({ mutate: m.mutate }),
+  useUpdateTask: () => ({ mutateAsync: m.mutate }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -43,7 +43,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-it("prevents archive confirmation while the board is partial and uses the completed column afterward", () => {
+it("prevents archive confirmation while the board is partial and uses the completed column afterward", async () => {
   const column = {
     id: "done",
     name: "Done",
@@ -59,7 +59,9 @@ it("prevents archive confirmation while the board is partial and uses the comple
     true,
   );
   expect(m.archive.disabled).toBe(true);
-  act(() => m.archive.onConfirm?.());
+  await act(async () => {
+    await m.archive.onConfirm?.();
+  });
   expect(m.mutate).not.toHaveBeenCalled();
   expect(m.setProject).not.toHaveBeenCalled();
   const complete = {
@@ -69,7 +71,9 @@ it("prevents archive confirmation while the board is partial and uses the comple
   m.project = { ...m.project, columns: [complete] };
   rerender(<ColumnHeader column={complete} />);
   expect(m.archive.taskCount).toBe(2);
-  act(() => m.archive.onConfirm?.());
+  await act(async () => {
+    await m.archive.onConfirm?.();
+  });
   expect(m.mutate).toHaveBeenCalledTimes(2);
   expect(m.setProject).toHaveBeenCalledOnce();
 });

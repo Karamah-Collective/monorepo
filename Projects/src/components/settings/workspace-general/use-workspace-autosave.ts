@@ -29,7 +29,7 @@ export function useWorkspaceAutosave({
   const queryClient = useQueryClient();
   const { mutateAsync: updateWorkspace } = useUpdateWorkspace();
   const schema = useMemo(() => createWorkspaceFormSchema(t), [t]);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<WorkspaceFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedWorkspaceValues | null>(null);

@@ -50,10 +50,12 @@ export function TaskMoreMenu({ actions, deleteHandle }: TaskMoreMenuProps) {
           <LinkIcon />
           {t("tasks:properties.copyTaskLink")}
         </MenuItem>
-        <MenuItem onClick={actions.copyBranch} className="sm:hidden">
-          <GitBranchIcon />
-          {t("tasks:properties.copyTaskBranch")}
-        </MenuItem>
+        {actions.canCopyBranch && (
+          <MenuItem onClick={actions.copyBranch} className="sm:hidden">
+            <GitBranchIcon />
+            {t("tasks:properties.copyTaskBranch")}
+          </MenuItem>
+        )}
         <MenuItem onClick={actions.copyId}>
           <HashIcon />
           {t("navigation:shortcuts.items.copyTaskId")}

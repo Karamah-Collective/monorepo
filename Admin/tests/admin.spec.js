@@ -53,7 +53,10 @@ test("projects overview hands detailed work to the separate app", async ({
   await expect(page.getByRole("heading", { name: "Project control plane" })).toBeVisible();
   const open = page.getByRole("link", { name: /Open in Projects/ }).first();
   await expect(open).toHaveAttribute("target", "_blank");
-  await expect(open).toHaveAttribute("href", /5184\/workspace\/projects\/project-1/);
+  await expect(open).toHaveAttribute(
+    "href",
+    /5184\/dashboard\/workspace\/workspace-default\/project\/project-1\/board/,
+  );
 });
 
 test("collection search, column filtering, keyboard sorting, density and pagination", async ({

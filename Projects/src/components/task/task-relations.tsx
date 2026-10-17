@@ -273,7 +273,7 @@ export default function TaskRelations({
     updatedAt: "",
     userId: item.task.userId,
     assigneeId: item.task.userId,
-    assigneeName: item.task.assigneeName,
+    assigneeName: item.task.assigneeName ?? null,
     assigneeImage: "",
     projectId: item.task.projectId,
   });

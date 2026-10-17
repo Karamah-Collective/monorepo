@@ -260,12 +260,16 @@ function toProjectsCustomField(value: unknown): Record<string, unknown> {
     }
   }
   options = collectionResponse(options, ["options", "values", "data"]);
+  const rawType = String(source.type || source.fieldType || source.field_type || "text");
+  const type = rawType === "select"
+    ? (source.multiple ? "multiselect" : "dropdown")
+    : rawType === "checkbox" ? "boolean" : rawType;
   return {
     ...source,
     id: source.id,
     projectId: source.projectId || source.project_id,
     name: source.name || "Custom field",
-    type: source.type || source.fieldType || source.field_type || "text",
+    type,
     required: Boolean(source.required),
     defaultValue: source.defaultValue ?? source.default_value ?? null,
     options,
@@ -275,12 +279,14 @@ function toProjectsCustomField(value: unknown): Record<string, unknown> {
   };
 }
 
-function toProjectsLabel(value: unknown): Record<string, unknown> {
+export function toProjectsLabel(value: unknown): Record<string, unknown> {
   const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   return {
     ...source,
     id: source.id,
     projectId: source.projectId || source.project_id,
+    workspaceId: source.workspaceId || source.workspace_id || null,
+    taskId: source.taskId || source.task_id || null,
     name: source.name || "Untitled label",
     color: source.color || "#2b745c",
     createdAt: source.createdAt || source.created_at || null,
@@ -580,6 +586,13 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
 
   if (path[0] === "task" && path[1] === "assigned" && method === "GET") return response(await workspaceTasks(args));
   if (path[0] === "task" && path[1] === "tasks" && method === "GET") return response(await boardResponse(id || "", args));
+  if (path[0] === "task" && path[1] === "by-ticket-id" && path.length === 3 && method === "GET") {
+    const result = await adminCall("project-task-by-ticket", args, {
+      ticketId: clean(param.ticketId) || clean(path[2]),
+      workspaceSlug: clean(queryValue(args, "workspaceSlug")),
+    });
+    return response(result.error ? result : toProjectsTask(result.task || result));
+  }
   if (path[0] === "task" && path[1] === "description-matches" && method === "GET") {
     const result = await adminCall("project-tasks-list", { query: { projectId: id, search: clean(queryValue(args, "query")) } });
     return response(result.error ? result : { ids: resultCollection<Record<string, unknown>>(result, "tasks").map((task) => task.id), nextCursor: null });
@@ -632,7 +645,7 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
       projectId: source.destinationProjectId,
       expectedRevision: source.expectedRevision ?? source.revision,
     });
-    return response(result.error ? result : toProjectsTask(result.task || result));
+    return response(result.error ? result : { ...result, task: toProjectsTask(result.task || result) });
   }
   if (path[0] === "task" && path[1] === "assignee") {
     const result = await adminTaskUpdate("project-task-assign", args, toProjectsTaskBody(args, id));
@@ -750,7 +763,9 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
   if (path[0] === "label" && path[1] === "task" && method === "POST") return response(await adminCall("project-label-attach", args, {}, "POST"));
   if (path[0] === "label" && path[1] === "task" && method === "DELETE") return response(await adminCall("project-label-detach", args, {}, "POST"));
   if (path[0] === "label" && path.length === 1 && method === "POST") {
-    const result = await adminCall("project-label-save", args, {}, "POST");
+    const source = args.json || {};
+    const action = source.taskId ? "project-label-attach" : "project-label-save";
+    const result = await adminCall(action, args, {}, "POST");
     return response(result.error ? result : toProjectsLabel(result.label || result));
   }
   if (path[0] === "label" && path.length === 2 && ["PUT", "PATCH"].includes(method)) {
@@ -796,8 +811,14 @@ async function invoke(path: string[], method: string, args: ProjectsArgs): Promi
     return response(await adminCall("project-task-link-delete", args, { taskId: clean(param.taskId), id: clean(param.id) }, "POST"));
   }
 
-  if (path[0] === "custom-field" && path[1] === "project" && path[3] === "values" && method === "GET") return response([]);
-  if (path[0] === "custom-field" && path[1] === "project" && path[3] === "filter-values" && method === "GET") return response([]);
+  if (path[0] === "custom-field" && path[1] === "project" && path[3] === "values" && method === "GET") {
+    const result = await adminCall("project-custom-field-values-list", args, { projectId: id });
+    return response(result.error ? result : resultCollection(result, "values"));
+  }
+  if (path[0] === "custom-field" && path[1] === "project" && path[3] === "filter-values" && method === "GET") {
+    const result = await adminCall("project-custom-field-filter-values-list", args, { projectId: id });
+    return response(result.error ? result : resultCollection(result, "values"));
+  }
   if (path[0] === "custom-field" && path[1] === "project" && method === "GET") {
     const result = await adminCall("project-custom-fields-list", args, { projectId: id });
     return response(result.error ? result : resultCollection(result, "fields").map(toProjectsCustomField));

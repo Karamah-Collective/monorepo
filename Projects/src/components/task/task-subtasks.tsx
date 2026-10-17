@@ -118,7 +118,7 @@ export default function TaskSubtasks({
     createdAt: "",
     userId: subtask.task.userId,
     assigneeId: subtask.task.userId,
-    assigneeName: subtask.task.assigneeName,
+    assigneeName: subtask.task.assigneeName ?? null,
     projectId: subtask.task.projectId,
   });
 

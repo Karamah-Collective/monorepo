@@ -1,6 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
+import type { Workspace } from "@/lib/auth-client";
 
 function useActiveWorkspace() {
   const { data: activeOrganization, error } =
@@ -18,7 +19,7 @@ function useActiveWorkspace() {
   });
 
   const workspaceFromRoute = workspaceId
-    ? organizations?.find((organization) => organization.id === workspaceId)
+    ? organizations?.find((organization: Workspace) => organization.id === workspaceId)
     : undefined;
   const shouldLoadRouteWorkspace =
     Boolean(workspaceId && !isOrganizationsPending && !workspaceFromRoute);

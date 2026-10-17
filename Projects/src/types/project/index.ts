@@ -1,30 +1,42 @@
-import type { client } from "@karamah/projects-libs";
-import type { InferResponseType } from "hono/client";
 import type Task from "@/types/task";
 
-export type Project = Extract<
-  InferResponseType<(typeof client)["project"][":id"]["$get"], 200>,
-  { id: string }
->;
+export type ProjectStatistics = {
+  completionPercentage: number;
+  totalTasks: number;
+  dueDate: string | null;
+  [key: string]: unknown;
+};
 
-type TasksApiResponse = InferResponseType<
-  (typeof client)["task"]["tasks"][":projectId"]["$get"],
-  200
->;
+export type Project = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string | null;
+  backgroundVersion?: string | null;
+  archivedAt?: string | null;
+  position?: number;
+  lastTaskNumber?: number;
+  statistics: ProjectStatistics;
+  [key: string]: unknown;
+};
 
-type ProjectWithTasksRaw = TasksApiResponse["data"];
+export type ProjectColumn = {
+  id: string;
+  slug: string;
+  name: string;
+  icon?: string | null;
+  isFinal: boolean;
+  position?: number;
+  tasks: Task[];
+  [key: string]: unknown;
+};
 
-export type ProjectWithTasks = Omit<
-  ProjectWithTasksRaw,
-  "archivedTasks" | "backgroundVersion" | "columns" | "plannedTasks"
-> & {
+export type ProjectWithTasks = Project & {
   // Older cache fixtures and persisted query data predate board backgrounds.
   backgroundVersion?: string | null;
   archivedTasks: Task[];
-  columns: Array<
-    Omit<ProjectWithTasksRaw["columns"][number], "tasks"> & {
-      tasks: Task[];
-    }
-  >;
+  columns: ProjectColumn[];
   plannedTasks: Task[];
 };

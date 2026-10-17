@@ -1,9 +1,13 @@
-import type { client } from "@karamah/projects-libs";
-import type { InferResponseType } from "hono/client";
-
-export type Notification = Extract<
-  InferResponseType<(typeof client)["notification"]["$get"], 200>[number],
-  { id: string }
->;
+export type Notification = {
+  id: string;
+  type: string;
+  title: string | null;
+  content: string | null;
+  eventData: unknown;
+  createdAt: string;
+  isRead: boolean;
+  resourceType?: string | null;
+  resourceId?: string | null;
+};
 
 export type NotificationEventData = Record<string, unknown> | null | undefined;

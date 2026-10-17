@@ -46,6 +46,11 @@ name = "INBOX_REALTIME"
 class_name = "InboxRealtime"
 script_name = "manarah-gmail-events"
 
+[[durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
+script_name = "manarah-gmail-events"
+
 [env.preview]
 
 [[env.preview.r2_buckets]]
@@ -55,4 +60,9 @@ bucket_name = "manarah-media-preview"
 [[env.preview.durable_objects.bindings]]
 name = "INBOX_REALTIME"
 class_name = "InboxRealtime"
+script_name = "manarah-gmail-events-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
 script_name = "manarah-gmail-events-preview"

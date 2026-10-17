@@ -94,6 +94,7 @@ import {
   createProjectTask,
   deleteProjectTask,
   getProjectTask,
+  getProjectTaskByTicket,
   getProjectWorkspace,
   listProjectActivity,
   listProjectColumns,
@@ -115,11 +116,17 @@ import {
   createProjectAttachment,
   deleteProjectAttachment,
   listProjectCustomFields,
+  listProjectCustomFieldValues,
+  listProjectCustomFieldFilterValues,
   saveProjectCustomField,
   deleteProjectCustomField,
   saveProjectTaskCustomValue,
   listProjectNotifications,
   markProjectNotificationsRead,
+  getProjectNotificationPreferences,
+  updateProjectNotificationPreferences,
+  upsertProjectNotificationWorkspaceRule,
+  deleteProjectNotificationWorkspaceRule,
   listProjectTaskWatchers,
   updateProjectTaskWatcher,
   listProjects,
@@ -167,6 +174,7 @@ import {
   deleteProjectWorkspaceRole,
 } from "../_projects.js";
 import { enqueueGoogleTaskSync, googleTasksStatus, startGoogleTasksOAuth, syncGoogleTasksForOwner } from "../_google-workspace.js";
+import { publishProjectRealtime } from "../_project-realtime.js";
 
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
@@ -922,6 +930,7 @@ export const GET_ACTIONS = {
   "project-summary": (db, url, actor, _env, access) => projectSummary(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-tasks-list": (db, url, actor, _env, access) => listProjectTasks(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-task-get": (db, url, actor, _env, access) => getProjectTask(db, url.searchParams.get("id"), actor, access),
+  "project-task-by-ticket": (db, url, actor, _env, access) => getProjectTaskByTicket(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-milestones-list": (db, url, actor, _env, access) => listProjectMilestones(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-task-comments-list": (db, url, actor, _env, access) => listProjectTaskComments(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-task-activity": (db, url, actor, _env, access) => listProjectActivity(db, Object.fromEntries(url.searchParams.entries()), actor, access),
@@ -936,8 +945,11 @@ export const GET_ACTIONS = {
   "project-task-attachments-list": (db, url, actor, _env, access) => listProjectAttachments(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-task-attachment-get": (db, url, actor, env, access) => getProjectAttachment(db, Object.fromEntries(url.searchParams.entries()), actor, access, env.ADMIN_MEDIA),
   "project-custom-fields-list": (db, url, actor, _env, access) => listProjectCustomFields(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-custom-field-values-list": (db, url, actor, _env, access) => listProjectCustomFieldValues(db, Object.fromEntries(url.searchParams.entries()), actor, access),
+  "project-custom-field-filter-values-list": (db, url, actor, _env, access) => listProjectCustomFieldFilterValues(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-task-watchers-list": (db, url, actor, _env, access) => listProjectTaskWatchers(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-notifications-list": (db, _url, actor, _env, access) => listProjectNotifications(db, {}, actor, access),
+  "project-notification-preferences-get": (db, _url, actor) => getProjectNotificationPreferences(db, actor),
   "project-task-templates-list": (db, url, actor, _env, access) => listProjectTaskTemplates(db, Object.fromEntries(url.searchParams.entries()), actor, access),
   "project-webhooks-list": (db, url, actor, _env, access) => listProjectWebhooks(db, Object.fromEntries(url.searchParams.entries()), actor, access),
 };
@@ -965,8 +977,8 @@ const ADMIN_DATABASE_ACTIONS = new Set([
 const PROJECT_DATABASE_ACTIONS = new Set([
   "project-invitation-get", "project-workspace-list", "project-workspace-get", "project-workspace-members-list", "project-workspace-invitations-list", "project-member-directory", "project-workspace-roles-list", "project-workspace-capabilities", "project-workspace-permission-check",
   "project-workspace-create", "project-workspace-update", "project-workspace-delete", "project-workspace-member-update", "project-workspace-member-remove", "project-workspace-role-create", "project-workspace-role-update", "project-workspace-role-delete", "project-invitation-accept", "project-invitation-cancel",
-  "project-list", "project-search", "project-get", "project-summary", "project-tasks-list", "project-task-get", "project-milestones-list", "project-task-comments-list", "project-task-activity",
-  "project-members-list", "project-columns-list", "project-relations-list", "project-labels-list", "project-task-links-list", "project-saved-views-list", "project-task-time-list", "project-task-attachments-list", "project-task-attachment-get", "project-custom-fields-list", "project-task-watchers-list", "project-notifications-list",
+  "project-list", "project-search", "project-get", "project-summary", "project-tasks-list", "project-task-get", "project-task-by-ticket", "project-milestones-list", "project-task-comments-list", "project-task-activity",
+  "project-members-list", "project-columns-list", "project-relations-list", "project-labels-list", "project-task-links-list", "project-saved-views-list", "project-task-time-list", "project-task-attachments-list", "project-task-attachment-get", "project-custom-fields-list", "project-custom-field-values-list", "project-custom-field-filter-values-list", "project-task-watchers-list", "project-notifications-list", "project-notification-preferences-get", "project-notification-preferences-update", "project-notification-workspace-rule-upsert", "project-notification-workspace-rule-delete",
   "project-task-templates-list", "project-webhooks-list",
   "project-create", "project-update", "project-archive", "project-tasks-create", "project-task-update", "project-task-delete",
   "project-tasks-bulk", "project-task-comment", "project-task-comment-update", "project-task-comment-delete", "project-task-duplicate", "project-task-assign", "project-milestone-create", "project-milestone-update", "project-milestone-delete", "project-member-update", "project-member-remove", "project-column-create", "project-column-update", "project-column-delete", "project-relation-create", "project-relation-delete", "project-task-link-save", "project-task-link-delete", "project-label-save", "project-label-attach", "project-label-detach", "project-label-delete", "project-saved-view-save", "project-saved-view-delete", "project-task-time-save", "project-task-attachment-upload", "project-task-attachment-delete", "project-custom-field-save", "project-custom-field-delete", "project-task-custom-value-save", "project-task-watcher-update", "project-notifications-read", "project-task-template-save", "project-task-template-delete", "project-task-from-template", "project-webhook-save", "project-webhook-delete",
@@ -1785,6 +1797,9 @@ export const POST_ACTIONS = {
   "project-task-custom-value-save": (db, data, env, actor, access) => saveProjectTaskCustomValue(db, data, actor, access),
   "project-task-watcher-update": (db, data, env, actor, access) => updateProjectTaskWatcher(db, data, actor, access),
   "project-notifications-read": (db, data, env, actor) => markProjectNotificationsRead(db, data, actor),
+  "project-notification-preferences-update": (db, data, env, actor) => updateProjectNotificationPreferences(db, data, actor, env),
+  "project-notification-workspace-rule-upsert": (db, data, env, actor) => upsertProjectNotificationWorkspaceRule(db, data, actor),
+  "project-notification-workspace-rule-delete": (db, data, env, actor) => deleteProjectNotificationWorkspaceRule(db, data, actor),
   "project-task-template-save": (db, data, env, actor, access) => saveProjectTaskTemplate(db, data, actor, access),
   "project-task-template-delete": (db, data, env, actor, access) => deleteProjectTaskTemplate(db, data, actor, access),
   "project-task-from-template": (db, data, env, actor, access) => createProjectTaskFromTemplate(db, data, actor, access),
@@ -1831,6 +1846,8 @@ export async function onRequestPost(context) {
       targetId: extractTargetId(data), detail: buildAuditDetail(data), success: !!result.success,
     });
   } catch { /* audit-log failure must never mask the real response */ }
+
+  try { await publishProjectRealtime(env, data.action, data, result); } catch (error) { console.error("Project realtime publish failed", error); }
 
   return json(result, 200, headers);
 }

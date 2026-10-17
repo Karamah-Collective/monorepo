@@ -2,6 +2,7 @@ import { client } from "@karamah/projects-libs";
 import type { InferRequestType } from "hono/client";
 import { collectionResponse } from "@/lib/collection-response";
 import { HttpError } from "@/lib/http-error";
+import type { ProjectWithTasks } from "@/types/project";
 
 export type GetProjectsRequest = InferRequestType<
   (typeof client)["project"]["$get"]
@@ -10,7 +11,7 @@ export type GetProjectsRequest = InferRequestType<
 async function getProjects({
   workspaceId,
   includeArchived,
-}: GetProjectsRequest) {
+}: GetProjectsRequest): Promise<ProjectWithTasks[]> {
   // Keep the query contract array-shaped even while the workspace context is
   // resolving. Several Projects navigation surfaces call array methods during
   // their first render.
@@ -29,7 +30,7 @@ async function getProjects({
   // The project hooks consume a collection directly. Keep this boundary
   // defensive because the Admin adapter may return an envelope while an
   // older local worker is still running during development.
-  return collectionResponse(data, ["projects", "data", "items", "results"]);
+  return collectionResponse<ProjectWithTasks>(data, ["projects", "data", "items", "results"]);
 }
 
 export default getProjects;

@@ -262,8 +262,9 @@ function ListView({
 
   const handleAddTask = useCallback((columnId: string) => {
     setIsTaskModalOpen(true);
-    setActiveColumn(columnId);
-  }, []);
+    const column = project?.columns?.find((candidate) => candidate.id === columnId);
+    setActiveColumn(column?.slug ?? columnId);
+  }, [project?.columns]);
 
   const handleArchiveClick = useCallback(
     (column: ProjectWithTasks["columns"][number]) => {

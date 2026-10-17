@@ -1,6 +1,4 @@
-import { getApiUrl } from "@/fetchers/get-api-url";
-
-import { HttpError } from "@/lib/http-error";
+import { requestAdminJson } from "@/lib/karamah-admin";
 export type NotificationPreferenceWorkspaceRule = {
   id: string;
   workspaceId: string;
@@ -46,15 +44,9 @@ export type NotificationPreferences = {
 };
 
 async function getNotificationPreferences(): Promise<NotificationPreferences> {
-  const response = await fetch(getApiUrl("/notification-preferences"), {
-    credentials: "include",
+  return requestAdminJson<NotificationPreferences>({
+    action: "project-notification-preferences-get",
   });
-
-  if (!response.ok) {
-    throw await HttpError.fromResponse(response);
-  }
-
-  return (await response.json()) as NotificationPreferences;
 }
 
 export default getNotificationPreferences;

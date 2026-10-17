@@ -26,7 +26,7 @@ type ProjectsUser = {
   emailVerified: boolean;
 };
 
-type Workspace = {
+export type Workspace = {
   id: string;
   name: string;
   slug: string;
@@ -50,6 +50,8 @@ type WorkspaceMember = {
 };
 
 let firebaseUser: FirebaseUser | null | undefined;
+let resolveInitialAuth: (() => void) | null = null;
+const initialAuthReady = new Promise<void>((resolve) => { resolveInitialAuth = resolve; });
 const listeners = new Set<() => void>();
 const organizationListeners = new Set<() => void>();
 let activeOrganizationId: string | null = typeof window === "undefined" ? null : window.localStorage.getItem("projects.activeWorkspace");
@@ -103,7 +105,11 @@ function publishFirebaseUser(user: FirebaseUser | null) {
   if (user) void loadOrganizations(user).catch(() => undefined);
 }
 
-onAuthStateChanged(auth, publishFirebaseUser);
+onAuthStateChanged(auth, (user) => {
+  publishFirebaseUser(user);
+  resolveInitialAuth?.();
+  resolveInitialAuth = null;
+});
 
 const GOOGLE_SIGN_IN_TIMEOUT_MS = 45_000;
 async function signInWithGooglePopup() {
@@ -281,7 +287,11 @@ const organization = {
 
 export const authClient: any = {
   useSession, useListOrganizations, useActiveOrganization, organization,
-  getSession: async () => ok(sessionValue()),
+  getSession: async () => { await initialAuthReady; return ok(sessionValue()); },
+  // Realtime connections can live longer than an access token. Force a
+  // refresh here so a restored browser session cannot open a socket with an
+  // expired token after a long test run or an idle tab.
+  getRealtimeToken: async () => auth.currentUser ? auth.currentUser.getIdToken(true) : "",
   signIn: {
     social: async () => { try { const user = await signInWithGooglePopup(); return { data: sessionValue(user), error: null }; } catch (error) { return { data: null, error: { message: error instanceof Error ? error.message : "Sign in failed." } }; } },
     oauth2: async () => authClient.signIn.social(),
