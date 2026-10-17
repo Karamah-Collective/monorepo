@@ -647,13 +647,13 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 | `NOMINATIM_REV` | Nominatim reverse geocoding URL | Public, no key |
 | `NOMINATIM_VB` | Nominatim bounding box (`W,N,E,S`) | Set to Helsinki metro area |
 | `HF_TOKEN_KEY` | AES encryption key for route/pin sharing URLs | Any strong random string |
-| `RECAPTCHA_SITE_KEY` | reCAPTCHA v3 public site key | Google reCAPTCHA Admin |
+| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile public site key | Cloudflare Turnstile widget |
 
 **Production-only (Cloudflare environment variables, never committed):**
 
 | Variable | Description |
 |----------|-------------|
-| `RECAPTCHA_SECRET` | reCAPTCHA v3 server-side secret (for protected form writes) |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile server-side secret (for protected form writes) |
 | `ADMIN_SECRET` | Shared secret for the D1-backed admin API |
 | `BREVO_API_KEY` | Brevo transactional email API key for contact-form alerts |
 | `REPORT_SECRET` | Shared secret for the GitHub Actions weekly digest trigger |
@@ -662,11 +662,11 @@ All configuration is typed in `src/config.template.js`. Copy this to `src/config
 | `REPORT_FROM` | Optional weekly digest sender; defaults to `manarah@karamahcollective.com` |
 | `REPORT_FROM_NAME` | Optional weekly digest sender name; defaults to `Manarah Maps` |
 | `REPORT_TO` | Optional weekly digest recipients; defaults to `home@karamahcollective.com` |
-| `DEV_SKIP_RECAPTCHA` | Local-only flag for testing the contact form on localhost |
+| `DEV_SKIP_TURNSTILE` | Local-only flag for testing protected writes on localhost |
 
 Set these in the Cloudflare Pages dashboard under Settings → Environment Variables.
-For local contact-form testing, copy `.dev.vars.example` to `.dev.vars`, set
-`DEV_SKIP_RECAPTCHA=true`, and add a real `BREVO_API_KEY`. Wrangler loads
+For local protected-form testing, copy `.dev.vars.example` to `.dev.vars`, set
+`DEV_SKIP_TURNSTILE=true`, and add a real `BREVO_API_KEY`. Wrangler loads
 `.dev.vars` for `npx wrangler pages dev .`; the file is gitignored.
 
 ---
@@ -923,8 +923,8 @@ DT_API_KEY
 NOMINATIM_REV
 NOMINATIM_VB
 HF_TOKEN_KEY
-RECAPTCHA_SITE_KEY
-RECAPTCHA_SECRET
+TURNSTILE_SITE_KEY
+TURNSTILE_SECRET_KEY
 ADMIN_SECRET
 BREVO_API_KEY
 REPORT_SECRET

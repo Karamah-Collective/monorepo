@@ -183,3 +183,28 @@ test('contact writes only explicit opt-ins and reports a failed database save ho
   assert.equal(failed.success, true);
   assert.equal(failed.sheetSaved, false);
 });
+
+test('contact does not claim delivery when anti-bot timing is missing', async () => {
+  const response = await contactRequest({
+    env,
+    request: new Request('https://website.test/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Test visitor', email: 'visitor@example.test', message: 'Hello', turnstileToken: 'test-token' }),
+    }),
+  });
+  const data = await response.json();
+  assert.equal(response.status, 403);
+  assert.equal(data.success, false);
+
+  const honeypot = await contactRequest({
+    env,
+    request: new Request('https://website.test/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Test visitor', email: 'visitor@example.test', message: 'Hello', _hp: 'filled' }),
+    }),
+  });
+  assert.equal(honeypot.status, 403);
+  assert.equal((await honeypot.json()).success, false);
+});

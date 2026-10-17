@@ -308,8 +308,10 @@ async function _handleVote(wishId) {
       return;
     }
 
-    _setVoteState(wishId, Boolean(data.voted), data.votes);
+    const isVoted = Boolean(data.voted);
+    _setVoteState(wishId, isVoted, data.votes);
     _render();
+    showToast(isVoted ? "Vote added" : "Vote removed", "check");
   } catch {
     _setVoteState(wishId, wasVoted);
     _render();

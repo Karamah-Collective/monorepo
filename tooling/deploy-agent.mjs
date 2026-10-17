@@ -90,6 +90,7 @@ const DEPLOY_FILES = [
   "Maps/migrations/0050_admin_database_schema.sql",
   "Maps/migrations/0051_remove_forms_from_admin_database.sql",
   "Maps/migrations/0052_project_workspace.sql",
+  "Maps/migrations/0054_verified_visit_timeline.sql",
   "Maps/scripts/build.mjs",
   "Maps/scripts/transit-cache.json",
   "Website/package.json",

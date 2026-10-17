@@ -193,13 +193,14 @@ export function getCurrentLocationState() {
   return { ..._currentLocationState };
 }
 
-export function setCurrentLocationState({ lat, lng, accuracy, active = true } = {}) {
+export function setCurrentLocationState({ lat, lng, accuracy, active = true, source = null } = {}) {
   const accuracyNum = Number(accuracy);
   const next = {
     active: !!active && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)),
     lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
     lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
     accuracy: Number.isFinite(accuracyNum) ? accuracyNum : null,
+    source: active && source === "sim" ? "sim" : null,
   };
   _currentLocationState = next;
   _emitWindowEvent("hf:current-location-updated", { location: { ...next } });
@@ -207,7 +208,7 @@ export function setCurrentLocationState({ lat, lng, accuracy, active = true } = 
 }
 
 export function clearCurrentLocationState() {
-  return setCurrentLocationState({ active: false, lat: null, lng: null });
+  return setCurrentLocationState({ active: false, lat: null, lng: null, source: null });
 }
 // ─────────────────────────────────────────────────────────────
 
@@ -599,6 +600,8 @@ function _getToastStack() {
   if (!stack) {
     stack = document.createElement("div");
     stack.id = "toast-stack";
+    stack.setAttribute("aria-live", "polite");
+    stack.setAttribute("aria-atomic", "false");
     document.body.appendChild(stack);
   }
   return stack;

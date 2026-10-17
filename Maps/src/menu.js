@@ -438,6 +438,9 @@ export async function initMenuAccount() {
   window.addEventListener(EVT.PROFILE_CARD_RENDERED, () => {
     if (_activePane === "profile") { _syncPaneHeight(profilePaneEl); menuSnap.softRemeasure(); }
   });
+  window.addEventListener(EVT.PROFILE_TIMELINE_RENDERED, () => {
+    if (_activePane === "profile") { _syncPaneHeight(profilePaneEl); menuSnap.softRemeasure(); }
+  });
 }
 
 function _renderAccountSection() {

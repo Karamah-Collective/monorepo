@@ -198,9 +198,11 @@ test.describe("Places — Favourites", () => {
     await favBtn.click();
     await page.waitForTimeout(200);
     await expect(favBtn).toHaveClass(/active/);
+    await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Place saved");
     await favBtn.click();
     await page.waitForTimeout(200);
     await expect(favBtn).not.toHaveClass(/active/);
+    await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Removed from saved");
   });
 
   test("saved tab shows empty state when no favourites", async ({ page }) => {
@@ -275,5 +277,19 @@ test.describe("Places — Place Detail Sheet", () => {
     await favBtn.click();
     await page.waitForTimeout(200);
     await expect(favBtn).toHaveClass(/active/);
+    await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Place saved");
+  });
+
+  test("place sheet visited button confirms both marking and unmarking", async ({ page }) => {
+    await page.evaluate(() => localStorage.removeItem("hf_visited"));
+    await page.locator(".place-mk-wrap").first().dispatchEvent("click");
+    await page.waitForTimeout(800);
+    const visitBtn = page.locator("#place-sheet-body .pp-visit-chip");
+    await visitBtn.click();
+    await page.waitForTimeout(200);
+    await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Marked as visited");
+    await visitBtn.click();
+    await page.waitForTimeout(200);
+    await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Visited mark removed");
   });
 });

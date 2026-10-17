@@ -491,14 +491,14 @@ If the existing Website project uses the old repository, create a replacement Pa
    | --- | --- |
    | `GOOGLE_SHEET_URL` | The existing Apps Script web app URL ending in `/exec`, not the spreadsheet URL |
    | `BREVO_API_KEY` | Existing contact-email service key; store as a secret |
-   | `RECAPTCHA_SITE_KEY` | Existing public reCAPTCHA site key |
-   | `RECAPTCHA_SECRET_KEY` | Existing reCAPTCHA secret; store as a secret |
+   | `TURNSTILE_SITE_KEY` | Existing public Cloudflare Turnstile site key |
+   | `TURNSTILE_SECRET_KEY` | Existing Cloudflare Turnstile secret; store as a secret |
    | `WEBSITE_ADMIN_KEY` | New random secret; see the next section |
    | `WEBSITE_FORM_KEY` | A different new random secret; see the next section |
 
    `googleSheetsURL` and `googleSheetUrl` are accepted as compatibility aliases, so the current Cloudflare value can keep working. Prefer `GOOGLE_SHEET_URL` for new setup because all diagnostics and examples use that name.
 
-4. Complete the Sheets setup below and deploy. Test the new `*.pages.dev` URL before moving the real domain. Add that test hostname to reCAPTCHA's allowed domains if testing the real contact form there.
+4. Complete the Sheets setup below and deploy. Test the new `*.pages.dev` URL before moving the real domain. Add that test hostname to the shared Turnstile widget's allowed hostnames if testing the real contact form there.
 5. When ready to switch, remove `karamahcollective.com` from the old project's **Custom domains**, then add it to the new project's **Custom domains**. Follow Cloudflare's DNS instructions and wait for **Active**. Move `www.karamahcollective.com` too if it is attached to the old project, or retain your existing `www` redirect.
 6. Verify the actual domain, team directory, contact form and Admin Website pages. Keep the old Pages project until you have verified the migration.
 

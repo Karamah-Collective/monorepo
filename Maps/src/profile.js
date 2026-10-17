@@ -48,8 +48,22 @@ import {
 } from "./places.js";
 import { fetchMyReviews, buildStarDisplay, deleteReview, openReviewsOverlayForEdit } from "./reviews.js";
 import { computeContributionStats, formatMemberSince, computeTopBadge } from "./account-profile.js";
+import { HSL_STYLE } from "./map-style.js";
+import {
+  aggregateTimelineDays,
+  deleteVerifiedVisit,
+  fetchVisitTimeline,
+  getUniqueTimelinePlaces,
+  groupTimelineByMonth,
+  summarizeTimeline,
+} from "./timeline.js";
 
 const ACCOUNT_API = "/api/account";
+const TIMELINE_DAYS_IN_WEEK = 7;
+const TIMELINE_START_DATE = new Date(2026, 9, 1);
+const TIMELINE_MAP_SINGLE_ZOOM = 12;
+const TIMELINE_MAP_FIT_PADDING = 28;
+const TIMELINE_MAP_RESIZE_DELAY_MS = 240;
 
 // Icons reused as showConfirmDialog()'s icon-circle content — same shapes
 // already used on their own triggering buttons, just larger, so the dialog
@@ -70,6 +84,19 @@ const submittedEditsEl = document.getElementById("profile-submitted-edits");
 const myReviewsEl = document.getElementById("profile-my-reviews");
 const exportBtn = document.getElementById("profile-export-btn");
 const eraseBtn = document.getElementById("profile-erase-btn");
+const timelinePreviewEl = document.getElementById("profile-timeline-preview");
+const timelinePreviewTitleEl = document.getElementById("profile-timeline-preview-title");
+const timelinePreviewSummaryEl = document.getElementById("profile-timeline-preview-summary");
+const timelineOpenBtn = document.getElementById("profile-timeline-open");
+const timelineOverlayEl = document.getElementById("timeline-overlay");
+const timelineCloseBtn = document.getElementById("timeline-close");
+const timelineEl = document.getElementById("profile-timeline");
+const timelineSummaryEl = document.getElementById("profile-timeline-summary");
+const timelineCalendarEl = document.getElementById("profile-timeline-calendar");
+const timelineMapWrapEl = document.getElementById("profile-timeline-map-wrap");
+const timelineMapSectionEl = document.getElementById("timeline-map-section");
+const timelineMapEl = document.getElementById("profile-timeline-map");
+const timelineListEl = document.getElementById("profile-timeline-list");
 
 let _auth = null; // lazily-loaded src/auth.js module namespace
 let _account = null;
@@ -82,6 +109,12 @@ let _reviewsCache = [];
 let _submittedPlacesCache = [];
 let _submittedEditsCache = [];
 let _accountMetaCache = { saved: [], firstSeenAt: null, lifetimeReviewCount: 0, lifetimeVisitedCount: 0 };
+let _timelineCache = [];
+let _timelineGeneration = 0;
+let _timelineLoaded = false;
+let _timelineLoadFailed = false;
+let _timelineMap = null;
+let _timelineMapMarkers = [];
 
 function _revokeReviewImageUrls(reviews) {
   for (const review of reviews || []) {
@@ -117,6 +150,24 @@ function _closeAccountSheet() {
   window.dispatchEvent(new CustomEvent(EVT.ACCOUNT_SHEET_CLOSE, { detail: {} }));
 }
 
+function _closeTimelineOverlay() {
+  if (!timelineOverlayEl) return;
+  timelineOverlayEl.classList.add("hide");
+  timelineOverlayEl.setAttribute("aria-hidden", "true");
+  _clearTimelineMap();
+}
+
+function _openTimelineOverlay() {
+  if (!timelineOverlayEl || !_account) return;
+  timelineOverlayEl.classList.remove("hide");
+  timelineOverlayEl.setAttribute("aria-hidden", "false");
+  if (_timelineLoadFailed) _renderTimelineError();
+  else if (_timelineLoaded) _renderTimelineResult({ success: true, visits: _timelineCache });
+  else _renderTimelineLoading();
+  requestAnimationFrame(() => _timelineMap?.resize());
+  timelineCloseBtn?.focus();
+}
+
 /**
  * Wire up the Profile pane's always-signed-in-only content. Call once,
  * after map load (same lazy-load-after-map-load convention as
@@ -131,6 +182,11 @@ export async function initProfile() {
     _revokeReviewImageUrls(_reviewsCache);
     _reviewsCache = [];
     _account = e.detail?.account || null;
+    _timelineGeneration += 1;
+    _timelineCache = [];
+    _timelineLoaded = false;
+    _timelineLoadFailed = false;
+    _closeTimelineOverlay();
     // Whatever meta is cached belongs to the account that just went away —
     // never to whoever signs in next (see _accountMetaLoaded's declaration).
     _accountMetaLoaded = false;
@@ -155,9 +211,21 @@ export async function initProfile() {
   // but a request still legitimately in flight can't be waited on from here
   // (see account-sync.js's own fire-and-forget design note).
   window.addEventListener(EVT.SAVED_SYNCED, () => _refreshStatsLive());
+  window.addEventListener(EVT.TIMELINE_UPDATED, () => {
+    if (!_account || menuSheetEl.classList.contains("shut") || !timelineEl) return;
+    _loadTimelineOnly(_account.uid);
+  });
 
   exportBtn?.addEventListener("click", _handleExport);
   eraseBtn?.addEventListener("click", _handleErase);
+  timelineOpenBtn?.addEventListener("click", _openTimelineOverlay);
+  timelineCloseBtn?.addEventListener("click", _closeTimelineOverlay);
+  timelineOverlayEl?.addEventListener("click", (event) => {
+    if (event.target === timelineOverlayEl) _closeTimelineOverlay();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _closeTimelineOverlay();
+  });
 }
 
 /**
@@ -191,7 +259,10 @@ async function _refreshStatsLive() {
  */
 export async function loadProfileContent() {
   if (!_account) return; // shouldn't happen — Profile is only ever reachable while signed in
+  const profileUid = _account.uid;
+  const timelineGeneration = _timelineGeneration;
   _renderCard();
+  _renderTimelineLoading();
   // On a session's first-ever Profile visit, this just swapped the identity
   // card from a short "Loading…" placeholder to the real (taller) card,
   // BEFORE the fetch below even starts — src/menu.js's pane-height sync
@@ -201,16 +272,17 @@ export async function loadProfileContent() {
   // post-fetch sync corrects it. See EVT.PROFILE_CARD_RENDERED's doc comment.
   window.dispatchEvent(new CustomEvent(EVT.PROFILE_CARD_RENDERED, { detail: {} }));
 
-  const [reviewsResult, placesResult, editsResult, meta] = await Promise.all([
+  const [reviewsResult, placesResult, editsResult, meta, timelineResult] = await Promise.all([
     fetchMyReviews(),
     fetchMySubmittedPlaces(),
     fetchMySubmittedEdits(),
     _fetchAccountMeta(),
+    fetchVisitTimeline(),
   ]);
   // The merged sheet may have been closed (or the account signed out) while
   // these were in flight — bail rather than render into a stale/gone sheet
   // or hand a signed-out account's data to a subsequent viewer.
-  if (!_account || menuSheetEl.classList.contains("shut")) return;
+  if (!_account || _account.uid !== profileUid || timelineGeneration !== _timelineGeneration || menuSheetEl.classList.contains("shut")) return;
 
   _revokeReviewImageUrls(_reviewsCache);
   _reviewsCache = reviewsResult.reviews;
@@ -218,12 +290,18 @@ export async function loadProfileContent() {
   _submittedEditsCache = editsResult.submissions;
   _accountMetaCache = meta;
   _accountMetaLoaded = true;
+  _timelineCache = timelineResult.visits;
+  _timelineLoaded = true;
+  _timelineLoadFailed = !timelineResult.success;
 
   _renderCard(); // re-render with "member since"/top badge now resolved
   _renderStats();
   _renderSubmissionList(submittedPlacesEl, _submittedPlacesCache, "You haven't submitted any places yet.");
   _renderSubmissionList(submittedEditsEl, _submittedEditsCache, "You haven't submitted any edits yet.");
   _renderMyReviews();
+  if (timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _renderTimelineResult(timelineResult);
+  else if (timelineResult.success) _renderTimelinePreview(summarizeTimeline(_timelineCache), _timelineCache.length ? "ready" : "empty");
+  else _renderTimelinePreview(null, "error");
 
   // Diff-then-toast-then-persist, in that order, exactly as places.js's own
   // diffSubmissionStatuses()/updateSubmissionStatusCache() doc comments
@@ -417,6 +495,296 @@ function _handleSavedStatJump(e) {
   if (section !== "pins" && section !== "visited") return;
   _closeAccountSheet();
   requestAnimationFrame(() => openSavedPlacesAtSection(section));
+}
+
+function _renderTimelinePreview(summary, state = "empty") {
+  if (!timelinePreviewEl) return;
+  if (state === "loading") {
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Your visit story starts here";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Loading your private timeline…";
+    return;
+  }
+  if (state === "error") {
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline unavailable";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Open the timeline to try again.";
+    return;
+  }
+  if (!summary?.totalVisits) {
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Your visit story starts here";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Your confirmed visits will collect here.";
+    return;
+  }
+  const visitLabel = `${summary.totalVisits} visit${summary.totalVisits === 1 ? "" : "s"}`;
+  const placeLabel = `${summary.uniquePlaces} place${summary.uniquePlaces === 1 ? "" : "s"}`;
+  if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = visitLabel;
+  if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = `${placeLabel} · ${summary.activeMonths} active month${summary.activeMonths === 1 ? "" : "s"}`;
+}
+
+function _renderTimelineSummary(summary) {
+  if (!timelineSummaryEl) return;
+  const values = [[summary.totalVisits, "Visits"], [summary.uniquePlaces, "Places"], [summary.activeMonths, "Active months"]];
+  timelineSummaryEl.innerHTML = values.map(([value, label]) => `<div class="pf-timeline-summary-card"><span class="pf-timeline-summary-value">${esc(String(value))}</span><span class="pf-timeline-summary-label">${esc(label)}</span></div>`).join("");
+}
+
+function _renderTimelineLoading() {
+  _clearTimelineMap();
+  _renderTimelinePreview(null, "loading");
+  if (timelineSummaryEl) timelineSummaryEl.innerHTML = [1, 2, 3].map(() => `<div class="pf-timeline-summary-card pf-timeline-summary-card--loading" aria-hidden="true"><span></span><span></span></div>`).join("");
+  if (timelineCalendarEl) timelineCalendarEl.innerHTML = `<div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
+  if (timelineListEl) timelineListEl.innerHTML = `<div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span></div>`;
+}
+
+function _formatTimelineDate(visitedAt) {
+  const date = new Date(visitedAt);
+  if (Number.isNaN(date.getTime())) return { date: "", time: "" };
+  return {
+    date: new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date),
+    time: new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(date),
+  };
+}
+
+function _timelineDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function _calendarLevel(count, maximum) {
+  if (!count) return 0;
+  if (maximum <= 1 || count >= maximum * 0.75) return 4;
+  if (count >= maximum * 0.5) return 3;
+  if (count >= maximum * 0.25) return 2;
+  return 1;
+}
+
+function _renderTimelineCalendar(visits) {
+  if (!timelineCalendarEl) return;
+  const counts = aggregateTimelineDays(visits);
+  const maximum = Math.max(0, ...counts.values());
+  const now = new Date();
+  const firstVisibleDay = new Date(TIMELINE_START_DATE);
+  const start = new Date(firstVisibleDay);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(now);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+  const weekCount = Math.ceil((end.getTime() - start.getTime() + 1) / (TIMELINE_DAYS_IN_WEEK * 24 * 60 * 60 * 1000));
+  const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
+  const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+  const firstVisitDate = visits.map((visit) => new Date(visit.visitedAt)).filter((date) => !Number.isNaN(date.getTime())).sort((a, b) => a - b)[0];
+  const firstVisitLabel = firstVisitDate
+    ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(firstVisitDate)
+    : "1 Oct 2026";
+  const weekdayLabels = Array.from({ length: TIMELINE_DAYS_IN_WEEK }, (_, index) => weekdayFormatter.format(new Date(2024, 0, 7 + index)));
+  const monthLabels = [];
+  const cells = [];
+  let previousMonthKey = "";
+  for (let week = 0; week < weekCount; week += 1) {
+    const weekStart = new Date(start);
+    weekStart.setDate(start.getDate() + week * TIMELINE_DAYS_IN_WEEK);
+    const monthLabelDate = weekStart < TIMELINE_START_DATE ? TIMELINE_START_DATE : weekStart;
+    const monthKey = `${monthLabelDate.getFullYear()}-${monthLabelDate.getMonth()}`;
+    monthLabels.push(monthKey === previousMonthKey ? "" : monthFormatter.format(monthLabelDate));
+    previousMonthKey = monthKey;
+    for (let day = 0; day < TIMELINE_DAYS_IN_WEEK; day += 1) {
+      const current = new Date(weekStart);
+      current.setDate(weekStart.getDate() + day);
+      const count = counts.get(_timelineDayKey(current)) || 0;
+      const dayKey = _timelineDayKey(current);
+      const beforeStart = current < TIMELINE_START_DATE;
+      const label = `${current.toLocaleDateString(undefined, { dateStyle: "full" })}: ${count} verified visit${count === 1 ? "" : "s"}`;
+      const future = current > now ? " pf-timeline-calendar-day--future" : "";
+      const before = beforeStart ? " pf-timeline-calendar-day--before-start" : "";
+      const today = dayKey === _timelineDayKey(now) ? " pf-timeline-calendar-day--today" : "";
+      const interactive = count && !beforeStart && current <= now;
+      cells.push(`<button type="button" class="pf-timeline-calendar-day${future}${before}${today}" data-level="${_calendarLevel(count, maximum)}" data-day-key="${dayKey}"${interactive ? " data-has-visits=\"true\"" : " disabled"} title="${escA(label)}" aria-label="${escA(label)}"></button>`);
+    }
+  }
+  timelineCalendarEl.innerHTML = `<div class="pf-timeline-activity" aria-label="Verified visits since ${escA(firstVisitLabel)}"><div class="pf-timeline-activity-heading"><span>Activity</span><span class="pf-timeline-activity-range">Since ${esc(firstVisitLabel)}</span></div><div class="pf-timeline-activity-scroll"><div class="pf-timeline-activity-layout"><div class="pf-timeline-weekday-labels" aria-hidden="true">${weekdayLabels.map((label, index) => `<span>${index % 2 === 1 ? esc(label.slice(0, 2)) : ""}</span>`).join("")}</div><div class="pf-timeline-activity-body"><div class="pf-timeline-activity-months" aria-hidden="true">${monthLabels.map((label) => `<span>${esc(label)}</span>`).join("")}</div><div class="pf-timeline-activity-grid">${cells.join("")}</div></div></div></div><div class="pf-timeline-legend" aria-label="Visit intensity legend"><span>Fewer</span><i data-level="0"></i><i data-level="1"></i><i data-level="2"></i><i data-level="3"></i><i data-level="4"></i><span>More</span></div></div>`;
+  timelineCalendarEl.querySelectorAll(".pf-timeline-calendar-day[data-has-visits]").forEach((day) => {
+    day.addEventListener("click", () => _scrollTimelineToDay(day.dataset.dayKey));
+  });
+  requestAnimationFrame(() => {
+    const scroll = timelineCalendarEl.querySelector(".pf-timeline-activity-scroll");
+    if (scroll) scroll.scrollLeft = scroll.scrollWidth;
+  });
+}
+
+function _scrollTimelineToDay(dayKey) {
+  const events = [...(timelineListEl?.querySelectorAll(".pf-timeline-event") || [])].filter((item) => {
+    const visitedAt = item.querySelector("time")?.dateTime;
+    return visitedAt && _timelineDayKey(new Date(visitedAt)) === dayKey;
+  });
+  if (!events.length) return;
+  events.forEach((event) => {
+    const monthEvents = event.closest(".pf-timeline-events");
+    if (!monthEvents?.classList.contains("pf-timeline-events--collapsed")) return;
+    monthEvents.classList.remove("pf-timeline-events--collapsed");
+    monthEvents.setAttribute("aria-hidden", "false");
+    monthEvents.inert = false;
+    timelineListEl.querySelector(`[aria-controls="${monthEvents.id}"]`)?.setAttribute("aria-expanded", "true");
+  });
+  events[0].scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+  events.forEach((event) => event.classList.add("pf-timeline-event--day-target"));
+  setTimeout(() => events.forEach((event) => event.classList.remove("pf-timeline-event--day-target")), 1400);
+}
+
+function _buildTimelineEvent(visit) {
+  const formatted = _formatTimelineDate(visit.visitedAt);
+  const place = placesData.find((candidate) => candidate.id === visit.placeId);
+  const category = place?.category || place?.type || "";
+  return `<article class="pf-timeline-event${place ? " pf-timeline-event--clickable" : ""}"${place ? ` data-place-id="${escA(visit.placeId)}" role="button" tabindex="0"` : ""}><div class="pf-timeline-event-rail" aria-hidden="true"><span class="pf-timeline-event-marker"></span></div><div class="pf-timeline-event-content"><div class="pf-timeline-event-heading"><h3>${esc(visit.placeName)}</h3><span class="pf-timeline-confirmed">GPS-confirmed</span></div><time class="pf-timeline-event-time" datetime="${escA(visit.visitedAt)}">${esc(formatted.date)} · ${esc(formatted.time)}</time>${category ? `<span class="pf-timeline-event-category">${esc(category)}</span>` : ""}</div></article>`;
+}
+
+function _wireTimelineEvents() {
+  timelineListEl?.querySelectorAll(".pf-timeline-event").forEach((event) => {
+    event.querySelector(".pf-timeline-confirmed")?.remove();
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "btn-roundel-danger pf-timeline-event-remove";
+    removeButton.setAttribute("aria-label", `Remove visit to ${event.querySelector("h3")?.textContent || "this place"}`);
+    removeButton.title = "Remove this visit";
+    removeButton.innerHTML = TRASH_ICON_SVG;
+    removeButton.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const confirmed = await showConfirmDialog({
+        title: "Remove this visit?",
+        message: "This removes the selected visit from your timeline.",
+        confirmLabel: "Remove",
+        cancelLabel: "Keep",
+        variant: "danger",
+        icon: TRASH_ICON_SVG,
+      });
+      if (!confirmed) return;
+      removeButton.disabled = true;
+      const result = await deleteVerifiedVisit(event.dataset.visitId);
+      if (!result.success) {
+        removeButton.disabled = false;
+        showToast("Couldnâ€™t remove this visit", "error", "Please try again");
+      } else {
+        showToast("Visit removed", "check");
+      }
+    });
+    event.querySelector(".pf-timeline-event-heading")?.appendChild(removeButton);
+
+    if (!event.classList.contains("pf-timeline-event--clickable")) return;
+    const open = () => {
+      const place = placesData.find((candidate) => candidate.id === event.dataset.placeId);
+      if (!place) return;
+      _closeAccountSheet();
+      openPlaceSheet(place);
+    };
+    event.addEventListener("click", open);
+    event.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+  });
+}
+
+function _renderTimelineList(visits) {
+  if (!timelineListEl) return;
+  if (!visits.length) {
+    timelineListEl.innerHTML = `<div class="pf-timeline-empty"><div class="pf-timeline-empty-graphic" aria-hidden="true"><span></span><i></i><span></span><i></i><span></span></div><div class="pf-timeline-empty-copy"><strong>Your timeline is ready</strong><span>Confirm a nearby place and your first visit will appear here.</span></div><button class="btn-secondary" type="button" data-profile-timeline-browse>Explore places</button></div>`;
+    timelineListEl.querySelector("[data-profile-timeline-browse]")?.addEventListener("click", _closeAccountSheet);
+    return;
+  }
+  const groups = groupTimelineByMonth(visits);
+  timelineListEl.innerHTML = groups.map((group, index) => {
+    const eventsId = `timeline-month-${escA(group.key)}`;
+    const expanded = index === 0;
+    return `<section class="pf-timeline-month-events"><button class="pf-timeline-month-toggle" type="button" aria-expanded="${expanded}" aria-controls="${eventsId}"><span>${esc(group.label)}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id="${eventsId}" class="pf-timeline-events${expanded ? "" : " pf-timeline-events--collapsed"}" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : " inert"}><div class="pf-timeline-events-inner">${group.visits.map(_buildTimelineEvent).join("")}</div></div></section>`;
+  }).join("");
+  timelineListEl.querySelectorAll(".pf-timeline-month-toggle").forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!expanded));
+      const events = document.getElementById(toggle.getAttribute("aria-controls"));
+      if (!events) return;
+      events.classList.toggle("pf-timeline-events--collapsed", expanded);
+      events.setAttribute("aria-hidden", String(expanded));
+      events.inert = expanded;
+    });
+  });
+  const renderedVisits = groups.flatMap((group) => group.visits);
+  timelineListEl.querySelectorAll(".pf-timeline-event").forEach((event, index) => {
+    event.dataset.visitId = renderedVisits[index]?.id || "";
+  });
+  _wireTimelineEvents();
+}
+
+function _clearTimelineMap() {
+  _timelineMapMarkers.forEach((marker) => marker.remove());
+  _timelineMapMarkers = [];
+  _timelineMap?.remove();
+  _timelineMap = null;
+  if (timelineMapWrapEl) timelineMapWrapEl.hidden = true;
+  if (timelineMapSectionEl) timelineMapSectionEl.hidden = true;
+}
+
+function _renderTimelineMap(visits) {
+  _clearTimelineMap();
+  const uniquePlaces = getUniqueTimelinePlaces(visits);
+  if (!uniquePlaces.length || !timelineMapWrapEl || !timelineMapEl || !window.maplibregl) return;
+  timelineMapWrapEl.hidden = false;
+  if (timelineMapSectionEl) timelineMapSectionEl.hidden = false;
+  const first = uniquePlaces[0];
+  const timelineMap = new window.maplibregl.Map({ container: timelineMapEl, style: HSL_STYLE, center: [first.placeLng, first.placeLat], zoom: uniquePlaces.length === 1 ? TIMELINE_MAP_SINGLE_ZOOM : 2, attributionControl: false });
+  _timelineMap = timelineMap;
+  uniquePlaces.forEach((visit) => {
+    const markerEl = document.createElement("span");
+    markerEl.className = "pf-timeline-map-marker";
+    markerEl.setAttribute("aria-label", visit.placeName);
+    markerEl.title = visit.placeName;
+    _timelineMapMarkers.push(new window.maplibregl.Marker({ element: markerEl, anchor: "center" }).setLngLat([visit.placeLng, visit.placeLat]).addTo(timelineMap));
+  });
+  timelineMap.once("load", () => {
+    if (uniquePlaces.length > 1) {
+      const bounds = new window.maplibregl.LngLatBounds();
+      uniquePlaces.forEach((visit) => bounds.extend([visit.placeLng, visit.placeLat]));
+      timelineMap.fitBounds(bounds, { padding: TIMELINE_MAP_FIT_PADDING, maxZoom: TIMELINE_MAP_SINGLE_ZOOM });
+    }
+    setTimeout(() => timelineMap.resize(), TIMELINE_MAP_RESIZE_DELAY_MS);
+  });
+}
+
+function _renderTimelineError() {
+  if (timelineSummaryEl) timelineSummaryEl.innerHTML = `<div class="pf-timeline-error" role="status"><strong>Your timeline couldn’t be loaded.</strong><button class="btn-secondary" type="button" data-profile-timeline-retry>Try again</button></div>`;
+  if (timelineCalendarEl) timelineCalendarEl.innerHTML = "";
+  if (timelineListEl) timelineListEl.innerHTML = `<p class="menu-placeholder">Timeline data is temporarily unavailable.</p>`;
+  _clearTimelineMap();
+  timelineSummaryEl?.querySelector("[data-profile-timeline-retry]")?.addEventListener("click", () => _loadTimelineOnly(_account?.uid));
+  _renderTimelinePreview(null, "error");
+  window.dispatchEvent(new CustomEvent(EVT.PROFILE_TIMELINE_RENDERED, { detail: { state: "error" } }));
+}
+
+function _renderTimelineResult(result) {
+  if (!result?.success) { _renderTimelineError(); return; }
+  const visits = Array.isArray(result.visits) ? result.visits : [];
+  const summary = summarizeTimeline(visits);
+  _renderTimelineSummary(summary);
+  _renderTimelinePreview(summary, visits.length ? "ready" : "empty");
+  if (!visits.length) {
+    if (timelineCalendarEl) timelineCalendarEl.innerHTML = "";
+    _renderTimelineList(visits);
+    _clearTimelineMap();
+    window.dispatchEvent(new CustomEvent(EVT.PROFILE_TIMELINE_RENDERED, { detail: { state: "empty" } }));
+    return;
+  }
+  _renderTimelineCalendar(visits);
+  _renderTimelineList(visits);
+  _renderTimelineMap(visits);
+  window.dispatchEvent(new CustomEvent(EVT.PROFILE_TIMELINE_RENDERED, { detail: { state: visits.length ? "ready" : "empty" } }));
+}
+
+async function _loadTimelineOnly(profileUid) {
+  if (!profileUid || !_account || _account.uid !== profileUid) return;
+  const generation = _timelineGeneration;
+  const result = await fetchVisitTimeline();
+  if (!_account || _account.uid !== profileUid || generation !== _timelineGeneration || menuSheetEl.classList.contains("shut")) return;
+  _timelineLoaded = true;
+  _timelineLoadFailed = !result.success;
+  if (result.success) _timelineCache = result.visits;
+  if (timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _renderTimelineResult(result);
+  else if (result.success) _renderTimelinePreview(summarizeTimeline(_timelineCache), _timelineCache.length ? "ready" : "empty");
+  else _renderTimelinePreview(null, "error");
 }
 
 // ─── Submitted places / edits (status pill + reject-reason surfacing) ───────
@@ -635,6 +1003,7 @@ async function _performDelete(btn) {
     showToast("Couldn't delete review", "error", "Please try again");
   } else {
     _reviewsCache = _reviewsCache.filter((r) => r.placeId !== placeId);
+    showToast("Review deleted", "check");
   }
 }
 
@@ -674,7 +1043,7 @@ async function _handleErase() {
   const confirmed = await showConfirmDialog({
     variant: "danger",
     title: "Erase your data?",
-    message: "This permanently removes your reviews, saved places, and submissions, and signs you out. This can't be undone.",
+    message: "This permanently removes your reviews, saved places, verified timeline visits, and submissions, and signs you out. This can't be undone.",
     confirmLabel: "Erase",
     cancelLabel: "Cancel",
     icon: TRASH_ICON_SVG,
@@ -719,6 +1088,7 @@ function _handleExport() {
     memberSince: _accountMetaCache.firstSeenAt || null,
     reviews: _reviewsCache,
     savedPlaces: _accountMetaCache.saved,
+    verifiedVisits: _timelineCache,
     submittedPlaces: _submittedPlacesCache,
     submittedEdits: _submittedEditsCache,
   };

@@ -366,8 +366,8 @@ test.describe("Signed-in actions actually fire the expected network calls", () =
 
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
-    await expect(page.locator("#menu-signout")).toBeVisible({ timeout: 10_000 });
-    await page.click("#menu-close");
+    await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 10_000 });
+    await page.click("#mp-sheet-close");
 
     await page.evaluate(async () => {
       const mod = await import("/src/places.js");
@@ -383,6 +383,7 @@ test.describe("Signed-in actions actually fire the expected network calls", () =
     expect(captured.kind).toBe("favorite");
     expect(captured.placeId).toBe("test-place-network-fav");
     expect(captured.idToken).toBe("mock-id-token-google");
+    await expect(page.locator("#toast-stack .snack-label", { hasText: "Place saved" })).toBeVisible();
   });
 
   test("sign-in triggers a background /api/account sync-saved call (Phase 8 merge)", async ({ page }) => {

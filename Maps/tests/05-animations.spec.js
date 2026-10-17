@@ -189,6 +189,35 @@ test.describe("Toast Notifications", () => {
     // Toast should auto-dismiss
     await expect(page.locator("#share-toast")).toBeHidden({ timeout: 4000 });
   });
+
+  test("toast width follows content until the viewport cap", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { showToast, showActionToast, showBadgeNotice } = await import("/src/utils.js");
+      showToast("You’re about 12.9 km away", "info", "Move closer and try again");
+      showToast("This is a deliberately long notification message that must wrap at the maximum toast width", "info", "The supporting message must stay inside the same maximum width");
+      showToast("Saved", "check");
+      showActionToast("Location is off", "loc", "Tap to turn on GPS", () => {}, { onClose: () => {} });
+      showBadgeNotice({ categoryLabel: "Explorer", tierName: "Gold", levelRoman: "III", glyph: "star", level: 3 });
+    });
+
+    const metrics = await page.locator("#toast-stack .snack").evaluateAll((elements) => elements.map((element) => ({
+      text: element.textContent,
+      width: element.getBoundingClientRect().width,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      viewport: window.innerWidth,
+    })));
+    const maximumWidth = Math.min(metrics[0].viewport - 24, 380);
+    for (const metric of metrics) {
+      expect(metric.width).toBeLessThanOrEqual(maximumWidth + 1);
+      expect(metric.scrollWidth).toBeLessThanOrEqual(metric.clientWidth + 1);
+    }
+    expect(metrics.find((metric) => metric.text.includes("Saved")).width).toBeLessThan(maximumWidth);
+    expect(metrics.find((metric) => metric.text.includes("deliberately long")).width).toBeGreaterThanOrEqual(maximumWidth - 1);
+    await expect(page.locator("#toast-stack .share-toast-close")).toBeVisible();
+    await expect(page.locator("#toast-stack .badge-notice .sheet-x")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
 });
 
 test.describe("Photo Viewer Interaction", () => {

@@ -5,7 +5,7 @@
  * variables / secrets so nothing private is hard-coded in the client bundle.
  *
  * Expected env vars:
- *   - recaptchaSiteKey / RECAPTCHA_SITE_KEY: reCAPTCHA v3 site key
+ *   - TURNSTILE_SITE_KEY: Cloudflare Turnstile public site key
  */
 export function onRequestGet(context) {
   const { env } = context;

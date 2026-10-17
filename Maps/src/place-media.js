@@ -510,7 +510,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
   const rail = document.createElement("div");
   rail.className = "pp-media-rail";
   section.append(header, rail);
-  host.appendChild(section);
 
   const previous = controls.querySelector(".pp-media-nav--previous");
   const next = controls.querySelector(".pp-media-nav--next");
@@ -530,44 +529,40 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
   // The summary flag is only an optimization hint and may be stale in local
   // development. An opened place always gets one lightweight manifest check.
   const shouldLoad = true;
-  let loading = shouldLoad;
 
   const render = () => {
-    rail.innerHTML = "";
     const photos = [...community, ...google];
+    if (!photos.length) {
+      section.remove();
+      return;
+    }
+    if (!section.isConnected) {
+      section.classList.add("pp-media--entering");
+      host.appendChild(section);
+      requestAnimationFrame(() => section.classList.add("pp-media--visible"));
+    }
+    rail.innerHTML = "";
     photos.forEach((photo, index) => {
       rail.appendChild(_photoCard(photo, place.name, index, (photoIndex, returnFocus) => {
         openPhotoViewer(photos, place.name, photoIndex, returnFocus);
       }));
     });
-    if (loading && !photos.length) {
-      for (let i = 0; i < 2; i++) {
-        const skeleton = document.createElement("span");
-        skeleton.className = "pp-media-skeleton skel-bone";
-        skeleton.setAttribute("aria-hidden", "true");
-        rail.appendChild(skeleton);
-      }
-    }
     section.querySelector(".pp-media-count").textContent = photos.length ? String(photos.length) : "";
-    section.hidden = !loading && !photos.length;
     requestAnimationFrame(updateControls);
   };
   render();
 
   const load = async (force = false) => {
     if (force) invalidatePlaceMediaManifest(place.id);
-    loading = true;
     render();
     const data = await loadPlaceMediaManifest(place.id);
     community = (data.communityPhotos || []).map((photo) => ({ ...photo, source: "community" }));
     google = (data.googlePhotos || []).map((photo) => ({ ...photo, source: "google", sourceUrl: photo.sourceUrl || data.mapsUrl || place.mapsUrl }));
-    loading = false;
     render();
-    if (host.isConnected) onLayoutChange();
+    if (host.isConnected && [...community, ...google].length) onLayoutChange();
   };
 
   if (shouldLoad) {
-    requestAnimationFrame(() => { if (host.isConnected) onLayoutChange(); });
     load();
   }
 

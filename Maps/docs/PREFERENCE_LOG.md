@@ -5451,3 +5451,58 @@ utilities into this flow, and do not maintain a separate phone ordering table.
 - For Admin role-library tiles, preserve a compact but visible inset on every edge. Do not collapse content padding to a near-zero value merely to make the grid denser.
 - Keep the sidebar profile entry aligned with navigation links. Its avatar, name, and action affordance use the same horizontal inset as the link list.
 - Admin surfaces use a shared edge-inset layer across routed pages. Full-bleed rows may keep their borders, but their content must retain the standard horizontal rhythm.
+
+### 2026-10-17 — Verified visit timeline implementation
+
+- Keep manual `Visited` marks unchanged and separate from GPS-confirmed timeline events. The timeline is explicit, signed-in only, one-shot, private, and never background tracking.
+- The v1 device-side check accepts a canonical place only within 150 metres and with reported accuracy no worse than 150 metres. Raw latitude, longitude, and accuracy never leave the device; the account API receives only the place ID and generates the event ID and timestamp.
+- Store verified events in `verified_visits` with the existing email hash, place ID, place-name snapshot, and server timestamp. Preserve repeated visits as separate rows and use canonical place coordinates only for the Profile mini-map.
+- Profile uses one timeline data source for summary metrics, a 12-month calendar, a newest-first month-grouped vertical timeline, and a lazy MapLibre mini-map. No charting dependency or public sharing is introduced.
+
+**Files added/modified:** `schema.sql`, `migrations/0054_verified_visit_timeline.sql`,
+`functions/api/account.js`, `src/timeline.js`, `src/events.js`, `src/places.js`,
+`src/profile.js`, `src/menu.js`, `index.html`, `sw.js`, `src/styles/design-tokens.css`,
+`src/styles/styles.css`, and `tests/15-verified-visit-timeline.spec.js`.
+
+**Verification:** JavaScript syntax checks, Maps production build, and the focused
+timeline suite passed on Desktop Chrome and the 360px Galaxy S24 project. Existing
+Places/Auth suites still contain unrelated baseline failures against their current
+selectors/data; those failures were reproduced independently with one worker.
+
+### 2026-10-17 — Timeline interaction and place-media refinement
+
+- Keep the place-sheet timeline action quiet and secondary. Do not render a large GPS explainer card or repeat the GPS requirement in the place UI. When location permission is already granted, silently check proximity and remove the action for an out-of-range place. When permission is unavailable, leave the compact action available and explain the problem only after the user taps it.
+- Keep the Profile pane compact. The Profile timeline section is now a launcher for a separate private timeline window, where the calendar, map, and event list can breathe without making the account sheet massive.
+- Use one GitHub-style activity grid for the last 12 months. It scrolls horizontally inside its own bounded region on narrow screens, with a text legend and accessible day labels. Empty accounts get a purposeful “Start your visit story” state instead of an empty chart.
+- A place sheet must initially assume there are no photos. The media manifest is checked first; only places with returned photos mount the gallery and trigger the sheet remeasurement, preventing a skeleton-height flash for the common no-image case.
+
+**Files modified:** `src/timeline.js`, `src/places.js`, `src/profile.js`, `src/place-media.js`,
+`index.html`, `src/styles/design-tokens.css`, `src/styles/styles.css`,
+`tests/15-verified-visit-timeline.spec.js`, `tests/17-place-media-layout.spec.js`,
+and this log.
+
+**Verification:** 14 focused timeline tests passed on Desktop Chrome and Galaxy S24 after the UX refinement, including the granted-GPS/out-of-range visibility case. The Maps production build passed.
+
+### 2026-10-17 — Place-sheet timeline stability and local GPS simulation
+
+- Keep the timeline action as a small inline place-sheet row with a clock mark, quiet supporting copy, and the existing `Add to timeline` button. Do not show a large explanatory GPS card.
+- Resolve the silent proximity hint before inserting the row. This prevents an in-range/out-of-range decision from causing the timeline control to flash into view and disappear.
+- Treat the existing GPS simulator as a valid local location source for timeline checks. Shift-clicks and route playback now feed the same simulated fix, and local development exposes `window.__manarahGpsSim.setLocation(lat, lng, accuracy)` for deterministic checks.
+
+**Files modified:** `src/gps-sim.js`, `src/utils.js`, `src/timeline.js`, `src/places.js`,
+`src/styles/design-tokens.css`, `tests/15-verified-visit-timeline.spec.js`, and this log.
+
+**Verification:** Maps production build passed. The focused timeline suite passed all 20 tests on Desktop Chrome and Galaxy S24.
+
+### 2026-10-17 — Timeline density and place-action redesign
+
+- Replace the place-sheet timeline row with a compact clock icon beside the manual visited and saved-place actions. Keep the old manual action meaning through its accessible label, but give the three actions one consistent control language.
+- Start the GitHub-style activity grid on 1 October 2026, keep today at the right edge, and let active dates jump to the matching vertical timeline event.
+- Remove the redundant GPS-confirmed pill from individual events. Keep the timeline page as a compact, spaced activity view and make the Profile section a focused launcher rather than a second dashboard.
+- Give the empty state a quiet visual starting point and a direct Explore places action.
+
+**Files modified:** `src/places.js`, `src/profile.js`, `index.html`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`,
+`tests/15-verified-visit-timeline.spec.js`, and this log.
+
+**Verification:** Maps production build passed. The focused timeline suite passed all 20 tests on Desktop Chrome and Galaxy S24. The existing Places suite still has seven unrelated baseline selector/data timing failures; 20 of its 27 tests passed.

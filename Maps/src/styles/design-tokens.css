@@ -166,6 +166,13 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --r-pill: 999px;
   --border-w: 1px;
 
+  /* Verified visit timeline component geometry. Keep these shared so the
+     place-sheet action, Profile calendar, rail, and map stay calibrated. */
+  --timeline-map-height: 220px;
+  --timeline-calendar-cell-size: 14px;
+  --timeline-marker-size: 12px;
+  --timeline-rail-width: 2px;
+
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -1510,6 +1517,191 @@ html.reduce-motion *::after {
 .sg-tag[data-state="yes"] .sg-tag-icon.sg-yes,
 .pp-visit-chip[data-state="yes"] .pp-visit-icon {
   display: inline-block;
+}
+
+/* Place-sheet actions stay icon-sized so visited, saved, and timeline do not
+   compete as three separate text buttons. The native title supplies a quiet
+   desktop hint and the aria-label covers keyboard and touch users. */
+.pp-icon-action,
+.pp-timeline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: var(--border-w) solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  cursor: pointer;
+  transition: width var(--t-med), transform var(--t-med), background-color var(--t-fast), border-color var(--t-fast), color var(--t-fast), opacity var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.pp-icon-action:hover,
+.pp-timeline-btn:hover { background: var(--surface-2); color: var(--accent); }
+.pp-icon-action:focus-visible,
+.pp-timeline-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pp-icon-action:disabled,
+.pp-timeline-btn:disabled { cursor: wait; opacity: 0.55; }
+.pp-timeline-btn[data-state="success"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.pp-timeline-btn.pp-timeline-pill {
+  width: auto;
+  min-width: 0;
+  height: 24px;
+  padding-inline: var(--sp-2);
+  border-color: var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.pp-timeline-btn.pp-timeline-pill:hover { background: var(--surface); color: var(--accent); }
+.pp-timeline-btn.pp-timeline-pill[data-state="cooldown"] {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
+  cursor: pointer;
+}
+.pp-timeline-btn.pp-timeline-btn--removing {
+  width: 0 !important;
+  min-width: 0;
+  padding-inline: 0;
+  border-color: transparent;
+  opacity: 0;
+  transform: scaleX(0.7);
+  pointer-events: none;
+}
+.pp-visit-chip.pp-icon-action .pp-visit-icon { display: inline-block; }
+
+/* The place-sheet visited control is an icon action, not a tag chip. Keep the
+   shared tag-chip rules above for other contexts, but make this instance match
+   the bookmark's quiet icon treatment. */
+.pp-visit-chip.pp-icon-action {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+}
+.pp-visit-chip.pp-icon-action:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+.pp-visit-chip.pp-icon-action[data-state="yes"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--success);
+}
+
+/* Profile timeline primitives shared by the layout rules in styles.css. */
+.pf-timeline-summary-card {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-4) var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  text-align: center;
+}
+.pf-timeline-summary-value { color: var(--text); font-size: var(--txt-2xl); font-weight: var(--fw-bold); line-height: 1; font-variant-numeric: tabular-nums; }
+.pf-timeline-summary-label { color: var(--text-3); font-size: var(--txt-xs); line-height: var(--lh-tight); }
+.pf-timeline-confirmed {
+  padding: var(--sp-1h) var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.pf-timeline-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: var(--border-w) solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.pf-timeline-preview-copy {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.pf-timeline-preview-kicker {
+  color: var(--accent);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+.pf-timeline-preview-copy strong {
+  color: var(--text);
+  font-size: var(--txt-md);
+  font-weight: var(--fw-semibold);
+}
+.pf-timeline-preview-copy > span:last-child {
+  color: var(--text-3);
+  font-size: var(--txt-xs);
+  line-height: var(--lh-normal);
+}
+.pf-timeline-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background-color var(--t-fast);
+}
+.pf-timeline-open:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.pf-timeline-open:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-timeline-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pf-timeline-activity-day,
+.pf-timeline-calendar-day,
+.pf-timeline-legend i {
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+}
+.pf-timeline-calendar-day[data-level="1"], .pf-timeline-legend i[data-level="1"] { background: color-mix(in srgb, var(--accent) 24%, var(--surface-3)); }
+.pf-timeline-calendar-day[data-level="2"], .pf-timeline-legend i[data-level="2"] { background: color-mix(in srgb, var(--accent) 42%, var(--surface-3)); }
+.pf-timeline-calendar-day[data-level="3"], .pf-timeline-legend i[data-level="3"] { background: color-mix(in srgb, var(--accent) 64%, var(--surface-3)); }
+.pf-timeline-calendar-day[data-level="4"], .pf-timeline-legend i[data-level="4"] { background: var(--accent); color: var(--surface); }
+.pf-timeline-calendar-day--outside { opacity: 0.32; }
+.pf-timeline-map-marker {
+  display: block;
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
+  border: var(--border-w) solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-accent-md);
 }
 
 .tag-chip[data-state="no"],

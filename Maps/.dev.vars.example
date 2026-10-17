@@ -1,9 +1,9 @@
 # Copy this file to .dev.vars for local Cloudflare Pages Function testing.
 # .dev.vars is gitignored. Never commit real secrets.
 
-# Allows localhost contact-form submissions to skip browser/server reCAPTCHA
+# Allows localhost submissions to skip browser/server Turnstile
 # while testing with `npx wrangler pages dev .`.
-DEV_SKIP_RECAPTCHA=true
+DEV_SKIP_TURNSTILE=true
 
 # Contact form email alerts. Use a Brevo API key from SMTP & API -> API Keys.
 # The SMTP password is not enough for the HTTP API.
@@ -25,8 +25,8 @@ POSTHOG_PROJECT_ID=YOUR_POSTHOG_PROJECT_ID
 POSTHOG_API_HOST=https://eu.posthog.com
 POSTHOG_API_KEY=YOUR_SERVER_SIDE_POSTHOG_API_KEY
 
-# Optional for local testing of non-contact submissions that still use reCAPTCHA.
-RECAPTCHA_SECRET=YOUR_RECAPTCHA_SECRET
+# Turnstile is required for non-contact submissions outside localhost.
+# TURNSTILE_SECRET_KEY=YOUR_TURNSTILE_SECRET_KEY
 
 # Gmail automatic History API sync. Pub/Sub is optional and disabled unless
 # GMAIL_PUBSUB_ENABLED=true is explicitly set.

@@ -40,6 +40,10 @@ export const EVT = {
    *  src/account-sync.js listens to fire a background save/unsave when
    *  signed in. detail: { placeId: string, visited: boolean } */
   VISITED_TOGGLED: "hf:visited-toggled",
+  /** Fired after the server accepts one GPS-confirmed visit event. Device
+   * coordinates used for the local check are never part of detail.
+   * detail: { visit: { id, placeId, placeName, visitedAt, placeLat, placeLng } } */
+  TIMELINE_UPDATED: "hf:timeline-updated",
   /** Fired by submitReview() (reviews.js) after a review write actually
    *  succeeds server-side — narrower and rarer than the generic (pre-EVT-registry)
    *  `hf:reviews-loaded`, which fires for ANY place's rating cache being
@@ -104,6 +108,8 @@ export const EVT = {
    *  same avoid-circular-imports convention as ACCOUNT_SHEET_CLOSE above.
    *  detail: {} */
   PROFILE_CARD_RENDERED: "hf:profile-card-rendered",
+  /** Fired after Profile's timeline section changes height or content. */
+  PROFILE_TIMELINE_RENDERED: "hf:profile-timeline-rendered",
   /** Fired by phone map chrome when the user chooses the direct contribution
    *  shortcut. places.js owns resetting and opening the Add a Place form.
    *  detail: {} */

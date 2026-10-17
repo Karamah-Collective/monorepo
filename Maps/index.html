@@ -1229,6 +1229,19 @@
                 </div>
               </div>
               <div class="sort-divider"></div>
+              <div class="menu-section pf-timeline-section">
+                <div class="menu-section-label">Your timeline</div>
+                <div id="profile-timeline-preview" class="pf-timeline-preview" aria-live="polite">
+                  <div class="pf-timeline-preview-copy">
+                    <strong id="profile-timeline-preview-title">Your visit story starts here</strong>
+                    <span id="profile-timeline-preview-summary">Your confirmed visits will collect here.</span>
+                  </div>
+                  <button id="profile-timeline-open" class="pf-timeline-open" type="button">
+                    <span>View timeline</span>
+                  </button>
+                </div>
+              </div>
+              <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your submitted places</div>
                 <!-- pf-scroll-list + t-scroll: this list caps its own height and
@@ -1277,6 +1290,47 @@
           </div>
           </div>
         </div>
+      </div>
+
+      <!-- ─── Private visit timeline window ─── -->
+      <div id="timeline-overlay" class="hide" aria-hidden="true">
+        <section id="timeline-card" role="dialog" aria-modal="true" aria-labelledby="timeline-title">
+          <div class="suggest-head">
+            <h3 id="timeline-title">Timeline</h3>
+            <button id="timeline-close" class="sheet-x btn-roundel" type="button" aria-label="Close timeline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="timeline-body" class="t-scroll">
+            <div id="profile-timeline" class="pf-timeline" aria-live="polite">
+              <section class="timeline-section">
+                <div class="menu-section-label">Overview</div>
+                <div id="profile-timeline-summary" class="pf-timeline-summary">
+                <div class="pf-timeline-summary-card"><span class="pf-timeline-summary-value">—</span><span class="pf-timeline-summary-label">GPS visits</span></div>
+                <div class="pf-timeline-summary-card"><span class="pf-timeline-summary-value">—</span><span class="pf-timeline-summary-label">Places</span></div>
+                <div class="pf-timeline-summary-card"><span class="pf-timeline-summary-value">—</span><span class="pf-timeline-summary-label">Active months</span></div>
+                </div>
+              </section>
+              <section class="timeline-section">
+                <div id="profile-timeline-calendar" class="pf-timeline-calendar-wrap">
+                  <div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                </div>
+              </section>
+              <section id="timeline-map-section" class="timeline-section" hidden>
+                <div class="menu-section-label">Places</div>
+                <div id="profile-timeline-map-wrap" class="pf-timeline-map-wrap" hidden>
+                <div id="profile-timeline-map" class="pf-timeline-map" role="img" aria-label="Map of places in your verified visit timeline"></div>
+                </div>
+              </section>
+              <section class="timeline-section">
+                <div class="menu-section-label">Visits</div>
+                <div id="profile-timeline-list" class="pf-timeline-list">
+                <div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
       </div>
 
       <!-- ─── Add a Place Overlay ─── -->
@@ -2055,6 +2109,7 @@
               <li>For email/password accounts, Firebase handles sign-up, sign-in, password resets, and email verification. We never see or store your password</li>
               <li>Your rating (1 to 5), optional review text, and any review photos you choose to upload</li>
               <li>Saved place IDs, saved pin coordinates/names, visited-place IDs, and home location coordinates/name that you choose to sync</li>
+              <li>If you choose “Add to timeline” while signed in, your device checks locally whether you are within 150 metres of the place and whether the location fix is precise enough. We store the place, a server-generated date/time, and a one-way account hash for your private timeline; raw device coordinates and GPS accuracy are not sent or stored</li>
               <li>A one-way cryptographic hash of your verified email address — never the email address itself — used to link your reviews and synced saved data to your account and to prevent duplicate or abusive submissions</li>
             </ul>
             <p>Place submissions are anonymous. Reviews and their uploaded photos are shown publicly without displaying your email address or any other sign-in detail.</p>
@@ -2063,6 +2118,7 @@
             <ul>
               <li>No advertising cookies, advertising pixels, ad targeting, or sale of personal data</li>
               <li>No analytics cookies, analytics local storage, identification profiles, or session replay</li>
+              <li>Timeline checks are one-time and user-triggered, not background tracking. The server receives only the selected place ID after a successful device-side check; it cannot independently prove that a browser location fix was genuine</li>
               <li>No live location tracking or current-position storage — your current position is used only in your browser for the map and is never sent to our servers. If you set a home location or save a custom pin, that chosen location is stored locally while signed out and synced to your account while signed in</li>
               <li>We use Cloudflare's approximate IP-based country/city signal only to show the correct regional context, such as a better first map view. It is not stored as your home location.</li>
               <li>We will never sell personal information or share it for advertising</li>
@@ -2106,6 +2162,8 @@
 
             <h4>8. Data Storage &amp; Security</h4>
             <p>Place submissions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to manarah@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+
+            <p>Verified timeline events contain the canonical place ID/name and server-generated date/time, not raw device coordinates or GPS accuracy. They are private account data and are removed by the existing “Erase my data” action.</p>
 
             <h4>9. Your Rights (GDPR)</h4>
             <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place submissions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>

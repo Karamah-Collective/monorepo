@@ -625,9 +625,9 @@ BREVO_API_KEY = YOUR_BREVO_TRANSACTIONAL_API_KEY
 ```
 
 For local Cloudflare Pages Function testing, copy `.dev.vars.example` to
-`.dev.vars`. The contact form can be tested on localhost without a reCAPTCHA
-secret by setting `DEV_SKIP_RECAPTCHA=true`; production ignores this unless the
-flag is explicitly set and the request is from a localhost origin.
+`.dev.vars`. Protected form writes can be tested on localhost without a
+Turnstile secret by setting `DEV_SKIP_TURNSTILE=true`; production ignores this
+unless the flag is explicitly set and the request is from a localhost origin.
 
 ---
 

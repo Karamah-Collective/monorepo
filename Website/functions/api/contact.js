@@ -25,10 +25,6 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-function fakeSuccess() {
-  return jsonResponse({ success: true, message: "OK" });
-}
-
 function clean(value) {
   return String(value || "").trim();
 }
@@ -164,8 +160,14 @@ export async function onRequestPost(context) {
 
     const data = await request.json();
 
-    if (clean(data._hp)) return fakeSuccess();
-    if (!validateTiming(data._started)) return fakeSuccess();
+    if (clean(data._hp)) {
+      return jsonResponse({ success: false, message: "We could not verify this submission. Please try again." }, 403);
+    }
+    // A missing/stale timing field can be caused by an old cached client. Do
+    // not claim delivery when the request cannot pass the real form checks.
+    if (!validateTiming(data._started)) {
+      return jsonResponse({ success: false, message: "We could not verify this submission. Please try again." }, 403);
+    }
 
     const recaptcha = await verifyTurnstile(clean(data.turnstileToken), env);
     if (!recaptcha.success) {

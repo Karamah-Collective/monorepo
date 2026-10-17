@@ -2,7 +2,9 @@ const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 function localBypass(request, env) {
-  if (String(env.DEV_SKIP_TURNSTILE || "") !== "true") return false;
+  // Keep the old local flag as a compatibility alias while developers update
+  // their ignored .dev.vars file. Never allow either flag outside loopback.
+  if (String(env.DEV_SKIP_TURNSTILE || env.DEV_SKIP_RECAPTCHA || "") !== "true") return false;
   try { return LOCAL_HOSTS.has(new URL(request.url).hostname); } catch { return false; }
 }
 

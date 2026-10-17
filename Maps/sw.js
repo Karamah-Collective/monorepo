@@ -66,6 +66,7 @@ const SHELL_ASSETS = [
   '/src/wishlist.js',
   '/src/menu.js',
   '/src/profile.js',
+  '/src/timeline.js',
   '/src/reviews.js',
   '/src/events.js',
   '/src/install.js',

@@ -211,6 +211,7 @@ async function _loadStartupModules() {
     { initWishlist, preloadWishes },
     { initTrafficOverlay },
     { initProfile },
+    { initAccountSync },
   ] = await Promise.all([
     import("./transit-stops.js"),
     import("./prayer.js"),
@@ -221,6 +222,7 @@ async function _loadStartupModules() {
     import("./wishlist.js"),
     import("./traffic-overlay.js"),
     import("./profile.js"),
+    import("./account-sync.js"),
   ]);
 
   await _yieldStartupFrame();
@@ -235,6 +237,9 @@ async function _loadStartupModules() {
   preloadWishes();
   initGpsSim(); // DEV-ONLY - comment out before deploying, restore after
   initTrafficOverlay();
+  // Register the sync listeners before the welcome screen is dismissed, so
+  // the first place action cannot race account-sync initialization.
+  initAccountSync();
   checkGeoNotice();
   await _yieldStartupFrame();
   // Account sign-in (Firebase) - non-critical, so it's wired here rather than

@@ -1,6 +1,7 @@
 // ─── GPS Simulation Module ──────────────────────────────────────────────
 // Simulated GPS signal for testing navigation without physically moving.
-// Desktop: mouse cursor = GPS position. Mobile: tap to set position.
+// Shift-click on the map = GPS position. Normal clicks remain available for
+// opening places. Route playback and the local bridge can also set a position.
 // Route Playback: auto-walk along a computed route at configurable speed.
 //
 // Activation:
@@ -9,7 +10,7 @@
 //   - Tap the GPS SIM badge to stop
 //
 // How it works:
-//   1. Mouse/tap position on the map → map.unproject() → lat/lng
+//   1. Shift-click position on the map → map.unproject() → lat/lng
 //   2. setCurrentLocationState() dispatches "hf:current-location-updated"
 //   3. Navigation.js picks it up via the same event — step advancement,
 //      off-route detection, rerouting all run exactly as with real GPS
@@ -19,11 +20,10 @@
 // identically to a real hardware GPS fix.
 
 import { map } from "./map-init.js";
-import { setCurrentLocationState, clearCurrentLocationState, haversineDistance } from "./utils.js";
+import { getCurrentLocationState, setCurrentLocationState, clearCurrentLocationState, haversineDistance } from "./utils.js";
 import { dir, decodePolyline } from "./directions.js";
 
 // ─── Constants ──────────────────────────────────────────────────────
-const SIM_THROTTLE_MS = 100;  // feed position every 100 ms (10 Hz)
 const SIM_ACCURACY = 5;       // metres — high-precision simulated fix
 
 /** @type {{ label: string, mps: number }[]} */
@@ -40,8 +40,6 @@ let _active = false;
 let _marker = null;
 let _indicatorEl = null;
 let _controlsEl = null;
-let _lastFeedTime = 0;
-
 // Route playback state
 let _playbackRunning = false;
 let _playbackPaused = false;
@@ -73,6 +71,25 @@ export function isGpsSimActive() {
   return _active;
 }
 
+/**
+ * Set a deterministic simulated fix for local timeline and navigation checks.
+ * @returns {{active: boolean, lat: number|null, lng: number|null, accuracy: number|null, source: string|null}}
+ */
+export function setSimulatedGpsLocation(lat, lng, accuracy = SIM_ACCURACY) {
+  if (!_active) _startSim();
+  _feedPosition(Number(lat), Number(lng), Number(accuracy));
+  return getCurrentLocationState();
+}
+
+/**
+ * Read the current simulated fix without exposing it to production APIs.
+ * @returns {{active: boolean, lat: number|null, lng: number|null, accuracy: number|null, source: string|null}}
+ */
+export function getSimulatedGpsLocation() {
+  const location = getCurrentLocationState();
+  return _active && location.source === "sim" ? location : { active: false, lat: null, lng: null, accuracy: null, source: null };
+}
+
 function _startSim() {
   _active = true;
 
@@ -88,8 +105,9 @@ function _startSim() {
   _showControls();
   _ensureMarker();
 
-  map.on("mousemove", _onMouseMove);
-  map.on("click", _onMapClick);
+  // Listen before MapLibre's modifier handling (Shift+click is otherwise
+  // consumed by box zoom) while leaving ordinary clicks untouched.
+  map.getCanvas().addEventListener("pointerdown", _onCanvasPointerDown, true);
 }
 
 function _stopSim() {
@@ -104,8 +122,7 @@ function _stopSim() {
 
   clearCurrentLocationState();
 
-  map.off("mousemove", _onMouseMove);
-  map.off("click", _onMapClick);
+  map.getCanvas().removeEventListener("pointerdown", _onCanvasPointerDown, true);
 }
 
 /**
@@ -121,25 +138,18 @@ function _stopRealGpsIfActive() {
 
 // ─── Mouse/touch handlers ───────────────────────────────────────────
 
-function _onMouseMove(e) {
+function _onCanvasPointerDown(event) {
   if (!_active || _playbackRunning) return;
-
-  const now = Date.now();
-  if (now - _lastFeedTime < SIM_THROTTLE_MS) return;
-  _lastFeedTime = now;
-
-  _feedPosition(e.lngLat.lat, e.lngLat.lng);
-}
-
-function _onMapClick(e) {
-  if (!_active || _playbackRunning) return;
-  _feedPosition(e.lngLat.lat, e.lngLat.lng);
+  if (!event.shiftKey || event.button !== 0) return;
+  const rect = map.getCanvas().getBoundingClientRect();
+  const lngLat = map.unproject([event.clientX - rect.left, event.clientY - rect.top]);
+  _feedPosition(lngLat.lat, lngLat.lng);
 }
 
 // ─── Core position feed ─────────────────────────────────────────────
 
-function _feedPosition(lat, lng) {
-  setCurrentLocationState({ lat, lng, accuracy: SIM_ACCURACY, active: true });
+function _feedPosition(lat, lng, accuracy = SIM_ACCURACY) {
+  setCurrentLocationState({ lat, lng, accuracy, active: true, source: "sim" });
 
   if (_marker) {
     _marker.setLngLat([lng, lat]);
@@ -314,12 +324,12 @@ function _showIndicator() {
     '<circle cx="12" cy="12" r="3"/>',
     '<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
     '</svg>',
-    '<span>GPS SIM</span>',
+    '<span>GPS SIM · Shift-click</span>',
     '<button class="gps-sim-close" title="Stop GPS sim" aria-label="Stop GPS simulation">',
     '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
     '</button>',
   ].join("");
-  _indicatorEl.title = "GPS simulation active";
+  _indicatorEl.title = "GPS simulation active. Shift-click the map to set the simulated location; normal clicks open places.";
 
   // Close button stops sim
   _indicatorEl.querySelector(".gps-sim-close").addEventListener("click", (e) => {
@@ -425,6 +435,14 @@ function _updateControlsState() {
  * @returns {void}
  */
 export function initGpsSim() {
+  // Dev-only bridge for deterministic checks while a place sheet is open.
+  window.__manarahGpsSim = {
+    activate: () => { if (!_active) _startSim(); },
+    deactivate: () => { if (_active) _stopSim(); },
+    setLocation: (lat, lng, accuracy = SIM_ACCURACY) => setSimulatedGpsLocation(lat, lng, accuracy),
+    getLocation: () => getSimulatedGpsLocation(),
+  };
+
   // Keyboard shortcut: Shift+G
   document.addEventListener("keydown", (e) => {
     if (e.key === "G" && e.shiftKey && !e.target.closest("input, textarea, select")) {

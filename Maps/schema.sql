@@ -343,6 +343,18 @@ CREATE TABLE account_meta (
   lifetime_visited_place_ids TEXT NOT NULL DEFAULT '[]'  -- JSON array (a set, not a counter)
 );
 
+-- 14a. Private, user-triggered GPS-confirmed visit events. Raw device
+-- coordinates and accuracy are intentionally not stored.
+CREATE TABLE verified_visits (
+  id          TEXT PRIMARY KEY,
+  email_hash  TEXT NOT NULL,
+  place_id    TEXT NOT NULL,
+  place_name  TEXT NOT NULL DEFAULT '',
+  visited_at  TEXT NOT NULL
+);
+CREATE INDEX idx_verified_visits_account_time
+  ON verified_visits(email_hash, visited_at DESC);
+
 -- 15. AuditLog — internal admin-action trail (who did what, when), for the
 -- /admin dashboard's activity log.
 --

@@ -2,19 +2,22 @@ import { isNative } from "./capacitor-bridge.js";
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
 import { appSettingsReady, getAppSettings, getExpandedSearchTerms } from "./app-settings.js";
 import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, showActionToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition } from "./utils.js";
 import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
-import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker } from "./map-controls.js";
+import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker, showCurrentLocation } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
 import { EVT } from "./events.js";
+import { addVerifiedVisit, getTimelineCooldown, peekTimelineEligibility } from "./timeline.js";
 
 export let placesData = [];
 export let tagsData = {};
 export let eventsData = [];
 export let placesLoaded = false;
+
+const METRES_PER_KILOMETRE = 1000;
 
 const CORE_TAG_DEFAULTS = {
   restaurant: [
@@ -1969,6 +1972,119 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     inner.appendChild(contact);
   }
 
+  // Keep this row out of the initial DOM. A granted permission can still need
+  // an asynchronous fix; rendering first and removing later made the sheet
+  // visibly flash when the current place was out of range.
+  let timelineBtn = null;
+  let timelineCheckInFlight = false;
+  const mountTimelineAction = () => {
+    if (timelineBtn || !inner.isConnected) return;
+
+    timelineBtn = document.createElement("button");
+    timelineBtn.type = "button";
+    timelineBtn.className = "pp-timeline-btn pp-timeline-pill";
+    timelineBtn.setAttribute("aria-label", "Add to timeline");
+    timelineBtn.title = "Add to timeline";
+    iconRow.prepend(timelineBtn);
+
+    const renderTimelineState = (state) => {
+      const labels = {
+        pending: "Checking location…",
+        success: "Added",
+        cooldown: "Added to timeline",
+        idle: "Add to timeline",
+      };
+      const label = labels[state] || labels.idle;
+      timelineBtn.setAttribute("aria-label", label);
+      timelineBtn.title = label;
+      const currentWidth = timelineBtn.getBoundingClientRect().width;
+      timelineBtn.style.width = "auto";
+      timelineBtn.textContent = label;
+      if (currentWidth > 0) {
+        const nextWidth = timelineBtn.getBoundingClientRect().width;
+        timelineBtn.style.width = `${currentWidth}px`;
+        requestAnimationFrame(() => { timelineBtn.style.width = `${nextWidth}px`; });
+      }
+      timelineBtn.disabled = state === "pending";
+      timelineBtn.setAttribute("aria-busy", state === "pending" ? "true" : "false");
+      timelineBtn.dataset.state = state;
+    };
+
+    const removeTimelineAction = () => {
+      if (!timelineBtn || timelineBtn.dataset.removing === "true") return;
+      timelineBtn.dataset.removing = "true";
+      timelineBtn.disabled = true;
+      timelineBtn.classList.add("pp-timeline-btn--removing");
+      setTimeout(() => {
+        timelineBtn?.remove();
+        timelineBtn = null;
+      }, 220);
+    };
+
+    const runTimelineCheck = async () => {
+      if (timelineCheckInFlight || !timelineBtn?.isConnected) return;
+      timelineCheckInFlight = true;
+      renderTimelineState("pending");
+      try {
+        const result = await addVerifiedVisit(place, { allowLocationRequest: false });
+        if (result.success) {
+          renderTimelineState("cooldown");
+          showToast("Added to your timeline", "check", place.name);
+          return;
+        }
+        if (result.status === "signed-out") {
+          renderTimelineState("idle");
+          showToast("Sign in to add visits", "info", "Open Menu to continue");
+          closePlaceSheet();
+          closePlacesSheet();
+          requestAnimationFrame(() => import("./menu.js").then(({ openMenuSheet }) => openMenuSheet()).catch(() => {}));
+          return;
+        }
+        if (result.status === "cooldown") {
+          renderTimelineState("cooldown");
+          showToast("Already added to timeline", "info", "You can add it again in an hour");
+          return;
+        }
+        if (result.status === "too-far") {
+          const distance = result.distanceMetres >= METRES_PER_KILOMETRE
+            ? `${(result.distanceMetres / METRES_PER_KILOMETRE).toFixed(1)} km`
+            : `${Math.round(result.distanceMetres)} m`;
+          removeTimelineAction();
+          showToast(`You’re about ${distance} away`, "info", "Move closer and try again");
+          return;
+        }
+        if (result.status === "accuracy-too-low") {
+          renderTimelineState("idle");
+          showToast("Location is not precise enough", "info", "Try again in a moment or move outdoors");
+          return;
+        }
+        if (result.status === "location-denied" || result.status === "location-off") {
+          renderTimelineState("idle");
+          showActionToast("Location is off", "loc", "Tap to turn on GPS", () => showCurrentLocation({
+            onFirstFix: () => { void runTimelineCheck(); },
+          }));
+          return;
+        }
+        renderTimelineState("idle");
+        showToast(result.status === "server-error" ? "Couldn’t add this visit" : "Couldn’t get your location", "error", "Please try again");
+      } finally {
+        timelineCheckInFlight = false;
+      }
+    };
+
+    timelineBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void runTimelineCheck();
+    });
+    renderTimelineState(getTimelineCooldown(place.id) ? "cooldown" : "idle");
+  };
+
+  // Only an active app location is used here. Opening a place must never
+  // trigger a location prompt or read location for a guest.
+  void peekTimelineEligibility(place).then((result) => {
+    if (result.status !== "too-far") mountTimelineAction();
+  }).catch(() => mountTimelineAction());
+
   // Community Rating
   const ratingData = getPlaceRating(place.id);
   const reviewsSection = document.createElement("div");
@@ -2208,10 +2324,13 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   const _VISIT_CHECK_ICON = `<svg class="pp-visit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const visitBtn = document.createElement("button");
   visitBtn.type = "button";
-  visitBtn.className = "pp-visit-chip";
+  visitBtn.className = "pp-visit-chip pp-icon-action";
   const _renderVisitChip = (visited) => {
     visitBtn.dataset.state = visited ? "yes" : "";
-    visitBtn.innerHTML = `${_VISIT_CHECK_ICON}<span>${visited ? "Visited" : "Mark as visited"}</span>`;
+    const label = visited ? "Visited" : "Mark as visited";
+    visitBtn.setAttribute("aria-label", label);
+    visitBtn.title = label;
+    visitBtn.innerHTML = _VISIT_CHECK_ICON;
   };
   _renderVisitChip(isVisited(place.id));
   visitBtn.addEventListener("click", (e) => {
@@ -2225,7 +2344,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   const _starSVG = (filled) =>
     `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
   const favBtn = document.createElement("button");
-  favBtn.className = `pp-fav-btn${_isFav ? " active" : ""}`;
+  favBtn.className = `pp-fav-btn pp-icon-action${_isFav ? " active" : ""}`;
   favBtn.setAttribute("aria-label", _isFav ? "Remove from saved" : "Save place");
   favBtn.innerHTML = _starSVG(_isFav);
   favBtn.addEventListener("click", (e) => {
@@ -4718,7 +4837,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   const favBtn = e.target.closest(".pl-fav-btn");
   if (favBtn) {
     e.stopPropagation();
-    const id = +favBtn.dataset.favId;
+    const id = favBtn.dataset.favId;
     toggleFavourite(id);
     const saved = isFavourite(id);
     favBtn.classList.toggle("active", saved);

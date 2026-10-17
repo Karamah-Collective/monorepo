@@ -122,13 +122,15 @@ There is no cooldown between legitimate visits in v1. After a successful request
 
 ### 3.6 Timeline visual
 
-The Profile contains three representations of the same event data:
+The Profile contains a compact launcher for a separate private timeline window. The timeline window contains three representations of the same event data:
 
 1. A chronological vertical timeline
 2. A calendar-style activity view
 3. An embedded mini-map showing visited places
 
 The vertical timeline is the primary representation. The calendar and map are supporting visualizations.
+
+The launcher keeps the merged Profile sheet compact. Opening the timeline window is the only point at which the calendar, event list, and mini-map are rendered.
 
 Do not add a charting dependency. The calendar should be implemented with semantic HTML and existing CSS/layout patterns.
 
@@ -184,19 +186,20 @@ Add a visually distinct but related action labelled:
 
 - Default: “Add to timeline”
 - Pending: “Checking location…”
-- Success: “Added to timeline”
-- Repeat-event state: “Add another visit”
+- Success/repeat-event state: “Add another visit”
 
-The action should communicate the GPS requirement through supporting text or an accessible label:
+The action must be a quiet secondary control, not a large explanatory card. Do not display a “GPS-confirmed timeline” heading or a visible “Requires GPS…” helper in the place sheet. The button’s accessible name remains simply “Add to timeline”.
 
-> Requires GPS and a location within 150 m.
+When the browser already reports granted location permission, the place sheet may perform a silent one-shot proximity check. If that check confirms that the place is outside the 150-metre radius, remove the timeline action from the sheet entirely. Do not request permission merely because a place was opened.
+
+When location is unavailable, denied, or still awaiting permission, keep the compact action available. If the user taps it while GPS is not active, show a short toast such as “GPS is not activated”. The action must remain retryable.
 
 The existing manual action should continue to use its current labels:
 
 - “Mark as visited”
 - “Visited”
 
-The two controls must not look like the same operation. The manual mark can remain a compact visited chip, while the timeline action can be a separate action row or button with supporting explanatory copy.
+The two controls must not look like the same operation. The manual mark can remain a compact visited chip, while the timeline action is a quiet text/pill action with no large surrounding card.
 
 The place sheet must not display the timeline action as already complete merely because the place is manually marked visited. Manual state and timeline event state are independent.
 
@@ -316,7 +319,7 @@ Add a new Profile section titled:
 
 The section should appear near the top of the Profile, after the existing activity summary and before the longer contribution lists.
 
-The Profile remains inside the existing merged Menu/Profile sheet.
+The Profile remains inside the existing merged Menu/Profile sheet. Its timeline section is a compact preview/launcher. The full timeline opens in a separate private overlay window so the Profile does not become a long dashboard.
 
 Timeline data should be fetched only when Profile is opened or when the timeline section otherwise becomes visible. Do not add full timeline data to sign-in restoration or the regular saved-place sync request.
 
@@ -346,15 +349,15 @@ Definitions:
 
 ### 6.2 Empty state
 
-When the user has no GPS-confirmed visits, show an intentional empty state.
+When the user has no GPS-confirmed visits, show an intentional empty state inside the timeline window.
 
 Recommended copy:
 
-> Your verified visits will appear here.
+> Start your visit story.
 
 Supporting copy:
 
-> Open a place while you’re nearby and choose Add to timeline.
+> Places you confirm will collect here as a private record of the days you were there.
 
 Include a clear next action that returns the user to the map or closes the Profile.
 
@@ -366,7 +369,7 @@ The empty state should still reserve an appropriate, compact section height and 
 
 The section needs a layout-preserving loading state.
 
-Use skeleton rows or stable placeholders for:
+Use skeleton rows or stable placeholders inside the timeline window for:
 
 - Summary values
 - Calendar
@@ -426,7 +429,7 @@ Dates and times should use the browser/device locale and timezone for display. T
 
 ### 6.6 Calendar activity view
 
-Add a compact calendar-style activity visualization showing the last 12 months.
+Add a compact GitHub-style activity visualization beginning on 1 October 2026, the launch date of the feature, and ending on today. The week columns are laid out horizontally inside a bounded scroll container, which opens scrolled to the newest day. Horizontal scrolling is intentional for the activity grid on narrow phones; it must never create page-level horizontal overflow.
 
 Each day with one or more verified visits receives an intensity level based on the number of events on that day.
 
@@ -436,13 +439,13 @@ The calendar must include:
 - Accessible text alternatives
 - A legend explaining visit intensity
 - A non-color distinction for visited days, such as a count label or accessible title
-- A stable layout on narrow phones
+- A stable layout on narrow phones with an obvious local horizontal scroll region
 
 The calendar must not rely on color alone. Each day should have an accessible name containing the date and visit count, for example “17 October 2026, 2 GPS visits”.
 
 The calendar should be generated without a new charting dependency. If the user has no events in the visible range, the empty visual should still explain the date range.
 
-Do not make the calendar horizontally overflow at 360 px. Prefer a compact grid that can reduce cell width, use abbreviated weekday labels, and preserve readable touch/focus states.
+The activity grid may be wider than 360 px and scroll horizontally within its own container. Keep the cell size readable, use abbreviated weekday labels, and preserve readable focus states. The Profile window itself must not horizontally overflow.
 
 ### 6.7 Embedded mini-map
 
@@ -812,6 +815,19 @@ The exact internal shape can follow existing project conventions, but it must ca
 
 This separation makes the UI messages testable and prevents the place-sheet event handler from becoming a large conditional block.
 
+### 10.1 Local GPS simulation
+
+The existing development GPS simulator must exercise the same location state as the timeline check so the feature can be tested without physically moving.
+
+- `Shift+G` or `?sim` activates the simulator.
+- Shift-clicking the map sets the simulated position; ordinary clicks remain available for opening places.
+- Existing route playback also updates the simulated position as it moves.
+- Simulated fixes are tagged internally as `source: "sim"` so timeline verification can use them without mistaking a stale real-device location for test data.
+- Local development exposes `window.__manarahGpsSim.setLocation(lat, lng, accuracy)` for deterministic checks while a place sheet is open.
+- `window.__manarahGpsSim.getLocation()` reads the current simulated fix, and `.deactivate()` clears it.
+
+The simulator remains development-only. It must never change the production API contract or cause raw coordinates to be sent to the server.
+
 ## 11. Privacy and security
 
 ### 11.1 Stored data
@@ -895,7 +911,7 @@ Avoid:
 - Bright unstructured color
 - A new charting library
 - A separate visual language inside Profile
-- Horizontal overflow
+- Page-level horizontal overflow (the activity grid’s bounded local scroller is intentional)
 - Hover-only interactions
 
 Every interactive control needs:
@@ -1000,6 +1016,7 @@ Test:
 - Timeline success state appears
 - Success toast appears
 - Profile timeline refresh event is dispatched
+- Active local GPS simulation can satisfy the same successful timeline path without calling browser geolocation
 - The button returns to an intentional “Add another visit” state
 
 ### 14.4 GPS rejection
@@ -1024,6 +1041,7 @@ For each rejection case:
 - No timeline item is added
 - Button returns to an actionable state
 - User receives a meaningful message
+- A simulated position outside the radius is rejected without an account request
 - User GPS values do not appear in any account payload
 
 The exact-threshold tests prevent accidental use of `<` instead of `<=` and prevent a valid edge case from being rejected unexpectedly.
@@ -1320,7 +1338,7 @@ Implement in this order so each layer has a stable contract before the next laye
 - [ ] Mini-map has an accessible label.
 - [ ] Timeline is usable at 360 px width.
 - [ ] Timeline is usable at 390 px width.
-- [ ] No horizontal overflow exists.
+- [ ] No page-level horizontal overflow exists; the activity grid scrolls only inside its bounded region.
 - [ ] Dark mode is readable.
 - [ ] Reduced motion is respected.
 - [ ] Touch targets remain practical on mobile.
@@ -1471,8 +1489,18 @@ Mitigation:
 
 ## 19. Implementation handoff summary
 
-The smallest complete v1 is a private, authenticated, manually triggered timeline. The client requests one high-accuracy location fix, checks the 150-metre radius and 150-metre accuracy threshold locally, and sends only the canonical place ID to the authenticated account endpoint. The server stores an account-scoped event with a server-generated timestamp and a canonical place-name snapshot. Profile loads the events on demand and renders a vertical timeline, a 12-month calendar activity view, and a lazy embedded mini-map using canonical place coordinates.
+The smallest complete v1 is a private, authenticated, manually triggered timeline. The client requests one high-accuracy location fix, checks the 150-metre radius and 150-metre accuracy threshold locally, and sends only the canonical place ID to the authenticated account endpoint. The server stores an account-scoped event with a server-generated timestamp and a canonical place-name snapshot. Profile loads the events on demand and opens a separate timeline window containing a vertical timeline, a horizontally scrollable 12-month activity grid, and a lazy embedded mini-map using canonical place coordinates.
 
 The existing manual visited system remains independent. It continues to work for signed-out users through local storage, continues to synchronize for signed-in users, and continues to drive existing visited-place and Explorer behavior. No automatic tracking, offline event queue, public sharing, configurable radius, raw GPS storage, or anti-spoof guarantee belongs in this release.
 
 Ponytail note: this plan intentionally excludes automatic tracking, offline queues, sharing, configurable radii, new chart dependencies, and anti-spoof infrastructure. The main known risk is that device-only GPS verification cannot be made tamper-proof.
+
+## 20. Refinement amendments implemented after the original plan
+
+- The place-sheet action is a compact text pill labelled `Add to timeline`; the manual visited and bookmark actions remain icon controls.
+- The Profile launcher is plain section content without a clock icon or an extra card wrapper. The full timeline remains a separate window.
+- The activity grid starts at 1 October 2026, hides the leading pre-launch month label, and opens scrolled to the newest day. Tapping a day highlights every matching event in the vertical list.
+- Timeline events use the existing date and place context without a repeated GPS-confirmed pill. Each event has an accessible remove action and a confirmation step.
+- The server applies a one-hour same-place cooldown with an atomic conditional insert. The client also remembers the active cooldown immediately after a successful add. A later visit can create a new event after the hour has elapsed.
+- The same-place cooldown is now one hour. After a successful add, the place action remains a green, clickable `Added to timeline` pill for that hour; tapping it shows a short informational toast instead of submitting another event.
+- Place-sheet action order is `Add to timeline`, manual `Visited`, then `Save`/bookmark.

@@ -348,9 +348,9 @@ When the form submits, the button enters a "sending" state:
 
 The form POSTs JSON to `/api/contact`, a Cloudflare Pages Function:
 
-1. **Honeypot check** → silent fake success if triggered
-2. **Timing check** → submission must be between 1.5s and 1 hour old
-3. **reCAPTCHA v3 verification** → POSTs token to Google's siteverify API; scores below 0.5 are labeled as potential spam in the notification email
+1. **Honeypot check** → rejects suspicious submissions without attempting delivery
+2. **Timing check** → submission must be between 1.5s and 1 hour old; invalid timing never reports a sent message
+3. **Cloudflare Turnstile verification** → validates the single-use token server-side
 4. **Field validation** → name, email, message required; email regex
 5. **Email notification** → sends a plain-text transactional email through Brevo to `contact@karamahcollective.com`, with `replyTo` set to the submitter's email
 6. **Opt-in sheet write** → only when the user actively checks "Keep me updated", appends Name, Email, Phone, reCAPTCHA Score, and Date to the `updates_opt_ins` Google Sheet tab. If reCAPTCHA could not be checked, the score records the reason, such as `not checked (missing secret)`.
@@ -366,10 +366,10 @@ Cloudflare Pages variables:
 
 - `BREVO_API_KEY`
 - `googleSheetUrl` (already configured; `GOOGLE_SHEET_URL` also works)
-- `recaptchaSiteKey` (already configured; `RECAPTCHA_SITE_KEY` also works)
-- `recaptchaSecret` (must be added; `RECAPTCHA_SECRET` also works)
+- `TURNSTILE_SITE_KEY` (public Cloudflare Turnstile site key)
+- `TURNSTILE_SECRET_KEY` (server-only Cloudflare Turnstile secret)
 
-`recaptchaSiteKey` is the public browser key returned by `/api/config`. `recaptchaSecret` is a different server-only key and must be available to `/api/contact` for Google siteverify to return a score. Without it, update opt-in rows record `not checked (missing secret)`.
+`TURNSTILE_SITE_KEY` is the public browser key returned by `/api/config`. `TURNSTILE_SECRET_KEY` is the server-only secret used by `/api/contact` to validate the single-use token. Both production and preview environments must use the matching Cloudflare widget.
 
 ---
 
@@ -379,12 +379,12 @@ Cloudflare Pages variables:
 
 | Layer | Location | Mechanism |
 |---|---|---|
-| **1. Dynamic honeypot** | Client | Hidden input with randomized name (`kc_<random>_<timestamp>`), positioned off-screen. Bots that fill it are silently rejected. |
-| **2. Timing check** | Client + Server | `kc_started_at` timestamp embedded on page load. Submissions faster than 1.5s (bot) or older than 1 hour (stale) are silently rejected. |
+| **1. Dynamic honeypot** | Client + Server | Hidden input with randomized name (`kc_<random>_<timestamp>`), positioned off-screen. Bots that fill it are rejected without delivery. |
+| **2. Timing check** | Client + Server | `kc_started_at` timestamp embedded on page load. Submissions faster than 1.5s (bot) or older than 1 hour (stale) are rejected without claiming delivery. |
 | **3. Rate limiting** | Client | LocalStorage-based 35-second cooldown between submissions (`kc_last_submit_at`). |
-| **4. reCAPTCHA v3** | Client + Server | Invisible score-based verification. Token obtained via `grecaptcha.execute()`, verified server-side. Scores below 0.5 are marked `Possible spam` in the internal email. |
+| **4. Cloudflare Turnstile** | Client + Server | Invisible single-use token, verified server-side before Brevo is called. |
 
-All rejections return a fake `{ success: true }` response to prevent bots from detecting they've been caught.
+Protected requests are rejected before Brevo is called unless the timing, honeypot, and Turnstile checks pass.
 
 ### HTTP Security Headers (`_headers`)
 

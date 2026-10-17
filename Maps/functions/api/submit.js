@@ -10,7 +10,7 @@
  * functions/_google-maps.js.
  *
  * Required Cloudflare Pages Environment Variables:
- *   RECAPTCHA_SECRET – reCAPTCHA v3 secret key
+ *   TURNSTILE_SECRET_KEY – Cloudflare Turnstile secret key
  *   MAPS_API_KEY      – Google Places API key (enrichment only; geocoding uses free Nominatim)
  *   DB                – D1 database binding
  */
@@ -390,7 +390,7 @@ async function sendContactEmail(env, data) {
 }
 
 function isLocalDevRequest(request, env) {
-  if ((env.DEV_SKIP_RECAPTCHA || "").toString() !== "true") return false;
+  if (String(env.DEV_SKIP_TURNSTILE || env.DEV_SKIP_RECAPTCHA || "") !== "true") return false;
 
   const requestUrl = new URL(request.url);
   if (!LOCAL_DEV_HOSTS.has(requestUrl.hostname)) return false;

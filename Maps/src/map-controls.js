@@ -348,7 +348,7 @@ export async function centerVisitorCityIfAvailable({ instant = false, canApply =
   return true;
 }
 
-export function showCurrentLocation() {
+export function showCurrentLocation({ onFirstFix } = {}) {
   track("location_requested");
   const locBtn = document.getElementById("locate-btn");
 
@@ -421,6 +421,7 @@ export function showCurrentLocation() {
         focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
       }
       firstFix = false;
+        try { onFirstFix?.({ lat, lng, accuracy }); } catch { /* optional consumer callback */ }
     } else if (dir.routeLayers.length > 0 && !isNavMode) {
       // Regular route preview follows the user only when turn-by-turn nav
       // is not active. Navigation mode handles its own camera behavior.

@@ -74,6 +74,7 @@ const IMPORT_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="n
 // auth.js is dynamically imported (never a static top-level import) so the
 // heavy Firebase CDN modules it pulls in stay lazy.
 let _authModulePromise = null;
+let _accountSyncInitialized = false;
 function _getAuthModule() {
   if (!_authModulePromise) _authModulePromise = import("./auth.js");
   return _authModulePromise;
@@ -647,11 +648,15 @@ async function _backgroundSync(kind, action, fields, { onSuccess, onFailure, onS
  * Initialize account sync: resolves cloud state on sign-in, on every app
  * load where a cached signed-in account already exists, reverts to the local
  * device cache on sign-out, and keeps every subsequent favourite/pin/home
- * toggle synced to the cloud in the background. Call once, after auth.js's
- * initAuth() has run (same lazy-load timing as the Account section).
+ * toggle synced to the cloud in the background. It is safe to call before or
+ * after auth.js's initAuth(); the startup path calls it before first input so
+ * optimistic place actions cannot outrun its event listeners.
  * @returns {void}
  */
 export function initAccountSync() {
+  if (_accountSyncInitialized) return;
+  _accountSyncInitialized = true;
+
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
     if (e.detail?.account) _handleSignIn();
     else _exitCloudState();
@@ -672,17 +677,13 @@ export function initAccountSync() {
   window.addEventListener(EVT.FAVOURITE_TOGGLED, (e) => {
     const { placeId, saved } = e.detail || {};
     if (!placeId) return;
+    const confirmToast = () => showToast(saved ? "Place saved" : "Removed from saved", "check");
     _backgroundSync("favorite", saved ? "save" : "unsave", { placeId }, {
-      // No toast on success — favouriting has never shown one at all (the
-      // star icon's own fill/unfill is the confirmation) — but SAVED_SYNCED
-      // still fires so anything deriving state from the server's saved-places
-      // list (src/profile.js's contribution stats) knows a mutation actually
-      // landed. Previously only the onFailure rollback below fired this event,
-      // which meant a *successful* toggle never told anyone — see this
-      // function's own SAVED_SYNCED-on-success fix, 2026-08-03 (Profile's
-      // "Saved pins"/"Favourites" counts staying stale until a full reload —
-      // see docs/PREFERENCE_LOG.md).
-      onSuccess: () => window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} })),
+      onSignedOut: confirmToast,
+      onSuccess: () => {
+        confirmToast();
+        window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
+      },
       onFailure: () => {
         setFavouriteState(placeId, !saved);
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
@@ -691,15 +692,14 @@ export function initAccountSync() {
     });
   });
 
-  // Same shape as EVT.FAVOURITE_TOGGLED above — no success toast (the
-  // button's own fill/unfill is the confirmation), but SAVED_SYNCED still
-  // fires so src/profile.js's badge/stats computation picks up the change
-  // without waiting for a full Profile reload.
   window.addEventListener(EVT.VISITED_TOGGLED, (e) => {
     const { placeId, visited } = e.detail || {};
     if (!placeId) return;
+    const confirmToast = () => showToast(visited ? "Marked as visited" : "Visited mark removed", "check");
     _backgroundSync("visited", visited ? "save" : "unsave", { placeId }, {
+      onSignedOut: confirmToast,
       onSuccess: () => {
+        confirmToast();
         window.dispatchEvent(new CustomEvent(EVT.SAVED_SYNCED, { detail: {} }));
         // Only a NEW mark can move the Explorer badge — the server's lifetime
         // visited SET is never shrunk by an un-mark, and re-marking a place
