@@ -5,6 +5,10 @@ WEBSITE_FORM_KEY=
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 BREVO_API_KEY=
+# Must match the Maps Pages secret used by /api/inbox-webhook.
+INBOX_INGEST_SECRET=
+# Optional override for local or preview Maps inbox webhook routing.
+INBOX_INGEST_URL=https://maps.karamahcollective.com/api/inbox-webhook
 # Optional: exact trusted HTTPS Admin preview origins, comma-separated.
 ADMIN_ALLOWED_ORIGINS=
 

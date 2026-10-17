@@ -491,6 +491,8 @@ If the existing Website project uses the old repository, create a replacement Pa
    | --- | --- |
    | `GOOGLE_SHEET_URL` | The existing Apps Script web app URL ending in `/exec`, not the spreadsheet URL |
    | `BREVO_API_KEY` | Existing contact-email service key; store as a secret |
+   | `INBOX_INGEST_SECRET` | Shared secret with the Maps Pages project for mirroring Website contacts into Admin Communications; store as a secret |
+   | `INBOX_INGEST_URL` | Optional; defaults to `https://maps.karamahcollective.com/api/inbox-webhook` |
    | `TURNSTILE_SITE_KEY` | Existing public Cloudflare Turnstile site key |
    | `TURNSTILE_SECRET_KEY` | Existing Cloudflare Turnstile secret; store as a secret |
    | `WEBSITE_ADMIN_KEY` | New random secret; see the next section |

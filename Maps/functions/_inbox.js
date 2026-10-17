@@ -75,8 +75,14 @@ export async function listInbox(db, access, configured = INBOX_MAILBOXES, person
   return { mailboxes: available, folders:[...standardFolders, ...customFolders], selectedFolder, threads: results.map(row => ({ id: row.id, subject: row.subject || "(No subject)", participantEmail: row.participant_email, participantName: row.participant_name, mailbox: row.mailbox, source: row.source, hasOutbound: Number(row.outbound_count) > 0, lastMessageDirection: row.last_message_direction || "", hasAttachments: Boolean(row.has_attachments), status: row.status, unreadCount: row.unread_count, starred: Number(row.starred) === 1, snoozedUntil: row.snoozed_until || "", assignedTo: row.assigned_to || "", assignedName: row.assigned_name || "", lastMessageAt: row.last_message_at, preview: clean(row.last_message_preview, 240) })) };
 }
 
+async function findInboxThread(db, threadId) {
+  const key = clean(threadId, 255);
+  const providerKey = key.replace(/^gmail_/i, "");
+  return db.prepare("SELECT * FROM inbox_threads WHERE id=? OR provider_thread_id=? OR provider_thread_id=? LIMIT 1").bind(key, key, providerKey).first();
+}
+
 async function inboxThreadForWrite(db, threadId, access, personalMailbox = "") {
-  const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=?").bind(clean(threadId, 100)).first();
+  const thread = await findInboxThread(db, threadId);
   if (!thread || !canInboxMailbox(access, thread.mailbox, "write", personalMailbox)) return null;
   return thread;
 }
@@ -149,14 +155,14 @@ export async function setInboxStatus(db, data, access, personalMailbox = "") {
   const threadId = clean(data.threadId, 80);
   const status = clean(data.status, 20);
   if (!threadId || !["open", "closed"].includes(status)) return { error: "Choose a valid conversation status." };
-  const thread = await db.prepare("SELECT id,mailbox FROM inbox_threads WHERE id=?").bind(threadId).first();
+  const thread = await findInboxThread(db, threadId);
   if (!thread) return { error: "Conversation not found." };
   if (!canInboxMailbox(access, thread.mailbox, "write", personalMailbox)) return { error: "Your role cannot manage this mailbox." };
-  await db.prepare("UPDATE inbox_threads SET status=? WHERE id=?").bind(status, threadId).run();
+  await db.prepare("UPDATE inbox_threads SET status=? WHERE id=?").bind(status, thread.id).run();
   return { success: true, status };
 }
 export async function getInboxThread(db, threadId, access, personalMailbox = "") {
-  const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=?").bind(clean(threadId, 80)).first();
+  const thread = await findInboxThread(db, threadId);
   if (!thread) return { error: "Conversation not found." };
   if (!canInboxMailbox(access, thread.mailbox, "read", personalMailbox)) return { error: "Conversation not found." };
   const { results = [] } = await db.prepare("SELECT * FROM inbox_messages WHERE thread_id=? ORDER BY created_at").bind(thread.id).all();
@@ -171,7 +177,7 @@ function safeEmails(value) {
 }
 function safeHtml(value) { return clean(value, 50000).replace(/<(script|style|iframe|object)[^>]*>[\s\S]*?<\/\1>/gi, "").replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "").replace(/javascript:/gi, ""); }
 export async function replyInbox(db, env, data, actor, access, personalMailbox = "") {
-  const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=?").bind(clean(data.threadId,80)).first();
+  const thread = await findInboxThread(db, data.threadId);
   const branchFromMessageId = clean(data.branchFromMessageId,80);
   const branchMessage = thread && branchFromMessageId ? await db.prepare("SELECT * FROM inbox_messages WHERE id=? AND thread_id=?").bind(branchFromMessageId,thread.id).first() : null;
   const laterEmail = branchMessage && branchMessage.message_kind !== "internal_note" ? await db.prepare("SELECT id FROM inbox_messages WHERE thread_id=? AND created_at>? AND (message_kind IS NULL OR message_kind='email') ORDER BY created_at LIMIT 1").bind(thread.id,branchMessage.created_at).first() : null;
@@ -245,10 +251,10 @@ export async function composeInbox(db, env, data, actor, access, personalMailbox
 export async function addInboxNote(db, data, actor, access, personalMailbox = "") {
   const threadId=clean(data.threadId,80), html=safeHtml(data.htmlBody), text=textFromHtml(html);
   if (!threadId || !text) return { error:"Write a note before saving." };
-  const thread=await db.prepare("SELECT id,mailbox FROM inbox_threads WHERE id=?").bind(threadId).first(); if (!thread || !canInboxMailbox(access, thread.mailbox, "write", personalMailbox)) return { error:"Conversation not found." };
+  const thread=await findInboxThread(db, threadId); if (!thread || !canInboxMailbox(access, thread.mailbox, "write", personalMailbox)) return { error:"Conversation not found." };
   const stamp=new Date().toISOString();
   const actorEmail=clean(actor?.email,254).toLowerCase(), actorName=clean(actor?.name,120)||actorEmail||"Admin";
-  await db.prepare("INSERT INTO inbox_messages (id,thread_id,direction,message_kind,sender_email,sender_name,sender_admin_email,sender_admin_name,recipient_email,html_body,text_body,attachments_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id("note"),threadId,"outbound","internal_note",actorEmail,actorName,actorEmail,actorName,"",html,text,"[]",stamp).run();
+  await db.prepare("INSERT INTO inbox_messages (id,thread_id,direction,message_kind,sender_email,sender_name,sender_admin_email,sender_admin_name,recipient_email,html_body,text_body,attachments_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id("note"),thread.id,"outbound","internal_note",actorEmail,actorName,actorEmail,actorName,"",html,text,"[]",stamp).run();
   return { success:true };
 }
 export async function ingestInbox(db, data, personalMailbox = "") {

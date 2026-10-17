@@ -186,6 +186,28 @@ test("provider replies attach to the existing local thread", async () => {
   assert.deepEqual(result, { success: true, threadId: "thread-local" });
 });
 
+test("replies also resolve a Gmail provider thread identifier", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 201 });
+  const thread = { id: "thread-1", provider_thread_id: "provider-thread-1", participant_email: "aisha@example.org", participant_name: "Aisha", mailbox: "contact@karamahcollective.com", subject: "Hello" };
+  const prepared = [];
+  const db = {
+    prepare(sql) {
+      const statement = { sql, values: [], bind(...values) { statement.values = values; return statement; }, async first() { return sql.includes("FROM inbox_threads") ? thread : null; } };
+      prepared.push(statement);
+      return statement;
+    },
+    async batch() {},
+  };
+  try {
+    const result = await replyInbox(db, { BREVO_API_KEY: "http-api-key" }, { threadId: "gmail_provider-thread-1", htmlBody: "<p>Thanks</p>", attachments: [] }, { name: "Admin" }, { permissions: ["*"] });
+    assert.deepEqual(result, { success: true });
+    assert.match(prepared[0].sql, /provider_thread_id/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("reply without attachments is accepted when the composer sends an empty array", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response("{}", { status: 201 });

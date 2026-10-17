@@ -1061,7 +1061,7 @@ export async function onRequestGet(context) {
 // ── POST (write) actions ───────────────────────────────────────────────────
 
 // Code.gs:2382 copyNewRowToPlaces, folded into one atomic batch.
-async function approveNew(db, rowId, env) {
+export async function approveNew(db, rowId, env) {
   const row = await db.prepare("SELECT * FROM new_places WHERE id = ?").bind(rowId).first();
   if (!row) return { error: "Row not found (may already be processed)" };
 
@@ -1078,7 +1078,14 @@ async function approveNew(db, rowId, env) {
   let googleRatingCount = row.google_rating_count ?? null;
   let googleInfoRaw = row.google_info || "";
   const mapsLink = (row.maps_link || "").toString().trim();
-  let googleDetailsFound = !!(openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw);
+  // A previously successful enrichment can have the place identity and
+  // coordinates without the optional Places Details payload. Keep that
+  // verified Google data usable when the approval-time Details retry fails.
+  let googleDetailsFound = !!(
+    row.google_name || row.google_address || row.place_id ||
+    (row.lat != null && row.lng != null) ||
+    openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw
+  );
 
   // Approval is the last chance to repair a link-only submission before it
   // becomes live. Fetch rich Details again so bad parsed path names (for
@@ -1107,7 +1114,10 @@ async function approveNew(db, rowId, env) {
           if (enriched.googleRating != null) googleRating = enriched.googleRating;
           if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
           if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
-          googleDetailsFound = !!enriched.detailsFound;
+          // `hasData` covers parsed Google Maps identity/coordinates. Rich
+          // Details are useful enrichment, but must not make a valid place
+          // impossible to approve when that optional request is unavailable.
+          googleDetailsFound = !!(enriched.detailsFound || enriched.hasData);
         }
       } catch { /* best-effort */ }
     }

@@ -160,10 +160,16 @@ test('local website preview injects a mock ticket without production env', async
 
 test('contact writes only explicit opt-ins and reports a failed database save honestly', async t => {
   const databaseState = {};
-  const contactEnv = { ...env, DB: createTestDb(databaseState), TURNSTILE_SECRET_KEY: 'test-turnstile-secret' };
+  const mirrored = [];
+  const contactEnv = { ...env, DB: createTestDb(databaseState), TURNSTILE_SECRET_KEY: 'test-turnstile-secret', INBOX_INGEST_SECRET: 'test-inbox-secret' };
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     if (String(url).includes('challenges.cloudflare.com/turnstile')) return Response.json({ success: true, action: 'contact' });
     if (String(url).includes('brevo.com')) return Response.json({ messageId: 'test-message' });
+    if (String(url).includes('/api/inbox-webhook')) {
+      assert.equal(options.headers['X-Inbox-Secret'], 'test-inbox-secret');
+      mirrored.push(JSON.parse(options.body));
+      return Response.json({ success: true });
+    }
     throw new Error(`Unexpected fetch: ${url}`);
   });
   t.mock.method(console, 'log', () => {});
@@ -174,6 +180,8 @@ test('contact writes only explicit opt-ins and reports a failed database save ho
     return (await contactRequest({ env: contactEnv, request: new Request('https://website.test/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(form)) }) })).json();
   };
   assert.equal((await send('no')).sheetSaved, false);
+  assert.equal(mirrored.length, 1);
+  assert.equal(mirrored[0].mailbox, 'contact@karamahcollective.com');
   assert.equal(databaseState.subscriptions.length, 0);
   assert.equal((await send('yes')).sheetSaved, true);
   assert.equal(databaseState.subscriptions.length, 1);
