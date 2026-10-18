@@ -352,6 +352,52 @@ test.describe("verified visit timeline", () => {
     await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
   });
 
+  test("Timeline is a child window: Back restores Profile and outside closes the thread", async ({ page }) => {
+    await setupApp(page);
+    await openProfile(page);
+    await expect(page.locator("#timeline-close")).toHaveAttribute("aria-label", "Back to profile");
+
+    await page.click("#timeline-close");
+    expect(await page.locator("#profile-sheet").evaluate((el) => Number(getComputedStyle(el).zIndex))).toBeGreaterThan(100);
+    await expect(page.locator("#timeline-overlay")).toHaveClass(/hide/);
+    await expect(page.locator("#profile-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#profile-sheet-close")).toHaveAttribute("aria-label", "Back to menu");
+
+    await page.click("#profile-timeline-open");
+    await expect(page.locator("#timeline-overlay")).not.toHaveClass(/hide/);
+    await page.locator("#timeline-overlay").dispatchEvent("click");
+    await expect(page.locator("#timeline-overlay")).toHaveClass(/hide/);
+    await expect(page.locator("#profile-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
+  });
+
+  test("phone drag-dismiss closes the whole Timeline thread", async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes("Pixel"), "drag coverage runs on the phone project");
+    await setupApp(page);
+    await openProfile(page);
+    await page.evaluate(() => {
+      const handle = document.querySelector("#timeline-card .overlay-drag");
+      const touch = (type, y) => {
+        const point = new Touch({ identifier: 1, target: handle, clientX: 12, clientY: y });
+        handle.dispatchEvent(new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          touches: type === "touchend" ? [] : [point],
+          changedTouches: [point],
+        }));
+      };
+      touch("touchstart", 120);
+      document.dispatchEvent(new TouchEvent("touchmove", {
+        bubbles: true,
+        touches: [new Touch({ identifier: 1, target: handle, clientX: 12, clientY: 560 })],
+      }));
+      document.dispatchEvent(new TouchEvent("touchend", { bubbles: true, changedTouches: [] }));
+    });
+    await expect(page.locator("#timeline-overlay")).toHaveClass(/hide/);
+    await expect(page.locator("#profile-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
+  });
+
   test("same-place cooldown blocks an accidental second add", async ({ page }) => {
     const requests = mockAccountApi(page, []);
     await setupApp(page);

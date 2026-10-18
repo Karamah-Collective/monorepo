@@ -129,7 +129,7 @@ test.describe("Scrim Overlay Animations", () => {
   test("clicking scrim closes the sheet", async ({ page }) => {
     await page.locator("#places-btn").click();
     await page.waitForTimeout(600);
-    await page.locator("#scrim").click({ force: true });
+    await page.locator("#scrim").click({ position: { x: 10, y: 10 }, force: true });
     await page.waitForTimeout(600);
     await expect(page.locator("#places-sheet")).toHaveClass(/shut/);
     await expect(page.locator("#scrim")).toHaveClass(/hide/);

@@ -60,6 +60,7 @@ import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTM
 const menuSheet = document.getElementById("menu-sheet");
 const profileSheet = document.getElementById("profile-sheet");
 const menuScrim = document.getElementById("scrim");
+const appShell = document.getElementById("app");
 const sheetCloseBtn = document.getElementById("mp-sheet-close");
 const profileCloseBtn = document.getElementById("profile-sheet-close");
 const menuPaneEl = document.getElementById("menu-sheet-body");
@@ -69,6 +70,7 @@ const accountBody = document.getElementById("menu-account-body");
 // Keep the two swap targets in the root stacking context. The map shell and
 // scrim are separate stacking contexts, so leaving sheets inside the shell
 // makes the scrim win hit-testing even when the sheet's z-index is higher.
+if (appShell && menuScrim.parentElement !== appShell) appShell.append(menuScrim);
 if (menuSheet.parentElement !== document.body) document.body.append(menuSheet);
 if (profileSheet.parentElement !== document.body) document.body.append(profileSheet);
 
@@ -82,21 +84,8 @@ let _auth = null; // lazily-loaded src/auth.js module namespace
 let _sheetSwapToken = 0;
 
 function _afterSheetOpened(sheet, callback) {
-  let settled = false;
-  let timer = null;
-  const finish = () => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    sheet.removeEventListener("transitionend", onEnd);
-    callback();
-  };
-  const onEnd = (event) => {
-    if (event.target === sheet && event.propertyName === "transform") finish();
-  };
   const duration = parseFloat(getComputedStyle(sheet).transitionDuration) * 1000 || 0;
-  sheet.addEventListener("transitionend", onEnd);
-  timer = setTimeout(finish, duration + 80);
+  setTimeout(callback, duration * 0.9);
 }
 let _account = null;
 let _prayerMod = null; // lazily-loaded src/prayer.js module namespace (Preferences section)
@@ -137,6 +126,7 @@ export function openMenuSheet() {
 export function closeMenuSheet({ keepContext = false } = {}) {
   _sheetSwapToken += 1;
   const wasOpen = !menuSheet.classList.contains("shut");
+  if (!keepContext && !profileSheet.classList.contains("shut")) closeProfileSheet({ keepContext: true });
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSnap.close();
   if (!keepContext) {
@@ -171,9 +161,9 @@ function _setProfileHeader(fromMenu) {
   profileCloseBtn.classList.toggle("mp-sheet-close--back", fromMenu);
 }
 
-export function openProfileSheet({ fromMenu = true } = {}) {
+export function openProfileSheet({ fromMenu = true, aboveTimeline = false } = {}) {
   menuSheet.style.zIndex = "";
-  profileSheet.style.zIndex = "14";
+  profileSheet.style.zIndex = aboveTimeline ? "calc(var(--z-overlay) + 1)" : "14";
   if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
   profileSheet.hidden = false;
   _setProfileHeader(fromMenu);
@@ -184,6 +174,7 @@ export function openProfileSheet({ fromMenu = true } = {}) {
 export function closeProfileSheet({ keepContext = false } = {}) {
   _sheetSwapToken += 1;
   const wasOpen = !profileSheet.classList.contains("shut");
+  if (!keepContext && !menuSheet.classList.contains("shut")) closeMenuSheet({ keepContext: true });
   if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
   profileSnap.close();
   if (!keepContext) {
@@ -214,6 +205,18 @@ function _goToMenuSheet() {
   openMenuSheet();
   _afterSheetOpened(menuSheet, () => {
     if (swapToken === _sheetSwapToken) closeProfileSheet({ keepContext: true });
+  });
+}
+
+function _openProfileFromChild(detail = {}) {
+  const openToken = ++_sheetSwapToken;
+  openProfileSheet({ fromMenu: true, aboveTimeline: detail.reason === "timeline-back" });
+  _afterSheetOpened(profileSheet, () => {
+    if (openToken !== _sheetSwapToken) return;
+    window.dispatchEvent(new CustomEvent(EVT.ACCOUNT_PROFILE_OPENED, { detail }));
+  });
+  void loadProfileContent().then(() => {
+    if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
   });
 }
 
@@ -486,7 +489,14 @@ export async function initMenuAccount() {
   // in events.js).
   window.addEventListener(EVT.ACCOUNT_SHEET_CLOSE, () => {
     if (!profileSheet.classList.contains("shut")) closeProfileSheet();
-    else closeMenuSheet();
+    if (!menuSheet.classList.contains("shut")) closeMenuSheet();
+  });
+  window.addEventListener(EVT.ACCOUNT_PROFILE_OPEN, (event) => {
+    _openProfileFromChild(event.detail || {});
+  });
+  window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
+    if (!profileSheet.classList.contains("shut")) closeProfileSheet();
+    if (!menuSheet.classList.contains("shut")) closeMenuSheet();
   });
   // Same "first-open height stuck at the pre-render measurement" bug as the
   // AUTH_CHANGED/initMenuAccount() resyncs above, just for Profile's own

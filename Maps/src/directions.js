@@ -3,9 +3,9 @@ import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, TRANSITOUS_URL, DT_API_KEY, NO
 import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactRoute, decompressItinerary, showLoadingToast, hideLoadingToast, initSheetDrag, initSegPill, haversineDistance, requestLocation, getCurrentLocationState } from "./utils.js";
 import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple, getThemeWalkColor } from "./icons.js";
 import { setActiveTab } from "./map-controls.js";
-import { placesData, activeTagFilters, closePlacesSheet, closePlaceSheet, dismissPlacesSearch, openPlacesSheet } from "./places.js";
+import { placesData, activeTagFilters, closePlacesSheet, dismissPlacesSearch, openPlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
-import { closeMenuSheet, closeProfileSheet } from "./menu.js";
+import { EVT } from "./events.js";
 
 // Navigation module hooks — set by navigation.js to avoid circular import
 let _navHooks = { startNav: () => {}, stop: () => {}, pause: () => {}, resume: () => false, isActive: () => false, isPaused: () => false };
@@ -47,8 +47,6 @@ export const dir = {
 
 // --- DOM refs ---
 const dirPanel = document.getElementById("dir-panel");
-const placeSheetEl = document.getElementById("place-sheet");
-const menuSheetEl = document.getElementById("menu-sheet");
 const dirFrom = document.getElementById("dir-from");
 const dirTo = document.getElementById("dir-to");
 const dirGo = document.getElementById("dir-go");
@@ -494,15 +492,15 @@ dirItins.addEventListener("click", (e) => {
   }
 });
 
-// Scrim click — dismiss whichever panel is open
-// If places search is active, close just the search (not the sheet) to avoid
-// accidental dismissal from stray taps on mobile virtual-keyboard viewports.
-document.getElementById("scrim").addEventListener("click", () => {
+window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
   if (!dirPanel.classList.contains("shut")) closeDirPanel();
-  else if (!placeSheetEl.classList.contains("shut")) closePlaceSheet();
-  else if (!document.getElementById("profile-sheet")?.classList.contains("shut")) closeProfileSheet();
-  else if (!menuSheetEl.classList.contains("shut")) closeMenuSheet();
-  else if (!dismissPlacesSearch()) closePlacesSheet();
+});
+
+// A scrim tap is a thread dismissal, not a one-layer dismissal. Each owner
+// closes its own currently-open window in response to the shared event.
+document.getElementById("scrim").addEventListener("click", () => {
+  dismissPlacesSearch();
+  window.dispatchEvent(new CustomEvent(EVT.WINDOW_THREAD_CLOSE));
 });
 
 // --- Pick mode ---

@@ -91,6 +91,12 @@ export const EVT = {
    *  swap entirely inside src/menu.js now that both panes live in one
    *  physical sheet. detail: {} */
   ACCOUNT_SHEET_CLOSE: "hf:account-sheet-close",
+  /** Request the account Profile window after returning from a child window. */
+  ACCOUNT_PROFILE_OPEN: "hf:account-profile-open",
+  /** Fired after the requested Profile window has finished opening. */
+  ACCOUNT_PROFILE_OPENED: "hf:account-profile-opened",
+  /** Close every currently-open window in the active window thread. */
+  WINDOW_THREAD_CLOSE: "hf:window-thread-close",
   /** Fired by src/profile.js's loadProfileContent() right after its first,
    *  synchronous _renderCard() call — on the very first Profile visit in a
    *  session, that call swaps the identity card from a one-line "Loading…"

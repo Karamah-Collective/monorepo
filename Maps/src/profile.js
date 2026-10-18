@@ -72,6 +72,8 @@ const TIMELINE_MAP_RESIZE_DELAY_MS = 240;
 // sign-out copies of, now that both actions live here instead).
 const TRASH_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>`;
 const SIGNOUT_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
+const TIMELINE_CLOSE_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+const TIMELINE_BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
 // The merged sheet's own id — only ever read here to guard against
 // rendering into a stale/gone context (see loadProfileContent() below), not
@@ -116,24 +118,15 @@ let _timelineGeneration = 0;
 let _timelineLoaded = false;
 let _timelineLoadFailed = false;
 let _timelineOpenToken = 0;
+let _timelineFromProfile = false;
+let _timelineDragging = false;
+let _timelineDragStartY = 0;
+let _timelineDragDistance = 0;
 
 function _afterTimelineOpened(callback) {
   if (!timelineCardEl) { callback(); return; }
-  let settled = false;
-  let timer = null;
-  const finish = () => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    timelineCardEl?.removeEventListener("transitionend", onEnd);
-    callback();
-  };
-  const onEnd = (event) => {
-    if (event.target === timelineCardEl && event.propertyName === "transform") finish();
-  };
   const duration = parseFloat(getComputedStyle(timelineCardEl).transitionDuration) * 1000 || 0;
-  timelineCardEl.addEventListener("transitionend", onEnd);
-  timer = setTimeout(finish, duration + 80);
+  setTimeout(callback, duration * 0.9);
 }
 let _timelineMap = null;
 let _timelineMapMarkers = [];
@@ -172,17 +165,37 @@ function _closeAccountSheet() {
   window.dispatchEvent(new CustomEvent(EVT.ACCOUNT_SHEET_CLOSE, { detail: {} }));
 }
 
-function _closeTimelineOverlay() {
+function _setTimelineHeader(fromProfile) {
+  if (!timelineCloseBtn) return;
+  timelineCloseBtn.innerHTML = fromProfile ? TIMELINE_BACK_ICON_SVG : TIMELINE_CLOSE_ICON_SVG;
+  timelineCloseBtn.setAttribute("aria-label", fromProfile ? "Back to profile" : "Close timeline");
+  timelineCloseBtn.classList.toggle("timeline-close--back", fromProfile);
+}
+
+function _hideTimelineOverlay() {
   if (!timelineOverlayEl) return;
   _timelineOpenToken += 1;
+  _timelineFromProfile = false;
+  timelineCardEl?.style.removeProperty("transform");
   timelineOverlayEl.classList.add("hide");
   timelineOverlayEl.setAttribute("aria-hidden", "true");
   _clearTimelineMap();
 }
 
+function _closeTimelineOverlay({ restoreProfile = false } = {}) {
+  if (restoreProfile && _timelineFromProfile && _account) {
+    window.dispatchEvent(new CustomEvent(EVT.ACCOUNT_PROFILE_OPEN, { detail: { reason: "timeline-back" } }));
+    return;
+  }
+  _hideTimelineOverlay();
+}
+
 function _openTimelineOverlay() {
   if (!timelineOverlayEl || !_account) return;
   const openToken = ++_timelineOpenToken;
+  _timelineFromProfile = true;
+  _setTimelineHeader(true);
+  timelineCardEl?.style.removeProperty("transform");
   timelineOverlayEl.classList.remove("hide");
   timelineOverlayEl.setAttribute("aria-hidden", "false");
   if (_timelineLoadFailed) _renderTimelineError();
@@ -193,6 +206,32 @@ function _openTimelineOverlay() {
     if (openToken === _timelineOpenToken && !timelineOverlayEl.classList.contains("hide")) _closeAccountSheet();
   });
   timelineCloseBtn?.focus();
+}
+
+function _startTimelineDrag(event) {
+  if (window.innerWidth > 768 || !timelineCardEl || timelineOverlayEl?.classList.contains("hide")) return;
+  _timelineDragging = true;
+  _timelineDragStartY = event.touches[0].clientY;
+  _timelineDragDistance = 0;
+  timelineCardEl.style.transition = "none";
+  event.preventDefault();
+}
+
+function _moveTimelineDrag(event) {
+  if (!_timelineDragging || !timelineCardEl) return;
+  _timelineDragDistance = Math.max(0, event.touches[0].clientY - _timelineDragStartY);
+  timelineCardEl.style.transform = `translateY(${_timelineDragDistance}px)`;
+}
+
+function _endTimelineDrag() {
+  if (!_timelineDragging || !timelineCardEl) return;
+  _timelineDragging = false;
+  timelineCardEl.style.transition = "";
+  if (_timelineDragDistance > Math.max(96, timelineCardEl.offsetHeight * 0.25)) {
+    _closeTimelineOverlay();
+  } else {
+    timelineCardEl.style.removeProperty("transform");
+  }
 }
 
 /**
@@ -243,17 +282,33 @@ export async function initProfile() {
     if (!_account || !timelineEl || (profileSheetEl.classList.contains("shut") && !timelineOpen)) return;
     _loadTimelineOnly(_account.uid);
   });
+  window.addEventListener(EVT.ACCOUNT_PROFILE_OPENED, (event) => {
+    if (event.detail?.reason === "timeline-back" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) {
+      _hideTimelineOverlay();
+      profileSheetEl?.querySelector("#profile-sheet-close")?.focus();
+    }
+  });
+  window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => _closeTimelineOverlay());
 
   exportBtn?.addEventListener("click", _handleExport);
   eraseBtn?.addEventListener("click", _handleErase);
   timelineOpenBtn?.addEventListener("click", _openTimelineOverlay);
-  timelineCloseBtn?.addEventListener("click", _closeTimelineOverlay);
+  timelineCloseBtn?.addEventListener("click", () => {
+    if (timelineCloseBtn.classList.contains("timeline-close--back")) _closeTimelineOverlay({ restoreProfile: true });
+    else _closeTimelineOverlay();
+  });
   timelineOverlayEl?.addEventListener("click", (event) => {
-    if (event.target === timelineOverlayEl) _closeTimelineOverlay();
+    if (event.target === timelineOverlayEl) window.dispatchEvent(new CustomEvent(EVT.WINDOW_THREAD_CLOSE));
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _closeTimelineOverlay();
+    if (event.key === "Escape" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) {
+      window.dispatchEvent(new CustomEvent(EVT.WINDOW_THREAD_CLOSE));
+    }
   });
+  const timelineDragHandle = timelineCardEl?.querySelector(".overlay-drag");
+  timelineDragHandle?.addEventListener("touchstart", _startTimelineDrag, { passive: false });
+  document.addEventListener("touchmove", _moveTimelineDrag, { passive: true });
+  document.addEventListener("touchend", _endTimelineDrag, { passive: true });
 }
 
 /**

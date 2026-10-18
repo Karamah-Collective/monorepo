@@ -2701,6 +2701,11 @@ const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, {
   maxHeightRatio: PLACE_SHEET_MAX_HEIGHT_RATIO,
 });
 
+window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
+  if (!placeSheetEl.classList.contains("shut")) closePlaceSheet();
+  if (!placesSheet.classList.contains("shut")) closePlacesSheet();
+});
+
 let _placesDirty = false;
 
 // Re-sync userSortLat/Lng from the best location source (live > home > null).
