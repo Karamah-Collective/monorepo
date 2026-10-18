@@ -60,7 +60,7 @@ import {
 
 const ACCOUNT_API = "/api/account";
 const TIMELINE_DAYS_IN_WEEK = 7;
-const TIMELINE_START_DATE = new Date(2026, 9, 1);
+const TIMELINE_START_DATE = new Date(2026, 7, 1);
 const TIMELINE_MAP_SINGLE_ZOOM = 12;
 const TIMELINE_MAP_FIT_PADDING = 28;
 const TIMELINE_MAP_RESIZE_DELAY_MS = 240;
@@ -574,7 +574,7 @@ function _renderTimelineCalendar(visits) {
   const firstVisitDate = visits.map((visit) => new Date(visit.visitedAt)).filter((date) => !Number.isNaN(date.getTime())).sort((a, b) => a - b)[0];
   const firstVisitLabel = firstVisitDate
     ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(firstVisitDate)
-    : "1 Oct 2026";
+    : "1 Aug 2026";
   const weekdayLabels = Array.from({ length: TIMELINE_DAYS_IN_WEEK }, (_, index) => weekdayFormatter.format(new Date(2024, 0, 7 + index)));
   const monthLabels = [];
   const cells = [];

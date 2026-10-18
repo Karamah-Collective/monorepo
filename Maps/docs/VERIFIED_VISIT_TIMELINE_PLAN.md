@@ -429,7 +429,7 @@ Dates and times should use the browser/device locale and timezone for display. T
 
 ### 6.6 Calendar activity view
 
-Add a compact GitHub-style activity visualization beginning on 1 October 2026, the launch date of the feature, and ending on today. The week columns are laid out horizontally inside a bounded scroll container, which opens scrolled to the newest day. Horizontal scrolling is intentional for the activity grid on narrow phones; it must never create page-level horizontal overflow.
+Add a compact GitHub-style activity visualization beginning on 1 August 2026, the requested timeline start date, and ending on today. The week columns are laid out horizontally inside a bounded scroll container, which opens scrolled to the newest day. Horizontal scrolling is intentional for the activity grid on narrow phones; it must never create page-level horizontal overflow.
 
 Each day with one or more verified visits receives an intensity level based on the number of events on that day.
 

@@ -295,14 +295,15 @@ test.describe("verified visit timeline", () => {
     await monthToggles.first().click();
     await expect(monthToggles.first()).toHaveAttribute("aria-expanded", "false");
     await expect(page.locator(".pf-timeline-events").first()).toHaveClass(/pf-timeline-events--collapsed/);
-    await page.locator(".pf-timeline-calendar-day[data-has-visits]").first().click();
+    await page.locator('.pf-timeline-calendar-day[data-has-visits][data-day-key="2026-10-17"]').click();
     await expect(monthToggles.first()).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".pf-timeline-events").first()).not.toHaveClass(/pf-timeline-events--collapsed/);
     const visitedCalendarDays = await page.locator(".pf-timeline-calendar-day[title*='verified visit']").count();
     expect(visitedCalendarDays).toBeGreaterThan(0);
     await expect(page.locator(".pf-timeline-activity-heading")).toContainText("Since");
     await expect(page.locator(".pf-timeline-activity-heading")).toContainText("2026");
-    await page.locator(".pf-timeline-calendar-day[data-has-visits]").first().click();
+    await expect(page.locator(".pf-timeline-activity-months")).toContainText("Aug");
+    await page.locator('.pf-timeline-calendar-day[data-has-visits][data-day-key="2026-10-17"]').click();
     await expect(page.locator(".pf-timeline-event--day-target")).toHaveCount(2);
   });
 
