@@ -21,6 +21,7 @@ import { reverseGeocode, enrichFromMapsLink } from "../_google-maps.js";
 import { parseAppLinksInput, serializeAppLinksForQueue } from "../_app-links.js";
 import { readAppSettings } from "../_app-settings.js";
 import { ingestInbox } from "../_inbox.js";
+import { gmailStatus, MANARAH_MAILBOX } from "../_gmail.js";
 import { verifyTurnstile } from "../_turnstile.js";
 
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
@@ -54,6 +55,10 @@ const TYPE_GROUP_LABELS = {
   service_service_type: "Services",
   space_space_type: "Spaces",
 };
+
+export function shouldMirrorManarahInboxCopy(status) {
+  return !(status?.configured && status?.connected);
+}
 
 function isSupportedGoogleMapsLink(value) {
   try {
@@ -523,7 +528,13 @@ export async function onRequestPost(context) {
     } else if (formType === "contact") {
       result = await sendContactEmail(env, data);
       if (!result?.error) {
-        if (env.ADMIN_DB) await ingestInbox(env.ADMIN_DB, { from: { name: data.name, email: data.email }, mailbox: "manarah@karamahcollective.com", subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
+        let manarahGmail = { configured: false, connected: false };
+        if (env.ADMIN_DB) {
+          try { manarahGmail = await gmailStatus(env.ADMIN_DB, env, MANARAH_MAILBOX); } catch { /* keep the fallback copy */ }
+        }
+        if (env.ADMIN_DB && shouldMirrorManarahInboxCopy(manarahGmail)) {
+          await ingestInbox(env.ADMIN_DB, { from: { name: data.name, email: data.email }, mailbox: MANARAH_MAILBOX, subject: `Manarah contact: ${data.name || "New message"}`, textBody: data.message, receivedAt: new Date().toISOString() });
+        }
       }
     } else if (formType === "event") {
       const eventId = crypto.randomUUID();
