@@ -79,6 +79,25 @@ const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="no
 const PASSWORD_MIN_LENGTH = 6; // mirrors Firebase Auth's own minimum — checked client-side only for fast feedback, server-side (Firebase) is authoritative
 
 let _auth = null; // lazily-loaded src/auth.js module namespace
+let _sheetSwapToken = 0;
+
+function _afterSheetOpened(sheet, callback) {
+  let settled = false;
+  let timer = null;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    sheet.removeEventListener("transitionend", onEnd);
+    callback();
+  };
+  const onEnd = (event) => {
+    if (event.target === sheet && event.propertyName === "transform") finish();
+  };
+  const duration = parseFloat(getComputedStyle(sheet).transitionDuration) * 1000 || 0;
+  sheet.addEventListener("transitionend", onEnd);
+  timer = setTimeout(finish, duration + 80);
+}
 let _account = null;
 let _prayerMod = null; // lazily-loaded src/prayer.js module namespace (Preferences section)
 
@@ -99,6 +118,8 @@ let _prayerMod = null; // lazily-loaded src/prayer.js module namespace (Preferen
  *   transition just started); false if it was already open.
  */
 export function openMenuSheet() {
+  menuSheet.style.zIndex = "14";
+  profileSheet.style.zIndex = "";
   const wasShut = menuSheet.classList.contains("shut");
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSheet.hidden = false;
@@ -114,6 +135,7 @@ export function openMenuSheet() {
  *   already shut.
  */
 export function closeMenuSheet({ keepContext = false } = {}) {
+  _sheetSwapToken += 1;
   const wasOpen = !menuSheet.classList.contains("shut");
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSnap.close();
@@ -150,6 +172,8 @@ function _setProfileHeader(fromMenu) {
 }
 
 export function openProfileSheet({ fromMenu = true } = {}) {
+  menuSheet.style.zIndex = "";
+  profileSheet.style.zIndex = "14";
   if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
   profileSheet.hidden = false;
   _setProfileHeader(fromMenu);
@@ -158,6 +182,7 @@ export function openProfileSheet({ fromMenu = true } = {}) {
 }
 
 export function closeProfileSheet({ keepContext = false } = {}) {
+  _sheetSwapToken += 1;
   const wasOpen = !profileSheet.classList.contains("shut");
   if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
   profileSnap.close();
@@ -174,16 +199,22 @@ export function closeProfileSheet({ keepContext = false } = {}) {
 }
 
 function _goToProfileSheet() {
+  const swapToken = ++_sheetSwapToken;
   openProfileSheet({ fromMenu: true });
-  requestAnimationFrame(() => closeMenuSheet({ keepContext: true }));
+  _afterSheetOpened(profileSheet, () => {
+    if (swapToken === _sheetSwapToken) closeMenuSheet({ keepContext: true });
+  });
   void loadProfileContent().then(() => {
     if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
   });
 }
 
 function _goToMenuSheet() {
+  const swapToken = ++_sheetSwapToken;
   openMenuSheet();
-  requestAnimationFrame(() => closeProfileSheet({ keepContext: true }));
+  _afterSheetOpened(menuSheet, () => {
+    if (swapToken === _sheetSwapToken) closeProfileSheet({ keepContext: true });
+  });
 }
 
 // ─── Pane navigation ──────────────────────────────────────────────────────

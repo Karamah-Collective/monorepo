@@ -16,6 +16,8 @@ async function openProfile(page) {
   await expect(page.locator("#profile-timeline-open")).toBeVisible({ timeout: 15_000 });
   await page.click("#profile-timeline-open");
   await expect(page.locator("#profile-timeline-summary")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("#profile-sheet")).toHaveClass(/shut/);
+  await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
 }
 
 function mockAccountApi(page, visits) {

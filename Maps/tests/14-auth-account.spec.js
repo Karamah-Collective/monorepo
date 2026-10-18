@@ -53,7 +53,7 @@ test.describe("Menu Account section — signed out", () => {
     await openMenuAndWaitForAccount(page);
     const dividerCount = await page.locator("#menu-sheet-body > .sort-divider").count();
     const misplaced = await page.locator("#menu-sheet-body > .sort-divider").evaluateAll((dividers) =>
-      dividers.some((divider) => !divider.previousElementSibling?.classList.contains("menu-section")),
+      dividers.some((divider) => !divider.nextElementSibling?.classList.contains("menu-section")),
     );
     expect(dividerCount).toBe(3);
     expect(misplaced).toBe(false);
@@ -80,17 +80,33 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
     await page.click("#menu-google-signin");
     await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 10_000 });
 
+    await page.evaluate(() => {
+      window.__sheetStates = [];
+      for (const id of ["menu-sheet", "profile-sheet"]) {
+        const sheet = document.getElementById(id);
+        new MutationObserver(() => {
+          window.__sheetStates.push(`${id}:${sheet.classList.contains("shut") ? "shut" : "open"}`);
+        }).observe(sheet, { attributes: true, attributeFilter: ["class"] });
+      }
+    });
     await page.click("#menu-profile-link");
     await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
     await expect(page.locator("#profile-sheet")).not.toHaveClass(/shut/);
     await expect(page.locator("#profile-sheet-close")).toHaveAttribute("aria-label", "Back to menu");
     await expect(page.locator(".sheet:not(.shut)")).toHaveCount(1);
+    const toProfile = await page.evaluate(() => window.__sheetStates);
+    expect(toProfile.indexOf("profile-sheet:open")).toBeGreaterThanOrEqual(0);
+    expect(toProfile.indexOf("profile-sheet:open")).toBeLessThan(toProfile.indexOf("menu-sheet:shut"));
 
+    await page.evaluate(() => { window.__sheetStates = []; });
     await page.click("#profile-sheet-close");
     await expect(page.locator("#profile-sheet")).toHaveClass(/shut/);
     await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
     await expect(page.locator("#mp-sheet-close")).toHaveAttribute("aria-label", "Close");
     await expect(page.locator(".sheet:not(.shut)")).toHaveCount(1);
+    const toMenu = await page.evaluate(() => window.__sheetStates);
+    expect(toMenu.indexOf("menu-sheet:open")).toBeGreaterThanOrEqual(0);
+    expect(toMenu.indexOf("menu-sheet:open")).toBeLessThan(toMenu.indexOf("profile-sheet:shut"));
   });
 
   test("a loaded profile photo replaces the profile outline instead of stacking with it", async ({ page }) => {

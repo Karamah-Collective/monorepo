@@ -89,6 +89,7 @@ const timelinePreviewTitleEl = document.getElementById("profile-timeline-preview
 const timelinePreviewSummaryEl = document.getElementById("profile-timeline-preview-summary");
 const timelineOpenBtn = document.getElementById("profile-timeline-open");
 const timelineOverlayEl = document.getElementById("timeline-overlay");
+const timelineCardEl = document.getElementById("timeline-card");
 const timelineCloseBtn = document.getElementById("timeline-close");
 const timelineEl = document.getElementById("profile-timeline");
 const timelineSummaryEl = document.getElementById("profile-timeline-summary");
@@ -114,6 +115,26 @@ let _timelineCache = [];
 let _timelineGeneration = 0;
 let _timelineLoaded = false;
 let _timelineLoadFailed = false;
+let _timelineOpenToken = 0;
+
+function _afterTimelineOpened(callback) {
+  if (!timelineCardEl) { callback(); return; }
+  let settled = false;
+  let timer = null;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    timelineCardEl?.removeEventListener("transitionend", onEnd);
+    callback();
+  };
+  const onEnd = (event) => {
+    if (event.target === timelineCardEl && event.propertyName === "transform") finish();
+  };
+  const duration = parseFloat(getComputedStyle(timelineCardEl).transitionDuration) * 1000 || 0;
+  timelineCardEl.addEventListener("transitionend", onEnd);
+  timer = setTimeout(finish, duration + 80);
+}
 let _timelineMap = null;
 let _timelineMapMarkers = [];
 
@@ -153,6 +174,7 @@ function _closeAccountSheet() {
 
 function _closeTimelineOverlay() {
   if (!timelineOverlayEl) return;
+  _timelineOpenToken += 1;
   timelineOverlayEl.classList.add("hide");
   timelineOverlayEl.setAttribute("aria-hidden", "true");
   _clearTimelineMap();
@@ -160,12 +182,16 @@ function _closeTimelineOverlay() {
 
 function _openTimelineOverlay() {
   if (!timelineOverlayEl || !_account) return;
+  const openToken = ++_timelineOpenToken;
   timelineOverlayEl.classList.remove("hide");
   timelineOverlayEl.setAttribute("aria-hidden", "false");
   if (_timelineLoadFailed) _renderTimelineError();
   else if (_timelineLoaded) _renderTimelineResult({ success: true, visits: _timelineCache });
   else _renderTimelineLoading();
   requestAnimationFrame(() => _timelineMap?.resize());
+  _afterTimelineOpened(() => {
+    if (openToken === _timelineOpenToken && !timelineOverlayEl.classList.contains("hide")) _closeAccountSheet();
+  });
   timelineCloseBtn?.focus();
 }
 
@@ -213,7 +239,8 @@ export async function initProfile() {
   // (see account-sync.js's own fire-and-forget design note).
   window.addEventListener(EVT.SAVED_SYNCED, () => _refreshStatsLive());
   window.addEventListener(EVT.TIMELINE_UPDATED, () => {
-    if (!_account || profileSheetEl.classList.contains("shut") || !timelineEl) return;
+    const timelineOpen = timelineOverlayEl && !timelineOverlayEl.classList.contains("hide");
+    if (!_account || !timelineEl || (profileSheetEl.classList.contains("shut") && !timelineOpen)) return;
     _loadTimelineOnly(_account.uid);
   });
 
@@ -786,7 +813,8 @@ async function _loadTimelineOnly(profileUid) {
   if (!profileUid || !_account || _account.uid !== profileUid) return;
   const generation = _timelineGeneration;
   const result = await fetchVisitTimeline();
-  if (!_account || _account.uid !== profileUid || generation !== _timelineGeneration || profileSheetEl.classList.contains("shut")) return;
+  const timelineOpen = timelineOverlayEl && !timelineOverlayEl.classList.contains("hide");
+  if (!_account || _account.uid !== profileUid || generation !== _timelineGeneration || (profileSheetEl.classList.contains("shut") && !timelineOpen)) return;
   _timelineLoaded = true;
   _timelineLoadFailed = !result.success;
   if (result.success) _timelineCache = result.visits;
