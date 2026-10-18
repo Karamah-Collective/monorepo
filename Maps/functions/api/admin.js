@@ -1095,13 +1095,15 @@ export async function approveNew(db, rowId, env) {
   let googleRatingCount = row.google_rating_count ?? null;
   let googleInfoRaw = row.google_info || "";
   const mapsLink = (row.maps_link || "").toString().trim();
-  // A previously successful enrichment can have the place identity and
-  // coordinates without the optional Places Details payload. Keep that
-  // verified Google data usable when the approval-time Details retry fails.
-  let googleDetailsFound = !!(
-    row.google_name || row.google_address || row.place_id ||
-    (row.lat != null && row.lng != null) ||
+  // A Maps-link submission must have stored rich details or a successful
+  // Places Details response before it can become live. Parsed link
+  // identity/coordinates are not proof that the link points to the intended place.
+  const storedRichDetails = !!(
     openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw
+  );
+  let googleDetailsFound = !!(
+    (mapsLink ? storedRichDetails : (row.google_name || row.google_address || row.place_id ||
+      (row.lat != null && row.lng != null) || storedRichDetails))
   );
 
   // Approval is the last chance to repair a link-only submission before it
@@ -1131,10 +1133,7 @@ export async function approveNew(db, rowId, env) {
           if (enriched.googleRating != null) googleRating = enriched.googleRating;
           if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
           if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
-          // `hasData` covers parsed Google Maps identity/coordinates. Rich
-          // Details are useful enrichment, but must not make a valid place
-          // impossible to approve when that optional request is unavailable.
-          googleDetailsFound = !!(enriched.detailsFound || enriched.hasData);
+          googleDetailsFound = !!(enriched.detailsFound || googleDetailsFound);
         }
       } catch { /* best-effort */ }
     }
