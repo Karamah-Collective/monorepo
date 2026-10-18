@@ -339,6 +339,8 @@ test.describe("verified visit timeline", () => {
     mockAccountApi(page, []);
     await setupApp(page);
     await openProfile(page);
+    await expect(page.locator("#profile-timeline-preview-title")).toHaveText("Verified visits");
+    await expect(page.locator("#profile-timeline-preview-summary")).toHaveText("No verified visits yet");
     await expect(page.locator(".pf-timeline-empty")).toContainText("No visits yet");
     await expect(page.locator("#profile-timeline-calendar").locator("..")).toBeHidden();
     const browse = page.locator("[data-profile-timeline-browse]");

@@ -5,7 +5,7 @@ import { MODE_PATHS, modeIcon, typeIcon, getThemeRailShopPurple, getThemeWalkCol
 import { setActiveTab } from "./map-controls.js";
 import { placesData, activeTagFilters, closePlacesSheet, closePlaceSheet, dismissPlacesSearch, openPlacesSheet } from "./places.js";
 import { scoreMosque } from "./prayer.js";
-import { closeMenuSheet } from "./menu.js";
+import { closeMenuSheet, closeProfileSheet } from "./menu.js";
 
 // Navigation module hooks — set by navigation.js to avoid circular import
 let _navHooks = { startNav: () => {}, stop: () => {}, pause: () => {}, resume: () => false, isActive: () => false, isPaused: () => false };
@@ -500,6 +500,7 @@ dirItins.addEventListener("click", (e) => {
 document.getElementById("scrim").addEventListener("click", () => {
   if (!dirPanel.classList.contains("shut")) closeDirPanel();
   else if (!placeSheetEl.classList.contains("shut")) closePlaceSheet();
+  else if (!document.getElementById("profile-sheet")?.classList.contains("shut")) closeProfileSheet();
   else if (!menuSheetEl.classList.contains("shut")) closeMenuSheet();
   else if (!dismissPlacesSearch()) closePlacesSheet();
 });

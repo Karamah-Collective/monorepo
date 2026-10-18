@@ -2,17 +2,12 @@
  * Menu/Profile sheet — Account / Map View / Support / Preferences, plus the
  * signed-in user's own Profile page.
  *
- * ONE physical .sheet element (#menu-sheet) with two internal panes,
- * #menu-sheet-body ("Menu") and #profile-sheet-body ("Profile"), riding
- * side-by-side inside #mp-pane-track. This file owns the sheet's entire
- * lifecycle — the only initSheetDrag() instance, the only open()/close(),
- * the shared header (title + close/back button) — and is the "shell";
- * src/profile.js owns only the Profile pane's own content and behavior
- * (identity card, contribution stats, submissions, reviews, erase/export),
- * exposing a single loadProfileContent() for this file to call whenever the
- * Profile pane becomes active.
+ * Two independent .sheet elements (#menu-sheet and #profile-sheet) share the
+ * scrim but never stack: Menu → Profile closes one and opens the other in the
+ * same frame, while Profile's back button reverses that swap. This file owns
+ * both lifecycles; src/profile.js owns Profile's content and data behavior.
  *
- * This replaces an earlier two-sheet design (#menu-sheet and #profile-sheet
+ * This preserves the original two-sheet design (#menu-sheet and #profile-sheet
  * as independent .sheet elements, coordinated via a since-removed
  * swapSheetsHorizontally() helper in src/utils.js) that still visibly
  * "wobbled" on navigation: each sheet auto-sized to ITS OWN content height,
@@ -63,35 +58,29 @@ import { loadProfileContent } from "./profile.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
 const menuSheet = document.getElementById("menu-sheet");
+const profileSheet = document.getElementById("profile-sheet");
 const menuScrim = document.getElementById("scrim");
-const sheetTitleEl = document.getElementById("mp-sheet-title");
 const sheetCloseBtn = document.getElementById("mp-sheet-close");
-const heightWrapEl = document.getElementById("mp-height-wrap");
-const paneTrack = document.getElementById("mp-pane-track");
+const profileCloseBtn = document.getElementById("profile-sheet-close");
 const menuPaneEl = document.getElementById("menu-sheet-body");
 const profilePaneEl = document.getElementById("profile-sheet-body");
 const accountBody = document.getElementById("menu-account-body");
 
-// Header icon markup for the two pane states — same shapes this app already
-// used for #menu-close (X) and src/profile.js's old #profile-sheet-close
-// back-arrow, just centralized here now that one physical button serves
-// both roles depending on which pane is active.
+// Keep the two swap targets in the root stacking context. The map shell and
+// scrim are separate stacking contexts, so leaving sheets inside the shell
+// makes the scrim win hit-testing even when the sheet's z-index is higher.
+if (menuSheet.parentElement !== document.body) document.body.append(menuSheet);
+if (profileSheet.parentElement !== document.body) document.body.append(profileSheet);
+
+// Header icon markup shared by the two independent sheets.
 const _CLOSE_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>`;
 const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 
-// Pane-switch height sync (see _syncPaneHeight()) reuses .mp-pane-track's own
-// slide duration/easing so the resize and the slide read as one motion — not
-// a separate --t-* token, matching how the CSS side of this already
-// hardcodes 0.32s var(--ease-expo) rather than a bundled token (see
-// styles.css's comment on .mp-pane-track/#mp-scroll).
-const RESIZE_RESYNC_DEBOUNCE_MS = 120; // window-resize re-sync debounce (viewport rotation/reflow while sheet is open)
 const PASSWORD_MIN_LENGTH = 6; // mirrors Firebase Auth's own minimum — checked client-side only for fast feedback, server-side (Firebase) is authoritative
 
-let _activePane = "menu"; // "menu" | "profile" — which pane is currently slid into view
 let _auth = null; // lazily-loaded src/auth.js module namespace
 let _account = null;
 let _prayerMod = null; // lazily-loaded src/prayer.js module namespace (Preferences section)
-let _resizeResyncTimer = null; // debounce handle for the window-resize re-sync below
 
 /**
  * Open the merged sheet. Always resets to the Menu pane first (instantly,
@@ -110,9 +99,10 @@ let _resizeResyncTimer = null; // debounce handle for the window-resize re-sync 
  *   transition just started); false if it was already open.
  */
 export function openMenuSheet() {
+  if (!profileSheet.classList.contains("shut")) closeProfileSheet({ keepContext: true });
   const wasShut = menuSheet.classList.contains("shut");
+  if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSheet.hidden = false;
-  _setActivePane("menu", { instant: true });
   menuScrim.classList.remove("hide");
   setActiveTab("menu-pill");
   menuSnap.open();
@@ -124,13 +114,13 @@ export function openMenuSheet() {
  * @returns {boolean} true if it was open and is now closing; false if it was
  *   already shut.
  */
-export function closeMenuSheet() {
+export function closeMenuSheet({ keepContext = false } = {}) {
   const wasOpen = !menuSheet.classList.contains("shut");
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSnap.close();
-  menuScrim.classList.add("hide");
-  if (document.getElementById("menu-pill")?.classList.contains("active-tab")) {
-    setActiveTab(null);
+  if (!keepContext) {
+    menuScrim.classList.add("hide");
+    if (document.getElementById("menu-pill")?.classList.contains("active-tab")) setActiveTab(null);
   }
   menuSheet._hideTimeout = setTimeout(() => {
     menuSheet.hidden = true;
@@ -141,18 +131,62 @@ export function closeMenuSheet() {
 }
 
 const menuSnap = initSheetDrag(menuSheet, closeMenuSheet);
+const profileSnap = initSheetDrag(profileSheet, closeProfileSheet);
 
-document.getElementById("menu-pill").addEventListener("click", () =>
-  menuSheet.classList.contains("shut") ? openMenuSheet() : closeMenuSheet(),
-);
-// One button, two roles depending on _activePane — see _updateHeaderForPane().
-// Drag-to-dismiss and the scrim (wired generically by initSheetDrag()/the
-// scrim's own click handler elsewhere) always close the WHOLE sheet
-// regardless of pane; only this button's behavior branches on pane.
-sheetCloseBtn.addEventListener("click", () => {
-  if (_activePane === "profile") _goToMenuPane();
+document.getElementById("menu-pill").addEventListener("click", () => {
+  if (!profileSheet.classList.contains("shut")) closeProfileSheet();
+  else if (menuSheet.classList.contains("shut")) openMenuSheet();
   else closeMenuSheet();
 });
+sheetCloseBtn.addEventListener("click", () => closeMenuSheet());
+profileCloseBtn.addEventListener("click", () => {
+  if (profileCloseBtn.classList.contains("mp-sheet-close--back")) _goToMenuSheet();
+  else closeProfileSheet();
+});
+
+function _setProfileHeader(fromMenu) {
+  profileCloseBtn.innerHTML = fromMenu ? _BACK_ICON_SVG : _CLOSE_ICON_SVG;
+  profileCloseBtn.setAttribute("aria-label", fromMenu ? "Back to menu" : "Close");
+  profileCloseBtn.classList.toggle("mp-sheet-close--back", fromMenu);
+}
+
+export function openProfileSheet({ fromMenu = true } = {}) {
+  if (!menuSheet.classList.contains("shut")) closeMenuSheet({ keepContext: true });
+  if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
+  profileSheet.hidden = false;
+  _setProfileHeader(fromMenu);
+  menuScrim.classList.remove("hide");
+  profileSnap.open();
+}
+
+export function closeProfileSheet({ keepContext = false } = {}) {
+  const wasOpen = !profileSheet.classList.contains("shut");
+  if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
+  profileSnap.close();
+  if (!keepContext) {
+    menuScrim.classList.add("hide");
+    if (document.getElementById("menu-pill")?.classList.contains("active-tab")) setActiveTab(null);
+  }
+  profileSheet._hideTimeout = setTimeout(() => {
+    profileSheet.hidden = true;
+    profileSnap.cleanup();
+    profileSheet._hideTimeout = null;
+  }, 400);
+  return wasOpen;
+}
+
+function _goToProfileSheet() {
+  closeMenuSheet({ keepContext: true });
+  openProfileSheet({ fromMenu: true });
+  void loadProfileContent().then(() => {
+    if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
+  });
+}
+
+function _goToMenuSheet() {
+  closeProfileSheet({ keepContext: true });
+  openMenuSheet();
+}
 
 // ─── Pane navigation ──────────────────────────────────────────────────────
 
@@ -175,6 +209,7 @@ sheetCloseBtn.addEventListener("click", () => {
  * @returns {void}
  */
 function _setActivePane(pane, { instant = false } = {}) {
+  return;
   const targetPaneEl = pane === "profile" ? profilePaneEl : menuPaneEl;
 
   const applySwitch = () => {
@@ -260,6 +295,7 @@ function _setActivePane(pane, { instant = false } = {}) {
  * @returns {void}
  */
 function _syncPaneHeight(paneEl, changeFn = () => {}, { skip = false } = {}) {
+  return;
   animateElementHeight(heightWrapEl, changeFn, {
     skip,
     measureHeight: () => paneEl.offsetHeight,
@@ -276,6 +312,7 @@ function _syncPaneHeight(paneEl, changeFn = () => {}, { skip = false } = {}) {
  * @returns {void}
  */
 function _updateHeaderForPane(pane) {
+  return;
   if (pane === "profile") {
     sheetTitleEl.textContent = "Profile";
     sheetCloseBtn.innerHTML = _BACK_ICON_SVG;
@@ -314,10 +351,7 @@ function _updateHeaderForPane(pane) {
  * @returns {Promise<void>}
  */
 async function _goToProfilePane() {
-  _setActivePane("profile");
-  await loadProfileContent();
-  if (_activePane === "profile") _syncPaneHeight(profilePaneEl);
-  menuSnap.softRemeasure();
+  _goToProfileSheet();
 }
 
 /**
@@ -325,7 +359,7 @@ async function _goToProfilePane() {
  * @returns {void}
  */
 function _goToMenuPane() {
-  _setActivePane("menu");
+  _goToMenuSheet();
 }
 
 // Window resize (viewport rotation, desktop window resize, or a font/zoom
@@ -337,13 +371,8 @@ function _goToMenuPane() {
 // animated, and only while the sheet is actually open.
 window.addEventListener("resize", () => {
   if (menuSheet.classList.contains("shut")) return;
-  clearTimeout(_resizeResyncTimer);
-  _resizeResyncTimer = setTimeout(() => {
-    if (menuSheet.classList.contains("shut")) return;
-    const activePaneEl = _activePane === "profile" ? profilePaneEl : menuPaneEl;
-    _syncPaneHeight(activePaneEl, () => {}, { skip: true });
-    menuSnap.softRemeasure();
-  }, RESIZE_RESYNC_DEBOUNCE_MS);
+  menuSnap.remeasure();
+  if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
 }, { passive: true });
 
 // ─── Account section ─────────────────────────────────────────────────────────
@@ -389,7 +418,7 @@ export async function initMenuAccount() {
   // _activePane guard as _goToProfilePane()'s own post-async resync — only
   // matters if the user hasn't already navigated to the Profile pane by the
   // time this resolves.
-  if (_activePane === "menu") { _syncPaneHeight(menuPaneEl); menuSnap.softRemeasure(); }
+  if (!menuSheet.classList.contains("shut")) menuSnap.remeasure();
   // Only the just-completed-a-magic-link case gets a toast here — a restored
   // already-signed-in session (the far more common case, on every normal page
   // load) stays silent, matching this feature's "purely additive, invisible"
@@ -408,15 +437,13 @@ export async function initMenuAccount() {
     // buttons vs. a signed-in profile row) — same resync this file's own
     // initMenuAccount() already does after ITS async render, for the exact
     // same reason.
-    if (_activePane === "menu") { _syncPaneHeight(menuPaneEl); menuSnap.softRemeasure(); }
+    if (!menuSheet.classList.contains("shut")) menuSnap.remeasure();
     // Profile only ever shows signed-in content; if the account just signed
     // out while its pane was the one on screen, there's nothing left to
     // show — mirrors this sheet's pre-merge behavior (src/profile.js used to
     // close itself here), just centralized where the merged sheet's
     // lifecycle actually lives now.
-    if (!_account && _activePane === "profile" && !menuSheet.classList.contains("shut")) {
-      closeMenuSheet();
-    }
+    if (!_account && !profileSheet.classList.contains("shut")) closeProfileSheet();
   });
   window.addEventListener(EVT.SAVED_SYNCED, () => {
     // Cross-device sync doesn't change the Account section's own content,
@@ -428,7 +455,10 @@ export async function initMenuAccount() {
   // directly, to avoid a circular import (this file already statically
   // imports loadProfileContent from profile.js — see EVT.ACCOUNT_SHEET_CLOSE
   // in events.js).
-  window.addEventListener(EVT.ACCOUNT_SHEET_CLOSE, () => closeMenuSheet());
+  window.addEventListener(EVT.ACCOUNT_SHEET_CLOSE, () => {
+    if (!profileSheet.classList.contains("shut")) closeProfileSheet();
+    else closeMenuSheet();
+  });
   // Same "first-open height stuck at the pre-render measurement" bug as the
   // AUTH_CHANGED/initMenuAccount() resyncs above, just for Profile's own
   // identity card instead of Menu's Account section — see
@@ -436,10 +466,10 @@ export async function initMenuAccount() {
   // mechanism (reported: "Your data" cropped only while Profile is still
   // loading, self-correcting once the fetch finishes).
   window.addEventListener(EVT.PROFILE_CARD_RENDERED, () => {
-    if (_activePane === "profile") { _syncPaneHeight(profilePaneEl); menuSnap.softRemeasure(); }
+    if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
   });
   window.addEventListener(EVT.PROFILE_TIMELINE_RENDERED, () => {
-    if (_activePane === "profile") { _syncPaneHeight(profilePaneEl); menuSnap.softRemeasure(); }
+    if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
   });
 }
 
@@ -586,8 +616,7 @@ function _animateMenuPanelHeight(changeFn) {
  * @returns {void}
  */
 function _resyncMenuSheetHeight() {
-  if (_activePane !== "menu") return;
-  _syncPaneHeight(menuPaneEl);
+  if (menuSheet.hidden || menuSheet.classList.contains("shut")) return;
   menuSnap.remeasure();
 }
 
@@ -1045,9 +1074,9 @@ function _wireSignedInView() {
   _wireAccountAvatarFallback(document.getElementById("menu-profile-link"));
 
   // Tap the whole row: navigates to the Profile pane via a slide, not a
-  // sheet close/open (see _goToProfilePane() above).
+  // sheet close/open (see _goToProfileSheet() above).
   document.getElementById("menu-profile-link").addEventListener("click", () => {
-    _goToProfilePane();
+    _goToProfileSheet();
   });
 }
 

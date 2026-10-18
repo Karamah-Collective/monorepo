@@ -1021,10 +1021,7 @@
             </svg>
           </button>
         </div>
-        <div id="mp-scroll" class="t-scroll mp-scroll">
-          <div id="mp-height-wrap" class="mp-height-wrap">
-          <div id="mp-pane-track" class="mp-pane-track">
-            <div id="menu-sheet-body" class="mp-pane">
+        <div id="menu-sheet-body" class="t-scroll">
               <section id="app-notice" class="app-notice" aria-label="Community notice" hidden>
                 <p id="app-notice-text"></p>
                 <a id="app-notice-link" target="_blank" rel="noopener noreferrer" hidden></a>
@@ -1034,10 +1031,10 @@
                 <div id="menu-account-body">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
-              </div>
-              <div class="sort-divider"></div>
-              <div class="menu-section">
-                <div class="menu-section-label">Map View</div>
+               </div>
+               <div class="sort-divider"></div>
+               <div class="menu-section">
+                 <div class="menu-section-label">Map View</div>
                 <div id="style-panel">
                   <div class="style-group">
                     <div class="style-group-label t-micro-label">Theme</div>
@@ -1199,7 +1196,18 @@
                  now-superseded 2nd iteration's approach — see index.html's #menu-sheet
                  header comment). -->
 
-            <div id="profile-sheet-body" class="mp-pane" inert aria-hidden="true">
+        </div>
+      </div>
+
+      <div id="profile-sheet" class="sheet shut" hidden>
+        <div class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2 id="profile-sheet-title">Profile</h2>
+          <button id="profile-sheet-close" class="sheet-x btn-roundel mp-sheet-close--back" type="button" aria-label="Back to menu">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
+        <div id="profile-sheet-body" class="t-scroll">
               <!-- Header divider, matching the Menu pane's own: there, `#menu-sheet-body`'s
                    lone .sort-divider (the one declared between its "Account" and "Map
                    View" sections) ends up hoisted to the very top of the pane by
@@ -1215,7 +1223,6 @@
                    stay put between sections and nothing ever reaches the top — this one
                    is declared explicitly so both panes show the same line under their
                    shared headline. -->
-              <div class="sort-divider"></div>
               <div class="menu-section">
                 <div id="profile-card-body" class="menu-account-panel">
                   <p class="menu-placeholder">Loading…</p>
@@ -1233,11 +1240,11 @@
                 <div class="menu-section-label">Your timeline</div>
                 <div id="profile-timeline-preview" class="pf-timeline-preview" aria-live="polite">
                   <div class="pf-timeline-preview-copy">
-                    <strong id="profile-timeline-preview-title">Timeline</strong>
-                    <span id="profile-timeline-preview-summary">No visits yet</span>
+                    <strong id="profile-timeline-preview-title">Verified visits</strong>
+                    <span id="profile-timeline-preview-summary">No verified visits yet</span>
                   </div>
                   <button id="profile-timeline-open" class="pf-timeline-open" type="button">
-                    <span>View timeline</span>
+                    <span>View visits</span>
                   </button>
                 </div>
               </div>
@@ -1286,9 +1293,6 @@
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-          </div>
         </div>
       </div>
 

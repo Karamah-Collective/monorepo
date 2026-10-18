@@ -65,6 +65,24 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
     expect(cached?.email).toBe("mockuser@example.com");
   });
 
+  test("Menu and Profile swap as one active sheet with close/back semantics", async ({ page }) => {
+    await openMenuAndWaitForAccount(page);
+    await page.click("#menu-google-signin");
+    await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 10_000 });
+
+    await page.click("#menu-profile-link");
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#profile-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#profile-sheet-close")).toHaveAttribute("aria-label", "Back to menu");
+    await expect(page.locator(".sheet:not(.shut)")).toHaveCount(1);
+
+    await page.click("#profile-sheet-close");
+    await expect(page.locator("#profile-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#mp-sheet-close")).toHaveAttribute("aria-label", "Close");
+    await expect(page.locator(".sheet:not(.shut)")).toHaveCount(1);
+  });
+
   test("a loaded profile photo replaces the profile outline instead of stacking with it", async ({ page }) => {
     await page.evaluate(() => {
       window.__mockOAuthUser = {

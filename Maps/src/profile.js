@@ -76,7 +76,7 @@ const SIGNOUT_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="
 // The merged sheet's own id — only ever read here to guard against
 // rendering into a stale/gone context (see loadProfileContent() below), not
 // to drive its open/close, which src/menu.js exclusively owns.
-const menuSheetEl = document.getElementById("menu-sheet");
+const profileSheetEl = document.getElementById("profile-sheet");
 const cardBody = document.getElementById("profile-card-body");
 const statsGrid = document.getElementById("profile-stats-grid");
 const submittedPlacesEl = document.getElementById("profile-submitted-places");
@@ -213,7 +213,7 @@ export async function initProfile() {
   // (see account-sync.js's own fire-and-forget design note).
   window.addEventListener(EVT.SAVED_SYNCED, () => _refreshStatsLive());
   window.addEventListener(EVT.TIMELINE_UPDATED, () => {
-    if (!_account || menuSheetEl.classList.contains("shut") || !timelineEl) return;
+    if (!_account || profileSheetEl.classList.contains("shut") || !timelineEl) return;
     _loadTimelineOnly(_account.uid);
   });
 
@@ -238,11 +238,11 @@ export async function initProfile() {
  * @returns {Promise<void>}
  */
 async function _refreshStatsLive() {
-  if (!_account || !menuSheetEl || menuSheetEl.classList.contains("shut")) return;
+  if (!_account || !profileSheetEl || profileSheetEl.classList.contains("shut")) return;
   const meta = await _fetchAccountMeta();
   // Signed out (or the sheet got closed) while that fetch was in flight —
   // bail rather than render a signed-out account's data or into a gone sheet.
-  if (!_account || menuSheetEl.classList.contains("shut")) return;
+  if (!_account || profileSheetEl.classList.contains("shut")) return;
   _accountMetaCache = meta;
   _accountMetaLoaded = true;
   _renderStats();
@@ -283,7 +283,7 @@ export async function loadProfileContent() {
   // The merged sheet may have been closed (or the account signed out) while
   // these were in flight — bail rather than render into a stale/gone sheet
   // or hand a signed-out account's data to a subsequent viewer.
-  if (!_account || _account.uid !== profileUid || timelineGeneration !== _timelineGeneration || menuSheetEl.classList.contains("shut")) return;
+  if (!_account || _account.uid !== profileUid || timelineGeneration !== _timelineGeneration || profileSheetEl.classList.contains("shut")) return;
 
   _revokeReviewImageUrls(_reviewsCache);
   _reviewsCache = reviewsResult.reviews;
@@ -501,18 +501,18 @@ function _handleSavedStatJump(e) {
 function _renderTimelinePreview(summary, state = "empty") {
   if (!timelinePreviewEl) return;
   if (state === "loading") {
-    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline";
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits";
     if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Loading…";
     return;
   }
   if (state === "error") {
-    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline unavailable";
-    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Open the timeline to try again.";
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits unavailable";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Open visits to try again.";
     return;
   }
   if (!summary?.totalVisits) {
-    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline";
-    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "No visits yet";
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "No verified visits yet";
     return;
   }
   const visitLabel = `${summary.totalVisits} visit${summary.totalVisits === 1 ? "" : "s"}`;
@@ -786,7 +786,7 @@ async function _loadTimelineOnly(profileUid) {
   if (!profileUid || !_account || _account.uid !== profileUid) return;
   const generation = _timelineGeneration;
   const result = await fetchVisitTimeline();
-  if (!_account || _account.uid !== profileUid || generation !== _timelineGeneration || menuSheetEl.classList.contains("shut")) return;
+  if (!_account || _account.uid !== profileUid || generation !== _timelineGeneration || profileSheetEl.classList.contains("shut")) return;
   _timelineLoaded = true;
   _timelineLoadFailed = !result.success;
   if (result.success) _timelineCache = result.visits;

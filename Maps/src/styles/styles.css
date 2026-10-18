@@ -2540,6 +2540,11 @@ body.dark-mode .sp-tip {
     visibility 0.35s,
     height 0.3s var(--ease-expo);
 }
+#menu-sheet,
+#profile-sheet {
+  /* Keep both swap targets above the scrim while their 350ms transitions overlap. */
+  z-index: 13;
+}
 .sheet.shut {
   transform: translateY(100%) scale(0.95);
   opacity: 0;
@@ -3203,6 +3208,8 @@ body.dark-mode .sp-tip {
   font-style: italic;
 }
 #menu-sheet-body {
+  flex: 1;
+  min-height: 0;
   padding: 0 0 var(--sp-7);
 }
 /* Why the merged sheet's headline line comes from a *pane* divider instead of
@@ -3224,14 +3231,6 @@ body.dark-mode .sp-tip {
    divider now sits 4px below the shared header too, a gap its own
    `margin: 4px 0` supplies; the section below it is spaced by that divider's
    bottom margin, not by an extra pre-divider gap. */
-#menu-sheet .sheet-head { border-bottom: 0; }
-#menu-sheet #mp-scroll,
-#menu-sheet #mp-height-wrap,
-#menu-sheet #mp-pane-track,
-#menu-sheet .mp-pane {
-  border-top: 0;
-  box-shadow: none;
-}
 #menu-sheet-body > .menu-section:first-of-type { padding-top: var(--sp-5); }
 #menu-sheet-body #style-panel {
   padding: var(--sp-2) 14px;
@@ -3758,6 +3757,8 @@ body.dark-mode .sp-tip {
    identity card lands where it always did — only a divider line now sits in
    that space. */
 #profile-sheet-body {
+  flex: 1;
+  min-height: 0;
   padding: 0 0 var(--sp-7);
 }
 .pf-card-avatar {
