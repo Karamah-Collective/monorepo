@@ -42,6 +42,18 @@ test("sidebar collapse persists and search supports the keyboard", async ({
   );
 });
 
+test("Gmail reconnect actions stay available after a mailbox is disconnected", async ({ page }) => {
+  await mockAdmin(page, {
+    "gmail-status": { configured: false, connected: false },
+    "contact-gmail-status": { configured: false, connected: false },
+    "personal-gmail-status": { configured: false, connected: false },
+  }, true, "", { displayName: "Moontasir", email: "moontasir@karamahcollective.com", emailVerified: true });
+  await page.goto("/workspace/preferences");
+  await expect(page.getByRole("button", { name: "Connect Gmail", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Connect Contact Gmail", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Connect your Gmail", exact: true })).toBeEnabled();
+});
+
 test("projects overview hands detailed work to the separate app", async ({
   page,
 }) => {

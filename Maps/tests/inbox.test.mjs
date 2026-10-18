@@ -70,6 +70,45 @@ test("configured inbox mailboxes expose Contact after the shared Gmail mailbox c
   assert.deepEqual(await configuredInboxMailboxes(db, {}), ["contact@karamahcollective.com"]);
 });
 
+test("configured inbox mailboxes keep stored form conversations visible without Gmail OAuth", async () => {
+  const db = { prepare(sql) {
+    return { bind() { return {
+      async first() { return null; },
+        async all() { return sql.includes("DISTINCT lower(t.mailbox)") ? { results: [{ mailbox: "contact@karamahcollective.com" }] } : { results: [] }; },
+    }; } };
+  } };
+  assert.deepEqual(await configuredInboxMailboxes(db, {}), ["contact@karamahcollective.com"]);
+});
+
+test("configured inbox mailboxes keep stored personal conversations visible during a reconnect", async () => {
+  const db = { prepare(sql) {
+    return { bind(...values) { return {
+      async first() {
+        if (sql.includes("lower(t.mailbox)=?") && values[0] === "moontasir@karamahcollective.com") return { mailbox: values[0] };
+        return null;
+      },
+      async all() { return { results: [] }; },
+    }; } };
+  } };
+  const actor = { email: "moontasir@karamahcollective.com" };
+  assert.deepEqual(await configuredInboxMailboxes(db, {}, actor), ["moontasir@karamahcollective.com"]);
+});
+
+test("disconnected Gmail hides imported threads but keeps local inbox conversations", async () => {
+  const db = { prepare(sql) {
+    if (/DISTINCT fj\.value AS folder/.test(sql)) return { bind() { return { all: async () => ({ results: [] }) }; } };
+    assert.match(sql, /NOT EXISTS \(SELECT 1 FROM inbox_messages stale/);
+    return { bind() { return { all: async () => ({ results: [{
+      id: "local-thread", subject: "Website message", participant_email: "person@example.org", participant_name: "Person",
+      mailbox: "contact@karamahcollective.com", source: "email", status: "open", unread_count: 1,
+      last_message_at: "2026-10-18T10:00:00Z", last_message_preview: "Hello", outbound_count: 0,
+      last_message_direction: "inbound", has_attachments: 0,
+    }] }) }; } };
+  } };
+  const result = await listInbox(db, { permissions: ["*"] }, ["contact@karamahcollective.com"], "", "all", "", []);
+  assert.deepEqual(result.threads.map(thread => thread.id), ["local-thread"]);
+});
+
 test("status updates validate input and persist the requested state", async () => {
   const calls = [];
   const db = { prepare(sql) {
@@ -220,6 +259,55 @@ test("reply without attachments is accepted when the composer sends an empty arr
   };
   try {
     const result = await replyInbox(db, { BREVO_API_KEY: "http-api-key" }, { threadId: "thread-1", htmlBody: "<p>Thanks</p>", attachments: [] }, { name: "Admin" }, { permissions: ["*"] });
+    assert.deepEqual(result, { success: true });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("reply recovers the participant from an inbound message when the thread row is incomplete", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 201 });
+  const thread = { id: "legacy-thread", participant_email: "", participant_name: "", mailbox: "manarah@karamahcollective.com", subject: "Hello" };
+  const db = {
+    prepare(sql) {
+      return { bind() { return {
+        async first() {
+          if (sql.includes("FROM inbox_threads")) return thread;
+          if (sql.includes("FROM inbox_messages")) return { sender_email: "aisha@example.org", sender_name: "Aisha" };
+          return null;
+        },
+      }; } };
+    },
+    async batch() {},
+  };
+  try {
+    const result = await replyInbox(db, { BREVO_API_KEY: "http-api-key" }, { threadId: "legacy-thread", htmlBody: "<p>Thanks</p>", attachments: [] }, { name: "Admin" }, { permissions: ["*"] });
+    assert.deepEqual(result, { success: true });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("reply can resolve a local thread from a provider message identifier", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 201 });
+  const thread = { id: "thread-1", participant_email: "aisha@example.org", participant_name: "Aisha", mailbox: "contact@karamahcollective.com", subject: "Hello" };
+  const db = {
+    prepare(sql) {
+      return { bind() { return {
+        async first() {
+          if (sql.includes("OR provider_thread_id")) return null;
+          if (sql.includes("provider_message_id")) return { thread_id: "thread-1" };
+          if (sql.includes("SELECT * FROM inbox_threads WHERE id=? LIMIT 1")) return thread;
+          return null;
+        },
+      }; } };
+    },
+    async batch() {},
+  };
+  try {
+    const result = await replyInbox(db, { BREVO_API_KEY: "http-api-key" }, { threadId: "provider-message-1", htmlBody: "<p>Thanks</p>", attachments: [] }, { name: "Admin" }, { permissions: ["*"] });
     assert.deepEqual(result, { success: true });
   } finally {
     globalThis.fetch = originalFetch;

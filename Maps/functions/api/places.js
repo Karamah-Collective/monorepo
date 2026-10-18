@@ -19,6 +19,27 @@ import { getPlaceIdsWithReviewImages } from "../_review-images.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 
+/**
+ * Convert the Helsinki-local timestamp stored on submitted places into a
+ * stable, sortable value. The database keeps the legacy en-FI format, which
+ * is day-first and cannot be compared lexicographically as-is.
+ */
+export function normaliseAddedAt(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const local = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[ T,]+(\d{1,2})[.:](\d{2})(?:[.:](\d{2}))?)?$/);
+  if (local) {
+    const [, day, month, year, hour = "0", minute = "0", second = "0"] = local;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hour.padStart(2, "0")}:${minute}:${second.padStart(2, "0")}`;
+  }
+
+  const iso = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T]+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?)?/);
+  if (!iso) return "";
+  const [, year, month, day, hour = "0", minute = "0", second = "0"] = iso;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hour.padStart(2, "0")}:${minute}:${second.padStart(2, "0")}`;
+}
+
 function buildLegacyPromo(row) {
   const code = (row.sponsor_promo || "").toString().trim();
   const description = (row.sponsor_promo_text || "").toString().trim();
@@ -83,7 +104,15 @@ async function getPlaces(db) {
   const promoMap = await getPromoMap(db);
   const mapsLinkMap = await _getMapsLinkMap(db);
   const placesWithImages = await getPlaceIdsWithReviewImages(db);
-  const { results } = await db.prepare("SELECT * FROM places").all();
+  const { results } = await db.prepare(
+    `SELECT p.*,
+       (SELECT np.timestamp
+          FROM new_places np
+         WHERE np.app_place_id = p.id
+         ORDER BY np.id DESC
+         LIMIT 1) AS added_at
+       FROM places p`
+  ).all();
   const places = [];
 
   for (const row of results) {
@@ -105,6 +134,8 @@ async function getPlaces(db) {
     }
 
     const place = { id: (row.id || "").toString().trim(), name, type, address, city: extractCityFromAddress(address), lat, lng, tags, notes: (row.notes || "").toString().trim() };
+    const addedAt = normaliseAddedAt(row.added_at);
+    if (addedAt) place.addedAt = addedAt;
     place.hasImages = placesWithImages.has(place.id);
     if (row.boycott) place.boycott = true;
 

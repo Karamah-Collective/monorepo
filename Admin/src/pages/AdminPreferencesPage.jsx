@@ -119,35 +119,36 @@ export default function AdminPreferencesPage() {
 
   return <div className="pp-page admin-preferences-page">
     <h1 className="pp-page-title">Admin preferences</h1>
+    {(isAdministrator || canManageContactGmail) && <p className="pp-page-lead gmail-connection-help">Your Admin sign-in and Gmail access are separate. Connect each mailbox once; Google handles the mailbox login and permission screen. The app’s OAuth setup stays on the server.</p>}
     {isAdministrator && <section className="admin-preferences-panel gmail-connection-panel" aria-label="Gmail connection">
       <div className="admin-preference-row">
-        <div className="gmail-connection-copy"><h2>Manarah Gmail</h2><span className={`gmail-connection-state${gmail.data?.connected ? " is-connected" : ""}`}>{gmail.isLoading ? "Checking connection" : gmail.data?.connected ? gmail.data.accountEmail : !isGmailOwner ? "Primary admin setup pending" : gmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-copy"><h2>Manarah Gmail</h2><span className={`gmail-connection-state${gmail.data?.connected ? " is-connected" : ""}`}>{gmail.isLoading ? "Checking connection" : gmail.data?.connected ? gmail.data.accountEmail : !isGmailOwner ? "Primary admin setup pending" : gmail.data?.configured ? "Not connected" : "Gmail service not configured"}</span></div>
         <div className="gmail-connection-actions">
           {gmail.data?.connected && <button className="pp-btn" type="button" disabled={sync.isPending} onClick={syncGmail}>{sync.isPending ? "Syncing…" : "Sync now"}</button>}
           {isGmailOwner && gmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnect.isPending} onClick={() => disconnect.mutate()}>{disconnect.isPending ? "Disconnecting…" : "Disconnect"}</button>}
-          {isGmailOwner && !gmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!gmail.data?.configured || connect.isPending} onClick={connectGmail}>{connect.isPending ? "Opening Google…" : "Connect Gmail"}</button>}
+          {isGmailOwner && !gmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={connect.isPending} onClick={connectGmail}>{connect.isPending ? "Opening Google…" : "Connect Gmail"}</button>}
         </div>
       </div>
       {(connect.error || sync.error || disconnect.error || gmail.error) && <p className="pp-error-text gmail-connection-error">{(connect.error || sync.error || disconnect.error || gmail.error).message}</p>}
     </section>}
     {canManageContactGmail && <section className="admin-preferences-panel gmail-connection-panel contact-gmail-panel" data-can-disconnect={isGmailOwner ? "true" : "false"} aria-label="Contact Gmail connection">
       <div className="admin-preference-row">
-        <div className="gmail-connection-copy"><h2>Contact Gmail</h2><p>Connect {CONTACT_MAILBOX} as the shared mailbox. Everyone with Contact inbox access will use this same connection.</p><span className={`gmail-connection-state${contactGmail.data?.connected ? " is-connected" : ""}`}>{contactGmail.isLoading ? "Checking connection" : contactGmail.data?.connected ? contactGmail.data.accountEmail : contactGmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-copy"><h2>Contact Gmail</h2><p>Connect {CONTACT_MAILBOX} as the shared mailbox. Everyone with Contact inbox access will use this same connection.</p><span className={`gmail-connection-state${contactGmail.data?.connected ? " is-connected" : ""}`}>{contactGmail.isLoading ? "Checking connection" : contactGmail.data?.connected ? contactGmail.data.accountEmail : contactGmail.data?.configured ? "Not connected" : "Gmail service not configured"}</span></div>
         <div className="gmail-connection-actions">
           {contactGmail.data?.connected && <button className="pp-btn" type="button" disabled={syncContact.isPending} onClick={syncContactGmail}>{syncContact.isPending ? "Syncingâ€¦" : "Sync now"}</button>}
           {contactGmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnectContact.isPending} onClick={() => disconnectContact.mutate({ mailbox: CONTACT_MAILBOX })}>{disconnectContact.isPending ? "Disconnectingâ€¦" : "Disconnect"}</button>}
-          {!contactGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!contactGmail.data?.configured || connectContact.isPending} onClick={connectContactGmail}>{connectContact.isPending ? "Opening Googleâ€¦" : "Connect Contact Gmail"}</button>}
+          {!contactGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={connectContact.isPending} onClick={connectContactGmail}>{connectContact.isPending ? "Opening Googleâ€¦" : "Connect Contact Gmail"}</button>}
         </div>
       </div>
       {(connectContact.error || syncContact.error || disconnectContact.error || contactGmail.error) && <p className="pp-error-text gmail-connection-error">{(connectContact.error || syncContact.error || disconnectContact.error || contactGmail.error).message}</p>}
     </section>}
     <section className="admin-preferences-panel gmail-connection-panel" aria-label="Personal Gmail connection">
       <div className="admin-preference-row">
-        <div className="gmail-connection-copy"><h2>Your Gmail</h2><p>Connect your Karamah email to read and send personal messages here. Only you can access this mailbox.</p><span className={`gmail-connection-state${personalGmail.data?.connected ? " is-connected" : ""}`}>{personalGmail.isLoading ? "Checking connection" : personalGmail.data?.connected ? personalGmail.data.accountEmail : personalGmail.data?.configured ? "Not connected" : "Server setup needed"}</span></div>
+        <div className="gmail-connection-copy"><h2>Your Gmail</h2><p>Connect your Karamah email to read and send personal messages here. Only you can access this mailbox.</p><span className={`gmail-connection-state${personalGmail.data?.connected ? " is-connected" : ""}`}>{personalGmail.isLoading ? "Checking connection" : personalGmail.data?.connected ? personalGmail.data.accountEmail : personalGmail.data?.configured ? "Not connected" : "Gmail service not configured"}</span></div>
         <div className="gmail-connection-actions">
           {personalGmail.data?.connected && <button className="pp-btn" type="button" disabled={syncPersonal.isPending} onClick={syncPersonalGmail}>{syncPersonal.isPending ? "Syncing…" : "Sync"}</button>}
           {personalGmail.data?.connected && <button className="pp-btn pp-btn-text" type="button" disabled={disconnectPersonal.isPending} onClick={() => disconnectPersonal.mutate()}>{disconnectPersonal.isPending ? "Disconnecting…" : "Disconnect"}</button>}
-          {!personalGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={!personalGmail.data?.configured || connectPersonal.isPending} onClick={connectPersonalGmail}>{connectPersonal.isPending ? "Opening Google…" : "Connect your Gmail"}</button>}
+          {!personalGmail.data?.connected && <button className="pp-btn pp-btn-primary" type="button" disabled={connectPersonal.isPending} onClick={connectPersonalGmail}>{connectPersonal.isPending ? "Opening Google…" : "Connect your Gmail"}</button>}
         </div>
       </div>
       {(connectPersonal.error || syncPersonal.error || disconnectPersonal.error || personalGmail.error) && <p className="pp-error-text gmail-connection-error">{(connectPersonal.error || syncPersonal.error || disconnectPersonal.error || personalGmail.error).message}</p>}

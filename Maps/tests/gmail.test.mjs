@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gmailHistoryCursor, gmailThreadIdForMessage, listGmailHistoryMessages, listGmailMessages, normalizeReplyBody, sendGmailMessage } from "../functions/_gmail.js";
+import { gmailHistoryCursor, gmailStatus, gmailThreadIdForMessage, listGmailHistoryMessages, listGmailMessages, normalizeReplyBody, sendGmailMessage } from "../functions/_gmail.js";
+import { syncGmailHistory } from "../functions/_gmail-sync.js";
+import { onRequestGet as gmailOAuthCallback } from "../functions/api/gmail/oauth/callback.js";
 
 const env = {
   GMAIL_CLIENT_ID: "client-id",
@@ -28,6 +30,43 @@ function dbWithToken(ciphertext) {
     return { bind() { return { first: async () => ({ refresh_token_ciphertext: ciphertext }) }; } };
   } };
 }
+
+test("placeholder local Gmail secrets are reported as unconfigured", async () => {
+  const status = await gmailStatus(dbWithToken("encrypted"), {
+    GMAIL_CLIENT_ID: "YOUR_GMAIL_CLIENT_ID",
+    GMAIL_CLIENT_SECRET: "YOUR_GMAIL_CLIENT_SECRET",
+    GMAIL_OAUTH_REDIRECT_URI: "http://127.0.0.1:8788/api/gmail/oauth/callback",
+    GMAIL_TOKEN_ENCRYPTION_KEY: "YOUR_64_HEX_CHARACTER_KEY",
+  });
+  assert.equal(status.configured, false);
+});
+
+test("Gmail OAuth callback reads state from the Admin database", async () => {
+  let adminQueries = 0;
+  let placesDatabaseQueries = 0;
+  const adminDb = {
+    prepare(sql) {
+      adminQueries += 1;
+      assert.match(sql, /personal_gmail_oauth_states/);
+      return { bind() { return { first: async () => ({ state: "oauth-state" }) }; } };
+    },
+  };
+  const placesDb = {
+    prepare() {
+      placesDatabaseQueries += 1;
+      throw new Error("OAuth callback used the places database");
+    },
+  };
+  const response = await gmailOAuthCallback({
+    env: { ADMIN_DB: adminDb, DB: placesDb },
+    request: new Request("http://127.0.0.1:8788/api/gmail/oauth/callback?state=oauth-state"),
+  });
+
+  assert.equal(response.status, 302);
+  assert.equal(adminQueries, 2);
+  assert.equal(placesDatabaseQueries, 0);
+  assert.match(response.headers.get("location") || "", /personalGmailError=/);
+});
 
 test("Gmail sync reads delivered messages and normalizes the API query", async () => {
   const calls = [];
@@ -111,6 +150,73 @@ test("Gmail history sync reads changed message ids from a push cursor", async ()
     assert.equal(result.historyId, "history-2");
     assert.equal(result.count, 1);
     assert.equal(result.messages[0].subject, "A changed message");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("expired Gmail history cursors trigger a full-sync recovery", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "access-token" });
+    if (url.endsWith("/labels")) return Response.json({ labels: [] });
+    if (url.includes("/history?")) return Response.json({ error: { code: 404, message: "Requested entity was not found." } }, { status: 404 });
+    throw new Error(`Unexpected Gmail request: ${url}`);
+  };
+  try {
+    const result = await listGmailHistoryMessages(dbWithToken(await encryptedToken("refresh-token")), env, { startHistoryId: "expired-history" });
+    assert.equal(result.historyExpired, true);
+    assert.match(result.error, /not found/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("history sync rebuilds a mailbox when Gmail has discarded the cursor", async () => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  const db = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        values: [],
+        bind(...values) { statement.values = values; return statement; },
+        async first() {
+          if (/FROM gmail_connections/.test(sql)) return { refresh_token_ciphertext: await encryptedToken("refresh-token"), watch_history_id: "expired-history", last_sync_at: "2026-10-11T10:00:00.000Z" };
+          return null;
+        },
+        async run() { return { success: true }; },
+      };
+      return statement;
+    },
+    async batch() {},
+  };
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "access-token" });
+    if (url.endsWith("/labels")) return Response.json({ labels: [] });
+    if (url.includes("/history?")) return Response.json({ error: { code: 404, message: "Requested entity was not found." } }, { status: 404 });
+    if (url.includes("/messages?") && url.includes("maxResults=250")) return Response.json({ messages: [{ id: "recovered-message" }] });
+    if (url.endsWith("/messages/recovered-message?format=full")) return Response.json({
+      id: "recovered-message", threadId: "recovered-thread", internalDate: "1791626400000",
+      payload: { headers: [
+        { name: "From", value: "Aisha <aisha@example.org>" },
+        { name: "To", value: "Manarah <manarah@karamahcollective.com>" },
+        { name: "Subject", value: "Recovered" },
+      ], mimeType: "text/plain", body: { data: btoa("Recovered message") } },
+    });
+    if (url.endsWith("/profile")) return Response.json({ historyId: "current-history" });
+    throw new Error(`Unexpected Gmail request: ${url}`);
+  };
+  try {
+    const result = await syncGmailHistory(db, env, { mailbox: "manarah@karamahcollective.com", skipWatch: true });
+    assert.equal(result.success, true);
+    assert.equal(result.imported, 1);
+    const fullSyncUrl = calls.find(url => url.includes("/messages?") && url.includes("maxResults=250"));
+    assert.ok(fullSyncUrl);
+    assert.equal(new URL(fullSyncUrl).searchParams.get("q"), "in:anywhere -in:drafts");
   } finally {
     globalThis.fetch = originalFetch;
   }

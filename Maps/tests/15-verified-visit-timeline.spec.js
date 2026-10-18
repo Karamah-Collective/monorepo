@@ -338,8 +338,13 @@ test.describe("verified visit timeline", () => {
     mockAccountApi(page, []);
     await setupApp(page);
     await openProfile(page);
-    await expect(page.locator(".pf-timeline-empty")).toContainText("Your timeline is ready");
-    await expect(page.locator("[data-profile-timeline-browse]")).toBeVisible();
+    await expect(page.locator(".pf-timeline-empty")).toContainText("No visits yet");
+    await expect(page.locator("#profile-timeline-calendar").locator("..")).toBeHidden();
+    const browse = page.locator("[data-profile-timeline-browse]");
+    await expect(browse).toHaveText("Explore Manarah");
+    await browse.click();
+    await expect(page.locator("#timeline-overlay")).toHaveClass(/hide/);
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
   });
 
   test("same-place cooldown blocks an accidental second add", async ({ page }) => {

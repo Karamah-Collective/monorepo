@@ -308,7 +308,15 @@ async function recordRevisionBestEffort(env, data, actor) {
 }
 async function personalMailboxFor(db, env, actor) {
   const status = await personalGmailStatus(db, env, actor);
-  return status.connected ? status.accountEmail : "";
+  if (status.connected && status.accountEmail) return status.accountEmail;
+  const candidate = String(actor?.email || "").trim().toLowerCase();
+  if (!candidate) return "";
+  try {
+    const row = await db.prepare("SELECT t.mailbox FROM inbox_threads t WHERE lower(t.mailbox)=? AND NOT EXISTS (SELECT 1 FROM inbox_messages m WHERE m.thread_id=t.id AND COALESCE(m.provider_message_id,'')<>'') LIMIT 1").bind(candidate).first();
+    return row?.mailbox ? candidate : "";
+  } catch {
+    return "";
+  }
 }
 async function authenticateAuthorized(request, env, action, data = {}) {
   const projectAction = PROJECT_DATABASE_ACTIONS.has(action);
@@ -367,19 +375,27 @@ async function listInboxWithGmail(db, url, actor, env, access, context) {
   const selectedMailbox = url.searchParams.get("mailbox") || "";
   const personalMailbox = await personalMailboxFor(db, env, actor);
   const configured = await configuredInboxMailboxes(db, env, actor);
+  const connected = [];
   const automaticSyncTasks = [];
   for (const mailbox of [MANARAH_MAILBOX, CONTACT_MAILBOX]) {
     if (configured.includes(mailbox) && canInboxMailbox(access, mailbox, "read", personalMailbox)) {
       const status = await gmailStatus(db, env, mailbox);
-      if (status.connected) automaticSyncTasks.push(() => syncGmailHistory(db, env, { mailbox, skipWatch: true }));
+      if (status.connected) {
+        connected.push(mailbox);
+        automaticSyncTasks.push(() => syncGmailHistory(db, env, { mailbox, skipWatch: true }));
+      }
     }
   }
   if (personalMailbox) {
     const status = await personalGmailStatus(db, env, actor);
-    if (status.connected) automaticSyncTasks.push(() => syncGmailHistory(db, env, { ownerUid: actor.uid, skipWatch: true }));
+    if (status.connected) {
+      connected.push(personalMailbox);
+      automaticSyncTasks.push(() => syncGmailHistory(db, env, { ownerUid: actor.uid, skipWatch: true }));
+    }
   }
   if (automaticSyncTasks.length) {
     const results = await Promise.all(automaticSyncTasks.map(task => task().catch(error => ({ error: error?.message || "Automatic Gmail sync failed." }))));
+    const syncErrors = results.map(result => String(result?.error || "").trim()).filter(Boolean);
     const updates = results.filter(result => result.success && result.imported > 0);
     if (updates.length && env.INBOX_REALTIME) {
       const id = env.INBOX_REALTIME.idFromName("workspace");
@@ -389,9 +405,10 @@ async function listInboxWithGmail(db, url, actor, env, access, context) {
         body: JSON.stringify({ type: "inbox.updated", imported: updates.reduce((sum, result) => sum + result.imported, 0), at: Date.now() }),
       }).catch(() => {}));
     }
-    return listInbox(db, access, configured, personalMailbox, folder, selectedMailbox);
+    const listing = await listInbox(db, access, configured, personalMailbox, folder, selectedMailbox, connected);
+    return syncErrors.length ? { ...listing, syncErrors } : listing;
   }
-  return listInbox(db, access, configured, personalMailbox, folder, selectedMailbox);
+  return listInbox(db, access, configured, personalMailbox, folder, selectedMailbox, connected);
 }
 const syncGmail = (db, env, mailbox) => syncGmailFull(db, env, { mailbox: mailbox === CONTACT_MAILBOX ? CONTACT_MAILBOX : MANARAH_MAILBOX });
 const syncPersonalGmail = (db, env, actor) => syncGmailFull(db, env, { ownerUid: actor?.uid });

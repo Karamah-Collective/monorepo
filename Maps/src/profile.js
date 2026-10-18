@@ -93,6 +93,7 @@ const timelineCloseBtn = document.getElementById("timeline-close");
 const timelineEl = document.getElementById("profile-timeline");
 const timelineSummaryEl = document.getElementById("profile-timeline-summary");
 const timelineCalendarEl = document.getElementById("profile-timeline-calendar");
+const timelineCalendarSectionEl = timelineCalendarEl?.closest(".timeline-section");
 const timelineMapWrapEl = document.getElementById("profile-timeline-map-wrap");
 const timelineMapSectionEl = document.getElementById("timeline-map-section");
 const timelineMapEl = document.getElementById("profile-timeline-map");
@@ -500,8 +501,8 @@ function _handleSavedStatJump(e) {
 function _renderTimelinePreview(summary, state = "empty") {
   if (!timelinePreviewEl) return;
   if (state === "loading") {
-    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Your visit story starts here";
-    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Loading your private timeline…";
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Loading…";
     return;
   }
   if (state === "error") {
@@ -510,8 +511,8 @@ function _renderTimelinePreview(summary, state = "empty") {
     return;
   }
   if (!summary?.totalVisits) {
-    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Your visit story starts here";
-    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Your confirmed visits will collect here.";
+    if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Timeline";
+    if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "No visits yet";
     return;
   }
   const visitLabel = `${summary.totalVisits} visit${summary.totalVisits === 1 ? "" : "s"}`;
@@ -528,6 +529,8 @@ function _renderTimelineSummary(summary) {
 
 function _renderTimelineLoading() {
   _clearTimelineMap();
+  timelineEl?.classList.remove("pf-timeline--empty");
+  if (timelineCalendarSectionEl) timelineCalendarSectionEl.hidden = false;
   _renderTimelinePreview(null, "loading");
   if (timelineSummaryEl) timelineSummaryEl.innerHTML = [1, 2, 3].map(() => `<div class="pf-timeline-summary-card pf-timeline-summary-card--loading" aria-hidden="true"><span></span><span></span></div>`).join("");
   if (timelineCalendarEl) timelineCalendarEl.innerHTML = `<div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
@@ -682,8 +685,11 @@ function _wireTimelineEvents() {
 function _renderTimelineList(visits) {
   if (!timelineListEl) return;
   if (!visits.length) {
-    timelineListEl.innerHTML = `<div class="pf-timeline-empty"><div class="pf-timeline-empty-graphic" aria-hidden="true"><span></span><i></i><span></span><i></i><span></span></div><div class="pf-timeline-empty-copy"><strong>Your timeline is ready</strong><span>Confirm a nearby place and your first visit will appear here.</span></div><button class="btn-secondary" type="button" data-profile-timeline-browse>Explore places</button></div>`;
-    timelineListEl.querySelector("[data-profile-timeline-browse]")?.addEventListener("click", _closeAccountSheet);
+    timelineListEl.innerHTML = `<div class="pf-timeline-empty"><div class="pf-timeline-empty-graphic" aria-hidden="true"><span></span><i></i><span></span><i></i><span></span></div><div class="pf-timeline-empty-copy"><strong>No visits yet</strong><span>Add a nearby place to begin.</span></div><button class="btn-secondary pf-timeline-empty-action" type="button" data-profile-timeline-browse>Explore Manarah</button></div>`;
+    timelineListEl.querySelector("[data-profile-timeline-browse]")?.addEventListener("click", () => {
+      _closeTimelineOverlay();
+      _closeAccountSheet();
+    });
     return;
   }
   const groups = groupTimelineByMonth(visits);
@@ -761,6 +767,8 @@ function _renderTimelineResult(result) {
   const summary = summarizeTimeline(visits);
   _renderTimelineSummary(summary);
   _renderTimelinePreview(summary, visits.length ? "ready" : "empty");
+  timelineEl?.classList.toggle("pf-timeline--empty", !visits.length);
+  if (timelineCalendarSectionEl) timelineCalendarSectionEl.hidden = !visits.length;
   if (!visits.length) {
     if (timelineCalendarEl) timelineCalendarEl.innerHTML = "";
     _renderTimelineList(visits);

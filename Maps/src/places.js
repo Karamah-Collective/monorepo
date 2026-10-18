@@ -662,7 +662,20 @@ function applySort(arr) {
         return activeSortDir === "asc" ? da - db : db - da;
       });
     case "date":
-      return a.sort((x, y) => activeSortDir === "asc" ? String(x.id).localeCompare(String(y.id)) : String(y.id).localeCompare(String(x.id)));
+      return a.sort((x, y) => {
+        const ax = String(x.addedAt || "");
+        const ay = String(y.addedAt || "");
+        // Older/imported places may not have an approval timestamp. Keep
+        // them together at the end instead of pretending their random ID is
+        // a date.
+        if (!ax || !ay) {
+          if (!ax && !ay) return String(x.name).localeCompare(String(y.name));
+          return ax ? -1 : 1;
+        }
+        const compared = ax.localeCompare(ay);
+        if (compared) return activeSortDir === "asc" ? compared : -compared;
+        return String(x.name).localeCompare(String(y.name));
+      });
     case "rating": {
       return a.sort((x, y) => {
         const rx = getPlaceRating(x.id);

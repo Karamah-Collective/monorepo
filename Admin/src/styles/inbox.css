@@ -114,6 +114,7 @@
 .inbox-bulk-bar button { min-height:27px; padding:4px 7px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text-muted); font-size:10px; font-weight:650; }
 .inbox-bulk-bar button:hover:not(:disabled) { border-color:var(--interactive-accent); background:var(--interactive-accent-soft); color:var(--interactive-accent); }
 .inbox-bulk-bar button:disabled { cursor:not-allowed; opacity:.45; }
+.inbox-sync-warning { margin:0; padding:9px 12px; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--danger) 7%,var(--bg)); }
 .inbox-filter-button { display:inline-grid; place-items:center; flex:0 0 34px; width:34px; height:34px; min-height:34px; padding:0; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text-muted); }
 .inbox-filter-button:hover,.inbox-filter-button.is-active { border-color:var(--interactive-accent); background:var(--interactive-accent-soft); color:var(--interactive-accent); }
 .inbox-rows { flex:1; min-height:0; overflow:auto; padding:8px 0 8px; }

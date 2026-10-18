@@ -17,8 +17,23 @@ const email = (value) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate) ? candidate : "";
 };
 
+function usableConfigValue(value) {
+  const candidate = clean(value, 500);
+  return Boolean(candidate && !/^(YOUR_|CHANGE_ME|REPLACE_ME)/i.test(candidate));
+}
+
+function usableEncryptionKey(value) {
+  const candidate = clean(value, 500);
+  if (!usableConfigValue(candidate)) return false;
+  if (/^[0-9a-f]{64}$/i.test(candidate)) return true;
+  try { return bytesFromBase64(candidate).length === 32; } catch { return false; }
+}
+
 function configured(env) {
-  return Boolean(clean(env.GMAIL_CLIENT_ID, 300) && clean(env.GMAIL_CLIENT_SECRET, 300) && clean(env.GMAIL_OAUTH_REDIRECT_URI, 500) && clean(env.GMAIL_TOKEN_ENCRYPTION_KEY, 500));
+  return usableConfigValue(env.GMAIL_CLIENT_ID)
+    && usableConfigValue(env.GMAIL_CLIENT_SECRET)
+    && usableConfigValue(env.GMAIL_OAUTH_REDIRECT_URI)
+    && usableEncryptionKey(env.GMAIL_TOKEN_ENCRYPTION_KEY);
 }
 
 function pushConfigured(env) {
@@ -513,7 +528,8 @@ export async function listGmailHistoryMessages(db, env, options = {}) {
     }
     return { messages, historyId: latestHistoryId, count: messages.length };
   } catch (error) {
-    return { error: clean(error?.message || "Gmail history could not be read.", 300), historyExpired: /historyId|notFound|404/i.test(String(error?.message || "")) };
+    const message = String(error?.message || "");
+    return { error: clean(message || "Gmail history could not be read.", 300), historyExpired: /history\s*id|not\s+found|notFound|404/i.test(message) };
   }
 }
 

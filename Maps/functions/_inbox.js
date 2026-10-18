@@ -31,26 +31,50 @@ export function canInboxMailbox(access, mailbox, level = "read", personalMailbox
 }
 export function accessibleInboxMailboxes(access, level = "read", personalMailbox = "") { return [...INBOX_MAILBOXES.filter(mailbox => canInboxMailbox(access, mailbox, level)), ...(personalMailbox && canInboxMailbox(access, personalMailbox, level, personalMailbox) ? [personalMailbox] : [])]; }
 export function hasInboxPermission(access, level = "read", personalMailbox = "") { return accessibleInboxMailboxes(access, level, personalMailbox).length > 0; }
+async function storedInboxMailboxes(db) {
+  try {
+    const { results = [] } = await db.prepare("SELECT DISTINCT lower(t.mailbox) AS mailbox FROM inbox_threads t WHERE lower(t.mailbox) IN (?,?) AND NOT EXISTS (SELECT 1 FROM inbox_messages m WHERE m.thread_id=t.id AND COALESCE(m.provider_message_id,'')<>'')").bind(MANARAH_MAILBOX, CONTACT_MAILBOX).all();
+    return results.map(row => clean(row.mailbox, 120).toLowerCase()).filter(mailbox => MAILBOXES.has(mailbox));
+  } catch {
+    return [];
+  }
+}
+async function storedInboxMailbox(db, mailbox) {
+  const candidate = clean(mailbox, 254).toLowerCase();
+  if (!candidate) return "";
+  try {
+    const row = await db.prepare("SELECT t.mailbox FROM inbox_threads t WHERE lower(t.mailbox)=? AND NOT EXISTS (SELECT 1 FROM inbox_messages m WHERE m.thread_id=t.id AND COALESCE(m.provider_message_id,'')<>'') LIMIT 1").bind(candidate).first();
+    return row?.mailbox ? candidate : "";
+  } catch {
+    return "";
+  }
+}
 export async function configuredInboxMailboxes(db, env, actor) {
   const mailboxes = [];
+  const stored = await storedInboxMailboxes(db);
   for (const mailbox of [MANARAH_MAILBOX, CONTACT_MAILBOX]) {
     try {
       const status = await gmailStatus(db, env, mailbox);
-      if (status.connected) mailboxes.push(mailbox);
+      if (status.connected || stored.includes(mailbox)) mailboxes.push(mailbox);
     } catch {}
   }
   const personal = await personalGmailStatus(db, env, actor);
-  if (personal.connected && personal.accountEmail) mailboxes.push(personal.accountEmail);
+  const personalMailbox = String(personal.accountEmail || actor?.email || "").trim().toLowerCase();
+  if (personalMailbox && (personal.connected || await storedInboxMailbox(db, personalMailbox))) mailboxes.push(personalMailbox);
   return mailboxes;
 }
-function inboxWhere(access, level = "read", configured = INBOX_MAILBOXES, personalMailbox = "", selectedMailbox = "") {
+function inboxWhere(access, level = "read", configured = INBOX_MAILBOXES, personalMailbox = "", selectedMailbox = "", connected = configured) {
   const requestedMailbox = clean(selectedMailbox, 160).toLowerCase();
   const mailboxes = accessibleInboxMailboxes(access, level, personalMailbox).filter(mailbox => configured.includes(mailbox) && (!requestedMailbox || mailbox === requestedMailbox));
-  return mailboxes.length ? { sql: `t.mailbox IN (${mailboxes.map(() => "?").join(",")})`, values: mailboxes } : { sql: "1=0", values: [] };
+  const connectedSet = new Set((connected || []).map(mailbox => String(mailbox || "").toLowerCase()));
+  const clauses = mailboxes.map(mailbox => connectedSet.has(mailbox)
+    ? "t.mailbox=?"
+    : "(t.mailbox=? AND NOT EXISTS (SELECT 1 FROM inbox_messages stale WHERE stale.thread_id=t.id AND COALESCE(stale.provider_message_id,'')<>''))");
+  return clauses.length ? { sql: `(${clauses.join(" OR ")})`, values: mailboxes } : { sql: "1=0", values: [] };
 }
-export async function listInbox(db, access, configured = INBOX_MAILBOXES, personalMailbox = "", folder = "all", selectedMailbox = "") {
+export async function listInbox(db, access, configured = INBOX_MAILBOXES, personalMailbox = "", folder = "all", selectedMailbox = "", connected = configured) {
   const available = accessibleInboxMailboxes(access, "read", personalMailbox).filter(mailbox => configured.includes(mailbox));
-  const filter = inboxWhere(access, "read", configured, personalMailbox, selectedMailbox);
+  const filter = inboxWhere(access, "read", configured, personalMailbox, selectedMailbox, connected);
   const selectedFolder = clean(folder, 160) || "all";
   const selectedFolderKey = selectedFolder.toLowerCase();
   const now = new Date().toISOString();
@@ -77,8 +101,12 @@ export async function listInbox(db, access, configured = INBOX_MAILBOXES, person
 
 async function findInboxThread(db, threadId) {
   const key = clean(threadId, 255);
+  if (!key) return null;
   const providerKey = key.replace(/^gmail_/i, "");
-  return db.prepare("SELECT * FROM inbox_threads WHERE id=? OR provider_thread_id=? OR provider_thread_id=? LIMIT 1").bind(key, key, providerKey).first();
+  const thread = await db.prepare("SELECT * FROM inbox_threads WHERE id=? OR provider_thread_id=? OR provider_thread_id=? LIMIT 1").bind(key, key, providerKey).first();
+  if (thread) return thread;
+  const message = await db.prepare("SELECT thread_id FROM inbox_messages WHERE id=? OR provider_message_id=? LIMIT 1").bind(key, key).first();
+  return message?.thread_id ? db.prepare("SELECT * FROM inbox_threads WHERE id=? LIMIT 1").bind(message.thread_id).first() : null;
 }
 
 async function inboxThreadForWrite(db, threadId, access, personalMailbox = "") {
@@ -167,7 +195,10 @@ export async function getInboxThread(db, threadId, access, personalMailbox = "")
   if (!canInboxMailbox(access, thread.mailbox, "read", personalMailbox)) return { error: "Conversation not found." };
   const { results = [] } = await db.prepare("SELECT * FROM inbox_messages WHERE thread_id=? ORDER BY created_at").bind(thread.id).all();
   await db.prepare("UPDATE inbox_threads SET unread_count=0 WHERE id=?").bind(thread.id).run();
-  return { thread: { id:thread.id, subject:thread.subject, participantEmail:thread.participant_email, participantName:thread.participant_name, mailbox:thread.mailbox, source:thread.source, status:thread.status, unreadCount:0 }, messages: results.map(message => ({ id:message.id, direction:message.direction, kind:message.message_kind || "email", senderEmail:message.sender_email, senderName:message.sender_name, senderAdminEmail:message.sender_admin_email || "", senderAdminName:message.sender_admin_name || "", recipientEmail:message.recipient_email, htmlBody:message.html_body, textBody:message.text_body, attachments:parseAttachments(message.attachments_json, true), createdAt:message.created_at })) };
+  const fallback = results.find(message => message.direction === "inbound" && safeEmail(message.sender_email));
+  const participantEmail = safeEmail(thread.participant_email) || safeEmail(fallback?.sender_email);
+  const participantName = clean(thread.participant_name, 120) || clean(fallback?.sender_name, 120);
+  return { thread: { id:thread.id, subject:thread.subject, participantEmail, participantName, mailbox:thread.mailbox, source:thread.source, status:thread.status, unreadCount:0 }, messages: results.map(message => ({ id:message.id, direction:message.direction, kind:message.message_kind || "email", senderEmail:message.sender_email, senderName:message.sender_name, senderAdminEmail:message.sender_admin_email || "", senderAdminName:message.sender_admin_name || "", recipientEmail:message.recipient_email, htmlBody:message.html_body, textBody:message.text_body, attachments:parseAttachments(message.attachments_json, true), createdAt:message.created_at })) };
 }
 function safeEmail(value) { const email = clean(value, 254).toLowerCase(); return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ""; }
 function safeEmails(value) {
@@ -178,13 +209,16 @@ function safeEmails(value) {
 function safeHtml(value) { return clean(value, 50000).replace(/<(script|style|iframe|object)[^>]*>[\s\S]*?<\/\1>/gi, "").replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "").replace(/javascript:/gi, ""); }
 export async function replyInbox(db, env, data, actor, access, personalMailbox = "") {
   const thread = await findInboxThread(db, data.threadId);
+  const fallbackParticipant = thread && !safeEmail(thread.participant_email)
+    ? await db.prepare("SELECT sender_email,sender_name FROM inbox_messages WHERE thread_id=? AND direction='inbound' ORDER BY created_at DESC LIMIT 1").bind(thread.id).first()
+    : null;
   const branchFromMessageId = clean(data.branchFromMessageId,80);
   const branchMessage = thread && branchFromMessageId ? await db.prepare("SELECT * FROM inbox_messages WHERE id=? AND thread_id=?").bind(branchFromMessageId,thread.id).first() : null;
   const laterEmail = branchMessage && branchMessage.message_kind !== "internal_note" ? await db.prepare("SELECT id FROM inbox_messages WHERE thread_id=? AND created_at>? AND (message_kind IS NULL OR message_kind='email') ORDER BY created_at LIMIT 1").bind(thread.id,branchMessage.created_at).first() : null;
   const shouldBranch = Boolean(branchMessage && laterEmail);
   const branchThreadId = shouldBranch ? id("thread") : "";
-  const recipient = safeEmail(thread?.participant_email); const recipients = safeEmails(data.recipientEmails || [recipient]); const cc = safeEmails(data.cc); const bcc = safeEmails(data.bcc); const html = safeHtml(data.htmlBody); const text = textFromHtml(html); const attachments=attachmentsFrom(data.attachments,true);
-  if (!thread || !recipient || !recipients.length || !canInboxMailbox(access, thread.mailbox, "read", personalMailbox)) return { error:"Conversation not found." }; if (!text && !attachments.length) return { error:"Add a message or attachment before sending." };
+  const recipient = safeEmail(thread?.participant_email) || safeEmail(fallbackParticipant?.sender_email); const recipients = safeEmails(data.recipientEmails || [recipient]); const cc = safeEmails(data.cc); const bcc = safeEmails(data.bcc); const html = safeHtml(data.htmlBody); const text = textFromHtml(html); const attachments=attachmentsFrom(data.attachments,true);
+  if (!thread || !canInboxMailbox(access, thread.mailbox, "read", personalMailbox)) return { error:"Conversation not found." }; if (!recipient) return { error:"This conversation has no valid reply address." }; if (!recipients.length) return { error:"Enter a valid recipient email." }; if (!text && !attachments.length) return { error:"Add a message or attachment before sending." };
   const sender = clean(thread.mailbox, 120).toLowerCase(); const subject = clean(data.subject || thread.subject || "Karamah Collective", 180);
   if (!canInboxMailbox(access, sender, "write", personalMailbox)) return { error:"Your role cannot send from this mailbox." };
   if (Array.isArray(data.attachments) && data.attachments.length !== attachments.length) return { error:"Attachments must be files totalling 5 MB or less." };

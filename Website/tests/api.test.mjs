@@ -192,6 +192,37 @@ test('contact writes only explicit opt-ins and reports a failed database save ho
   assert.equal(failed.sheetSaved, false);
 });
 
+test('contact mirrors directly into the bound Admin database when available', async t => {
+  const statements = [];
+  const directDb = {
+    prepare(sql) {
+      const statement = { sql, values: [], bind(...values) { statement.values = values; return statement; } };
+      return statement;
+    },
+    async batch(batchStatements) { statements.push(...batchStatements); },
+  };
+  const contactEnv = { ...env, DB: directDb, TURNSTILE_SECRET_KEY: 'test-turnstile-secret' };
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    if (String(url).includes('challenges.cloudflare.com/turnstile')) return Response.json({ success: true, action: 'contact' });
+    if (String(url).includes('brevo.com')) return Response.json({ messageId: 'test-message' });
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+  const response = await contactRequest({
+    env: contactEnv,
+    request: new Request('https://website.test/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Direct visitor', email: 'direct@example.test', message: 'Hello', turnstileToken: 'test-token', _started: String(Date.now() - 3000) }),
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(statements.length, 2);
+  assert.match(statements[0].sql, /INSERT INTO inbox_threads/);
+  assert.match(statements[1].sql, /INSERT INTO inbox_messages/);
+  assert.equal(statements[0].values[2], 'direct@example.test');
+  assert.equal(statements[1].values[7], 'Hello');
+});
+
 test('contact does not claim delivery when anti-bot timing is missing', async () => {
   const response = await contactRequest({
     env,

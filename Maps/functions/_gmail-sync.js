@@ -52,7 +52,7 @@ export async function syncGmailFull(db, env, options = {}) {
   if (!row) return { success: true, imported: 0, scanned: 0, skipped: true };
   const result = await listGmailMessages(db, env, {
     ...(options.ownerUid ? { ownerUid: options.ownerUid } : { mailbox: options.mailbox }),
-    ...(row.last_sync_at ? { after: syncAfter(row.last_sync_at) } : {}),
+    ...(row.last_sync_at && !options.force ? { after: syncAfter(row.last_sync_at) } : {}),
     maxResults: 250,
   });
   if (result.error) return result;
@@ -87,7 +87,11 @@ export async function syncGmailHistory(db, env, options = {}) {
     startHistoryId,
     maxResults: 500,
   });
-  if (result.historyExpired) return bootstrapGmail(db, env, { ...options, force: true });
+  if (result.historyExpired) {
+    // Gmail history cursors expire. Rebuild the recent mailbox instead of
+    // leaving the inbox permanently frozen behind an unusable cursor.
+    return bootstrapGmail(db, env, { ...options, force: true });
+  }
   if (result.error) return result;
   const mailbox = options.ownerUid ? row.account_email : options.mailbox;
   const imported = await saveMessages(db, result.messages || [], mailbox, options.ownerUid ? row.account_email : "");

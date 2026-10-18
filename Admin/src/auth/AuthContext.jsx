@@ -12,14 +12,17 @@ import {
 } from "firebase/auth";
 import { auth, ADMIN_EMAIL_DOMAIN, googleProvider } from "../firebase.js";
 import { apiGet, apiPost, logAuthEvent } from "../api/client.js";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState(null);
   const hasResolvedInitialAuth = useRef(false);
+  const authUid = useRef("");
 
   const refreshAccess = useCallback(async () => {
     const nextAccess = (await apiGet("admin-access")).access;
@@ -31,13 +34,16 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, async (u) => {
       const isInitialAuthState = !hasResolvedInitialAuth.current;
       hasResolvedInitialAuth.current = true;
+      const nextUid = u?.uid || "";
+      if (authUid.current !== nextUid) queryClient.clear();
+      authUid.current = nextUid;
       setUser(u);
       if (!u) { setAccess(null); setLoading(false); return; }
       try { await refreshAccess(); } catch { setAccess(null); }
       if (isInitialAuthState) void logAuthEvent("login");
       setLoading(false);
     });
-  }, [refreshAccess]);
+  }, [queryClient, refreshAccess]);
 
   function isAllowedEmail(email) {
     return typeof email === "string" && email.toLowerCase().endsWith(ADMIN_EMAIL_DOMAIN);
@@ -76,6 +82,7 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     setAccess(null);
+    queryClient.clear();
     await firebaseSignOut(auth);
   }
 

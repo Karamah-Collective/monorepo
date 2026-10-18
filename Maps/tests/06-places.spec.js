@@ -79,6 +79,48 @@ test.describe("Places List — Content", () => {
   });
 });
 
+test.describe("Places — Date sorting", () => {
+  test("sorts by stored added date instead of the random place id", async ({ page }) => {
+    const places = [
+      { id: "zzzzzz", name: "Newest test place", type: "restaurant", address: "Newest address", lat: 60.17, lng: 24.94, tags: {}, addedAt: "2026-10-18T12:00:00" },
+      { id: "aaaaaa", name: "Oldest test place", type: "restaurant", address: "Oldest address", lat: 60.18, lng: 24.95, tags: {}, addedAt: "2026-10-01T12:00:00" },
+      { id: "mmmmmm", name: "Undated test place", type: "restaurant", address: "Undated address", lat: 60.19, lng: 24.96, tags: {} },
+    ];
+    await page.addInitScript((fixture) => {
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.href);
+        if (url.pathname === "/data/places.json") {
+          return Promise.resolve(new Response(JSON.stringify(fixture.places), { headers: { "Content-Type": "application/json" } }));
+        }
+        if (url.pathname === "/api/places" && url.searchParams.get("action") === "all") {
+          return Promise.resolve(new Response(JSON.stringify({ places: fixture.places, tags: {}, events: [], reviews: {} }), { headers: { "Content-Type": "application/json" } }));
+        }
+        return nativeFetch(input, init);
+      };
+    }, { places });
+    await setupApp(page);
+    await page.locator("#places-btn").click();
+    await expect(page.locator("#places-list .pl-name").filter({ hasText: "Oldest test place" })).toBeVisible();
+    await page.locator("#sort-toggle").click();
+    await page.locator('.sort-opt[data-sort-field="date"]').click();
+    const ascendingNames = (await page.locator("#places-list .pl-name").allTextContents()).map((text) => text.replace(/\d+ tags$/, "").trim());
+    expect(ascendingNames).toEqual([
+      "Oldest test place",
+      "Newest test place",
+      "Undated test place",
+    ]);
+
+    await page.locator('.sort-opt[data-sort-dir="desc"]').click();
+    const descendingNames = (await page.locator("#places-list .pl-name").allTextContents()).map((text) => text.replace(/\d+ tags$/, "").trim());
+    expect(descendingNames).toEqual([
+      "Newest test place",
+      "Oldest test place",
+      "Undated test place",
+    ]);
+  });
+});
+
 test.describe("Places — Type Filtering", () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);

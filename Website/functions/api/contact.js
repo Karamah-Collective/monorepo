@@ -139,11 +139,23 @@ async function saveOptIn(data, env) {
 }
 
 // The admin inbox is the durable conversation record; Brevo remains the
-// delivery provider. A failed mirror never prevents a legitimate contact form
-// submission from succeeding.
+// delivery provider. Write to the shared D1 directly when the binding is
+// available; the webhook remains the fallback for older/alternate deployments.
+async function mirrorToBoundInbox(data, env) {
+  if (!env.DB?.prepare || typeof env.DB.batch !== "function") return false;
+  const stamp = data.submittedAtIso || new Date().toISOString();
+  const threadId = `website_${crypto.randomUUID()}`;
+  const messageId = `website_message_${crypto.randomUUID()}`;
+  const thread = env.DB.prepare("INSERT INTO inbox_threads (id,subject,participant_email,participant_name,mailbox,source,status,unread_count,last_message_at,created_at,provider_thread_id) VALUES (?,?,?,?,?,'email','open',1,?,?,?)").bind(threadId, data.topic || "General question", data.email, data.name, CONTACT_EMAIL, stamp, stamp, "");
+  const message = env.DB.prepare("INSERT INTO inbox_messages (id,thread_id,direction,sender_email,sender_name,recipient_email,html_body,text_body,provider_message_id,attachments_json,labels_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(messageId, threadId, "inbound", data.email, data.name, CONTACT_EMAIL, "", data.message, "", "[]", "[]", stamp);
+  await env.DB.batch([thread, message]);
+  return true;
+}
+
 async function mirrorToInbox(data, env) {
+  if (await mirrorToBoundInbox(data, env)) return;
   const secret = envValue(env, ["INBOX_INGEST_SECRET"]);
-  if (!secret) return;
+  if (!secret) throw new Error("No Admin inbox binding or INBOX_INGEST_SECRET is configured");
   const endpoint = envValue(env, ["INBOX_INGEST_URL"], "https://maps.karamahcollective.com/api/inbox-webhook");
   const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "X-Inbox-Secret": secret }, body: JSON.stringify({ from: { name: data.name, email: data.email }, mailbox: CONTACT_EMAIL, subject: data.topic, textBody: data.message, receivedAt: data.submittedAtIso }) });
   if (!response.ok) throw new Error(`Inbox mirror failed (${response.status})`);
