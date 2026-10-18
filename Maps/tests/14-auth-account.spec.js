@@ -48,6 +48,16 @@ test.describe("Menu Account section — signed out", () => {
     await expect(page.locator("#menu-password-input")).toBeVisible();
     await expect(page.locator("#menu-password-submit")).toBeVisible();
   });
+
+  test("menu section dividers stay between sections after ordering", async ({ page }) => {
+    await openMenuAndWaitForAccount(page);
+    const dividerCount = await page.locator("#menu-sheet-body > .sort-divider").count();
+    const misplaced = await page.locator("#menu-sheet-body > .sort-divider").evaluateAll((dividers) =>
+      dividers.some((divider) => !divider.previousElementSibling?.classList.contains("menu-section")),
+    );
+    expect(dividerCount).toBe(3);
+    expect(misplaced).toBe(false);
+  });
 });
 
 test.describe("Menu Account section — Google sign-in / sign-out", () => {

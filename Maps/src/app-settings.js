@@ -42,6 +42,14 @@ function _upsertSupportLink(id, label, href) {
 
 function _applyMenuOrder() {
   const sections = [...document.querySelectorAll("#menu-sheet .menu-section")];
+  const dividerAfter = new Map(
+    sections.map((section) => [
+      section,
+      section.nextElementSibling?.classList.contains("sort-divider")
+        ? section.nextElementSibling
+        : null,
+    ]),
+  );
   const byKey = new Map();
   sections.forEach((section) => {
     const label = section.querySelector(".menu-section-label")?.textContent?.trim().toLowerCase();
@@ -53,7 +61,10 @@ function _applyMenuOrder() {
   const parent = byKey.get("account")?.parentElement;
   if (!parent) return;
   _settings.menuOrder.split(",").map((key) => byKey.get(key.trim())).filter(Boolean)
-    .forEach((section) => parent.appendChild(section));
+    .forEach((section) => {
+      parent.appendChild(section);
+      if (dividerAfter.get(section)) parent.appendChild(dividerAfter.get(section));
+    });
 }
 
 /** Apply visual and structural settings that can run before the map is ready.

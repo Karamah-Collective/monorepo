@@ -99,7 +99,6 @@ let _prayerMod = null; // lazily-loaded src/prayer.js module namespace (Preferen
  *   transition just started); false if it was already open.
  */
 export function openMenuSheet() {
-  if (!profileSheet.classList.contains("shut")) closeProfileSheet({ keepContext: true });
   const wasShut = menuSheet.classList.contains("shut");
   if (menuSheet._hideTimeout) { clearTimeout(menuSheet._hideTimeout); menuSheet._hideTimeout = null; }
   menuSheet.hidden = false;
@@ -151,7 +150,6 @@ function _setProfileHeader(fromMenu) {
 }
 
 export function openProfileSheet({ fromMenu = true } = {}) {
-  if (!menuSheet.classList.contains("shut")) closeMenuSheet({ keepContext: true });
   if (profileSheet._hideTimeout) { clearTimeout(profileSheet._hideTimeout); profileSheet._hideTimeout = null; }
   profileSheet.hidden = false;
   _setProfileHeader(fromMenu);
@@ -176,16 +174,16 @@ export function closeProfileSheet({ keepContext = false } = {}) {
 }
 
 function _goToProfileSheet() {
-  closeMenuSheet({ keepContext: true });
   openProfileSheet({ fromMenu: true });
+  requestAnimationFrame(() => closeMenuSheet({ keepContext: true }));
   void loadProfileContent().then(() => {
     if (!profileSheet.classList.contains("shut")) profileSnap.remeasure();
   });
 }
 
 function _goToMenuSheet() {
-  closeProfileSheet({ keepContext: true });
   openMenuSheet();
+  requestAnimationFrame(() => closeProfileSheet({ keepContext: true }));
 }
 
 // ─── Pane navigation ──────────────────────────────────────────────────────
