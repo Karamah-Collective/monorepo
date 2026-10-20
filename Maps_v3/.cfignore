@@ -1,0 +1,17 @@
+# Cloudflare Pages publish exclusions
+# Legacy publish exclusions. Current builds use scripts/build.mjs's explicit
+# asset list and deploy dist/. Runtime configuration is served by /api/config.
+
+src/config.local.js
+.dev.vars
+
+node_modules/
+.env
+.env.local
+.env.*.local
+scripts/
+!scripts/transit-cache.json
+tests/
+docs/
+.github/
+*.cache

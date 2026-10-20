@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Snackbar Designs</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --accent: #08705B;
+    --accent-soft: #e6f2ef;
+    --on-accent: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f0f0f0;
+    --surface-3: #d9d9d9;
+    --text: #191919;
+    --text-2: #525252;
+    --text-3: #8c8c8c;
+    --border: #dedede;
+    --danger: #d64545;
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-pill: 999px;
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.07);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-xl: 0 8px 32px rgba(0,0,0,0.12);
+    --hsl-bus: #1a73b8;
+    --hsl-tram: #1fa86a;
+    --walk: #52525b;
+    --gold: #b89030;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: auto !important; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #e8e8e8;
+    color: var(--text);
+    padding: 32px 24px 64px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--text-3);
+    font-size: 13px;
+    margin-bottom: 48px;
+  }
+
+  .section {
+    margin-bottom: 56px;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    margin-bottom: 8px;
+    padding-left: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .section-desc {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-bottom: 20px;
+    max-width: 560px;
+  }
+
+  /* Shared phone frame */
+  .phone {
+    width: 375px;
+    height: 240px;
+    background: #c5d3c1;
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    margin: 0 auto;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(8,112,91,0.08) 0%, transparent 60%),
+      radial-gradient(circle at 70% 60%, rgba(26,115,184,0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  /* Fake map roads */
+  .phone::after {
+    content: '';
+    position: absolute;
+    top: 40px; left: 60px;
+    width: 260px; height: 120px;
+    background:
+      linear-gradient(0deg, transparent 48%, rgba(255,255,255,0.5) 48%, rgba(255,255,255,0.5) 52%, transparent 52%),
+      linear-gradient(90deg, transparent 35%, rgba(255,255,255,0.5) 35%, rgba(255,255,255,0.5) 38%, transparent 38%),
+      linear-gradient(90deg, transparent 68%, rgba(255,255,255,0.4) 68%, rgba(255,255,255,0.4) 71%, transparent 71%),
+      linear-gradient(45deg, transparent 44%, rgba(255,255,255,0.3) 44%, rgba(255,255,255,0.3) 47%, transparent 47%);
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .tab-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 52px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 24px;
+  }
+  .tab-dot {
+    width: 20px; height: 3px;
+    border-radius: 2px;
+    background: var(--surface-3);
+  }
+  .tab-dot.active { background: var(--accent); }
+
+  /* Row pair */
+  .row-pair {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN A — Accent Pill (current, but with nav button)      */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-a {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 7px 7px 7px 12px;
+    max-width: 340px;
+    width: max-content;
+  }
+  .snack-a .s-icon {
+    width: 28px; height: 28px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.18); border-radius: var(--r-xs);
+    color: var(--on-accent);
+  }
+  .snack-a .s-body { flex: 1; min-width: 0; }
+  .snack-a .s-title {
+    font-size: 13px; font-weight: 600; color: var(--on-accent);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .snack-a .s-sub {
+    font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.72);
+    white-space: nowrap;
+  }
+  .snack-a .s-nav {
+    width: 32px; height: 32px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.22); border-radius: 50%;
+    color: var(--on-accent); border: none; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .snack-a .s-nav:hover { background: rgba(255,255,255,0.35); }
+  .snack-a .s-close {
+    width: 28px; height: 28px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.14); border-radius: 50%;
+    color: rgba(255,255,255,0.7); border: none; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .snack-a .s-close:hover { background: rgba(255,255,255,0.25); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN B — Surface Card with Accent Edge                   */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-b {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 8px 8px 8px 12px;
+    max-width: 340px;
+    width: max-content;
+  }
+  .snack-b .s-body { flex: 1; min-width: 0; }
+  .snack-b .s-title {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .snack-b .s-sub {
+    font-size: 11px; color: var(--text-3); white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .snack-b .s-sub .s-mode-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  }
+  .snack-b .s-nav {
+    height: 30px; padding: 0 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 5px;
+    background: var(--accent); border-radius: var(--r-pill);
+    color: var(--on-accent); border: none; cursor: pointer;
+    font-size: 11px; font-weight: 600; font-family: inherit;
+    transition: filter 0.15s;
+  }
+  .snack-b .s-nav:hover { filter: brightness(1.12); }
+  .snack-b .s-close {
+    width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border-radius: 50%;
+    color: var(--text-3); border: none; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .snack-b .s-close:hover { background: var(--surface-2); color: var(--text-2); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN C — Two-Tone Split                                  */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-c {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: stretch;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    max-width: 340px;
+    width: max-content;
+  }
+  .snack-c .s-info {
+    flex: 1; min-width: 0;
+    padding: 9px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .snack-c .s-icon {
+    width: 32px; height: 32px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); border-radius: var(--r-sm);
+    color: var(--accent);
+  }
+  .snack-c .s-body { flex: 1; min-width: 0; }
+  .snack-c .s-title {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .snack-c .s-sub {
+    font-size: 11px; color: var(--text-3); white-space: nowrap;
+  }
+  .snack-c .s-action {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--accent);
+    padding: 0 14px;
+    cursor: pointer; border: none;
+    color: var(--on-accent);
+    transition: filter 0.15s;
+  }
+  .snack-c .s-action:hover { filter: brightness(1.12); }
+  .snack-c .s-action svg { opacity: 0.9; }
+  .snack-c .s-close-float {
+    position: absolute; top: -8px; right: -8px;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 50%; color: var(--text-3); cursor: pointer;
+    box-shadow: var(--shadow-md);
+    font-size: 10px;
+  }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN D — Compact Chip Bar                                */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-d {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    box-shadow: var(--shadow-lg);
+    padding: 5px 5px 5px 14px;
+    max-width: 360px;
+    width: max-content;
+  }
+  .snack-d .s-route {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+  }
+  .snack-d .s-route .s-arrow { color: var(--text-3); margin: 0 2px; font-weight: 400; }
+  .snack-d .s-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 8px; border-radius: var(--r-pill);
+    font-size: 10px; font-weight: 600; white-space: nowrap;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .snack-d .s-nav-pill {
+    height: 30px; padding: 0 12px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: var(--accent); border-radius: var(--r-pill);
+    color: var(--on-accent); border: none; cursor: pointer;
+    font-size: 11px; font-weight: 600; font-family: inherit;
+    transition: filter 0.15s; flex-shrink: 0;
+  }
+  .snack-d .s-nav-pill:hover { filter: brightness(1.12); }
+  .snack-d .s-x {
+    width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2); border-radius: 50%;
+    color: var(--text-3); border: none; cursor: pointer;
+  }
+  .snack-d .s-x:hover { background: var(--surface-3); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN E — Elevated Glass Card                             */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-e {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-xl);
+    padding: 10px 10px 10px 14px;
+    max-width: 340px;
+    width: max-content;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .snack-e .s-top {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .snack-e .s-indicator {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(8,112,91,0.3);
+  }
+  .snack-e .s-title {
+    flex: 1; min-width: 0;
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .snack-e .s-close {
+    width: 22px; height: 22px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; border-radius: 50%;
+    color: var(--text-3); cursor: pointer;
+  }
+  .snack-e .s-close:hover { background: var(--surface-2); }
+  .snack-e .s-bottom {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .snack-e .s-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 8px; border-radius: var(--r-pill);
+    font-size: 10px; font-weight: 600; white-space: nowrap;
+  }
+  .snack-e .s-tag-mode {
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .snack-e .s-tag-dur {
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .snack-e .s-tag-dist {
+    background: var(--surface-2); color: var(--text-3);
+  }
+  .snack-e .s-spacer { flex: 1; }
+  .snack-e .s-go {
+    height: 28px; padding: 0 14px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: var(--accent); border-radius: var(--r-pill);
+    color: var(--on-accent); border: none; cursor: pointer;
+    font-size: 11px; font-weight: 600; font-family: inherit;
+    transition: filter 0.15s;
+  }
+  .snack-e .s-go:hover { filter: brightness(1.12); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN F — Inline Rule Bar                                 */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-f {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    box-shadow: var(--shadow-lg);
+    padding: 4px;
+    max-width: 360px;
+    width: max-content;
+  }
+  .snack-f .s-seg {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+  }
+  .snack-f .s-seg + .s-seg {
+    border-left: 1px solid var(--border);
+  }
+  .snack-f .s-mode-icon {
+    width: 24px; height: 24px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); border-radius: 50%;
+    color: var(--accent);
+  }
+  .snack-f .s-route-text {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  .snack-f .s-dur {
+    font-size: 11px; font-weight: 600; color: var(--text-2);
+    white-space: nowrap;
+  }
+  .snack-f .s-go-btn {
+    height: 30px; width: 30px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); border-radius: 50%;
+    color: var(--on-accent); border: none; cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .snack-f .s-go-btn:hover { filter: brightness(1.12); }
+  .snack-f .s-x-btn {
+    height: 26px; width: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2); border-radius: 50%;
+    color: var(--text-3); border: none; cursor: pointer;
+  }
+  .snack-f .s-x-btn:hover { background: var(--surface-3); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN G — Accent Header Mini Card                          */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-g {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    max-width: 320px;
+    width: max-content;
+  }
+  .snack-g .s-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .snack-g .s-header-label {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    flex: 1;
+  }
+  .snack-g .s-close-h {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.18); border-radius: 50%;
+    color: var(--on-accent); border: none; cursor: pointer;
+  }
+  .snack-g .s-content {
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .snack-g .s-text { flex: 1; min-width: 0; }
+  .snack-g .s-title {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .snack-g .s-meta {
+    font-size: 11px; color: var(--text-3); white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .snack-g .s-go {
+    width: 32px; height: 32px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); border-radius: var(--r-sm);
+    color: var(--on-accent); border: none; cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .snack-g .s-go:hover { filter: brightness(1.12); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* DESIGN H — Floating Ticker Bar                              */
+  /* ─────────────────────────────────────────────────────────── */
+  .snack-h {
+    position: absolute;
+    bottom: 66px;
+    left: 50%; transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--text);
+    border-radius: var(--r-pill);
+    box-shadow: var(--shadow-xl);
+    padding: 4px 4px 4px 14px;
+    max-width: 360px;
+    width: max-content;
+  }
+  .snack-h .s-route-label {
+    font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.92);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+  }
+  .snack-h .s-route-label .s-dim { opacity: 0.5; }
+  .snack-h .s-sep {
+    width: 1px; height: 16px; background: rgba(255,255,255,0.15);
+    margin: 0 10px; flex-shrink: 0;
+  }
+  .snack-h .s-dur-label {
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.95);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .snack-h .s-go-circle {
+    width: 32px; height: 32px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); border-radius: 50%;
+    color: var(--on-accent); border: none; cursor: pointer;
+    margin-left: 10px;
+    transition: filter 0.15s;
+  }
+  .snack-h .s-go-circle:hover { filter: brightness(1.15); }
+  .snack-h .s-x-circle {
+    width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.12); border-radius: 50%;
+    color: rgba(255,255,255,0.5); border: none; cursor: pointer;
+    margin-left: 4px;
+  }
+  .snack-h .s-x-circle:hover { background: rgba(255,255,255,0.2); }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /* TRANSIT VARIANTS                                           */
+  /* ─────────────────────────────────────────────────────────── */
+  .transit-chain {
+    display: flex; align-items: center; gap: 3px;
+  }
+  .transit-chain .tc-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; color: #fff;
+    line-height: 1;
+  }
+  .transit-chain .tc-walk {
+    color: var(--walk);
+  }
+  .transit-chain .tc-arrow {
+    font-size: 10px; color: var(--text-3); margin: 0 1px;
+  }
+
+  /* Dark mode toggle */
+  .mode-toggle {
+    position: fixed; top: 16px; right: 16px;
+    padding: 8px 16px; border-radius: 20px;
+    background: var(--text); color: #fff;
+    border: none; cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    z-index: 100;
+  }
+  body.dark .mode-toggle { background: #fff; color: #111; }
+  body.dark {
+    background: #1a1a1a;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --surface-3: #3a3a3c;
+    --text: #f0f0f0;
+    --text-2: #adadad;
+    --text-3: #7a7a7a;
+    --border: #2c2c2e;
+    --accent: #0a7a63;
+    --accent-soft: rgba(8,112,91,0.15);
+    --shadow-lg: 0 4px 24px rgba(0,0,0,0.35);
+    --shadow-xl: 0 8px 40px rgba(0,0,0,0.45);
+  }
+  body.dark .phone { background: #2a3a2e; }
+  body.dark .tab-bar { background: var(--surface); border-color: var(--border); }
+  body.dark .tab-dot { background: var(--surface-3); }
+  body.dark .tab-dot.active { background: var(--accent); }
+  body.dark .snack-h { background: #f0f0f0; }
+  body.dark .snack-h .s-route-label { color: rgba(0,0,0,0.85); }
+  body.dark .snack-h .s-route-label .s-dim { opacity: 0.4; }
+  body.dark .snack-h .s-sep { background: rgba(0,0,0,0.1); }
+  body.dark .snack-h .s-dur-label { color: rgba(0,0,0,0.9); }
+  body.dark .snack-h .s-x-circle { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.35); }
+
+  /* SVG helper */
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<button class="mode-toggle" onclick="document.body.classList.toggle('dark'); this.textContent = document.body.classList.contains('dark') ? '☀ Light' : '● Dark'">● Dark</button>
+
+<h1>Route Snackbar Designs</h1>
+<p class="subtitle">Each shows a drive example + transit example. Tap "Dark" to preview dark mode.</p>
+
+<!-- ═══════════════════════ A ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design A</div>
+  <div class="section-title">Accent Pill (refined current)</div>
+  <div class="section-desc">Keeps the existing accent background, adds a nav button as a translucent circle. Familiar but enhanced.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-a">
+        <div class="s-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="s-body">
+          <div class="s-title">Kamppi → Salam Restaurant</div>
+          <div class="s-sub">Driving · 12 min · 4.2 km</div>
+        </div>
+        <button class="s-nav" title="Navigate">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-close">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-a">
+        <div class="s-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="s-body">
+          <div class="s-title">Kamppi → Itis Mall</div>
+          <div class="s-sub">
+            <span class="transit-chain">
+              <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+              <span class="tc-arrow">›</span>
+              <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+            </span>
+            &nbsp;· 28 min
+          </div>
+        </div>
+        <button class="s-nav">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-close">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ B ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design B</div>
+  <div class="section-title">Surface Card + Accent Edge</div>
+  <div class="section-desc">White card with a teal left accent stripe. Nav as a labeled pill button. Clean, neutral, readable.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-b">
+        <div class="s-body">
+          <div class="s-title">Kamppi → Salam Restaurant</div>
+          <div class="s-sub"><span class="s-mode-dot"></span> Driving · 12 min · 4.2 km</div>
+        </div>
+        <button class="s-nav">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Go
+        </button>
+        <button class="s-close">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-b">
+        <div class="s-body">
+          <div class="s-title">Kamppi → Itis Mall</div>
+          <div class="s-sub">
+            <span class="transit-chain">
+              <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+              <span class="tc-arrow">›</span>
+              <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+            </span>
+            &nbsp;· 28 min
+          </div>
+        </div>
+        <button class="s-nav">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Go
+        </button>
+        <button class="s-close">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ C ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design C</div>
+  <div class="section-title">Two-Tone Split</div>
+  <div class="section-desc">Info on white, nav action on a solid accent end-cap. Tap the whole right side to navigate. Decisive, app-like.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-c" style="position:relative;">
+        <div class="s-info">
+          <div class="s-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          </div>
+          <div class="s-body">
+            <div class="s-title">Kamppi → Salam Restaurant</div>
+            <div class="s-sub">Driving · 12 min · 4.2 km</div>
+          </div>
+        </div>
+        <button class="s-action" title="Navigate">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-close-float">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-c" style="position:relative;">
+        <div class="s-info">
+          <div class="s-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          </div>
+          <div class="s-body">
+            <div class="s-title">Kamppi → Itis Mall</div>
+            <div class="s-sub">
+              <span class="transit-chain">
+                <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+                <span class="tc-arrow">›</span>
+                <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+              </span>
+              &nbsp;· 28 min
+            </div>
+          </div>
+        </div>
+        <button class="s-action" title="Navigate">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-close-float">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ D ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design D</div>
+  <div class="section-title">Compact Chip Bar</div>
+  <div class="section-desc">Full-width pill with route name, info chips, and a nav pill. Data-dense but tidy. Most compact option.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-d">
+        <div class="s-route">Kamppi <span class="s-arrow">→</span> Salam</div>
+        <div class="s-chip">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          12 min
+        </div>
+        <button class="s-nav-pill">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Go
+        </button>
+        <button class="s-x">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-d">
+        <div class="s-route">Kamppi <span class="s-arrow">→</span> Itis</div>
+        <div class="s-chip">
+          <span class="transit-chain">
+            <span class="tc-badge" style="background:var(--hsl-tram);font-size:9px;padding:1px 4px;">6</span>
+            <span class="tc-arrow">›</span>
+            <span class="tc-badge" style="background:var(--hsl-bus);font-size:9px;padding:1px 4px;">97</span>
+          </span>
+        </div>
+        <div class="s-chip">28 min</div>
+        <button class="s-nav-pill">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Go
+        </button>
+        <button class="s-x">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ E ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design E</div>
+  <div class="section-title">Elevated Tag Card</div>
+  <div class="section-desc">Two-row white card. Top: route title + close. Bottom: info as tag chips + Go pill. Rich info density in a clean frame.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-e">
+        <div class="s-top">
+          <div class="s-indicator"></div>
+          <div class="s-title">Kamppi → Salam Restaurant</div>
+          <button class="s-close">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="s-bottom">
+          <span class="s-tag s-tag-mode">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/></svg>
+            Driving
+          </span>
+          <span class="s-tag s-tag-dur">12 min</span>
+          <span class="s-tag s-tag-dist">4.2 km</span>
+          <span class="s-spacer"></span>
+          <button class="s-go">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Go
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-e">
+        <div class="s-top">
+          <div class="s-indicator"></div>
+          <div class="s-title">Kamppi → Itis Mall</div>
+          <button class="s-close">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="s-bottom">
+          <span class="s-tag s-tag-mode">
+            <span class="transit-chain">
+              <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+              <span class="tc-arrow">›</span>
+              <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+            </span>
+          </span>
+          <span class="s-tag s-tag-dur">28 min</span>
+          <span class="s-spacer"></span>
+          <button class="s-go">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Go
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ F ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design F</div>
+  <div class="section-title">Segmented Rule Bar</div>
+  <div class="section-desc">Pill split into segments by thin dividers. Each chunk has one job: mode, route, duration, actions. Structured and scannable.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-f">
+        <div class="s-seg">
+          <div class="s-mode-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/></svg>
+          </div>
+          <div class="s-route-text">Kamppi → Salam</div>
+        </div>
+        <div class="s-seg">
+          <div class="s-dur">12 min</div>
+        </div>
+        <div class="s-seg" style="border-left:none; gap:4px; padding-right:0;">
+          <button class="s-go-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button class="s-x-btn">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-f">
+        <div class="s-seg">
+          <span class="transit-chain">
+            <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+            <span class="tc-arrow">›</span>
+            <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+          </span>
+          <div class="s-route-text">Kamppi → Itis</div>
+        </div>
+        <div class="s-seg">
+          <div class="s-dur">28 min</div>
+        </div>
+        <div class="s-seg" style="border-left:none; gap:4px; padding-right:0;">
+          <button class="s-go-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button class="s-x-btn">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ G ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design G</div>
+  <div class="section-title">Accent Header Mini Card</div>
+  <div class="section-desc">Small card with a branded accent header band and a content row below. Nav button as a square icon.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-g">
+        <div class="s-header">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+          <div class="s-header-label">Active Route</div>
+          <button class="s-close-h">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="s-content">
+          <div class="s-text">
+            <div class="s-title">Kamppi → Salam Restaurant</div>
+            <div class="s-meta">Driving · 12 min · 4.2 km</div>
+          </div>
+          <button class="s-go" title="Navigate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-g">
+        <div class="s-header">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>
+          <div class="s-header-label">Active Route</div>
+          <button class="s-close-h">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="s-content">
+          <div class="s-text">
+            <div class="s-title">Kamppi → Itis Mall</div>
+            <div class="s-meta">
+              <span class="transit-chain">
+                <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+                <span class="tc-arrow">›</span>
+                <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+              </span>
+              · 28 min
+            </div>
+          </div>
+          <button class="s-go" title="Navigate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ H ═══════════════════════ -->
+<div class="section">
+  <div class="section-label">Design H</div>
+  <div class="section-title">Dark Ticker Bar</div>
+  <div class="section-desc">Dark pill (inverted from the map) with inline route + duration. Bold, high contrast, app-like. Stands out without being loud.</div>
+  <div class="row-pair">
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-h">
+        <div class="s-route-label">Kamppi <span class="s-dim">→</span> Salam</div>
+        <div class="s-sep"></div>
+        <div class="s-dur-label">12 min</div>
+        <button class="s-go-circle">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-x-circle">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tab-bar"><div class="tab-dot"></div><div class="tab-dot active"></div><div class="tab-dot"></div><div class="tab-dot"></div></div>
+      <div class="snack-h">
+        <div class="s-route-label">
+          <span class="transit-chain" style="display:inline-flex;vertical-align:middle;">
+            <span class="tc-badge" style="background:var(--hsl-tram)">6</span>
+            <span class="tc-arrow" style="color:rgba(255,255,255,0.35)">›</span>
+            <span class="tc-badge" style="background:var(--hsl-bus)">97</span>
+          </span>
+          &nbsp;Kamppi <span class="s-dim">→</span> Itis
+        </div>
+        <div class="s-sep"></div>
+        <div class="s-dur-label">28 min</div>
+        <button class="s-go-circle">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="s-x-circle">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

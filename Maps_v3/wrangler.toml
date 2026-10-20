@@ -1,0 +1,68 @@
+name = "maps"
+compatibility_date = "2026-08-04"
+
+# Local development configuration and a checked-in reference for the Pages
+# bindings. Production Pages settings must still be kept in sync in Cloudflare.
+# DB is Manarah-only; ADMIN_DB is the unified Admin control plane. See
+# ../DEPLOYMENT.md.
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
+
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "karamah-admin-db"
+database_id = "a52a5509-eabd-44a1-979c-c4491e3ca1a8"
+
+# Projects are a separate privacy boundary. Create the production database
+# as `karamah-projects-db`, then bind it as PROJECTS_DB in the Maps/Admin
+# Pages deployment.
+[[d1_databases]]
+binding = "PROJECTS_DB"
+database_name = "karamah-projects-db"
+database_id = "6c48dbaa-e83a-46f8-aa89-8131f7e5a12c"
+migrations_dir = "project-migrations"
+
+[[d1_databases]]
+binding = "FORMS_DB"
+database_name = "forms-db"
+database_id = "3237f544-7c01-41cb-802b-20e1d1c1ad0a"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "manarah-media"
+
+[[r2_buckets]]
+binding = "FORMS_MEDIA"
+bucket_name = "forms-media"
+
+[[r2_buckets]]
+binding = "ADMIN_MEDIA"
+bucket_name = "karamah-admin-media"
+
+[[durable_objects.bindings]]
+name = "INBOX_REALTIME"
+class_name = "InboxRealtime"
+script_name = "manarah-gmail-events"
+
+[[durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
+script_name = "manarah-gmail-events"
+
+[env.preview]
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "manarah-media-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "INBOX_REALTIME"
+class_name = "InboxRealtime"
+script_name = "manarah-gmail-events-preview"
+
+[[env.preview.durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
+script_name = "manarah-gmail-events-preview"

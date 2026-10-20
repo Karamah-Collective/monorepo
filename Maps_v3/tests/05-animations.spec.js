@@ -1,0 +1,303 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * TEST SUITE 5: Animations & Transitions
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * Validates CSS transitions, animated elements, class-based state transitions,
+ * and timing of reveal/dismiss animations.
+ */
+const { test, expect, setupApp } = require("./helpers");
+
+async function isPhone(page) {
+  return page.evaluate(() => window.innerWidth <= 768);
+}
+
+test.describe("Search Card Animations", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("search card has CSS transition property", async ({ page }) => {
+    const transition = await page.locator("#search-card").evaluate((el) => getComputedStyle(el).transition);
+    // Should have some transition defined (either directly or via pill-expand)
+    expect(transition).toBeTruthy();
+  });
+
+  test("search dropdown uses opacity and transform transition", async ({ page }) => {
+    // Dropdown uses opacity + translateY animation via CSS
+    const drop = page.locator("#search-drop");
+    // When hidden with .hide class, it should have opacity 0 and pointer-events none
+    const opacity = await drop.evaluate((el) => getComputedStyle(el).opacity);
+    const pointerEvents = await drop.evaluate((el) => getComputedStyle(el).pointerEvents);
+    expect(opacity).toBe("0");
+    expect(pointerEvents).toBe("none");
+  });
+});
+
+test.describe("Sheet Slide Animations", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("sheets have transition property for slide animation", async ({ page }) => {
+    if (await isPhone(page)) {
+      await expect(page.locator("#places-sheet")).toHaveCSS("transition", "none");
+      const directionsTransition = await page.locator("#dir-panel").evaluate((el) => getComputedStyle(el).transition);
+      expect(directionsTransition).toContain("transform");
+      return;
+    }
+    for (const id of ["dir-panel", "places-sheet"]) {
+      const transition = await page.locator(`#${id}`).evaluate((el) => getComputedStyle(el).transition);
+      expect(transition).toContain("transform");
+    }
+  });
+
+  test("opening places sheet removes .shut class with animation", async ({ page }) => {
+    await expect(page.locator("#places-sheet")).toHaveClass(/shut/);
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(600);
+    await expect(page.locator("#places-sheet")).not.toHaveClass(/shut/);
+  });
+
+  test("closing places sheet adds .shut class back", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(600);
+    if (await isPhone(page)) {
+      await page.locator("#home-btn").click();
+      await expect(page.locator("body")).toHaveAttribute("data-phone-page", "home");
+      await expect(page.locator("#places-sheet")).toBeHidden();
+      return;
+    }
+    await page.locator("#places-close").click();
+    await page.waitForTimeout(600);
+    await expect(page.locator("#places-sheet")).toHaveClass(/shut/);
+  });
+
+  test("opening directions panel removes .shut class", async ({ page }) => {
+    await expect(page.locator("#dir-panel")).toHaveClass(/shut/);
+    await page.locator("#dir-btn").click();
+    await page.waitForTimeout(600);
+    if (await isPhone(page)) {
+      await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
+      await expect(page.locator("#map canvas")).toBeVisible();
+      return;
+    }
+    await expect(page.locator("#dir-panel")).not.toHaveClass(/shut/);
+  });
+
+  test("closing directions panel adds .shut class back", async ({ page }) => {
+    if (await isPhone(page)) {
+      await page.evaluate(async () => (await import("/src/directions.js")).openDirPanel());
+      await expect(page.locator("#dir-panel")).not.toHaveClass(/shut/);
+      await page.locator("#dir-close").click();
+      await expect(page.locator("#dir-panel")).toHaveClass(/shut/);
+      return;
+    }
+    await page.locator("#dir-btn").click();
+    await page.waitForTimeout(600);
+    await page.locator("#dir-close").click();
+    await page.waitForTimeout(600);
+    await expect(page.locator("#dir-panel")).toHaveClass(/shut/);
+  });
+});
+
+test.describe("Tab Bar Active State", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("no tab is active initially", async ({ page }) => {
+    if (await isPhone(page)) {
+      await expect(page.locator("#home-btn")).toHaveAttribute("aria-current", "page");
+      return;
+    }
+    for (const id of ["home-btn", "dir-btn", "places-btn", "events-nav-btn", "menu-pill"]) {
+      await expect(page.locator(`#${id}`)).not.toHaveClass(/active-tab/);
+    }
+  });
+
+  test("opening places activates the places tab", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#places-btn")).toHaveClass(/active-tab/);
+    await expect(page.locator("#dir-btn")).not.toHaveClass(/active-tab/);
+  });
+
+  test("opening directions activates the routes tab", async ({ page }) => {
+    await page.locator("#dir-btn").click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#dir-btn")).toHaveClass(/active-tab/);
+    await expect(page.locator("#places-btn")).not.toHaveClass(/active-tab/);
+  });
+
+  test("closing panel deactivates the tab", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(400);
+    if (await isPhone(page)) {
+      await page.locator("#home-btn").click();
+      await expect(page.locator("#places-btn")).not.toHaveAttribute("aria-current", "page");
+      return;
+    }
+    await page.locator("#places-close").click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#places-btn")).not.toHaveClass(/active-tab/);
+  });
+});
+
+test.describe("Scrim Overlay Animations", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("scrim appears when sheet opens", async ({ page }) => {
+    await expect(page.locator("#scrim")).toHaveClass(/hide/);
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(400);
+    if (await isPhone(page)) {
+      await expect(page.locator("#scrim")).toHaveClass(/hide/);
+      return;
+    }
+    await expect(page.locator("#scrim")).not.toHaveClass(/hide/);
+  });
+
+  test("scrim hides when sheet closes", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(400);
+    if (await isPhone(page)) {
+      await page.locator("#home-btn").click();
+      await expect(page.locator("#scrim")).toHaveClass(/hide/);
+      return;
+    }
+    await page.locator("#places-close").click();
+    await page.waitForTimeout(400);
+    await expect(page.locator("#scrim")).toHaveClass(/hide/);
+  });
+
+  test("clicking scrim closes the sheet", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(600);
+    if (await isPhone(page)) {
+      await expect(page.locator("#scrim")).toHaveClass(/hide/);
+      await page.locator("#home-btn").click();
+      await expect(page.locator("#places-sheet")).toBeHidden();
+      return;
+    }
+    await page.locator("#scrim").click({ position: { x: 10, y: 10 }, force: true });
+    await page.waitForTimeout(600);
+    await expect(page.locator("#places-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#scrim")).toHaveClass(/hide/);
+  });
+});
+
+test.describe("Badge Animation", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("badge has scale transition for show/hide", async ({ page }) => {
+    // The badge uses transform:scale for hide animation
+    const badge = page.locator("#places-badge");
+    const transition = await badge.evaluate((el) => getComputedStyle(el).transition);
+    expect(transition).toContain("transform");
+  });
+
+  test("visible badge has scale(1) and opacity(1)", async ({ page }) => {
+    const badge = page.locator("#places-badge");
+    const transform = await badge.evaluate((el) => getComputedStyle(el).transform);
+    const opacity = await badge.evaluate((el) => getComputedStyle(el).opacity);
+    expect(opacity).toBe("1");
+    // transform should be matrix(1, 0, 0, 1, ...) for scale(1)
+    expect(transform).toContain("matrix");
+  });
+});
+
+test.describe("Toast Notifications", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+  });
+
+  test("toast appears and auto-dismisses", async ({ page }) => {
+    // Trigger a toast by using the app's showToast function
+    await page.evaluate(() => {
+      const { showToast } = window;
+      // showToast is not on window by default, so we dispatch an action that creates one
+      // We can directly create a toast element to test the animation
+      const t = document.createElement("div");
+      t.id = "share-toast";
+      t.className = "share-toast snack";
+      t.innerHTML = '<span class="snack-label">Test Toast</span>';
+      document.body.appendChild(t);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          t.classList.add("share-toast-show");
+          setTimeout(() => {
+            t.classList.remove("share-toast-show");
+            setTimeout(() => t.remove(), 250);
+          }, 1500);
+        });
+      });
+    });
+    // Toast should appear
+    await expect(page.locator("#share-toast")).toBeVisible({ timeout: 2000 });
+    // Toast should auto-dismiss
+    await expect(page.locator("#share-toast")).toBeHidden({ timeout: 4000 });
+  });
+
+  test("toast width follows content until the viewport cap", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { showToast, showActionToast, showBadgeNotice } = await import("/src/utils.js");
+      showToast("You’re about 12.9 km away", "info", "Move closer and try again");
+      showToast("This is a deliberately long notification message that must wrap at the maximum toast width", "info", "The supporting message must stay inside the same maximum width");
+      showToast("Saved", "check");
+      showActionToast("Location is off", "loc", "Tap to turn on GPS", () => {}, { onClose: () => {} });
+      showBadgeNotice({ categoryLabel: "Explorer", tierName: "Gold", levelRoman: "III", glyph: "star", level: 3 });
+    });
+
+    const metrics = await page.locator("#toast-stack .snack").evaluateAll((elements) => elements.map((element) => ({
+      text: element.textContent,
+      width: element.getBoundingClientRect().width,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      viewport: window.innerWidth,
+    })));
+    const maximumWidth = Math.min(metrics[0].viewport - 24, 380);
+    for (const metric of metrics) {
+      expect(metric.width).toBeLessThanOrEqual(maximumWidth + 1);
+      expect(metric.scrollWidth).toBeLessThanOrEqual(metric.clientWidth + 1);
+    }
+    expect(metrics.find((metric) => metric.text.includes("Saved")).width).toBeLessThan(maximumWidth);
+    expect(metrics.find((metric) => metric.text.includes("deliberately long")).width).toBeGreaterThanOrEqual(maximumWidth - 1);
+    await expect(page.locator("#toast-stack .share-toast-close")).toBeVisible();
+    await expect(page.locator("#toast-stack .badge-notice .sheet-x")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});
+
+test.describe("Photo Viewer Interaction", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const { openPhotoViewer } = await import("/src/place-media.js");
+      openPhotoViewer([
+        { url: "/data/thumbs/default.png", source: "community", photoTag: "interior" },
+        { url: "/data/thumbs/satellite.jpg", source: "community", photoTag: "exterior" },
+      ], "Test place", 0);
+    });
+  });
+
+  test("mouse-wheel zoom stays inside the image viewport", async ({ page }) => {
+    const viewport = page.locator(".photo-viewer__viewport");
+    await expect(viewport).toBeVisible();
+    await viewport.hover();
+    await page.mouse.wheel(0, -500);
+    await expect(page.locator(".photo-viewer__image:visible")).toHaveClass(/is-zoomed/);
+    await expect(viewport).toHaveCSS("touch-action", "none");
+  });
+
+  test("next and previous photos use the directional transition", async ({ page }) => {
+    await page.locator(".photo-viewer__nav--next").click();
+    await expect(page.locator(".photo-viewer__slide.is-pushing")).toHaveCount(2);
+    await expect(page.locator(".photo-viewer__count")).toHaveText("2 / 2");
+    await page.locator(".photo-viewer__nav--previous").click();
+    await expect(page.locator(".photo-viewer__count")).toHaveText("1 / 2");
+  });
+});

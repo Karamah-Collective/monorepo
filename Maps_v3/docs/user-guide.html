@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Halal Finder — User Guide</title>
+<link rel="stylesheet" href="../src/styles/design-tokens.css">
+<link rel="stylesheet" href="user-guide.css">
+<style>
+/* Screenshot images */
+.step-visual img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+.step-visual.contain img {
+  max-height: 420px;
+  object-fit: contain;
+}
+.step-visual.phone-frame {
+  padding: var(--sp-6);
+}
+.step-visual.phone-frame img {
+  max-width: 320px;
+  margin: 0 auto;
+  display: block;
+  border-radius: var(--r-2xl);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+}
+/* Desktop mini-preview */
+.desktop-note {
+  margin-top: var(--sp-6);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  font-size: var(--txt-xs);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.desktop-note img {
+  width: 120px;
+  border-radius: var(--r-sm);
+  opacity: 0.8;
+}
+/* Method tab JS toggle */
+.method-content { display: none; }
+.method-content.active { display: block; }
+/* Pill badges inline */
+.pill-row {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pill-row img {
+  height: 40px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-sm);
+}
+</style>
+</head>
+<body>
+
+<div class="guide">
+
+<header class="guide-header">
+  <h1>Halal Finder</h1>
+  <p>Find halal-certified restaurants, mosques, and shops across Finland. This guide walks you through every feature.</p>
+</header>
+
+<!-- ── Table of Contents ── -->
+<nav class="toc">
+  <div class="toc-title">In this guide</div>
+  <ul class="toc-list">
+    <li><a href="#overview"><span class="toc-num">1</span> Overview</a></li>
+    <li><a href="#tab-bar"><span class="toc-num">2</span> Navigation</a></li>
+    <li><a href="#searching"><span class="toc-num">3</span> Searching</a></li>
+    <li><a href="#places"><span class="toc-num">4</span> Browsing Places</a></li>
+    <li><a href="#adding"><span class="toc-num">5</span> Adding a Place</a></li>
+    <li><a href="#directions"><span class="toc-num">6</span> Directions</a></li>
+    <li><a href="#prayer"><span class="toc-num">7</span> Prayer Times</a></li>
+    <li><a href="#eid"><span class="toc-num">8</span> Eid &amp; Events</a></li>
+    <li><a href="#saving"><span class="toc-num">9</span> Saving Places</a></li>
+    <li><a href="#tips"><span class="toc-num">10</span> Tips</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §1 OVERVIEW -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="overview">Overview</h2>
+<p class="section-desc">Open the app and you'll see a map with coloured markers showing verified halal places near you.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual phone-frame">
+      <img src="guide-images/app-overview-mobile.png" alt="Halal Finder — map view with markers, search, and tab bar on a phone screen">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">●</span> Coloured markers for each type (restaurants, mosques, shops)</div>
+      <div class="step-label" style="margin-top: var(--sp-4);"><span class="step-num">●</span> Search button at the top</div>
+      <div class="step-label" style="margin-top: var(--sp-4);"><span class="step-num">●</span> Tab bar at the bottom — your main navigation</div>
+      <div class="step-label" style="margin-top: var(--sp-4);"><span class="step-num">●</span> Prayer time pill & Eid/Events badges along the top</div>
+    </div>
+  </div>
+
+  <div class="desktop-note">
+    <img src="guide-images/app-overview-desktop.png" alt="Desktop view">
+    <span>On desktop, the same features appear in a wider layout with the tab bar on the right side.</span>
+  </div>
+</div>
+
+<div class="callout">
+  <span class="callout-icon">📱</span>
+  <span><strong>Install as an app:</strong> Tap "Add to Home Screen" in your browser menu. Halal Finder is a PWA — it opens full-screen like a native app and works offline.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §2 TAB BAR -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="tab-bar">Navigation</h2>
+<p class="section-desc">The tab bar at the bottom (on mobile) or the right edge (on desktop) has four buttons.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual">
+      <img src="guide-images/tab-bar.png" alt="Tab bar — Home, Places, Routes, Locate">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">1</span> Home</div>
+      <div class="step-detail">Map view. Prayer times, Eid button, events visible here.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">2</span> Places</div>
+      <div class="step-detail">Scrollable list of all places. Filter by category. Suggest new places.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">3</span> Routes</div>
+      <div class="step-detail">Get walking, cycling, driving, or transit directions.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">4</span> Locate</div>
+      <div class="step-detail">Centre map on your GPS position. Long-press to follow.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §3 SEARCHING -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="searching">Searching</h2>
+<p class="section-desc">Tap the search button in the top-left corner. Results update as you type.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual">
+      <img src="guide-images/search-collapsed.png" alt="Search pill — tap to expand">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">1</span> Tap the magnifying glass</div>
+    </div>
+  </div>
+
+  <div class="step-arrow">↓</div>
+
+  <div class="step-card">
+    <div class="step-visual">
+      <img src="guide-images/search-expanded.png" alt="Search field with live results">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">2</span> Type — results appear instantly</div>
+      <div class="step-detail">Searches names, addresses, and tags. Tap a result to fly to it on the map.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §4 BROWSING PLACES -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="places">Browsing Places</h2>
+<p class="section-desc">The <strong>Places</strong> tab shows every verified halal spot. Tap category chips to filter. Tap any place to see details.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual contain">
+      <img src="guide-images/place-popup.png" alt="Place popup — name, address, tags, directions and share buttons">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">●</span> Tap any marker or list item</div>
+      <div class="step-detail">The popup shows name, address, tags, and quick-action buttons: get directions, save, or share.</div>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <span class="callout-icon">🔖</span>
+  <span>Use the <strong>filter chips</strong> at the top of the Places list — "Restaurant", "Mosque", "Shop", etc.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §5 ADDING A PLACE -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="adding">Adding a Place</h2>
+<p class="section-desc">Know a halal spot that's missing? Suggest it in seconds. Three methods, from easiest to most precise:</p>
+
+<div class="method-tabs" role="tablist">
+  <button class="method-tab active" role="tab" data-method="glink" aria-selected="true">Google Link</button>
+  <button class="method-tab" role="tab" data-method="search" aria-selected="false">Search &amp; Add</button>
+  <button class="method-tab" role="tab" data-method="pin" aria-selected="false">Drop a Pin</button>
+</div>
+
+<!-- Method 1: Google Maps Link -->
+<div class="method-content active" id="method-glink">
+  <div class="step-flow">
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">1</span> Copy a Google Maps link</div>
+        <div class="step-detail">Open Google Maps, find the place, tap Share → Copy link.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-visual contain">
+        <img src="guide-images/suggest-form.png" alt="Suggest form — name, type, Google Maps link field, tags">
+      </div>
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">2</span> Open "Suggest a Place"</div>
+        <div class="step-detail">Places tab → scroll down → <strong>Suggest a Place</strong>. Paste the link — name and address auto-fill.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-visual contain">
+        <img src="guide-images/suggest-tags.png" alt="Tag chips — Halal Certified, Somali, Turkish, etc.">
+      </div>
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">3</span> Pick category &amp; tags</div>
+        <div class="step-detail">Choose the type and tap relevant tags. <strong>Tags are highly encouraged</strong> — they help users find exactly what they need.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">4</span> Submit</div>
+        <div class="step-detail">Hit Submit. We review and publish it to the map.</div>
+      </div>
+    </div>
+  </div>
+  <div class="callout gold">
+    <span class="callout-icon">⭐</span>
+    <span><strong>Easiest method!</strong> A Google Maps link auto-fills name, address, and coordinates — minimal typing needed.</span>
+  </div>
+</div>
+
+<!-- Method 2: Search & Add -->
+<div class="method-content" id="method-search">
+  <div class="step-flow">
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">1</span> Open "Suggest a Place"</div>
+        <div class="step-detail">Places tab → Suggest a Place button.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">2</span> Type the address</div>
+        <div class="step-detail">Suggestions appear from OpenStreetMap. Tap the correct one — coordinates are captured automatically.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-visual contain">
+        <img src="guide-images/suggest-tags.png" alt="Tag chips">
+      </div>
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">3</span> Choose category &amp; tags</div>
+        <div class="step-detail">Select type, then tap all relevant tags. <strong>Tags are highly encouraged!</strong></div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">4</span> Submit</div>
+        <div class="step-detail">We'll verify and add it to the map.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Method 3: Drop a Pin -->
+<div class="method-content" id="method-pin">
+  <div class="step-flow">
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">1</span> Long-press on the map</div>
+        <div class="step-detail">Hold the exact location. A pin appears with coordinates.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">2</span> Tap "Add Place Here"</div>
+        <div class="step-detail">The pin popup has this button. Opens the form with coordinates pre-filled.</div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-visual contain">
+        <img src="guide-images/suggest-tags.png" alt="Tag chips">
+      </div>
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">3</span> Fill name, category &amp; tags</div>
+        <div class="step-detail">Enter the place name, select type, pick tags. <strong>Tags are highly encouraged.</strong></div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+    <div class="step-card">
+      <div class="step-text">
+        <div class="step-label"><span class="step-num">4</span> Submit</div>
+        <div class="step-detail">Done — we'll review and publish.</div>
+      </div>
+    </div>
+  </div>
+  <div class="callout">
+    <span class="callout-icon">📍</span>
+    <span>Best when you're physically at the location — drop the pin right on the building.</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §6 DIRECTIONS -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="directions">Directions</h2>
+<p class="section-desc">Tap <strong>Routes</strong> to get turn-by-turn directions. Walk, bike, drive, or take public transit.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual contain">
+      <img src="guide-images/directions-panel.png" alt="Directions panel — origin, destination, and transport mode selector">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">1</span> Set origin &amp; destination</div>
+      <div class="step-detail">Your current location fills automatically. Type a destination or tap "Directions" on any place popup.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">2</span> Choose mode</div>
+      <div class="step-detail">Switch between 🚶 Walk, 🚲 Bike, 🚗 Drive, or 🚌 Transit.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">3</span> Go</div>
+      <div class="step-detail">Route draws on the map. Tap "Start" for navigation.</div>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <span class="callout-icon">🚌</span>
+  <span><strong>Transit</strong> uses real-time HSL/Waltti data. Shows bus numbers and departure times.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §7 PRAYER TIMES -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="prayer">Prayer Times</h2>
+<p class="section-desc">Daily salah times based on your location in Finland.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual contain">
+      <img src="guide-images/prayer-times.png" alt="Prayer times card — Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha with countdown">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">●</span> Tap the prayer pill on the Home screen</div>
+      <div class="step-detail">Shows all five prayers plus sunrise. Next prayer highlighted with a countdown.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">●</span> Nearest mosque shortcut</div>
+      <div class="step-detail">Quickly find and navigate to the closest mosque.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §8 EID & EVENTS -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="eid">Eid &amp; Events</h2>
+<p class="section-desc">Special features that appear during Eid season and for community events.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-visual" style="gap: var(--sp-5); flex-wrap: wrap;">
+      <img src="guide-images/eid-button.png" alt="Eid pill" style="height: 44px; border-radius: 22px;">
+      <img src="guide-images/events-button.png" alt="Events pill" style="height: 44px; border-radius: 22px;">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">🌙</span> Eid pill — appears before and during Eid</div>
+      <div class="step-detail">Tap to see all Eid prayer locations, jamaat times, and organisers across Finland.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">📅</span> Events pill — year-round</div>
+      <div class="step-detail">Lists upcoming mosque events, lectures, and community gatherings.</div>
+    </div>
+  </div>
+
+  <div class="step-arrow">↓</div>
+
+  <div class="step-card">
+    <div class="step-visual contain">
+      <img src="guide-images/eid-panel.png" alt="Eid overlay — prayer locations grouped by city with jamaat times">
+    </div>
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">●</span> Full Eid prayer list</div>
+      <div class="step-detail">Grouped by city. Shows mosque, organiser, and all jamaat times. Tap to navigate there.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §9 SAVING -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="saving">Saving Places</h2>
+<p class="section-desc">Bookmark places you visit often for quick access.</p>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">1</span> Tap the bookmark icon on any popup</div>
+      <div class="step-detail">Saves the place to your personal list (stored locally on your device).</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">2</span> Find saved places</div>
+      <div class="step-detail">Saved places show a distinct marker on the map. Use the "Saved" filter in Places.</div>
+    </div>
+  </div>
+</div>
+
+<div class="callout warn">
+  <span class="callout-icon">⚠️</span>
+  <span>Saved places are stored in your browser. Clearing browser data removes them.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- §10 TIPS -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="tips">Tips</h2>
+
+<div class="step-flow">
+  <div class="step-card">
+    <div class="step-text">
+      <div class="step-label"><span class="step-num">📍</span> Long-press Locate for tracking</div>
+      <div class="step-detail">Single tap = centre once. Long-press = follow as you move.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">🔗</span> Share places via URL</div>
+      <div class="step-detail">Each place has a unique link. Tap the share button to copy it.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">🧭</span> Qibla direction</div>
+      <div class="step-detail">The compass shows Qibla from your current location.</div>
+      <div class="step-label" style="margin-top: var(--sp-5);"><span class="step-num">⌨️</span> Desktop shortcut</div>
+      <div class="step-detail">Press <kbd>/</kbd> to jump into search instantly.</div>
+    </div>
+  </div>
+</div>
+
+<footer style="text-align: center; padding: var(--sp-11) 0 var(--sp-8); color: var(--text-3); font-size: var(--txt-xs);">
+  <p>Karamah Collective · <a href="https://maps.karamahcollective.com" style="color: var(--accent);">maps.karamahcollective.com</a></p>
+</footer>
+
+</div><!-- .guide -->
+
+<script>
+document.querySelectorAll('.method-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.method-tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    document.querySelectorAll('.method-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('method-' + tab.dataset.method).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

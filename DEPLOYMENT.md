@@ -570,6 +570,32 @@ If you later need isolated preview writes, create a deliberate preview environme
 
 For a stable Admin preview hostname, add that exact HTTPS origin to `ADMIN_ALLOWED_ORIGINS` in both the Maps and Website preview projects. Multiple origins are comma-separated, with no path or trailing slash. Also add the Admin hostname to Firebase Authentication's authorized domains. Arbitrary `*.pages.dev` origins are deliberately not trusted.
 
+### Maps_v3 visual preview
+
+`Maps_v3` is a separate phone-first app preview and must not replace the live
+`Maps` Pages project. Create a separate Pages project such as
+`maps-v3-preview` from this repository with these settings:
+
+| Setting | Value |
+| --- | --- |
+| Branch | `main` while the v3 review is in progress |
+| Root directory | `Maps_v3` |
+| Framework preset | None |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Node version | `22` |
+
+The existing `Maps` project remains connected to its normal generated
+`deploy`/`preview` branches and is not changed by this preview. Pages project
+variables, secrets, D1 databases, R2 buckets, and Durable Object bindings are
+not inherited from `Maps`; configure each required item explicitly on the new
+project. Reusing the production `DB` or `MEDIA` binding also reuses its data,
+so use read-only testing or dedicated preview resources before testing writes.
+
+For sign-in testing, add the new Pages hostname to Firebase Authentication's
+authorized domains and configure any API CORS allowlist that needs to accept
+that hostname. Do not commit `Maps_v3/src/config.local.js` or `.dev.vars`.
+
 ## 5. Optional: build only affected projects
 
 Under each Pages project's **Build watch paths**, include:

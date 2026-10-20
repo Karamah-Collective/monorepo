@@ -1,0 +1,49 @@
+# Copy this file to .dev.vars for local Cloudflare Pages Function testing.
+# .dev.vars is gitignored. Never commit real secrets.
+
+# Allows localhost submissions to skip browser/server Turnstile
+# while testing with `npx wrangler pages dev .`.
+DEV_SKIP_TURNSTILE=true
+
+# Contact form email alerts. Use a Brevo API key from SMTP & API -> API Keys.
+# The SMTP password is not enough for the HTTP API.
+BREVO_API_KEY=YOUR_BREVO_API_KEY
+
+# Shared secret accepted by Website's contact-form inbox mirror.
+INBOX_INGEST_SECRET=YOUR_SHARED_INBOX_INGEST_SECRET
+
+# Weekly analytics report endpoint. REPORT_SECRET is an arbitrary long random
+# value shared with the GitHub Actions secret of the same name.
+REPORT_SECRET=YOUR_LONG_RANDOM_REPORT_SECRET
+CLOUDFLARE_ZONE_ID=YOUR_CLOUDFLARE_ZONE_ID
+CLOUDFLARE_ANALYTICS_TOKEN=YOUR_CLOUDFLARE_ANALYTICS_API_TOKEN
+SITE_HOSTNAME=maps.karamahcollective.com
+REPORT_FROM=analytics@karamahcollective.com
+REPORT_TO=home@karamahcollective.com
+
+# PostHog: this capture token is public by design. The API key stays server-only.
+POSTHOG_PROJECT_TOKEN=phc_YOUR_PROJECT_CAPTURE_TOKEN
+POSTHOG_INGEST_HOST=https://eu.i.posthog.com
+POSTHOG_PROJECT_ID=YOUR_POSTHOG_PROJECT_ID
+POSTHOG_API_HOST=https://eu.posthog.com
+POSTHOG_API_KEY=YOUR_SERVER_SIDE_POSTHOG_API_KEY
+
+# Turnstile is required for non-contact submissions outside localhost.
+# TURNSTILE_SECRET_KEY=YOUR_TURNSTILE_SECRET_KEY
+
+# Gmail automatic History API sync. Pub/Sub is optional and disabled unless
+# GMAIL_PUBSUB_ENABLED=true is explicitly set.
+GMAIL_CLIENT_ID=YOUR_GMAIL_CLIENT_ID
+GMAIL_CLIENT_SECRET=YOUR_GMAIL_CLIENT_SECRET
+GMAIL_OAUTH_REDIRECT_URI=http://127.0.0.1:8788/api/gmail/oauth/callback
+GMAIL_TOKEN_ENCRYPTION_KEY=YOUR_64_HEX_CHARACTER_KEY
+GMAIL_PUBSUB_ENABLED=false
+GMAIL_PUBSUB_TOPIC=projects/YOUR_PROJECT_ID/topics/YOUR_GMAIL_TOPIC
+GMAIL_PUBSUB_TOKEN=YOUR_LOCAL_PUSH_SECRET
+
+# Local Admin MCP gateway testing. Keep this key identical in Website and Forms.
+MCP_INTERNAL_SIGNING_KEY=local-mcp-signing-key-change-me-32-characters
+MCP_AUTHORIZATION_SERVER_URL=http://127.0.0.1:5173
+MCP_RESOURCE_URL=http://127.0.0.1:5173/mcp
+WEBSITE_ORIGIN=http://127.0.0.1:8789
+FORMS_ORIGIN=http://127.0.0.1:8791

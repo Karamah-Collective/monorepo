@@ -1,0 +1,30 @@
+name = "manarah-gmail-events"
+main = "index.js"
+compatibility_date = "2026-08-04"
+
+# Mail sync is driven by InboxRealtime alarms only while an Admin Inbox
+# WebSocket is connected. The daily trigger only renews optional Pub/Sub
+# watches and never synchronizes mail.
+[triggers]
+crons = ["0 0 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "halal-finder-db"
+database_id = "a360600d-c92c-42c4-a41b-fe493866f13f"
+
+[[durable_objects.bindings]]
+name = "INBOX_REALTIME"
+class_name = "InboxRealtime"
+
+[[durable_objects.bindings]]
+name = "PROJECT_REALTIME"
+class_name = "ProjectRealtime"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["InboxRealtime"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ProjectRealtime"]

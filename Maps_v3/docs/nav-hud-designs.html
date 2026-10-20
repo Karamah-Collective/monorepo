@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Navigation HUD — Design E Variants</title>
+  <link rel="stylesheet" href="../src/styles/design-tokens.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: #1a1a1a; overflow: auto !important; }
+    body { font-family: 'Inter', -apple-system, system-ui, sans-serif; color: #e0e0e0; overflow: auto !important; }
+
+    .page { max-width: 1200px; margin: 0 auto; padding: 40px 24px 100px; }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 2px; color: #fff; letter-spacing: -0.03em; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 40px; line-height: 1.5; }
+    .section-title {
+      font-size: 16px; font-weight: 700; color: var(--accent);
+      margin: 56px 0 6px; letter-spacing: -0.01em;
+      padding-bottom: 8px; border-bottom: 1px solid #333;
+    }
+    .section-sub { font-size: 11px; color: #777; margin-bottom: 20px; }
+    .section-title:first-of-type { margin-top: 0; }
+
+    /* Phone frames */
+    .phone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 28px; }
+    .phone-frame {
+      width: 340px; height: 320px;
+      background: linear-gradient(160deg, #7fb5a7 0%, #5a9e8f 40%, #3d8a7a 100%);
+      border-radius: 22px; position: relative; overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .phone-frame.tall { height: 380px; }
+    .phone-frame::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px);
+    }
+    .phone-label {
+      position: absolute; top: 10px; left: 14px; z-index: 2;
+      font-size: 9px; font-weight: 700; color: rgba(0,0,0,0.5);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: rgba(255,255,255,0.55); padding: 3px 9px; border-radius: 5px;
+      backdrop-filter: blur(4px);
+    }
+    .variant-label {
+      position: absolute; top: 10px; right: 14px; z-index: 2;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 5px;
+    }
+    .variant-label.drive { background: rgba(8,112,91,0.2); color: #08705B; }
+    .variant-label.walk  { background: rgba(82,82,91,0.2); color: #52525b; }
+    .variant-label.cycle { background: rgba(31,168,106,0.2); color: #1fa86a; }
+    .variant-label.bus   { background: rgba(26,115,184,0.2); color: #1a73b8; }
+    .variant-label.tram  { background: rgba(31,168,106,0.2); color: #1fa86a; }
+    .variant-label.metro { background: rgba(255,99,25,0.2); color: #ff6319; }
+    .variant-label.rail  { background: rgba(140,71,153,0.2); color: #8c4799; }
+    .variant-label.ferry { background: rgba(0,185,228,0.2); color: #00b9e4; }
+
+    /* Shared HUD base */
+    .hud {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden;
+    }
+
+    /* ═══ Design E — Chip Tags ═══ */
+    .hud-e {
+      bottom: 16px; width: 310px; border-radius: var(--r-xl);
+    }
+    .hud-e .progress-top { height: 2px; background: var(--surface-2); }
+    .hud-e .progress-top-fill { height: 100%; width: 35%; border-radius: 0 2px 2px 0; }
+    .hud-e .body { padding: 12px 14px; }
+    .hud-e .row1 { display: flex; align-items: center; gap: 10px; }
+    .hud-e .maneuver {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--r-sm); color: var(--on-accent);
+    }
+    .hud-e .maneuver svg { width: 20px; height: 20px; }
+    .hud-e .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .hud-e .inst { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .hud-e .detail { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .hud-e .close-btn {
+      width: var(--btn-roundel-size); height: var(--btn-roundel-size);
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 50%; color: var(--text-3);
+      flex-shrink: 0; border: none; cursor: pointer;
+    }
+    .hud-e .close-btn svg { width: 14px; height: 14px; }
+    .hud-e .row2 {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 8px;
+    }
+    .hud-e .tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .hud-e .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 600;
+    }
+    .hud-e .chip svg { width: 10px; height: 10px; }
+    .hud-e .chip-dist { background: var(--accent-soft); color: var(--accent); }
+    .hud-e .chip-eta { background: var(--surface-2); color: var(--text-2); }
+    .hud-e .chip-mode { color: #fff; }
+    .hud-e .chip-route { color: #fff; font-weight: 700; }
+    .hud-e .chip-stop { background: var(--surface-2); color: var(--text-2); }
+    .hud-e .btns { display: flex; gap: 6px; }
+    .hud-e .ctrl {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border: none; border-radius: 50%; cursor: pointer; color: var(--text-3);
+    }
+    .hud-e .ctrl svg { width: 12px; height: 12px; }
+
+    /* ═══ Maneuver Icon Grid ═══ */
+    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .icon-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    }
+    .icon-card .icon-box {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); border-radius: var(--r-sm); color: var(--on-accent);
+    }
+    .icon-card .icon-box svg { width: 20px; height: 20px; }
+    .icon-card .icon-label { font-size: 11px; font-weight: 600; color: var(--text); }
+    .icon-card .icon-desc { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Design E — Chip Tags</h1>
+  <p class="sub">Variants for every transport mode. Standard teal maneuver icon, standard close button.<br>Pick the variant you like best — or confirm E works for all modes.</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1: MANEUVER ICONS                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Maneuver Icons</div>
+  <div class="section-sub">These are the turn-by-turn instruction icons shown inside the HUD's teal square. All use the app's existing SVGs.</div>
+
+  <div class="icon-grid">
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+      </div>
+      <div><div class="icon-label">Depart</div><div class="icon-desc">Start of route</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div><div class="icon-label">Arrive</div><div class="icon-desc">Destination reached</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </div>
+      <div><div class="icon-label">Continue Straight</div><div class="icon-desc">Go straight ahead</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg>
+      </div>
+      <div><div class="icon-label">Turn Right</div><div class="icon-desc">Standard right turn</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 12H5M11 6l-6 6 6 6"/></svg>
+      </div>
+      <div><div class="icon-label">Turn Left</div><div class="icon-desc">Standard left turn</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17l-9-9M17 9v8h-8"/></svg>
+      </div>
+      <div><div class="icon-label">Slight Right</div><div class="icon-desc">Bear right at angle</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9-9M7 9v8h8"/></svg>
+      </div>
+      <div><div class="icon-label">Slight Left</div><div class="icon-desc">Bear left at angle</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18l9-9m0 0v7m0-7h-7"/></svg>
+      </div>
+      <div><div class="icon-label">Sharp Right</div><div class="icon-desc">Hard right turn</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 18l-9-9m0 0v7m0-7h7"/></svg>
+      </div>
+      <div><div class="icon-label">Sharp Left</div><div class="icon-desc">Hard left turn</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>
+      </div>
+      <div><div class="icon-label">U-Turn</div><div class="icon-desc">Reverse direction</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a7 7 0 1 0 7 7"/><path d="M15 2l4 3-4 3"/></svg>
+      </div>
+      <div><div class="icon-label">Roundabout</div><div class="icon-desc">Circle intersection</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8M5 3l7 5 7-5"/></svg>
+      </div>
+      <div><div class="icon-label">Merge</div><div class="icon-desc">Merge onto road</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8M19 3l-7 5"/><path d="M19 3v6h-5"/></svg>
+      </div>
+      <div><div class="icon-label">Fork Right</div><div class="icon-desc">Keep right at fork</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8M5 3l7 5"/><path d="M5 3v6h5"/></svg>
+      </div>
+      <div><div class="icon-label">Fork Left</div><div class="icon-desc">Keep left at fork</div></div>
+    </div>
+    <div class="icon-card">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+      <div><div class="icon-label">Ramp (On/Off)</div><div class="icon-desc">Highway ramp</div></div>
+    </div>
+  </div>
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2: DIRECT MODES — Drive, Walk, Cycle                  -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Direct Modes — Drive · Walk · Cycle</div>
+  <div class="section-sub">Each mode uses the same E layout. Maneuver icon is always teal. The mode chip uses the mode's own colour.</div>
+
+  <div class="phone-grid">
+
+    <!-- E1: Drive — Turn Right -->
+    <div class="phone-frame">
+      <div class="phone-label">E1 — Drive</div>
+      <div class="variant-label drive">Drive</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:35%; background:var(--accent)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Turn right onto Hämeentie</div>
+              <div class="detail">Then continue straight for 800 m</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-dist">280 m</span>
+              <span class="chip chip-eta">ETA 14:32 · 8 min</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl" title="Simulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl" title="Expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E2: Walk — Continue Straight -->
+    <div class="phone-frame">
+      <div class="phone-label">E2 — Walk</div>
+      <div class="variant-label walk">Walk</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:60%; background:var(--walk)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Continue on Mannerheimintie</div>
+              <div class="detail">Then turn left onto Simonkatu</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-dist">450 m</span>
+              <span class="chip chip-eta">ETA 14:15 · 6 min</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl" title="Simulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl" title="Expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E3: Cycle — Roundabout -->
+    <div class="phone-frame">
+      <div class="phone-label">E3 — Cycle</div>
+      <div class="variant-label cycle">Cycle</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:20%; background:var(--success)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a7 7 0 1 0 7 7"/><path d="M15 2l4 3-4 3"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">At the roundabout, exit 2</div>
+              <div class="detail">Then continue on Baana for 1.2 km</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-dist">120 m</span>
+              <span class="chip chip-eta">ETA 14:40 · 12 min</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl" title="Simulate"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl" title="Expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3: TRANSIT — Walk-to-Stop Leg                         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Transit — Walking Leg (to/from stop)</div>
+  <div class="section-sub">When the user is walking to a transit stop. Maneuver icon is teal. Mode chip shows walk icon. "Next" detail shows what they're walking towards.</div>
+
+  <div class="phone-grid">
+
+    <!-- E4: Transit Walk-to-Stop -->
+    <div class="phone-frame">
+      <div class="phone-label">E4 — Walk to Stop</div>
+      <div class="variant-label walk">Walk Leg</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:10%; background:var(--walk)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Turn right onto Kaivokatu</div>
+              <div class="detail">Walk to Rautatientori (H0428)</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-dist">120 m</span>
+              <span class="chip chip-mode" style="background:var(--walk)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><circle cx="13" cy="4.5" r="2.5" stroke-width="1.8"/><path d="M7 21l3-9M16 21l-2-3-2.5-4 3.5-4"/><path d="M10 14l-1.5-5.5 4-1"/></svg>
+                Walk
+              </span>
+              <span class="chip chip-eta">ETA 14:47 · 29 min</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 4: TRANSIT — Board Vehicle Legs                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Transit — Board Vehicle</div>
+  <div class="section-sub">When the user needs to board a bus, tram, metro, train, or ferry. Maneuver icon uses the transit mode colour. Route number chip is prominent.</div>
+
+  <div class="phone-grid">
+
+    <!-- E5: Board Bus -->
+    <div class="phone-frame">
+      <div class="phone-label">E5 — Board Bus</div>
+      <div class="variant-label bus">Bus</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:25%; background:var(--hsl-bus)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-bus)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board bus 550 → Itäkeskus</div>
+              <div class="detail">From Rautatientori (H0428) · Departs 14:18</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-bus)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/></svg>
+                550
+              </span>
+              <span class="chip chip-stop">5 stops · 12 min</span>
+              <span class="chip chip-eta">ETA 14:47</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E6: Board Tram -->
+    <div class="phone-frame">
+      <div class="phone-label">E6 — Board Tram</div>
+      <div class="variant-label tram">Tram</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:40%; background:var(--hsl-tram)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-tram)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="13" rx="3"/><path d="M9 2l3 3 3-3"/><path d="M5 12h14"/><circle cx="9" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.5" fill="currentColor" stroke="none"/><path d="M7 18l-2 3M17 18l2 3"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board tram 9 → Pasila</div>
+              <div class="detail">From Aleksanterinkatu · Departs 14:22</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-tram)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="5" y="5" width="14" height="13" rx="3"/><path d="M9 2l3 3 3-3"/><path d="M5 12h14"/></svg>
+                9
+              </span>
+              <span class="chip chip-stop">3 stops · 7 min</span>
+              <span class="chip chip-eta">ETA 14:35</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E7: Board Metro -->
+    <div class="phone-frame">
+      <div class="phone-label">E7 — Board Metro</div>
+      <div class="variant-label metro">Metro</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:50%; background:var(--hsl-metro)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-metro)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="15" rx="4"/><path d="M4 11h16"/><circle cx="8.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><path d="M6 18l-2 3M18 18l2 3"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board metro M1 → Vuosaari</div>
+              <div class="detail">From Hakaniemi · Departs 14:26</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-metro)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="4" y="3" width="16" height="15" rx="4"/><path d="M4 11h16"/></svg>
+                M1
+              </span>
+              <span class="chip chip-stop">4 stops · 9 min</span>
+              <span class="chip chip-eta">ETA 14:52</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E8: Board Rail -->
+    <div class="phone-frame">
+      <div class="phone-label">E8 — Board Train</div>
+      <div class="variant-label rail">Rail</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:30%; background:var(--hsl-rail)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-rail)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M12 3v8"/><circle cx="8" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="15" r="1.5" fill="currentColor" stroke="none"/><path d="M6 18l-2 3M18 18l2 3"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board I-train → Helsinki Airport</div>
+              <div class="detail">From Pasila · Departs 14:33 · Platform 4</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-rail)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M12 3v8"/></svg>
+                I
+              </span>
+              <span class="chip chip-stop">6 stops · 28 min</span>
+              <span class="chip chip-eta">ETA 15:01</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E9: Board Ferry -->
+    <div class="phone-frame">
+      <div class="phone-label">E9 — Board Ferry</div>
+      <div class="variant-label ferry">Ferry</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:15%; background:var(--hsl-ferry)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-ferry)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><path d="M4 18l-1-5h18l-1 5"/><rect x="9" y="8" width="6" height="5" rx="1"/><path d="M12 2v6"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board ferry → Suomenlinna</div>
+              <div class="detail">From Kauppatori terminal · Departs 14:40</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-ferry)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><path d="M4 18l-1-5h18l-1 5"/></svg>
+                Ferry
+              </span>
+              <span class="chip chip-stop">1 stop · 15 min</span>
+              <span class="chip chip-eta">ETA 14:55</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 5: TRANSIT — Alight / Exit Vehicle                    -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Transit — Alight at Stop</div>
+  <div class="section-sub">When approaching the stop where the user should get off. Maneuver icon switches to "arrive" pin icon.</div>
+
+  <div class="phone-grid">
+
+    <!-- E10: Alight Bus -->
+    <div class="phone-frame">
+      <div class="phone-label">E10 — Alight Bus</div>
+      <div class="variant-label bus">Alight</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:85%; background:var(--hsl-bus)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-bus)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Get off at Itäkeskus</div>
+              <div class="detail">Next stop — prepare to exit</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-bus)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/></svg>
+                550
+              </span>
+              <span class="chip chip-stop">Next stop</span>
+              <span class="chip chip-eta">ETA 14:47</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 6: TRANSIT — Trunk Bus (special orange)               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Transit — Trunk Bus (Special)</div>
+  <div class="section-sub">HSL trunk buses use the orange trunk colour instead of standard blue.</div>
+
+  <div class="phone-grid">
+
+    <!-- E11: Board Trunk Bus -->
+    <div class="phone-frame">
+      <div class="phone-label">E11 — Trunk Bus</div>
+      <div class="variant-label" style="background:rgba(255,99,25,0.2);color:#ff6319">Trunk</div>
+      <div class="hud hud-e">
+        <div class="progress-top"><div class="progress-top-fill" style="width:20%; background:var(--hsl-trunk)"></div></div>
+        <div class="body">
+          <div class="row1">
+            <div class="maneuver" style="background:var(--hsl-trunk)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor" stroke="none"/><path d="M7 20v2M17 20v2"/></svg>
+            </div>
+            <div class="col">
+              <div class="inst">Board trunk bus 560 → Rastila</div>
+              <div class="detail">From Sörnäinen (H0453) · Departs 14:12</div>
+            </div>
+            <button class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="row2">
+            <div class="tags">
+              <span class="chip chip-route" style="background:var(--hsl-trunk)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 11h16"/></svg>
+                560
+              </span>
+              <span class="chip chip-stop">8 stops · 18 min</span>
+              <span class="chip chip-eta">ETA 14:30</span>
+            </div>
+            <div class="btns">
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+              <button class="ctrl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 7: Navigate Button (for itinerary cards)              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">Navigate Button Preview</div>
+  <div class="section-sub">The button on itinerary cards. Teal background, turn-right arrow icon (your choice). Shown at 30×30 like in the cards.</div>
+
+  <div style="display:flex; gap: 24px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--on-accent);border-radius:var(--r-xs);cursor:pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg>
+      </div>
+      <span style="font-size:10px;color:#888;font-weight:600">30×30</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);cursor:pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h12M13 6l6 6-6 6"/></svg>
+      </div>
+      <span style="font-size:10px;color:#888;font-weight:600">40×40 (ref)</span>
+    </div>
+    <div style="padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;color:var(--text-2)">
+      <strong style="color:var(--text)">Icon:</strong> Turn-right arrow &nbsp;|&nbsp;
+      <strong style="color:var(--text)">Bg:</strong> var(--accent) #08705B &nbsp;|&nbsp;
+      <strong style="color:var(--text)">Close:</strong> Standard roundel ✕
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
+</body>
+</html>
