@@ -570,27 +570,32 @@ If you later need isolated preview writes, create a deliberate preview environme
 
 For a stable Admin preview hostname, add that exact HTTPS origin to `ADMIN_ALLOWED_ORIGINS` in both the Maps and Website preview projects. Multiple origins are comma-separated, with no path or trailing slash. Also add the Admin hostname to Firebase Authentication's authorized domains. Arbitrary `*.pages.dev` origins are deliberately not trusted.
 
-### Maps_v3 visual preview
+### Maps_v3 Pages deployment
 
-`Maps_v3` is a separate phone-first app preview and must not replace the live
-`Maps` Pages project. Create a separate Pages project such as
-`maps-v3-preview` from this repository with these settings:
+`Maps_v3` is deployed by the generated `deploy` branch. Configure its separate
+Cloudflare Pages project from this repository with these settings:
 
 | Setting | Value |
 | --- | --- |
-| Branch | `main` while the v3 review is in progress |
+| Branch | `deploy` |
 | Root directory | `Maps_v3` |
 | Framework preset | None |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Node version | `22` |
 
-The existing `Maps` project remains connected to its normal generated
-`deploy`/`preview` branches and is not changed by this preview. Pages project
-variables, secrets, D1 databases, R2 buckets, and Durable Object bindings are
-not inherited from `Maps`; configure each required item explicitly on the new
-project. Reusing the production `DB` or `MEDIA` binding also reuses its data,
-so use read-only testing or dedicated preview resources before testing writes.
+Run `npm run deploy:agent -- sync deploy --push` after validating source changes.
+The deploy agent includes the curated Maps_v3 runtime files, its Pages
+functions, the shared modules they import, and the build-version helper. It
+excludes native bundles, docs, tests, generated output, caches, and local
+secrets. The existing `Maps` Pages project remains in the same generated
+branch and is not replaced by Maps_v3.
+
+Pages project variables, secrets, D1 databases, R2 buckets, and Durable Object
+bindings are not inherited from `Maps`; configure each required item
+explicitly on the new project. Reusing the production `DB` or `MEDIA` binding
+also reuses its data, so use read-only testing or dedicated preview resources
+before testing writes.
 
 For sign-in testing, add the new Pages hostname to Firebase Authentication's
 authorized domains and configure any API CORS allowlist that needs to accept
@@ -608,6 +613,7 @@ Under each Pages project's **Build watch paths**, include:
 | Links | `Links/*`, `Maps/functions/_link-hub.js`, `Maps/functions/api/admin.js`, `Maps/migrations/0050_admin_database_schema.sql`, `package.json`, `package-lock.json` |
 | Forms | `Forms/*`, `shared/forms-domain.mjs`, `shared/firebase-verify.mjs`, `Maps/functions/_forms-admin.js`, `Maps/functions/api/admin.js`, `Maps/functions/api/form-asset.js`, `Maps/migrations/0050_admin_database_schema.sql`, `package.json`, `package-lock.json` |
 | Projects | `Projects/*`, `shared/*`, `package.json`, `package-lock.json` |
+| Maps_v3 | `Maps_v3/*`, `shared/*`, `tooling/build-version.mjs`, `package.json`, `package-lock.json` |
 
 If you enable Admin build watch paths, also include `Website/assets/images/kc_logo_small_dark.webp` and `Website/assets/images/kc_logo_small_icon.ico`; Admin imports those brand assets directly.
 
