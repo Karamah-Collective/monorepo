@@ -10,12 +10,9 @@ const { test, expect, setupApp } = require("./helpers");
 async function openProfile(page) {
   await page.click("#menu-pill");
   const phone = await page.evaluate(() => window.innerWidth <= 768);
-  if (phone) await page.click("#phone-profile-menu-btn");
   await expect(page.locator("#menu-google-signin")).toBeVisible({ timeout: 15_000 });
   await page.click("#menu-google-signin");
   if (phone) {
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "menu");
-    await page.click("#mp-sheet-close");
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "profile");
   } else {
     await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 10_000 });
@@ -35,12 +32,9 @@ async function openProfile(page) {
 async function signInFromMenu(page) {
   await page.click("#menu-pill");
   const phone = await page.evaluate(() => window.innerWidth <= 768);
-  if (phone) await page.click("#phone-profile-menu-btn");
   await expect(page.locator("#menu-google-signin")).toBeVisible({ timeout: 15_000 });
   await page.click("#menu-google-signin");
   if (phone) {
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "menu");
-    await page.click("#mp-sheet-close");
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "profile");
   } else {
     await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 10_000 });

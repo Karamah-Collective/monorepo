@@ -148,10 +148,16 @@ test.describe("Phone app pages", () => {
     const actionBarState = await page.evaluate(() => {
       const bar = document.querySelector("#places-filters");
       const scroll = document.querySelector("#places-scroll");
+      const city = document.querySelector("#places-list .phone-places-city-active");
+      const nonActiveCityPositions = [...document.querySelectorAll("#places-list > .pl-city-hdr:not(.phone-places-city-active)")]
+        .map((element) => getComputedStyle(element).position);
       const style = getComputedStyle(bar);
       return {
         progress: parseFloat(bar.style.getPropertyValue("--phone-places-actionbar-progress")),
         clearance: parseFloat(scroll.style.getPropertyValue("--phone-places-actionbar-clearance")),
+        cityTransform: city ? getComputedStyle(city).transform : "none",
+        cityPosition: city ? getComputedStyle(city).position : "none",
+        nonActiveCityPositions,
         opacity: parseFloat(style.opacity),
         transition: style.transition,
         scrollTop: scroll.getBoundingClientRect().top,
@@ -159,6 +165,9 @@ test.describe("Phone app pages", () => {
     });
     expect(actionBarState.progress).toBeGreaterThan(0);
     expect(actionBarState.clearance).toBeLessThan(initialActionBarClearance);
+    expect(actionBarState.cityTransform).not.toBe("none");
+    expect(actionBarState.cityPosition).toBe("sticky");
+    expect(actionBarState.nonActiveCityPositions.every((position) => position === "static")).toBe(true);
     expect(actionBarState.opacity).toBe(1);
     expect(actionBarState.transition).toContain("transform");
     expect(actionBarState.scrollTop).toBeCloseTo(placesLayoutBefore.scrollTop, 1);
@@ -324,10 +333,8 @@ test.describe("Phone app pages", () => {
     expect(placesStack.actionBar).toBeGreaterThan(placesStack.city);
     expect(placesStack.sort).toBeGreaterThan(placesStack.actionBar);
     await page.locator("#menu-pill").click();
-    await expect(page.locator("#phone-profile-prompt")).toContainText("Continue as a guest");
-    await expect(page.locator("#phone-profile-guest-links")).toBeVisible();
-    await expect(page.locator("#phone-profile-guest-links")).toContainText("Saved places");
-    await expect(page.locator("#phone-profile-guest-links")).toContainText("Your reviews");
+    await expect(page.locator("#phone-profile-auth")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth #menu-google-signin")).toBeVisible({ timeout: 15_000 });
   });
 
   test("Places search and filters remain interactive inside the page", async ({ page }) => {
@@ -381,6 +388,7 @@ test.describe("Phone app pages", () => {
     await firstBookmark.evaluate((element) => element.click());
     await page.locator('.pf-chip[data-type="saved"]').click();
     await expect(page.locator("#places-list .pl-saved-section-hdr")).toHaveCount(1);
+    expect(await page.locator("#places-list .pl-saved-section-hdr").evaluate((element) => getComputedStyle(element).position)).toBe("static");
     await expect(page.locator("#places-list .pl-saved-section-hdr + .pl-city-group-body .pl-city-hdr")).toHaveCount(0);
     await expect(page.locator("#places-list .pl-saved-section-hdr + .pl-city-group-body .pl-card").first()).toBeVisible();
   });
@@ -455,7 +463,10 @@ test.describe("Phone app pages", () => {
 
   test("Profile → Settings and browser back preserve native page history", async ({ page }) => {
     await page.locator("#menu-pill").click();
-    await expect(page.locator("#phone-profile-prompt")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth #menu-account-signin-row > button:visible")).toHaveCount(3);
+    await expect(page.locator("#phone-profile-auth #menu-password-email-input")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth #menu-password-input")).toBeVisible();
     await expect(page.locator("#profile-sheet-close")).toBeHidden();
     await expect(page.locator("#phone-profile-settings-btn")).toBeVisible();
     await expect(page.locator("#phone-profile-settings-btn")).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
@@ -465,10 +476,24 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#menu-header-divider")).toBeHidden();
     await page.locator("#mp-sheet-close").click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "profile");
-    await page.locator("#phone-profile-menu-btn").click();
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "menu");
-    await page.goBack();
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "profile");
+    await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).not.toHaveClass(/hide/);
+    await page.locator("#phone-profile-auth [data-password-mode='signup']").click();
+    await expect(page.locator("#phone-profile-auth #menu-password-name-field")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth #menu-password-submit")).toHaveText("Create account");
+    await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).toHaveAttribute("data-mode-direction", "forward");
+    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "phone-auth-mode-forward");
+    await page.locator("#phone-profile-auth [data-password-mode='signin']").click();
+    await expect(page.locator("#phone-profile-auth #menu-password-name-field")).toBeHidden();
+    await expect(page.locator("#phone-profile-auth #menu-password-submit")).toHaveText("Sign in");
+    await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).toHaveAttribute("data-mode-direction", "back");
+    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "phone-auth-mode-back");
+    const collapsedNameMotion = await page.locator("#phone-profile-auth #menu-password-name-field").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { maxHeight: style.maxHeight, visibility: style.visibility, transition: style.transition };
+    });
+    expect(collapsedNameMotion.maxHeight).toBe("0px");
+    expect(collapsedNameMotion.visibility).toBe("hidden");
+    expect(collapsedNameMotion.transition).toContain("opacity");
     await page.goBack();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "home");
   });
@@ -522,6 +547,14 @@ test.describe("Phone app pages", () => {
       lat: 60.17,
       lng: 24.94,
       tags: {},
+    }, {
+      id: "phone-no-event-place",
+      name: "Phone Place Without Events",
+      type: "mosque",
+      address: "Test Street 2",
+      lat: 60.18,
+      lng: 24.95,
+      tags: {},
     }];
     const events = [
       { id: "phone-event-place-card", title: "Place card event", date: "2099-10-21", time: "18:30", placeId: "phone-event-place" },
@@ -538,7 +571,18 @@ test.describe("Phone app pages", () => {
       });
     });
     await page.reload();
-    await page.waitForFunction(() => window.HFPhoneData?.getEvents?.().some((event) => event.id === "phone-event-external"));
+    await page.waitForFunction(() => window.HFPhoneData?.getPlaces?.().some((place) => place.id === "phone-no-event-place")
+      && window.HFPhoneData?.getEvents?.().some((event) => event.id === "phone-event-external"));
+    await page.locator("#dir-btn").click();
+    await expect(page.locator("#map-filter-chips [data-map-events]")).toBeVisible();
+    await expect(page.locator(".place-mk-wrap[data-place-id]")).toHaveCount(2);
+    await page.locator("#map-filter-chips [data-map-events]").click();
+    await expect(page.locator("#map-filter-chips [data-map-events]")).toHaveClass(/active/);
+    await expect(page.locator(".place-mk-wrap[data-place-id]")).toHaveCount(1);
+    await expect(page.locator(".place-mk-wrap[data-place-id='phone-event-place']")).toHaveCount(1);
+    await page.locator("#map-filter-chips [data-map-type='all']").click();
+    await expect(page.locator("#map-filter-chips [data-map-events]")).not.toHaveClass(/active/);
+    await expect(page.locator(".place-mk-wrap[data-place-id]")).toHaveCount(2);
     await page.locator("#events-nav-btn").click();
     await expect(page.locator("#phone-events-count")).toHaveText("2 events");
 
@@ -596,6 +640,16 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#map-filter-chips .map-filter-pill").filter({ hasText: "Spaces" })).toBeVisible();
     await expect(page.locator("#map-filter-chips .map-filter-pill").filter({ hasText: "Food" })).toBeVisible();
     await expect(page.locator("#map-filter-chips .map-filter-pill").filter({ hasText: "Services" })).toBeVisible();
+    await expect(page.locator("#map-filter-chips [data-map-events]")).toContainText("Events");
+    const pillOrder = await page.locator("#map-filter-chips .map-filter-pill").evaluateAll((pills) => pills
+      .filter((pill) => !pill.classList.contains("is-hidden"))
+      .map((pill) => pill.dataset.mapEvents ? "events" : pill.dataset.mapType));
+    expect(pillOrder.indexOf("events")).toBe(pillOrder.indexOf("saved") - 1);
+    const selectedPill = await page.locator('#map-filter-chips [data-map-type="all"]').evaluate((pill) => ({
+      background: getComputedStyle(pill).backgroundColor,
+      color: getComputedStyle(pill).color,
+    }));
+    expect(selectedPill.background).not.toBe(selectedPill.color);
     await expect(page.locator("#map-filter-chips [data-map-nearby]")).toHaveAttribute("aria-hidden", "true");
     await expect(page.locator("#fullscreen-btn")).toHaveCount(0);
     await expect(page.locator("#layers-btn")).toBeVisible();
@@ -724,6 +778,32 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "places");
     await expect(page.locator("body")).not.toHaveClass(/phone-window-open/);
     await expect(page.locator("#place-sheet")).toHaveClass(/shut/);
+    await expect(page.locator("#places-sheet")).not.toHaveClass(/shut/);
+  });
+
+  test("direct place dismissal restores the Places surface", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    const firstPlace = page.locator("#places-list li[data-place-id]").first();
+    await expect(firstPlace).toBeVisible({ timeout: 15_000 });
+    await firstPlace.click();
+    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
+
+    await page.evaluate(async () => (await import("/src/places.js")).closePlaceSheet());
+
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "places");
+    await expect(page.locator("#places-sheet")).not.toHaveClass(/shut/);
+  });
+
+  test("scrim dismissal restores the Places surface", async ({ page }) => {
+    await page.locator("#places-btn").click();
+    const firstPlace = page.locator("#places-list li[data-place-id]").first();
+    await expect(firstPlace).toBeVisible({ timeout: 15_000 });
+    await firstPlace.click();
+    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
+
+    await page.locator("#scrim").tap({ force: true });
+
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "places");
     await expect(page.locator("#places-sheet")).not.toHaveClass(/shut/);
   });
 

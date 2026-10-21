@@ -502,6 +502,7 @@ export async function initMenuAccount() {
     // close itself here), just centralized where the merged sheet's
     // lifecycle actually lives now.
     if (!_account && !profileSheet.classList.contains("shut") && !isPhone()) closeProfileSheet();
+    if (_account && isPhone() && getPhonePage() === "profile") void loadProfileContent();
   });
   window.addEventListener(EVT.PHONE_PAGE_CHANGED, (event) => {
     if (event.detail?.page === "profile" && _account) void loadProfileContent();
@@ -744,7 +745,7 @@ function _buildSignedOutHTML() {
   // the "Temporarily hidden (2026-08-02)" CSS comment); this new one is what
   // actually renders in that row right now (its own .btn-password class is
   // NOT caught by that hide rule — see styles.css). One button handles both
-  // first-time signup and returning sign-in via an explicit mode toggle link
+  // first-time signup and returning sign-in via an explicit mode switch
   // (see _wireSignedOutView()) rather than silently guessing from the error
   // code, since auth/invalid-credential alone can't reliably distinguish
   // "no such account" from "wrong password" across Firebase SDK versions.
@@ -776,25 +777,31 @@ function _buildSignedOutHTML() {
     </div>
     <div id="menu-password-signin-panel" class="rv-verify-step rv-panel-divider hide">
       <button id="menu-password-signin-back" class="rv-back-link" type="button">${BACK_CHEVRON_ICON_SVG}Back to sign-in options</button>
-      <div id="menu-password-name-field" class="rv-field hide">
-        <label class="rv-field-label" for="menu-password-name-input">Full name</label>
-        <input id="menu-password-name-input" class="rv-input" type="text" placeholder="Your name" maxlength="100" autocomplete="name" />
+      <div id="menu-password-mode-toggle" class="menu-password-mode-switch" role="tablist" aria-label="Account access" data-mode="signin">
+        <span class="seg-pill" aria-hidden="true"></span>
+        <button class="mode-opt btn-segment active" type="button" role="tab" aria-selected="true" aria-controls="menu-password-signin-panel" data-password-mode="signin">Sign in</button>
+        <button class="mode-opt btn-segment" type="button" role="tab" aria-selected="false" aria-controls="menu-password-signin-panel" data-password-mode="signup">Create account</button>
       </div>
-      <div class="rv-field">
-        <label class="rv-field-label" for="menu-password-email-input">Email address</label>
-        <input id="menu-password-email-input" class="rv-input" type="email" placeholder="you@example.com" maxlength="254" autocomplete="email" />
-      </div>
-      <div class="rv-field">
-        <label class="rv-field-label" for="menu-password-input">Password</label>
-        <div class="rv-field-input-wrap">
-          <input id="menu-password-input" class="rv-input" type="password" placeholder="••••••••" maxlength="128" autocomplete="current-password" />
-          <button id="menu-password-toggle-visibility" class="clear-btn rv-field-input-btn" type="button" aria-label="Show password">${EYE_SHOW_ICON_SVG}</button>
+      <div class="menu-password-form-content">
+        <div id="menu-password-name-field" class="rv-field hide">
+          <label class="rv-field-label" for="menu-password-name-input">Full name</label>
+          <input id="menu-password-name-input" class="rv-input" type="text" placeholder="Your name" maxlength="100" autocomplete="name" />
         </div>
+        <div class="rv-field">
+          <label class="rv-field-label" for="menu-password-email-input">Email address</label>
+          <input id="menu-password-email-input" class="rv-input" type="email" placeholder="you@example.com" maxlength="254" autocomplete="email" />
+        </div>
+        <div class="rv-field">
+          <label class="rv-field-label" for="menu-password-input">Password</label>
+          <div class="rv-field-input-wrap">
+            <input id="menu-password-input" class="rv-input" type="password" placeholder="••••••••" maxlength="128" autocomplete="current-password" />
+            <button id="menu-password-toggle-visibility" class="clear-btn rv-field-input-btn" type="button" aria-label="Show password">${EYE_SHOW_ICON_SVG}</button>
+          </div>
+        </div>
+        <button id="menu-password-forgot" class="rv-resend-link" type="button">Forgot password?</button>
+        <button id="menu-password-submit" class="rv-action-btn btn-primary" type="button">Sign in</button>
+        <p id="menu-password-error" class="rv-verify-error hide"></p>
       </div>
-      <button id="menu-password-forgot" class="rv-resend-link" type="button">Forgot password?</button>
-      <button id="menu-password-submit" class="rv-action-btn btn-primary" type="button">Sign in</button>
-      <button id="menu-password-mode-toggle" class="rv-resend-link" type="button">New here? Create an account</button>
-      <p id="menu-password-error" class="rv-verify-error hide"></p>
     </div>
   </div>`;
 }
@@ -1003,7 +1010,7 @@ function _wireSignedOutView() {
 
 /**
  * Wire the traditional email + password panel: the toggle button that opens
- * it, the show/hide password button, the signin/signup mode-switch link, and
+ * it, the show/hide password button, the signin/signup mode switch, and
  * the submit button that calls either signInWithEmailPassword or
  * signUpWithEmailPassword depending on the currently-selected mode. A
  * private helper (rather than inlined in _wireSignedOutView() directly)
@@ -1032,6 +1039,7 @@ function _wirePasswordSignIn() {
   const visibilityBtn = document.getElementById("menu-password-toggle-visibility");
   const submitBtn = document.getElementById("menu-password-submit");
   const modeToggle = document.getElementById("menu-password-mode-toggle");
+  const modeButtons = [...modeToggle.querySelectorAll("[data-password-mode]")];
   const forgotLink = document.getElementById("menu-password-forgot");
   const errorMsg = document.getElementById("menu-password-error");
 
@@ -1042,7 +1050,13 @@ function _wirePasswordSignIn() {
 
   function updateModeUI() {
     submitBtn.textContent = mode === "signin" ? "Sign in" : "Create account";
-    modeToggle.textContent = mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in";
+    modeToggle.dataset.mode = mode;
+    panel.dataset.modeDirection = mode === "signup" ? "forward" : "back";
+    modeButtons.forEach((button) => {
+      const active = button.dataset.passwordMode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
     // Only relevant while signing in to an existing account — a signup has
     // no password yet to reset.
     forgotLink.classList.toggle("hide", mode !== "signin");
@@ -1084,10 +1098,14 @@ function _wirePasswordSignIn() {
     visibilityBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
   });
 
-  modeToggle.addEventListener("click", () => {
-    mode = mode === "signin" ? "signup" : "signin";
-    hideError();
-    updateModeUI();
+  modeToggle.addEventListener("click", (event) => {
+    const nextMode = event.target.closest("[data-password-mode]")?.dataset.passwordMode;
+    if (!nextMode || nextMode === mode) return;
+    _animateMenuPanelHeight(() => {
+      mode = nextMode;
+      hideError();
+      updateModeUI();
+    });
   });
 
   // Neutral outcome regardless of whether the typed email is actually

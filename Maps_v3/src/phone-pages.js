@@ -37,6 +37,9 @@ const PHONE_SCROLL_REVEAL_SELECTORS = {
 const PHONE_PAGE_NAV_MIN_SCALE = 0.84;
 // 40% of the 56px phone tab bar: enough intent to settle after a pause.
 const PHONE_PAGE_NAV_SNAP_DISTANCE = 22;
+// Keep fast finger movement from making the live chrome jump frame-to-frame.
+const PHONE_PAGE_SCROLL_RESPONSE = 0.62;
+const PHONE_PAGE_SCROLL_MAX_VISUAL_DELTA = 12;
 const PHONE_PAGE_NAV_SETTLE_DELAY = 220;
 const PHONE_PAGE_TRANSITION_MS = 420;
 const PHONE_BACK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>`;
@@ -57,26 +60,32 @@ let _phoneTopbarObserver = null;
 let _phoneTopbarFrame = 0;
 const _phoneTopbarMutations = new Set();
 
-function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null) {
+function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null, actionBarElement = null, placesScrollElement = null, cityHeaderElement = null, updateLayout = true) {
   const chrome = document.getElementById("phone-chrome-bottom-zone");
   if (!chrome) return;
   const next = Math.max(0, Math.min(1, progress));
   chrome.style.setProperty("--phone-page-nav-scale", String(1 - ((1 - PHONE_PAGE_NAV_MIN_SCALE) * next)));
-  const actionBar = document.querySelector("#places-sheet #places-filters");
+  const actionBar = actionBarElement || document.querySelector("#places-sheet #places-filters");
   if (actionBar) {
     const actionNext = Math.max(0, Math.min(1, actionBarProgress));
-    const header = document.querySelector("#places-sheet.phone-page-surface > .sheet-head");
+    const header = actionBarElement ? null : document.querySelector("#places-sheet.phone-page-surface > .sheet-head");
     const actionBarHeight = measuredActionBarHeight ?? actionBar.offsetHeight;
     const actionBarTop = measuredActionBarTop ?? (header?.offsetHeight || 64);
-    actionBar.style.setProperty("--phone-places-actionbar-top", `${actionBarTop}px`);
-    actionBar.style.setProperty("--phone-places-actionbar-height", `${actionBarHeight}px`);
+    if (updateLayout) {
+      actionBar.style.setProperty("--phone-places-actionbar-top", `${actionBarTop}px`);
+      actionBar.style.setProperty("--phone-places-actionbar-height", `${actionBarHeight}px`);
+    }
     actionBar.style.setProperty("--phone-places-actionbar-progress", String(actionNext));
     actionBar.style.setProperty("--phone-places-actionbar-shift", `${actionBarHeight * actionNext}px`);
-    actionBar.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
-    actionBar.style.pointerEvents = actionNext > 0.98 ? "none" : "auto";
-    const placesScroll = document.getElementById("places-scroll");
-    placesScroll?.style.setProperty("--phone-places-actionbar-height", `${actionBarHeight}px`);
-    placesScroll?.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
+    const placesScroll = placesScrollElement || document.getElementById("places-scroll");
+    cityHeaderElement?.style.setProperty("--phone-places-city-shift", `${-actionBarHeight * actionNext}px`);
+    if (updateLayout) {
+      actionBar.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
+      placesScroll?.style.setProperty("--phone-places-actionbar-height", `${actionBarHeight}px`);
+      placesScroll?.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
+    }
+    const pointerEvents = actionNext > 0.98 ? "none" : "auto";
+    if (actionBar.style.pointerEvents !== pointerEvents) actionBar.style.pointerEvents = pointerEvents;
   }
 }
 
@@ -89,6 +98,11 @@ function _detachPageScroll() {
   _placesActionBarResizeCleanup = null;
   window.clearTimeout(_placesActionBarSnapTimer);
   _placesActionBarSnapTimer = 0;
+  document.getElementById("phone-chrome-bottom-zone")?.classList.remove("phone-page-nav-following");
+  document.querySelectorAll("#places-list .phone-places-city-active").forEach((element) => {
+    element.classList.remove("phone-places-city-active");
+    element.style.removeProperty("--phone-places-city-shift");
+  });
   document.querySelector("#places-sheet #places-filters")?.classList.remove("phone-places-actionbar-snapping");
   window.clearTimeout(_pageNavSettleTimer);
   _pageNavSettleTimer = 0;
@@ -153,8 +167,12 @@ function _attachPageScroll(page) {
   let directionDistance = 0;
   let scrollFrame = 0;
   const actionBar = page === "places" ? document.querySelector("#places-sheet #places-filters") : null;
+  const placesList = page === "places" ? document.getElementById("places-list") : null;
+  let activeCityHeader = null;
+  let cityHeaderPositions = [];
   let actionBarHeight = actionBar?.offsetHeight || 0;
   let actionBarTop = 64;
+  let actionBarFollowScrollTop = Number.POSITIVE_INFINITY;
   const actionBarSnapDistance = () => Math.max(1, actionBarHeight * 0.4);
   const syncPageScrollVisuals = () => {
     const top = Math.max(0, scrollElement.scrollTop);
@@ -167,28 +185,89 @@ function _attachPageScroll(page) {
     }
   };
   const twoCardsUnderActionBar = () => {
-    if (!actionBar) return false;
-    const cards = document.querySelectorAll("#places-list .pl-card");
-    const secondCard = cards[1];
-    const surface = document.querySelector("#places-sheet.phone-page-surface");
-    if (!secondCard || !surface) return false;
-    const boundary = surface.getBoundingClientRect().top + actionBarTop + actionBarHeight;
-    return secondCard.getBoundingClientRect().top <= boundary;
+    return Boolean(actionBar && scrollElement.scrollTop >= actionBarFollowScrollTop);
+  };
+  const documentOffsetTop = (element) => {
+    let top = 0;
+    let current = element;
+    while (current) {
+      top += current.offsetTop || 0;
+      current = current.offsetParent;
+    }
+    return top;
+  };
+  const updateCityHeaderPositions = () => {
+    if (!placesList) {
+      cityHeaderPositions = [];
+      return;
+    }
+    const scrollTop = documentOffsetTop(scrollElement);
+    cityHeaderPositions = [...placesList.querySelectorAll('.pl-city-hdr:not(.pl-saved-section-hdr):not([data-city-group="__recent__"])')]
+      .map((element) => ({ element, top: documentOffsetTop(element) - scrollTop }))
+      .sort((a, b) => a.top - b.top);
+  };
+  const syncActiveCityHeader = () => {
+    if (!actionBar || !cityHeaderPositions.length) {
+      activeCityHeader?.classList.remove("phone-places-city-active");
+      activeCityHeader?.style.removeProperty("--phone-places-city-shift");
+      activeCityHeader = null;
+      return;
+    }
+    let next = null;
+    const stickyLine = scrollElement.scrollTop + (actionBarHeight * (1 - actionBarProgress));
+    for (const entry of cityHeaderPositions) {
+      if (entry.top > stickyLine) break;
+      next = entry.element;
+    }
+    if (next === activeCityHeader) return;
+    activeCityHeader?.classList.remove("phone-places-city-active");
+    activeCityHeader?.style.removeProperty("--phone-places-city-shift");
+    activeCityHeader = next;
+    activeCityHeader?.classList.add("phone-places-city-active");
+    activeCityHeader?.style.setProperty("--phone-places-city-shift", `${-actionBarHeight * actionBarProgress}px`);
   };
 
   _pageScrollRevealCleanup = _attachPhoneScrollReveal(page, scrollElement);
 
   if (actionBar) {
+    const updateActionBarFollowThreshold = () => {
+      const cards = document.querySelectorAll("#places-list .pl-card");
+      const secondCard = cards[1];
+      const surface = document.querySelector("#places-sheet.phone-page-surface");
+      if (!secondCard || !surface) {
+        actionBarFollowScrollTop = actionBarHeight + 72;
+        return;
+      }
+      const surfaceTop = surface.getBoundingClientRect().top;
+      actionBarFollowScrollTop = Math.max(
+        0,
+        scrollElement.scrollTop + secondCard.getBoundingClientRect().top - surfaceTop - actionBarTop - actionBarHeight,
+      );
+    };
     const syncActionBarLayout = () => {
       actionBarHeight = actionBar.offsetHeight;
       actionBarTop = document.querySelector("#places-sheet.phone-page-surface > .sheet-head")?.offsetHeight || 64;
-      _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop);
+      updateActionBarFollowThreshold();
+      updateCityHeaderPositions();
+      syncActiveCityHeader();
+      _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop, actionBar, scrollElement, activeCityHeader);
     };
+    const observers = [];
     if (window.ResizeObserver) {
       const observer = new ResizeObserver(syncActionBarLayout);
       observer.observe(actionBar);
-      _placesActionBarResizeCleanup = () => observer.disconnect();
+      observers.push(observer);
     }
+    if (window.MutationObserver && placesList) {
+      const observer = new MutationObserver(() => {
+        updateActionBarFollowThreshold();
+        updateCityHeaderPositions();
+        syncActiveCityHeader();
+      });
+      observer.observe(placesList, { childList: true, subtree: true });
+      observers.push(observer);
+    }
+    _placesActionBarResizeCleanup = () => observers.forEach((observer) => observer.disconnect());
     syncActionBarLayout();
   }
 
@@ -203,15 +282,24 @@ function _attachPageScroll(page) {
     if (nextDirection !== direction) directionDistance = 0;
     direction = nextDirection;
     directionDistance += Math.abs(delta);
-    actionBar?.classList.remove("phone-places-actionbar-snapping");
-    progress = Math.max(0, Math.min(1, progress + delta / PHONE_PAGE_NAV_SNAP_DISTANCE));
+    const chrome = document.getElementById("phone-chrome-bottom-zone");
+    chrome?.classList.add("phone-page-nav-following");
+    if (actionBar?.classList.contains("phone-places-actionbar-snapping")) {
+      actionBar.classList.remove("phone-places-actionbar-snapping");
+    }
+    const visualDelta = Math.sign(delta) * Math.min(
+      Math.abs(delta) * PHONE_PAGE_SCROLL_RESPONSE,
+      PHONE_PAGE_SCROLL_MAX_VISUAL_DELTA,
+    );
+    progress = Math.max(0, Math.min(1, progress + visualDelta / PHONE_PAGE_NAV_SNAP_DISTANCE));
     if (actionBar) {
       const actionBarCanFollow = delta < 0 || actionBarProgress > 0 || twoCardsUnderActionBar();
       actionBarProgress = actionBarCanFollow
-        ? Math.max(0, Math.min(1, actionBarProgress + delta / Math.max(1, actionBarHeight)))
+        ? Math.max(0, Math.min(1, actionBarProgress + visualDelta / Math.max(1, actionBarHeight)))
         : 0;
     }
-    _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop);
+    syncActiveCityHeader();
+    _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop, actionBar, scrollElement, activeCityHeader, false);
     window.clearTimeout(_pageNavSettleTimer);
     _pageNavSettleTimer = window.setTimeout(() => {
       const navCommitted = directionDistance >= PHONE_PAGE_NAV_SNAP_DISTANCE;
@@ -226,7 +314,9 @@ function _attachPageScroll(page) {
           ? (actionBarCommitted ? snapTarget : (snapTarget === 1 ? 0 : 1))
           : 0;
       }
-      _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop);
+      chrome?.classList.remove("phone-page-nav-following");
+      syncActiveCityHeader();
+      _setPageNavScale(progress, actionBarProgress, actionBarHeight, actionBarTop, actionBar, scrollElement, activeCityHeader);
       if (actionBar) {
         window.clearTimeout(_placesActionBarSnapTimer);
         _placesActionBarSnapTimer = window.setTimeout(() => {
@@ -429,16 +519,26 @@ function _showSurface(surface, element) {
 }
 
 function _renderProfileAccountState() {
-  const prompt = document.getElementById("phone-profile-prompt");
-  const button = document.getElementById("phone-profile-menu-btn");
   const action = document.getElementById("phone-profile-menu-action");
-  const guestLinks = document.getElementById("phone-profile-guest-links");
-  if (!prompt || !button) return;
+  const authHost = document.getElementById("phone-profile-auth");
+  const accountBody = document.getElementById("menu-account-body");
+  const accountSection = document.getElementById("menu-account-section");
+  if (!authHost || !accountBody || !accountSection) return;
   const signedIn = !!_account;
-  prompt.hidden = signedIn;
-  button.textContent = "Sign in";
+  const profileGuest = !signedIn && _page === "profile";
+  const signinRow = accountBody.querySelector("#menu-account-signin-row");
+  const passwordPanel = accountBody.querySelector("#menu-password-signin-panel");
   if (action) action.hidden = !signedIn;
-  if (guestLinks) guestLinks.hidden = signedIn;
+  if (profileGuest) {
+    authHost.hidden = false;
+    if (accountBody.parentElement !== authHost) authHost.append(accountBody);
+    signinRow?.classList.remove("hide");
+    passwordPanel?.classList.remove("hide");
+  } else {
+    authHost.hidden = true;
+    if (accountBody.parentElement !== accountSection) accountSection.append(accountBody);
+    passwordPanel?.classList.add("hide");
+  }
   document.getElementById("profile-sheet")?.classList.toggle("phone-profile-signed-out", !signedIn);
 }
 
@@ -689,18 +789,9 @@ function _wireHome() {
     const placeButton = event.target.closest("[data-phone-place-id]");
     if (placeButton) window.dispatchEvent(new CustomEvent(EVT.PHONE_PLACE_OPEN, { detail: { id: placeButton.dataset.phonePlaceId } }));
   });
-  const openSettings = ({ auth = false } = {}) => {
-    document.body.classList.toggle("phone-settings-auth", auth);
-    navigatePhonePage("menu");
-  };
-  document.getElementById("phone-profile-menu-btn")?.addEventListener("click", () => openSettings({ auth: true }));
-  document.getElementById("phone-profile-menu-action")?.addEventListener("click", () => openSettings());
-  document.getElementById("phone-profile-settings-btn")?.addEventListener("click", () => openSettings());
-  document.getElementById("phone-profile-guest-links")?.addEventListener("click", (event) => {
-    const target = event.target.closest("[data-phone-page]");
-    if (!target) return;
-    openSettings({ auth: target.dataset.phoneSettingsAuth === "true" });
-  });
+  const openSettings = () => navigatePhonePage("menu");
+  document.getElementById("phone-profile-menu-action")?.addEventListener("click", openSettings);
+  document.getElementById("phone-profile-settings-btn")?.addEventListener("click", openSettings);
 }
 
 export function initPhonePages({ initialPage } = {}) {
@@ -742,4 +833,3 @@ export function initPhonePages({ initialPage } = {}) {
   _render(page, null);
   _prayerTimer = window.setInterval(() => _renderPrayer(), 30000);
 }
-

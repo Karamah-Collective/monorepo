@@ -5506,3 +5506,20 @@ and this log.
 `tests/15-verified-visit-timeline.spec.js`, and this log.
 
 **Verification:** Maps production build passed. The focused timeline suite passed all 20 tests on Desktop Chrome and Galaxy S24. The existing Places suite still has seven unrelated baseline selector/data timing failures; 20 of its 27 tests passed.
+
+### 2026-10-21 — Profile auth surface and map Events filter
+
+- Keep signed-out Profile minimal: no marketing headline, account explainer, or guest-link card. Show the existing provider auth controls directly in the Profile surface, with the Email flow retaining the sign-up toggle behind the control.
+- Keep the three provider controls icon-first with short recognizable labels in one equal-weight phone row, followed by the direct email/password panel and the existing flat surface language.
+- Map filter order is directory types followed by Events immediately before Saved. The selected map pill uses a filled accent treatment with on-accent text so the active state is unmistakable.
+- Events filtering includes only directory places with an upcoming/recurring event and suppresses saved custom pins while active; event-only custom-location markers remain available.
+
+**Files modified:** `src/phone-pages.js`, `src/places.js`, `src/menu.js`, `src/styles/styles.css`, `index.html`, and focused phone/auth tests.
+
+### 2026-10-21 — Profile sign-in hierarchy
+
+- Keep signed-out Profile focused: provider sign-in in one row, a small `or` divider, then the existing email and password fields directly below it.
+- Reuse the existing email/password panel for both sign-in and account creation; do not create a second credential form or add shortcut rows.
+- Treat phone Profile as a dedicated mobile auth surface: one continuous sheet, rounded-rectangle provider controls, filled inputs, and stronger spacing hierarchy rather than a nested auth card or desktop pill/button treatment.
+- Use pure black for dark-theme canvas/surfaces and pure white for light-theme canvas/surfaces across phone pages; keep secondary control surfaces tinted for contrast.
+- Use the app’s existing segmented-control pattern for the password sign-in/sign-up switch, with a moving active surface and smooth panel-height transition instead of a tiny text link.

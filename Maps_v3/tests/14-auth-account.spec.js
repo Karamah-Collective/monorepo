@@ -16,8 +16,9 @@ const { test, expect, setupApp } = require("./helpers");
 async function openMenuAndWaitForAccount(page) {
   await page.click("#menu-pill");
   if (await page.evaluate(() => window.innerWidth <= 768)) {
-    await expect(page.locator("#phone-profile-prompt")).toBeVisible();
-    await page.click("#phone-profile-menu-btn");
+    await expect(page.locator("#phone-profile-auth")).toBeVisible();
+    await expect(page.locator("#phone-profile-auth #menu-google-signin")).toBeVisible({ timeout: 15_000 });
+    return;
   }
   await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
   await expect(page.locator("#menu-google-signin, #menu-signout")).toBeVisible({ timeout: 15_000 });
@@ -39,8 +40,9 @@ async function clickSignOut(page) {
 
 async function expectSignedOutMenu(page) {
   if (await page.evaluate(() => window.innerWidth <= 768)) {
-    await expect(page.locator("#phone-profile-prompt")).toBeVisible({ timeout: 10_000 });
-    await page.click("#phone-profile-menu-btn");
+    await expect(page.locator("#phone-profile-auth")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#phone-profile-auth #menu-google-signin")).toBeVisible({ timeout: 10_000 });
+    return;
   }
   await expect(page.locator("#menu-google-signin")).toBeVisible({ timeout: 10_000 });
 }
@@ -59,10 +61,13 @@ test.describe("Menu Account section — signed out", () => {
 
   test("shows icon-only Google, Microsoft, Facebook, and email sign-in options, no OTP UI", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
+    const isPhone = await page.evaluate(() => window.innerWidth <= 768);
     const visibleOptions = page.locator("#menu-account-signin-row > button:visible");
-    await expect(visibleOptions).toHaveCount(4);
+    await expect(visibleOptions).toHaveCount(isPhone ? 3 : 4);
     const labels = await visibleOptions.evaluateAll((buttons) => buttons.map((btn) => btn.getAttribute("aria-label")));
-    expect(labels).toEqual(["Continue with Google", "Continue with Microsoft", "Continue with Facebook", "Continue with email"]);
+    expect(labels).toEqual(isPhone
+      ? ["Continue with Google", "Continue with Microsoft", "Continue with Facebook"]
+      : ["Continue with Google", "Continue with Microsoft", "Continue with Facebook", "Continue with email"]);
     await expect(page.locator("#menu-google-signin")).toHaveText("");
     await expect(page.locator("#menu-microsoft-signin")).toHaveText("");
     await expect(page.locator("#menu-facebook-signin")).toHaveText("");
@@ -74,6 +79,13 @@ test.describe("Menu Account section — signed out", () => {
 
   test("email panel reveals the email/password fields", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
+    if (await page.evaluate(() => window.innerWidth <= 768)) {
+      await expect(page.locator("#menu-password-signin-panel")).not.toHaveClass(/hide/);
+      await expect(page.locator("#menu-password-email-input")).toBeVisible();
+      await expect(page.locator("#menu-password-input")).toBeVisible();
+      await expect(page.locator("#menu-password-submit")).toBeVisible();
+      return;
+    }
     await expect(page.locator("#menu-password-signin-panel")).toHaveClass(/hide/);
     await page.click("#menu-password-signin-toggle");
     await expect(page.locator("#menu-password-signin-panel")).not.toHaveClass(/hide/);
@@ -102,7 +114,10 @@ test.describe("Menu Account section — Google sign-in / sign-out", () => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expectSignedIn(page);
-    await expect(page.locator(".menu-account-name:visible")).toContainText("Mock User");
+    const accountName = await page.evaluate(() => window.innerWidth <= 768
+      ? "#profile-sheet .menu-account-name"
+      : ".menu-account-name:visible");
+    await expect(page.locator(accountName)).toContainText("Mock User");
 
     const cached = await page.evaluate(() => JSON.parse(localStorage.getItem("hf_account") || "null"));
     expect(cached?.email).toBe("mockuser@example.com");

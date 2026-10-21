@@ -42,6 +42,7 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
 #suggest-form,
 #edit-form,
 #places-scroll,
+#phone-home-page,
 #dir-results,
 #privacy-body,
 #eid-list,
@@ -60,6 +61,7 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
 #suggest-form::-webkit-scrollbar,
 #edit-form::-webkit-scrollbar,
 #places-scroll::-webkit-scrollbar,
+#phone-home-page::-webkit-scrollbar,
 #dir-results::-webkit-scrollbar,
 #privacy-body::-webkit-scrollbar,
 #eid-list::-webkit-scrollbar,
@@ -75,6 +77,7 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
 #suggest-form::-webkit-scrollbar-track,
 #edit-form::-webkit-scrollbar-track,
 #places-scroll::-webkit-scrollbar-track,
+#phone-home-page::-webkit-scrollbar-track,
 #dir-results::-webkit-scrollbar-track,
 #privacy-body::-webkit-scrollbar-track,
 #eid-list::-webkit-scrollbar-track,
@@ -90,6 +93,7 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
 #suggest-form::-webkit-scrollbar-thumb,
 #edit-form::-webkit-scrollbar-thumb,
 #places-scroll::-webkit-scrollbar-thumb,
+#phone-home-page::-webkit-scrollbar-thumb,
 #dir-results::-webkit-scrollbar-thumb,
 #privacy-body::-webkit-scrollbar-thumb,
 #eid-list::-webkit-scrollbar-thumb,
@@ -2000,8 +2004,8 @@ body.theme-transition .maplibregl-canvas {
 /* ─── Dark Mode: override design tokens for all UI ─── */
 html.dark-mode,
 body.dark-mode {
-  --canvas:       #090a0a;
-  --surface:      #111312;
+  --canvas:       #000000;
+  --surface:      #000000;
   --surface-2:    #1a1d1c;
   --surface-3:    #272b29;
   --text:         #f4f5f3;
@@ -3429,6 +3433,51 @@ body.dark-mode .sp-tip {
    `transition: opacity var(--t-fast)` above, the same
    force-a-reflow-then-toggle idiom animateElementHeight() (utils.js) already
    uses for its own height tween. */
+.menu-password-mode-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-1);
+  width: 100%;
+  padding: var(--sp-1);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.menu-password-mode-switch .seg-pill {
+  position: absolute;
+  top: var(--sp-1);
+  bottom: var(--sp-1);
+  left: var(--sp-1);
+  width: calc(50% - var(--sp-1) - var(--sp-0));
+  border-radius: calc(var(--r-sm) - var(--sp-0));
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  transition: transform var(--t-spring);
+}
+.menu-password-mode-switch[data-mode="signup"] .seg-pill {
+  transform: translateX(calc(50% - var(--sp-0)));
+}
+.menu-password-mode-switch .mode-opt {
+  position: relative;
+  z-index: 1;
+  min-height: var(--h-submit);
+  border-radius: calc(var(--r-sm) - var(--sp-0));
+  color: var(--text-3);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-normal);
+  transition: color var(--t-fast);
+}
+.menu-password-mode-switch .mode-opt.active { color: var(--text); }
+.menu-password-form-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+@media (hover: hover) {
+  .menu-password-mode-switch .mode-opt:hover:not(.active) { color: var(--text-2); }
+}
 .fade-swap-out,
 .fade-swap-in {
   opacity: 0;
@@ -6023,8 +6072,8 @@ body.marker-style-bold .custom-mk {
 
 /* Boycotted places stay legible in a dense card row without consuming a metadata slot. */
 #places-list li.pl-card--boycott {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 58%, var(--border-light));
-  border-color: color-mix(in srgb, var(--danger) 44%, var(--border-light));
+  border: 1px solid color-mix(in srgb, var(--danger) 44%, var(--border-light));
+  box-shadow: none;
 }
 #places-list li.pl-card--boycott:hover {
   background: color-mix(in srgb, var(--danger) 5%, var(--surface));
@@ -11392,13 +11441,12 @@ body.dark-mode .sp-chip {
     white-space: nowrap;
     transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 220ms ease, opacity 180ms ease, width 300ms cubic-bezier(.22, 1, .36, 1), padding 300ms cubic-bezier(.22, 1, .36, 1), gap 300ms cubic-bezier(.22, 1, .36, 1);
   }
-  .map-filter-pill:active {
-    transform: scale(.97);
-  }
   .map-filter-pill.active {
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-    background: var(--accent-soft);
-    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: var(--fw-bold);
+    box-shadow: var(--shadow-sm);
   }
   .map-filter-pill svg {
     flex: 0 0 auto;
@@ -12974,12 +13022,12 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-action-grid button > span:first-child svg { width: 20px; height: 20px; }
   .phone-action-grid button > span:last-child svg { width: 16px; height: 16px; }
   .phone-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
-  .phone-action-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-2); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-2); font-size: var(--txt-sm); font-weight: 700; }
+  .phone-action-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-2); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text-2); font-size: var(--txt-sm); font-weight: 700; }
   .phone-action-grid button > span:first-child { color: var(--accent); font-size: 20px; }
 
   .phone-home-list { display: grid; gap: var(--sp-3); }
   .phone-home-place,
-  .phone-home-event { display: grid; align-items: center; gap: var(--sp-3); width: 100%; min-width: 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text-1); }
+  .phone-home-event { display: grid; align-items: center; gap: var(--sp-3); width: 100%; min-width: 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-2); color: var(--text-1); }
   .phone-home-place { grid-template-columns: auto 1fr auto; }
   .phone-home-place-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); }
   .phone-home-place-icon svg { width: 18px; height: 18px; }
@@ -13011,6 +13059,12 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #places-sheet.phone-page-surface #places-scroll,
   #profile-sheet.phone-page-surface > .t-scroll,
   #menu-sheet.phone-page-surface > .t-scroll { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: var(--sp-8); }
+  #phone-home-page,
+  #places-sheet.phone-page-surface #places-scroll,
+  #profile-sheet.phone-page-surface > .t-scroll,
+  #menu-sheet.phone-page-surface > .t-scroll,
+  #events-list,
+  #timeline-body { scroll-behavior: smooth; }
   #places-sheet.phone-page-surface > .sheet-head {
     position: relative;
     z-index: calc(var(--z-top) + 1);
@@ -13040,8 +13094,17 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     z-index: calc(var(--z-top) + 2);
   }
   #places-sheet.phone-page-surface #places-list li.pl-city-hdr {
-    top: var(--phone-places-actionbar-clearance, 0px);
+    position: static;
+    top: auto;
     z-index: var(--z-sticky);
+    transform: none;
+  }
+  #places-sheet.phone-page-surface #places-list li.pl-city-hdr.phone-places-city-active {
+    position: sticky;
+    top: var(--phone-places-actionbar-height, 0px);
+    z-index: var(--z-sticky);
+    transform: translate3d(0, var(--phone-places-city-shift, 0px), 0);
+    will-change: transform;
   }
   #places-sheet.phone-page-surface #places-scroll {
     scroll-padding-top: var(--phone-places-actionbar-clearance, 0px);
@@ -13118,12 +13181,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #privacy-overlay,
   #qibla-overlay { z-index: calc(var(--z-top) + 2) !important; }
 
-  #phone-profile-prompt { display: grid; gap: var(--sp-3); padding: var(--sp-7) var(--sp-6); margin: var(--sp-5); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-2); }
-  #phone-profile-prompt[hidden] { display: none; }
-  .phone-profile-prompt-icon { color: var(--accent); font-size: 30px; line-height: 1; }
-  #phone-profile-prompt h3, #phone-profile-prompt p { margin: 0; }
-  #phone-profile-prompt h3 { font-size: var(--txt-xl); }
-  #phone-profile-prompt p { color: var(--text-3); font-size: var(--txt-sm); line-height: var(--lh-normal); }
   .phone-profile-menu-action { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 2 * var(--sp-5)); margin: 0 var(--sp-5) var(--sp-5); padding: var(--sp-4) var(--sp-5); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-2); font: inherit; font-size: var(--txt-sm); font-weight: 700; text-align: left; }
   .phone-profile-menu-action[hidden] { display: none; }
   .phone-profile-signed-out #profile-sheet-body > .sort-divider,
@@ -13140,6 +13197,9 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-bottom-zone {
     transform: translateX(-50%) scale(var(--phone-page-nav-scale, 1));
     transition: transform var(--t-phone-chrome-compact);
+  }
+  body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-bottom-zone.phone-page-nav-following {
+    transition: none;
   }
 
   .phone-page-surface { color: var(--text); }
@@ -13211,9 +13271,16 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
   #places-sheet.phone-page-surface #places-list .pl-open-arrow svg { width: 16px; height: 16px; }
   #places-sheet.phone-page-surface #places-list li.pl-card:not(.pl-section-hdr):not(.pl-city-group-body) {
-    min-height: 72px;
-    padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
-    border-radius: var(--r-lg);
+    min-height: 0;
+    grid-template:
+      "icon name acts" auto
+      "icon addr acts" auto
+      / auto 1fr auto;
+    padding: var(--sp-1h) var(--sp-2) var(--sp-1h) var(--sp-3);
+    row-gap: var(--sp-0h);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    box-shadow: none;
   }
   #places-sheet.phone-page-surface #places-scroll { padding-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-8)); }
 
@@ -13269,31 +13336,199 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .ev-date-badge small { font-size: 10px; font-weight: var(--fw-bold); letter-spacing: .06em; text-transform: uppercase; }
   .ev-date-badge strong { font-size: 20px; font-weight: var(--fw-bold); }
 
-  #profile-sheet.phone-page-surface > .sheet-head { padding: calc(var(--safe-t) + var(--sp-6)) var(--sp-5) var(--sp-4); border-bottom: 0; }
-  #profile-sheet.phone-page-surface > .sheet-head h2 { font-size: 28px; letter-spacing: -.045em; }
-  #phone-profile-prompt {
-    display: grid;
-    gap: var(--sp-5);
-    margin: var(--sp-3) var(--sp-5) var(--sp-4);
-    padding: var(--sp-5);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    background: var(--surface-2);
+  #profile-sheet.phone-profile-signed-out {
+    background: var(--surface) !important;
   }
-  .phone-profile-guest-head { display: flex; align-items: center; gap: var(--sp-4); }
-  .phone-profile-prompt-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: 0 0 48px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 0; }
-  #phone-profile-prompt h3 { margin: 0; color: var(--text); font-size: var(--txt-lg); }
-  #phone-profile-prompt p { margin: var(--sp-1) 0 0; color: var(--text-2); font-size: var(--txt-sm); line-height: var(--lh-normal); }
-  #phone-profile-prompt #phone-profile-menu-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 44px; border-radius: var(--r-md); background: var(--accent); color: var(--on-accent); font-weight: var(--fw-semibold); }
-  .phone-profile-guest-links { margin: 0 var(--sp-5) var(--sp-5); overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
-  .phone-profile-guest-links[hidden] { display: none; }
-  .phone-profile-guest-links button { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: var(--sp-3); width: 100%; min-height: 72px; padding: var(--sp-4); border-bottom: 1px solid var(--border); background: var(--surface); text-align: left; }
-  .phone-profile-guest-links button:last-child { border-bottom: 0; }
-  .phone-profile-guest-links button > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
-  .phone-profile-guest-links strong { color: var(--text); font-size: var(--txt-md); }
-  .phone-profile-guest-links small { color: var(--text-2); font-size: var(--txt-sm); }
-  .phone-profile-row-icon { color: var(--accent); font-size: 20px; text-align: center; }
-  .phone-profile-guest-links button > span:last-child { color: var(--text-3); }
+  #profile-sheet.phone-profile-signed-out #profile-sheet-body {
+    padding: var(--sp-5) var(--sp-5) var(--sp-8);
+    background: var(--surface);
+  }
+  #phone-profile-auth {
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 0 var(--sp-8);
+    background: transparent;
+  }
+  #phone-profile-auth .menu-account-panel {
+    padding: 0;
+    gap: 0;
+    overflow: clip;
+    transition: height 420ms cubic-bezier(.22, .8, .24, 1);
+  }
+  #phone-profile-auth .menu-account-signin-row {
+    display: flex;
+    width: min(100%, 300px);
+    margin-inline: auto;
+    gap: var(--sp-2);
+    border: 0;
+  }
+  #phone-profile-auth .menu-account-signin-row .btn-password {
+    display: none;
+  }
+  #phone-profile-auth .menu-account-signin-row > button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: var(--h-submit);
+    height: var(--h-submit);
+    padding: 0;
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: 0;
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    justify-content: center;
+    transition: background-color var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  }
+  #phone-profile-auth .menu-account-signin-row > button svg {
+    width: var(--sp-5);
+    height: var(--sp-5);
+  }
+  #phone-profile-auth .menu-account-signin-row .btn-google::after,
+  #phone-profile-auth .menu-account-signin-row .btn-microsoft::after,
+  #phone-profile-auth .menu-account-signin-row .btn-facebook::after { content: none; }
+  #phone-profile-auth .menu-account-signin-row .btn-facebook { --facebook-icon-color: var(--facebook-btn-bg); }
+  #phone-profile-auth #menu-password-signin-back { display: none; }
+  #phone-profile-auth #menu-password-signin-panel {
+    position: relative;
+    margin-top: var(--sp-4);
+    gap: var(--sp-5);
+    padding-top: var(--sp-8);
+    border-top-color: var(--border-light);
+  }
+  #phone-profile-auth #menu-password-signin-panel::before {
+    content: "or";
+    position: absolute;
+    top: calc(-1 * var(--sp-2));
+    left: 50%;
+    padding: 0 var(--sp-2);
+    transform: translateX(-50%);
+    background: var(--surface);
+    color: var(--text-3);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-medium);
+    line-height: var(--sp-4);
+    letter-spacing: var(--ls-wide);
+    text-transform: lowercase;
+  }
+  #phone-profile-auth .menu-password-form-content {
+    will-change: transform, opacity;
+  }
+  #phone-profile-auth #menu-password-signin-panel[data-mode-direction="forward"] .menu-password-form-content {
+    animation: phone-auth-mode-forward 320ms cubic-bezier(.22, .8, .24, 1) both;
+  }
+  #phone-profile-auth #menu-password-signin-panel[data-mode-direction="back"] .menu-password-form-content {
+    animation: phone-auth-mode-back 320ms cubic-bezier(.22, .8, .24, 1) both;
+  }
+  @keyframes phone-auth-mode-forward {
+    from { opacity: .72; transform: translate3d(20px, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes phone-auth-mode-back {
+    from { opacity: .72; transform: translate3d(-20px, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  #phone-profile-auth .menu-password-mode-switch {
+    display: flex;
+    gap: 0;
+    width: 100%;
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+  }
+  #phone-profile-auth .menu-password-mode-switch .seg-pill {
+    top: auto;
+    bottom: -1px;
+    left: 0;
+    width: 50%;
+    height: 2px;
+    border-radius: 0;
+    background: var(--accent);
+    box-shadow: none;
+    transform: translateX(0);
+    transition: transform 420ms cubic-bezier(.22, .8, .24, 1);
+  }
+  #phone-profile-auth .menu-password-mode-switch[data-mode="signup"] .seg-pill {
+    transform: translateX(100%);
+  }
+  #phone-profile-auth .menu-password-mode-switch .mode-opt {
+    min-height: 46px;
+    border-radius: 0;
+    color: var(--text-3);
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-normal);
+    transition: color var(--t-fast);
+  }
+  #phone-profile-auth .menu-password-mode-switch .mode-opt.active { color: var(--text); }
+  #phone-profile-auth #menu-password-name-field {
+    display: flex !important;
+    min-height: 0;
+    max-height: 96px;
+    overflow: clip;
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--t-fast),
+      visibility 0s linear;
+  }
+  #phone-profile-auth #menu-password-name-field.hide {
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--t-fast),
+      visibility 0s linear var(--t-spring);
+  }
+  #phone-profile-auth .rv-field { gap: var(--sp-2); }
+  #phone-profile-auth .rv-field-label {
+    display: none;
+    color: var(--text-3);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-wide);
+  }
+  #phone-profile-auth .rv-input {
+    height: var(--h-search);
+    padding: 0 var(--sp-4);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: var(--txt-sm);
+  }
+  #phone-profile-auth .rv-input:focus {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    box-shadow: none;
+  }
+  #phone-profile-auth .rv-field-input-wrap .rv-input {
+    padding-right: calc(var(--sp-10) + var(--sp-6));
+  }
+  #phone-profile-auth .rv-field-input-btn { right: var(--sp-2); color: var(--text-3); }
+  #phone-profile-auth #menu-password-forgot {
+    align-self: flex-end;
+    margin-top: calc(-1 * var(--sp-2));
+    color: var(--text-3);
+  }
+  #phone-profile-auth #menu-password-submit {
+    height: 50px;
+    border-radius: var(--r-lg);
+    font-size: var(--txt-md);
+    letter-spacing: var(--ls-normal);
+    box-shadow: none;
+  }
+  @media (hover: hover) {
+    #phone-profile-auth .menu-account-signin-row > button:hover:not(:disabled) {
+      background: var(--surface-3);
+      color: var(--text);
+    }
+  }
   .phone-profile-signed-out #profile-sheet-body > .sort-divider,
   .phone-profile-signed-out #profile-sheet-body > .menu-section { display: none; }
 
@@ -13327,6 +13562,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #places-sheet.phone-page-surface > .sheet-head h2,
   #profile-sheet.phone-page-surface > .sheet-head h2,
   #menu-sheet.phone-page-surface > .sheet-head h2 { font-size: var(--txt-2xl); letter-spacing: var(--ls-tight); }
+  #profile-sheet.phone-profile-signed-out > .sheet-head {
+    border-bottom-color: transparent;
+    background: var(--surface);
+  }
+  #profile-sheet.phone-profile-signed-out > .sheet-head h2 {
+    font-size: var(--txt-display);
+    font-weight: var(--fw-semibold);
+  }
   .phone-page-surface > .sheet-head .sheet-action-btn,
   .phone-page-surface > .sheet-head .sheet-x,
   #events-card .suggest-head .sheet-action-btn,
@@ -13486,6 +13729,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     text-transform: none;
   }
   #phone-profile-settings-btn { background: var(--surface-2); color: var(--text-2); }
+  #profile-sheet.phone-profile-signed-out > .sheet-head {
+    border-bottom-color: transparent;
+    background: var(--canvas);
+  }
+  #profile-sheet.phone-profile-signed-out > .sheet-head h2 {
+    font-size: var(--txt-display);
+    font-weight: var(--fw-semibold);
+  }
   #menu-sheet.phone-page-surface #menu-header-divider { display: none !important; }
 
   /* Events uses the same contained rhythm as Places: one local scroller,
@@ -13567,7 +13818,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     padding: var(--sp-4) var(--sp-4) var(--sp-4) calc(var(--sp-4) + 58px);
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background: var(--surface-2);
     box-shadow: none;
     transition: border-color var(--t-fast), background-color var(--t-fast), transform var(--t-fast);
   }

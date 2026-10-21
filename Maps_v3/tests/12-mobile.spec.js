@@ -35,8 +35,8 @@ async function setupMobileMap(page) {
 
 async function openMenuPage(page) {
   await page.locator("#menu-pill").tap();
-  await expect(page.locator("#phone-profile-prompt")).toBeVisible();
-  await page.locator("#phone-profile-menu-btn").tap();
+  await expect(page.locator("#phone-profile-auth")).toBeVisible();
+  await page.locator("#phone-profile-settings-btn").tap();
   await expect(page.locator("#menu-sheet")).not.toHaveClass(/shut/);
 }
 

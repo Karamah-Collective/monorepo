@@ -1318,20 +1318,7 @@
           </button>
         </div>
         <div id="profile-sheet-body" class="t-scroll">
-              <div id="phone-profile-prompt" class="phone-profile-prompt" hidden>
-                <div class="phone-profile-guest-head">
-                  <span class="phone-profile-prompt-icon" aria-hidden="true">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 19c.6-3.1 3.1-5 7.5-5s6.9 1.9 7.5 5"/></svg>
-                  </span>
-                  <div><h3>Continue as a guest</h3><p>Sign in to sync saved places and reviews.</p></div>
-                </div>
-                <button id="phone-profile-menu-btn" class="btn-primary" type="button"><span aria-hidden="true">↪</span> Sign in</button>
-              </div>
-              <div id="phone-profile-guest-links" class="phone-profile-guest-links" hidden>
-                <button type="button" data-phone-page="menu" data-phone-settings-auth="true"><span class="phone-profile-row-icon" aria-hidden="true">▱</span><span><strong>Saved places</strong><small>Sign in to keep your list in sync</small></span><span aria-hidden="true">⌕</span></button>
-                <button type="button" data-phone-page="menu" data-phone-settings-auth="true"><span class="phone-profile-row-icon" aria-hidden="true">▰</span><span><strong>Your reviews</strong><small>Sign in to see your contributions</small></span><span aria-hidden="true">⌕</span></button>
-                <button type="button" data-phone-page="menu"><span class="phone-profile-row-icon" aria-hidden="true">☷</span><span><strong>Preferences</strong><small>Map and notification choices</small></span><span aria-hidden="true">›</span></button>
-              </div>
+              <div id="phone-profile-auth" class="phone-profile-auth" aria-label="Sign in or create an account" hidden></div>
               <button id="phone-profile-menu-action" class="phone-profile-menu-action" type="button">Menu and settings <span aria-hidden="true">→</span></button>
               <!-- Header divider, matching the Menu pane's own: there, `#menu-sheet-body`'s
                    lone .sort-divider (the one declared between its "Account" and "Map

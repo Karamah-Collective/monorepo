@@ -278,6 +278,15 @@ const placeSheetCloseBtn = document.getElementById("place-sheet-close");
 const placeSheetScrim = document.getElementById("scrim");
 let _placeSheetFromListScrollTop = null;
 
+function _restorePlacesAfterPlaceClose(scrollTop) {
+  if (scrollTop === null) return;
+  openPlacesSheet();
+  requestAnimationFrame(() => {
+    const scrollEl = document.getElementById("places-scroll");
+    if (scrollEl) scrollEl.scrollTop = scrollTop;
+  });
+}
+
 /**
  * Highlight the marker for the given place id as "selected" (mk-selected)
  * and clear that state off every other marker — so it's visually obvious
@@ -296,6 +305,7 @@ function _setActiveMarker(placeId) {
 
 /** Close the place-detail sheet and clear its active-marker tracking state. */
 export function closePlaceSheet() {
+  const placesScrollTop = _placeSheetFromListScrollTop;
   if (placeSheetEl._animCleanup) { clearTimeout(placeSheetEl._animCleanup); placeSheetEl._animCleanup = null; }
   if (placeSheetEl._hideTimeout) { clearTimeout(placeSheetEl._hideTimeout); placeSheetEl._hideTimeout = null; }
   if (_activePlaceSheetReviewsListener) {
@@ -312,6 +322,7 @@ export function closePlaceSheet() {
   _setActiveMarker(null);
   placeSheetSnap.close();
   placeSheetScrim.classList.add("hide");
+  _restorePlacesAfterPlaceClose(placesScrollTop);
   placeSheetEl._hideTimeout = setTimeout(() => {
     placeSheetEl.hidden = true;
     placeSheetSnap.cleanup();
@@ -331,17 +342,7 @@ function _setPlaceSheetCloseAsBack() {
   placeSheetCloseBtn.classList.add("place-sheet-close--back");
 }
 
-placeSheetCloseBtn.addEventListener("click", () => {
-  const scrollTop = _placeSheetFromListScrollTop;
-  closePlaceSheet();
-  if (scrollTop !== null) {
-    openPlacesSheet();
-    requestAnimationFrame(() => {
-      const scrollEl = document.getElementById("places-scroll");
-      if (scrollEl) scrollEl.scrollTop = scrollTop;
-    });
-  }
-});
+placeSheetCloseBtn.addEventListener("click", closePlaceSheet);
 
 // When a tag's name is phrased as an absence ("No Alcohol"), the false-state chip
 // would read "✗ No Alcohol" — a confusing double negative. Map tag IDs to the label
@@ -1493,7 +1494,7 @@ export async function loadPlacesData() {
           updatePlacesBadge();
           renderPromosPill();
         }
-        if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); }
+        if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); if (_mapEventsFilter) addPlaceMarkers(); }
         publishPhoneData();
         if (data.reviews) hydrateReviews(data.reviews);
         writeCache(normalizePlacesData(data.places), data.tags || {});
@@ -1546,7 +1547,7 @@ export async function loadPlacesData() {
         updatePlacesBadge();
         renderPromosPill();
       }
-      if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); }
+      if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); if (_mapEventsFilter) addPlaceMarkers(); }
       publishPhoneData();
       if (data.reviews) hydrateReviews(data.reviews);
       writeCache(normalizePlacesData(data.places), data.tags || {});
@@ -1729,31 +1730,33 @@ export function addPlaceMarkers() {
   savedPinMarkers.forEach((m) => m.remove());
   savedPinMarkers = [];
 
-  let filtered = _filterPlacesForCurrentType({ markers: true });
+  let filtered = _mapEventsFilter
+    ? placesData.filter(_placeHasUpcomingEvent)
+    : _filterPlacesForCurrentType({ markers: true });
 
-  if (activeTagFilters.size) {
+  if (!_mapEventsFilter && activeTagFilters.size) {
     filtered = filtered.filter((p) =>
       [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true),
     );
   }
 
-  if (_openNowFilter) {
+  if (!_mapEventsFilter && _openNowFilter) {
     filtered = filtered.filter((p) => isPlaceOpenNow(p.hours) === true);
   }
 
-  if (_ratedFilter) {
+  if (!_mapEventsFilter && _ratedFilter) {
     filtered = filtered.filter((p) => getPlaceRating(p.id) !== null);
   }
 
   const markerSearch = placeSearchQuery.trim().toLowerCase();
-  if (markerSearch) {
+  if (!_mapEventsFilter && markerSearch) {
     const termGroups = getExpandedSearchTerms(markerSearch);
     filtered = filtered.filter((p) =>
       _matchesSearchText(`${p.name || ""} ${p.address || ""} ${p.type || ""}`, termGroups),
     );
   }
 
-  if (_mapNearbyFilter) {
+  if (!_mapEventsFilter && _mapNearbyFilter) {
     const location = getCurrentLocationState();
     if (location.active && location.lat !== null && location.lng !== null) {
       filtered = filtered.filter((p) =>
@@ -1798,21 +1801,23 @@ export function addPlaceMarkers() {
     placeMarkers.push(marker);
   });
 
-  // Always show saved custom pins (dropped pins) that don't overlap with a place
-  const placeCoords = new Set(placesData.map(p => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`));
-  getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
-    if (placeCoords.has(`${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`)) return;
-    const el = document.createElement("div");
-    el.className = "place-mk-wrap mk-hidden";
-    el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
-    el.dataset.pinId = pin.id;
-    const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+  if (!_mapEventsFilter) {
+    // Always show saved custom pins (dropped pins) that don't overlap with a place
+    const placeCoords = new Set(placesData.map(p => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`));
+    getSavedPins().filter(pin => isInsideFinland(pin.lat, pin.lng)).forEach((pin) => {
+      if (placeCoords.has(`${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`)) return;
+      const el = document.createElement("div");
+      el.className = "place-mk-wrap mk-hidden";
+      el.innerHTML = `<div class="custom-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg></div>`;
+      el.dataset.pinId = pin.id;
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(map);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent("hf:show-search-marker", { detail: { lng: pin.lng, lat: pin.lat } }));
+      });
+      savedPinMarkers.push(marker);
     });
-    savedPinMarkers.push(marker);
-  });
+  }
 
   // Fade markers in after DOM commits the initial hidden state
   requestAnimationFrame(() => {
@@ -2471,6 +2476,13 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   }
 
   root.appendChild(iconRow);
+  const staggerContainers = [placeSheetEl.querySelector(".sheet-head"), inner, iconRow, actions].filter(Boolean);
+  staggerContainers.forEach((container) => {
+    container.classList.remove("stagger-in");
+    Array.from(container.children).forEach((child, index) => {
+      child.style.setProperty("--i", String(index));
+    });
+  });
 
   // Track the open sheet's place id for toggle-close, and the back-vs-close context
   _activePlaceSheetId = place.id;
@@ -2490,6 +2502,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   // Center the pin inside the map area left after the currently open sheet.
   // The helper also clears stale MapLibre padding when no sheet is open.
   requestAnimationFrame(() => {
+    staggerContainers.forEach((container) => container.classList.add("stagger-in"));
     focusMapPoint([place.lng, place.lat], {
       zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
       duration: 500,
@@ -2695,6 +2708,23 @@ const mapFilterChips = document.getElementById("map-filter-chips");
 const MAP_NEARBY_RADIUS_KM = 10;
 let _mapNearbyFilter = false;
 let _mapNearbyPill = null;
+let _mapEventsFilter = false;
+let _mapEventsPill = null;
+
+function _placeHasUpcomingEvent(place) {
+  const placeLat = Number(place.lat);
+  const placeLng = Number(place.lng);
+  return eventsData.some((event) => {
+    const sameId = event.placeId != null && String(event.placeId) === String(place.id);
+    const eventLat = Number(event.lat);
+    const eventLng = Number(event.lng);
+    const sameCoords = Number.isFinite(placeLat) && Number.isFinite(placeLng)
+      && Number.isFinite(eventLat) && Number.isFinite(eventLng)
+      && Math.abs(eventLat - placeLat) < 0.0003
+      && Math.abs(eventLng - placeLng) < 0.0003;
+    return (sameId || sameCoords) && _nextEventDate(event) !== null;
+  });
+}
 
 function _syncMapFilterChips() {
   if (!mapFilterChips) return;
@@ -2738,8 +2768,21 @@ function _syncMapFilterChips() {
       mapFilterChips.appendChild(button);
     });
   }
+  if (!_mapEventsPill) {
+    _mapEventsPill = document.createElement("button");
+    _mapEventsPill.type = "button";
+    _mapEventsPill.className = "map-filter-pill map-filter-pill--events";
+    _mapEventsPill.dataset.mapEvents = "true";
+    _mapEventsPill.setAttribute("aria-label", "Show event locations");
+    _mapEventsPill.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span>`;
+  }
+  const savedPill = mapFilterChips.querySelector('[data-map-type="saved"]');
+  mapFilterChips.insertBefore(_mapEventsPill, savedPill || null);
+  _mapEventsPill.classList.toggle("active", _mapEventsFilter);
+  _mapEventsPill.setAttribute("aria-pressed", String(_mapEventsFilter));
+
   [...mapFilterChips.querySelectorAll("[data-map-type]")].forEach((button) => {
-    button.classList.toggle("active", !_mapNearbyFilter && button.dataset.mapType === activeTypeFilter);
+    button.classList.toggle("active", !_mapNearbyFilter && !_mapEventsFilter && button.dataset.mapType === activeTypeFilter);
   });
 }
 
@@ -2758,9 +2801,18 @@ mapFilterChips?.addEventListener("click", (event) => {
     addPlaceMarkers();
     return;
   }
+  const events = event.target.closest("[data-map-events]");
+  if (events) {
+    _mapNearbyFilter = false;
+    _mapEventsFilter = !_mapEventsFilter;
+    _syncMapFilterChips();
+    addPlaceMarkers();
+    return;
+  }
   const chip = event.target.closest(".map-filter-pill[data-map-type]");
   if (!chip) return;
   _mapNearbyFilter = false;
+  _mapEventsFilter = false;
   setActivePlaceTypeFilter(chip.dataset.mapType || chip.dataset.type);
 });
 
@@ -2818,6 +2870,7 @@ function _setPlacesTypeFilter(type) {
 
 export function setActivePlaceTypeFilter(type) {
   if (!LIST_FOCUS_TYPE_OPTIONS.some((option) => option.id === type)) return false;
+  _mapEventsFilter = false;
   _setPlacesTypeFilter(type);
   renderTagFilterBar();
   addPlaceMarkers();
@@ -2904,8 +2957,10 @@ const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, {
 });
 
 window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
-  if (!placeSheetEl.classList.contains("shut")) closePlaceSheet();
-  if (!placesSheet.classList.contains("shut")) closePlacesSheet();
+  const placeWasOpen = !placeSheetEl.classList.contains("shut");
+  const placesWasOpen = !placesSheet.classList.contains("shut");
+  if (placeWasOpen) closePlaceSheet();
+  if (placesWasOpen) closePlacesSheet();
 });
 
 let _placesDirty = false;
@@ -3180,6 +3235,7 @@ function updateClearButton() {
 
 placesClearBtn.addEventListener("click", () => {
   activeTypeFilter = "all";
+  _mapEventsFilter = false;
   _listFocusTypeFilters = new Set();
   document.querySelectorAll(".pf-chip").forEach((c) => c.classList.toggle("active", c.dataset.type === "all"));
   activeTagFilters.clear();
