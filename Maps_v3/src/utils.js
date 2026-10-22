@@ -1,4 +1,4 @@
-import { _CRYPTO_KEY } from "./config.js";
+import { _CRYPTO_KEY, DIGITRANSIT_REV_URL, DT_API_KEY, NOMINATIM_REV } from "./config.js";
 import { isNative } from "./capacitor-bridge.js";
 import { map } from "./map-init.js";
 import { EVT } from "./events.js";
@@ -639,7 +639,7 @@ const TOAST_COLLAPSE_DURATION_MS = 300;
  * @param {string} icon - Key from the shared toast icon registry
  * @param {string|null} sub - Optional supporting copy
  * @param {() => void|Promise<void>} onAction - Action invoked once on click
- * @param {{onClose?: () => void, onAutoDismiss?: () => void, closeLabel?: string}} [options]
+ * @param {{onClose?: () => void, onAutoDismiss?: () => void, closeLabel?: string, persistent?: boolean}} [options]
  *   Optional callbacks that distinguish explicit close from timeout expiry
  * @returns {void}
  */
@@ -696,7 +696,7 @@ export function showActionToast(label, icon, sub, onAction, options = {}) {
   void slot.offsetHeight;
   slot.classList.add("toast-slot-show");
   toast.classList.add("share-toast-show");
-  timeoutId = setTimeout(() => dismiss("auto"), ACTION_TOAST_DURATION_MS);
+  if (!options.persistent) timeoutId = setTimeout(() => dismiss("auto"), ACTION_TOAST_DURATION_MS);
 }
 
 let _activeConfirmCleanup = null; // the open dialog's own finish() fn, if any
@@ -860,6 +860,24 @@ export async function getVisitorGeo() {
     .then((res) => (res.ok ? res.json() : {}))
     .catch(() => ({}));
   return _visitorGeoPromise;
+}
+
+/** Resolve the city for a granted device position without storing the coordinates. */
+export async function reverseGeocodeCity(lat, lng) {
+  try {
+    const res = await fetch(`${DIGITRANSIT_REV_URL}?point.lat=${lat}&point.lon=${lng}&size=1&lang=en`, {
+      headers: DT_API_KEY ? { "digitransit-subscription-key": DT_API_KEY } : {},
+      signal: AbortSignal.timeout(5000),
+    });
+    const city = (await res.json())?.features?.[0]?.properties?.locality;
+    if (res.ok && city) return String(city).trim();
+  } catch {}
+  try {
+    const res = await fetch(`${NOMINATIM_REV}&lat=${lat}&lon=${lng}`, { headers: { "Accept-Language": "en" } });
+    const address = (await res.json())?.address;
+    return String(address?.city || address?.town || address?.village || address?.municipality || "").trim();
+  } catch {}
+  return "";
 }
 // --- Badge achievement notice (shown when a signed-in user crosses a new
 // badge tier/level — see account-profile.js's computeBadges()/

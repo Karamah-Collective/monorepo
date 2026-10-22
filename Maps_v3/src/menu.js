@@ -55,6 +55,7 @@ import { initSheetDrag, esc, escA, isReduceMotionActive, setReduceMotionOverride
 import { EVT } from "./events.js";
 import { setActiveTab } from "./map-controls.js";
 import { loadProfileContent } from "./profile.js";
+import { isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
 import { getPhonePage, goBackPhonePage, isPhone, navigatePhonePage } from "./phone-pages.js";
 import { EMAIL_SIGNIN_BTN_HTML, GOOGLE_SIGNIN_BTN_HTML, MICROSOFT_SIGNIN_BTN_HTML, FACEBOOK_SIGNIN_BTN_HTML, APPLE_SIGNIN_BTN_HTML, EMAIL_PASSWORD_SIGNIN_BTN_HTML, EYE_SHOW_ICON_SVG, EYE_HIDE_ICON_SVG, BACK_CHEVRON_ICON_SVG } from "./icons.js";
 
@@ -447,6 +448,7 @@ export async function initMenuAccount() {
     import("./account-sync.js"),
   ]);
   _auth = auth;
+  const useLocalDemoProfile = isLocalDemoProfileEnabled();
 
   // initAccountSync() registers its EVT.AUTH_CHANGED listener BEFORE
   // initAuth() runs, not after. initAuth() can synchronously complete (and
@@ -459,10 +461,13 @@ export async function initMenuAccount() {
   // initMenuAccount() — and thus this registration — has long since finished
   // running on page load). Found via the mocked-SDK harness in
   // tests/14-auth-account.spec.js, not caught by code review alone.
-  initAccountSync();
-  const magicLinkResult = await _auth.initAuth();
+  let magicLinkResult = { completed: false };
+  if (!useLocalDemoProfile) {
+    initAccountSync();
+    magicLinkResult = await _auth.initAuth();
+  }
 
-  _account = _auth.getCachedAccount();
+  _account = useLocalDemoProfile ? LOCAL_DEMO_ACCOUNT : _auth.getCachedAccount();
   _renderAccountSection();
   // initMenuAccount()'s own async work (the dynamic imports + initAuth()
   // above) can easily still be in flight the very first time a user opens
@@ -488,7 +493,7 @@ export async function initMenuAccount() {
     showLinkedProviderToast(magicLinkResult.linkedProvider);
   }
 
-  window.addEventListener(EVT.AUTH_CHANGED, (e) => {
+  if (!useLocalDemoProfile) window.addEventListener(EVT.AUTH_CHANGED, (e) => {
     _account = e.detail?.account || null;
     _renderAccountSection();
     // Signing in/out changes the Account section's own height (sign-in

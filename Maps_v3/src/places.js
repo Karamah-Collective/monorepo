@@ -10,13 +10,33 @@ import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
 import { EVT } from "./events.js";
-import { addVerifiedVisit, getTimelineCooldown, peekTimelineEligibility } from "./timeline.js";
+import { addVerifiedEventVisit, addVerifiedVisit, eventHasEnded, eventHasOccurred, getTimelineCooldown, peekEventTimelineEligibility, peekTimelineEligibility } from "./timeline.js";
 import { clearPhoneWindowState, getPhonePage, goBackPhonePage, isPhone, navigatePhonePage, pushPhoneWindowState } from "./phone-pages.js";
 
 export let placesData = [];
 export let tagsData = {};
 export let eventsData = [];
 export let placesLoaded = false;
+
+function _initStickyFormFooters() {
+  document.querySelectorAll("#suggest-form, #event-form, #edit-form, #wish-form, #contact-form").forEach((form) => {
+    const submit = form.querySelector("button[type=submit]");
+    if (!submit || form.querySelector(":scope > .form-scroll-body")) return;
+    const body = document.createElement("div");
+    body.className = "form-scroll-body";
+    const footer = document.createElement("div");
+    footer.className = "form-submit-footer";
+    [...form.children].forEach((child) => {
+      if (child !== submit && !child.classList.contains("form-legal")) body.append(child);
+    });
+    footer.append(submit);
+    const legal = form.querySelector(".form-legal");
+    if (legal) footer.append(legal);
+    form.replaceChildren(body, footer);
+  });
+}
+
+_initStickyFormFooters();
 
 function publishPhoneData(status = "ready") {
   window.HFPhoneData = {
@@ -42,9 +62,28 @@ function _localDemoEvents() {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   };
   return [
-    { id: "local-demo-friday", title: "Friday gathering", date: dateAfter(1), time: "18:30", endTime: "20:00", locationName: "Helsinki Islamic Center", description: "A weekly community gathering." },
-    { id: "local-demo-dinner", title: "Community dinner", date: dateAfter(4), time: "17:00", endTime: "20:30", locationName: "Maharaja Kitchen", description: "Food, conversation, and new connections." },
-    { id: "local-demo-women", title: "Women in the city", date: dateAfter(8), time: "12:00", endTime: "14:00", locationName: "Arabia Community House", description: "A relaxed community conversation." },
+    { id: "local-test-past-1", title: "Past community breakfast", date: "2026-10-18", time: "10:00", endTime: "12:00", locationName: "Helsinki City Hall", city: "Helsinki", address: "Pohjoisesplanadi 11-13, Helsinki", lat: 60.1688, lng: 24.9521, description: "Past event fixture for testing the Past filter and attendance." },
+    { id: "local-test-past-2", title: "Past sisters gathering", date: "2026-10-20", time: "17:30", endTime: "19:00", placeId: "pa61kp", locationName: "Espoo Muslim Center", city: "Espoo", address: "Kuunkehä 2A, Espoo", lat: 60.1709733, lng: 24.7268367, description: "Past event fixture for testing attendance." },
+    { id: "local-test-past-3", title: "Past charity packing", date: "2026-10-21", time: "14:00", endTime: "16:00", locationName: "Vantaa City Hall", city: "Vantaa", address: "Asematie 7, Vantaa", lat: 60.2938, lng: 25.0373, description: "Past event fixture for testing attendance." },
+    { id: "local-test-today-10", title: "Morning coffee circle", date: "2026-10-22", time: "10:00", endTime: "11:00", locationName: "Oodi Helsinki Central Library", city: "Helsinki", address: "Töölönlahdenkatu 4, Helsinki", lat: 60.1731, lng: 24.9382, description: "Today-only fixture: 10:00–11:00 Finland time." },
+    { id: "local-test-today-12", title: "Lunch and learn", date: "2026-10-22", time: "12:00", endTime: "13:30", locationName: "Arabia Campus", city: "Helsinki", address: "Hämeentie 135, Helsinki", lat: 60.207, lng: 24.979, description: "Today-only fixture: 12:00–13:30 Finland time." },
+    { id: "local-test-today-14", title: "Community workshop", date: "2026-10-22", time: "14:00", endTime: "15:30", locationName: "Leppävaara Library", city: "Espoo", address: "Leppävaarankatu 9, Espoo", lat: 60.219, lng: 24.813, description: "Today-only fixture: 14:00–15:30 Finland time." },
+    { id: "local-test-today-16", title: "Family activity hour", date: "2026-10-22", time: "16:00", endTime: "18:00", locationName: "Tikkurila Library", city: "Vantaa", address: "Lummetie 4, Vantaa", lat: 60.294, lng: 25.038, description: "Today-only fixture: 16:00–18:00 Finland time." },
+    { id: "local-test-today-19", title: "Evening study circle", date: "2026-10-22", time: "19:00", endTime: "20:30", placeId: "tsatr6", locationName: "Masjid Al-Huda (Helsinki Islamic Center)", city: "Helsinki", address: "Veturitori 2, Helsinki", lat: 60.1997356, lng: 24.9375732, description: "Today-only fixture: 19:00-20:30 Finland time." },
+    { id: "local-test-today-21", title: "Late community talk", date: "2026-10-22", time: "21:00", endTime: "22:00", locationName: "Tampere Hall", city: "Tampere", address: "Yliopistonkatu 55, Tampere", lat: 61.494, lng: 23.775, description: "Today-only fixture: 21:00–22:00 Finland time." },
+    { id: "local-test-recurring", title: "Recurring Thursday circle", date: "2026-10-01", time: "18:00", endTime: "19:30", recurring: true, recurrence: "weekly:4", placeId: "cxjnht", locationName: "Suomen Islamilainen Yhdyskunta", city: "Helsinki", address: "Lönnrotinkatu 22, Helsinki", lat: 60.1646603, lng: 24.9342426, description: "Recurring fixture for testing attendance and one timeline entry per occurrence." },
+    { id: "local-demo-friday", title: "Friday gathering", date: dateAfter(1), time: "18:30", endTime: "20:00", placeId: "cxjnht", locationName: "Suomen Islamilainen Yhdyskunta", city: "Helsinki", address: "Lönnrotinkatu 22, Helsinki", lat: 60.1646603, lng: 24.9342426, description: "A weekly community gathering." },
+    { id: "local-demo-dinner", title: "Community dinner", date: dateAfter(4), time: "17:00", endTime: "20:30", locationName: "Teurastamo", city: "Helsinki", address: "Työpajankatu 2, Helsinki", lat: 60.188, lng: 24.977, description: "Food, conversation, and new connections." },
+    { id: "local-demo-women", title: "Women in the city", date: dateAfter(8), time: "12:00", endTime: "14:00", locationName: "Arabia Campus", city: "Helsinki", address: "Hämeentie 135, Helsinki", lat: 60.207, lng: 24.979, description: "A relaxed community conversation." },
+    { id: "local-demo-quran", title: "Quran study circle", date: dateAfter(2), time: "19:00", endTime: "20:30", placeId: "pa61kp", locationName: "Espoo Muslim Center", city: "Espoo", address: "Kuunkehä 2A, Espoo", lat: 60.1709733, lng: 24.7268367, description: "An open weekly study circle for all levels." },
+    { id: "local-demo-youth", title: "Youth workshop", date: dateAfter(6), time: "15:00", endTime: "17:00", locationName: "Leppävaara Library", city: "Espoo", address: "Leppävaarankatu 9, Espoo", lat: 60.219, lng: 24.813, description: "Creative activities, conversation, and community." },
+    { id: "local-demo-families", title: "Family afternoon", date: dateAfter(10), time: "13:00", endTime: "16:00", locationName: "Tikkurila Library", city: "Vantaa", address: "Lummetie 4, Vantaa", lat: 60.294, lng: 25.038, description: "An easygoing afternoon for families and neighbours." },
+    { id: "local-demo-charity", title: "Charity packing day", date: dateAfter(12), time: "10:00", endTime: "14:00", locationName: "Vantaa City Hall", city: "Vantaa", address: "Asematie 7, Vantaa", lat: 60.2938, lng: 25.0373, description: "Help prepare food parcels for local families." },
+    { id: "local-demo-bookclub", title: "Muslim authors book club", date: dateAfter(15), time: "18:00", endTime: "19:30", locationName: "Turku Main Library", city: "Turku", address: "Linnankatu 2, Turku", lat: 60.451, lng: 22.266, description: "A monthly discussion of Muslim writers and stories." },
+    { id: "local-demo-foodwalk", title: "Halal food walk", date: dateAfter(18), time: "16:00", endTime: "19:00", locationName: "Turku Market Square", city: "Turku", address: "Eerikinkatu 10, Turku", lat: 60.451, lng: 22.267, description: "Discover local halal food spots together." },
+    { id: "local-demo-newcomers", title: "Newcomers coffee", date: dateAfter(20), time: "11:00", endTime: "13:00", locationName: "Tampere Hall", city: "Tampere", address: "Yliopistonkatu 55, Tampere", lat: 61.494, lng: 23.775, description: "Meet people and find your footing in a new city." },
+    { id: "local-demo-art", title: "Community art evening", date: dateAfter(23), time: "18:30", endTime: "21:00", locationName: "Tampere Art Museum", city: "Tampere", address: "Puutarhakatu 34, Tampere", lat: 61.498, lng: 23.751, description: "An evening of art, tea, and conversation." },
+    { id: "local-demo-sisters", title: "Sisters circle", date: dateAfter(26), time: "17:30", endTime: "19:00", placeId: "tsatr6", locationName: "Masjid Al-Huda (Helsinki Islamic Center)", city: "Helsinki", address: "Veturitori 2, Helsinki", lat: 60.1997356, lng: 24.9375732, description: "A welcoming space for reflection and community." },
   ];
 }
 
@@ -301,6 +340,13 @@ function _setActiveMarker(placeId) {
   if (placeId == null) return;
   const el = document.querySelector(`.place-mk-wrap[data-place-id="${CSS.escape(String(placeId))}"]`);
   if (el) el.classList.add("mk-selected");
+}
+
+function _setActiveEventMarker(eventId) {
+  document.querySelectorAll(".event-mk-wrap.event-mk-selected").forEach((el) => el.classList.remove("event-mk-selected"));
+  if (eventId == null) return;
+  const el = document.querySelector(`.event-mk-wrap[data-event-id="${CSS.escape(String(eventId))}"]`);
+  if (el) el.classList.add("event-mk-selected");
 }
 
 /** Close the place-detail sheet and clear its active-marker tracking state. */
@@ -1468,6 +1514,7 @@ export async function loadPlacesData() {
       placesLoaded = true;
       hideLoadingToast();
       addPlaceMarkers();
+      addEventOnlyMarkers();
       renderPlacesList();
       updatePlacesBadge();
       checkShareUrl();
@@ -1520,6 +1567,7 @@ export async function loadPlacesData() {
     placesLoaded = true;
     hideLoadingToast();
     addPlaceMarkers();
+    addEventOnlyMarkers();
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
@@ -1557,6 +1605,7 @@ export async function loadPlacesData() {
     placesLoaded = true;
     eventsData = _eventsForEnvironment([]);
     renderEventsPill();
+    addEventOnlyMarkers();
     publishPhoneData("error");
     hideLoadingToast();
   }
@@ -1839,17 +1888,18 @@ export function addPlaceMarkers() {
  * refresh) — no separate live/midnight timer needed.
  * @returns {void}
  */
-function addEventOnlyMarkers() {
+function addEventOnlyMarkers(selectedEventId = null) {
   eventOnlyMarkers.forEach((m) => m.remove());
   eventOnlyMarkers = [];
 
   const directoryIds = new Set(placesData.map((p) => p.id));
   eventsData
     .filter((ev) => (!ev.placeId || !directoryIds.has(ev.placeId)) && ev.lat != null && ev.lng != null)
-    .filter((ev) => _nextEventDate(ev) !== null)
+    .filter((ev) => (selectedEventId != null && String(ev.id) === String(selectedEventId)) || _nextEventDate(ev) !== null)
     .forEach((ev) => {
       const el = document.createElement("div");
       el.className = "event-mk-wrap";
+      el.dataset.eventId = String(ev.id);
       el.innerHTML = `<div class="event-mk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div class="event-mk-tip"></div></div>`;
       const marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([ev.lng, ev.lat]).addTo(map);
       el.addEventListener("click", (e) => {
@@ -2315,12 +2365,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
       card.addEventListener("click", (e) => {
         if (e.target.closest("a")) return; // let link clicks through
         e.stopPropagation();
-        const url = card.dataset.evUrl;
-        if (url) {
-          window.open(url, "_blank", "noopener,noreferrer");
-        } else {
-          _openEventsOverlayToEvent(card.dataset.evId);
-        }
+        _openEventsOverlayToEvent(card.dataset.evId);
       });
     });
     inner.appendChild(eventsSection);
@@ -2605,6 +2650,22 @@ export function checkShareUrl() {
   }
 
   // ?place=<id> — shared place link (new format)
+  const qEventId = params.get("event");
+  if (qEventId) {
+    const event = eventsData.find((item) => String(item.id) === qEventId);
+    if (event) {
+      const { lat, lng } = _eventPlaceAndCoords(event);
+      if (lat !== null && lng !== null) {
+        focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM), speed: 1.4 });
+        map.once("moveend", () => openEventDetail(event));
+      } else {
+        openEventDetail(event);
+      }
+    }
+    history.replaceState(history.state, "", location.pathname);
+    return;
+  }
+
   const qPlaceId = params.get("place");
   if (qPlaceId) {
     const place = placesData.find((p) => String(p.id) === qPlaceId);
@@ -2673,7 +2734,7 @@ function _routeNativeDeepLink(url) {
   if (qIdx < 0) return; // nothing to route
   const query = url.slice(qIdx); // e.g. "?r=<token>"
   // Only touch history when there are params the web app already understands.
-  if (!/[?&](r|p|place|route|lat|lng|eid)=/.test(query)) return;
+  if (!/[?&](r|p|place|event|route|lat|lng|eid)=/.test(query)) return;
   history.replaceState(history.state, "", location.pathname + query);
   if (isPhone()) navigatePhonePage("map", { replace: true });
   // Cold start: the URL may arrive before places data is ready. The web calls
@@ -2957,6 +3018,7 @@ const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, {
 });
 
 window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
+  if (_eventDetailEl && !_eventDetailEl.classList.contains("shut")) closeEventDetail();
   const placeWasOpen = !placeSheetEl.classList.contains("shut");
   const placesWasOpen = !placesSheet.classList.contains("shut");
   if (placeWasOpen) closePlaceSheet();
@@ -3945,9 +4007,132 @@ const _eventsList = document.getElementById("events-list");
 const _evFilteredList = document.getElementById("ev-filtered-list");
 const _evEmptyState = document.getElementById("ev-empty-state");
 const _evMosqueFilter = document.getElementById("ev-mosque-filter");
+const _evRefineRow = document.getElementById("ev-refine-row");
+const _evSearchWrap = document.getElementById("ev-search-wrap");
+const _evSearchInput = document.getElementById("ev-search-input");
+const _evSearchIcnBtn = document.getElementById("ev-search-icn-btn");
+const _evFilterWrap = document.getElementById("ev-filter-wrap");
+const _evFilterToggle = document.getElementById("ev-filter-toggle");
+const _evFilterCount = document.getElementById("ev-filter-count");
+const _evFilterDropdown = document.getElementById("ev-filter-dropdown");
+const _evLocationOptions = document.getElementById("ev-location-options");
+const _evGroupCityOption = document.getElementById("ev-group-city-option");
+const _evSortWrap = document.getElementById("ev-sort-wrap");
+const _evSortToggle = document.getElementById("ev-sort-toggle");
+const _evSortLabel = document.getElementById("ev-sort-label");
+const _evSortDropdown = document.getElementById("ev-sort-dropdown");
+const _evClearFilters = document.getElementById("events-clear-filters");
 
-let _evActiveFilter = "upcoming";
+let _evActiveFilter = "all";
 let _evNearbySort = false;
+let _evSortField = "date";
+let _evSortDir = "asc";
+let _evSearchQuery = "";
+let _evSearchDebounce = 0;
+let _evGroupByCity = true;
+const _evCollapsedCities = new Set();
+const _EV_SORT_LABELS = { date: "Date", name: "Name", location: "Location" };
+const EVENT_RECENT_KEY = "hf_recent_events";
+const EVENT_SAVED_KEY = "hf_saved_events";
+const EVENT_ATTENDED_KEY = "hf_attended_events";
+const _readEventIdList = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(value) ? value.map((id) => String(id)) : [];
+  } catch (_) {
+    return [];
+  }
+};
+let _evRecentIds = _readEventIdList(EVENT_RECENT_KEY);
+let _evSavedIds = new Set(_readEventIdList(EVENT_SAVED_KEY));
+let _evAttendedIds = new Set(_readEventIdList(EVENT_ATTENDED_KEY));
+const _eventDetailEl = document.getElementById("event-detail-sheet");
+const _eventDetailTitle = document.getElementById("event-detail-title");
+const _eventDetailBody = document.getElementById("event-detail-body");
+const _eventDetailActions = document.getElementById("event-detail-actions");
+const _eventDetailCloseBtn = document.getElementById("event-detail-close");
+let _eventDetailFromEvents = false;
+let _eventDetailEventOnly = false;
+
+function _trackRecentlyViewedEvent(id) {
+  const key = String(id);
+  _evRecentIds = [key, ..._evRecentIds.filter((item) => item !== key)].slice(0, 5);
+  try { localStorage.setItem(EVENT_RECENT_KEY, JSON.stringify(_evRecentIds)); } catch (_) {}
+}
+
+function _isEventSaved(id) {
+  return _evSavedIds.has(String(id));
+}
+
+function _setEventSaved(id, saved) {
+  const key = String(id);
+  if (saved) _evSavedIds.add(key);
+  else _evSavedIds.delete(key);
+  try { localStorage.setItem(EVENT_SAVED_KEY, JSON.stringify([..._evSavedIds])); } catch (_) {}
+}
+
+function _isEventAttended(id) {
+  return _evAttendedIds.has(String(id));
+}
+
+function _setEventAttended(id, attended) {
+  const key = String(id);
+  if (attended) _evAttendedIds.add(key);
+  else _evAttendedIds.delete(key);
+  try { localStorage.setItem(EVENT_ATTENDED_KEY, JSON.stringify([..._evAttendedIds])); } catch (_) {}
+}
+
+function _eventBookmarkSVG(saved) {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="${saved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+}
+
+function _syncEventSaveControls(id) {
+  const key = String(id);
+  const saved = _isEventSaved(key);
+  document.querySelectorAll(".ev-overlay-save-btn, .ev-detail-save-btn").forEach((button) => {
+    if (String(button.dataset.evSaveId || button.dataset.eventSaveId) !== key) return;
+    button.classList.toggle("active", saved);
+    const label = saved ? "Remove from saved" : "Save event";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(saved));
+    button.title = label;
+    button.innerHTML = _eventBookmarkSVG(saved);
+  });
+}
+
+function _toggleEventSaved(id) {
+  const saved = !_isEventSaved(id);
+  const event = eventsData.find((item) => String(item.id) === String(id));
+  _setEventSaved(id, saved);
+  track("event_saved", { event_id: String(id), saved });
+  _syncEventSaveControls(id);
+  _renderEventsList({ animate: false });
+  showToast(saved ? "Event saved" : "Event removed from saved", saved ? "check" : "info", event?.title || "Event");
+}
+
+function _syncEventAttendanceControls(id) {
+  const key = String(id);
+  const attended = _isEventAttended(key);
+  document.querySelectorAll(".ev-detail-attend-btn").forEach((button) => {
+    if (String(button.dataset.eventAttendId) !== key) return;
+    button.classList.toggle("active", attended);
+    button.dataset.state = attended ? "yes" : "";
+    const label = attended ? "Attended" : "Mark as attended";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.setAttribute("aria-pressed", String(attended));
+  });
+}
+
+function _toggleEventAttended(id) {
+  const attended = !_isEventAttended(id);
+  const event = eventsData.find((item) => String(item.id) === String(id));
+  _setEventAttended(id, attended);
+  track("event_attended", { event_id: String(id), attended });
+  _syncEventAttendanceControls(id);
+  _renderEventsList({ animate: false });
+  showToast(attended ? "Event marked as attended" : "Attendance removed", attended ? "check" : "info", event?.title || "Event");
+}
 
 export function renderEventsPill() {
   // Events now has a permanent destination in the five-item navigation.
@@ -3958,6 +4143,7 @@ export function renderEventsPill() {
   // Count upcoming events for badge
   const today = _todayMidnight();
   const upcomingCount = eventsData.filter((ev) => {
+    if (eventHasEnded(ev)) return false;
     if (ev.recurring) return true;
     if (ev.date) return new Date(ev.date + "T00:00:00") >= today;
     return false;
@@ -3972,7 +4158,86 @@ export function renderEventsPill() {
   badge.textContent = upcomingCount;
 
   _populateEvMosqueFilter();
+  _updateEventFilterButton();
+  _updateEventSortButton();
+  _updateEventClearButton();
   _renderEventsList();
+}
+
+function _updateEventClearButton() {
+  const dirty = _evActiveFilter !== "all"
+    || Boolean(_evMosqueFilter?.value)
+    || _evNearbySort
+    || _evSortField !== "date"
+    || _evSortDir !== "asc"
+    || Boolean(_evSearchQuery.trim())
+    || !_evGroupByCity;
+  _evClearFilters?.classList.toggle("hide", !dirty);
+}
+
+function _updateEventFilterButton() {
+  if (!_evFilterToggle || !_evFilterDropdown) return;
+  const hasLocation = Boolean(_evMosqueFilter?.value);
+  const filterCount = hasLocation ? 1 : 0;
+  _evFilterCount?.classList.toggle("hide", filterCount === 0);
+  if (_evFilterCount) _evFilterCount.textContent = String(filterCount);
+  _evFilterToggle.classList.toggle("has-active", filterCount > 0);
+  _evFilterToggle.classList.toggle("open", !_evFilterDropdown.classList.contains("shut"));
+  _evFilterToggle.setAttribute("aria-expanded", String(!_evFilterDropdown.classList.contains("shut")));
+  _evFilterDropdown.querySelectorAll("[data-event-location]").forEach((button) => {
+    const active = button.dataset.eventLocation === (_evMosqueFilter?.value || "");
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+  _evGroupCityOption?.classList.toggle("active", _evGroupByCity);
+  _evGroupCityOption?.setAttribute("aria-pressed", String(_evGroupByCity));
+  _updateEventClearButton();
+}
+
+function _closeEventFilterDropdown() {
+  _evFilterDropdown?.classList.add("shut");
+  _evFilterToggle?.classList.remove("open");
+  _evFilterToggle?.setAttribute("aria-expanded", "false");
+}
+
+function _updateEventSortButton() {
+  if (!_evSortLabel || !_evSortDropdown || !_evSortToggle) return;
+  const isActive = _evSortField !== "date" || _evSortDir !== "asc";
+  const arrow = _evSortDir === "asc" ? "↑" : "↓";
+  _evSortLabel.textContent = isActive ? `${_EV_SORT_LABELS[_evSortField]} ${arrow}` : _EV_SORT_LABELS.date;
+  _evSortToggle.classList.toggle("has-active", isActive);
+  _evSortToggle.setAttribute("aria-expanded", String(!_evSortDropdown.classList.contains("shut")));
+  _evSortDropdown.querySelectorAll("[data-sort-field]").forEach((button) =>
+    button.classList.toggle("active", button.dataset.sortField === _evSortField),
+  );
+  _evSortDropdown.querySelectorAll("[data-sort-dir]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.sortDir === _evSortDir);
+  });
+  _updateEventClearButton();
+}
+
+function _closeEventSortDropdown() {
+  _evSortDropdown?.classList.add("shut");
+  _evSortToggle?.classList.remove("open");
+  _evSortToggle?.setAttribute("aria-expanded", "false");
+}
+
+function _openEventSearch() {
+  _evRefineRow?.classList.add("pl-searching");
+  _evSearchWrap?.classList.add("open");
+  setTimeout(() => _evSearchInput?.focus(), 60);
+}
+
+function _closeEventSearch() {
+  _evRefineRow?.classList.remove("pl-searching");
+  _evSearchWrap?.classList.remove("open");
+  if (_evSearchQuery) {
+    _evSearchQuery = "";
+    _evSearchInput.value = "";
+    _renderEventsList();
+  }
+  if (_evSearchInput) _evSearchInput.value = "";
+  _updateEventClearButton();
 }
 
 /** Populate the location dropdown filter with directory places that have events. */
@@ -3982,6 +4247,10 @@ function _populateEvMosqueFilter() {
   const places = placesData.filter((p) => placeIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   _evMosqueFilter.innerHTML = `<option value="">All locations</option>` +
     places.map((p) => `<option value="${escA(p.id)}">${esc(p.name)}</option>`).join("");
+  if (_evLocationOptions) {
+    _evLocationOptions.innerHTML = `<button class="sort-opt active" type="button" role="menuitemradio" aria-checked="true" data-event-location="">All locations</button>` +
+      places.map((p) => `<button class="sort-opt" type="button" role="menuitemradio" aria-checked="false" data-event-location="${escA(p.id)}">${esc(p.name)}</button>`).join("");
+  }
 }
 
 /**
@@ -3991,6 +4260,8 @@ function _populateEvMosqueFilter() {
 function _filterEvents() {
   const today = _todayMidnight();
   const mosqueId = _evMosqueFilter ? _evMosqueFilter.value : "";
+  const searchQuery = _evSearchQuery.trim().toLowerCase();
+  const searchTerms = searchQuery ? getExpandedSearchTerms(searchQuery) : [];
 
   // Date range for this-week and this-month
   const endOfWeek = new Date(today);
@@ -4004,15 +4275,29 @@ function _filterEvents() {
   return eventsData.map((ev) => {
     const nd = _nextEventDate(ev);
     const place = placesData.find((p) => p.id === ev.placeId);
-    const lat = place ? place.lat : ev.lat;
-    const lng = place ? place.lng : ev.lng;
+    const lat = ev.lat != null ? ev.lat : place?.lat;
+    const lng = ev.lng != null ? ev.lng : place?.lng;
     const dist = hasLoc && lat != null && lng != null
       ? haversineDistance(loc.lat, loc.lng, lat, lng)
       : null;
     return { ev, nextDate: nd, dist, place };
-  }).filter(({ ev, nextDate }) => {
+  }).filter(({ ev, nextDate, place }) => {
+    if (searchTerms.length && !_matchesSearchText([
+      ev.title,
+      ev.location,
+      ev.locationName,
+      ev.organizerName,
+      ev.description,
+      place?.name,
+    ].filter(Boolean).join(" "), searchTerms)) return false;
+
     // Location filter (only applies to events anchored to an existing place)
     if (mosqueId && ev.placeId !== mosqueId) return false;
+
+    const isPast = eventHasEnded(ev);
+    if (_evActiveFilter === "saved") return _isEventSaved(ev.id) || _isEventAttended(ev.id);
+    if (_evActiveFilter === "past") return Boolean(isPast);
+    if (isPast) return false;
 
     // Date filter
     switch (_evActiveFilter) {
@@ -4035,16 +4320,120 @@ function _filterEvents() {
         return true;
     }
   }).sort((a, b) => {
+    const direction = _evSortDir === "desc" ? -1 : 1;
+
     // If nearby sort active, sort by distance
     if (_evNearbySort && a.dist != null && b.dist != null) {
       return a.dist - b.dist;
     }
+
+    if (_evSortField === "name") {
+      return direction * String(a.ev.title || "").localeCompare(String(b.ev.title || ""));
+    }
+    if (_evSortField === "location") {
+      const aLocation = a.place?.name || a.ev.locationName || a.ev.location || "";
+      const bLocation = b.place?.name || b.ev.locationName || b.ev.location || "";
+      return direction * String(aLocation).localeCompare(String(bLocation));
+    }
+
     // Default: by next occurrence date
-    if (a.nextDate && b.nextDate) return a.nextDate - b.nextDate;
+    if (a.nextDate && b.nextDate) return direction * (a.nextDate - b.nextDate);
     if (a.nextDate) return -1;
     if (b.nextDate) return 1;
     return 0;
   });
+}
+
+function _eventCityLabel({ ev, place }) {
+  return String(place
+    ? getPlaceCity(place)
+    : ev.city || ev.cityName || extractCityFromAddress(ev.address || ev.location) || "Other places").trim();
+}
+
+function _buildEventsListCard({ ev, nextDate, dist, place, recent = false }) {
+  const location = place?.name || ev.locationName || ev.location || ev.address || "Location to be announced";
+  const dateStr = _formatEventDate(ev);
+  const timeStr = ev.time ? ev.time + (ev.endTime ? ` - ${ev.endTime}` : "") : "";
+  const dateLabel = nextDate
+    ? nextDate.toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" })
+    : (dateStr || "Date to be announced");
+  const distanceLabel = dist != null
+    ? (dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km")
+    : "";
+  const saved = _isEventSaved(ev.id);
+  return `<div class="ev-overlay-card ev-place-card pl-card" role="button" tabindex="0" data-event-recent="${recent ? "true" : "false"}" data-event-city="${escA(_eventCityLabel({ ev, place }))}" data-place-id="${escA(ev.placeId || "")}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
+    <span class="ev-card-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+    <span class="ev-card-name"><span class="ev-card-title">${esc(ev.title || "Event")}</span></span>
+    <span class="ev-card-location">${esc(location)}</span>
+    <span class="ev-card-meta">
+      <span class="ev-card-date">${esc(dateLabel)}</span>
+      ${timeStr ? `<span class="ev-card-time">${esc(timeStr)}</span>` : ""}
+      ${ev.recurring ? `<span class="ev-card-badge">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</span>` : ""}
+      ${ev.organizerName ? `<span class="ev-card-organizer">${esc(ev.organizerName)}</span>` : ""}
+      ${distanceLabel ? `<span class="ev-card-distance pl-dist">${esc(distanceLabel)}</span>` : ""}
+    </span>
+    <span class="ev-card-acts">
+      <button type="button" class="ev-overlay-save-btn${saved ? " active" : ""}" data-ev-save-id="${escA(ev.id)}" title="${saved ? "Remove from saved" : "Save event"}" aria-label="${saved ? "Remove from saved" : "Save event"}">${_eventBookmarkSVG(saved)}</button>
+      ${ev.url ? `<a href="${escA(ev.url)}" target="_blank" rel="noopener noreferrer" class="ev-overlay-link-btn" title="Open event page" aria-label="Open event page"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ""}
+      <span class="ev-card-arrow" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </span>
+  </div>`;
+}
+
+function _buildEventShareUrl(ev) {
+  return `${location.origin}${location.pathname}?event=${encodeURIComponent(ev.id)}`;
+}
+
+function _buildEventCityGroup(key, label, cards, extraClass = "") {
+  const section = document.createElement("section");
+  section.className = `ev-city-group${extraClass ? ` ${extraClass}` : ""}`;
+  section.dataset.cityGroup = key;
+  const header = document.createElement("div");
+  header.className = "ev-city-hdr pl-city-hdr";
+  header.dataset.cityGroup = key;
+  if (_evCollapsedCities.has(key)) header.classList.add("is-collapsed");
+  const toggle = document.createElement("button");
+  toggle.className = "ev-city-toggle pl-city-toggle";
+  toggle.type = "button";
+  toggle.setAttribute("aria-expanded", String(!_evCollapsedCities.has(key)));
+  const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  arrow.classList.add("ev-city-arrow", "pl-city-arrow");
+  arrow.setAttribute("width", "12");
+  arrow.setAttribute("height", "12");
+  arrow.setAttribute("viewBox", "0 0 24 24");
+  arrow.setAttribute("fill", "none");
+  arrow.setAttribute("stroke", "currentColor");
+  arrow.setAttribute("stroke-width", "2.5");
+  arrow.setAttribute("stroke-linecap", "round");
+  arrow.setAttribute("stroke-linejoin", "round");
+  arrow.innerHTML = "<polyline points=\"6 9 12 15 18 9\" />";
+  const name = document.createElement("span");
+  name.className = "ev-city-name pl-city-name";
+  name.textContent = label;
+  const count = document.createElement("span");
+  count.className = "ev-city-count pl-city-count";
+  toggle.append(arrow, name);
+  header.append(toggle, count);
+  const body = document.createElement("div");
+  body.className = "ev-city-group-body pl-city-group-body";
+  body.dataset.cityGroupBody = key;
+  if (_evCollapsedCities.has(key)) body.classList.add("shut");
+  const inner = document.createElement("div");
+  inner.className = "pl-city-group-inner";
+  const list = document.createElement("ul");
+  list.className = "ev-city-group-list pl-city-group-list";
+  list.append(...cards);
+  count.textContent = String(cards.length);
+  inner.append(list);
+  body.append(inner);
+  section.append(header, body);
+  return section;
+}
+
+function _buildEventSavedSection(key, label, items) {
+  const holder = document.createElement("div");
+  holder.innerHTML = items.map((item) => _buildEventsListCard(item)).join("");
+  return _buildEventCityGroup(key, label, [...holder.children], "ev-saved-section");
 }
 
 function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide") } = {}) {
@@ -4066,7 +4455,25 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
   }
   _evEmptyState.classList.add("hide");
 
-  _evFilteredList.innerHTML = filtered.map(({ ev, nextDate, dist, place }) => {
+  if (_evActiveFilter === "saved") {
+    const bookmarked = filtered.filter(({ ev }) => _isEventSaved(ev.id));
+    const attended = filtered.filter(({ ev }) => _isEventAttended(ev.id));
+    _evFilteredList.replaceChildren(
+      ...(bookmarked.length ? [_buildEventSavedSection("__saved_bookmarked_events__", "Bookmarks", bookmarked)] : []),
+      ...(attended.length ? [_buildEventSavedSection("__saved_attended_events__", "Attended", attended)] : []),
+    );
+    return;
+  }
+
+  const recentEvents = _evActiveFilter === "all" && !_evSearchQuery.trim() && !_evMosqueFilter?.value
+    ? _evRecentIds.map((id) => filtered.find((item) => String(item.ev.id) === id)).filter(Boolean)
+    : [];
+  const eventCardsHTML = filtered.map((item) => _buildEventsListCard(item)).join("");
+  const recentCardsHTML = recentEvents
+    .map((item) => _buildEventsListCard({ ...item, recent: true }))
+    .join("");
+  /*
+  const legacyEventCardsHTML = filtered.map(({ ev, nextDate, dist, place }) => {
     const placeName = place ? esc(place.name) : (ev.locationName ? esc(ev.locationName) : "");
     const organizerLine = ev.organizerName ? `<span class="ev-overlay-organizer">Organized by ${esc(ev.organizerName)}</span>` : "";
     const dateStr = _formatEventDate(ev);
@@ -4082,7 +4489,7 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
     const distBadge = dist != null
       ? `<span class="ev-dist-badge">${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>`
       : "";
-    return `<div class="ev-overlay-card" role="button" tabindex="0" data-place-id="${escA(ev.placeId || "")}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
+    return `<div class="ev-overlay-card" role="button" tabindex="0" data-event-city="${escA(_eventCityLabel({ ev, place }))}" data-place-id="${escA(ev.placeId || "")}" data-ev-url="${escA(ev.url || "")}" data-ev-id="${escA(ev.id)}">
       <div class="ev-overlay-top">
         <div class="ev-overlay-info">
           <span class="ev-overlay-title">${esc(ev.title)}</span>
@@ -4099,7 +4506,34 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
       </div>
       ${ev.description ? `<p class="ev-overlay-desc">${esc(ev.description)}</p>` : ""}
     </div>`;
-  }).join("");
+  }).join(""); */
+  _evFilteredList.innerHTML = recentCardsHTML + eventCardsHTML;
+  if (_evGroupByCity) {
+    const recentCards = [..._evFilteredList.querySelectorAll('.ev-overlay-card[data-event-recent="true"]')];
+    const groups = new Map();
+    _evFilteredList.querySelectorAll('.ev-overlay-card[data-event-recent="false"]').forEach((card) => {
+      const city = card.dataset.eventCity || "Other places";
+      const key = city.toLocaleLowerCase();
+      let group = groups.get(key);
+      if (!group) {
+        group = { cards: [], city };
+        groups.set(key, group);
+      }
+      group.cards.push(card);
+    });
+    const sections = [];
+    if (recentCards.length) {
+      sections.push(_buildEventCityGroup("__recent_events__", "Recently viewed", recentCards, "ev-recent-group"));
+      if (groups.size) {
+        const divider = document.createElement("div");
+        divider.className = "ev-section-hdr ev-section-hdr--main";
+        divider.textContent = "All events";
+        sections.push(divider);
+      }
+    }
+    sections.push(...[...groups.entries()].map(([key, group]) => _buildEventCityGroup(key, group.city, group.cards)));
+    _evFilteredList.replaceChildren(...sections);
+  }
   }, { skip: !animate || _eventsOverlay?.classList.contains("hide") });
 }
 
@@ -4126,10 +4560,116 @@ document.getElementById("ev-filter-bar")?.addEventListener("click", (e) => {
     chip.classList.add("active");
     _evActiveFilter = filter;
   }
+  _updateEventClearButton();
   _renderEventsList();
 });
 
-_evMosqueFilter?.addEventListener("change", () => _renderEventsList());
+_evClearFilters?.addEventListener("click", () => {
+  _evActiveFilter = "all";
+  _evNearbySort = false;
+  _evSortField = "date";
+  _evSortDir = "asc";
+  _evSearchQuery = "";
+  _evGroupByCity = true;
+  _evCollapsedCities.clear();
+  if (_evMosqueFilter) _evMosqueFilter.value = "";
+  if (_evSearchInput) _evSearchInput.value = "";
+  _evRefineRow?.classList.remove("pl-searching");
+  _evSearchWrap?.classList.remove("open");
+  _closeEventFilterDropdown();
+  _closeEventSortDropdown();
+  document.querySelectorAll("#ev-filter-bar .ev-filter-chip").forEach((chip) => {
+    chip.classList.toggle("active", chip.dataset.filter === "all");
+  });
+  _updateEventFilterButton();
+  _updateEventSortButton();
+  _updateEventClearButton();
+  _eventsList.scrollTop = 0;
+  _renderEventsList();
+});
+
+_evMosqueFilter?.addEventListener("change", () => {
+  _updateEventFilterButton();
+  _renderEventsList();
+});
+
+_evFilterToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (_evSearchWrap?.classList.contains("open")) _closeEventSearch();
+  _closeEventSortDropdown();
+  const isOpen = !_evFilterDropdown.classList.contains("shut");
+  _evFilterDropdown.classList.toggle("shut", isOpen);
+  _updateEventFilterButton();
+});
+
+_evFilterDropdown?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const locationOption = event.target.closest("[data-event-location]");
+  if (locationOption) {
+    _evMosqueFilter.value = locationOption.dataset.eventLocation || "";
+    _updateEventFilterButton();
+    _closeEventFilterDropdown();
+    _renderEventsList();
+    return;
+  }
+  const groupOption = event.target.closest("[data-group-by-city]");
+  if (groupOption) {
+    _evGroupByCity = !_evGroupByCity;
+    _updateEventFilterButton();
+    _closeEventFilterDropdown();
+    _renderEventsList();
+  }
+});
+
+_evSearchIcnBtn?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (_evSearchWrap?.classList.contains("open")) {
+    _closeEventSearch();
+    _evSearchInput?.blur();
+  } else {
+    _closeEventSortDropdown();
+    _openEventSearch();
+  }
+});
+
+_evSearchInput?.addEventListener("input", () => {
+  clearTimeout(_evSearchDebounce);
+  _evSearchQuery = _evSearchInput.value;
+  _updateEventClearButton();
+  _evSearchDebounce = setTimeout(() => _renderEventsList(), 120);
+});
+
+_evSearchInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    _closeEventSearch();
+    _evSearchInput.blur();
+  }
+});
+
+_evSortToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (_evSearchWrap?.classList.contains("open")) _closeEventSearch();
+  const isOpen = !_evSortDropdown.classList.contains("shut");
+  _evSortDropdown.classList.toggle("shut", isOpen);
+  _evSortToggle.classList.toggle("open", !isOpen);
+  _updateEventSortButton();
+});
+
+_evSortDropdown?.addEventListener("click", (event) => {
+  const option = event.target.closest(".sort-opt");
+  if (!option) return;
+  if (option.dataset.sortField) _evSortField = option.dataset.sortField;
+  if (option.dataset.sortDir) _evSortDir = option.dataset.sortDir;
+  _updateEventSortButton();
+  _renderEventsList();
+  _closeEventSortDropdown();
+});
+
+document.addEventListener("click", (event) => {
+  if (!_evSearchWrap?.contains(event.target)) _closeEventSearch();
+  if (!_evFilterWrap?.contains(event.target)) _closeEventFilterDropdown();
+  if (!_evSortWrap?.contains(event.target)) _closeEventSortDropdown();
+});
 
 function _openEventsNavigation() {
   if (isPhone()) navigatePhonePage("events");
@@ -4146,29 +4686,251 @@ function _closeEventsNavigation({ leavePhonePage = false } = {}) {
   if (_eventsNavBtn?.classList.contains("active-tab")) setActiveTab(null);
 }
 
+function _eventPlaceAndCoords(ev) {
+  const place = placesData.find((item) => String(item.id) === String(ev.placeId));
+  const lat = Number(ev.lat ?? place?.lat);
+  const lng = Number(ev.lng ?? place?.lng);
+  return { place, lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null };
+}
+
+function closeEventDetail() {
+  if (!_eventDetailEl || _eventDetailEl.classList.contains("shut")) return;
+  const returnToEvents = _eventDetailFromEvents;
+  const eventOnly = _eventDetailEventOnly;
+  _eventDetailFromEvents = false;
+  _eventDetailEventOnly = false;
+  clearPhoneWindowState();
+  _eventDetailEl._hideTimeout && clearTimeout(_eventDetailEl._hideTimeout);
+  _eventDetailEl._hideTimeout = null;
+  _eventDetailSnap.close();
+  placeSheetScrim.classList.add("hide");
+  _setActiveMarker(null);
+  _setActiveEventMarker(null);
+  if (eventOnly) addEventOnlyMarkers();
+  _eventDetailEl._hideTimeout = setTimeout(() => {
+    _eventDetailEl.hidden = true;
+    _eventDetailSnap.cleanup();
+    _eventDetailEl._hideTimeout = null;
+  }, 400);
+  if (returnToEvents) {
+    if (isPhone()) {
+      navigatePhonePage("events", { replace: true });
+      _renderEventsList({ animate: false });
+    } else {
+      _openEventsNavigation();
+    }
+  }
+}
+
+export function openEventDetail(ev, { fromEventsPage = false } = {}) {
+  if (!ev || !_eventDetailEl) return;
+  _trackRecentlyViewedEvent(ev.id);
+  const { place, lat, lng } = _eventPlaceAndCoords(ev);
+  const location = place?.name || ev.locationName || ev.location || ev.address || "Location to be announced";
+  const date = _nextEventDate(ev);
+  const dateLabel = date
+    ? date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : (_formatEventDate(ev) || "Date to be announced");
+  const timeLabel = ev.time ? `${ev.time}${ev.endTime ? ` - ${ev.endTime}` : ""}` : "Time to be announced";
+  const saved = _isEventSaved(ev.id);
+  const attended = _isEventAttended(ev.id);
+  const canMarkAttended = eventHasOccurred(ev);
+  _eventDetailFromEvents = fromEventsPage;
+  _eventDetailEventOnly = !place && lat !== null && lng !== null;
+  _eventDetailCloseBtn?.classList.toggle("event-detail-close--back", fromEventsPage);
+  _eventDetailCloseBtn?.setAttribute("aria-label", fromEventsPage ? "Back to events" : "Close event details");
+  if (_eventDetailCloseBtn) _eventDetailCloseBtn.innerHTML = fromEventsPage ? _BACK_ICON_SVG : _CLOSE_ICON_SVG;
+  if (place) {
+    _setActiveEventMarker(null);
+    _setActiveMarker(place.id);
+  } else {
+    _setActiveMarker(null);
+    if (_eventDetailEventOnly) {
+      addEventOnlyMarkers(ev.id);
+      _setActiveEventMarker(ev.id);
+    }
+  }
+  if (isPhone()) {
+    navigatePhonePage("map");
+    pushPhoneWindowState("event-detail");
+  } else {
+    _eventsOverlay.classList.add("hide");
+  }
+  _eventDetailTitle.textContent = ev.title || "Event";
+  _eventDetailBody.innerHTML = `<div class="pp">
+    <div class="pp-inner ev-detail-inner">
+      <div class="pp-hdr ev-detail-hdr">
+        <span class="pp-icon ev-detail-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <span class="pp-badge ev-detail-type">Event</span>
+        ${ev.recurring ? `<span class="pp-badge ev-detail-recurring">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</span>` : ""}
+        <div class="pp-icon-row">
+          ${canMarkAttended ? `<button type="button" class="pp-visit-chip pp-icon-action ev-detail-attend-btn${attended ? " active" : ""}" data-state="${attended ? "yes" : ""}" data-event-attend-id="${escA(ev.id)}" title="${attended ? "Attended" : "Mark as attended"}" aria-label="${attended ? "Attended" : "Mark as attended"}" aria-pressed="${attended}"><svg class="pp-visit-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
+          <button type="button" class="pp-fav-btn ev-detail-save-btn${saved ? " active" : ""}" data-event-save-id="${escA(ev.id)}" title="${saved ? "Remove from saved" : "Save event"}" aria-label="${saved ? "Remove from saved" : "Save event"}" aria-pressed="${saved}">${_eventBookmarkSVG(saved)}</button>
+        </div>
+      </div>
+      <div class="pp-addr ev-detail-venue"><strong>${esc(location)}</strong>${ev.address ? `<span>${esc(ev.address)}</span>` : ""}</div>
+      <div class="pp-events ev-detail-schedule">
+        <div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Schedule</span></div>
+        <div class="ev-detail-schedule-grid">
+          <div class="ev-detail-schedule-item"><span class="ev-detail-label">Date</span><strong class="ev-detail-value">${esc(dateLabel)}</strong></div>
+          <div class="ev-detail-schedule-item"><span class="ev-detail-label">Time</span><strong class="ev-detail-value">${esc(timeLabel)}</strong></div>
+        </div>
+      </div>
+      ${ev.organizerName ? `<div class="ev-detail-section"><span class="ev-detail-label">Organized by</span><strong class="ev-detail-location">${esc(ev.organizerName)}</strong></div>` : ""}
+      ${ev.description ? `<div class="ev-detail-section"><span class="ev-detail-label">About</span><p class="ev-detail-description">${esc(ev.description)}</p></div>` : ""}
+    </div>
+  </div>`;
+  _eventDetailBody.querySelector(".ev-detail-save-btn")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    _toggleEventSaved(ev.id);
+  });
+  _eventDetailBody.querySelector(".ev-detail-attend-btn")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    _toggleEventAttended(ev.id);
+  });
+
+  // Match the place window: the timeline control only appears for an event
+  // whose current occurrence is inside the one-hour verification window.
+  const iconRow = _eventDetailBody.querySelector(".pp-icon-row");
+  let eventTimelineBtn = null;
+  let eventTimelineCheckInFlight = false;
+  const mountEventTimelineAction = () => {
+    if (eventTimelineBtn || !iconRow?.isConnected || lat === null || lng === null) return;
+    eventTimelineBtn = document.createElement("button");
+    eventTimelineBtn.type = "button";
+    eventTimelineBtn.className = "pp-timeline-btn pp-timeline-pill ev-detail-timeline-btn";
+    eventTimelineBtn.setAttribute("aria-label", "Add to timeline");
+    eventTimelineBtn.title = "Add to timeline";
+    iconRow.prepend(eventTimelineBtn);
+    const renderEventTimelineState = (state) => {
+      const labels = { pending: "Checking location…", success: "Added", added: "Added to timeline", idle: "Add to timeline" };
+      const label = labels[state] || labels.idle;
+      eventTimelineBtn.setAttribute("aria-label", label);
+      eventTimelineBtn.title = label;
+      eventTimelineBtn.textContent = label;
+      eventTimelineBtn.disabled = state === "pending";
+      eventTimelineBtn.dataset.state = state;
+    };
+    const runEventTimelineCheck = async () => {
+      if (eventTimelineCheckInFlight || !eventTimelineBtn?.isConnected) return;
+      eventTimelineCheckInFlight = true;
+      renderEventTimelineState("pending");
+      try {
+        const result = await addVerifiedEventVisit({ ...ev, lat, lng }, { allowLocationRequest: false });
+        if (result.success) {
+          renderEventTimelineState("added");
+          showToast("Added to your timeline", "check", ev.title || "Event");
+        } else if (result.status === "already-added") {
+          renderEventTimelineState("added");
+          showToast("Already added to timeline", "info", "This occurrence is already recorded");
+        } else if (result.status === "signed-out") {
+          renderEventTimelineState("idle");
+          showToast("Sign in to add events", "info", "Open Menu to continue");
+          closeEventDetail();
+          requestAnimationFrame(() => import("./menu.js").then(({ openMenuSheet }) => openMenuSheet()).catch(() => {}));
+        } else if (result.status === "too-far") {
+          const distance = result.distanceMetres >= METRES_PER_KILOMETRE
+            ? `${(result.distanceMetres / METRES_PER_KILOMETRE).toFixed(1)} km`
+            : `${Math.round(result.distanceMetres)} m`;
+          eventTimelineBtn?.remove();
+          eventTimelineBtn = null;
+          showToast(`You’re about ${distance} away`, "info", "Move closer and try again");
+        } else if (result.status === "location-denied" || result.status === "location-off") {
+          renderEventTimelineState("idle");
+          showActionToast("Location is off", "loc", "Tap to turn on GPS", () => showCurrentLocation({ onFirstFix: () => { void runEventTimelineCheck(); } }));
+        } else if (result.status === "outside-window") {
+          eventTimelineBtn?.remove();
+          eventTimelineBtn = null;
+        } else {
+          renderEventTimelineState("idle");
+          showToast("Couldn’t add this event", "error", "Please try again");
+        }
+      } finally {
+        eventTimelineCheckInFlight = false;
+      }
+    };
+    eventTimelineBtn.addEventListener("click", (event) => { event.stopPropagation(); void runEventTimelineCheck(); });
+    renderEventTimelineState("idle");
+  };
+  void peekEventTimelineEligibility({ ...ev, lat, lng }).then((result) => {
+    if (result.status !== "outside-window" && result.status !== "too-far") mountEventTimelineAction();
+  }).catch(() => mountEventTimelineAction());
+  _eventDetailActions.innerHTML = "";
+  _eventDetailActions.hidden = false;
+  const edit = document.createElement("button");
+  edit.className = "pp-edit-btn ev-detail-edit";
+  edit.type = "button";
+  edit.title = "Edit event";
+  edit.setAttribute("aria-label", "Edit event");
+  edit.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  edit.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openEventOverlay(null, ev);
+  });
+  let externalLink = null;
+  if (ev.url) {
+    externalLink = document.createElement("a");
+    const link = externalLink;
+    link.className = "pp-contact-btn ev-detail-external";
+    link.href = ev.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = "Open event page";
+    link.setAttribute("aria-label", "Open event page");
+    link.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+  }
+  if (lat !== null && lng !== null) {
+    const directions = document.createElement("button");
+    directions.className = "pp-dir-btn ev-detail-directions";
+    directions.type = "button";
+    directions.setAttribute("aria-label", "Directions");
+    directions.title = "Directions";
+    directions.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>`;
+    directions.addEventListener("click", () => {
+      dir.dest = { lat, lng, name: location };
+      document.getElementById("dir-to").value = location;
+      placeDestMarker(lng, lat);
+      updateGoButton();
+      _eventDetailFromEvents = false;
+      closeEventDetail();
+      openDirPanel();
+    });
+    _eventDetailActions.appendChild(directions);
+  }
+  if (externalLink) _eventDetailActions.appendChild(externalLink);
+  const share = document.createElement("button");
+  share.className = "pp-share-btn ev-detail-share";
+  share.type = "button";
+  share.title = "Share this event";
+  share.setAttribute("aria-label", "Share this event");
+  share.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+  share.addEventListener("click", (event) => {
+    event.stopPropagation();
+    track("event_shared", { event_id: String(ev.id) });
+    shareUrl(_buildEventShareUrl(ev), ev.title || "Event", `${ev.title || "Event"} – Manarah`);
+  });
+  _eventDetailActions.append(share, edit);
+  _eventDetailEl.hidden = false;
+  _eventDetailEl.classList.remove("shut");
+  placeSheetScrim.classList.remove("hide");
+  _eventDetailSnap.open();
+  if (lat !== null && lng !== null) requestAnimationFrame(() => focusMapPoint([lng, lat], { zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM), duration: 500 }));
+}
+
+const _eventDetailSnap = initSheetDrag(_eventDetailEl, closeEventDetail, {
+  contentBoundedExpansion: true,
+  maxHeightRatio: PLACE_SHEET_MAX_HEIGHT_RATIO,
+});
+_eventDetailCloseBtn?.addEventListener("click", closeEventDetail);
+
 _eventsPill.addEventListener("click", _openEventsNavigation);
 _eventsNavBtn?.addEventListener("click", () => {
   _openEventsNavigation();
 });
 
-/**
- * Opens the events overlay and scrolls to / highlights a specific event.
- * @param {string} evId - The event ID to highlight.
- */
 function _openEventsOverlayToEvent(evId) {
-  // Build the list while the sheet is still hidden. Rendering after opening
-  // animates the card's height and looks like a content reveal on phones;
-  // preparing first preserves the standard bottom-sheet entrance.
-  _renderEventsList({ animate: false });
-  if (isPhone()) navigatePhonePage("events");
-  _eventsOverlay.classList.remove("hide");
-  requestAnimationFrame(() => {
-    const card = _eventsList.querySelector(`.ev-overlay-card[data-ev-id="${CSS.escape(evId)}"]`);
-    if (!card) return;
-    card.scrollIntoView({ behavior: "smooth", block: "center" });
-    card.classList.add("ev-overlay-card--highlight");
-    setTimeout(() => card.classList.remove("ev-overlay-card--highlight"), 1800);
-  });
+  const ev = eventsData.find((item) => String(item.id) === String(evId));
+  if (ev) openEventDetail(ev);
 }
 
 document.getElementById("events-close").addEventListener("click", () => {
@@ -4185,32 +4947,42 @@ _eventsOverlay.addEventListener("click", (e) => {
 });
 
 _eventsList.addEventListener("click", (e) => {
-  // Handle edit button click first
-  const editBtn = e.target.closest(".ev-overlay-edit-btn");
-  if (editBtn) {
+  const cityToggle = e.target.closest(".ev-city-toggle");
+  if (cityToggle) {
     e.stopPropagation();
-    const ev = eventsData.find((x) => x.id === editBtn.dataset.evId);
-    if (ev) {
-      _closeEventsNavigation({ leavePhonePage: isPhone() });
-      openEventOverlay(null, ev);
+    const group = cityToggle.closest(".ev-city-group");
+    const city = group?.dataset.cityGroup;
+    const body = city ? _evFilteredList.querySelector(`[data-city-group-body="${CSS.escape(city)}"]`) : null;
+    if (!city || !body) return;
+    const collapsed = _evCollapsedCities.has(city);
+    const scrollTop = _eventsList.scrollTop;
+    if (collapsed) {
+      _evCollapsedCities.delete(city);
+      group.querySelector(".ev-city-hdr")?.classList.remove("is-collapsed");
+      body.classList.remove("shut");
+      cityToggle.setAttribute("aria-expanded", "true");
+    } else {
+      _evCollapsedCities.add(city);
+      group.querySelector(".ev-city-hdr")?.classList.add("is-collapsed");
+      body.classList.add("shut");
+      cityToggle.setAttribute("aria-expanded", "false");
     }
+    _eventsList.scrollTop = scrollTop;
+    requestAnimationFrame(() => { _eventsList.scrollTop = scrollTop; });
+    return;
+  }
+  const saveBtn = e.target.closest(".ev-overlay-save-btn");
+  if (saveBtn) {
+    e.stopPropagation();
+    _toggleEventSaved(saveBtn.dataset.evSaveId);
     return;
   }
   // Let link button clicks through to the <a> handler
   if (e.target.closest(".ev-overlay-link-btn")) return;
   const card = e.target.closest(".ev-overlay-card");
   if (!card) return;
-  const url = card.dataset.evUrl;
-  if (url) {
-    window.open(url, "_blank", "noopener,noreferrer");
-  } else {
-    const pid = card.dataset.placeId;
-    const place = placesData.find((p) => p.id === pid);
-    if (place) {
-      _closeEventsNavigation({ leavePhonePage: isPhone() });
-      openPlaceSheet(place);
-    }
-  }
+  const ev = eventsData.find((item) => String(item.id) === String(card.dataset.evId));
+  if (ev) openEventDetail(ev, { fromEventsPage: true });
 });
 
 // ── Promos Button + Overlay ──────────────────────────────────────────────────
@@ -5140,12 +5912,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   const evCard = e.target.closest(".pl-ev-body .pp-ev-card");
   if (evCard) {
     e.stopPropagation();
-    const url = evCard.dataset.evUrl;
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    } else {
-      _openEventsOverlayToEvent(evCard.dataset.evId);
-    }
+    if (!e.target.closest("a")) _openEventsOverlayToEvent(evCard.dataset.evId);
     return;
   }
   if (e.target.closest(".pl-ev-body")) {

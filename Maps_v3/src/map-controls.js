@@ -5,6 +5,7 @@ import {
   esc,
   getVisitorGeo,
   showToast,
+  showActionToast,
   showLoadingToast,
   hideLoadingToast,
   requestLocation,
@@ -17,6 +18,8 @@ import {
   getCurrentLocationState,
   clearCurrentLocationState,
   clearLocationWatch,
+  getCurrentPosition,
+  hasGeolocation,
 } from "./utils.js";
 import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
 import { getPhonePage, isPhone, navigatePhonePage, syncPhoneNavPill } from "./phone-pages.js";
@@ -33,6 +36,7 @@ let homeMarker = null;
 // Cache geolocation permission state so we can skip the "Finding location" toast
 // when GPS is already known-denied. Resolves in one microtask (from browser cache).
 let _geoPermState = null;
+let _locationStartupNoticeDismissed = false;
 navigator.permissions?.query({ name: "geolocation" })
   .then((p) => {
     _geoPermState = p.state;
@@ -53,6 +57,21 @@ const CITY_START_VIEWS = Object.freeze({
   kauniainen: [24.7276, 60.2124],
   grankulla: [24.7276, 60.2124],
 });
+
+function _showLocationStartupNotice() {
+  if (_locationStartupNoticeDismissed || getCurrentLocationState().active) return;
+  showActionToast(
+    "Location is off",
+    "loc",
+    "Enable GPS for nearby places, city-aware suggestions, and accurate event locations.",
+    () => showCurrentLocation(),
+    {
+      persistent: true,
+      closeLabel: "Dismiss location notice",
+      onClose: () => { _locationStartupNoticeDismissed = true; },
+    },
+  );
+}
 
 export let currentTheme = "light";     // "light" | "dark" — the actually-applied visual theme
 export let themeMode = "auto";        // "light" | "dark" | "auto" — the user's selected Theme option
@@ -347,6 +366,55 @@ export async function centerVisitorCityIfAvailable({ instant = false, canApply =
     focusMapPoint(view.center, { ...view, method: "flyTo" });
   }
   return true;
+}
+
+/** Use an existing location grant once at startup without opening a prompt. */
+export async function primeGrantedLocation() {
+  if (getCurrentLocationState().active) return true;
+  if (isNative() && window.Capacitor?.Plugins?.Geolocation?.checkPermissions) {
+    try {
+      const status = await window.Capacitor.Plugins.Geolocation.checkPermissions();
+      _geoPermState = status?.location || null;
+      if (status?.location !== "granted") return false;
+      const position = await requestLocation();
+      const { latitude: lat, longitude: lng, accuracy } = position.coords;
+      setCurrentLocationState({ lat, lng, accuracy, active: true });
+      return true;
+    } catch { return false; }
+  }
+  if (!hasGeolocation() || !navigator.permissions?.query) return false;
+  try {
+    const permission = await navigator.permissions.query({ name: "geolocation" });
+    _geoPermState = permission.state;
+    if (permission.state !== "granted") return false;
+    const position = await new Promise((resolve, reject) => getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }));
+    const { latitude: lat, longitude: lng, accuracy } = position.coords;
+    setCurrentLocationState({ lat, lng, accuracy, active: true });
+    return true;
+  } catch { return false; }
+}
+
+/** Prime location for the map without opening a permission prompt on launch. */
+export async function primeLocationAtStartup() {
+  if (getCurrentLocationState().active || new URL(window.location.href).searchParams.has("sim")) return true;
+  const active = await primeGrantedLocation();
+  if (active) return true;
+
+  if (!hasGeolocation()) {
+    _showLocationStartupNotice();
+    return false;
+  }
+
+  if (isNative() && window.Capacitor?.Plugins?.Geolocation?.checkPermissions) {
+    try {
+      const status = await window.Capacitor.Plugins.Geolocation.checkPermissions();
+      if (status?.location !== "prompt") _showLocationStartupNotice();
+    } catch { /* the normal location control remains available */ }
+    return false;
+  }
+
+  if (_geoPermState === "denied" || _geoPermState === "granted") _showLocationStartupNotice();
+  return false;
 }
 
 export function showCurrentLocation({ onFirstFix } = {}) {

@@ -9,7 +9,7 @@
  *
  * POST actions: sync-saved (list; also returns localImportResolved,
  * firstSeenAt, isFirstEverSignIn, lifetime badge counters), save, unsave,
- * resolve-import, add-verified-visit, get-visit-timeline, erase-data
+ * resolve-import, add-verified-visit, add-verified-event, get-visit-timeline, erase-data
  * (deletes every D1 row matching this emailHash
  * across every identity-linked table, via one atomic env.DB.batch() — a
  * genuine improvement over Code.gs's sequential per-sheet deletes, which it
@@ -25,8 +25,13 @@ import { allowedOrigin, truncate, sha256, json } from "../_shared.js";
 const MAX_BODY_SIZE = 12_288;
 const MAX_PLACE_ID_LEN = 20;
 const MAX_PIN_NAME_LEN = 200;
+const MAX_EVENT_ID_LEN = 100;
 const PLACE_ID_PATTERN = /^[A-Za-z0-9_-]{1,20}$/;
+const EVENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 const VERIFIED_VISIT_COOLDOWN_MS = 60 * 60 * 1000;
+const EVENT_TIMELINE_GRACE_MS = 60 * 60 * 1000;
+// shortcut: events currently store no timezone, validate against the app's Helsinki clock until the event schema carries one.
+const EVENT_TIME_ZONE = "Europe/Helsinki";
 const SAVED_PLACE_KINDS = ["favorite", "pin", "home", "visited"];
 const PLACE_ID_KINDS = ["favorite", "visited"];
 const ERASE_TARGETS = [
@@ -58,9 +63,76 @@ async function getSavedPlaces(db, emailHash) {
   return results.map((r) => ({ kind: r.kind || "", placeId: r.place_id || "", pinLat: r.pin_lat, pinLng: r.pin_lng, pinName: r.pin_name || "", savedAt: r.saved_at || "" }));
 }
 
+function _eventDateParts(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+  if (!match) return null;
+  const parts = match.slice(1).map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  return date.getUTCFullYear() === parts[0] && date.getUTCMonth() === parts[1] - 1 && date.getUTCDate() === parts[2]
+    ? { year: parts[0], month: parts[1], day: parts[2], date }
+    : null;
+}
+
+function _eventTimeMs(dateKey, value, fallbackMinutes = 0) {
+  const parts = _eventDateParts(dateKey);
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ""));
+  const hours = match ? Number(match[1]) : Math.floor(fallbackMinutes / 60);
+  const minutes = match ? Number(match[2]) : fallbackMinutes % 60;
+  if (!parts || !Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) return null;
+  return Date.UTC(parts.year, parts.month - 1, parts.day, hours, minutes);
+}
+
+function _eventOccursOnDate(pattern, dateKey) {
+  const date = _eventDateParts(dateKey);
+  if (!date || !pattern) return false;
+  if (pattern === "daily") return true;
+  const parts = String(pattern).split(":");
+  const numbers = (value) => String(value || "").split(",").map(Number).filter(Number.isFinite);
+  if (parts[0] === "weekly") return numbers(parts[1]).includes(date.date.getUTCDay());
+  if (parts[0] === "biweekly") {
+    if (!numbers(parts[1]).includes(date.date.getUTCDay())) return false;
+    const anchor = _eventDateParts(parts[2]);
+    if (!anchor) return false;
+    const days = Math.round((date.date.getTime() - anchor.date.getTime()) / 86400000);
+    return days >= 0 && Math.floor(days / 7) % 2 === 0;
+  }
+  if (parts[0] === "monthly-date") return numbers(parts[1]).includes(date.day);
+  if (parts[0] === "monthly-day") {
+    const ordinals = numbers(parts[1]);
+    const weekdays = numbers(parts[2]);
+    if (!weekdays.includes(date.date.getUTCDay())) return false;
+    const lastDay = new Date(Date.UTC(date.year, date.month, 0));
+    const ordinal = Math.floor((date.day - 1) / 7) + 1;
+    const lastOccurrenceDay = lastDay.getUTCDate() - ((lastDay.getUTCDay() - date.date.getUTCDay() + 7) % 7);
+    return ordinals.includes(ordinal) || (ordinals.includes(-1) && date.day === lastOccurrenceDay);
+  }
+  return false;
+}
+
+function _eventOccursAt(event, occurrenceAt, now = new Date()) {
+  const occurrence = _eventDateParts(occurrenceAt);
+  const eventStart = _eventDateParts(event?.event_date);
+  if (!occurrence || !eventStart || occurrenceAt < event.event_date) return false;
+  if (event.recurring ? !_eventOccursOnDate(event.recurrence_pattern, occurrenceAt) : occurrenceAt !== event.event_date) return false;
+  const current = new Intl.DateTimeFormat("en-CA", {
+    timeZone: EVENT_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now).reduce((result, part) => {
+    if (part.type !== "literal") result[part.type] = Number(part.value);
+    return result;
+  }, {});
+  const currentMs = Date.UTC(current.year, current.month - 1, current.day, current.hour, current.minute);
+  const startMs = _eventTimeMs(occurrenceAt, event.event_time, 0);
+  if (startMs == null) return false;
+  let endMs = _eventTimeMs(occurrenceAt, event.end_time, 0);
+  if (endMs == null) endMs = startMs + 2 * 60 * 60 * 1000;
+  else if (endMs <= startMs) endMs += 86400000;
+  return currentMs >= startMs - EVENT_TIMELINE_GRACE_MS && currentMs <= endMs + EVENT_TIMELINE_GRACE_MS;
+}
+
 async function getVisitTimeline(db, emailHash) {
   const { results } = await db.prepare(
     `SELECT v.id, v.place_id, v.place_name, v.visited_at,
+            v.event_id, v.event_title, v.occurrence_at, v.event_lat, v.event_lng, v.event_location_name,
             p.lat AS place_lat, p.lng AS place_lng
        FROM verified_visits v
        LEFT JOIN places p ON p.id = v.place_id
@@ -72,9 +144,66 @@ async function getVisitTimeline(db, emailHash) {
     placeId: row.place_id || "",
     placeName: row.place_name || "",
     visitedAt: row.visited_at || "",
+    kind: row.event_id ? "event" : "place",
+    eventId: row.event_id || "",
+    eventTitle: row.event_title || "",
+    occurrenceAt: row.occurrence_at || "",
+    eventLat: row.event_lat == null ? null : Number(row.event_lat),
+    eventLng: row.event_lng == null ? null : Number(row.event_lng),
+    eventLocationName: row.event_location_name || "",
     placeLat: row.place_lat == null ? null : Number(row.place_lat),
     placeLng: row.place_lng == null ? null : Number(row.place_lng),
   }));
+}
+
+async function addVerifiedEventVisit(db, emailHash, eventId, occurrenceAt) {
+  const event = await db.prepare(
+    `SELECT e.id, e.place_id, e.title, e.event_date, e.event_time, e.end_time, e.recurring, e.recurrence_pattern,
+            e.location_name, e.location_lat, e.location_lng,
+            p.name AS place_name, p.lat AS place_lat, p.lng AS place_lng
+       FROM events e
+       LEFT JOIN places p ON p.id = e.place_id
+      WHERE e.id = ? AND e.status = 'yes'`
+  ).bind(eventId).first();
+  if (!event || !_eventOccursAt(event, occurrenceAt)) return { error: "event_outside_window" };
+
+  const visitedAt = new Date().toISOString();
+  const placeName = event.place_name || event.location_name || event.title || "Event";
+  const eventLat = event.location_lat == null ? event.place_lat : event.location_lat;
+  const eventLng = event.location_lng == null ? event.place_lng : event.location_lng;
+  const id = crypto.randomUUID();
+  const insert = await db.prepare(
+    `INSERT INTO verified_visits
+      (id, email_hash, place_id, place_name, visited_at, event_id, event_title, occurrence_at, event_lat, event_lng, event_location_name)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM verified_visits
+         WHERE email_hash = ? AND event_id = ? AND occurrence_at = ?
+      )`
+  ).bind(
+    id, emailHash, event.place_id || "", placeName, visitedAt, event.id, event.title || "", occurrenceAt,
+    eventLat == null ? null : Number(eventLat), eventLng == null ? null : Number(eventLng), event.location_name || "",
+    emailHash, event.id, occurrenceAt,
+  ).run();
+  if (!Number(insert.meta?.rows_written || 0)) return { error: "event_occurrence_exists" };
+
+  return {
+    visit: {
+      id,
+      kind: "event",
+      placeId: event.place_id || "",
+      placeName,
+      visitedAt,
+      eventId: event.id,
+      eventTitle: event.title || "",
+      occurrenceAt,
+      eventLat: eventLat == null ? null : Number(eventLat),
+      eventLng: eventLng == null ? null : Number(eventLng),
+      eventLocationName: event.location_name || "",
+      placeLat: event.place_lat == null ? null : Number(event.place_lat),
+      placeLng: event.place_lng == null ? null : Number(event.place_lng),
+    },
+  };
 }
 
 async function addVerifiedVisit(db, emailHash, placeId) {
@@ -212,7 +341,7 @@ export async function onRequestPost(context) {
     try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON" }, 400, headers); }
 
     const { action, idToken } = body;
-    if (!["sync-saved", "save", "unsave", "resolve-import", "add-verified-visit", "get-visit-timeline", "delete-verified-visit", "erase-data"].includes(action)) {
+    if (!["sync-saved", "save", "unsave", "resolve-import", "add-verified-visit", "add-verified-event", "get-visit-timeline", "delete-verified-visit", "erase-data"].includes(action)) {
       return json({ error: "Invalid request" }, 400, headers);
     }
 
@@ -269,6 +398,17 @@ export async function onRequestPost(context) {
       if (!PLACE_ID_PATTERN.test(placeId)) return json({ error: "invalid_place_id" }, 400, headers);
       const result = await addVerifiedVisit(db, emailHash, placeId);
       if (result.error) return json(result, result.error === "visit_cooldown" ? 409 : 400, headers);
+      return json({ success: true, ...result }, 200, headers);
+    }
+
+    if (action === "add-verified-event") {
+      const eventId = truncate((body.eventId || "").toString().trim(), MAX_EVENT_ID_LEN);
+      const occurrenceAt = (body.occurrenceAt || "").toString().trim();
+      const hasRawLocation = ["lat", "lng", "latitude", "longitude", "accuracy", "visitedAt"].some((field) => Object.prototype.hasOwnProperty.call(body, field));
+      if (hasRawLocation) return json({ error: "invalid_request" }, 400, headers);
+      if (!EVENT_ID_PATTERN.test(eventId) || !_eventDateParts(occurrenceAt)) return json({ error: "invalid_event_occurrence" }, 400, headers);
+      const result = await addVerifiedEventVisit(db, emailHash, eventId, occurrenceAt);
+      if (result.error) return json(result, result.error === "event_occurrence_exists" ? 409 : 400, headers);
       return json({ success: true, ...result }, 200, headers);
     }
 

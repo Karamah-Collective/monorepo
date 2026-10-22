@@ -30,6 +30,7 @@ import {
   centerStoredHomeIfAvailable,
   centerVisitorCityIfAvailable,
   syncHomeMarker,
+  primeLocationAtStartup,
 } from "./map-controls.js";
 import "./directions.js";
 import "./navigation.js"; // registers nav hooks with directions.js
@@ -169,6 +170,7 @@ function _afterWelcomeIdle() {
 
 // Fetch real startup data while tiles and the welcome animation are loading.
 preloadPlacesData();
+void primeLocationAtStartup();
 const welcomeReady = _prepareWelcomeScreen();
 void _prepareStartupView();
 
@@ -270,6 +272,7 @@ function hasIncomingSharedState() {
     params.has("route") ||
     params.has("p") ||
     params.has("place") ||
+    params.has("event") ||
     params.has("eid") ||
     (params.has("lat") && params.has("lng"))
   ) {

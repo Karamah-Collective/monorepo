@@ -11,6 +11,7 @@
  * ?action=places  → [...] places array
  * ?action=tags    → {...} tags object
  * ?action=events  → [...] events array
+ * ?action=suggestions&city=... → { city, placeIds: [...] } ranked from PostHog
  */
 import { allowedOrigin, json } from "../_shared.js";
 import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
@@ -180,6 +181,31 @@ async function getPlaces(db) {
   return places;
 }
 
+async function getSuggestedPlaceIds(db, env, city) {
+  if (!env.POSTHOG_API_KEY || !env.POSTHOG_PROJECT_ID) return [];
+  // shortcut: use a 90-day popularity window, switch to a stored all-time aggregate if query volume grows.
+  const query = `SELECT properties.place_id AS place_id, count() AS views FROM events WHERE timestamp >= now() - INTERVAL 90 DAY AND event = 'place_opened' AND properties.place_id IS NOT NULL GROUP BY place_id ORDER BY views DESC LIMIT 500`;
+  try {
+    const response = await fetch(`${String(env.POSTHOG_API_HOST || "https://eu.posthog.com").replace(/\/$/, "")}/api/projects/${encodeURIComponent(env.POSTHOG_PROJECT_ID)}/query/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.POSTHOG_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
+    });
+    const rows = (await response.json().catch(() => ({}))).results;
+    if (!response.ok || !Array.isArray(rows)) return [];
+    const places = await getPlaces(db);
+    const byId = new Map(places.map((place) => [String(place.id), place]));
+    const cityKey = String(city || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const popularIds = rows.map(([placeId]) => String(placeId)).filter((placeId) => byId.has(placeId));
+    const local = cityKey
+      ? popularIds.filter((placeId) => String(byId.get(placeId).city || extractCityFromAddress(byId.get(placeId).address)).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() === cityKey)
+      : [];
+    return [...local, ...popularIds.filter((placeId) => !local.includes(placeId))];
+  } catch {
+    return [];
+  }
+}
+
 // Code.gs:715 getTagsJSON
 async function getTags(db) {
   const { results } = await db.prepare("SELECT * FROM tags").all();
@@ -302,6 +328,13 @@ export async function onRequestGet(context) {
   const action = new URL(request.url).searchParams.get("action") || "all";
 
   try {
+    if (action === "suggestions") {
+      const city = new URL(request.url).searchParams.get("city")?.slice(0, 100) || "";
+      return json({ city, placeIds: await getSuggestedPlaceIds(env.DB, env, city) }, 200, {
+        ...headers,
+        "Cache-Control": "public, s-maxage=900, stale-while-revalidate=300",
+      });
+    }
     if (action === "places") return json(await getPlaces(env.DB), 200, headers);
     if (action === "tags") return json(await getTags(env.DB), 200, headers);
     if (action === "events") return json(await getEvents(env.DB), 200, headers);

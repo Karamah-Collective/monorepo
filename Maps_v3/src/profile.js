@@ -50,6 +50,7 @@ import {
 import { fetchMyReviews, buildStarDisplay, deleteReview, openReviewsOverlayForEdit } from "./reviews.js";
 import { computeContributionStats, formatMemberSince, computeTopBadge } from "./account-profile.js";
 import { HSL_STYLE } from "./map-style.js";
+import { getLocalDemoProfileData, isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
 import {
   aggregateTimelineDays,
   deleteVerifiedVisit,
@@ -102,6 +103,10 @@ const timelineMapWrapEl = document.getElementById("profile-timeline-map-wrap");
 const timelineMapSectionEl = document.getElementById("timeline-map-section");
 const timelineMapEl = document.getElementById("profile-timeline-map");
 const timelineListEl = document.getElementById("profile-timeline-list");
+const profileDetailOverlayEl = document.getElementById("profile-detail-overlay");
+const profileDetailTitleEl = document.getElementById("profile-detail-title");
+const profileDetailCloseBtn = document.getElementById("profile-detail-close");
+const profileDetailBodyEl = document.getElementById("profile-detail-body");
 
 let _auth = null; // lazily-loaded src/auth.js module namespace
 let _account = null;
@@ -123,6 +128,14 @@ let _timelineFromProfile = false;
 let _timelineDragging = false;
 let _timelineDragStartY = 0;
 let _timelineDragDistance = 0;
+let _profileDetailKind = "";
+let _profileReviewSearch = "";
+let _profileReviewSort = "recent";
+let _profileReviewSortDir = "desc";
+let _profileEditSearch = "";
+let _profileEditStatus = "all";
+let _profileEditSort = "recent";
+let _profileEditSortDir = "desc";
 
 function _afterTimelineOpened(callback) {
   if (!timelineCardEl) { callback(); return; }
@@ -167,6 +180,7 @@ function _closeAccountSheet() {
 }
 
 function _openProfilePlace(place) {
+  _closeProfileDetail();
   if (isPhone()) navigatePhonePage("map");
   else _closeAccountSheet();
   openPlaceSheet(place);
@@ -256,9 +270,10 @@ function _endTimelineDrag() {
  */
 export async function initProfile() {
   _auth = await _getAuthModule();
-  _account = _auth.getCachedAccount();
+  _account = isLocalDemoProfileEnabled() ? LOCAL_DEMO_ACCOUNT : _auth.getCachedAccount();
 
   window.addEventListener(EVT.AUTH_CHANGED, (e) => {
+    if (isLocalDemoProfileEnabled()) return;
     _revokeReviewImageUrls(_reviewsCache);
     _reviewsCache = [];
     _account = e.detail?.account || null;
@@ -267,6 +282,7 @@ export async function initProfile() {
     _timelineLoaded = false;
     _timelineLoadFailed = false;
     _closeTimelineOverlay();
+    _closeProfileDetail();
     if (isPhone() && !_account && getPhonePage() === "timeline") navigatePhonePage("profile", { replace: true });
     // Whatever meta is cached belongs to the account that just went away —
     // never to whoever signs in next (see _accountMetaLoaded's declaration).
@@ -303,15 +319,174 @@ export async function initProfile() {
       profileSheetEl?.querySelector("#profile-sheet-close")?.focus();
     }
   });
-  window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => _closeTimelineOverlay());
+  window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
+    _closeTimelineOverlay();
+    _closeProfileDetail();
+  });
 
   exportBtn?.addEventListener("click", _handleExport);
   eraseBtn?.addEventListener("click", _handleErase);
+  profileSheetEl?.addEventListener("click", (event) => {
+    const preview = event.target.closest(".pf-timeline-preview");
+    if (!preview || !profileSheetEl.contains(preview) || event.target.closest("button, a")) return;
+    if (preview.id === "profile-timeline-preview") {
+      _openTimelineOverlay();
+      return;
+    }
+    const kind = preview.querySelector("[data-profile-detail]")?.dataset.profileDetail;
+    if (kind) _openProfileDetail(kind);
+  });
   timelineOpenBtn?.addEventListener("click", _openTimelineOverlay);
   timelineCloseBtn?.addEventListener("click", () => {
     if (isPhone()) { goBackPhonePage(); return; }
     if (timelineCloseBtn.classList.contains("timeline-close--back")) _closeTimelineOverlay({ restoreProfile: true });
     else _closeTimelineOverlay();
+  });
+  profileDetailCloseBtn?.addEventListener("click", _closeProfileDetail);
+  profileDetailOverlayEl?.addEventListener("click", (event) => {
+    if (event.target === profileDetailOverlayEl) _closeProfileDetail();
+  });
+  profileDetailBodyEl?.addEventListener("click", (event) => {
+    const searchToggle = event.target.closest("[data-review-search-toggle]");
+    if (searchToggle) {
+      const toolbar = profileDetailBodyEl.querySelector(".pf-review-toolbar");
+      const searchWrap = profileDetailBodyEl.querySelector(".pf-review-search-wrap");
+      const searchInput = profileDetailBodyEl.querySelector(".pf-review-search-input");
+      if (!toolbar || !searchWrap || !searchInput) return;
+      const open = searchWrap.classList.contains("open");
+      toolbar.classList.toggle("pf-review-searching", !open);
+      searchWrap.classList.toggle("open", !open);
+      if (!open) window.setTimeout(() => searchInput.focus(), 60);
+      else {
+        _profileReviewSearch = "";
+        searchInput.value = "";
+        searchInput.blur();
+        _renderReviewResults(_reviewsCache);
+      }
+      return;
+    }
+
+    const sortToggle = event.target.closest("[data-review-sort-toggle]");
+    if (sortToggle) {
+      const dropdown = profileDetailBodyEl.querySelector("[data-review-sort-dropdown]");
+      if (!dropdown) return;
+      const isOpen = !dropdown.classList.contains("shut");
+      dropdown.classList.toggle("shut", isOpen);
+      sortToggle.classList.toggle("open", !isOpen);
+      sortToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      return;
+    }
+
+    const sortOption = event.target.closest("[data-review-sort]");
+    if (sortOption) {
+      _profileReviewSort = sortOption.dataset.reviewSort || "recent";
+      _updateReviewSortControl();
+      _renderReviewResults(_reviewsCache);
+      return;
+    }
+
+    const reviewSortDir = event.target.closest("[data-review-sort-dir]");
+    if (reviewSortDir) {
+      _profileReviewSortDir = reviewSortDir.dataset.reviewSortDir || "desc";
+      _updateReviewSortControl();
+      _renderReviewResults(_reviewsCache);
+      return;
+    }
+
+    const editSearchToggle = event.target.closest("[data-edit-search-toggle]");
+    if (editSearchToggle) {
+      const toolbar = profileDetailBodyEl.querySelector(".pf-submission-toolbar");
+      const searchWrap = profileDetailBodyEl.querySelector(".pf-submission-search-wrap");
+      const searchInput = profileDetailBodyEl.querySelector(".pf-submission-search-input");
+      if (!toolbar || !searchWrap || !searchInput) return;
+      const open = searchWrap.classList.contains("open");
+      toolbar.classList.toggle("pf-submission-searching", !open);
+      searchWrap.classList.toggle("open", !open);
+      if (!open) {
+        profileDetailBodyEl.querySelector("[data-edit-filter-dropdown]")?.classList.add("shut");
+        profileDetailBodyEl.querySelector("[data-edit-sort-dropdown]")?.classList.add("shut");
+        if (!open) window.setTimeout(() => searchInput.focus(), 60);
+      } else {
+        _profileEditSearch = "";
+        searchInput.value = "";
+        searchInput.blur();
+        _renderEditResults(_profileSubmissionList());
+      }
+      return;
+    }
+
+    const editFilterToggle = event.target.closest("[data-edit-filter-toggle]");
+    if (editFilterToggle) {
+      const dropdown = profileDetailBodyEl.querySelector("[data-edit-filter-dropdown]");
+      if (!dropdown) return;
+      const isOpen = !dropdown.classList.contains("shut");
+      dropdown.classList.toggle("shut", isOpen);
+      editFilterToggle.classList.toggle("open", !isOpen);
+      editFilterToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      return;
+    }
+
+    const editStatusOption = event.target.closest("[data-edit-status]");
+    if (editStatusOption) {
+      _profileEditStatus = editStatusOption.dataset.editStatus || "all";
+      _updateEditFilterControl();
+      _renderEditResults(_profileSubmissionList());
+      return;
+    }
+
+    const editSortToggle = event.target.closest("[data-edit-sort-toggle]");
+    if (editSortToggle) {
+      const dropdown = profileDetailBodyEl.querySelector("[data-edit-sort-dropdown]");
+      if (!dropdown) return;
+      const isOpen = !dropdown.classList.contains("shut");
+      dropdown.classList.toggle("shut", isOpen);
+      editSortToggle.classList.toggle("open", !isOpen);
+      editSortToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      return;
+    }
+
+    const editSortOption = event.target.closest("[data-edit-sort]");
+    if (editSortOption) {
+      _profileEditSort = editSortOption.dataset.editSort || "recent";
+      _updateEditSortControl();
+      _renderEditResults(_profileSubmissionList());
+      return;
+    }
+
+    const editSortDir = event.target.closest("[data-edit-sort-dir]");
+    if (editSortDir) {
+      _profileEditSortDir = editSortDir.dataset.editSortDir || "desc";
+      _updateEditSortControl();
+      _renderEditResults(_profileSubmissionList());
+    }
+  });
+  profileDetailBodyEl?.addEventListener("input", (event) => {
+    if (event.target.matches(".pf-review-search-input")) {
+      _profileReviewSearch = event.target.value;
+      _renderReviewResults(_reviewsCache);
+    } else if (event.target.matches(".pf-submission-search-input")) {
+      _profileEditSearch = event.target.value;
+      _renderEditResults(_profileSubmissionList());
+    }
+  });
+  document.addEventListener("click", (event) => {
+    if (_profileDetailKind !== "reviews" || !profileDetailBodyEl?.contains(event.target)) return;
+    if (event.target.closest(".pf-review-toolbar")) return;
+    const toolbar = profileDetailBodyEl.querySelector(".pf-review-toolbar");
+    const searchWrap = profileDetailBodyEl.querySelector(".pf-review-search-wrap");
+    if (!toolbar || !searchWrap?.classList.contains("open")) return;
+    toolbar.classList.remove("pf-review-searching");
+    searchWrap.classList.remove("open");
+  });
+  document.addEventListener("click", (event) => {
+    if (_profileDetailKind !== "edits" || !profileDetailBodyEl?.contains(event.target)) return;
+    if (event.target.closest(".pf-submission-toolbar")) return;
+    const toolbar = profileDetailBodyEl.querySelector(".pf-submission-toolbar");
+    if (!toolbar) return;
+    toolbar.classList.remove("pf-submission-searching");
+    toolbar.querySelector(".pf-submission-search-wrap")?.classList.remove("open");
+    toolbar.querySelector("[data-edit-filter-dropdown]")?.classList.add("shut");
+    toolbar.querySelector("[data-edit-sort-dropdown]")?.classList.add("shut");
   });
   timelineOverlayEl?.addEventListener("click", (event) => {
     if (event.target === timelineOverlayEl) {
@@ -320,7 +495,9 @@ export async function initProfile() {
     }
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) {
+    if (event.key === "Escape" && profileDetailOverlayEl && !profileDetailOverlayEl.classList.contains("hide")) {
+      _closeProfileDetail();
+    } else if (event.key === "Escape" && timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) {
       window.dispatchEvent(new CustomEvent(EVT.WINDOW_THREAD_CLOSE));
     }
   });
@@ -339,7 +516,7 @@ export async function initProfile() {
  * @returns {Promise<void>}
  */
 async function _refreshStatsLive() {
-  if (!_account || !profileSheetEl || profileSheetEl.classList.contains("shut")) return;
+  if (isLocalDemoProfileEnabled() || !_account || !profileSheetEl || profileSheetEl.classList.contains("shut")) return;
   const meta = await _fetchAccountMeta();
   // Signed out (or the sheet got closed) while that fetch was in flight —
   // bail rather than render a signed-out account's data or into a gone sheet.
@@ -374,6 +551,25 @@ export async function loadProfileContent() {
   // post-fetch sync corrects it. See EVT.PROFILE_CARD_RENDERED's doc comment.
   window.dispatchEvent(new CustomEvent(EVT.PROFILE_CARD_RENDERED, { detail: {} }));
 
+  if (isLocalDemoProfileEnabled()) {
+    const demo = getLocalDemoProfileData();
+    _revokeReviewImageUrls(_reviewsCache);
+    _reviewsCache = demo.reviews;
+    _submittedPlacesCache = demo.submittedPlaces;
+    _submittedEditsCache = demo.submittedEdits;
+    _accountMetaCache = demo.meta;
+    _accountMetaLoaded = true;
+    _timelineCache = demo.timeline;
+    _timelineLoaded = true;
+    _timelineLoadFailed = false;
+    _renderCard();
+    _renderStats();
+    _renderProfileSectionSummaries();
+    if (timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _renderTimelineResult({ success: true, visits: _timelineCache });
+    else _renderTimelinePreview(summarizeTimeline(_timelineCache), "ready");
+    return;
+  }
+
   const [reviewsResult, placesResult, editsResult, meta, timelineResult] = await Promise.all([
     fetchMyReviews(),
     fetchMySubmittedPlaces(),
@@ -398,9 +594,7 @@ export async function loadProfileContent() {
 
   _renderCard(); // re-render with "member since"/top badge now resolved
   _renderStats();
-  _renderSubmissionList(submittedPlacesEl, _submittedPlacesCache, "You haven't submitted any places yet.");
-  _renderSubmissionList(submittedEditsEl, _submittedEditsCache, "You haven't submitted any edits yet.");
-  _renderMyReviews();
+  _renderProfileSectionSummaries();
   if (timelineOverlayEl && !timelineOverlayEl.classList.contains("hide")) _renderTimelineResult(timelineResult);
   else if (timelineResult.success) _renderTimelinePreview(summarizeTimeline(_timelineCache), _timelineCache.length ? "ready" : "empty");
   else _renderTimelinePreview(null, "error");
@@ -603,29 +797,95 @@ function _handleSavedStatJump(e) {
 function _renderTimelinePreview(summary, state = "empty") {
   if (!timelinePreviewEl) return;
   if (state === "loading") {
+    timelinePreviewTitleEl?.classList.remove("pf-summary-chip", "pf-summary-chip--headline");
+    timelinePreviewSummaryEl?.classList.remove("pf-summary-chips");
     if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits";
     if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Loading…";
     return;
   }
   if (state === "error") {
+    timelinePreviewTitleEl?.classList.remove("pf-summary-chip", "pf-summary-chip--headline");
+    timelinePreviewSummaryEl?.classList.remove("pf-summary-chips");
     if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits unavailable";
     if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "Open visits to try again.";
     return;
   }
   if (!summary?.totalVisits) {
+    timelinePreviewTitleEl?.classList.remove("pf-summary-chip", "pf-summary-chip--headline");
+    timelinePreviewSummaryEl?.classList.remove("pf-summary-chips");
     if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = "Verified visits";
     if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = "No verified visits yet";
     return;
   }
   const visitLabel = `${summary.totalVisits} visit${summary.totalVisits === 1 ? "" : "s"}`;
-  const placeLabel = `${summary.uniquePlaces} place${summary.uniquePlaces === 1 ? "" : "s"}`;
+  timelinePreviewTitleEl?.classList.add("pf-summary-chip", "pf-summary-chip--headline");
   if (timelinePreviewTitleEl) timelinePreviewTitleEl.textContent = visitLabel;
-  if (timelinePreviewSummaryEl) timelinePreviewSummaryEl.textContent = `${placeLabel} · ${summary.activeMonths} active month${summary.activeMonths === 1 ? "" : "s"}`;
+  if (timelinePreviewSummaryEl) {
+    timelinePreviewSummaryEl.classList.add("pf-summary-chips");
+    timelinePreviewSummaryEl.innerHTML = _renderProfileSummaryChips([
+      summary.uniquePlaces ? [`${summary.uniquePlaces} place${summary.uniquePlaces === 1 ? "" : "s"}`, "places"] : null,
+      summary.uniqueEvents ? [`${summary.uniqueEvents} event${summary.uniqueEvents === 1 ? "" : "s"}`, "events"] : null,
+      summary.activeMonths ? [`${summary.activeMonths} month${summary.activeMonths === 1 ? "" : "s"} active`, "active"] : null,
+    ]);
+  }
+}
+
+function _renderProfileSummaryChips(chips) {
+  return chips.filter(Boolean).map(([label, tone]) => `<span class="pf-summary-chip pf-summary-chip--${escA(tone)}">${esc(label)}</span>`).join("");
+}
+
+function _renderProfileSectionSummary(kind, list) {
+  const container = kind === "places" ? submittedPlacesEl : kind === "edits" ? submittedEditsEl : myReviewsEl;
+  if (!container) return;
+  const items = Array.isArray(list) ? list : [];
+  if (!items.length) {
+    const emptyText = kind === "reviews" ? "No reviews yet" : kind === "edits" ? "No edits yet" : "No places added yet";
+    container.innerHTML = `<div class="pf-profile-empty" role="status"><span>${esc(emptyText)}</span></div>`;
+    return;
+  }
+
+  let headline = "";
+  let chips = [];
+  if (kind === "reviews") {
+    const average = items.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / items.length;
+    headline = `${items.length} review${items.length === 1 ? "" : "s"}`;
+    chips = [[headline, "headline"], [`${average.toFixed(1)} avg`, "rating"]];
+  } else {
+    const counts = items.reduce((result, item) => {
+      const status = item.status === "live" || item.status === "rejected" ? item.status : "pending";
+      result[status] += 1;
+      return result;
+    }, { live: 0, pending: 0, rejected: 0 });
+    const noun = kind === "edits" ? "edit" : "submission";
+    headline = `${items.length} ${noun}${items.length === 1 ? "" : "s"}`;
+    chips = [
+      [headline, "headline"],
+      counts.live ? [`${counts.live} approved`, "approved"] : null,
+      counts.pending ? [`${counts.pending} pending`, "pending"] : null,
+      counts.rejected ? [`${counts.rejected} rejected`, "rejected"] : null,
+    ];
+  }
+  const buttonLabel = kind === "reviews" ? "View reviews" : kind === "places" ? "View places" : "View edits";
+  container.innerHTML = `<div class="pf-profile-section-preview pf-timeline-preview">
+    <div class="pf-timeline-preview-copy">
+      <div class="pf-summary-chips">${_renderProfileSummaryChips(chips)}</div>
+    </div>
+    <button class="pf-timeline-open" type="button" data-profile-detail="${escA(kind)}" aria-label="${escA(buttonLabel)}" title="${escA(buttonLabel)}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </button>
+  </div>`;
+  container.querySelector("[data-profile-detail]")?.addEventListener("click", () => _openProfileDetail(kind));
+}
+
+function _renderProfileSectionSummaries() {
+  _renderProfileSectionSummary("places", _submittedPlacesCache);
+  _renderProfileSectionSummary("edits", _submittedEditsCache);
+  _renderProfileSectionSummary("reviews", _reviewsCache);
 }
 
 function _renderTimelineSummary(summary) {
   if (!timelineSummaryEl) return;
-  const values = [[summary.totalVisits, "Visits"], [summary.uniquePlaces, "Places"], [summary.activeMonths, "Active months"]];
+  const values = [[summary.totalVisits, "Visits"], [summary.uniquePlaces + (summary.uniqueEvents || 0), "Places & events"], [summary.activeMonths, "Active months"]];
   timelineSummaryEl.innerHTML = values.map(([value, label]) => `<div class="pf-timeline-summary-card"><span class="pf-timeline-summary-value">${esc(String(value))}</span><span class="pf-timeline-summary-label">${esc(label)}</span></div>`).join("");
 }
 
@@ -633,6 +893,7 @@ function _renderTimelineLoading() {
   _clearTimelineMap();
   timelineEl?.classList.remove("pf-timeline--empty");
   if (timelineCalendarSectionEl) timelineCalendarSectionEl.hidden = false;
+  timelineListEl?.closest(".timeline-section")?.removeAttribute("hidden");
   _renderTimelinePreview(null, "loading");
   if (timelineSummaryEl) timelineSummaryEl.innerHTML = [1, 2, 3].map(() => `<div class="pf-timeline-summary-card pf-timeline-summary-card--loading" aria-hidden="true"><span></span><span></span></div>`).join("");
   if (timelineCalendarEl) timelineCalendarEl.innerHTML = `<div class="pf-timeline-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
@@ -722,9 +983,12 @@ function _scrollTimelineToDay(dayKey) {
     const monthEvents = event.closest(".pf-timeline-events");
     if (!monthEvents?.classList.contains("pf-timeline-events--collapsed")) return;
     monthEvents.classList.remove("pf-timeline-events--collapsed");
+    monthEvents.classList.remove("shut");
     monthEvents.setAttribute("aria-hidden", "false");
     monthEvents.inert = false;
-    timelineListEl.querySelector(`[aria-controls="${monthEvents.id}"]`)?.setAttribute("aria-expanded", "true");
+    const toggle = timelineListEl.querySelector(`[aria-controls="${monthEvents.id}"]`);
+    toggle?.setAttribute("aria-expanded", "true");
+    toggle?.closest(".pf-timeline-month-events")?.querySelector(".ev-city-hdr")?.classList.remove("is-collapsed");
   });
   events[0].scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
   events.forEach((event) => event.classList.add("pf-timeline-event--day-target"));
@@ -733,9 +997,11 @@ function _scrollTimelineToDay(dayKey) {
 
 function _buildTimelineEvent(visit) {
   const formatted = _formatTimelineDate(visit.visitedAt);
-  const place = placesData.find((candidate) => candidate.id === visit.placeId);
-  const category = place?.category || place?.type || "";
-  return `<article class="pf-timeline-event${place ? " pf-timeline-event--clickable" : ""}"${place ? ` data-place-id="${escA(visit.placeId)}" role="button" tabindex="0"` : ""}><div class="pf-timeline-event-rail" aria-hidden="true"><span class="pf-timeline-event-marker"></span></div><div class="pf-timeline-event-content"><div class="pf-timeline-event-heading"><h3>${esc(visit.placeName)}</h3><span class="pf-timeline-confirmed">GPS-confirmed</span></div><time class="pf-timeline-event-time" datetime="${escA(visit.visitedAt)}">${esc(formatted.date)} · ${esc(formatted.time)}</time>${category ? `<span class="pf-timeline-event-category">${esc(category)}</span>` : ""}</div></article>`;
+  const isEvent = visit.kind === "event" || Boolean(visit.eventId);
+  const place = isEvent ? null : placesData.find((candidate) => candidate.id === visit.placeId);
+  const category = isEvent ? (visit.eventLocationName || "Event") : (place?.category || place?.type || "");
+  const title = visit.eventTitle || visit.placeName || "Timeline entry";
+  return `<article class="pf-timeline-event${place ? " pf-timeline-event--clickable" : ""}${isEvent ? " pf-timeline-event--event" : ""}"${place ? ` data-place-id="${escA(visit.placeId)}" role="button" tabindex="0"` : ""}><div class="pf-timeline-event-rail" aria-hidden="true"><span class="pf-timeline-event-marker"></span></div><div class="pf-timeline-event-content"><div class="pf-timeline-event-heading"><h3>${esc(title)}</h3><span class="pf-timeline-confirmed">GPS-confirmed</span></div><time class="pf-timeline-event-time" datetime="${escA(visit.visitedAt)}">${esc(formatted.date)} · ${esc(formatted.time)}</time>${category ? `<span class="pf-timeline-event-category">${esc(category)}</span>` : ""}</div></article>`;
 }
 
 function _wireTimelineEvents() {
@@ -744,15 +1010,16 @@ function _wireTimelineEvents() {
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "btn-roundel-danger pf-timeline-event-remove";
-    removeButton.setAttribute("aria-label", `Remove visit to ${event.querySelector("h3")?.textContent || "this place"}`);
-    removeButton.title = "Remove this visit";
+    const isEvent = event.classList.contains("pf-timeline-event--event");
+    removeButton.setAttribute("aria-label", `Remove ${isEvent ? "event attendance" : "visit to"} ${event.querySelector("h3")?.textContent || (isEvent ? "this event" : "this place")}`);
+    removeButton.title = isEvent ? "Remove this event attendance" : "Remove this visit";
     removeButton.innerHTML = TRASH_ICON_SVG;
     removeButton.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const confirmed = await showConfirmDialog({
-        title: "Remove this visit?",
-        message: "This removes the selected visit from your timeline.",
+        title: isEvent ? "Remove this event attendance?" : "Remove this visit?",
+        message: "This removes the selected entry from your timeline.",
         confirmLabel: "Remove",
         cancelLabel: "Keep",
         variant: "danger",
@@ -765,7 +1032,7 @@ function _wireTimelineEvents() {
         removeButton.disabled = false;
         showToast("Couldnâ€™t remove this visit", "error", "Please try again");
       } else {
-        showToast("Visit removed", "check");
+        showToast(isEvent ? "Event attendance removed" : "Visit removed", "check");
       }
     });
     event.querySelector(".pf-timeline-event-heading")?.appendChild(removeButton);
@@ -798,7 +1065,7 @@ function _renderTimelineList(visits) {
   timelineListEl.innerHTML = groups.map((group, index) => {
     const eventsId = `timeline-month-${escA(group.key)}`;
     const expanded = index === 0;
-    return `<section class="pf-timeline-month-events"><button class="pf-timeline-month-toggle" type="button" aria-expanded="${expanded}" aria-controls="${eventsId}"><span>${esc(group.label)}</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id="${eventsId}" class="pf-timeline-events${expanded ? "" : " pf-timeline-events--collapsed"}" aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : " inert"}><div class="pf-timeline-events-inner">${group.visits.map(_buildTimelineEvent).join("")}</div></div></section>`;
+    return `<section class="ev-city-group pf-timeline-month-events" data-city-group="${escA(group.key)}"><div class="ev-city-hdr pl-city-hdr${expanded ? "" : " is-collapsed"}"><button class="ev-city-toggle pl-city-toggle pf-timeline-month-toggle" type="button" aria-expanded="${expanded}" aria-controls="${eventsId}"><svg class="ev-city-arrow pl-city-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg><span class="ev-city-name pl-city-name">${esc(group.label)}</span></button><span class="ev-city-count pl-city-count">${group.visits.length}</span></div><div id="${eventsId}" class="ev-city-group-body pl-city-group-body pf-timeline-events${expanded ? "" : " shut pf-timeline-events--collapsed"}" data-city-group-body aria-hidden="${expanded ? "false" : "true"}"${expanded ? "" : " inert"}><div class="pl-city-group-inner"><div class="pf-timeline-events-inner">${group.visits.map(_buildTimelineEvent).join("")}</div></div></div></section>`;
   }).join("");
   timelineListEl.querySelectorAll(".pf-timeline-month-toggle").forEach((toggle) => {
     toggle.addEventListener("click", () => {
@@ -807,6 +1074,8 @@ function _renderTimelineList(visits) {
       const events = document.getElementById(toggle.getAttribute("aria-controls"));
       if (!events) return;
       events.classList.toggle("pf-timeline-events--collapsed", expanded);
+      events.classList.toggle("shut", expanded);
+      toggle.closest(".ev-city-hdr")?.classList.toggle("is-collapsed", expanded);
       events.setAttribute("aria-hidden", String(expanded));
       events.inert = expanded;
     });
@@ -855,8 +1124,10 @@ function _renderTimelineMap(visits) {
 
 function _renderTimelineError() {
   if (timelineSummaryEl) timelineSummaryEl.innerHTML = `<div class="pf-timeline-error" role="status"><strong>Your timeline couldn’t be loaded.</strong><button class="btn-secondary" type="button" data-profile-timeline-retry>Try again</button></div>`;
+  if (timelineCalendarSectionEl) timelineCalendarSectionEl.hidden = true;
+  timelineListEl?.closest(".timeline-section")?.setAttribute("hidden", "true");
   if (timelineCalendarEl) timelineCalendarEl.innerHTML = "";
-  if (timelineListEl) timelineListEl.innerHTML = `<p class="menu-placeholder">Timeline data is temporarily unavailable.</p>`;
+  if (timelineListEl) timelineListEl.innerHTML = "";
   _clearTimelineMap();
   timelineSummaryEl?.querySelector("[data-profile-timeline-retry]")?.addEventListener("click", () => _loadTimelineOnly(_account?.uid));
   _renderTimelinePreview(null, "error");
@@ -870,6 +1141,7 @@ function _renderTimelineResult(result) {
   _renderTimelineSummary(summary);
   _renderTimelinePreview(summary, visits.length ? "ready" : "empty");
   timelineEl?.classList.toggle("pf-timeline--empty", !visits.length);
+  timelineListEl?.closest(".timeline-section")?.removeAttribute("hidden");
   if (timelineCalendarSectionEl) timelineCalendarSectionEl.hidden = !visits.length;
   if (!visits.length) {
     if (timelineCalendarEl) timelineCalendarEl.innerHTML = "";
@@ -885,7 +1157,7 @@ function _renderTimelineResult(result) {
 }
 
 async function _loadTimelineOnly(profileUid) {
-  if (!profileUid || !_account || _account.uid !== profileUid) return;
+  if (isLocalDemoProfileEnabled() || !profileUid || !_account || _account.uid !== profileUid) return;
   const generation = _timelineGeneration;
   const result = await fetchVisitTimeline();
   const timelineOpen = timelineOverlayEl && !timelineOverlayEl.classList.contains("hide");
@@ -900,10 +1172,247 @@ async function _loadTimelineOnly(profileUid) {
 
 // ─── Submitted places / edits (status pill + reject-reason surfacing) ───────
 
+function _closeProfileDetail() {
+  if (!profileDetailOverlayEl) return;
+  profileDetailOverlayEl.classList.add("hide");
+  profileDetailOverlayEl.setAttribute("aria-hidden", "true");
+  profileDetailBodyEl.replaceChildren();
+  _profileDetailKind = "";
+}
+
+function _updateReviewSortControl() {
+  const labels = { recent: "Most Recent", rating: "Highest Rated", place: "Place name" };
+  const label = profileDetailBodyEl?.querySelector("[data-review-sort-label]");
+  const dropdown = profileDetailBodyEl?.querySelector("[data-review-sort-dropdown]");
+  const isDefault = _profileReviewSort === "recent" && _profileReviewSortDir === "desc";
+  const arrow = _profileReviewSortDir === "asc" ? " ↑" : " ↓";
+  if (label) label.textContent = `${labels[_profileReviewSort] || labels.recent}${isDefault ? "" : arrow}`;
+  profileDetailBodyEl?.querySelector("[data-review-sort-toggle]")?.classList.toggle("has-active", !isDefault);
+  dropdown?.querySelectorAll("[data-review-sort]").forEach((option) => {
+    option.classList.toggle("active", option.dataset.reviewSort === _profileReviewSort);
+  });
+  dropdown?.querySelectorAll("[data-review-sort-dir]").forEach((option) => {
+    option.classList.toggle("active", option.dataset.reviewSortDir === _profileReviewSortDir);
+  });
+  dropdown?.classList.add("shut");
+  const sortToggle = profileDetailBodyEl?.querySelector("[data-review-sort-toggle]");
+  sortToggle?.classList.remove("open");
+  sortToggle?.setAttribute("aria-expanded", "false");
+}
+
+function _renderReviewResults(list) {
+  const results = profileDetailBodyEl?.querySelector(".pf-review-results");
+  if (!results) return;
+  const query = _profileReviewSearch.trim().toLocaleLowerCase();
+  const filtered = list.filter((review) => {
+    if (!query) return true;
+    return `${review.placeName || ""} ${review.text || ""}`.toLocaleLowerCase().includes(query);
+  });
+  const direction = _profileReviewSortDir === "asc" ? 1 : -1;
+  const sorted = [...filtered].sort((a, b) => {
+    const dateCompare = new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+    if (_profileReviewSort === "rating") return ((Number(a.rating) || 0) - (Number(b.rating) || 0) || dateCompare) * direction;
+    if (_profileReviewSort === "place") return String(a.placeName || "").localeCompare(String(b.placeName || ""), undefined, { sensitivity: "base" }) * direction;
+    return dateCompare * direction;
+  });
+  if (!sorted.length) {
+    results.innerHTML = `<p class="menu-placeholder">${query ? "No reviews match your search." : "You haven't written any reviews yet."}</p>`;
+    return;
+  }
+  results.innerHTML = `<div class="pf-detail-list rv-list">${sorted.map(_buildMyReviewRow).join("")}</div>`;
+  _wireMyReviewRows(results, sorted);
+}
+
+function _submissionStatus(item) {
+  return item.status === "live" || item.status === "rejected" ? item.status : "pending";
+}
+
+function _profileSubmissionList() {
+  return _profileDetailKind === "edits" ? _submittedEditsCache : _submittedPlacesCache;
+}
+
+function _updateEditFilterControl() {
+  const labels = { all: "Filter", pending: "Pending", live: "Approved", rejected: "Not approved" };
+  const label = profileDetailBodyEl?.querySelector("[data-edit-filter-label]");
+  const toggle = profileDetailBodyEl?.querySelector("[data-edit-filter-toggle]");
+  const dropdown = profileDetailBodyEl?.querySelector("[data-edit-filter-dropdown]");
+  const isActive = _profileEditStatus !== "all";
+  if (label) label.textContent = labels[_profileEditStatus] || labels.all;
+  toggle?.classList.toggle("has-active", isActive);
+  dropdown?.querySelectorAll("[data-edit-status]").forEach((option) => {
+    option.classList.toggle("active", option.dataset.editStatus === _profileEditStatus);
+  });
+  dropdown?.classList.add("shut");
+  toggle?.classList.remove("open");
+  toggle?.setAttribute("aria-expanded", "false");
+}
+
+function _updateEditSortControl() {
+  const labels = { recent: "Most Recent", place: "Place name", status: "Status" };
+  const isDefault = _profileEditSort === "recent" && _profileEditSortDir === "desc";
+  const arrow = _profileEditSortDir === "asc" ? " ↑" : " ↓";
+  const label = profileDetailBodyEl?.querySelector("[data-edit-sort-label]");
+  const toggle = profileDetailBodyEl?.querySelector("[data-edit-sort-toggle]");
+  const dropdown = profileDetailBodyEl?.querySelector("[data-edit-sort-dropdown]");
+  if (label) label.textContent = `${labels[_profileEditSort] || labels.recent}${isDefault ? "" : arrow}`;
+  toggle?.classList.toggle("has-active", !isDefault);
+  dropdown?.querySelectorAll("[data-edit-sort]").forEach((option) => {
+    option.classList.toggle("active", option.dataset.editSort === _profileEditSort);
+  });
+  dropdown?.querySelectorAll("[data-edit-sort-dir]").forEach((option) => {
+    option.classList.toggle("active", option.dataset.editSortDir === _profileEditSortDir);
+  });
+  dropdown?.classList.add("shut");
+  toggle?.classList.remove("open");
+  toggle?.setAttribute("aria-expanded", "false");
+}
+
+function _renderEditResults(list, kind = _profileDetailKind) {
+  const results = profileDetailBodyEl?.querySelector(".pf-submission-results");
+  if (!results) return;
+  const noun = kind === "edits" ? "edits" : "places";
+  const query = _profileEditSearch.trim().toLocaleLowerCase();
+  const filtered = list.filter((item) => {
+    const status = _submissionStatus(item);
+    if (_profileEditStatus !== "all" && status !== _profileEditStatus) return false;
+    if (!query) return true;
+    return `${item.name || ""} ${item.placeName || ""} ${item.changesSummary || ""} ${STATUS_LABELS[status] || ""}`
+      .toLocaleLowerCase()
+      .includes(query);
+  });
+  const direction = _profileEditSortDir === "asc" ? 1 : -1;
+  const sorted = [...filtered].sort((a, b) => {
+    const dateCompare = new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0);
+    if (_profileEditSort === "place") {
+      return String(a.name || a.placeName || "").localeCompare(String(b.name || b.placeName || ""), undefined, { sensitivity: "base" }) * direction;
+    }
+    if (_profileEditSort === "status") {
+      const order = { pending: 0, live: 1, rejected: 2 };
+      return ((order[_submissionStatus(a)] ?? 0) - (order[_submissionStatus(b)] ?? 0) || dateCompare) * direction;
+    }
+    return dateCompare * direction;
+  });
+  if (!sorted.length) {
+    results.innerHTML = `<p class="menu-placeholder">${query || _profileEditStatus !== "all" ? `No ${noun} match your search or filter.` : `You haven't submitted any ${noun} yet.`}</p>`;
+    return;
+  }
+  results.innerHTML = `<div class="pf-detail-list pf-submission-list">${sorted.map((item) => _buildSubmissionRow(item, { detail: true, kind })).join("")}</div>`;
+  _wireSubmissionRows(results);
+}
+
+function _renderEditDetail(kind, list) {
+  const noun = kind === "edits" ? "edits" : "places";
+  profileDetailBodyEl.innerHTML = `<div class="pf-detail-submission-content">
+    <div class="pf-submission-toolbar" role="toolbar" aria-label="${escA(noun)} submission controls">
+      <div class="pf-submission-filter-wrap">
+        <button class="btn-chip pf-submission-filter-toggle" type="button" data-edit-filter-toggle aria-haspopup="menu" aria-expanded="false">
+          <span class="btn-chip-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg></span>
+          <span class="tf-btn-label" data-edit-filter-label>Filter</span>
+          <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+        <div class="sort-dropdown pf-submission-filter-dropdown shut" data-edit-filter-dropdown role="menu">
+          <div class="sort-section-label">Status</div>
+          <button class="sort-opt active" type="button" data-edit-status="all">All statuses</button>
+          <button class="sort-opt" type="button" data-edit-status="pending">Pending</button>
+          <button class="sort-opt" type="button" data-edit-status="live">Approved</button>
+          <button class="sort-opt" type="button" data-edit-status="rejected">Not approved</button>
+        </div>
+      </div>
+      <div class="pf-submission-sort-wrap">
+        <button class="btn-chip pf-submission-sort-toggle" type="button" data-edit-sort-toggle aria-haspopup="menu" aria-expanded="false">
+          <span class="btn-chip-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg></span>
+          <span class="tf-btn-label" data-edit-sort-label>Most Recent</span>
+          <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+        <div class="sort-dropdown pf-submission-sort-dropdown shut" data-edit-sort-dropdown role="menu">
+          <div class="sort-section-label">Sort by</div>
+          <button class="sort-opt active" type="button" data-edit-sort="recent">Most Recent</button>
+          <button class="sort-opt" type="button" data-edit-sort="place">Place name</button>
+          <button class="sort-opt" type="button" data-edit-sort="status">Status</button>
+          <div class="sort-divider"></div>
+          <div class="sort-section-label">Order</div>
+          <button class="sort-opt" type="button" data-edit-sort-dir="asc">Ascending</button>
+          <button class="sort-opt active" type="button" data-edit-sort-dir="desc">Descending</button>
+        </div>
+      </div>
+      <div class="pl-search-wrap pf-submission-search-wrap">
+        <input class="pf-submission-search-input" type="search" placeholder="Search ${escA(noun)}…" value="${escA(_profileEditSearch)}" autocomplete="off" maxlength="100" aria-label="Search ${escA(noun)}">
+      </div>
+      <button class="pl-search-icn pf-submission-search-btn" type="button" data-edit-search-toggle aria-label="Search ${escA(noun)}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+    <div class="pf-submission-results"></div>
+  </div>`;
+  _updateEditFilterControl();
+  _updateEditSortControl();
+  _renderEditResults(list, kind);
+}
+
+function _renderReviewDetail(list) {
+  profileDetailBodyEl.innerHTML = `<div class="pf-detail-review-content">
+    <div class="pf-review-toolbar" role="toolbar" aria-label="Review controls">
+      <div class="pf-review-sort-wrap">
+        <button class="btn-chip pf-review-sort-toggle" type="button" data-review-sort-toggle aria-haspopup="menu" aria-expanded="false">
+          <span class="btn-chip-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg></span>
+          <span class="tf-btn-label" data-review-sort-label>Most Recent</span>
+          <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
+        <div class="sort-dropdown pf-review-sort-dropdown shut" data-review-sort-dropdown role="menu">
+          <div class="sort-section-label">Sort by</div>
+          <button class="sort-opt active" type="button" data-review-sort="recent">Most Recent</button>
+          <button class="sort-opt" type="button" data-review-sort="rating">Highest Rated</button>
+          <button class="sort-opt" type="button" data-review-sort="place">Place name</button>
+          <div class="sort-divider"></div>
+          <div class="sort-section-label">Order</div>
+          <button class="sort-opt" type="button" data-review-sort-dir="asc">Ascending</button>
+          <button class="sort-opt active" type="button" data-review-sort-dir="desc">Descending</button>
+        </div>
+      </div>
+      <div class="pl-search-wrap pf-review-search-wrap">
+        <input class="pf-review-search-input" type="search" placeholder="Search reviews…" value="${escA(_profileReviewSearch)}" autocomplete="off" maxlength="100" aria-label="Search reviews">
+      </div>
+      <button class="pl-search-icn pf-review-search-btn" type="button" data-review-search-toggle aria-label="Search reviews">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+    <div class="pf-review-results"></div>
+  </div>`;
+  _updateReviewSortControl();
+  _renderReviewResults(list);
+}
+
+function _openProfileDetail(kind) {
+  if (!profileDetailOverlayEl || !profileDetailBodyEl) return;
+  _profileDetailKind = kind;
+  const config = {
+    places: ["Submitted places", _submittedPlacesCache],
+    edits: ["Submitted edits", _submittedEditsCache],
+    reviews: ["Your reviews", _reviewsCache],
+  }[kind];
+  if (!config) return;
+  profileDetailTitleEl.textContent = config[0];
+  if (kind === "reviews") {
+    _profileReviewSearch = "";
+    _profileReviewSort = "recent";
+    _profileReviewSortDir = "desc";
+    _renderReviewDetail(config[1]);
+  } else if (kind === "edits" || kind === "places") {
+    _profileEditSearch = "";
+    _profileEditStatus = "all";
+    _profileEditSort = "recent";
+    _profileEditSortDir = "desc";
+    _renderEditDetail(kind, config[1]);
+  }
+  profileDetailOverlayEl.classList.remove("hide");
+  profileDetailOverlayEl.setAttribute("aria-hidden", "false");
+  profileDetailCloseBtn?.focus();
+}
+
 const STATUS_LABELS = { pending: "Pending", live: "Live", rejected: "Rejected" };
 
-function _buildSubmissionRow(item) {
-  const status = item.status === "live" || item.status === "rejected" ? item.status : "pending";
+function _buildSubmissionRow(item, { detail = false, kind = "places" } = {}) {
+  const status = _submissionStatus(item);
   // Code.gs's getMySubmittedPlaces() returns this field as `name`;
   // getMySubmittedEdits() returns the same information as `placeName` —
   // reading only `item.name` here meant every edit row fell through to
@@ -916,6 +1425,17 @@ function _buildSubmissionRow(item) {
   // where hover tooltips aren't discoverable at all.
   const titleAttr = hasReason ? ` title="${escA(item.rejectReason)}"` : "";
   const reasonHtml = hasReason ? `<p class="pf-submission-reason">${esc(item.rejectReason)}</p>` : "";
+  const submittedAt = detail && item.submittedAt && !Number.isNaN(new Date(item.submittedAt).getTime())
+    ? `<time class="pf-detail-item-date" datetime="${escA(item.submittedAt)}">${esc(new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(item.submittedAt)))}</time>`
+    : "";
+  const changeSummary = kind === "edits"
+    ? `<p class="pf-submission-changes">${esc(item.changesSummary || "No change details were recorded.")}</p>`
+    : "";
+  const communityEdits = kind === "places" && Array.isArray(item.communityEdits) ? item.communityEdits : [];
+  const latestCommunityEdit = communityEdits[0];
+  const communityEditHtml = latestCommunityEdit
+    ? `<div class="pf-submission-community-edit"><span class="pf-submission-community-edit-label">Community edit approved</span><span class="pf-submission-changes">${esc(latestCommunityEdit.changesSummary || "Details unavailable")}</span>${communityEdits.length > 1 ? `<span class="pf-submission-community-edit-more">${communityEdits.length - 1} more approved edit${communityEdits.length === 2 ? "" : "s"}</span>` : ""}</div>`
+    : "";
   // Only a "live" submission is guaranteed to have a resolved placeId
   // (getMySubmittedPlaces() only performs its Places-sheet lookup once a
   // row is approved); a still-pending/rejected row has nothing to navigate
@@ -924,21 +1444,15 @@ function _buildSubmissionRow(item) {
   const clickableAttrs = clickable ? ` data-place-id="${escA(item.placeId)}" role="button" tabindex="0"` : "";
   return `<div class="pf-submission-item${clickable ? " pf-submission-item--clickable" : ""}"${clickableAttrs}>
     <div class="pf-submission-row">
-      <span class="pf-submission-name">${esc(name)}</span>
-      <span class="status-pill status-pill--${status}"${titleAttr}>${STATUS_LABELS[status]}</span>
+      <div class="pf-submission-copy">
+        <span class="pf-submission-name">${esc(name)}</span>
+        ${communityEditHtml}
+        ${changeSummary}
+      </div>
+      <span class="pf-submission-meta">${submittedAt}<span class="status-pill status-pill--${status}"${titleAttr}>${STATUS_LABELS[status]}</span></span>
     </div>
     ${reasonHtml}
   </div>`;
-}
-
-function _renderSubmissionList(container, list, emptyText) {
-  if (!container) return;
-  if (!list.length) {
-    container.innerHTML = `<p class="menu-placeholder">${esc(emptyText)}</p>`;
-    return;
-  }
-  container.innerHTML = list.map((item) => _buildSubmissionRow(item)).join("");
-  _wireSubmissionRows(container);
 }
 
 /**
@@ -993,16 +1507,6 @@ function _handleSubmissionNotifications(kind, currentList) {
 
 // ─── Your reviews (moved from src/menu.js's old in-menu Account panel) ──────
 
-function _renderMyReviews() {
-  if (!myReviewsEl) return;
-  if (!_reviewsCache.length) {
-    myReviewsEl.innerHTML = `<p class="menu-placeholder">You haven't written any reviews yet.</p>`;
-    return;
-  }
-  myReviewsEl.innerHTML = _reviewsCache.map((r) => _buildMyReviewRow(r)).join("");
-  _wireMyReviewRows(myReviewsEl, _reviewsCache);
-}
-
 function _buildMyReviewRow(r) {
   const rating = Number(r.rating) || 0;
   const images = Array.isArray(r.images) && r.images.length
@@ -1017,7 +1521,7 @@ function _buildMyReviewRow(r) {
         <span class="rv-review-score">${rating.toFixed(1)}</span>
         <span class="rv-review-time">${esc(_timeAgo(r.timestamp))}</span>
       </div>
-      <button class="acc-review-place-name" type="button" data-place-id="${esc(r.placeId)}">${esc(r.placeName || "Unknown place")}</button>
+      <button class="acc-review-place-name pf-detail-review-place-name" type="button" data-place-id="${esc(r.placeId)}">${esc(r.placeName || "Unknown place")}</button>
       ${r.text ? `<p class="rv-review-text">${esc(r.text)}</p>` : ""}
       ${images}
     </div>
@@ -1048,6 +1552,7 @@ function _wireMyReviewRows(list, reviews) {
       const r = byPlaceId.get(btn.dataset.placeId);
       if (!r) return;
       const place = placesData.find((p) => p.id === r.placeId);
+        _closeProfileDetail();
       if (!isPhone()) _closeAccountSheet();
       openReviewsOverlayForEdit(r.placeId, place?.name || r.placeName, { rating: r.rating, text: r.text, images: r.images || [] }, place);
     });
@@ -1094,24 +1599,27 @@ async function _confirmAndDeleteReview(btn, placeName) {
 async function _performDelete(btn) {
   const placeId = btn.dataset.placeId;
   const row = btn.closest(".acc-review-row");
+  const rowList = row?.parentElement;
   const nextSibling = row?.nextElementSibling || null;
 
   row?.remove();
   let emptyPlaceholder = null;
-  if (myReviewsEl && !myReviewsEl.querySelector(".acc-review-row")) {
+  if (rowList && !rowList.querySelector(".acc-review-row")) {
     emptyPlaceholder = document.createElement("p");
     emptyPlaceholder.className = "menu-placeholder";
     emptyPlaceholder.textContent = "You haven't written any reviews yet.";
-    myReviewsEl.appendChild(emptyPlaceholder);
+    rowList.appendChild(emptyPlaceholder);
   }
 
   const result = await deleteReview(placeId);
   if (!result.success) {
     emptyPlaceholder?.remove();
-    if (row && myReviewsEl) myReviewsEl.insertBefore(row, nextSibling);
+    if (row && rowList) rowList.insertBefore(row, nextSibling);
     showToast("Couldn't delete review", "error", "Please try again");
   } else {
     _reviewsCache = _reviewsCache.filter((r) => r.placeId !== placeId);
+    _renderProfileSectionSummary("reviews", _reviewsCache);
+    if (_profileDetailKind === "reviews" && profileDetailOverlayEl && !profileDetailOverlayEl.classList.contains("hide")) _renderReviewDetail(_reviewsCache);
     showToast("Review deleted", "check");
   }
 }

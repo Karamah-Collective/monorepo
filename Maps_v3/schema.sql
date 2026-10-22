@@ -304,8 +304,6 @@ CREATE TABLE reviewer_bans (
   created_by TEXT NOT NULL DEFAULT ''
 );
 
--- Google place IDs are exempt from Places caching restrictions. Photo
--- references and image bytes are deliberately not persisted here.
 CREATE TABLE place_google_ids (
   place_id        TEXT PRIMARY KEY,
   google_place_id TEXT NOT NULL,
@@ -346,14 +344,22 @@ CREATE TABLE account_meta (
 -- 14a. Private, user-triggered GPS-confirmed visit events. Raw device
 -- coordinates and accuracy are intentionally not stored.
 CREATE TABLE verified_visits (
-  id          TEXT PRIMARY KEY,
-  email_hash  TEXT NOT NULL,
-  place_id    TEXT NOT NULL,
-  place_name  TEXT NOT NULL DEFAULT '',
-  visited_at  TEXT NOT NULL
+  id                    TEXT PRIMARY KEY,
+  email_hash            TEXT NOT NULL,
+  place_id              TEXT NOT NULL,
+  place_name            TEXT NOT NULL DEFAULT '',
+  visited_at            TEXT NOT NULL,
+  event_id              TEXT NOT NULL DEFAULT '',
+  event_title           TEXT NOT NULL DEFAULT '',
+  occurrence_at         TEXT NOT NULL DEFAULT '',
+  event_lat             REAL,
+  event_lng             REAL,
+  event_location_name   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX idx_verified_visits_account_time
   ON verified_visits(email_hash, visited_at DESC);
+CREATE INDEX idx_verified_visits_event_occurrence
+  ON verified_visits(email_hash, event_id, occurrence_at);
 
 -- 15. AuditLog — internal admin-action trail (who did what, when), for the
 -- /admin dashboard's activity log.

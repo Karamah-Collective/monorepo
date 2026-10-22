@@ -1,7 +1,6 @@
 /**
  * Cloudflare Pages Function – /api/place-media
- * Lazily retrieves Google photos for one opened place. Google photo names and
- * bytes are intentionally never persisted; only the policy-exempt place ID is.
+ * Lazily retrieves Google photos for one opened place.
  */
 import { allowedOrigin, json } from "../_shared.js";
 import { findPlaceIdFromText } from "../_google-maps.js";

@@ -24,6 +24,34 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#phone-home-greeting")).toHaveCSS("direction", "ltr");
   });
 
+  test("Home switches to nearby places and renders event dates", async ({ page }) => {
+    await page.route("**/api.digitransit.fi/geocoding/v1/reverse**", (route) =>
+      route.fulfill({ json: { features: [{ properties: { locality: "Helsinki" } }] } }));
+    await page.evaluate(async () => {
+      const utils = await import("/src/utils.js");
+      const data = window.HFPhoneData;
+      window.HFPhoneData = {
+        getPlaces: data.getPlaces,
+        getEvents: () => [{ id: "dated-event", title: "Dated event", date: "2099-10-21", time: "18:30" }],
+        status: "ready",
+      };
+      window.dispatchEvent(new Event("hf:places-data-ready"));
+      utils.setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 10 });
+    });
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby");
+    const nearbyCard = page.locator("#phone-suggested-places .phone-home-place--nearby").first();
+    await expect(nearbyCard).toBeVisible();
+    const footerAlignment = await nearbyCard.evaluate((card) => {
+      const city = card.querySelector(".phone-home-place-meta").getBoundingClientRect();
+      const arrow = card.querySelector(".phone-home-place-arrow").getBoundingClientRect();
+      return Math.abs((city.top + city.height / 2) - (arrow.top + arrow.height / 2));
+    });
+    expect(footerAlignment).toBeLessThanOrEqual(1);
+    await expect(page.locator("#phone-week-events .phone-home-event-date")).toHaveText("21 Oct");
+    await page.evaluate(async () => (await import("/src/utils.js")).clearCurrentLocationState());
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Suggested");
+  });
+
   test("navbar active pill moves with the selected destination", async ({ page }) => {
     const pill = page.locator("#tab-active-pill");
     await expect(pill).toBeVisible();
@@ -39,10 +67,10 @@ test.describe("Phone app pages", () => {
     expect(navStyle.radius).toBeGreaterThan(18);
     expect(pillStyle.width).toBeGreaterThan(pillStyle.height);
     expect(pillStyle.after).toMatch(/none|normal/);
-    const homeLeft = await pill.evaluate((element) => getComputedStyle(element).left);
+    const homeTransform = await pill.evaluate((element) => getComputedStyle(element).transform);
     await page.locator("#places-btn").click();
     await expect(page.locator("#places-btn")).toHaveAttribute("aria-current", "page");
-    await expect.poll(() => pill.evaluate((element) => getComputedStyle(element).left)).not.toBe(homeLeft);
+    await expect.poll(() => pill.evaluate((element) => getComputedStyle(element).transform)).not.toBe(homeTransform);
     await expect(page.locator("#places-btn .tab-icon-core")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await page.waitForTimeout(450);
     const scaledAlignment = await page.evaluate(() => {
@@ -180,7 +208,7 @@ test.describe("Phone app pages", () => {
     expect(await page.locator("#places-filters").evaluate((element) => parseFloat(element.style.getPropertyValue("--phone-places-actionbar-progress")))).toBe(0);
   });
 
-  test("Home and Events use lightweight scroll-linked visual effects", async ({ page }) => {
+  test("Home and Events use scroll-linked page chrome", async ({ page }) => {
     const home = page.locator("#phone-home-page");
     await home.evaluate((element) => {
       element.scrollTop = 48;
@@ -202,16 +230,26 @@ test.describe("Phone app pages", () => {
       element.querySelector("#ev-filtered-list").style.minHeight = "480px";
     });
     await events.evaluate((element) => {
-      element.scrollTop = 28;
+      element.scrollTop = 240;
       element.dispatchEvent(new Event("scroll"));
     });
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(500);
     const eventsMotion = await events.evaluate((element) => ({
-      progress: parseFloat(element.style.getPropertyValue("--phone-events-scroll-progress")),
-      shadowOpacity: parseFloat(getComputedStyle(element.querySelector("#ev-filter-bar"), "::after").opacity),
+      progress: parseFloat(element.querySelector("#ev-filter-bar").style.getPropertyValue("--phone-places-actionbar-progress")),
+      transform: getComputedStyle(element.querySelector("#ev-filter-bar")).transform,
+      transition: getComputedStyle(element.querySelector("#ev-filter-bar")).transition,
     }));
-    expect(eventsMotion.progress).toBeGreaterThan(0);
-    expect(eventsMotion.shadowOpacity).toBeGreaterThan(0);
+    expect(eventsMotion.progress).toBe(1);
+    expect(eventsMotion.transform).not.toBe("none");
+    expect(eventsMotion.transition).toContain("transform");
+    await events.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(500);
+    expect(await page.locator("#ev-filter-bar").evaluate((element) =>
+      parseFloat(element.style.getPropertyValue("--phone-places-actionbar-progress")),
+    )).toBe(0);
   });
 
   test("Map, Home, and Events carousels use edge-to-edge scrolling rails", async ({ page }) => {
@@ -321,10 +359,10 @@ test.describe("Phone app pages", () => {
     await expect(firstPlace).toBeVisible({ timeout: 15_000 });
     await expect(firstPlace.locator(".pl-dir-btn")).toBeHidden();
     await expect(firstPlace.locator(".pl-open-arrow")).toBeVisible();
-    await expect(firstPlace.locator(".pl-card-status")).toBeVisible();
-    await expect(firstPlace.locator(".pl-card-status .pl-tags-summary, .pl-card-status .pl-dist, .pl-card-status .pl-rating-chip")).toHaveCount(0);
-    expect(await firstPlace.locator(".pl-card-status .pl-open-chip, .pl-card-status .pl-closed-chip").count()).toBe(1);
-    expect(await firstPlace.evaluate((element) => getComputedStyle(element).gridTemplateRows.trim().split(/\s+/).length)).toBe(2);
+    await expect(firstPlace.locator(".pl-card-status")).toBeHidden();
+    expect(await firstPlace.locator(".pl-meta .pl-tags-summary, .pl-meta .pl-dist, .pl-meta .pl-rating-chip").count()).toBeGreaterThan(0);
+    expect(await firstPlace.locator(".pl-meta .pl-open-chip, .pl-meta .pl-closed-chip").count()).toBe(1);
+    expect(await firstPlace.evaluate((element) => getComputedStyle(element).gridTemplateRows.trim().split(/\s+/).length)).toBe(3);
     const placesStack = await page.evaluate(() => ({
       actionBar: Number.parseInt(getComputedStyle(document.querySelector("#places-filters")).zIndex, 10),
       city: Number.parseInt(getComputedStyle(document.querySelector("#places-list .pl-city-hdr")).zIndex, 10),
@@ -416,7 +454,6 @@ test.describe("Phone app pages", () => {
   test("root pages have no close affordance and page changes use one clean motion", async ({ page }) => {
     await page.locator("#places-btn").click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-transition-direction", "forward");
-    await expect(page.locator("#places-sheet > .sheet-head")).toHaveClass(/phone-topbar-change/);
     await expect(page.locator("#places-close")).toBeHidden();
     await page.locator("#events-nav-btn").click();
     await expect(page.locator("#events-close")).toBeHidden();
@@ -584,28 +621,123 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#map-filter-chips [data-map-events]")).not.toHaveClass(/active/);
     await expect(page.locator(".place-mk-wrap[data-place-id]")).toHaveCount(2);
     await page.locator("#events-nav-btn").click();
+    await expect(page.locator("#ev-filter-bar [data-filter='all']")).toHaveClass(/active/);
+    await expect(page.locator("#ev-filter-bar .ev-filter-chip").last()).toHaveAttribute("data-filter", "past");
+    await expect(page.locator("#events-clear-filters")).toBeHidden();
     await expect(page.locator("#phone-events-count")).toHaveText("2 events");
+    await expect(page.locator("#ev-filter-toggle")).toContainText("Filter");
+    await page.locator("#ev-filter-bar [data-filter='past']").click();
+    await expect(page.locator("#phone-events-count")).toHaveText("1 event");
+    await expect(page.locator(".ev-overlay-card[data-ev-id='phone-event-past']")).toBeVisible();
+    await page.locator("#ev-filter-bar [data-filter='all']").click();
+    await expect(page.locator("#phone-events-count")).toHaveText("2 events");
+    const eventControlGeometry = await page.evaluate(() => {
+      const styles = (selector) => {
+        const style = getComputedStyle(document.querySelector(selector));
+        return { gap: style.gap, padding: style.padding, borderRadius: style.borderRadius };
+      };
+      return {
+        filter: [styles("#tf-toggle"), styles("#ev-filter-toggle")],
+        sort: [styles("#sort-toggle"), styles("#ev-sort-toggle")],
+      };
+    });
+    expect(eventControlGeometry.filter[1]).toEqual(eventControlGeometry.filter[0]);
+    expect(eventControlGeometry.sort[1]).toEqual(eventControlGeometry.sort[0]);
+    await page.locator("#ev-filter-toggle").click();
+    await expect(page.locator("#ev-location-options [data-event-location]")).toHaveCount(2);
+    await expect(page.locator("#ev-group-city-option")).toHaveClass(/active/);
+    await page.locator("#ev-filter-toggle").click();
+    await expect(page.locator(".ev-city-group")).toHaveCount(1);
+    await expect(page.locator(".ev-city-hdr.pl-city-hdr")).toHaveCount(1);
+    await expect(page.locator(".ev-city-group-list.pl-city-group-list")).toHaveCount(1);
+    await page.locator(".ev-city-toggle").click();
+    await expect(page.locator(".ev-city-group-body")).toHaveClass(/shut/);
+    await expect.poll(() => page.locator(".ev-city-group-body .pl-city-group-inner").evaluate((element) => getComputedStyle(element).transition)).toContain("grid-template-rows");
+    await page.locator(".ev-city-toggle").click();
+    const stacking = await page.evaluate(() => ({
+      filterBar: Number.parseInt(getComputedStyle(document.querySelector("#ev-filter-bar")).zIndex, 10),
+      cityHeader: Number.parseInt(getComputedStyle(document.querySelector(".ev-city-hdr")).zIndex, 10),
+    }));
+    expect(stacking.filterBar).toBeGreaterThan(stacking.cityHeader);
+    await page.locator("#ev-search-icn-btn").click();
+    await expect(page.locator("#ev-refine-row")).toHaveClass(/pl-searching/);
+    await expect(page.locator("#ev-refine-row")).not.toHaveClass(/ev-searching/);
+    await page.locator("#ev-search-input").fill("external");
+    await expect(page.locator("#ev-filtered-list .ev-overlay-card")).toHaveCount(1);
+    await page.locator("#ev-search-icn-btn").click();
+    await expect(page.locator("#ev-refine-row")).not.toHaveClass(/pl-searching/);
+    await expect(page.locator("#ev-filtered-list .ev-overlay-card")).toHaveCount(2);
+    await page.locator("#ev-sort-toggle").click();
+    await page.locator("#ev-sort-dropdown [data-sort-field='name']").click();
+    await expect(page.locator("#ev-sort-label")).toContainText("Name");
+    await expect(page.locator("#events-clear-filters")).toBeVisible();
+    const filterGap = await page.evaluate(() => {
+      const filter = document.querySelector("#ev-filter-bar").getBoundingClientRect();
+      const card = document.querySelector("#ev-filtered-list .ev-overlay-card").getBoundingClientRect();
+      return card.top - filter.bottom;
+    });
+    expect(filterGap).toBeGreaterThanOrEqual(12);
 
     await page.locator("#ev-filter-bar [data-filter='all']").click();
-    await expect(page.locator("#phone-events-count")).toHaveText("3 events");
-    await page.locator("#ev-mosque-filter").selectOption("phone-event-place");
-    await expect(page.locator("#ev-filtered-list .ev-overlay-card")).toHaveCount(3);
+    await expect(page.locator("#phone-events-count")).toHaveText("2 events");
+    await page.locator("#ev-filter-toggle").click();
+    await page.locator("#ev-location-options [data-event-location='phone-event-place']").click();
+    await expect(page.locator("#ev-filtered-list .ev-overlay-card")).toHaveCount(2);
+    await page.locator("#events-clear-filters").click();
+    await expect(page.locator("#events-clear-filters")).toBeHidden();
+    await expect(page.locator("#ev-sort-label")).toHaveText("Date");
+    await expect(page.locator("#ev-group-city-option")).toHaveClass(/active/);
 
+    await expect(page.locator(".ev-overlay-edit-btn")).toHaveCount(0);
+    await page.locator(".ev-overlay-card[data-ev-id='phone-event-place-card'] .ev-overlay-save-btn").click();
+    await expect(page.locator(".ev-overlay-card[data-ev-id='phone-event-place-card'] .ev-overlay-save-btn")).toHaveClass(/active/);
+    await expect(page.locator("#toast-stack .snack-label", { hasText: "Event saved" })).toBeVisible();
+    await expect(page.locator(".ev-card-saved-pill")).toHaveCount(0);
     await page.locator(".ev-overlay-card[data-ev-id='phone-event-place-card']").click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
-    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
-    await page.goBack();
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
-    await page.locator("#events-nav-btn").click();
+    await expect(page.locator("#event-detail-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#event-detail-title")).toHaveText("Place card event");
+    await expect(page.locator("#event-detail-body .ev-detail-hdr")).toBeVisible();
+    await expect(page.locator("#event-detail-body .ev-detail-venue")).toContainText("Phone Event Mosque");
+    await expect(page.locator("#event-detail-body .ev-detail-schedule")).toBeVisible();
+    await expect(page.locator(".ev-detail-save-btn")).toBeVisible();
+    await expect(page.locator("#event-detail-actions .ev-detail-edit")).toBeVisible();
+    await expect(page.locator("#event-detail-actions .ev-detail-share")).toBeVisible();
+    await expect(page.locator("#event-detail-close")).toHaveAttribute("aria-label", "Back to events");
+    await expect(page.locator(".place-mk-wrap[data-place-id='phone-event-place']")).toHaveClass(/mk-selected/);
+    await page.locator("#event-detail-close").click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
+    await expect(page.locator(".ev-recent-group")).toBeVisible();
+    await expect(page.locator(".ev-section-hdr--main")).toHaveText("All events");
+
+    await page.locator(".ev-overlay-card[data-ev-id='phone-event-external']").click();
+    await expect(page.locator("#event-detail-close")).toHaveAttribute("aria-label", "Back to events");
+    await page.locator("#scrim").click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
+    await expect(page.locator("#event-detail-sheet")).toHaveClass(/shut/);
+
+    await page.locator("#ev-filter-bar [data-filter='past']").click();
+    await page.locator(".ev-overlay-card[data-ev-id='phone-event-past']").click();
+    await expect(page.locator(".ev-detail-attend-btn")).toBeVisible();
+    await page.locator(".ev-detail-attend-btn").click();
+    await expect(page.locator("#toast-stack .snack-label", { hasText: "Event marked as attended" })).toBeVisible();
+    await page.locator("#event-detail-close").click();
+    await page.locator("#ev-filter-bar [data-filter='saved']").click();
+    await expect(page.locator("#ev-filtered-list .ev-saved-section")).toHaveCount(2);
+    await expect(page.locator("#ev-filtered-list .ev-saved-section").nth(0).locator(".ev-city-name")).toHaveText("Bookmarks");
+    await expect(page.locator("#ev-filtered-list .ev-saved-section").nth(1).locator(".ev-city-name")).toHaveText("Attended");
+    await page.locator("#events-clear-filters").click();
 
     const popup = page.waitForEvent("popup");
     await page.locator("#ev-filter-bar [data-filter='all']").click();
-    await page.locator(".ev-overlay-card[data-ev-id='phone-event-external'] .ev-overlay-link-btn").click();
+    await page.locator(".ev-overlay-card[data-ev-id='phone-event-external'] .ev-overlay-link-btn").first().click();
     await expect((await popup).url()).toBe("https://example.com/events/phone-test");
 
     await page.locator("#events-add-btn").click();
     await expect(page.locator("#event-overlay")).toBeVisible();
     await expect(page.locator("#event-overlay #ev-heading")).toHaveText("Add Event");
+    await expect(page.locator("#event-form .form-scroll-body")).toBeVisible();
+    await expect(page.locator("#event-form .form-submit-footer #ev-submit")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator("#event-overlay")).toHaveClass(/hide/);
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");

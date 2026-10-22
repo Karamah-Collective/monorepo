@@ -67,7 +67,7 @@
           <section id="phone-prayer-state" class="phone-prayer-card" aria-label="Next prayer">
             <div class="phone-prayer-card-top"><span>Next prayer</span><span id="phone-next-prayer-countdown">Loading prayer times</span></div>
             <div class="phone-prayer-card-main"><strong id="phone-next-prayer-name">Prayer times</strong><time id="phone-next-prayer-time">--:--</time></div>
-            <p>Helsinki local time</p>
+            <p id="phone-prayer-location">Helsinki local time</p>
           </section>
           <section class="phone-home-section phone-home-explore" aria-labelledby="phone-explore-title">
             <div class="phone-section-heading"><h2 id="phone-explore-title">Explore nearby</h2><button class="phone-text-action" type="button" data-phone-page="map">Map</button></div>
@@ -1054,6 +1054,21 @@
         <div id="place-sheet-actions" class="pp-actions"></div>
       </div>
 
+      <!-- ─── Event Detail Sheet ─── -->
+      <div id="event-detail-sheet" class="sheet shut" hidden>
+        <div id="event-detail-drag" class="sheet-drag"><span></span></div>
+        <div class="sheet-head">
+          <h2 id="event-detail-title"></h2>
+          <button id="event-detail-close" class="sheet-x btn-roundel" aria-label="Close event details">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="event-detail-body" class="t-scroll"></div>
+        <div id="event-detail-actions" class="pp-actions event-detail-actions"></div>
+      </div>
+
       <!-- ─── Menu/Profile Sheet: one physical sheet, two internal panes ───
            Menu (Account summary / Map View / Support / Preferences) and Profile
            (identity card, stats, submissions, reviews, data actions) used to be
@@ -1355,33 +1370,29 @@
                     <strong id="profile-timeline-preview-title">Verified visits</strong>
                     <span id="profile-timeline-preview-summary">No verified visits yet</span>
                   </div>
-                  <button id="profile-timeline-open" class="pf-timeline-open" type="button">
-                    <span>View visits</span>
+                  <button id="profile-timeline-open" class="pf-timeline-open" type="button" aria-label="View visits" title="View visits">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
                   </button>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your submitted places</div>
-                <!-- pf-scroll-list + t-scroll: this list caps its own height and
-                     scrolls internally rather than growing the Profile pane (and
-                     with it the whole sheet) without bound — see .pf-scroll-list
-                     in styles.css. Same for "submitted edits"/"reviews" below. -->
-                <div id="profile-submitted-places" class="pf-submission-list pf-scroll-list t-scroll">
+                <div id="profile-submitted-places" class="pf-profile-section-summary">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your submitted edits</div>
-                <div id="profile-submitted-edits" class="pf-submission-list pf-scroll-list t-scroll">
+                <div id="profile-submitted-edits" class="pf-profile-section-summary">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
               <div class="sort-divider"></div>
               <div class="menu-section">
                 <div class="menu-section-label">Your reviews</div>
-                <div id="profile-my-reviews" class="rv-list pf-scroll-list t-scroll">
+                <div id="profile-my-reviews" class="pf-profile-section-summary">
                   <p class="menu-placeholder">Loading…</p>
                 </div>
               </div>
@@ -1451,6 +1462,19 @@
       </div>
 
       <!-- ─── Add a Place Overlay ─── -->
+      <div id="profile-detail-overlay" class="hide" aria-hidden="true">
+        <section id="profile-detail-card" role="dialog" aria-modal="true" aria-labelledby="profile-detail-title">
+          <div class="overlay-drag" aria-hidden="true"><span></span></div>
+          <div class="suggest-head">
+            <h3 id="profile-detail-title">Profile activity</h3>
+            <button id="profile-detail-close" class="sheet-x btn-roundel" type="button" aria-label="Close profile activity">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div id="profile-detail-body" class="t-scroll"></div>
+        </section>
+      </div>
+
       <div id="suggest-overlay" class="hide">
         <div id="suggest-card">
           <div class="suggest-head">
@@ -2031,6 +2055,9 @@
             <button id="events-add-btn" class="sheet-action-btn btn-roundel-accent" type="button" title="Add an event" aria-label="Add event">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
+            <button id="events-clear-filters" class="sheet-action-btn btn-roundel-danger hide" type="button" title="Clear filters &amp; sort" aria-label="Clear event filters">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
             <button id="events-close" class="sheet-x btn-roundel" aria-label="Close">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
@@ -2039,16 +2066,59 @@
             <!-- Filter bar -->
             <div id="ev-filter-bar" class="ev-filter-bar">
               <div class="ev-filter-row phone-edge-carousel">
-                <button type="button" class="ev-filter-chip active" data-filter="upcoming">Upcoming</button>
+                <button type="button" class="ev-filter-chip active" data-filter="all">All</button>
+                <button type="button" class="ev-filter-chip" data-filter="upcoming">Upcoming</button>
+                <button type="button" class="ev-filter-chip" data-filter="saved">Saved</button>
                 <button type="button" class="ev-filter-chip" data-filter="today">Today</button>
                 <button type="button" class="ev-filter-chip" data-filter="this-week">This week</button>
                 <button type="button" class="ev-filter-chip" data-filter="this-month">This month</button>
-                <button type="button" class="ev-filter-chip" data-filter="all">All</button>
+                <button type="button" class="ev-filter-chip" data-filter="past">Past</button>
               </div>
-              <div class="ev-filter-row">
-                <select id="ev-mosque-filter" class="ev-mosque-filter" aria-label="Filter events by location">
-                  <option value="">All locations</option>
-                </select>
+              <div id="ev-refine-row" class="ev-refine-row tf-row">
+                <div id="ev-filter-wrap">
+                  <button id="ev-filter-toggle" class="btn-chip" type="button" aria-haspopup="menu" aria-expanded="false">
+                    <span class="btn-chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+                    </span>
+                    <span class="tf-btn-label">Filter</span><span id="ev-filter-count" class="hide">0</span>
+                    <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  </button>
+                  <div id="ev-filter-dropdown" class="sort-dropdown shut" role="menu">
+                    <div class="sort-section-label">Location</div>
+                    <div id="ev-location-options"></div>
+                    <div class="sort-divider"></div>
+                    <div class="sort-section-label">View</div>
+                    <button id="ev-group-city-option" class="sort-opt active" type="button" aria-pressed="true" data-group-by-city="true">Group by city</button>
+                  </div>
+                  <select id="ev-mosque-filter" class="ev-mosque-filter" aria-label="Filter events by location" hidden>
+                    <option value="">All locations</option>
+                  </select>
+                </div>
+                <div id="ev-sort-wrap" class="sort-wrap">
+                  <button id="ev-sort-toggle" class="btn-chip" type="button" aria-haspopup="menu" aria-expanded="false">
+                    <span class="btn-chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+                    </span>
+                    <span id="ev-sort-label" class="tf-btn-label">Date</span>
+                    <svg class="tf-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  </button>
+                  <div id="ev-sort-dropdown" class="sort-dropdown shut" role="menu">
+                    <div class="sort-section-label">Sort by</div>
+                    <button class="sort-opt active" type="button" data-sort-field="date">Date</button>
+                    <button class="sort-opt" type="button" data-sort-field="name">Name</button>
+                    <button class="sort-opt" type="button" data-sort-field="location">Location</button>
+                    <div class="sort-divider"></div>
+                    <div class="sort-section-label">Order</div>
+                    <button class="sort-opt active" type="button" data-sort-dir="asc">Ascending</button>
+                    <button class="sort-opt" type="button" data-sort-dir="desc">Descending</button>
+                  </div>
+                </div>
+                <div id="ev-search-wrap" class="pl-search-wrap">
+                  <input id="ev-search-input" class="ev-search-input pl-search-input" type="text" placeholder="Search events…" autocomplete="off" maxlength="100">
+                </div>
+                <button id="ev-search-icn-btn" class="pl-search-icn" type="button" aria-label="Search events">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
               </div>
             </div>
             <div id="ev-filtered-list"></div>

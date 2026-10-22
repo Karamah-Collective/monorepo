@@ -72,6 +72,7 @@ const MS_PHOTO_FETCH_RETRY_DELAY_MS = 800;
 
 let _initialized = false;
 let _auth = null;
+let _authReadyPromise = null;
 const _googleProvider = new GoogleAuthProvider();
 // Microsoft has no dedicated MicrosoftAuthProvider class in the Firebase Web
 // SDK (unlike Google) — it's configured as a generic OAuthProvider with the
@@ -461,17 +462,25 @@ function _stripMagicLinkParamsFromUrl() {
  *   toast is warranted (see src/menu.js).
  */
 export async function initAuth() {
-  if (_initialized) return { completed: false };
+  if (_initialized) {
+    await _authReadyPromise;
+    return { completed: false };
+  }
   _initialized = true;
 
   const app = initializeApp(FIREBASE_CONFIG);
   _auth = getAuth(app);
 
-  onAuthStateChanged(_auth, (user) => {
-    _emitAuthChanged(_cacheAccount(user));
+  _authReadyPromise = new Promise((resolve) => {
+    onAuthStateChanged(_auth, (user) => {
+      _emitAuthChanged(_cacheAccount(user));
+      resolve(user);
+    }, () => resolve(null));
   });
 
-  return await completeMagicLinkSignIn();
+  const result = await completeMagicLinkSignIn();
+  await _authReadyPromise;
+  return result;
 }
 
 /**

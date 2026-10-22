@@ -23,7 +23,7 @@ export const map = new maplibregl.Map({
 
 const appRoot = document.getElementById("app");
 const mapHost = document.getElementById("map");
-const FOCUS_PANEL_IDS = ["place-sheet", "places-sheet", "dir-panel", "menu-sheet", "profile-sheet"];
+const FOCUS_PANEL_IDS = ["place-sheet", "event-detail-sheet", "places-sheet", "dir-panel", "menu-sheet", "profile-sheet"];
 const FOCUS_MOBILE_MAX_WIDTH = 768;
 const FOCUS_PANEL_MIN_SIZE = 1;
 const FOCUS_WIDE_PANEL_RATIO = 0.8;

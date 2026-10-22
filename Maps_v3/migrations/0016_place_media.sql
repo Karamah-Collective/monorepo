@@ -1,5 +1,3 @@
--- Place media: permanent community review uploads plus the only Google value
--- the public Places policy explicitly permits storing indefinitely (place ID).
 CREATE TABLE IF NOT EXISTS review_images (
   id           TEXT PRIMARY KEY,
   review_id    INTEGER NOT NULL,

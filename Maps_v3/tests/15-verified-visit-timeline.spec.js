@@ -67,6 +67,28 @@ function mockAccountApi(page, visits) {
         }),
       });
     }
+    if (body.action === "add-verified-event") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          visit: {
+            id: "server-event-timeline-1",
+            kind: "event",
+            eventId: body.eventId,
+            eventTitle: "Test Event",
+            occurrenceAt: body.occurrenceAt,
+            placeId: "",
+            placeName: "Test Event",
+            visitedAt: new Date().toISOString(),
+            eventLat: 60.1699,
+            eventLng: 24.9384,
+            eventLocationName: "Test venue",
+          },
+        }),
+      });
+    }
     if (body.action === "delete-verified-visit") {
       currentVisits = currentVisits.filter((visit) => visit.id !== body.visitId);
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true, deleted: true }) });
@@ -75,6 +97,91 @@ function mockAccountApi(page, visits) {
   });
   return requests;
 }
+
+test("local demo profile renders contribution history and an elaborate timeline", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("hf_tutorial_v1", "done"));
+  await page.goto("/?demo=profile");
+  await page.waitForFunction(() => document.querySelector("#map canvas")?.offsetWidth > 0, { timeout: 30_000 });
+  await expect.poll(() => page.locator(".event-mk-wrap").count(), { timeout: 15_000 }).toBeGreaterThan(0);
+  const phone = await page.evaluate(() => window.innerWidth <= 768);
+  if (!phone) {
+    await page.click("#menu-pill");
+    await expect(page.locator("#menu-profile-link")).toBeVisible({ timeout: 15_000 });
+    await page.click("#menu-profile-link");
+  } else {
+    await page.click("#menu-pill");
+    await expect(page.locator("#profile-timeline-open")).toBeVisible({ timeout: 15_000 });
+  }
+  await expect(page.locator("#profile-card-body")).toContainText("Amina Rahman");
+  await expect(page.locator("#profile-timeline-preview-title")).toHaveText("16 visits");
+  await expect(page.locator("#profile-timeline-preview")).toContainText("10 places");
+  await expect(page.locator("#profile-timeline-preview")).toContainText("6 events");
+  await expect(page.locator("#profile-timeline-preview")).toContainText("5 months active");
+  await expect(page.locator("#profile-my-reviews .pf-profile-section-preview")).toContainText("4 reviews");
+  await expect(page.locator("#profile-my-reviews .pf-profile-section-preview")).toContainText("4.5 avg");
+  await expect(page.locator("#profile-submitted-places .pf-profile-section-preview")).toContainText("4 submissions");
+  await expect(page.locator("#profile-submitted-places .pf-profile-section-preview")).toContainText("2 approved");
+  await expect(page.locator("#profile-submitted-places .pf-profile-section-preview")).not.toContainText("Latest:");
+  await expect(page.locator("#profile-submitted-edits .pf-profile-section-preview")).toContainText("4 edits");
+  await expect(page.locator("#profile-submitted-edits .pf-profile-section-preview")).toContainText("1 rejected");
+  await expect(page.locator("#profile-submitted-edits .pf-profile-section-preview")).not.toContainText("Latest:");
+  await page.click("#profile-my-reviews .pf-summary-chips");
+  await expect(page.locator("#profile-detail-body .pf-review-toolbar")).toBeVisible();
+  await expect(page.locator("#profile-detail-body .pf-detail-group-heading")).toHaveCount(0);
+  await expect(page.locator("#profile-detail-body .pf-detail-intro")).toHaveCount(0);
+  await page.click("#profile-detail-body [data-review-search-toggle]");
+  await expect(page.locator("#profile-detail-body .pf-review-search-input")).toBeVisible();
+  await page.fill("#profile-detail-body .pf-review-search-input", "Bangladesh");
+  await expect(page.locator("#profile-detail-body .acc-review-row")).toHaveCount(1);
+  await page.click("#profile-detail-body [data-review-sort-toggle]");
+  await expect(page.locator("#profile-detail-body [data-review-sort-dropdown]:not(.shut)")).toBeVisible();
+  await page.click('#profile-detail-body [data-review-sort="rating"]');
+  await page.click("#profile-detail-close");
+  await page.click("#profile-submitted-edits .pf-summary-chips");
+  await expect(page.locator("#profile-detail-body .pf-submission-toolbar")).toBeVisible();
+  await expect(page.locator("#profile-detail-body .pf-detail-group-heading")).toHaveCount(0);
+  await expect(page.locator("#profile-detail-body .pf-detail-intro")).toHaveCount(0);
+  await expect(page.locator("#profile-detail-body .pf-submission-item")).toHaveCount(4);
+  await expect(page.locator("#profile-detail-body .status-pill")).toHaveCount(4);
+  await page.click("#profile-detail-body [data-edit-filter-toggle]");
+  await expect(page.locator("#profile-detail-body [data-edit-filter-dropdown]:not(.shut)")).toBeVisible();
+  await page.click('#profile-detail-body [data-edit-status="pending"]');
+  await expect(page.locator("#profile-detail-body .pf-submission-item")).toHaveCount(1);
+  await page.click("#profile-detail-body [data-edit-filter-toggle]");
+  await page.click('#profile-detail-body [data-edit-status="all"]');
+  await page.click("#profile-detail-body [data-edit-sort-toggle]");
+  await expect(page.locator("#profile-detail-body [data-edit-sort-dropdown]:not(.shut)")).toBeVisible();
+  await page.click('#profile-detail-body [data-edit-sort-dir="asc"]');
+  await page.click("#profile-detail-body [data-edit-search-toggle]");
+  await page.fill("#profile-detail-body .pf-submission-search-input", "opening hours");
+  await expect(page.locator("#profile-detail-body .pf-submission-item")).toHaveCount(1);
+  await expect(page.locator("#profile-detail-body .pf-submission-changes")).toContainText("Opening hours");
+  await page.click("#profile-detail-close");
+  await page.click("#profile-submitted-places .pf-summary-chips");
+  await expect(page.locator("#profile-detail-overlay")).toBeVisible();
+  await expect(page.locator("#profile-detail-body .pf-submission-toolbar")).toBeVisible();
+  await expect(page.locator("#profile-detail-body .pf-detail-group-heading")).toHaveCount(0);
+  await expect(page.locator("#profile-detail-body .pf-detail-intro")).toHaveCount(0);
+  await expect(page.locator("#profile-detail-body .pf-submission-item")).toHaveCount(4);
+  await expect(page.locator("#profile-detail-body .status-pill")).toHaveCount(4);
+  await expect(page.locator("#profile-detail-body .pf-submission-community-edit")).toHaveCount(1);
+  await expect(page.locator("#profile-detail-body .pf-submission-community-edit")).toContainText("Opening hours");
+  await page.click("#profile-detail-body [data-edit-search-toggle]");
+  await page.fill("#profile-detail-body .pf-submission-search-input", "Sisters");
+  await expect(page.locator("#profile-detail-body .pf-submission-item")).toHaveCount(1);
+  if (phone) {
+    const layers = await page.evaluate(() => ({
+      detail: Number.parseInt(getComputedStyle(document.querySelector("#profile-detail-overlay")).zIndex, 10),
+      page: Number.parseInt(getComputedStyle(document.querySelector("#profile-sheet")).zIndex, 10),
+      nav: Number.parseInt(getComputedStyle(document.querySelector("#phone-chrome-bottom-zone")).zIndex, 10),
+    }));
+    expect(layers.detail).toBeGreaterThan(layers.nav);
+    expect(layers.page).toBeLessThan(layers.nav);
+  }
+  await page.click("#profile-detail-close");
+  await page.click("#profile-timeline-preview .pf-timeline-preview-copy");
+  await expect(page.locator(".pf-timeline-event")).toHaveCount(16);
+});
 
 test.describe("verified visit timeline", () => {
   test("keeps manual Visited separate and requires sign-in before GPS", async ({ page }) => {
@@ -186,6 +293,23 @@ test.describe("verified visit timeline", () => {
     await page.locator(".share-toast-action").click();
     await expect.poll(() => page.evaluate(() => window.__timelineWatchCalls || 0)).toBe(1);
     await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Added to timeline", { timeout: 5000 });
+  });
+
+  test("startup location notice is persistent and dismissible", async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const { clearCurrentLocationState } = await import("/src/utils.js");
+      clearCurrentLocationState();
+      Object.defineProperty(navigator, "permissions", { configurable: true, value: { query: async () => ({ state: "denied" }) } });
+      const { primeLocationAtStartup } = await import("/src/map-controls.js");
+      await primeLocationAtStartup();
+    });
+    const notice = page.locator(".share-toast-action-shell").filter({ hasText: "Enable GPS for nearby places" });
+    await expect(notice).toBeVisible();
+    await page.waitForTimeout(8500);
+    await expect(notice).toBeVisible();
+    await notice.locator(".share-toast-close").click();
+    await expect(notice).toBeHidden();
   });
 
   test("removes the timeline action after the resumed GPS check finds a distant place", async ({ page }) => {
@@ -344,6 +468,9 @@ test.describe("verified visit timeline", () => {
     await openProfile(page);
     await expect(page.locator("#profile-timeline-preview-title")).toHaveText("Verified visits");
     await expect(page.locator("#profile-timeline-preview-summary")).toHaveText("No verified visits yet");
+    await expect(page.locator("#profile-submitted-places .pf-profile-empty")).toHaveText("No places added yet");
+    await expect(page.locator("#profile-submitted-edits .pf-profile-empty")).toHaveText("No edits yet");
+    await expect(page.locator("#profile-my-reviews .pf-profile-empty")).toHaveText("No reviews yet");
     await expect(page.locator(".pf-timeline-empty")).toContainText("No visits yet");
     await expect(page.locator("#profile-timeline-calendar").locator("..")).toBeHidden();
     const browse = page.locator("[data-profile-timeline-browse]");
@@ -462,6 +589,67 @@ test.describe("verified visit timeline", () => {
     await expect(page.locator("#place-sheet-body .pp-timeline-btn")).not.toBeDisabled();
     await page.locator("#place-sheet-body .pp-timeline-btn").click();
     await expect(page.locator(".snack-label", { hasText: "Already added to timeline" })).toBeVisible({ timeout: 3_000 });
+    await page.evaluate(() => window.__manarahGpsSim.deactivate());
+  });
+
+  test("recurring events use their start date and create one timeline entry per occurrence", async ({ page }) => {
+    await setupApp(page);
+    const result = await page.evaluate(async () => {
+      const { eventHasOccurred, getEventOccurrenceWindow, normalizeTimelineVisit } = await import("/src/timeline.js");
+      const event = { id: "weekly-test", date: "2026-11-01", time: "22:00", endTime: "23:00", recurring: true, recurrence: "weekly:0", lat: 60.1699, lng: 24.9384 };
+      const now = new Date(2026, 10, 8, 22, 30);
+      return {
+        occurred: eventHasOccurred(event, now),
+        occurrence: getEventOccurrenceWindow(event, now)?.occurrenceAt || "",
+        normalized: normalizeTimelineVisit({ id: "event-visit", kind: "event", eventId: event.id, eventTitle: "Weekly test", occurrenceAt: "2026-11-08", visitedAt: now.toISOString(), eventLat: 60.1699, eventLng: 24.9384 }),
+      };
+    });
+    expect(result.occurred).toBe(true);
+    expect(result.occurrence).toBe("2026-11-08");
+    expect(result.normalized.kind).toBe("event");
+    expect(result.normalized.eventId).toBe("weekly-test");
+  });
+
+  test("event attendance uses the one-hour pre-start timeline window", async ({ page }) => {
+    await setupApp(page);
+    const result = await page.evaluate(async () => {
+      const { eventHasOccurred, getEventOccurrenceWindow } = await import("/src/timeline.js");
+      const event = { date: "2026-10-22", time: "22:00", endTime: "23:00" };
+      const now = new Date("2026-10-22T21:00:00");
+      return {
+        timelineEligible: Boolean(getEventOccurrenceWindow(event, now)),
+        attendanceEligible: eventHasOccurred(event, now),
+      };
+    });
+    expect(result.timelineEligible).toBe(true);
+    expect(result.attendanceEligible).toBe(true);
+  });
+
+  test("event detail exposes attended and GPS timeline actions for an active event", async ({ page }) => {
+    const requests = mockAccountApi(page, []);
+    await setupApp(page);
+    await signInFromMenu(page);
+    const event = await page.evaluate(() => {
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const hour = String(Math.max(0, now.getHours() - 1)).padStart(2, "0");
+      return { date, time: `${hour}:${String(now.getMinutes()).padStart(2, "0")}` };
+    });
+    await page.evaluate(async ({ date, time }) => {
+      window.__manarahGpsSim.setLocation(60.1699, 24.9384, 5);
+      const { openEventDetail } = await import("/src/places.js");
+      openEventDetail({ id: "active-event", title: "Active event", date, time, endTime: "23:59", recurring: false, placeId: "", lat: 60.1699, lng: 24.9384, locationName: "Test venue" });
+    }, event);
+    await expect(page.locator("#event-detail-body .ev-detail-attend-btn")).toBeVisible();
+    await page.locator("#event-detail-body .ev-detail-attend-btn").click();
+    await expect(page.locator("#event-detail-body .ev-detail-attend-btn")).toHaveAttribute("aria-label", "Attended");
+    await expect(page.locator("#event-detail-body .ev-detail-timeline-btn")).toBeVisible();
+    await page.locator("#event-detail-body .ev-detail-timeline-btn").click();
+    await expect(page.locator("#event-detail-body .ev-detail-timeline-btn")).toHaveText("Added to timeline");
+    const eventRequest = requests.find((body) => body.action === "add-verified-event");
+    expect(eventRequest).toMatchObject({ eventId: "active-event" });
+    expect(eventRequest).not.toHaveProperty("lat");
+    expect(eventRequest).not.toHaveProperty("accuracy");
     await page.evaluate(() => window.__manarahGpsSim.deactivate());
   });
 

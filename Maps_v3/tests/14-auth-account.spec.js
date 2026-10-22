@@ -308,17 +308,25 @@ test.describe("Menu Account section — Your reviews list", () => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expectSignedIn(page);
+    await page.click('#profile-my-reviews [data-profile-detail="reviews"]');
+    await expect(page.locator("#profile-detail-overlay")).toBeVisible();
     await expect(page.locator(".acc-review-row")).toHaveCount(2, { timeout: 10_000 });
     await expect(page.locator(".acc-review-row").first().locator(".acc-review-place-name")).toContainText("Test Mosque");
     await expect(page.locator(".acc-review-row").first().locator(".rv-review-text")).toContainText("Lovely and welcoming.");
     await expect(page.locator(".acc-review-row").first().locator(".acc-review-edit")).toBeVisible();
     await expect(page.locator(".acc-review-row").first().locator(".acc-review-delete")).toBeVisible();
+    await page.click("#profile-detail-body [data-review-sort-toggle]");
+    await expect(page.locator("#profile-detail-body [data-review-sort-dir=\"asc\"]")).toBeVisible();
+    await page.click("#profile-detail-body [data-review-sort-dir=\"asc\"]");
+    await expect(page.locator(".acc-review-row").first().locator(".acc-review-place-name")).toContainText("Test Restaurant");
   });
 
   test("delete shows a Yes/No confirm dialog; cancelling leaves the row in place", async ({ page }) => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expectSignedIn(page);
+    await page.click('#profile-my-reviews [data-profile-detail="reviews"]');
+    await expect(page.locator("#profile-detail-overlay")).toBeVisible();
     await expect(page.locator(".acc-review-row")).toHaveCount(2, { timeout: 10_000 });
 
     const firstDelete = page.locator(".acc-review-row").first().locator(".acc-review-delete");
@@ -333,6 +341,8 @@ test.describe("Menu Account section — Your reviews list", () => {
     await openMenuAndWaitForAccount(page);
     await page.click("#menu-google-signin");
     await expectSignedIn(page);
+    await page.click('#profile-my-reviews [data-profile-detail="reviews"]');
+    await expect(page.locator("#profile-detail-overlay")).toBeVisible();
     await expect(page.locator(".acc-review-row")).toHaveCount(2, { timeout: 10_000 });
 
     const firstDelete = page.locator(".acc-review-row").first().locator(".acc-review-delete");

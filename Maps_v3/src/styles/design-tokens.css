@@ -1951,7 +1951,7 @@ html.reduce-motion *::after {
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--z-overlay);
+  z-index: calc(var(--z-top) + 3);
   display: flex;
   align-items: center;
   justify-content: center;

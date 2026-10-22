@@ -160,6 +160,12 @@ async function getMySubmittedPlaces(db, emailHash) {
     const entry = { name, type, address, status, submittedAt: row.timestamp || "", rejectReason: status === "rejected" ? row.reject_reason || "" : "", placeId: "" };
     if (status === "live") {
       entry.placeId = row.app_place_id || (await findPlacesIdByFuzzyMatch(db, name, type, row.lat, row.lng));
+      if (entry.placeId) {
+        const { results: edits } = await db.prepare("SELECT changes_summary, timestamp, email_hash FROM edits WHERE place_id = ? AND status = 'yes' ORDER BY timestamp DESC").bind(entry.placeId).all();
+        entry.communityEdits = edits
+          .filter((edit) => edit.email_hash !== emailHash)
+          .map((edit) => ({ changesSummary: edit.changes_summary || "", submittedAt: edit.timestamp || "" }));
+      }
     }
     out.push(entry);
   }
