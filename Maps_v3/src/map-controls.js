@@ -1520,6 +1520,13 @@ document.getElementById("home-btn").addEventListener("click", () => {
 document.getElementById("zoomin-btn").addEventListener("click", () => map.zoomIn({ duration: 300 }));
 document.getElementById("zoomout-btn").addEventListener("click", () => map.zoomOut({ duration: 300 }));
 document.getElementById("locate-btn").addEventListener("click", showCurrentLocation);
+function _ensureMapLocationTracking() {
+  if (getPhonePage() !== "map") return;
+  const location = getCurrentLocationState();
+  if (location.active && location.source !== "sim" && locWatchId === null) showCurrentLocation();
+}
+window.addEventListener("hf:phone-map-visible", _ensureMapLocationTracking);
+window.addEventListener("hf:current-location-updated", _ensureMapLocationTracking);
 
 map.on("moveend", updateUrlHash);
 

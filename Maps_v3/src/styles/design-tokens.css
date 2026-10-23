@@ -396,6 +396,13 @@ body.promos-disabled .pp-promo-btn { display: none; }
   --map-edge: 12px; /* map-control inset from viewport edges */
   --sheet-h: 55vh; /* default bottom-sheet height           */
 
+  /* Phone home surfaces. */
+  --home-card-surface: color-mix(in srgb, var(--accent) 5%, var(--surface-2));
+  --home-search-h: 52px;
+  --home-category-icon-size: 44px;
+  --home-search-menu-w: 250px;
+  --home-search-results-max-h: 50vh;
+
   font-family:
     'Plus Jakarta Sans',
     -apple-system,

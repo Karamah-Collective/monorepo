@@ -1,5 +1,5 @@
 import { EVT } from "./events.js";
-import { PLACE_CONFIG } from "./icons.js";
+import { PLACE_CONFIG, typeIcon } from "./icons.js";
 import { nextOccurrence } from "./event-recurrence.js";
 import { getCurrentLocationState, getVisitorGeo, haversineDistance, reverseGeocodeCity } from "./utils.js";
 import { isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
@@ -41,6 +41,9 @@ const PHONE_PAGE_NAV_SNAP_DISTANCE = 22;
 // Keep fast finger movement from making the live chrome jump frame-to-frame.
 const PHONE_PAGE_SCROLL_RESPONSE = 0.62;
 const PHONE_PAGE_SCROLL_MAX_VISUAL_DELTA = 12;
+const PHONE_PAGE_ACTIONBAR_SCROLL_RESPONSE = 0.78;
+const PHONE_PAGE_ACTIONBAR_MAX_VISUAL_DELTA = 16;
+const PHONE_PAGE_ACTIONBAR_SNAP_MS = 300;
 const PHONE_PAGE_NAV_SETTLE_DELAY = 160;
 const PHONE_PAGE_TRANSITION_MS = 420;
 const PHONE_BACK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>`;
@@ -69,6 +72,7 @@ let _homeLocationRequest = 0;
 let _homeSuggestionsCity = null;
 let _homeSuggestionIds = [];
 let _homeSuggestionsLoading = false;
+let _homeSearchQuery = "";
 
 function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null, actionBarElement = null, placesScrollElement = null, cityHeaderElement = null, updateLayout = true) {
   const chrome = document.getElementById("phone-chrome-bottom-zone");
@@ -87,13 +91,7 @@ function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeig
     }
     actionBar.style.setProperty("--phone-places-actionbar-progress", String(actionNext));
     actionBar.style.setProperty("--phone-places-actionbar-shift", `${actionBarHeight * actionNext}px`);
-    const placesScroll = placesScrollElement || document.getElementById("places-scroll");
     cityHeaderElement?.style.setProperty("--phone-places-city-shift", `${-actionBarHeight * actionNext}px`);
-    if (updateLayout) {
-      actionBar.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
-      placesScroll?.style.setProperty("--phone-places-actionbar-height", `${actionBarHeight}px`);
-      placesScroll?.style.setProperty("--phone-places-actionbar-clearance", `${actionBarHeight * (1 - actionNext)}px`);
-    }
     const pointerEvents = actionNext > 0.98 ? "none" : "auto";
     if (actionBar.style.pointerEvents !== pointerEvents) actionBar.style.pointerEvents = pointerEvents;
   }
@@ -307,6 +305,8 @@ function _attachPageScroll(page) {
     const chrome = document.getElementById("phone-chrome-bottom-zone");
     chrome?.classList.add("phone-page-nav-following");
     if (actionBar?.classList.contains("phone-places-actionbar-snapping")) {
+      window.clearTimeout(_placesActionBarSnapTimer);
+      _placesActionBarSnapTimer = 0;
       actionBar.classList.remove("phone-places-actionbar-snapping");
     }
     const visualDelta = Math.sign(delta) * Math.min(
@@ -315,9 +315,13 @@ function _attachPageScroll(page) {
     );
     progress = Math.max(0, Math.min(1, progress + visualDelta / PHONE_PAGE_NAV_SNAP_DISTANCE));
     if (actionBar) {
+      const actionBarVisualDelta = Math.sign(delta) * Math.min(
+        Math.abs(delta) * PHONE_PAGE_ACTIONBAR_SCROLL_RESPONSE,
+        PHONE_PAGE_ACTIONBAR_MAX_VISUAL_DELTA,
+      );
       const actionBarCanFollow = delta < 0 || actionBarProgress > 0 || twoCardsUnderActionBar();
       actionBarProgress = actionBarCanFollow
-        ? Math.max(0, Math.min(1, actionBarProgress + visualDelta / Math.max(1, actionBarHeight)))
+        ? Math.max(0, Math.min(1, actionBarProgress + actionBarVisualDelta / Math.max(1, actionBarHeight)))
         : 0;
     }
     syncActiveCityHeader();
@@ -343,7 +347,7 @@ function _attachPageScroll(page) {
         window.clearTimeout(_placesActionBarSnapTimer);
         _placesActionBarSnapTimer = window.setTimeout(() => {
           actionBar.classList.remove("phone-places-actionbar-snapping");
-        }, 440);
+        }, PHONE_PAGE_ACTIONBAR_SNAP_MS);
       }
     }, PHONE_PAGE_NAV_SETTLE_DELAY);
   };
@@ -576,8 +580,56 @@ function _escape(value) {
   return div.innerHTML;
 }
 
+function _homeSearchNormalize(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function _homeSearchResultIcon(place) {
+  const iconClass = place.type === "service" || place.type === "shop" ? "shop" : "amenity";
+  return typeIcon(place.type, iconClass);
+}
+
+function _hideHomeSearchOverlay() {
+  const results = document.getElementById("phone-home-search-results");
+  if (results) results.hidden = true;
+}
+
+function _renderHomeSearch() {
+  const input = document.getElementById("phone-home-search-input");
+  const results = document.getElementById("phone-home-search-results");
+  if (!input || !results) return;
+  input.value = _homeSearchQuery;
+
+  const query = _homeSearchNormalize(_homeSearchQuery).trim();
+  if (!query) {
+    results.hidden = true;
+    results.innerHTML = "";
+    return;
+  }
+  const terms = query.split(/\s+/).filter(Boolean);
+  const places = Array.isArray(window.HFPhoneData?.getPlaces?.()) ? window.HFPhoneData.getPlaces() : [];
+  const matches = places
+    .filter((place) => {
+      const haystack = _homeSearchNormalize(`${place.name || ""} ${place.address || ""} ${place.city || ""} ${place.type || ""}`);
+      return terms.every((term) => haystack.includes(term));
+    })
+    .slice(0, 6);
+
+  results.hidden = false;
+  results.innerHTML = matches.length
+    ? matches.map((place) => `
+      <button class="home-search-result r-local" type="button" data-phone-place-id="${_escape(place.id)}">
+        <span class="r-icon" aria-hidden="true">${_homeSearchResultIcon(place)}</span>
+        <span class="r-body"><span class="r-name">${_escape(place.name || "Unnamed place")}</span><span class="r-meta"><span class="r-addr">${_escape(place.address || place.city || place.type || "Directory place")}</span><span class="r-halal-badge" title="Community verified"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg></span></span></span>
+      </button>`).join("")
+    : `<p class="search-empty">No results found.</p>`;
+}
+
 function _formatHomeDate(date = new Date()) {
-  return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }).format(date);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long" }).format(date);
 }
 
 function _phoneFirstName(account) {
@@ -599,6 +651,17 @@ function _formatEventDate(event) {
   return date
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date)
     : "Date to be announced";
+}
+
+function _formatEventDateParts(event) {
+  const date = _eventDate(event);
+  return date
+    ? {
+        day: new Intl.DateTimeFormat("en-GB", { day: "2-digit" }).format(date),
+        month: new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date).toUpperCase(),
+        label: _formatEventDate(event),
+      }
+    : { day: "--", month: "TBD", label: "Date to be announced" };
 }
 
 function _eventTime(event) {
@@ -729,7 +792,9 @@ function _renderHome() {
   if (!page) return;
   const date = document.getElementById("phone-home-date");
   const city = _homeCity || "Helsinki";
-  if (date) date.textContent = `${city.toUpperCase()}  |  ${_formatHomeDate().toUpperCase()}`;
+  const cityLabel = document.getElementById("phone-home-city");
+  if (cityLabel) cityLabel.textContent = city;
+  if (date) date.textContent = _formatHomeDate();
   const prayerLocation = document.getElementById("phone-prayer-location");
   if (prayerLocation) prayerLocation.textContent = `${city} local time`;
   const greeting = document.getElementById("phone-home-greeting");
@@ -747,6 +812,7 @@ function _renderHome() {
     title.lang = "en";
   }
   _renderPrayer();
+  _renderHomeSearch();
 
   const data = window.HFPhoneData;
   const allPlaces = Array.isArray(data?.getPlaces?.()) ? data.getPlaces() : [];
@@ -776,7 +842,7 @@ function _renderHome() {
   }
   if (placeList) {
     placeList.innerHTML = places.slice(0, 6).map((place) => `
-      <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}">
+      <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}" style="--phone-place-color:${_escape((PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).color)}">
         <span class="phone-home-place-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">${(PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).icon}</svg></span>
         <span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span>
         <span class="phone-home-place-copy"><small class="phone-home-place-kicker">${_escape(place.type || "Community place")}</small><strong>${_escape(place.name || "Unnamed place")}</strong></span>
@@ -789,12 +855,15 @@ function _renderHome() {
     eventState.textContent = !data ? "Events are loading." : events.length ? "" : "No upcoming events yet.";
   }
   if (eventList) {
-    eventList.innerHTML = events.slice(0, 3).map((event) => `
-      <button class="phone-home-event" type="button" data-phone-page="events">
-        <span class="phone-home-event-date">${_escape(_formatEventDate(event))}</span>
-        <span class="phone-home-event-copy"><strong>${_escape(event.title || event.name || "Community event")}</strong><small>${_escape([_eventTime(event), event.location || event.placeName || event.locationName].filter(Boolean).join(" · "))}</small></span>
-        <span class="phone-home-event-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
-      </button>`).join("");
+    eventList.innerHTML = events.slice(0, 3).map((event) => {
+      const dateParts = _formatEventDateParts(event);
+      return `
+        <button class="phone-home-event" type="button" data-phone-page="events">
+          <span class="phone-home-event-date" aria-label="${_escape(dateParts.label)}"><span class="phone-home-event-date-visual" aria-hidden="true"><strong>${_escape(dateParts.day)}</strong><small>${_escape(dateParts.month)}</small></span><span class="phone-home-event-date-label">${_escape(dateParts.label)}</span></span>
+          <span class="phone-home-event-copy"><strong>${_escape(event.title || event.name || "Community event")}</strong><small>${_escape([_eventTime(event), event.location || event.placeName || event.locationName].filter(Boolean).join(" · "))}</small></span>
+          <span class="phone-home-event-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
+        </button>`;
+    }).join("");
   }
 }
 
@@ -932,15 +1001,48 @@ function _handlePhoneBack() {
   goBackPhonePage();
 }
 
+function _applyPhoneMapFilter(filter) {
+  const chip = [...document.querySelectorAll("#map-filter-chips .map-filter-pill")].find((button) => filter === "events"
+    ? button.dataset.mapEvents === "true"
+    : button.dataset.mapType === filter);
+  if (!chip && filter === "mosque") {
+    window.dispatchEvent(new CustomEvent("hf:phone-map-filter-request", { detail: { type: filter } }));
+    return;
+  }
+  if (chip && !chip.classList.contains("active")) chip.click();
+  else if (chip) window.dispatchEvent(new CustomEvent("hf:phone-map-filter-focus"));
+}
+
+async function _openHomeQibla() {
+  try {
+    const { openQibla } = await import("./qibla.js");
+    await openQibla();
+  } catch (err) {
+    console.error("[Phone home] Failed to open Qibla:", err);
+  }
+}
+
 function _wireHome() {
   document.getElementById("phone-home-page")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-phone-qibla]")) {
+      void _openHomeQibla();
+      return;
+    }
     const pageButton = event.target.closest("[data-phone-page]");
     if (pageButton) {
       navigatePhonePage(pageButton.dataset.phonePage);
+      if (pageButton.dataset.phoneMapFilter) requestAnimationFrame(() => _applyPhoneMapFilter(pageButton.dataset.phoneMapFilter));
       return;
     }
     const placeButton = event.target.closest("[data-phone-place-id]");
     if (placeButton) window.dispatchEvent(new CustomEvent(EVT.PHONE_PLACE_OPEN, { detail: { id: placeButton.dataset.phonePlaceId } }));
+  });
+  document.getElementById("phone-home-search-input")?.addEventListener("input", (event) => {
+    _homeSearchQuery = event.target.value;
+    _renderHomeSearch();
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".phone-home-search")) _hideHomeSearchOverlay();
   });
   const openSettings = () => navigatePhonePage("menu");
   document.getElementById("phone-profile-menu-action")?.addEventListener("click", openSettings);

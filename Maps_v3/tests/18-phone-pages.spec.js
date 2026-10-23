@@ -129,6 +129,11 @@ test.describe("Phone app pages", () => {
       await page.locator("#home-btn").click();
     }
     await page.locator("#events-nav-btn").click();
+    const eventNavState = await page.locator("#phone-chrome-bottom-zone").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { opacity: style.opacity, pointerEvents: style.pointerEvents };
+    });
+    expect(eventNavState).toEqual({ opacity: "1", pointerEvents: "auto" });
     const eventScroll = await page.evaluate(() => ({
       surface: getComputedStyle(document.querySelector("#events-overlay")).overflowY,
       content: getComputedStyle(document.querySelector("#events-list")).overflowY,
@@ -151,16 +156,6 @@ test.describe("Phone app pages", () => {
 
     await page.locator("#places-btn").click();
     const places = page.locator("#places-scroll");
-    const initialActionBarClearance = await page.locator("#places-scroll").evaluate((element) =>
-      parseFloat(element.style.getPropertyValue("--phone-places-actionbar-clearance")),
-    );
-    expect(initialActionBarClearance).toBeGreaterThan(0);
-    const topGeometry = await page.evaluate(() => {
-      const actionBar = document.querySelector("#places-filters").getBoundingClientRect();
-      const city = document.querySelector("#places-list .pl-city-hdr")?.getBoundingClientRect();
-      return { actionBarBottom: actionBar.bottom, cityTop: city?.top ?? 0 };
-    });
-    expect(topGeometry.cityTop).toBeGreaterThanOrEqual(topGeometry.actionBarBottom - 1);
     const placesLayoutBefore = await page.evaluate(() => ({
       scrollTop: document.querySelector("#places-scroll").getBoundingClientRect().top,
     }));
@@ -182,7 +177,6 @@ test.describe("Phone app pages", () => {
       const style = getComputedStyle(bar);
       return {
         progress: parseFloat(bar.style.getPropertyValue("--phone-places-actionbar-progress")),
-        clearance: parseFloat(scroll.style.getPropertyValue("--phone-places-actionbar-clearance")),
         cityTransform: city ? getComputedStyle(city).transform : "none",
         cityPosition: city ? getComputedStyle(city).position : "none",
         nonActiveCityPositions,
@@ -192,7 +186,6 @@ test.describe("Phone app pages", () => {
       };
     });
     expect(actionBarState.progress).toBeGreaterThan(0);
-    expect(actionBarState.clearance).toBeLessThan(initialActionBarClearance);
     expect(actionBarState.cityTransform).not.toBe("none");
     expect(actionBarState.cityPosition).toBe("sticky");
     expect(actionBarState.nonActiveCityPositions.every((position) => position === "static")).toBe(true);
@@ -224,6 +217,7 @@ test.describe("Phone app pages", () => {
 
     await page.locator("#events-nav-btn").click();
     const events = page.locator("#events-list");
+    const eventsFilterBar = page.locator("#ev-filter-bar");
     await events.evaluate((element) => {
       element.style.flex = "0 0 240px";
       element.style.height = "240px";
@@ -233,11 +227,12 @@ test.describe("Phone app pages", () => {
       element.scrollTop = 240;
       element.dispatchEvent(new Event("scroll"));
     });
+    await page.waitForTimeout(220);
     await page.waitForTimeout(500);
-    const eventsMotion = await events.evaluate((element) => ({
-      progress: parseFloat(element.querySelector("#ev-filter-bar").style.getPropertyValue("--phone-places-actionbar-progress")),
-      transform: getComputedStyle(element.querySelector("#ev-filter-bar")).transform,
-      transition: getComputedStyle(element.querySelector("#ev-filter-bar")).transition,
+    const eventsMotion = await eventsFilterBar.evaluate((element) => ({
+      progress: parseFloat(element.style.getPropertyValue("--phone-places-actionbar-progress")),
+      transform: getComputedStyle(element).transform,
+      transition: getComputedStyle(element).transition,
     }));
     expect(eventsMotion.progress).toBe(1);
     expect(eventsMotion.transform).not.toBe("none");

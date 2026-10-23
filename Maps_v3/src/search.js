@@ -432,8 +432,8 @@ function showResults(items, { scopeAction = false, scope = "directory" } = {}) {
   const emptyHTML = items.length ? "" : `<li class="search-empty">${scopeAction ? (scope === "external" ? "No places found in the wider map." : "No saved places match that search.") : "No results found."}</li>`;
   const actionHTML = scopeAction
     ? scope === "directory"
-      ? '<li class="search-scope-action" data-search-scope="external"><span class="r-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span class="r-body"><span class="r-name">Search the wider map</span><span class="r-addr">Find places beyond our directory</span></span><span aria-hidden="true">›</span></li>'
-      : '<li class="search-scope-action" data-search-scope="directory"><span class="r-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span class="r-body"><span class="r-name">Search directory places</span><span class="r-addr">Browse places saved in Manarah</span></span><span aria-hidden="true">›</span></li>'
+      ? '<li class="search-scope-action" data-search-scope="external"><span class="r-body"><span class="r-name">Search the wider map</span></span><span aria-hidden="true">›</span></li>'
+      : '<li class="search-scope-action" data-search-scope="directory"><span class="r-body"><span class="r-name">Search directory places</span><span class="r-addr">Browse places saved in Manarah</span></span><span aria-hidden="true">›</span></li>'
     : "";
   rList.innerHTML = emptyHTML + resultHTML + actionHTML;
   showDrop();

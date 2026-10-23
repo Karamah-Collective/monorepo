@@ -20,7 +20,7 @@
  *   That single change causes the browser to install the new SW and wipe the old caches.
  */
 
-const VERSION = '20261007-11'; // Replaced automatically with the deployment commit version by scripts/build.mjs.
+const VERSION = '20261023-20'; // Replaced automatically with the deployment commit version by scripts/build.mjs.
 
 
 const CACHE_SHELL  = `hf-shell-${VERSION}`;
@@ -58,6 +58,7 @@ const SHELL_ASSETS = [
   '/src/search.js',
   '/src/directions.js',
   '/src/navigation.js',
+  '/src/phone-pages.js',
   '/src/prayer.js',
   '/src/icons.js',
   '/src/utils.js',

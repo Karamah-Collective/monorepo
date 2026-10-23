@@ -606,6 +606,7 @@ function getPlaceCity(place) {
 function _matchesTypeScope(place, type) {
   if (type === "all") return true;
   if (type === "saved") return _isSavedDirectoryPlace(place);
+  if (type === "mosque") return _isMosquePlace(place);
   if (type === "service") return SERVICE_TYPES.has(place.type);
   if (type === "space") return SPACE_TYPES.has(place.type);
   return place.type === type;
@@ -621,6 +622,7 @@ function _filterPlacesForCurrentType({ markers = false } = {}) {
   }
   if (activeTypeFilter === "all") return placesData;
   if (activeTypeFilter === "saved") return placesData.filter(markers ? _isSavedDirectoryPlace : (p) => isFavourite(p.id));
+  if (activeTypeFilter === "mosque") return placesData.filter(_isMosquePlace);
   if (activeTypeFilter === "service") return placesData.filter((p) => SERVICE_TYPES.has(p.type));
   if (activeTypeFilter === "space") return placesData.filter((p) => SPACE_TYPES.has(p.type));
   return placesData.filter((p) => p.type === activeTypeFilter);
@@ -1514,7 +1516,6 @@ export async function loadPlacesData() {
       placesLoaded = true;
       hideLoadingToast();
       addPlaceMarkers();
-      addEventOnlyMarkers();
       renderPlacesList();
       updatePlacesBadge();
       checkShareUrl();
@@ -1541,7 +1542,7 @@ export async function loadPlacesData() {
           updatePlacesBadge();
           renderPromosPill();
         }
-        if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); if (_mapEventsFilter) addPlaceMarkers(); }
+        if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); if (_mapEventsFilter) addPlaceMarkers(); else addEventOnlyMarkers(); }
         publishPhoneData();
         if (data.reviews) hydrateReviews(data.reviews);
         writeCache(normalizePlacesData(data.places), data.tags || {});
@@ -1567,7 +1568,6 @@ export async function loadPlacesData() {
     placesLoaded = true;
     hideLoadingToast();
     addPlaceMarkers();
-    addEventOnlyMarkers();
     renderPlacesList();
     updatePlacesBadge();
     checkShareUrl();
@@ -1595,7 +1595,7 @@ export async function loadPlacesData() {
         updatePlacesBadge();
         renderPromosPill();
       }
-      if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); addEventOnlyMarkers(); if (_mapEventsFilter) addPlaceMarkers(); }
+      if (Array.isArray(data.events) || _isLocalPreview()) { eventsData = _eventsForEnvironment(data.events); renderEventsPill(); if (_mapEventsFilter) addPlaceMarkers(); else addEventOnlyMarkers(); }
       publishPhoneData();
       if (data.reviews) hydrateReviews(data.reviews);
       writeCache(normalizePlacesData(data.places), data.tags || {});
@@ -1649,17 +1649,20 @@ const HEATMAP_PIN_ZOOM = 14.5;
 
 export function updateMarkerVisibility() {
   const isHeatmap = isHeatmapActive;
+  const isNavigation = document.body.classList.contains("nav-mode");
   const zoom = map.getZoom();
   const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
   placeMarkers.forEach((marker) => {
     const el = marker.getElement();
-    if (el) el.classList.toggle("mk-hidden", shouldHide);
+    if (el) el.classList.toggle("mk-hidden", isNavigation || shouldHide);
   });
-  const clusterVis = (isHeatmap && zoom < HEATMAP_PIN_ZOOM) ? "none" : "visible";
+  const clusterVis = isNavigation || (isHeatmap && zoom < HEATMAP_PIN_ZOOM) ? "none" : "visible";
   CLUSTER_LAYER_IDS.forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", clusterVis);
   });
 }
+
+window.addEventListener("hf:navigation-marker-visibility", () => updateMarkerVisibility());
 
 function _setupClusterLayers(geojson) {
   map.addSource("places-cluster", {
@@ -1877,6 +1880,7 @@ export function addPlaceMarkers() {
   // Markers were just rebuilt from scratch — re-apply the selected highlight
   // if a place sheet is currently open, since its old marker element is gone.
   _setActiveMarker(_activePlaceSheetId);
+  addEventOnlyMarkers();
 }
 
 /**
@@ -1891,6 +1895,12 @@ export function addPlaceMarkers() {
 function addEventOnlyMarkers(selectedEventId = null) {
   eventOnlyMarkers.forEach((m) => m.remove());
   eventOnlyMarkers = [];
+
+  const placeFilterActive = !_mapEventsFilter && (
+    activeTypeFilter !== "all" || activeTagFilters.size || placeSearchQuery.trim() ||
+    _openNowFilter || _ratedFilter || _mapNearbyFilter
+  );
+  if (selectedEventId == null && placeFilterActive) return;
 
   const directoryIds = new Set(placesData.map((p) => p.id));
   eventsData
@@ -2771,6 +2781,8 @@ let _mapNearbyFilter = false;
 let _mapNearbyPill = null;
 let _mapEventsFilter = false;
 let _mapEventsPill = null;
+let _temporaryMapFilterType = null;
+const TEMPORARY_MAP_FILTER_TYPES = new Set(["mosque"]);
 
 function _placeHasUpcomingEvent(place) {
   const placeLat = Number(place.lat);
@@ -2810,7 +2822,10 @@ function _syncMapFilterChips() {
   _mapNearbyPill.setAttribute("aria-pressed", _mapNearbyFilter && hasLocation ? "true" : "false");
 
   const typeButtons = [...source.children];
-  const currentTypes = [...mapFilterChips.querySelectorAll("[data-map-type]")];
+  if (!_temporaryMapFilterType) {
+    mapFilterChips.querySelectorAll("[data-map-temporary]").forEach((button) => button.remove());
+  }
+  const currentTypes = [...mapFilterChips.querySelectorAll("[data-map-type]:not([data-map-temporary])")];
   if (currentTypes.length !== typeButtons.length) {
     currentTypes.forEach((button) => button.remove());
     typeButtons.forEach((chip) => {
@@ -2828,6 +2843,17 @@ function _syncMapFilterChips() {
       button.appendChild(label);
       mapFilterChips.appendChild(button);
     });
+  }
+  if (_temporaryMapFilterType === "mosque" && !mapFilterChips.querySelector('[data-map-type="mosque"][data-map-temporary]')) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "map-filter-pill";
+    button.dataset.mapType = "mosque";
+    button.dataset.mapTemporary = "true";
+    button.setAttribute("aria-label", "Show mosques");
+    button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19h18M5 17v-5l7-5 7 5v5M8 17v-4h8v4M12 7V4m-2 2 2-2 2 2" /></svg><span>Mosques</span>';
+    const savedPill = mapFilterChips.querySelector('[data-map-type="saved"]');
+    mapFilterChips.insertBefore(button, savedPill || null);
   }
   if (!_mapEventsPill) {
     _mapEventsPill = document.createElement("button");
@@ -2847,10 +2873,41 @@ function _syncMapFilterChips() {
   });
 }
 
+function _scrollActiveMapFilterIntoView() {
+  if (!mapFilterChips || getPhonePage() !== "map") return;
+  const active = mapFilterChips.querySelector(".map-filter-pill.active:not(.is-hidden)");
+  if (!active) return;
+  requestAnimationFrame(() => {
+    const current = mapFilterChips.querySelector(".map-filter-pill.active:not(.is-hidden)");
+    if (!current) return;
+    const target = current.offsetLeft - (mapFilterChips.clientWidth - current.offsetWidth) / 2;
+    const maxScroll = Math.max(0, mapFilterChips.scrollWidth - mapFilterChips.clientWidth);
+    mapFilterChips.scrollTo({
+      left: Math.min(maxScroll, Math.max(0, target)),
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  });
+}
+
 window.addEventListener(EVT.PHONE_PAGE_CHANGED, (event) => {
+  if (event.detail?.page !== "map" && _temporaryMapFilterType) {
+    const shouldReset = activeTypeFilter === _temporaryMapFilterType;
+    _temporaryMapFilterType = null;
+    if (shouldReset) setActivePlaceTypeFilter("all");
+  }
   _syncMapFilterChips();
   mapFilterCarousel?.setAttribute("aria-hidden", event.detail?.page !== "map" ? "true" : "false");
 });
+
+window.addEventListener("hf:phone-map-filter-request", (event) => {
+  const type = event.detail?.type;
+  if (!TEMPORARY_MAP_FILTER_TYPES.has(type)) return;
+  _temporaryMapFilterType = type;
+  _syncMapFilterChips();
+  mapFilterChips.querySelector(`[data-map-type="${type}"][data-map-temporary]`)?.click();
+});
+
+window.addEventListener("hf:phone-map-filter-focus", _scrollActiveMapFilterIntoView);
 
 mapFilterChips?.addEventListener("click", (event) => {
   const nearby = event.target.closest("[data-map-nearby]");
@@ -2859,6 +2916,7 @@ mapFilterChips?.addEventListener("click", (event) => {
     if (!location.active || location.lat === null || location.lng === null) return;
     _mapNearbyFilter = !_mapNearbyFilter;
     _syncMapFilterChips();
+    _scrollActiveMapFilterIntoView();
     addPlaceMarkers();
     return;
   }
@@ -2867,6 +2925,7 @@ mapFilterChips?.addEventListener("click", (event) => {
     _mapNearbyFilter = false;
     _mapEventsFilter = !_mapEventsFilter;
     _syncMapFilterChips();
+    _scrollActiveMapFilterIntoView();
     addPlaceMarkers();
     return;
   }
@@ -2930,7 +2989,7 @@ function _setPlacesTypeFilter(type) {
 }
 
 export function setActivePlaceTypeFilter(type) {
-  if (!LIST_FOCUS_TYPE_OPTIONS.some((option) => option.id === type)) return false;
+  if (!LIST_FOCUS_TYPE_OPTIONS.some((option) => option.id === type) && !TEMPORARY_MAP_FILTER_TYPES.has(type)) return false;
   _mapEventsFilter = false;
   _setPlacesTypeFilter(type);
   renderTagFilterBar();
@@ -2938,6 +2997,7 @@ export function setActivePlaceTypeFilter(type) {
   if (!placesSheet.classList.contains("shut")) renderPlacesList();
   updateClearButton();
   _syncMapFilterChips();
+  _scrollActiveMapFilterIntoView();
   return true;
 }
 

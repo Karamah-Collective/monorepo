@@ -1519,3 +1519,129 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 - Secondary utilities such as Locate, Zoom, Search, Map Style, Contact,
   Wishlist, and Eid do not receive tutorial steps. Tutorial order mirrors the
   primary navigation before moving to Prayer Times.
+
+## 2026-10-23 - Phone home concept adaptation
+
+- Phone Home search uses the shared `--home-search-h` control height, a
+  `--home-search-menu-w` dropdown width, and a capped
+  `--home-search-results-max-h` overlay height.
+- The phone Home page uses the concept's welcome, prayer, search, quick-action,
+  featured-place, and weekly-event rhythm while keeping the existing bottom
+  navigation unchanged.
+- Home cards remain flat and data-backed because the current directory does not
+  expose a reliable hero-photo feed for the landing surface.
+- The Home header is a plain surface with no image, animation, or decorative
+  background layer. Its hierarchy comes from text scale, spacing, the prayer
+  card, and the search/action controls.
+- The Home toolbar has no notification bell.
+- The location row is text-only without a decorative home icon.
+- Home location and date share one compact mono row, with the city left-aligned
+  and date right-aligned.
+- The prayer card is one openable button. Its countdown is integrated into the
+  card with a divider instead of a nested tinted pill, and tapping it opens the
+  existing mobile Qibla overlay.
+- The Home search is an inline directory search backed by the already-loaded
+  phone data. Its filter button uses the Events page's `btn-chip` and dropdown
+  pattern for all places, mosques, halal food, or services; matching rows open
+  the existing place detail surface without leaving Home.
+- Search suggestions are an anchored overlay below the field, so results do
+  not push the Home sections down.
+- Quick actions apply exact Map filters: food uses restaurant, mosques uses a
+  temporary mosque filter injected only by the Home action, events uses the
+  event-location filter, and services uses the service group. A normal Map
+  visit keeps the default filter set.
+- Suggested/Nearby keeps the existing no-image carousel card. Weekly events use
+  a compact calendar date block while retaining the current event navigation.
+
+## 2026-10-23 - Home search and Map filter consistency
+
+- Home search suggestions reuse the Maps search result structure and surface:
+  shared result icon, name, address metadata, verified badge, separators,
+  overlay treatment, and empty state.
+- Map filter activation centers the active top pill when possible, including a
+  temporary mosque pill created by a Home quick action. The normal Map filter
+  set remains unchanged on direct Map entry.
+
+**Files modified:** `index.html`, `src/phone-pages.js`, `src/places.js`,
+`src/styles/design-tokens.css`, `src/styles/styles.css`, and this log.
+
+## 2026-10-23 - Search surface cleanup
+
+- Expanded search uses one quiet field surface in its idle state and a
+  restrained focus treatment.
+- Home search overlays close on outside clicks while preserving interactions
+  inside the field, filter menu, and result rows.
+- The Maps wider-map action is visually separated from place results and keeps
+  only its icon, label, and arrow.
+
+## 2026-10-23 - Search control refinement
+
+- Home Filter is an icon-only control with an accessible label.
+- Home search suppresses the nested global input focus ring and uses one outer
+  focus treatment.
+- The wider-map action is a flat dropdown footer with a divider, never a card
+  nested inside the result surface.
+
+## 2026-10-23 - Compact search controls
+
+- Home Filter follows the Places page compact search affordance with a small
+  bare funnel glyph and no visible label or arrow.
+- The wider-map footer uses a shorter row and smaller icon than place results.
+
+## 2026-10-23 - Search-only Home control
+
+- Home search is a single search field with no filter button or filter menu.
+- The wider-map footer is a thinner text-and-arrow action without a leading icon.
+
+## 2026-10-23 - Scope action cleanup
+
+- Wider-map and directory search actions use centered text-and-arrow rows without leading icons.
+- Home search's native clear glyph is recolored to the neutral text token.
+
+## 2026-10-23 - Transient window navigation motion
+
+- Phone transient windows sit below the navbar layer while the navbar uses the existing graceful scale and fade transition on open and close.
+- The shared window set includes timeline and profile detail windows; Events remains a destination page with the navbar visible.
+
+## 2026-10-23 - Places and Events action-bar motion
+
+- Filter action bars follow scroll movement with a higher live response and use the shared 300 ms phone chrome transition when settling.
+### 2026-10-23 - Maps_v3 bounded Places and Events scrolling
+
+- Keep the original Places and Events phone scroll containers; action-bar motion must not resize them.
+
+### 2026-10-23 - Home search and prayer order
+
+- Home presents search before the next-prayer card.
+- The home greeting block has no bottom divider.
+
+### 2026-10-23 - Prayer card surface
+
+- Match the Home prayer card background to the active navbar pill through the shared theme-aware `--accent` token.
+- Use `--on-accent` contrast for the prayer card contents.
+
+### 2026-10-23 - Carousel place color
+
+- Home carousel icons use the existing place type colors while their card surfaces remain neutral.
+
+### 2026-10-23 - Home quick filter color
+
+- Home quick filters use the matching food, mosque, event, and service colors; the food label is simply “Food.”
+
+### 2026-10-23 - Event-only map markers
+
+- Event-only markers remain available on the unfiltered map and Events filter, but hide while a place filter is active.
+
+### 2026-10-23 - Navigation overview
+
+- Start navigation in a flat route overview with live route progress and location updates; hide the live-camera controls and floating turn badges.
+
+### 2026-10-23 - Navigation map focus
+
+- During navigation, show only the origin, destination, and updating current-location marker; hide directory pins, event pins, waypoints, and map editing/layer controls.
+
+
+### 2026-10-23 - Events navbar and settled scroll geometry
+
+- Events is a destination page, so its page surface must not trigger transient-window navbar hiding.
+- Keep action-bar motion scroll-linked without changing the scroll viewport geometry.

@@ -781,10 +781,10 @@ export function startNavigation() {
   _renderZoom = null;
   _zoomHoldUntil = 0;
   _stopInterpLoop();
-  _following = true;
-  _isOverview = false;
+  _following = false;
+  _isOverview = true;
   if (recenterBtn) recenterBtn.classList.add("hide");
-  if (overviewBtn) overviewBtn.classList.remove("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
 
   // Compute initial heading from the route's opening direction
   if (navRouteCoords.length >= 2) {
@@ -806,6 +806,7 @@ export function startNavigation() {
   if (hudSpeedEl) hudSpeedEl.classList.remove("hide"); // show speedometer immediately
   if (hudSpeedVal) hudSpeedVal.textContent = "0";
   document.body.classList.add("nav-mode");
+  window.dispatchEvent(new CustomEvent("hf:navigation-marker-visibility"));
 
   // Disable 3D buildings during navigation — extruded geometry obstructs
   // the tilted forward-looking view. Restore on nav stop.
@@ -813,23 +814,10 @@ export function startNavigation() {
   if (is3DActive) disable3D();
 
   _initCoveredRouteLayer();
-  _initTurnMarkerLayer();
   renderHUD();
-
-  // Smoothly transition into 3D navigation view
-  const firstStep = navSteps[0];
-  // Apply nav viewport padding so the GPS puck is anchored to the bottom 15%
-  // of the screen for the entire navigation session.
-  map.setPadding(_navPadding());
-  if (firstStep) {
-    map.easeTo({
-      center: [firstStep.lng, firstStep.lat],
-      bearing: _headingDeg,
-      pitch: _computeNavPitch(),
-      zoom: _computeNavZoom(),
-      duration: 1200,
-    });
-  }
+  // Keep navigation in a flat route overview; the route and live position
+  // continue updating while the camera stays readable and stable.
+  _enterOverview();
 
   // Listen for GPS updates
   window.addEventListener("hf:current-location-updated", _onLocationUpdate);
@@ -839,10 +827,10 @@ export function resumeNavigation() {
   if (!navPaused || !navSteps.length) return false;
   navPaused = false;
   navActive = true;
-  _following = true;
-  _isOverview = false;
+  _following = false;
+  _isOverview = true;
   if (recenterBtn) recenterBtn.classList.add("hide");
-  if (overviewBtn) overviewBtn.classList.remove("hide");
+  if (overviewBtn) overviewBtn.classList.add("hide");
 
   if (snackbar) snackbar.classList.add("hide");
   if (hud) {
@@ -850,21 +838,10 @@ export function resumeNavigation() {
     hud.classList.add("nav-active");
   }
   document.body.classList.add("nav-mode");
+  window.dispatchEvent(new CustomEvent("hf:navigation-marker-visibility"));
 
   renderHUD();
-
-  // Restore 3D navigation view at current step
-  const step = navSteps[navStepIdx];
-  map.setPadding(_navPadding());
-  if (step) {
-    map.easeTo({
-      center: [step.lng, step.lat],
-      bearing: _headingDeg,
-      pitch: _computeNavPitch(),
-      zoom: _computeNavZoom(),
-      duration: 800,
-    });
-  }
+  _enterOverview();
 
   window.addEventListener("hf:current-location-updated", _onLocationUpdate);
   return true;
@@ -884,6 +861,7 @@ export function pauseNavigation() {
   if (recenterBtn) recenterBtn.classList.add("hide");
   if (overviewBtn) overviewBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
+  window.dispatchEvent(new CustomEvent("hf:navigation-marker-visibility"));
   window.removeEventListener("hf:current-location-updated", _onLocationUpdate);
 }
 
@@ -944,6 +922,7 @@ export function stopNavigation() {
   if (recenterBtn) recenterBtn.classList.add("hide");
   if (overviewBtn) overviewBtn.classList.add("hide");
   document.body.classList.remove("nav-mode");
+  window.dispatchEvent(new CustomEvent("hf:navigation-marker-visibility"));
 
   _removeCoveredRouteLayer();
   _removeTurnMarkerLayer();
@@ -1869,7 +1848,7 @@ function _enterOverview() {
   _stopInterpLoop();
   _following = false;
   _isOverview = true;
-  if (recenterBtn) recenterBtn.classList.remove("hide");
+  if (recenterBtn) recenterBtn.classList.add("hide");
   if (overviewBtn) overviewBtn.classList.add("hide");
 
   // Compute bounding box of the route

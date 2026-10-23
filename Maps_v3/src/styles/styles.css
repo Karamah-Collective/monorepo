@@ -380,7 +380,8 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
 }
 
 #search-card:not(.collapsed):focus-within {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+  box-shadow: var(--shadow-md);
 }
 
 #search-box:focus-within {
@@ -429,6 +430,7 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
 }
 #search-input:focus,
 #search-input:focus-visible {
+  outline: none;
   box-shadow: none;
 }
 #search-input::placeholder {
@@ -505,6 +507,40 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
 }
 #results-list li:active {
   background: var(--accent-soft);
+}
+
+#results-list li.search-scope-action {
+  align-items: center;
+  gap: var(--sp-4);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-7);
+  border: 0;
+  border-top: 1px solid var(--border-light);
+  border-radius: 0;
+  background: var(--surface-2);
+  color: var(--accent);
+}
+#results-list li.search-scope-action .r-body {
+  display: flex;
+  align-items: center;
+}
+#results-list li.search-scope-action .r-name {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+#results-list li.search-scope-action .r-addr {
+  display: none;
+}
+#results-list li.search-scope-action > span:last-child {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: var(--txt-lg);
+  line-height: 1;
+}
+@media (hover: hover) {
+  #results-list li.search-scope-action:hover {
+    background: var(--accent-soft);
+  }
 }
 
 .r-icon {
@@ -2265,6 +2301,22 @@ body.dark-mode .sp-tip {
   position: absolute;
   z-index: var(--z-ctrl-mid);
   right: 0;
+}
+
+#contribute-place-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+#contribute-place-btn:active {
+  color: var(--on-accent);
+}
+
+@media (hover: hover) {
+  #contribute-place-btn:hover {
+    color: var(--on-accent);
+    filter: brightness(1.12);
+  }
 }
 
 .phone-map-filter-carousel {
@@ -4516,6 +4568,9 @@ body.dark-mode .pf-timeline-map .maplibregl-canvas {
   font-size: var(--txt-xs);
   font-style: normal;
   line-height: var(--lh-normal);
+}
+#profile-sheet-body .pf-profile-section-summary > .menu-placeholder {
+  padding-inline: 14px;
 }
 .pf-profile-empty {
   display: flex;
@@ -8880,9 +8935,17 @@ body.nav-mode #prayer-snack,
 body.nav-mode #eid-pill,
 body.nav-mode #events-pill,
 body.nav-mode #promos-pill,
+body.nav-mode .phone-map-filter-carousel,
 body.nav-mode #tab-bar,
 body.nav-mode #route-snackbar,
-body.nav-mode #locate-pill-wrap {
+body.nav-mode #locate-pill-wrap,
+body.nav-mode #contribute-place-btn,
+body.nav-mode #layers-btn,
+body.nav-mode #phone-map-layers-popover,
+body.nav-mode #map-attribution-popover,
+body.nav-mode .place-mk-wrap,
+body.nav-mode .event-mk-wrap,
+body.nav-mode .dir-waypoint-marker {
   display: none !important;
 }
 
@@ -8902,7 +8965,8 @@ body.nav-mode #locate-pill-wrap {
   position: absolute;
   z-index: var(--z-nav-hud);
   bottom: calc(var(--safe-b) + 16px);
-  left: var(--sp-4);
+  left: auto;
+  right: var(--sp-4);
 }
 .nav-speed.hide { display: none; }
 
@@ -8924,11 +8988,17 @@ body.nav-mode #locate-pill-wrap {
 }
 .nav-overview.hide { display: none; }
 
+/* Navigation stays in the stable route overview; there is no live-camera
+   escape hatch while this mode is intentionally disabled. */
+body.nav-mode .nav-recenter,
+body.nav-mode .nav-overview { display: none !important; }
+
 /* Desktop: position speed/recenter/overview at bottom edges */
 @media (min-width: 769px) {
   .nav-speed {
     bottom: calc(var(--safe-b) + 24px);
-    left: var(--sp-6);
+    left: auto;
+    right: var(--sp-6);
   }
   .nav-recenter {
     bottom: calc(var(--safe-b) + 24px);
@@ -11197,21 +11267,14 @@ body.dark-mode .sp-chip {
   }
   body.phone-app-pages #results-list .search-scope-action {
     align-items: center;
-    border-top: 1px solid var(--border-light);
     color: var(--accent);
-  }
-  body.phone-app-pages #results-list .search-scope-action .r-icon {
-    color: var(--accent);
-    background: var(--accent-soft);
   }
   body.phone-app-pages #results-list .search-scope-action .r-name {
-    color: var(--text);
+    color: var(--accent);
     font-weight: var(--fw-semibold);
   }
   body.phone-app-pages #results-list .search-scope-action .r-addr {
-    display: block;
-    color: var(--text-3);
-    font-size: var(--txt-xs);
+    display: none;
   }
   .maplibregl-ctrl-bottom-left {
     bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-3)) !important;
@@ -13390,7 +13453,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
      the next layer so their controls never disappear behind the navbar. */
   body.phone-app-pages .phone-page-surface { z-index: var(--z-overlay) !important; }
   body.phone-app-pages #phone-chrome-bottom-zone { z-index: var(--z-top) !important; }
-  #profile-detail-overlay { z-index: calc(var(--z-top) + 2) !important; }
+  #profile-detail-overlay { z-index: calc(var(--z-top) - 1) !important; }
 
   .phone-page-surface:not(.phone-page-active),
   .phone-page-surface.shut,
@@ -13571,7 +13634,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     transition: none;
   }
   #places-sheet.phone-page-surface #places-filters.phone-places-actionbar-snapping {
-    transition: transform 440ms cubic-bezier(.22, .8, .24, 1);
+    transition: transform var(--t-phone-chrome-slide);
   }
   #places-sheet.phone-page-surface #sort-dropdown {
     z-index: calc(var(--z-top) + 2);
@@ -13589,16 +13652,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     transform: translate3d(0, var(--phone-places-city-shift, 0px), 0);
     will-change: transform;
   }
-  #places-sheet.phone-page-surface #places-scroll {
-    scroll-padding-top: var(--phone-places-actionbar-clearance, 0px);
-  }
-  /* Keep list geometry fixed; the action bar moves independently above it. */
-  #places-sheet.phone-page-surface #places-list {
-    padding-top: calc(var(--sp-1) + var(--phone-places-actionbar-height, 0px));
-  }
-  #places-sheet.phone-page-surface #places-list:empty { padding-top: 0; }
-  #places-sheet.phone-page-surface #places-list:empty + #places-empty { margin-top: var(--phone-places-actionbar-height, 0px); }
-  #places-sheet.phone-page-surface #places-list { padding-bottom: var(--sp-5); }
   #places-scroll.places-filter-slide-forward #places-list,
   #places-scroll.places-filter-slide-forward #places-empty { animation: phone-places-list-slide-forward 300ms cubic-bezier(.22, .8, .24, 1) both; }
   #places-scroll.places-filter-slide-back #places-list,
@@ -13648,14 +13701,18 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #timeline-body {
     flex: 1 1 auto;
     min-height: 0;
+  }
+  #timeline-body {
     overflow-y: auto;
     overscroll-behavior-y: contain;
     padding-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-8));
   }
-  #events-list { padding-inline: var(--sp-5); }
 
-  /* Detail and form windows remain windows, but must sit above a page. */
-  #scrim { z-index: calc(var(--z-top) + 1); }
+  /* Detail and form windows remain windows, above a page but below the navbar. */
+  #scrim { z-index: calc(var(--z-top) - 2); }
+  #timeline-overlay,
+  #profile-detail-overlay,
+  #events-overlay,
   #place-sheet,
   #event-detail-sheet,
   #dir-panel,
@@ -13669,7 +13726,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #wish-overlay,
   #reviews-overlay,
   #privacy-overlay,
-  #qibla-overlay { z-index: calc(var(--z-top) + 2) !important; }
+  #qibla-overlay { z-index: calc(var(--z-top) - 1) !important; }
 
   .phone-profile-menu-action { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 2 * var(--sp-5)); margin: 0 var(--sp-5) var(--sp-5); padding: var(--sp-4) var(--sp-5); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text-2); font: inherit; font-size: var(--txt-sm); font-weight: 700; text-align: left; }
   .phone-profile-menu-action[hidden] { display: none; }
@@ -13739,15 +13796,15 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     gap: 0;
     min-height: 188px;
     padding: var(--sp-5);
-    border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
-    background: color-mix(in srgb, var(--accent) 5%, var(--surface-2));
+    border-color: var(--border);
+    background: var(--surface-2);
     box-shadow: var(--shadow-sm);
     scroll-snap-align: start;
     transition: transform 180ms ease-out, border-color 180ms ease-out, background-color 180ms ease-out;
   }
   .phone-home-carousel .phone-home-place:active { transform: scale(.985); }
-  .phone-home-carousel .phone-home-place--nearby { border-color: color-mix(in srgb, var(--success) 30%, var(--border)); background: color-mix(in srgb, var(--success) 6%, var(--surface-2)); }
-  .phone-home-carousel .phone-home-place-icon { grid-area: icon; align-self: start; width: 42px; height: 42px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, var(--border)); }
+  .phone-home-carousel .phone-home-place--nearby { border-color: var(--border); background: var(--surface-2); }
+  .phone-home-carousel .phone-home-place-icon { grid-area: icon; align-self: start; width: 42px; height: 42px; border-radius: 14px; background: color-mix(in srgb, var(--phone-place-color, var(--accent)) 12%, var(--surface)); color: var(--phone-place-color, var(--accent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phone-place-color, var(--accent)) 24%, var(--border)); }
   .phone-home-carousel .phone-home-place-copy { grid-area: copy; align-self: end; gap: var(--sp-1); padding-top: var(--sp-3); min-width: 0; }
   .phone-home-carousel .phone-home-place-badge {
     grid-area: badge;
@@ -13755,10 +13812,12 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     justify-self: end;
     padding: var(--sp-1) var(--sp-2);
     border-radius: var(--r-pill);
-    background: var(--accent-soft);
+    background: var(--surface-3);
+    color: var(--text-2);
     white-space: nowrap;
   }
-  .phone-home-carousel .phone-home-place--nearby .phone-home-place-badge { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
+  .phone-home-carousel .phone-home-place--nearby .phone-home-place-badge { background: var(--surface-3); color: var(--text-2); }
+  .phone-home-carousel .phone-home-place-kicker { color: var(--text-2) !important; }
   .phone-home-carousel .phone-home-place-copy strong { min-height: 2.4em; font-size: var(--txt-lg); font-weight: 750; letter-spacing: var(--ls-tight); line-height: 1.2; }
   .phone-home-carousel .phone-home-place-footer { grid-area: footer; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-width: 0; }
   .phone-home-carousel .phone-home-place-meta { min-width: 0; margin-top: 0; }
@@ -13846,7 +13905,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .events-title-stack small { display: none; }
   .events-title-stack > span { color: var(--text); font-size: var(--txt-2xl); line-height: 1.1; letter-spacing: var(--ls-tight); }
   #events-close { display: none; }
-  #events-list { overflow-y: auto; padding-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-8)); }
+  #events-list { overflow-y: auto; padding-bottom: calc(12px + var(--safe-b)); }
   #ev-filter-bar { position: sticky; top: 0; padding: var(--sp-3) var(--sp-6) var(--sp-4); border-bottom: 0; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); }
   #ev-filter-bar .ev-filter-row:first-child { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
   #ev-filter-bar .ev-filter-row:first-child::-webkit-scrollbar { display: none; }
@@ -13857,7 +13916,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     min-height: 104px;
     margin: 0 0 var(--sp-3);
     padding: var(--sp-4) var(--sp-4) var(--sp-4) calc(var(--sp-4) + 58px);
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--hsl-bus) 28%, var(--border));
     border-radius: var(--r-lg);
     background: var(--surface);
     box-shadow: var(--shadow-xs);
@@ -14191,10 +14250,9 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     to { opacity: 1; transform: translate3d(0, 0, 0); }
   }
 
-  /* Transient windows keep their established bottom-sheet behavior above the
-     persistent navigation. There is no navbar-to-window morph. */
+  /* Transient windows sit below the navbar while the navbar gracefully hides. */
   body.phone-window-open #phone-chrome-bottom-zone,
-  body.phone-app-pages:has(#place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone {
+  body.phone-app-pages:has(#timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone {
     transform: translateX(-50%) scale(calc(var(--phone-page-nav-scale, 1) * .78));
     opacity: 0;
     pointer-events: none;
@@ -14214,6 +14272,9 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #wish-overlay,
   #reviews-overlay,
   #privacy-overlay,
+  #timeline-overlay,
+  #profile-detail-overlay,
+  #events-overlay,
   #qibla-overlay { transform-origin: 50% 100%; }
 
   /* Reassert original button/icon contrast after the page shell's inherited
@@ -14284,12 +14345,10 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
   #menu-sheet.phone-page-surface #menu-header-divider { display: none !important; }
 
-  /* Events uses the same contained rhythm as Places: one local scroller,
-     compact filters, and cards that carry their own date hierarchy. */
-  #events-list { padding-inline: 0; }
+  /* Events keeps its filter bar in the original local scroller. */
   #ev-filter-bar {
     position: sticky;
-    top: var(--phone-places-actionbar-top, 0px);
+    top: 0;
     z-index: var(--z-sticky);
     --phone-places-actionbar-progress: 0;
     --phone-places-actionbar-shift: 0px;
@@ -14308,7 +14367,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     transition: none;
   }
   #ev-filter-bar.phone-places-actionbar-snapping {
-    transition: transform 440ms cubic-bezier(.22, .8, .24, 1);
+    transition: transform var(--t-phone-chrome-slide);
   }
   #ev-filter-bar .ev-filter-row:first-child {
     gap: var(--sp-2);
@@ -14382,13 +14441,13 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     max-width: calc(100vw - 2 * var(--sp-5));
   }
   #events-overlay.phone-page-surface #ev-filter-dropdown {
-    min-width: min(250px, calc(100vw - 2 * var(--sp-5)));
+    min-width: min(var(--home-search-menu-w), calc(100vw - 2 * var(--sp-5)));
   }
   #ev-mosque-filter {
     width: 100%;
     min-height: 38px;
     padding: 0 var(--sp-4);
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
     border-radius: var(--r-md);
     background: var(--surface);
     color: var(--text-2);
@@ -14472,7 +14531,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     body.phone-page-transition[data-phone-transition-direction="forward"] #map,
     body.phone-page-transition[data-phone-transition-direction="back"] #map { animation: none !important; }
     body.phone-window-open #phone-chrome-bottom-zone,
-    body.phone-app-pages:has(#place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone { filter: none; transition: none; }
+    body.phone-app-pages:has(#timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone { filter: none; transition: none; }
   }
 }
 
@@ -14542,10 +14601,10 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     bottom: calc(var(--phone-layers-bottom) + (var(--btn-icon-size) / 2) - 16px);
     width: min(254px, calc(100vw - var(--map-edge) - var(--btn-icon-size) - (3 * var(--phone-chrome-gap))));
     padding: var(--sp-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--accent);
     border-radius: var(--r-lg);
-    background: var(--surface);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--on-accent);
     box-shadow: var(--shadow-float);
     opacity: 0;
     pointer-events: none;
@@ -14596,7 +14655,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-map-layer-opt[aria-pressed="true"] {
     border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--text-3);
   }
   .phone-map-layer-thumb {
     display: block;
@@ -14719,7 +14778,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .map-attribution-list li { margin: 0; }
   .map-attribution-list strong { color: var(--text); font-weight: var(--fw-semibold); }
   .map-attribution-list a {
-    color: var(--accent);
+    color: var(--text);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 2px;
@@ -15108,6 +15167,472 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 }
 #event-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 #event-detail-actions > * { flex: 1 1 0; }
+
+/* Phone home refresh: keep the existing page behavior and navbar, while giving
+   the landing surface a clear text -> search -> prayer -> discovery rhythm. */
+@media (max-width: 768px) {
+  .phone-home-content {
+    padding-top: var(--sp-5);
+  }
+
+  .phone-home-header {
+    position: relative;
+    display: block;
+    margin: 0;
+    padding: var(--sp-2) 0 var(--sp-5);
+    border-bottom: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text);
+  }
+
+  .phone-home-toolbar,
+  .phone-home-location {
+    display: flex;
+    align-items: center;
+  }
+
+  .phone-home-toolbar {
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
+
+  .phone-home-location {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .phone-home-location-copy {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    width: 100%;
+  }
+
+  .phone-home-location-copy strong {
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--txt-md);
+    font-weight: var(--fw-bold);
+    letter-spacing: -.025em;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .phone-home-date {
+    color: var(--text-3);
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: var(--txt-xs);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .phone-home-welcome {
+    display: grid;
+    gap: var(--sp-2);
+    max-width: none;
+    min-width: 0;
+    margin-top: var(--sp-6);
+  }
+
+  .phone-home-welcome .phone-home-greeting {
+    margin: 0;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: var(--txt-md);
+    font-weight: var(--fw-medium);
+  }
+
+  .phone-home-welcome h1 {
+    color: var(--text);
+    font-size: var(--txt-display);
+    font-weight: 800;
+  }
+
+  .phone-prayer-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin-top: var(--sp-4);
+    padding: var(--sp-4);
+    border: 1px solid var(--accent);
+    border-radius: var(--r-xl);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: inherit;
+    text-align: left;
+    box-shadow: none;
+  }
+
+  .phone-prayer-card-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-top: 0;
+  }
+
+  .phone-prayer-card-icon {
+    display: grid;
+    place-items: center;
+    width: var(--home-category-icon-size);
+    height: var(--home-category-icon-size);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+    color: var(--on-accent);
+  }
+
+  .phone-prayer-card-copy,
+  .phone-prayer-card-side {
+    display: grid;
+    min-width: 0;
+    gap: var(--sp-0);
+  }
+
+  .phone-prayer-card-top {
+    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-normal);
+    text-transform: none;
+  }
+
+  .phone-prayer-card-copy strong {
+    overflow: hidden;
+    font-size: var(--txt-2xl);
+    letter-spacing: -.025em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .phone-prayer-location {
+    overflow: hidden;
+    color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+    font-size: var(--txt-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .phone-prayer-card-side {
+    justify-items: end;
+    padding-left: var(--sp-3);
+    border-left: 1px solid color-mix(in srgb, var(--on-accent) 22%, transparent);
+  }
+
+  .phone-prayer-card-side span {
+    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    font-size: var(--txt-xs);
+    white-space: nowrap;
+  }
+
+  .phone-prayer-card-side time {
+    color: var(--on-accent);
+    font-size: var(--txt-2xl);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-bold);
+    white-space: nowrap;
+  }
+
+  .phone-prayer-card-arrow {
+    display: grid;
+    place-items: center;
+    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+  }
+
+  .phone-prayer-card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .phone-home-search {
+    position: relative;
+    margin-top: var(--sp-4);
+    z-index: var(--z-sub-ui);
+  }
+
+  .phone-home-search-field {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: var(--home-search-h);
+    padding: 0 var(--sp-4);
+    border: var(--border-w) solid var(--border-light);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-xs);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  }
+
+  .phone-home-search-field:focus-within {
+    border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+    box-shadow: var(--shadow-sm);
+  }
+
+  .phone-home-search-icon { color: var(--text-3); }
+
+  .phone-home-search-field input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--txt-lg);
+  }
+
+  .phone-home-search-field input:focus,
+  .phone-home-search-field input:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .phone-home-search-field input::placeholder { color: var(--text-3); }
+
+  .phone-home-search-field input[type="search"]::-webkit-search-cancel-button {
+    width: var(--sp-6);
+    height: var(--sp-6);
+    margin: 0;
+    border-radius: var(--r-pill);
+    background-color: var(--text-3);
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .phone-home-search-results[hidden] { display: none; }
+
+  .phone-home-search-results {
+    display: block;
+    position: absolute;
+    top: calc(var(--home-search-h) + var(--sp-2));
+    right: 0;
+    left: 0;
+    max-height: var(--home-search-results-max-h);
+    overflow-y: auto;
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--r-2xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-xl);
+    z-index: calc(var(--z-top) + 1);
+  }
+
+  .home-search-results-list .home-search-result {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-6);
+    width: 100%;
+    padding: var(--sp-5) var(--sp-7);
+    border: 0;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: background-color var(--t-fast);
+  }
+
+  .home-search-results-list .home-search-result:last-child {
+    border-bottom: 0;
+  }
+
+  @media (hover: hover) {
+    .home-search-results-list .home-search-result:hover {
+      background: var(--surface-2);
+    }
+  }
+
+  .home-search-results-list .home-search-result:active {
+    background: var(--accent-soft);
+  }
+
+  .home-search-results-list .home-search-result.r-local {
+    padding-left: var(--sp-7);
+  }
+
+  .home-search-results-list .r-icon {
+    margin-top: var(--sp-0);
+  }
+
+  .home-search-results-list .r-name,
+  .home-search-results-list .r-addr {
+    line-height: var(--lh-tight);
+  }
+
+  .home-search-results-list .r-addr {
+    margin-top: var(--sp-0);
+  }
+
+  .home-search-results-list .search-empty {
+    margin: 0;
+    padding: var(--sp-5) var(--sp-8);
+    color: var(--text-3);
+    font-size: var(--txt-sm);
+    cursor: default;
+  }
+
+  .phone-home-search .phone-primary-action {
+    min-height: var(--home-search-h);
+    padding: 0 var(--sp-5);
+    border-color: var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: none;
+    font-weight: var(--fw-medium);
+  }
+
+  .phone-home-search .phone-action-icon,
+  .phone-home-search .phone-action-arrow {
+    color: var(--accent);
+  }
+
+  .phone-home-section {
+    margin-top: var(--sp-8);
+  }
+
+  .phone-home-explore {
+    margin-top: var(--sp-6);
+  }
+
+  .phone-section-heading {
+    margin-bottom: var(--sp-3);
+  }
+
+  .phone-section-heading h2 {
+    font-size: var(--txt-xl);
+    font-weight: var(--fw-bold);
+  }
+
+  .phone-action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--sp-2);
+    margin-top: 0;
+  }
+
+  .phone-action-grid button {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+    min-height: 76px;
+    padding: var(--sp-2) var(--sp-1);
+    border: 1px solid var(--border-light);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-semibold);
+    text-align: center;
+    box-shadow: var(--shadow-xs);
+  }
+
+  .phone-action-grid button > span:first-child {
+    display: grid;
+    place-items: center;
+    width: var(--home-category-icon-size);
+    height: var(--home-category-icon-size);
+    border-radius: var(--r-pill);
+    background: var(--home-card-surface);
+    color: var(--accent);
+  }
+
+  .phone-action-grid .phone-action--food > span:first-child {
+    background: color-mix(in srgb, var(--hsl-trunk) 16%, var(--surface));
+    color: var(--hsl-trunk);
+  }
+
+  .phone-action-grid .phone-action--mosque > span:first-child {
+    background: color-mix(in srgb, var(--success) 16%, var(--surface));
+    color: var(--success);
+  }
+
+  .phone-action-grid .phone-action--events > span:first-child {
+    background: var(--review-soft);
+    color: var(--review);
+  }
+
+  .phone-action-grid .phone-action--services > span:first-child {
+    background: color-mix(in srgb, var(--hsl-rail) 16%, var(--surface));
+    color: var(--hsl-rail);
+  }
+
+  .phone-action-grid button > span:last-child {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .phone-home-list {
+    gap: var(--sp-2);
+  }
+
+  .phone-home-event {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: var(--sp-4);
+    border-color: var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  .phone-home-event-date {
+    display: grid;
+    min-width: calc(var(--home-category-icon-size) + var(--sp-7));
+    min-height: calc(var(--home-category-icon-size) + var(--sp-7));
+    place-items: center;
+    padding: var(--sp-2);
+    border-radius: var(--r-md);
+    background: var(--review-soft);
+    color: var(--accent);
+    line-height: var(--lh-tight);
+  }
+
+  .phone-home-event-date-visual {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-0);
+  }
+
+  .phone-home-event-date-visual strong {
+    color: var(--review);
+    font-size: var(--txt-2xl);
+    line-height: var(--lh-tight);
+  }
+
+  .phone-home-event-date-visual small {
+    color: var(--review);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--ls-caps);
+  }
+
+  .phone-home-event-date-label {
+    display: none;
+  }
+
+  .phone-home-event-arrow {
+    color: var(--text-3);
+  }
+
+  .phone-home-event:active {
+    border-color: var(--accent);
+  }
+}
 .ev-detail-inner { display: grid; gap: var(--sp-5); padding: var(--sp-5); }
 .ev-detail-hero { display: flex; align-items: flex-start; gap: var(--sp-4); }
 .ev-detail-icon {

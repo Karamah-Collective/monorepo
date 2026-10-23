@@ -53,6 +53,37 @@ what you like, what you've decided, and how you want things done.
 
 <!-- Append new entries below this line -->
 
+### 2026-10-23 - Maps_v3 phone Home concept adaptation
+
+- Adapted the supplied mobile Home concept within `Maps_v3` while preserving
+  the concrete five-item navbar and existing destination behavior.
+- Kept the concept sequence: text header and prayer card, search, four
+  quick map filters, the existing no-image place carousel, and calendar-style
+  event rows.
+- The Home header is now a plain surface with no background image or animation.
+  The visual hierarchy comes from text scale, spacing, the prayer card, and
+  the search/action controls.
+- The Home toolbar has no notification bell and the location row stays
+  text-only.
+- The Home location/date line uses the mono font on one row, with Helsinki at
+  left and the date at right. The prayer card is a single openable surface;
+  its countdown is not another card inside it, and tapping the arrow/card opens
+  the existing Qibla window.
+- Kept the landing surface data-backed because the current directory has no
+  reliable Home photo feed.
+- Home search stays inline and searches the already-loaded directory data. Its
+  filter follows the Events page's filter-chip and dropdown pattern, filtering
+  results by all places, mosques, halal food, or services; matching rows open
+  the existing place detail surface.
+- Search suggestions are an anchored overlay and do not push the Home content
+  down.
+- Quick filters use exact Map destinations: restaurant for halal food, a
+  temporary mosque filter injected only by the Home action for mosques, the
+  event-location filter for events, and the service group for services. The
+  default Map filter set remains unchanged.
+- No Playwright tests were run; only static syntax/build checks are appropriate
+  for this manual visual iteration.
+
 ### 2026-10-08 — Consent analytics and Admin reporting
 
 - Visitor analytics must be opt-in through a compact Cookies & analytics prompt with equal Allow and Decline actions and a Privacy Policy link. The decision is stored per browser so returning visitors, including people who previously completed onboarding, are prompted unless they already have a saved choice.
@@ -5506,3 +5537,127 @@ and this log.
 `tests/15-verified-visit-timeline.spec.js`, and this log.
 
 **Verification:** Maps production build passed. The focused timeline suite passed all 20 tests on Desktop Chrome and Galaxy S24. The existing Places suite still has seven unrelated baseline selector/data timing failures; 20 of its 27 tests passed.
+
+### 2026-10-21 — Profile auth surface and map Events filter
+
+- Keep signed-out Profile minimal: no marketing headline, account explainer, or guest-link card. Show the existing provider auth controls directly in the Profile surface, with the Email flow retaining the sign-up toggle behind the control.
+- Keep the three provider controls icon-first with short recognizable labels in one equal-weight phone row, followed by the direct email/password panel and the existing flat surface language.
+- Map filter order is directory types followed by Events immediately before Saved. The selected map pill uses a filled accent treatment with on-accent text so the active state is unmistakable.
+- Events filtering includes only directory places with an upcoming/recurring event and suppresses saved custom pins while active; event-only custom-location markers remain available.
+
+**Files modified:** `src/phone-pages.js`, `src/places.js`, `src/menu.js`, `src/styles/styles.css`, `index.html`, and focused phone/auth tests.
+
+### 2026-10-21 — Profile sign-in hierarchy
+
+- Keep signed-out Profile focused: provider sign-in in one row, a small `or` divider, then the existing email and password fields directly below it.
+- Reuse the existing email/password panel for both sign-in and account creation; do not create a second credential form or add shortcut rows.
+- Treat phone Profile as a dedicated mobile auth surface: one continuous sheet, rounded-rectangle provider controls, filled inputs, and stronger spacing hierarchy rather than a nested auth card or desktop pill/button treatment.
+- Use pure black for dark-theme canvas/surfaces and pure white for light-theme canvas/surfaces across phone pages; keep secondary control surfaces tinted for contrast.
+- Use the app’s existing segmented-control pattern for the password sign-in/sign-up switch, with a moving active surface and smooth panel-height transition instead of a tiny text link.
+### 2026-10-23 - Maps_v3 Home search and filter handoff consistency
+
+- Home search suggestions use the Maps search result language: the same result
+  icon, name, metadata, verified badge, row separators, overlay surface, and
+  empty state. Home keeps its local directory search and place-opening action.
+- When a Home quick action activates a Map filter, the active Map pill is
+  scrolled into view and centered when possible. This also applies to the
+  temporary mosque pill; direct Map filter changes use the same behavior.
+
+**Files modified:** `Maps_v3/index.html`, `Maps_v3/src/phone-pages.js`,
+`Maps_v3/src/places.js`, `Maps_v3/src/styles/styles.css`, and this log.
+
+### 2026-10-23 - Maps_v3 search surface cleanup
+
+- Keep the expanded search field as one surface with a quiet idle border and a
+  restrained focus treatment; avoid a second visual outline around the input.
+- Home search results and its filter menu close when a click lands outside the
+  Home search section. Clicks inside the field, menu, or results remain active.
+- The Maps wider-map action is a distinct compact footer action with its icon,
+  label, and arrow only; its explanatory subtitle is hidden.
+
+**Files modified:** `Maps_v3/src/phone-pages.js`, `Maps_v3/src/styles/styles.css`,
+`Maps_v3/index.html`, `Maps_v3/sw.js`, and this log.
+
+### 2026-10-23 - Maps_v3 search control refinement
+
+- Home Filter is an icon-only button with an accessible label; remove the
+  visible text and arrow so the search field stays compact.
+- Suppress the global input inset focus ring inside Home search. The field now
+  keeps one outer focus treatment instead of a second rectangle around text.
+- Keep the wider-map action as a flat dropdown footer separated by a divider;
+  do not put a rounded card inside the result card.
+
+**Files modified:** `Maps_v3/index.html`, `Maps_v3/src/styles/styles.css`,
+`Maps_v3/sw.js`, and this log.
+
+### 2026-10-23 - Maps_v3 compact search controls
+
+- Home Filter follows the Places page compact search affordance: a small bare
+  funnel glyph, no colored icon tile, and no visible label or arrow.
+- The wider-map footer stays inside the existing result surface but uses a
+  shorter row, smaller icon, and tighter padding than place suggestions.
+
+**Files modified:** `Maps_v3/index.html`, `Maps_v3/src/styles/styles.css`,
+`Maps_v3/sw.js`, and this log.
+
+### 2026-10-23 - Maps_v3 search-only Home control
+
+- Home search is a single search field with no filter button or filter menu.
+- The wider-map action is a thinner text-and-arrow footer with no leading icon.
+- Do not bump Maps_v3 cache versions during UI edits; update cache versions only
+  when pushing code.
+
+### 2026-10-23 - Maps_v3 scope action cleanup
+
+- Both wider-map and directory search actions are text-and-arrow rows without leading icons.
+- Keep both action rows vertically centered within the shared search result boundary.
+- Home search clear control uses the neutral text color instead of the browser default.
+
+### 2026-10-23 - Maps_v3 transient window navigation motion
+
+- All transient phone windows use the Qibla interaction: the navbar remains above the window layer, gracefully scales and fades out on open, then returns on close.
+- Include timeline and profile detail windows in the shared window behavior; keep the Events destination page navbar visible.
+
+### 2026-10-23 - Maps_v3 Places and Events action-bar motion
+
+- Places and Events filter action bars should react directly to scroll movement with a faster, smoother response.
+- Keep live movement scroll-driven, then settle to the final state with the shared 300 ms phone chrome transition.
+### 2026-10-23 - Maps_v3 bounded Places and Events scrolling
+
+- Keep the original Places and Events phone scroll containers; action-bar motion must not resize them.
+
+### 2026-10-23 - Maps_v3 home spacing
+
+- Place the home search field before the next-prayer card.
+- Remove the divider beneath the home greeting and name.
+
+### 2026-10-23 - Maps_v3 prayer card surface
+
+- Match the prayer card background to the active bright navbar pill using the shared light/dark `--accent` token.
+- Use the shared `--on-accent` contrast for its contents.
+
+
+### 2026-10-23 - Events navbar and settled scroll geometry
+
+- Keep the Events destination page navbar visible; only transient detail and form windows hide it.
+- Do not change the Places or Events scroll viewport geometry during action-bar motion.
+
+### 2026-10-23 - Maps_v3 carousel place color
+
+- Keep Home carousel icons tied to the existing place type colors while leaving card surfaces neutral.
+
+### 2026-10-23 - Maps_v3 home quick filter color
+
+- Keep quick filters aligned with the food, mosque, event, and service colors; label the food filter “Food.”
+
+### 2026-10-23 - Maps_v3 event-only map markers
+
+- Keep custom event markers separate from place pins, and hide them while a place filter is active.
+
+### 2026-10-23 - Maps_v3 navigation overview
+
+- Keep navigation in a flat route overview with live progress and location updates; hide the live-camera controls and floating turn badges.
+
+### 2026-10-23 - Maps_v3 navigation map focus
+
+- During navigation, show only the origin, destination, and updating current-location marker; hide directory pins, event pins, waypoints, and map editing/layer controls.
