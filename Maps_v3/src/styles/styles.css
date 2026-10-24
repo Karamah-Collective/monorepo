@@ -3797,6 +3797,7 @@ body.dark-mode .sp-tip {
   display: flex;
   flex-shrink: 0;
   gap: var(--sp-1);
+  margin-block-start: var(--sp-1);
 }
 
 /* ─── Menu sheet: compact signed-in "Profile →" row ─── */
@@ -4402,15 +4403,14 @@ body.dark-mode .pf-timeline-map .maplibregl-canvas {
 .pf-timeline-calendar-day[data-has-visits]:hover { outline: 2px solid color-mix(in srgb, var(--accent) 42%, transparent); outline-offset: 1px; }
 .pf-timeline-calendar-day--today { box-shadow: 0 0 0 1px var(--text-3); }
 .pf-timeline-calendar-day--before-start { opacity: 0.18; }
-.pf-timeline-event { padding-block: var(--sp-2h); }
 .pf-timeline-event-heading h3 { font-size: var(--txt-base); }
 .pf-timeline-confirmed { display: none; }
-.pf-timeline-event { padding-block: var(--sp-2h); padding-inline-end: var(--sp-1); }
+.pf-timeline-event { padding-inline-end: var(--sp-1); }
 .pf-timeline-event--day-target { border-radius: var(--r-sm); background: var(--accent-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent); }
 .pf-timeline-event-remove {
   position: absolute;
   inset-inline-end: 0;
-  top: 50%;
+  inset-block-start: calc(50% + var(--sp-1));
   flex: 0 0 auto;
   margin-inline-start: 0;
   padding: 0;
@@ -4730,6 +4730,12 @@ body.dark-mode .pf-timeline-map .maplibregl-canvas {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+#places-scroll > #places-filters {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--surface);
 }
 
 #place-sheet-body {
@@ -13421,6 +13427,9 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-app-pages:not([data-phone-page="map"]) #map {
     pointer-events: none;
   }
+  body.phone-app-pages:not([data-phone-page="map"]):not(.phone-page-transition) #map {
+    visibility: hidden;
+  }
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-top-zone,
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-right-zone {
     visibility: hidden;
@@ -13617,10 +13626,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     background: var(--surface);
   }
   #places-sheet.phone-page-surface #places-filters {
-    position: absolute;
-    top: var(--phone-places-actionbar-top, 64px);
-    right: 0;
-    left: 0;
     z-index: var(--z-top);
     --phone-places-actionbar-progress: 0;
     --phone-places-actionbar-shift: 0px;
@@ -13737,8 +13742,13 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-page-surface a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   @media (prefers-reduced-motion: reduce) {
     .phone-page-surface *, .phone-page-surface *::before, .phone-page-surface *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .phone-home-entering, .phone-home-entering *, .phone-home-entering *::before, .phone-home-entering *::after { animation: none !important; }
     .phone-home-header { opacity: 1; transform: none; will-change: auto; }
   }
+  html.reduce-motion .phone-home-entering,
+  html.reduce-motion .phone-home-entering *,
+  html.reduce-motion .phone-home-entering *::before,
+  html.reduce-motion .phone-home-entering *::after { animation: none !important; }
 
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-bottom-zone {
     transform: translateX(-50%) scale(var(--phone-page-nav-scale, 1));
@@ -13760,7 +13770,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
-
   .phone-home-content { color: var(--text); }
   .phone-page-surface .phone-primary-action { color: var(--on-accent); }
   .phone-primary-action .phone-action-icon { color: currentColor; }
@@ -14248,6 +14257,21 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   @keyframes phone-page-slide-back {
     from { opacity: .96; transform: translate3d(-100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) body.welcome-dismissed #map.phone-page-first-entry[data-phone-page-entry="map"] .maplibregl-canvas { animation: phone-map-first-entry 360ms var(--ease-expo) both; }
+    html:not(.reduce-motion) body.welcome-dismissed #places-scroll.phone-page-first-entry[data-phone-page-entry="places"] { animation: phone-places-first-entry 360ms var(--ease-expo) both; }
+    html:not(.reduce-motion) body.welcome-dismissed #events-list.phone-page-first-entry[data-phone-page-entry="events"] { animation: phone-events-first-entry 360ms var(--ease-expo) both; }
+    html:not(.reduce-motion) body.welcome-dismissed #profile-sheet-body.phone-page-first-entry[data-phone-page-entry="profile"] { animation: phone-profile-first-entry 360ms var(--ease-expo) both; }
+    html:not(.reduce-motion) body.welcome-dismissed #menu-sheet-body.phone-page-first-entry[data-phone-page-entry="menu"] { animation: phone-menu-first-entry 360ms var(--ease-expo) both; }
+    html:not(.reduce-motion) body.welcome-dismissed #timeline-body.phone-page-first-entry[data-phone-page-entry="timeline"] { animation: phone-timeline-first-entry 360ms var(--ease-expo) both; }
+
+    @keyframes phone-map-first-entry { from { opacity: 0; scale: 1.015; } to { opacity: 1; scale: 1; } }
+    @keyframes phone-places-first-entry { from { opacity: 0; translate: -12px 0; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-events-first-entry { from { opacity: 0; translate: 12px 0; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-profile-first-entry { from { opacity: 0; translate: 0 12px; scale: .99; } to { opacity: 1; translate: 0 0; scale: 1; } }
+    @keyframes phone-menu-first-entry { from { opacity: 0; translate: 0 -10px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-timeline-first-entry { from { opacity: 0; translate: 0 12px; scale: .985; } to { opacity: 1; translate: 0 0; scale: 1; } }
   }
 
   /* Transient windows sit below the navbar while the navbar gracefully hides. */
@@ -15168,11 +15192,72 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 #event-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 #event-detail-actions > * { flex: 1 1 0; }
 
-/* Phone home refresh: keep the existing page behavior and navbar, while giving
-   the landing surface a clear text -> search -> prayer -> discovery rhythm. */
+/* Phone home refresh: set the intro state before the loading screen leaves. */
 @media (max-width: 768px) {
   .phone-home-content {
     padding-top: var(--sp-5);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) .phone-home-entering .phone-home-toolbar { opacity: 0; translate: 0 -14px; }
+    html:not(.reduce-motion) .phone-home-entering .phone-home-search-field,
+    html:not(.reduce-motion) .phone-home-entering #phone-prayer-state,
+    html:not(.reduce-motion) .phone-home-entering .phone-action-grid button,
+    html:not(.reduce-motion) .phone-home-entering #phone-suggested-places .phone-home-place,
+    html:not(.reduce-motion) .phone-home-entering #phone-week-events .phone-home-event,
+    html:not(.reduce-motion) .phone-home-entering #phone-places-state,
+    html:not(.reduce-motion) .phone-home-entering #phone-events-state,
+    html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-suggested-title"] .phone-section-heading,
+    html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"],
+    html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] .phone-section-heading { opacity: 0; }
+    html:not(.reduce-motion) .phone-home-entering .phone-home-search-field { clip-path: inset(0 0 100% 0 round var(--r-lg)); translate: 0 8px; }
+    html:not(.reduce-motion) .phone-home-entering #phone-prayer-state { clip-path: inset(0 100% 0 0 round var(--r-xl)); translate: -10px 0; }
+    html:not(.reduce-motion) .phone-home-entering .phone-action-grid button:nth-child(odd) { translate: -18px 0; }
+    html:not(.reduce-motion) .phone-home-entering .phone-action-grid button:nth-child(even) { translate: 18px 0; }
+    html:not(.reduce-motion) .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(odd) { translate: -22px 0; }
+    html:not(.reduce-motion) .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(even) { translate: 22px 0; }
+    html:not(.reduce-motion) .phone-home-entering #phone-week-events .phone-home-event { clip-path: inset(0 0 100% 0 round var(--r-lg)); translate: 0 8px; }
+    html:not(.reduce-motion) .phone-home-entering #phone-home-title:not([hidden]) { position: relative; width: max-content; max-width: 100%; white-space: nowrap; clip-path: inset(0 100% 0 0); }
+    html:not(.reduce-motion) .phone-home-entering #phone-home-title:not([hidden])::after { content: ""; position: absolute; top: .08em; bottom: .08em; left: 0; width: 2px; background: currentColor; }
+
+    body.welcome-dismissed .phone-home-entering .phone-home-toolbar { animation: phone-home-header-enter 380ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-home-search-field { animation: phone-home-search-reveal 400ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-prayer-state { animation: phone-home-prayer-reveal 420ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(odd) { animation: phone-home-small-left-enter 220ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(even) { animation: phone-home-small-right-enter 220ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(2) { animation-delay: 70ms; }
+    body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(3) { animation-delay: 140ms; }
+    body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(4) { animation-delay: 210ms; }
+    body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-suggested-title"] .phone-section-heading { animation: phone-home-heading-left-enter 300ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] .phone-section-heading { animation: phone-home-heading-rise-enter 300ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(odd) { animation: phone-home-small-left-enter 180ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(even) { animation: phone-home-small-right-enter 180ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(2) { animation-delay: 90ms; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(3) { animation-delay: 180ms; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(4) { animation-delay: 270ms; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(5) { animation-delay: 360ms; }
+    body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(6) { animation-delay: 450ms; }
+    body.welcome-dismissed .phone-home-entering #phone-week-events .phone-home-event { animation: phone-home-event-reveal 220ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-week-events .phone-home-event:nth-child(2) { animation-delay: 220ms; }
+    body.welcome-dismissed .phone-home-entering #phone-week-events .phone-home-event:nth-child(3) { animation-delay: 440ms; }
+    body.welcome-dismissed .phone-home-entering #phone-places-state { animation: phone-home-small-left-enter 300ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-events-state { animation: phone-home-event-reveal 300ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] { animation: phone-home-week-enter 680ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering #phone-home-title:not([hidden]) { animation: phone-home-name-type var(--phone-name-duration, 500ms) steps(var(--phone-name-steps, 10), end) both; }
+    body.welcome-dismissed .phone-home-entering #phone-home-title:not([hidden])::after { animation: phone-home-caret-move var(--phone-name-duration, 500ms) steps(var(--phone-name-steps, 10), end) both, phone-home-caret-blink 500ms step-end infinite; }
+
+    @keyframes phone-home-header-enter { from { opacity: 0; translate: 0 -14px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-home-search-reveal { from { opacity: 0; clip-path: inset(0 0 100% 0 round var(--r-lg)); translate: 0 8px; } to { opacity: 1; clip-path: inset(0 0 0 0 round var(--r-lg)); translate: 0 0; } }
+    @keyframes phone-home-prayer-reveal { from { opacity: 0; clip-path: inset(0 100% 0 0 round var(--r-xl)); translate: -10px 0; } to { opacity: 1; clip-path: inset(0 0 0 0 round var(--r-xl)); translate: 0 0; } }
+    @keyframes phone-home-small-left-enter { from { opacity: 0; translate: -18px 0; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
+    @keyframes phone-home-small-right-enter { from { opacity: 0; translate: 18px 0; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
+    @keyframes phone-home-heading-left-enter { from { opacity: 0; translate: -10px 0; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-home-heading-rise-enter { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-home-event-reveal { from { opacity: 0; clip-path: inset(0 0 100% 0 round var(--r-lg)); translate: 0 8px; } to { opacity: 1; clip-path: inset(0 0 0 0 round var(--r-lg)); translate: 0 0; } }
+    @keyframes phone-home-week-enter { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes phone-home-name-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes phone-home-caret-move { from { left: 0; } to { left: 100%; } }
+    @keyframes phone-home-caret-blink { 50% { opacity: 0; } }
   }
 
   .phone-home-header {

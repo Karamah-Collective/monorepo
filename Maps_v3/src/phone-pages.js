@@ -1,7 +1,7 @@
 import { EVT } from "./events.js";
 import { PLACE_CONFIG, typeIcon } from "./icons.js";
 import { nextOccurrence } from "./event-recurrence.js";
-import { getCurrentLocationState, getVisitorGeo, haversineDistance, reverseGeocodeCity } from "./utils.js";
+import { getCurrentLocationState, getVisitorGeo, haversineDistance, isReduceMotionActive, reverseGeocodeCity } from "./utils.js";
 import { isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
 
 const PAGE_NAMES = new Set(["home", "map", "places", "events", "profile", "menu", "timeline"]);
@@ -22,6 +22,14 @@ const SURFACES = {
   menu: { selector: "#menu-sheet", kind: "sheet" },
   timeline: { selector: "#timeline-overlay", kind: "overlay" },
 };
+const PHONE_PAGE_ENTRY_TARGETS = {
+  map: "#map",
+  places: "#places-scroll",
+  events: "#events-list",
+  profile: "#profile-sheet-body",
+  menu: "#menu-sheet-body",
+  timeline: "#timeline-body",
+};
 const PAGE_SCROLL_SELECTORS = {
   home: "#phone-home-page",
   places: "#places-scroll",
@@ -31,7 +39,6 @@ const PAGE_SCROLL_SELECTORS = {
   timeline: "#timeline-body",
 };
 const PHONE_SCROLL_REVEAL_SELECTORS = {
-  home: "#phone-prayer-state, .phone-home-section",
   profile: "#profile-sheet-body > *",
   menu: "#menu-sheet-body > *",
 };
@@ -66,6 +73,8 @@ let _phoneTopbarObserver = null;
 let _phoneTopbarFrame = 0;
 const _phoneTopbarMutations = new Set();
 let _homeMode = "suggested";
+let _homeIntroPlayed = false;
+const _phonePagesEntered = new Set(["home"]);
 let _homeCity = "Helsinki";
 let _homeLocationKey = "";
 let _homeLocationRequest = 0;
@@ -140,7 +149,7 @@ function _attachPhoneScrollReveal(page, scrollElement) {
     element.classList.remove("phone-scroll-reveal", "is-visible");
     element.style.removeProperty("--phone-reveal-index");
   });
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !window.IntersectionObserver) {
+  if (isReduceMotionActive() || !window.IntersectionObserver) {
     collectTargets();
     return cleanup;
   }
@@ -159,7 +168,7 @@ function _attachPhoneScrollReveal(page, scrollElement) {
   return () => {
     observer.disconnect();
     mutationObserver?.disconnect();
-    cleanup();
+    if (page !== "profile" && page !== "menu") cleanup();
   };
 }
 
@@ -808,6 +817,9 @@ function _renderHome() {
     const firstName = _phoneFirstName(_account);
     title.textContent = firstName;
     title.hidden = !firstName;
+    const nameLength = Array.from(firstName).length;
+    title.style.setProperty("--phone-name-steps", String(nameLength || 1));
+    title.style.setProperty("--phone-name-duration", `${Math.min(650, Math.max(220, nameLength * 38))}ms`);
     title.dir = "ltr";
     title.lang = "en";
   }
@@ -867,14 +879,57 @@ function _renderHome() {
   }
 }
 
+function _finishHomeIntro(event) {
+  if (!event.target.matches('.phone-home-section[aria-labelledby="phone-week-title"]') || event.animationName !== "phone-home-week-enter") return;
+  const home = event.currentTarget;
+  home.classList.remove("phone-home-entering");
+  home.removeEventListener("animationend", _finishHomeIntro);
+  home.removeEventListener("animationcancel", _finishHomeIntro);
+}
+
+function _finishPhonePageEntry(event) {
+  const target = event.currentTarget;
+  const page = target.dataset.phonePageEntry;
+  if (!page || event.animationName !== `phone-${page}-first-entry`) return;
+  target.classList.remove("phone-page-first-entry");
+  delete target.dataset.phonePageEntry;
+  target.removeEventListener("animationend", _finishPhonePageEntry);
+  target.removeEventListener("animationcancel", _finishPhonePageEntry);
+}
+
+function _playPhonePageEntry(page) {
+  const selector = PHONE_PAGE_ENTRY_TARGETS[page];
+  if (!selector) return;
+  const target = document.querySelector(selector);
+  if (!target) return;
+  target.dataset.phonePageEntry = page;
+  target.classList.add("phone-page-first-entry");
+  target.addEventListener("animationend", _finishPhonePageEntry);
+  target.addEventListener("animationcancel", _finishPhonePageEntry);
+}
+
 function _render(page, previousPage) {
   if (!isPhone()) return;
+  const firstPageEntry = !_phonePagesEntered.has(page);
+  _phonePagesEntered.add(page);
   if (page !== "menu") document.body.classList.remove("phone-settings-auth");
   _page = page;
   document.body.dataset.phonePage = page;
   document.body.classList.add("phone-app-pages");
   document.querySelectorAll(".phone-page-surface").forEach((element) => element.classList.remove("phone-page-active"));
   const home = document.getElementById("phone-home-page");
+  if (page !== "home") {
+    home?.classList.remove("phone-home-entering");
+    home?.removeEventListener("animationend", _finishHomeIntro);
+    home?.removeEventListener("animationcancel", _finishHomeIntro);
+  }
+  const playHomeIntro = page === "home" && !_homeIntroPlayed && !isReduceMotionActive();
+  if (playHomeIntro) {
+    home?.classList.add("phone-home-entering");
+    home?.addEventListener("animationend", _finishHomeIntro);
+    home?.addEventListener("animationcancel", _finishHomeIntro);
+  }
+  if (page === "home") _homeIntroPlayed = true;
   home?.classList.toggle("phone-page-active", page === "home");
   home?.toggleAttribute("hidden", page !== "home");
   for (const [name, surface] of Object.entries(SURFACES)) {
@@ -888,6 +943,7 @@ function _render(page, previousPage) {
   _attachPageScroll(page);
   _renderProfileAccountState();
   _renderHome();
+  if (firstPageEntry && !isReduceMotionActive()) _playPhonePageEntry(page);
   if (page === "map") window.dispatchEvent(new Event("hf:phone-map-visible"));
   _playPageTransition(previousPage, page);
   window.dispatchEvent(new CustomEvent(EVT.PHONE_PAGE_CHANGED, { detail: { page, previousPage } }));

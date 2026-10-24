@@ -134,10 +134,14 @@ async function _prepareWelcomeScreen() {
 
 function _hideWelcomeScreen() {
   const welcome = document.getElementById("welcome-screen");
-  if (!welcome || welcome.hidden) return Promise.resolve();
+  if (!welcome || welcome.hidden) {
+    document.body.classList.add("welcome-dismissed");
+    return Promise.resolve();
+  }
   if (isReduceMotionActive()) {
     welcome.hidden = true;
     welcome.remove();
+    document.body.classList.add("welcome-dismissed");
     return Promise.resolve();
   }
   welcome.setAttribute("aria-hidden", "true");
@@ -152,6 +156,7 @@ function _hideWelcomeScreen() {
       welcome.removeEventListener("animationend", finish);
       welcome.hidden = true;
       welcome.remove();
+      document.body.classList.add("welcome-dismissed");
       resolve();
     };
     const timer = setTimeout(finish, WELCOME_OVERLAY_EXIT_MS);
