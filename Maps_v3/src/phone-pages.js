@@ -68,7 +68,6 @@ let _placesActionBarSnapTimer = 0;
 let _pageNavSettleTimer = 0;
 let _pageTransitionTimer = 0;
 let _pageTransitionFrame = 0;
-let _phoneNavPillFrame = 0;
 let _phoneTopbarObserver = null;
 let _phoneTopbarFrame = 0;
 const _phoneTopbarMutations = new Set();
@@ -512,32 +511,23 @@ export function syncPhoneNavPill(tab = null) {
   const bar = document.getElementById("tab-bar");
   const pill = document.getElementById("tab-active-pill");
   if (!bar || !pill || !isPhone() || !document.body.classList.contains("phone-app-pages")) {
-    window.cancelAnimationFrame(_phoneNavPillFrame);
-    _phoneNavPillFrame = 0;
     if (pill) pill.hidden = true;
     return;
   }
   const active = tab || bar.querySelector(".tab.active-tab");
   if (!active) {
-    window.cancelAnimationFrame(_phoneNavPillFrame);
-    _phoneNavPillFrame = 0;
     pill.hidden = true;
     return;
   }
-  window.cancelAnimationFrame(_phoneNavPillFrame);
-  _phoneNavPillFrame = window.requestAnimationFrame(() => {
-    _phoneNavPillFrame = 0;
-    // Measure inside a frame so navigation does not synchronously reflow first.
-    const tabLeft = active.offsetLeft;
-    const tabWidth = active.offsetWidth;
-    const width = Math.min(56, Math.max(44, tabWidth - 8));
-    const baseWidth = 48;
-    pill.style.setProperty("--phone-nav-pill-center", `${tabLeft + tabWidth / 2}px`);
-    pill.style.setProperty("--phone-nav-pill-width", `${baseWidth}px`);
-    pill.style.setProperty("--phone-nav-pill-scale-x", String(width / baseWidth));
-    pill.style.setProperty("--phone-nav-pill-height", "34px");
-    pill.hidden = false;
-  });
+  const tabLeft = active.offsetLeft;
+  const tabWidth = active.offsetWidth;
+  const width = Math.min(56, Math.max(44, tabWidth - 8));
+  const baseWidth = 48;
+  pill.style.setProperty("--phone-nav-pill-center", `${tabLeft + tabWidth / 2}px`);
+  pill.style.setProperty("--phone-nav-pill-width", `${baseWidth}px`);
+  pill.style.setProperty("--phone-nav-pill-scale-x", String(width / baseWidth));
+  pill.style.setProperty("--phone-nav-pill-height", "34px");
+  pill.hidden = false;
 }
 
 function _hideSurface(surface, element) {
@@ -991,11 +981,13 @@ function _playPhonePageEntry(page) {
 function _render(page, previousPage) {
   if (!isPhone()) return;
   const firstPageEntry = !_phonePagesEntered.has(page);
+  _playPageTransition(previousPage, page);
   _phonePagesEntered.add(page);
   if (page !== "menu") document.body.classList.remove("phone-settings-auth");
   _page = page;
   document.body.dataset.phonePage = page;
   document.body.classList.add("phone-app-pages");
+  _setNav(page);
   document.querySelectorAll(".phone-page-surface").forEach((element) => element.classList.remove("phone-page-active"));
   const home = document.getElementById("phone-home-page");
   if (page !== "home") {
@@ -1017,7 +1009,6 @@ function _render(page, previousPage) {
     if (name === page) _showSurface(surface, element);
     else _hideSurface(surface, element);
   }
-  _setNav(page);
   _renderPhoneBranchHeader(page);
   _primePhoneTopbars();
   _attachPageScroll(page);
@@ -1033,7 +1024,6 @@ function _render(page, previousPage) {
   }
   if (firstPageEntry && !isReduceMotionActive()) _playPhonePageEntry(page);
   if (page === "map") window.dispatchEvent(new Event("hf:phone-map-visible"));
-  _playPageTransition(previousPage, page);
   window.dispatchEvent(new CustomEvent(EVT.PHONE_PAGE_CHANGED, { detail: { page, previousPage } }));
 }
 

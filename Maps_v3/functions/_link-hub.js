@@ -84,13 +84,13 @@ function readMeta(html, keys) {
   return '';
 }
 
-export async function fetchMetadata(rawUrl, { userAgent = 'KaramahLinkPreview/1.0 (+https://karamahcollective.com)' } = {}) {
+export async function fetchMetadata(rawUrl, { userAgent = 'KaramahLinkPreview/1.0 (+https://karamahcollective.com)', headers = {} } = {}) {
   let current = cleanPublicUrl(rawUrl);
   if (!current) return { error: 'Enter a valid public http or https URL.' };
   let response;
   for (let redirects = 0; redirects < 5; redirects += 1) {
     response = await fetch(current, {
-      headers: { 'User-Agent': userAgent },
+      headers: { 'User-Agent': userAgent, ...headers },
       redirect: 'manual', signal: AbortSignal.timeout(8000),
     });
     if (![301, 302, 303, 307, 308].includes(response.status)) break;

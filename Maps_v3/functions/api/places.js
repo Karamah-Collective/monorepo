@@ -127,7 +127,13 @@ async function getPlacePreviewImages(links) {
     const mapsUrl = _googleMapsLink(link?.url);
     if (!mapsUrl) return [id, ""];
     try {
-      const metadata = await fetchMetadata(mapsUrl, { userAgent: "WhatsApp/2.24.24.83 A" });
+      const metadata = await fetchMetadata(mapsUrl, {
+        userAgent: "WhatsApp/2.24.24.83 A",
+        headers: {
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+        },
+      });
       if (!metadata.success) {
         console.warn("[place previews] Google metadata unavailable:", metadata.error);
         return [id, ""];
