@@ -223,6 +223,8 @@ function activePromos(place) {
 let placeMarkers = [];
 let savedPinMarkers = [];
 let eventOnlyMarkers = [];
+let _activeEventDetailId = null;
+let _activeEventPlaceId = null;
 
 // Sort subtag arrays (e.g. cuisine) alphabetically by label.
 // Called after every tagsData assignment so all consumers get sorted data.
@@ -1879,7 +1881,7 @@ export function addPlaceMarkers() {
   syncHomeMarker();
   // Markers were just rebuilt from scratch — re-apply the selected highlight
   // if a place sheet is currently open, since its old marker element is gone.
-  _setActiveMarker(_activePlaceSheetId);
+  _setActiveMarker(_activeEventDetailId ? _activeEventPlaceId : _activePlaceSheetId);
   addEventOnlyMarkers();
 }
 
@@ -1892,7 +1894,7 @@ export function addPlaceMarkers() {
  * refresh) — no separate live/midnight timer needed.
  * @returns {void}
  */
-function addEventOnlyMarkers(selectedEventId = null) {
+function addEventOnlyMarkers(selectedEventId = _activeEventDetailId) {
   eventOnlyMarkers.forEach((m) => m.remove());
   eventOnlyMarkers = [];
 
@@ -1918,6 +1920,7 @@ function addEventOnlyMarkers(selectedEventId = null) {
       });
       eventOnlyMarkers.push(marker);
     });
+  _setActiveEventMarker(selectedEventId);
 }
 
 // Remove a single savedPinMarker from the map when user dismisses the popup
@@ -3069,6 +3072,11 @@ window.addEventListener(EVT.PHONE_PLACE_OPEN, (event) => {
     if (isPhone()) navigatePhonePage("map");
     openPlaceSheet(place);
   }
+});
+
+window.addEventListener(EVT.PHONE_EVENT_OPEN, (event) => {
+  const item = eventsData.find((entry) => String(entry.id) === String(event.detail?.id));
+  if (item) openEventDetail(item);
 });
 
 const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
@@ -4759,12 +4767,14 @@ function closeEventDetail() {
   const eventOnly = _eventDetailEventOnly;
   _eventDetailFromEvents = false;
   _eventDetailEventOnly = false;
+  _activeEventDetailId = null;
+  _activeEventPlaceId = null;
   clearPhoneWindowState();
   _eventDetailEl._hideTimeout && clearTimeout(_eventDetailEl._hideTimeout);
   _eventDetailEl._hideTimeout = null;
   _eventDetailSnap.close();
   placeSheetScrim.classList.add("hide");
-  _setActiveMarker(null);
+  _setActiveMarker(_activePlaceSheetId);
   _setActiveEventMarker(null);
   if (eventOnly) addEventOnlyMarkers();
   _eventDetailEl._hideTimeout = setTimeout(() => {
@@ -4797,6 +4807,8 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   const canMarkAttended = eventHasOccurred(ev);
   _eventDetailFromEvents = fromEventsPage;
   _eventDetailEventOnly = !place && lat !== null && lng !== null;
+  _activeEventDetailId = String(ev.id);
+  _activeEventPlaceId = place?.id ?? null;
   _eventDetailCloseBtn?.classList.toggle("event-detail-close--back", fromEventsPage);
   _eventDetailCloseBtn?.setAttribute("aria-label", fromEventsPage ? "Back to events" : "Close event details");
   if (_eventDetailCloseBtn) _eventDetailCloseBtn.innerHTML = fromEventsPage ? _BACK_ICON_SVG : _CLOSE_ICON_SVG;

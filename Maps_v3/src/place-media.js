@@ -13,6 +13,7 @@ const VIEWER_ZOOM_ANIMATION_MS = 180;
 
 const _fullManifestPromises = new Map();
 const _communityManifestPromises = new Map();
+let _staticMapsLinks;
 
 let _viewer = null;
 let _viewerImage = null;
@@ -90,6 +91,36 @@ function _safeMediaUrl(value) {
     const url = new URL(value, window.location.origin);
     return ["http:", "https:"].includes(url.protocol) ? url.href : "";
   } catch { return ""; }
+}
+
+async function _getMapsUrl(place) {
+  if (place.mapsUrl) return place.mapsUrl;
+  _staticMapsLinks ||= fetch("/data/places.json")
+    .then((response) => response.ok ? response.json() : [])
+    .then((places) => new Map((Array.isArray(places) ? places : []).map((item) => [String(item.id), item.mapsUrl || ""])))
+    .catch(() => new Map());
+  return (await _staticMapsLinks).get(String(place.id)) || "";
+}
+
+async function _loadGoogleLinkPreview(place, mapsUrl) {
+  try {
+    if (!mapsUrl) return null;
+    const response = await fetch("/api/places?action=previews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ links: [{ id: String(place.id), url: mapsUrl }] }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) return null;
+    const { previews = {} } = await response.json();
+    const src = _safeMediaUrl(previews[String(place.id)]);
+    const host = src ? new URL(src).hostname.toLowerCase() : "";
+    return ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)
+      ? { src, source: "google", sourceUrl: mapsUrl }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function _photoCard(photo, placeName, index, openViewer) {
@@ -526,22 +557,40 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   let community = [];
   let google = [];
+  let mapsUrl = place.mapsUrl || "";
+  let googleLoading = Boolean(mapsUrl);
+  const mapsUrlPromise = _getMapsUrl(place).then((url) => {
+    mapsUrl = url;
+    return url;
+  });
   // The summary flag is only an optimization hint and may be stale in local
   // development. An opened place always gets one lightweight manifest check.
   const shouldLoad = true;
 
   const render = () => {
     const photos = [...community, ...google];
-    if (!photos.length) {
+    const showGoogleSkeleton = googleLoading && !google.length;
+    if (!photos.length && !showGoogleSkeleton) {
+      const wasConnected = section.isConnected;
       section.remove();
+      if (wasConnected) onLayoutChange();
       return;
     }
     if (!section.isConnected) {
       section.classList.add("pp-media--entering");
       host.appendChild(section);
-      requestAnimationFrame(() => section.classList.add("pp-media--visible"));
+      requestAnimationFrame(() => {
+        section.classList.add("pp-media--visible");
+        onLayoutChange();
+      });
     }
     rail.innerHTML = "";
+    if (showGoogleSkeleton) {
+      const skeleton = document.createElement("div");
+      skeleton.className = "pp-media-skeleton skel-bone";
+      skeleton.setAttribute("aria-hidden", "true");
+      rail.appendChild(skeleton);
+    }
     photos.forEach((photo, index) => {
       rail.appendChild(_photoCard(photo, place.name, index, (photoIndex, returnFocus) => {
         openPhotoViewer(photos, place.name, photoIndex, returnFocus);
@@ -554,12 +603,22 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   const load = async (force = false) => {
     if (force) invalidatePlaceMediaManifest(place.id);
+    googleLoading = Boolean(mapsUrl);
     render();
-    const data = await loadPlaceMediaManifest(place.id);
+    const previewPromise = mapsUrlPromise.then((resolvedMapsUrl) => {
+      mapsUrl = resolvedMapsUrl;
+      googleLoading = Boolean(resolvedMapsUrl);
+      render();
+      return _loadGoogleLinkPreview(place, resolvedMapsUrl);
+    });
+    const [data, linkPreview] = await Promise.all([
+      loadPlaceMediaManifest(place.id, { communityOnly: true }),
+      previewPromise,
+    ]);
     community = (data.communityPhotos || []).map((photo) => ({ ...photo, source: "community" }));
-    google = (data.googlePhotos || []).map((photo) => ({ ...photo, source: "google", sourceUrl: photo.sourceUrl || data.mapsUrl || place.mapsUrl }));
+    google = linkPreview ? [linkPreview] : [];
+    googleLoading = false;
     render();
-    if (host.isConnected && [...community, ...google].length) onLayoutChange();
   };
 
   if (shouldLoad) {

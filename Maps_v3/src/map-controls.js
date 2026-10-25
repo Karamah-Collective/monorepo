@@ -417,7 +417,14 @@ export async function primeLocationAtStartup() {
   return false;
 }
 
-export function showCurrentLocation({ onFirstFix } = {}) {
+function _isPlaceOrEventWindowOpen() {
+  return ["place-sheet", "event-detail-sheet"].some((id) => {
+    const sheet = document.getElementById(id);
+    return !!sheet && !sheet.classList.contains("shut");
+  });
+}
+
+export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true } = {}) {
   track("location_requested");
   const locBtn = document.getElementById("locate-btn");
 
@@ -426,6 +433,7 @@ export function showCurrentLocation({ onFirstFix } = {}) {
     const loc = getCurrentLocationState();
     // If we have a fix AND the user's position is off-screen, re-center instead of toggling off
     if (loc.active && loc.lat !== null) {
+      if (_isPlaceOrEventWindowOpen()) return;
       const bounds = map.getBounds();
       if (!bounds.contains([loc.lng, loc.lat])) {
         focusMapPoint([loc.lng, loc.lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
@@ -486,12 +494,16 @@ export function showCurrentLocation({ onFirstFix } = {}) {
     const isNavMode = document.body.classList.contains("nav-mode");
     if (firstFix) {
       // Navigation mode owns the camera and applies its own HUD offset.
-      if (!isNavMode) {
-        focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
+      if (!isNavMode && !_isPlaceOrEventWindowOpen()) {
+        if (zoomOnFirstFix) {
+          focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
+        } else {
+          focusMapPoint([lng, lat], { duration: 800 });
+        }
       }
       firstFix = false;
         try { onFirstFix?.({ lat, lng, accuracy }); } catch { /* optional consumer callback */ }
-    } else if (dir.routeLayers.length > 0 && !isNavMode) {
+    } else if (dir.routeLayers.length > 0 && !isNavMode && !_isPlaceOrEventWindowOpen()) {
       // Regular route preview follows the user only when turn-by-turn nav
       // is not active. Navigation mode handles its own camera behavior.
       focusMapPoint([lng, lat], { duration: 600 });
@@ -510,7 +522,7 @@ export function showCurrentLocation({ onFirstFix } = {}) {
     locBtn.classList.remove("tracking");
     setLocateIcon(false);
     locWatchId = null;
-    focusMapPoint(HELSINKI, { method: "flyTo", zoom: 12.2, duration: 600 });
+    if (!_isPlaceOrEventWindowOpen()) focusMapPoint(HELSINKI, { method: "flyTo", zoom: 12.2, duration: 600 });
   });
 }
 
@@ -1523,7 +1535,7 @@ document.getElementById("locate-btn").addEventListener("click", showCurrentLocat
 function _ensureMapLocationTracking() {
   if (getPhonePage() !== "map") return;
   const location = getCurrentLocationState();
-  if (location.active && location.source !== "sim" && locWatchId === null) showCurrentLocation();
+  if (location.active && location.source !== "sim" && locWatchId === null) showCurrentLocation({ zoomOnFirstFix: false });
 }
 window.addEventListener("hf:phone-map-visible", _ensureMapLocationTracking);
 window.addEventListener("hf:current-location-updated", _ensureMapLocationTracking);

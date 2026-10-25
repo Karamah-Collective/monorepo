@@ -82,6 +82,9 @@ let _homeSuggestionsCity = null;
 let _homeSuggestionIds = [];
 let _homeSuggestionsLoading = false;
 let _homeSearchQuery = "";
+const _homePlacePreviewCache = new Map();
+const _homePlacePreviewPending = new Set();
+let _homePlaceStaticMapLinks = null;
 
 function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null, actionBarElement = null, placesScrollElement = null, cityHeaderElement = null, updateLayout = true) {
   const chrome = document.getElementById("phone-chrome-bottom-zone");
@@ -704,9 +707,10 @@ function _formatDistance(distance) {
 }
 
 function _homePlaces(places) {
+  const availablePlaces = places.filter((place) => !place.boycott);
   const location = getCurrentLocationState();
   if (_homeMode === "nearby" && location.active && location.lat !== null && location.lng !== null) {
-    return places
+    return availablePlaces
       .filter((place) => Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng)))
       .map((place) => ({ place, distance: haversineDistance(location.lat, location.lng, place.lat, place.lng) }))
       .sort((a, b) => a.distance - b.distance)
@@ -714,13 +718,85 @@ function _homePlaces(places) {
   }
 
   const ranked = _homeSuggestionIds
-    .map((id) => places.find((place) => String(place.id) === String(id)))
+    .map((id) => availablePlaces.find((place) => String(place.id) === String(id)))
     .filter(Boolean);
   const rankedIds = new Set(ranked.map((place) => String(place.id)));
   const local = _homeCity
-    ? places.filter((place) => _cityKey(place.city) === _cityKey(_homeCity) && !rankedIds.has(String(place.id)))
+    ? availablePlaces.filter((place) => _cityKey(place.city) === _cityKey(_homeCity) && !rankedIds.has(String(place.id)))
     : [];
-  return [...ranked, ...local, ...places.filter((place) => !rankedIds.has(String(place.id)) && !local.includes(place))];
+  return [...ranked, ...local, ...availablePlaces.filter((place) => !rankedIds.has(String(place.id)) && !local.includes(place))];
+}
+
+function _applyHomePlacePreview(card, id, imageUrl) {
+  if (!imageUrl || card.querySelector(".phone-home-place-image")) return;
+  const image = document.createElement("img");
+  image.className = "phone-home-place-image";
+  image.alt = "";
+  image.setAttribute("aria-hidden", "true");
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.src = imageUrl;
+  image.addEventListener("error", () => {
+    _homePlacePreviewCache.set(id, "");
+    card.classList.remove("phone-home-place--has-preview");
+    image.remove();
+  }, { once: true });
+  card.classList.add("phone-home-place--has-preview");
+  card.prepend(image);
+}
+
+function _getHomePlaceStaticMapLinks() {
+  if (!_homePlaceStaticMapLinks) {
+    _homePlaceStaticMapLinks = fetch("/data/places.json")
+      .then(response => response.ok ? response.json() : [])
+      .then(places => new Map((Array.isArray(places) ? places : []).map(place => [String(place.id), place.mapsUrl || ""])))
+      .catch(() => new Map());
+  }
+  return _homePlaceStaticMapLinks;
+}
+
+function _loadHomePlacePreviews(places) {
+  const cards = [...document.querySelectorAll("#phone-suggested-places .phone-home-place")];
+  for (const card of cards) {
+    const id = card.dataset.phonePlaceId;
+    if (_homePlacePreviewCache.has(id)) _applyHomePlacePreview(card, id, _homePlacePreviewCache.get(id));
+  }
+  if (_page !== "home") return;
+  const candidates = places.map(place => ({ id: String(place.id || ""), url: place.mapsUrl || "" }))
+    .filter(link => link.id && !_homePlacePreviewCache.has(link.id) && !_homePlacePreviewPending.has(link.id));
+  if (!candidates.length) return;
+  candidates.forEach(({ id }) => _homePlacePreviewPending.add(id));
+  const load = async () => {
+    const staticLinks = candidates.some(link => !link.url) ? await _getHomePlaceStaticMapLinks() : new Map();
+    const links = candidates.map(({ id, url }) => ({ id, url: url || staticLinks.get(id) || "" })).filter(link => link.url);
+    if (!links.length) return;
+    const response = await fetch("/api/places?action=previews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ links }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error("Place previews could not be loaded.");
+    const { previews = {} } = await response.json();
+    for (const { id } of links) {
+      const imageUrl = _safeHomePlacePreviewUrl(previews[id]);
+      _homePlacePreviewCache.set(id, imageUrl);
+      document.querySelectorAll("#phone-suggested-places .phone-home-place").forEach(card => {
+        if (card.dataset.phonePlaceId === id) _applyHomePlacePreview(card, id, imageUrl);
+      });
+    }
+  };
+  load().catch(() => {}).finally(() => candidates.forEach(({ id }) => _homePlacePreviewPending.delete(id)));
+}
+
+function _safeHomePlacePreviewUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" && ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) ? url.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 async function _loadHomeSuggestions(city) {
@@ -797,6 +873,7 @@ function _renderPrayer() {
 }
 
 function _renderHome() {
+  if (_page !== "home") return;
   const page = document.getElementById("phone-home-page");
   if (!page) return;
   const date = document.getElementById("phone-home-date");
@@ -855,11 +932,11 @@ function _renderHome() {
   if (placeList) {
     placeList.innerHTML = places.slice(0, 6).map((place) => `
       <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}" style="--phone-place-color:${_escape((PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).color)}">
-        <span class="phone-home-place-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">${(PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).icon}</svg></span>
+        <span class="phone-home-place-type">${_escape(String(place.type || "Place").replace(/[_-]+/g, " "))}</span>
         <span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span>
-        <span class="phone-home-place-copy"><small class="phone-home-place-kicker">${_escape(place.type || "Community place")}</small><strong>${_escape(place.name || "Unnamed place")}</strong></span>
-        <span class="phone-home-place-footer"><small class="phone-home-place-meta">${_escape(place.city || city)}</small><span class="phone-home-place-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span></span>
+        <span class="phone-home-place-copy"><strong>${_escape(place.name || "Unnamed place")}</strong><span class="phone-home-place-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span></span>
       </button>`).join("");
+    _loadHomePlacePreviews(places.slice(0, 6));
   }
 
   if (eventState) {
@@ -870,7 +947,7 @@ function _renderHome() {
     eventList.innerHTML = events.slice(0, 3).map((event) => {
       const dateParts = _formatEventDateParts(event);
       return `
-        <button class="phone-home-event" type="button" data-phone-page="events">
+        <button class="phone-home-event" type="button" data-phone-event-id="${_escape(event.id)}">
           <span class="phone-home-event-date" aria-label="${_escape(dateParts.label)}"><span class="phone-home-event-date-visual" aria-hidden="true"><strong>${_escape(dateParts.day)}</strong><small>${_escape(dateParts.month)}</small></span><span class="phone-home-event-date-label">${_escape(dateParts.label)}</span></span>
           <span class="phone-home-event-copy"><strong>${_escape(event.title || event.name || "Community event")}</strong><small>${_escape([_eventTime(event), event.location || event.placeName || event.locationName].filter(Boolean).join(" · "))}</small></span>
           <span class="phone-home-event-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
@@ -942,7 +1019,15 @@ function _render(page, previousPage) {
   _primePhoneTopbars();
   _attachPageScroll(page);
   _renderProfileAccountState();
-  _renderHome();
+  if (page === "home") {
+    if (previousPage) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (_page === "home") _renderHome();
+      }));
+    } else {
+      _renderHome();
+    }
+  }
   if (firstPageEntry && !isReduceMotionActive()) _playPhonePageEntry(page);
   if (page === "map") window.dispatchEvent(new Event("hf:phone-map-visible"));
   _playPageTransition(previousPage, page);
@@ -1084,7 +1169,12 @@ function _wireHome() {
       void _openHomeQibla();
       return;
     }
-    const pageButton = event.target.closest("[data-phone-page]");
+    const eventButton = event.target.closest("button[data-phone-event-id]");
+    if (eventButton) {
+      window.dispatchEvent(new CustomEvent(EVT.PHONE_EVENT_OPEN, { detail: { id: eventButton.dataset.phoneEventId } }));
+      return;
+    }
+    const pageButton = event.target.closest("button[data-phone-page]");
     if (pageButton) {
       navigatePhonePage(pageButton.dataset.phonePage);
       if (pageButton.dataset.phoneMapFilter) requestAnimationFrame(() => _applyPhoneMapFilter(pageButton.dataset.phoneMapFilter));

@@ -17,6 +17,7 @@ import { allowedOrigin, json } from "../_shared.js";
 import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
 import { getPlaceIdsWithReviewImages } from "../_review-images.js";
+import { cleanPublicUrl, fetchMetadata } from "../_link-hub.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 
@@ -97,6 +98,43 @@ async function _getMapsLinkMap(db) {
     for (const row of results) links.set((row.app_place_id || "").toString(), (row.maps_link || "").toString());
   } catch { /* Older data remains usable without optional Maps links. */ }
   return links;
+}
+
+function _googleMapsLink(value) {
+  const cleaned = cleanPublicUrl(value);
+  if (!cleaned) return "";
+  const url = new URL(cleaned);
+  const host = url.hostname.toLowerCase();
+  if (host === "maps.app.goo.gl" || host === "maps.google.com") return cleaned;
+  if (["google.com", "www.google.com", "goo.gl", "g.co"].includes(host) && url.pathname.startsWith("/maps")) return cleaned;
+  return "";
+}
+
+function _googlePreviewImage(value) {
+  const cleaned = cleanPublicUrl(value);
+  if (!cleaned) return "";
+  const url = new URL(cleaned);
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== "https:" || !["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)) return "";
+  if (url.pathname.startsWith("/maps/api/staticmap")) return "";
+  return cleaned;
+}
+
+async function getPlacePreviewImages(links) {
+  const previews = await Promise.all((Array.isArray(links) ? links : []).slice(0, 6).map(async link => {
+    const id = String(link?.id || "");
+    if (!/^[a-z0-9_-]{1,64}$/i.test(id)) return null;
+    const mapsUrl = _googleMapsLink(link?.url);
+    if (!mapsUrl) return [id, ""];
+    try {
+      const metadata = await fetchMetadata(mapsUrl, { userAgent: "WhatsApp/2.24.24.83 A" });
+      if (!_googleMapsLink(metadata.url)) return [id, ""];
+      return [id, _googlePreviewImage(metadata.imageUrl)];
+    } catch {
+      return [id, ""];
+    }
+  }));
+  return Object.fromEntries(previews.filter(Boolean));
 }
 
 // Code.gs:608 getPlacesJSON
@@ -348,12 +386,31 @@ export async function onRequestGet(context) {
   }
 }
 
+export async function onRequestPost(context) {
+  const { request } = context;
+  const headers = {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": allowedOrigin(request),
+  };
+  if (new URL(request.url).searchParams.get("action") !== "previews") return json({ error: "Invalid action" }, 400, headers);
+  if (Number(request.headers.get("content-length") || 0) > 16_384) return json({ error: "Too many preview links" }, 413, headers);
+  try {
+    const raw = await request.text();
+    if (raw.length > 16_384) return json({ error: "Too many preview links" }, 413, headers);
+    const body = JSON.parse(raw);
+    return json({ previews: await getPlacePreviewImages(body.links) }, 200, headers);
+  } catch {
+    return json({ error: "Preview links could not be loaded" }, 400, headers);
+  }
+}
+
 export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": allowedOrigin(context.request),
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",
     },

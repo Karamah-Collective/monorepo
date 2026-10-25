@@ -14,6 +14,8 @@ export const EVT = {
   PHONE_PAGE_CHANGED: "hf:phone-page-changed",
   /** Open a place detail window from a phone page. detail: { id: string|number } */
   PHONE_PLACE_OPEN: "hf:phone-place-open",
+  /** Open an event detail window from a phone page. detail: { id: string|number } */
+  PHONE_EVENT_OPEN: "hf:phone-event-open",
   /** Fired on window whenever the signed-in Firebase account changes (sign-in,
    *  sign-out, or auth state restored on load). detail: { account: {uid,email,displayName}|null } */
   AUTH_CHANGED: "hf:auth-changed",
