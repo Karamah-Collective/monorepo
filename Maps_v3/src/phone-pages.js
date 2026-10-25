@@ -463,15 +463,18 @@ function _playPageTransition(previousPage, page) {
   if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   window.clearTimeout(_pageTransitionTimer);
   window.cancelAnimationFrame(_pageTransitionFrame);
+  document.body.classList.add("phone-page-transition-pending");
   document.body.dataset.phoneTransitionFrom = previousPage;
   document.body.dataset.phoneTransitionTo = page;
   document.body.dataset.phoneTransitionDirection = _phoneTransitionDirection(previousPage, page);
   document.body.classList.remove("phone-page-transition");
   _pageTransitionFrame = window.requestAnimationFrame(() => {
     _pageTransitionFrame = 0;
+    document.body.classList.remove("phone-page-transition-pending");
     document.body.classList.add("phone-page-transition");
     _pageTransitionTimer = window.setTimeout(() => {
       document.body.classList.remove("phone-page-transition");
+      document.body.classList.remove("phone-page-transition-pending");
       delete document.body.dataset.phoneTransitionFrom;
       delete document.body.dataset.phoneTransitionTo;
     }, PHONE_PAGE_TRANSITION_MS);

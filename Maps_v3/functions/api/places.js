@@ -128,9 +128,19 @@ async function getPlacePreviewImages(links) {
     if (!mapsUrl) return [id, ""];
     try {
       const metadata = await fetchMetadata(mapsUrl, { userAgent: "WhatsApp/2.24.24.83 A" });
-      if (!_googleMapsLink(metadata.url)) return [id, ""];
-      return [id, _googlePreviewImage(metadata.imageUrl)];
-    } catch {
+      if (!metadata.success) {
+        console.warn("[place previews] Google metadata unavailable:", metadata.error);
+        return [id, ""];
+      }
+      if (!_googleMapsLink(metadata.url)) {
+        console.warn("[place previews] Google redirect left Maps:", new URL(metadata.url).hostname);
+        return [id, ""];
+      }
+      const imageUrl = _googlePreviewImage(metadata.imageUrl);
+      if (!imageUrl) console.warn("[place previews] Google image missing or unsupported:", metadata.imageUrl ? new URL(metadata.imageUrl).hostname : "no og:image");
+      return [id, imageUrl];
+    } catch (error) {
+      console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
       return [id, ""];
     }
   }));

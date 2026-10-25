@@ -4,7 +4,11 @@
  * change, pure dedup (see docs/D1_MIGRATION_PLAN.md Phase 3).
  */
 
-export const ALLOWED_ORIGINS = ["https://maps.karamahcollective.com"];
+export const ALLOWED_ORIGINS = [
+  "https://manarah-v3.pages.dev",
+  "https://maps.karamahcollective.com",
+  "https://manarah.karamahcollective.com",
+];
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function allowedOrigin(request) {

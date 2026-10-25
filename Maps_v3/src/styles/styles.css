@@ -13435,7 +13435,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-app-pages:not([data-phone-page="map"]) #map {
     pointer-events: none;
   }
-  body.phone-app-pages:not([data-phone-page="map"]):not(.phone-page-transition) #map {
+  body.phone-app-pages:not([data-phone-page="map"]):not(.phone-page-transition):not(.phone-page-transition-pending) #map {
     visibility: hidden;
   }
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-top-zone,

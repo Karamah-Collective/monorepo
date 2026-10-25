@@ -7,13 +7,8 @@
  *
  * Response: { "country": "FI", "city": "Turku", "lat": 60.45, "lon": 22.26 }
  */
-const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
+import { allowedOrigin } from "../_shared.js";
 const UNKNOWN_COUNTRY = 'XX';
-
-function allowedOrigin(request) {
-  const origin = request.headers.get('Origin') || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-}
 
 function headerValue(request, name) {
   const value = request.headers.get(name);

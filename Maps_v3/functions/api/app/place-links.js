@@ -9,14 +9,14 @@
  *
  * Response: { links: { [placeId]: { tiktokUrl?, instagramUrl?, ... updatedAt } } }
  */
-import { json } from "../../_shared.js";
+import { ALLOWED_ORIGINS, allowedOrigin, json } from "../../_shared.js";
 import { parsePlaceIdsParam, rowToApiLinks } from "../../_app-links.js";
 
 const appCors = (request) => {
   const origin = request.headers.get("Origin") || "";
-  const allowed = /^https:\/\/(?:maps\.)?karamahcollective\.com$/.test(origin) || /^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(origin);
+  const allowed = allowedOrigin(request) === origin || /^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(origin);
   return {
-    "Access-Control-Allow-Origin": allowed ? origin : "https://maps.karamahcollective.com",
+    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
     Vary: "Origin",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",

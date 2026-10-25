@@ -18,12 +18,7 @@
  *   NOMINATIM_REV       – Nominatim reverse geocoding endpoint
  *   NOMINATIM_VB        – Helsinki bounding box
  */
-const ALLOWED_ORIGINS = ['https://maps.karamahcollective.com'];
-
-function allowedOrigin(request) {
-  const origin = request.headers.get('Origin') || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-}
+import { allowedOrigin } from "../_shared.js";
 
 export async function onRequestGet(context) {
   const { env, request } = context;
