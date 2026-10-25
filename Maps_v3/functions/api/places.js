@@ -121,35 +121,39 @@ function _googlePreviewImage(value) {
 }
 
 async function getPlacePreviewImages(links) {
-  const previews = await Promise.all((Array.isArray(links) ? links : []).slice(0, 6).map(async link => {
-    const id = String(link?.id || "");
-    if (!/^[a-z0-9_-]{1,64}$/i.test(id)) return null;
-    const mapsUrl = _googleMapsLink(link?.url);
-    if (!mapsUrl) return [id, ""];
-    try {
-      const metadata = await fetchMetadata(mapsUrl, {
-        userAgent: "WhatsApp/2.24.24.83 A",
-        headers: {
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
-        },
-      });
-      if (!metadata.success) {
-        console.warn("[place previews] Google metadata unavailable:", metadata.error);
+  const linksToFetch = (Array.isArray(links) ? links : []).slice(0, 6);
+  const previews = [];
+  for (let i = 0; i < linksToFetch.length; i += 2) {
+    previews.push(...await Promise.all(linksToFetch.slice(i, i + 2).map(async link => {
+      const id = String(link?.id || "");
+      if (!/^[a-z0-9_-]{1,64}$/i.test(id)) return null;
+      const mapsUrl = _googleMapsLink(link?.url);
+      if (!mapsUrl) return [id, ""];
+      try {
+        const metadata = await fetchMetadata(mapsUrl, {
+          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+          headers: {
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+          },
+        });
+        if (!metadata.success) {
+          console.warn("[place previews] Google metadata unavailable:", metadata.error);
+          return [id, ""];
+        }
+        if (!_googleMapsLink(metadata.url)) {
+          console.warn("[place previews] Google redirect left Maps:", new URL(metadata.url).hostname);
+          return [id, ""];
+        }
+        const imageUrl = _googlePreviewImage(metadata.imageUrl);
+        if (!imageUrl) console.warn("[place previews] Google image missing or unsupported:", metadata.imageUrl ? new URL(metadata.imageUrl).hostname : "no og:image");
+        return [id, imageUrl];
+      } catch (error) {
+        console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
         return [id, ""];
       }
-      if (!_googleMapsLink(metadata.url)) {
-        console.warn("[place previews] Google redirect left Maps:", new URL(metadata.url).hostname);
-        return [id, ""];
-      }
-      const imageUrl = _googlePreviewImage(metadata.imageUrl);
-      if (!imageUrl) console.warn("[place previews] Google image missing or unsupported:", metadata.imageUrl ? new URL(metadata.imageUrl).hostname : "no og:image");
-      return [id, imageUrl];
-    } catch (error) {
-      console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
-      return [id, ""];
-    }
-  }));
+    })));
+  }
   return Object.fromEntries(previews.filter(Boolean));
 }
 

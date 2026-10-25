@@ -459,9 +459,17 @@ function _observePhoneTopbars() {
 }
 
 function _playPageTransition(previousPage, page) {
-  if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   window.clearTimeout(_pageTransitionTimer);
   window.cancelAnimationFrame(_pageTransitionFrame);
+  document.querySelectorAll(".phone-page-transition-outgoing").forEach((element) => element.classList.remove("phone-page-transition-outgoing"));
+  document.body.classList.remove("phone-page-transition", "phone-page-transition-pending");
+  if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    delete document.body.dataset.phoneTransitionFrom;
+    delete document.body.dataset.phoneTransitionTo;
+    delete document.body.dataset.phoneTransitionDirection;
+    return;
+  }
+  document.querySelector(".phone-page-surface.phone-page-active")?.classList.add("phone-page-transition-outgoing");
   document.body.classList.add("phone-page-transition-pending");
   document.body.dataset.phoneTransitionFrom = previousPage;
   document.body.dataset.phoneTransitionTo = page;
@@ -474,6 +482,7 @@ function _playPageTransition(previousPage, page) {
     _pageTransitionTimer = window.setTimeout(() => {
       document.body.classList.remove("phone-page-transition");
       document.body.classList.remove("phone-page-transition-pending");
+      document.querySelectorAll(".phone-page-transition-outgoing").forEach((element) => element.classList.remove("phone-page-transition-outgoing"));
       delete document.body.dataset.phoneTransitionFrom;
       delete document.body.dataset.phoneTransitionTo;
     }, PHONE_PAGE_TRANSITION_MS);

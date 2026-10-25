@@ -14296,6 +14296,22 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-page-transition[data-phone-transition-direction="back"] #map {
     animation-name: phone-page-slide-back;
   }
+  :is(.phone-page-surface, #phone-home-page).phone-page-transition-outgoing {
+    display: block !important;
+    z-index: calc(var(--z-overlay) - 1) !important;
+    pointer-events: none;
+    animation-duration: 420ms;
+    animation-timing-function: cubic-bezier(.22, .8, .24, 1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
+  body.phone-page-transition[data-phone-transition-direction="forward"] .phone-page-transition-outgoing {
+    animation-name: phone-page-exit-forward;
+  }
+  body.phone-page-transition[data-phone-transition-direction="back"] .phone-page-transition-outgoing {
+    animation-name: phone-page-exit-back;
+  }
   @keyframes phone-page-slide-forward {
     from { opacity: .96; transform: translate3d(100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -14303,6 +14319,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   @keyframes phone-page-slide-back {
     from { opacity: .96; transform: translate3d(-100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes phone-page-exit-forward {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to { opacity: .82; transform: translate3d(-14%, 0, 0); }
+  }
+  @keyframes phone-page-exit-back {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to { opacity: .82; transform: translate3d(14%, 0, 0); }
   }
   @media (prefers-reduced-motion: no-preference) {
     html:not(.reduce-motion) body.welcome-dismissed #map.phone-page-first-entry[data-phone-page-entry="map"] .maplibregl-canvas { animation: phone-map-first-entry 360ms var(--ease-expo) both; }
