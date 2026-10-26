@@ -78,6 +78,8 @@ const _phonePagesEntered = new Set(["home"]);
 let _homeCity = "Helsinki";
 let _homeLocationKey = "";
 let _homeLocationRequest = 0;
+let _homePlacesReference = null;
+let _homeEventsReference = null;
 let _homeSuggestionsCity = null;
 let _homeSuggestionIds = [];
 let _homeSuggestionsLoading = false;
@@ -707,7 +709,7 @@ function _formatDistance(distance) {
 }
 
 function _homePlaces(places) {
-  const availablePlaces = places.filter((place) => !place.boycott);
+  const availablePlaces = places.filter((place) => !place.boycott && place.type !== "cemetery");
   const location = getCurrentLocationState();
   if (_homeMode === "nearby" && location.active && location.lat !== null && location.lng !== null) {
     return availablePlaces
@@ -808,7 +810,7 @@ function _safeHomePlacePreviewUrl(value) {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
-    return url.protocol === "https:" && (["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) || (host === "maps.google.com" && url.pathname === "/maps/api/staticmap" && url.searchParams.has("key") && url.searchParams.has("signature"))) ? url.toString() : "";
+    return url.protocol === "https:" && ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) ? url.toString() : "";
   } catch {
     return "";
   }
@@ -838,7 +840,6 @@ async function _syncHomeLocation() {
   if (location.active && location.lat !== null && location.lng !== null) {
     const key = `${Math.round(location.lat * 100)},${Math.round(location.lng * 100)}`;
     if (_homeMode === "nearby" && _homeLocationKey === key) {
-      _renderHome();
       return;
     }
     _homeMode = "nearby";
@@ -1232,6 +1233,12 @@ export function initPhonePages({ initialPage } = {}) {
     _renderPrayer();
   });
   window.addEventListener("hf:places-data-ready", () => {
+    const data = window.HFPhoneData;
+    const places = data?.getPlaces?.();
+    const events = data?.getEvents?.();
+    if (places === _homePlacesReference && events === _homeEventsReference) return;
+    _homePlacesReference = places;
+    _homeEventsReference = events;
     _homeLocationKey = "";
     void _syncHomeLocation();
   });

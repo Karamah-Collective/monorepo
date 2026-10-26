@@ -99,8 +99,8 @@ export async function fetchMetadata(rawUrl, { userAgent = 'KaramahLinkPreview/1.
     current = cleanPublicUrl(new URL(location, current).toString());
     if (!current) return { error: 'The URL redirected to a private or unsupported address.' };
   }
-  if (!response?.ok) return { error: `The site returned HTTP ${response?.status || 'error'}.` };
-  if (!(response.headers.get('content-type') || '').includes('text/html')) return { error: 'This URL does not return an HTML page.' };
+  if (!response?.ok) return { error: `The site returned HTTP ${response?.status || 'error'}.`, status: response?.status || 0 };
+  if (!(response.headers.get('content-type') || '').includes('text/html')) return { error: 'This URL does not return an HTML page.', status: response.status };
   const html = (await response.text()).slice(0, 750_000);
   const finalUrl = response.url || current;
   const base = new URL(finalUrl);

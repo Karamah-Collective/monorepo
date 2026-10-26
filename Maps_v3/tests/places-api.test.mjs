@@ -11,10 +11,10 @@ test("normaliseAddedAt converts legacy Helsinki timestamps into sortable values"
   assert.equal(normaliseAddedAt(""), "");
 });
 
-test("accepts Google-signed map previews and rejects unsigned or unrelated images", () => {
+test("accepts Google photo previews and rejects static maps or unrelated images", () => {
   const image = "https://maps.google.com/maps/api/staticmap?center=60,24&key=public&signature=signed";
-  assert.equal(_googlePreviewImage(image), image);
-  assert.equal(_googlePreviewImage("https://maps.google.com/maps/api/staticmap?center=60,24&key=public"), "");
+  assert.equal(_googlePreviewImage(image), "");
+  assert.equal(_googlePreviewImage("https://lh3.googleusercontent.com/grass-cs/example=w900-h900-p-k-no"), "https://lh3.googleusercontent.com/grass-cs/example=w900-h900-p-k-no");
   assert.equal(_googlePreviewImage("https://example.com/image.png"), "");
 });
 
@@ -29,14 +29,14 @@ test("allows the Pages and planned Manarah origins while rejecting unrelated sit
   assert.equal(allowedOrigin(new Request("https://maps.karamahcollective.com/api", { headers: { Origin: "https://evil.example" } })), "https://maps.karamahcollective.com");
 });
 
-test("retries Google previews with browser headers when the social-preview agent is blocked", async () => {
+test("retries Google previews with browser headers when the social-preview agent has no image", async () => {
   const originalFetch = globalThis.fetch;
-  const image = "https://maps.google.com/maps/api/staticmap?center=60%2C24&key=public&signature=signed";
+  const image = "https://lh3.googleusercontent.com/grass-cs/example=w900-h900-p-k-no";
   let browserRetry = false;
   let browserHeadersSent = false;
   globalThis.fetch = async (_url, init) => {
     if (init.headers["User-Agent"].startsWith("facebookexternalhit/")) {
-      return new Response("Blocked", { status: 429, headers: { "Content-Type": "text/html" } });
+      return new Response("No preview", { status: 200, headers: { "Content-Type": "text/html" } });
     }
     browserRetry = true;
     browserHeadersSent = init.headers.Accept?.startsWith("text/html") && init.headers["Accept-Language"] === "fi-FI,fi;q=0.9,en;q=0.8";
@@ -55,6 +55,39 @@ test("retries Google previews with browser headers when the social-preview agent
     assert.equal((await response.json()).previews["place-1"], image);
     assert.equal(browserRetry, true);
     assert.equal(browserHeadersSent, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("backs off a rate-limited Google preview instead of retrying on every request", async () => {
+  const originalFetch = globalThis.fetch;
+  const mapsUrl = "https://maps.google.com/?cid=backoff";
+  let fetchCount = 0;
+  let googleInfo = "";
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          if (sql.startsWith("SELECT")) return { first: async () => ({ google_info: googleInfo }) };
+          return { run: async () => { googleInfo = args[0]; } };
+        },
+      };
+    },
+  };
+  globalThis.fetch = async () => {
+    fetchCount += 1;
+    return new Response("Rate limited", { status: 429, headers: { "Content-Type": "text/html" } });
+  };
+  const makeRequest = () => new Request("https://maps.karamahcollective.com/api/places?action=previews", {
+    method: "POST",
+    headers: { Origin: "https://manarah-v3.pages.dev", "Content-Type": "application/json" },
+    body: JSON.stringify({ links: [{ id: "place-2", url: mapsUrl }] }),
+  });
+  try {
+    assert.equal((await (await onRequestPost({ request: makeRequest(), env: { DB: db } })).json()).previews["place-2"], "");
+    assert.equal((await (await onRequestPost({ request: makeRequest(), env: { DB: db } })).json()).previews["place-2"], "");
+    assert.equal(fetchCount, 1, "one rate-limited attempt, then no request during backoff");
   } finally {
     globalThis.fetch = originalFetch;
   }

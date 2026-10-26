@@ -8,7 +8,7 @@ import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker, sh
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
 import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
-import { getPlaceRating, buildStarDisplay, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
+import { getPlaceRating, buildStarDisplay, renderPlaceReviews, openPlaceReviewForm, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
 import { EVT } from "./events.js";
 import { addVerifiedEventVisit, addVerifiedVisit, eventHasEnded, eventHasOccurred, getTimelineCooldown, peekEventTimelineEligibility, peekTimelineEligibility } from "./timeline.js";
 import { clearPhoneWindowState, getPhonePage, goBackPhonePage, isPhone, navigatePhonePage, pushPhoneWindowState } from "./phone-pages.js";
@@ -239,6 +239,33 @@ function sortSubtags() {
 let _activePlaceSheetId = null;
 let _activePlaceSheetReviewsListener = null;
 let _activePlaceSheetMediaListener = null;
+const PLACE_REVIEW_RETURN_KEY = "hf:place-review-return";
+
+window.addEventListener(EVT.AUTH_CHANGED, (event) => {
+  if (!isPhone()) return;
+  if (!event.detail?.account) return;
+  let intent;
+  try { intent = JSON.parse(sessionStorage.getItem(PLACE_REVIEW_RETURN_KEY) || "null"); } catch { /* stale session value */ }
+  if (!intent?.placeId) return;
+  try { sessionStorage.removeItem(PLACE_REVIEW_RETURN_KEY); } catch { /* session storage may be unavailable */ }
+  const resume = () => {
+    const place = placesData.find((item) => String(item.id) === String(intent.placeId));
+    if (!place) return;
+    navigatePhonePage("map", { replace: true });
+    setTimeout(() => {
+      openPlaceSheet(place);
+      const section = placeSheetBody.querySelector(`.pp-reviews-detail[data-place-id="${CSS.escape(String(place.id))}"]`);
+      if (section) _scrollPlaceReviewsIntoView(section);
+      if (section) openPlaceReviewForm(section, place.id, place.name);
+    }, 80);
+  };
+  if (placesLoaded) resume();
+  else window.addEventListener("hf:places-data-ready", resume, { once: true });
+});
+window.addEventListener(EVT.PHONE_PAGE_CHANGED, (event) => {
+  if (event.detail?.previousPage !== "profile" || event.detail?.page === "profile") return;
+  try { sessionStorage.removeItem(PLACE_REVIEW_RETURN_KEY); } catch { /* session storage may be unavailable */ }
+});
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 
@@ -318,6 +345,14 @@ const placeSheetActionsEl = document.getElementById("place-sheet-actions");
 const placeSheetCloseBtn = document.getElementById("place-sheet-close");
 const placeSheetScrim = document.getElementById("scrim");
 let _placeSheetFromListScrollTop = null;
+
+function _scrollPlaceReviewsIntoView(section) {
+  const bodyRect = placeSheetBody.getBoundingClientRect();
+  placeSheetBody.scrollTo({
+    top: placeSheetBody.scrollTop + section.getBoundingClientRect().top - bodyRect.top,
+    behavior: document.documentElement.classList.contains("reduce-motion") ? "auto" : "smooth",
+  });
+}
 
 function _restorePlacesAfterPlaceClose(scrollTop) {
   if (scrollTop === null) return;
@@ -1994,21 +2029,16 @@ function _buildEventCard(ev) {
 }
 
 /**
- * Render the rating element inside a popup's reviews section.
+ * Render the rating element inside a place sheet's reviews section.
  * @param {HTMLElement} container - the .pp-reviews element
  * @param {string} placeId
  * @param {string} placeName
  * @param {{avg: number, count: number} | null} ratingData
+ * @param {HTMLElement} reviewsTarget
  */
-function _renderPopupRating(container, placeId, placeName, ratingData) {
+function _renderPopupRating(container, placeId, placeName, ratingData, reviewsTarget) {
   const ratingEl = document.createElement("div");
-  // Static right-chevron — same "this row navigates elsewhere on tap"
-  // affordance already used by src/menu.js's "Profile →" row
-  // (.menu-profile-chevron), not the rotate-on-toggle chevron used for
-  // in-place expand/collapse (.pp-hours-expand-btn/.sg-expand-arrow) —
-  // tapping this row opens the separate reviews overlay, it doesn't expand
-  // in place. Added after user feedback that the rating summary read as a
-  // static summary with no indication it was tappable.
+  // The chevron marks this summary as a link to the full reviews below.
   const _chevronSVG = `<svg class="pp-rating-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
   if (ratingData) {
     ratingEl.className = "pp-rating";
@@ -2020,21 +2050,27 @@ function _renderPopupRating(container, placeId, placeName, ratingData) {
   }
   ratingEl.setAttribute("role", "button");
   ratingEl.setAttribute("tabindex", "0");
-  ratingEl.addEventListener("click", (e) => {
-    e.stopPropagation();
-    openReviewsOverlay(placeId, placeName);
+  const openReviews = () => {
+    if (isPhone()) _scrollPlaceReviewsIntoView(reviewsTarget);
+    else openReviewsOverlay(placeId, placeName);
+  };
+  ratingEl.addEventListener("click", (event) => { event.stopPropagation(); openReviews(); });
+  ratingEl.addEventListener("keydown", (event) => {
+    if (!isPhone()) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openReviews();
   });
   container.appendChild(ratingEl);
 }
 
 /**
- * Render the compact rating chip into the place sheet's reviews section.
- * Reviews themselves stay behind a tap — opened in the separate `#reviews-overlay` —
- * so long review text never pushes tags/hours/notes out of immediate view.
+ * Render the compact rating chip and keep the full review list at the bottom
+ * of the place sheet so the summary can scroll to it without opening a window.
  */
-function _renderPlaceSheetReviews(reviewsSection, placeId, placeName, ratingData) {
+function _renderPlaceSheetReviews(reviewsSection, reviewsTarget, placeId, placeName, ratingData) {
   reviewsSection.innerHTML = "";
-  _renderPopupRating(reviewsSection, placeId, placeName, ratingData);
+  _renderPopupRating(reviewsSection, placeId, placeName, ratingData, reviewsTarget);
 }
 
 /**
@@ -2248,12 +2284,20 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   const reviewsSection = document.createElement("div");
   reviewsSection.className = "pp-reviews";
   reviewsSection.dataset.placeId = place.id;
+  const reviewsDetailSection = isPhone() ? document.createElement("section") : null;
+  if (reviewsDetailSection) {
+    reviewsDetailSection.className = "pp-reviews-detail";
+    reviewsDetailSection.dataset.placeId = place.id;
+  }
 
-  _renderPlaceSheetReviews(reviewsSection, place.id, place.name, ratingData);
+  _renderPlaceSheetReviews(reviewsSection, reviewsDetailSection, place.id, place.name, ratingData);
 
   // Re-render reviews section when data arrives after the sheet is already open
   const _onReviewsLoaded = () => {
-    _renderPlaceSheetReviews(reviewsSection, place.id, place.name, getPlaceRating(place.id));
+    _renderPlaceSheetReviews(reviewsSection, reviewsDetailSection, place.id, place.name, getPlaceRating(place.id));
+    if (reviewsDetailSection && !reviewsDetailSection.querySelector(".rv-form, .rv-verify-form")) {
+      renderPlaceReviews(reviewsDetailSection, place.id, place.name);
+    }
   };
   window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
   _activePlaceSheetReviewsListener = _onReviewsLoaded;
@@ -2363,13 +2407,15 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   {
     const eventsSection = document.createElement("div");
     eventsSection.className = "pp-events";
-    const hdrHTML = `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Add an event" aria-label="Add event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+    const hdrHTML = isPhone()
+      ? `<div class="pp-section-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-timeline-btn pp-timeline-pill pp-section-action" type="button" aria-label="Add event">Add event</button></div>`
+      : `<div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Events</span><button class="pp-ev-add-btn" type="button" title="Add an event" aria-label="Add event"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
     const listHTML = placeEvents.length
       ? `<div class="pp-events-list">${placeEvents.map((ev) => _buildEventCard(ev)).join("")}</div>`
       : `<p class="pp-ev-empty">No events yet</p>`;
     eventsSection.innerHTML = hdrHTML + listHTML;
     // Attach add-event handler
-    eventsSection.querySelector(".pp-ev-add-btn").addEventListener("click", (e) => {
+    eventsSection.querySelector(isPhone() ? ".pp-section-action" : ".pp-ev-add-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       openEventOverlay(place.id);
     });
@@ -2382,6 +2428,10 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
       });
     });
     inner.appendChild(eventsSection);
+  }
+  if (reviewsDetailSection) {
+    inner.appendChild(reviewsDetailSection);
+    renderPlaceReviews(reviewsDetailSection, place.id, place.name);
   }
 
   // Pinned action row lives outside the scrollable body (see placeSheetActionsEl
@@ -2944,7 +2994,9 @@ window.addEventListener("hf:current-location-updated", () => {
   const location = getCurrentLocationState();
   if (!location.active || location.lat === null || location.lng === null) _mapNearbyFilter = false;
   _syncMapFilterChips();
-  if (getPhonePage() === "map") addPlaceMarkers();
+  // Regular GPS fixes only move the user marker. Rebuild place markers when
+  // the location-dependent nearby filter is actually active.
+  if (getPhonePage() === "map" && _mapNearbyFilter) addPlaceMarkers();
 });
 
 export function openPlacesSheet() {

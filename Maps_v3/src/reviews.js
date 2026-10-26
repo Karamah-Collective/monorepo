@@ -104,6 +104,10 @@ const _placePhotoContexts = new Map();
 // and the `max-height` cap against a genuinely long review list are
 // unaffected.
 function _animateReviewCardHeight(overlay, changeFn) {
+  if (overlay?.closest(".pp-reviews-detail")) {
+    changeFn();
+    return;
+  }
   const card = overlay?.querySelector(".rv-overlay-card");
   // Settle any tween already in flight on this card FIRST — its own
   // `onSettled` (below) restores `overflow` — before this new one suspends
@@ -490,6 +494,12 @@ export async function openReviewsOverlayForEdit(placeId, placeName, existing, pl
   _showRatingForm(placeId, overlay, list, existing);
 }
 
+/** Open the write form inside the place sheet, sending signed-out users to Profile first. */
+export async function openPlaceReviewForm(container, placeId, placeName) {
+  container.dataset.placeName = placeName || "";
+  _showReviewForm(placeId, container);
+}
+
 /**
  * Best-effort local cache adjustment after deleting a review — decrements
  * the cached count so any currently-open summary reflects the delete
@@ -665,9 +675,11 @@ async function _loadReviewImages(placeId, placeName, overlay) {
       if (review.source !== "google") review.images = imagesByReview.get(String(review.id)) || [];
     });
     _loadedReviewImagePlaces.add(placeId);
-    if (_activeOverlayPlaceId === placeId && overlay.isConnected && !overlay.querySelector(".rv-form, .rv-verify-form")) {
+    if (_activeOverlayPlaceId === placeId && overlay?.isConnected && !overlay.querySelector(".rv-form, .rv-verify-form")) {
       _renderReviewsOverlayContent(overlay, placeId, placeName);
     }
+    const inline = [...document.querySelectorAll(".pp-reviews-detail")].find((element) => element.dataset.placeId === String(placeId));
+    if (inline && !inline.querySelector(".rv-form, .rv-verify-form")) _renderPlaceReviewsContent(inline, placeId, placeName);
   } catch {
     // Review text and ratings remain complete when optional media is unavailable.
   } finally {
@@ -710,7 +722,37 @@ function _renderReviewsOverlayContent(overlay, placeId, placeName) {
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => {
     btn.addEventListener("click", () => _showReviewForm(placeId, overlay));
   });
-  const photoButtons = [...overlay.querySelectorAll(".rv-review-image")];
+  _wireReviewPhotos(overlay, placeName);
+}
+
+/** Render a place's review summary and list inside its details sheet. */
+export function renderPlaceReviews(container, placeId, placeName) {
+  _renderPlaceReviewsContent(container, placeId, placeName);
+  _loadReviewImages(placeId, placeName, null);
+}
+
+function _renderPlaceReviewsContent(container, placeId, placeName) {
+  container.dataset.placeId = String(placeId);
+  container.dataset.placeName = placeName || "";
+  const template = document.createElement("template");
+  template.innerHTML = _buildOverlayContent(placeId, placeName, getPlaceRating(placeId), getPlaceReviews(placeId));
+  const card = template.content.querySelector(".rv-overlay-card");
+  const header = document.createElement("div");
+  header.className = "pp-section-hdr";
+  header.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="var(--review)" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L2 9.27l6.91-1.01L12 2z"/></svg><span>Reviews</span><button class="rv-write-trigger pp-timeline-btn pp-timeline-pill pp-section-action" type="button">Add review</button>`;
+  card.querySelector(".rv-sheet-drag")?.remove();
+  card.querySelector(".rv-header")?.remove();
+  card.classList.add("rv-inline-card");
+  card.prepend(header);
+  const body = card.querySelector(".rv-overlay-body");
+  body.querySelectorAll(".rv-write-trigger").forEach((button) => button.remove());
+  container.replaceChildren(card);
+  header.querySelector(".rv-write-trigger").addEventListener("click", () => openPlaceReviewForm(container, placeId, placeName));
+  _wireReviewPhotos(container, placeName);
+}
+
+function _wireReviewPhotos(container, placeName) {
+  const photoButtons = [...container.querySelectorAll(".rv-review-image")];
   photoButtons.forEach((button, index) => {
     const image = button.querySelector("img");
     const settleImage = () => button.classList.remove("skel-bone");
@@ -732,6 +774,21 @@ function _renderReviewsOverlayContent(overlay, placeId, placeName) {
 }
 
 function _restoreReviewSummary(overlay) {
+  const inline = overlay.closest(".pp-reviews-detail");
+  if (inline) {
+    const activePanel = inline.querySelector(".rv-write-panel");
+    const card = inline.querySelector(".rv-overlay-card");
+    const renderSummary = () => {
+      if (card) card.style.removeProperty("height");
+      _renderPlaceReviewsContent(inline, inline.dataset.placeId, inline.dataset.placeName);
+    };
+    if (!activePanel || isReduceMotionActive()) renderSummary();
+    else {
+      activePanel.classList.add("shut");
+      window.setTimeout(renderSummary, REVIEW_PANEL_ANIMATION_MS);
+    }
+    return;
+  }
   if (!_activeOverlayPlaceId) return;
   const activePanel = overlay.querySelector(".rv-write-panel");
   const card = overlay.querySelector(".rv-overlay-card");
@@ -943,14 +1000,21 @@ async function _showReviewForm(placeId, overlay) {
   overlay.querySelectorAll(".rv-write-trigger").forEach((btn) => btn.remove());
 
   const list = overlay.querySelector(".rv-list");
-
-  if (_isLocalReviewMode()) {
+  const inline = overlay.closest(".pp-reviews-detail");
+  if (!inline && _isLocalReviewMode()) {
     _showRatingForm(placeId, overlay, list);
     return;
   }
-
   const auth = await _getAuthModule();
   if (!auth.getCachedAccount()) {
+    if (inline) {
+      try { sessionStorage.setItem("hf:place-review-return", JSON.stringify({ placeId: String(placeId) })); } catch { /* session storage may be unavailable */ }
+      showToast("Sign in to add a review", "info");
+      window.dispatchEvent(new CustomEvent(EVT.ACCOUNT_PROFILE_OPEN, {
+        detail: { reason: "place-review", placeId: String(placeId) },
+      }));
+      return;
+    }
     _showSignInPrompt(placeId, overlay, list, auth);
     return;
   }
@@ -1789,14 +1853,16 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     // _activeOverlayPlaceName is cleared by closeReviewsOverlay() below —
     // capture it now, before that happens, in case the request fails and
     // this needs to reopen.
-    const reopenPlaceName = _activeOverlayPlaceName;
+    const inline = overlay.closest(".pp-reviews-detail");
+    const reopenPlaceName = inline?.dataset.placeName || _activeOverlayPlaceName;
 
     // Optimistic: close immediately rather than making the user sit through
     // a spinner for the network round-trip — this form's own copy already
     // promises "Your review will appear immediately." If the request
     // actually fails, the exact rating/text is never discarded: the form
     // reopens pre-filled with it below, so nothing the user typed is lost.
-    closeReviewsOverlay();
+    if (inline) _restoreReviewSummary(overlay);
+    else closeReviewsOverlay();
     showToast(existing ? "Updating review…" : "Submitting review…", "check");
 
     const result = await submitReview(placeId, ratingAtSubmit, text, selectedImages);
@@ -1828,16 +1894,40 @@ function _showRatingForm(placeId, overlay, insertBefore, existing = null) {
     if (result.error === "invalid_token") {
       // Re-render from scratch — current auth state decides sign-in-gate
       // vs. rating form, same as any other fresh open.
-      openReviewsOverlay(placeId, reopenPlaceName);
+      if (inline) {
+        inline.querySelector(".rv-write-panel")?.remove();
+        openPlaceReviewForm(inline, placeId, reopenPlaceName);
+      }
+      else openReviewsOverlay(placeId, reopenPlaceName);
       return;
     }
-    openReviewsOverlayForEdit(placeId, reopenPlaceName, { rating: ratingAtSubmit, text, images: selectedImages });
+    if (inline) {
+      renderPlaceReviews(inline, placeId, reopenPlaceName);
+      _showRatingForm(placeId, inline, inline.querySelector(".rv-list"), { rating: ratingAtSubmit, text, images: selectedImages });
+    } else openReviewsOverlayForEdit(placeId, reopenPlaceName, { rating: ratingAtSubmit, text, images: selectedImages });
   });
 
   form.appendChild(submitBtn);
   form.appendChild(note);
 
   _insertReviewPanel(insertBefore, form);
+  if (overlay.closest(".pp-reviews-detail")) {
+    const keepFieldVisible = () => {
+      const body = overlay.closest("#place-sheet-body");
+      if (!body) return;
+      const bodyRect = body.getBoundingClientRect();
+      const fieldRect = textArea.getBoundingClientRect();
+      const topGap = 12;
+      const bottomGap = 16;
+      if (fieldRect.bottom > bodyRect.bottom - bottomGap) body.scrollTop += fieldRect.bottom - bodyRect.bottom + bottomGap;
+      else if (fieldRect.top < bodyRect.top + topGap) body.scrollTop -= bodyRect.top + topGap - fieldRect.top;
+    };
+    setTimeout(() => {
+      textArea.focus({ preventScroll: true });
+      keepFieldVisible();
+      window.visualViewport?.addEventListener("resize", keepFieldVisible, { once: true });
+    }, isReduceMotionActive() ? 0 : REVIEW_PANEL_ANIMATION_MS);
+  }
 }
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -1855,7 +1945,7 @@ function _insertReviewPanel(insertBefore, contentEl) {
   insertBefore.insertAdjacentElement("beforebegin", panel);
 
   const card = insertBefore.closest(".rv-overlay-card");
-  if (!card || isReduceMotionActive()) {
+  if (!card || insertBefore.closest(".pp-reviews-detail") || isReduceMotionActive()) {
     requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.remove("shut")));
     return;
   }

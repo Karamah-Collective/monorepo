@@ -52,6 +52,27 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#phone-suggested-title")).toHaveText("Suggested");
   });
 
+  test("Home nearby places skip cemeteries", async ({ page }) => {
+    await page.evaluate(async () => {
+      const utils = await import("/src/utils.js");
+      const data = window.HFPhoneData;
+      const cemetery = {
+        id: "home-cemetery-test", name: "Test Cemetery", type: "cemetery",
+        address: "Testikatu 2, Helsinki", lat: 60.1701, lng: 24.9401, tags: {},
+      };
+      window.HFPhoneData = {
+        getPlaces: () => [...data.getPlaces(), cemetery],
+        getEvents: data.getEvents,
+        status: "ready",
+      };
+      window.dispatchEvent(new Event("hf:places-data-ready"));
+      utils.setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 10 });
+    });
+
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby");
+    await expect(page.locator('[data-phone-place-id="home-cemetery-test"]')).toHaveCount(0);
+  });
+
   test("navbar active pill moves with the selected destination", async ({ page }) => {
     const pill = page.locator("#tab-active-pill");
     await expect(pill).toBeVisible();

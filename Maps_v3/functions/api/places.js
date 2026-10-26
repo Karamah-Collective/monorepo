@@ -21,6 +21,9 @@ import { cleanPublicUrl, fetchMetadata } from "../_link-hub.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
 const GOOGLE_PREVIEW_CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+const GOOGLE_PREVIEW_FAILURE_BACKOFF_BASE = 60 * 1000;
+const GOOGLE_PREVIEW_FAILURE_BACKOFF_MAX = 15 * 60 * 1000;
+const GOOGLE_PREVIEW_IN_FLIGHT = new Map();
 
 /**
  * Convert the Helsinki-local timestamp stored on submitted places into a
@@ -117,9 +120,17 @@ async function readGooglePreviewCache(db, id, mapsUrl) {
     const row = await db.prepare("SELECT google_info FROM places WHERE id = ? AND disabled = 0").bind(id).first();
     if (!row) return null;
     const info = JSON.parse(row?.google_info || "{}");
-    const url = info.previewImageUrl && info.previewMapsUrl === mapsUrl ? _googlePreviewImage(info.previewImageUrl) : "";
+    const sameUrl = info.previewMapsUrl === mapsUrl;
+    const url = sameUrl && info.previewImageUrl ? _googlePreviewImage(info.previewImageUrl) : "";
     const fetchedAt = Date.parse(info.previewImageFetchedAt || "");
-    return { url, fresh: Boolean(url) && Number.isFinite(fetchedAt) && Date.now() - fetchedAt < GOOGLE_PREVIEW_CACHE_MAX_AGE, raw: row.google_info || "" };
+    const retryAt = sameUrl ? Date.parse(info.previewImageRetryAt || "") : NaN;
+    return {
+      url,
+      fresh: Boolean(url) && Number.isFinite(fetchedAt) && Date.now() - fetchedAt < GOOGLE_PREVIEW_CACHE_MAX_AGE,
+      retryAt: Number.isFinite(retryAt) ? retryAt : 0,
+      failureCount: sameUrl ? Math.max(0, Number(info.previewImageFailureCount) || 0) : 0,
+      raw: row.google_info || "",
+    };
   } catch {
     return null;
   }
@@ -132,10 +143,30 @@ async function writeGooglePreviewCache(db, cached, id, mapsUrl, imageUrl) {
     info.previewMapsUrl = mapsUrl;
     info.previewImageUrl = imageUrl;
     info.previewImageFetchedAt = new Date().toISOString();
+    delete info.previewImageRetryAt;
+    delete info.previewImageFailureCount;
+    delete info.previewImageLastStatus;
     await db.prepare("UPDATE places SET google_info = ? WHERE id = ? AND google_info = ?")
       .bind(JSON.stringify(info), id, cached?.raw || "").run();
   } catch {
     // Preview caching is optional; the image response remains usable if D1 is unavailable.
+  }
+}
+
+async function writeGooglePreviewFailure(db, cached, id, mapsUrl, status) {
+  if (!db?.prepare || !cached) return;
+  try {
+    const info = JSON.parse(cached.raw || "{}");
+    const failureCount = Math.min(8, cached.failureCount + 1);
+    const backoff = Math.min(GOOGLE_PREVIEW_FAILURE_BACKOFF_MAX, GOOGLE_PREVIEW_FAILURE_BACKOFF_BASE * (2 ** (failureCount - 1)));
+    info.previewMapsUrl = mapsUrl;
+    info.previewImageRetryAt = new Date(Date.now() + backoff).toISOString();
+    info.previewImageFailureCount = failureCount;
+    info.previewImageLastStatus = Number(status) || 0;
+    await db.prepare("UPDATE places SET google_info = ? WHERE id = ? AND google_info = ?")
+      .bind(JSON.stringify(info), id, cached.raw).run();
+  } catch {
+    // Backoff is optional; the response can still use a stale cached image.
   }
 }
 
@@ -144,8 +175,7 @@ export function _googlePreviewImage(value) {
   if (!cleaned) return "";
   const url = new URL(cleaned);
   const host = url.hostname.toLowerCase();
-  const isStaticPreview = host === "maps.google.com" && url.pathname === "/maps/api/staticmap" && url.searchParams.has("key") && url.searchParams.has("signature");
-  if (url.protocol !== "https:" || (!isStaticPreview && !["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host))) return "";
+  if (url.protocol !== "https:" || !["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)) return "";
   return cleaned;
 }
 
@@ -158,27 +188,44 @@ async function getPlacePreviewImages(links, db) {
       if (!/^[a-z0-9_-]{1,64}$/i.test(id)) return null;
       const mapsUrl = _googleMapsLink(link?.url);
       if (!mapsUrl) return [id, ""];
-      const cached = await readGooglePreviewCache(db, id, mapsUrl);
-      if (cached?.fresh) return [id, cached.url];
-      try {
-        let metadata = await fetchMetadata(mapsUrl, { userAgent: "facebookexternalhit/1.1" });
-        let imageUrl = metadata.success && _googleMapsLink(metadata.url) ? _googlePreviewImage(metadata.imageUrl) : "";
-        if (!imageUrl) {
-          metadata = await fetchMetadata(mapsUrl, {
-            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-            headers: {
-              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-              "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
-            },
-          });
-          if (metadata.success && _googleMapsLink(metadata.url)) imageUrl = _googlePreviewImage(metadata.imageUrl);
+      const cacheKey = `${id}\u0000${mapsUrl}`;
+      if (GOOGLE_PREVIEW_IN_FLIGHT.has(cacheKey)) return [id, await GOOGLE_PREVIEW_IN_FLIGHT.get(cacheKey)];
+      const promise = (async () => {
+        const cached = await readGooglePreviewCache(db, id, mapsUrl);
+        if (cached?.fresh || cached?.retryAt > Date.now()) return cached.url;
+        try {
+          let metadata = await fetchMetadata(mapsUrl, { userAgent: "facebookexternalhit/1.1" });
+          let imageUrl = metadata.success && _googleMapsLink(metadata.url) ? _googlePreviewImage(metadata.imageUrl) : "";
+          // A 429 is an IP-level rate limit; another user-agent immediately
+          // repeats the same pressure and cannot make this request succeed.
+          if (!imageUrl && metadata.status !== 429) {
+            metadata = await fetchMetadata(mapsUrl, {
+              userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+              headers: {
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+              },
+            });
+            if (metadata.success && _googleMapsLink(metadata.url)) imageUrl = _googlePreviewImage(metadata.imageUrl);
+          }
+          if (imageUrl) {
+            await writeGooglePreviewCache(db, cached, id, mapsUrl, imageUrl);
+            return imageUrl;
+          }
+          await writeGooglePreviewFailure(db, cached, id, mapsUrl, metadata.status);
+          if (metadata.error) console.warn("[place previews] Google metadata unavailable:", metadata.error);
+          return cached?.url || "";
+        } catch (error) {
+          await writeGooglePreviewFailure(db, cached, id, mapsUrl, 0);
+          console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
+          return cached?.url || "";
         }
-        if (imageUrl) await writeGooglePreviewCache(db, cached, id, mapsUrl, imageUrl);
-        if (!imageUrl && metadata.error) console.warn("[place previews] Google metadata unavailable:", metadata.error);
-        return [id, imageUrl || cached?.url || ""];
-      } catch (error) {
-        console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
-        return [id, cached?.url || ""];
+      })();
+      GOOGLE_PREVIEW_IN_FLIGHT.set(cacheKey, promise);
+      try {
+        return [id, await promise];
+      } finally {
+        GOOGLE_PREVIEW_IN_FLIGHT.delete(cacheKey);
       }
     })));
   }

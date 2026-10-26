@@ -116,7 +116,7 @@ async function _loadGoogleLinkPreview(place, mapsUrl) {
     const src = _safeMediaUrl(previews[String(place.id)]);
     const image = src ? new URL(src) : null;
     const host = image?.hostname.toLowerCase() || "";
-    return ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) || (host === "maps.google.com" && image.pathname === "/maps/api/staticmap" && image.searchParams.has("key") && image.searchParams.has("signature"))
+    return ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)
       ? { src, source: "google", sourceUrl: mapsUrl }
       : null;
   } catch {

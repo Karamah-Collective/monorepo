@@ -399,7 +399,7 @@ test.describe("Review write-gate — sign-in replaces the OTP flow", () => {
     await expect(visibleOptions).toHaveText(["", "", "", ""]);
     await expect(page.locator(".rv-otp-boxes")).toHaveCount(0);
     // Email field exists but stays visually hidden (.hide) until "use an email link" is toggled.
-    await expect(page.locator('.rv-verify-form input[type="email"]')).not.toBeVisible();
+    await expect(page.locator('.rv-verify-form input[type="email"]:visible')).toHaveCount(0);
   });
 
   test("signed in: writing a review goes straight to the rating form, no sign-in prompt", async ({ page }) => {

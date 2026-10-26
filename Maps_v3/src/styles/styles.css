@@ -1586,9 +1586,7 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
   font-size: var(--txt-xs);
   margin-left: auto;
 }
-/* Static "this row opens the reviews overlay" affordance — same visual
-   language as .menu-profile-chevron (src/menu.js's "Profile →" row), not
-   the rotate-on-toggle chevrons used for in-place expand/collapse. */
+/* Static chevron marks the rating row as a link to the full reviews below. */
 .pp-rating-chevron {
   flex-shrink: 0;
   color: var(--text-3);
@@ -1616,6 +1614,34 @@ html.reduce-motion #welcome-screen.is-closing .welcome-logo-stage {
   color: var(--text-2);
   font-weight: var(--fw-medium);
   margin-right: auto;
+}
+@media (max-width: 768px) {
+  .pp-reviews-detail {
+    scroll-margin-block-start: var(--sp-6);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border-light);
+  }
+  .pp-reviews-detail .suggest-head {
+    padding: 0 0 var(--sp-3);
+    border: 0;
+    background: transparent;
+  }
+  .pp-reviews-detail .suggest-head h3 { font-size: var(--txt-lg); }
+  .pp-reviews-detail .rv-overlay-body {
+    flex: none;
+    overflow: visible;
+    padding: 0;
+  }
+  .pp-reviews-detail .rv-inline-card {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    display: block;
+  }
 }
 
 /* ─── Place card rating chip ─── */
@@ -6159,7 +6185,8 @@ body.marker-style-bold .custom-mk {
   padding-top: var(--sp-2);
   border-top: 1px solid var(--border-light);
 }
-.pp-events-hdr {
+.pp-events-hdr,
+.pp-section-hdr {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -6168,6 +6195,12 @@ body.marker-style-bold .custom-mk {
   color: var(--accent);
   letter-spacing: var(--ls-caps);
   text-transform: uppercase;
+}
+.pp-section-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  letter-spacing: normal;
+  text-transform: none;
 }
 .pp-ev-add-btn {
   margin-left: auto;

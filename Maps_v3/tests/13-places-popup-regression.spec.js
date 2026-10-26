@@ -219,6 +219,90 @@ test.describe("Places Popup Regression", () => {
     expect(sheet.hasTitle).toBe(true);
   });
 
+  test("ordinary location updates do not rebuild map place markers", async ({ page }) => {
+    if (await page.evaluate(() => window.innerWidth > 768)) return;
+
+    await page.locator("#dir-btn").click();
+    await page.waitForSelector(".place-mk-wrap");
+    await page.evaluate(() => document.querySelector(".place-mk-wrap")?.setAttribute("data-test-marker", "keep"));
+
+    await page.evaluate(async () => {
+      const { setCurrentLocationState } = await import("/src/utils.js");
+      setCurrentLocationState({ lat: 60.1699, lng: 24.9384, accuracy: 10 });
+    });
+    await page.waitForTimeout(100);
+
+    await expect(page.locator('.place-mk-wrap[data-test-marker="keep"]')).toHaveCount(1);
+  });
+
+  test("rating summary scrolls to reviews inside the place sheet", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { hydrateReviews } = await import("/src/reviews.js");
+      const { openPlaceSheet } = await import("/src/places.js");
+      hydrateReviews({
+        "inline-review-test": {
+          avg: 5,
+          count: 1,
+          items: [{ id: "review-1", rating: 5, text: "This review stays in the place sheet.", timestamp: new Date().toISOString(), source: "google" }],
+        },
+      });
+      openPlaceSheet({
+        id: "inline-review-test", name: "Inline review test", type: "restaurant",
+        address: "Testikatu 1, Helsinki", lat: 60.1699, lng: 24.9384, tags: {}, hasImages: false,
+      });
+    });
+
+    if (await page.evaluate(() => window.innerWidth > 768)) {
+      await page.locator("#place-sheet-body .pp-rating").click();
+      await expect(page.locator("#reviews-overlay")).not.toHaveClass(/hide/);
+      await expect(page.locator("#reviews-overlay .rv-review-text")).toHaveText("This review stays in the place sheet.");
+      return;
+    }
+
+    const review = page.locator("#place-sheet-body .pp-reviews-detail .rv-review-text");
+    await expect(review).toHaveText("This review stays in the place sheet.");
+    await page.locator("#place-sheet-body .pp-rating").click();
+    await expect(page.locator("#reviews-overlay")).toHaveClass(/hide/);
+    await expect(page.locator("#place-sheet-body .pp-reviews-detail")).toBeInViewport();
+  });
+
+  test("actions use timeline pills and signed-out review returns to the same place after Profile login", async ({ page }) => {
+    const place = await page.evaluate(async () => {
+      const mod = await import("/src/places.js");
+      const place = mod.placesData[0];
+      mod.openPlaceSheet(place);
+      return { id: String(place.id), name: place.name };
+    });
+
+    if (await page.evaluate(() => window.innerWidth > 768)) {
+      await expect(page.locator("#place-sheet-body .pp-events .pp-ev-add-btn")).toHaveCount(1);
+      await expect(page.locator("#place-sheet-body .pp-events .pp-section-action")).toHaveCount(0);
+      await expect(page.locator("#place-sheet-body .pp-reviews-detail")).toHaveCount(0);
+      await page.locator("#place-sheet-body .pp-rating").click();
+      await expect(page.locator("#reviews-overlay")).not.toHaveClass(/hide/);
+      return;
+    }
+
+    const eventAction = page.locator("#place-sheet-body .pp-events .pp-section-action");
+    const reviewAction = page.locator("#place-sheet-body .pp-reviews-detail .pp-section-action");
+    await expect(eventAction).toHaveText("Add event");
+    await expect(reviewAction).toHaveText("Add review");
+    await expect(eventAction).toHaveClass(/pp-timeline-pill/);
+    await expect(reviewAction).toHaveClass(/pp-timeline-pill/);
+
+    const pageScrollTop = await page.evaluate(() => window.scrollY);
+    await reviewAction.click();
+    await expect(page.locator("#toast-stack .snack-label")).toContainText("Sign in to add a review");
+    await expect(page.locator("#phone-profile-auth")).toBeVisible();
+    await page.locator("#menu-google-signin").click();
+    await expect(page.locator("#place-sheet-body .pp-reviews-detail .rv-form")).toBeVisible();
+    await expect(page.locator("#place-sheet-body .pp-reviews-detail .rv-text-input")).toBeFocused();
+    await expect(page.locator("#place-sheet-body .pp-reviews-detail .rv-text-input")).toBeInViewport();
+    await expect(page.locator("#place-sheet-title")).toHaveText(place.name);
+    await expect(page.locator("#reviews-overlay")).toHaveClass(/hide/);
+    expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollTop);
+  });
+
   test("place detail sheet close button returns to places list at same scroll position", async ({ page }) => {
     await openPlaces(page);
     const scrollEl = page.locator("#places-scroll");
