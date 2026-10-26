@@ -29,13 +29,13 @@ test("allows the Pages and planned Manarah origins while rejecting unrelated sit
   assert.equal(allowedOrigin(new Request("https://maps.karamahcollective.com/api", { headers: { Origin: "https://evil.example" } })), "https://maps.karamahcollective.com");
 });
 
-test("retries Google previews with browser headers when the local-friendly agent is blocked", async () => {
+test("retries Google previews with browser headers when the social-preview agent is blocked", async () => {
   const originalFetch = globalThis.fetch;
   const image = "https://maps.google.com/maps/api/staticmap?center=60%2C24&key=public&signature=signed";
   let browserRetry = false;
   let browserHeadersSent = false;
   globalThis.fetch = async (_url, init) => {
-    if (init.headers["User-Agent"].startsWith("WhatsApp/")) {
+    if (init.headers["User-Agent"].startsWith("facebookexternalhit/")) {
       return new Response("Blocked", { status: 429, headers: { "Content-Type": "text/html" } });
     }
     browserRetry = true;
@@ -55,6 +55,34 @@ test("retries Google previews with browser headers when the local-friendly agent
     assert.equal((await response.json()).previews["place-1"], image);
     assert.equal(browserRetry, true);
     assert.equal(browserHeadersSent, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("uses a fresh D1 preview cache without calling Google", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  const mapsUrl = "https://maps.google.com/?cid=1";
+  const image = "https://lh3.googleusercontent.com/grass-cs/example=w900-h900-p-k-no";
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("Google should not be called for a fresh cache hit");
+  };
+  const db = {
+    prepare() {
+      return { bind: () => ({ first: async () => ({ google_info: JSON.stringify({ previewMapsUrl: mapsUrl, previewImageUrl: image, previewImageFetchedAt: new Date().toISOString() }) }) }) };
+    },
+  };
+  try {
+    const request = new Request("https://maps.karamahcollective.com/api/places?action=previews", {
+      method: "POST",
+      headers: { Origin: "https://manarah-v3.pages.dev", "Content-Type": "application/json" },
+      body: JSON.stringify({ links: [{ id: "place-1", url: mapsUrl }] }),
+    });
+    const response = await onRequestPost({ request, env: { DB: db } });
+    assert.equal((await response.json()).previews["place-1"], image);
+    assert.equal(fetchCalled, false);
   } finally {
     globalThis.fetch = originalFetch;
   }

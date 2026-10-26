@@ -20,6 +20,7 @@ import { getPlaceIdsWithReviewImages } from "../_review-images.js";
 import { cleanPublicUrl, fetchMetadata } from "../_link-hub.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
+const GOOGLE_PREVIEW_CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Convert the Helsinki-local timestamp stored on submitted places into a
@@ -110,6 +111,34 @@ function _googleMapsLink(value) {
   return "";
 }
 
+async function readGooglePreviewCache(db, id, mapsUrl) {
+  if (!db?.prepare) return null;
+  try {
+    const row = await db.prepare("SELECT google_info FROM places WHERE id = ? AND disabled = 0").bind(id).first();
+    if (!row) return null;
+    const info = JSON.parse(row?.google_info || "{}");
+    const url = info.previewImageUrl && info.previewMapsUrl === mapsUrl ? _googlePreviewImage(info.previewImageUrl) : "";
+    const fetchedAt = Date.parse(info.previewImageFetchedAt || "");
+    return { url, fresh: Boolean(url) && Number.isFinite(fetchedAt) && Date.now() - fetchedAt < GOOGLE_PREVIEW_CACHE_MAX_AGE, raw: row.google_info || "" };
+  } catch {
+    return null;
+  }
+}
+
+async function writeGooglePreviewCache(db, cached, id, mapsUrl, imageUrl) {
+  if (!db?.prepare) return;
+  try {
+    const info = JSON.parse(cached?.raw || "{}");
+    info.previewMapsUrl = mapsUrl;
+    info.previewImageUrl = imageUrl;
+    info.previewImageFetchedAt = new Date().toISOString();
+    await db.prepare("UPDATE places SET google_info = ? WHERE id = ? AND google_info = ?")
+      .bind(JSON.stringify(info), id, cached?.raw || "").run();
+  } catch {
+    // Preview caching is optional; the image response remains usable if D1 is unavailable.
+  }
+}
+
 export function _googlePreviewImage(value) {
   const cleaned = cleanPublicUrl(value);
   if (!cleaned) return "";
@@ -120,7 +149,7 @@ export function _googlePreviewImage(value) {
   return cleaned;
 }
 
-async function getPlacePreviewImages(links) {
+async function getPlacePreviewImages(links, db) {
   const linksToFetch = (Array.isArray(links) ? links : []).slice(0, 6);
   const previews = [];
   for (let i = 0; i < linksToFetch.length; i += 2) {
@@ -129,8 +158,10 @@ async function getPlacePreviewImages(links) {
       if (!/^[a-z0-9_-]{1,64}$/i.test(id)) return null;
       const mapsUrl = _googleMapsLink(link?.url);
       if (!mapsUrl) return [id, ""];
+      const cached = await readGooglePreviewCache(db, id, mapsUrl);
+      if (cached?.fresh) return [id, cached.url];
       try {
-        let metadata = await fetchMetadata(mapsUrl, { userAgent: "WhatsApp/2.24.24.83 A" });
+        let metadata = await fetchMetadata(mapsUrl, { userAgent: "facebookexternalhit/1.1" });
         let imageUrl = metadata.success && _googleMapsLink(metadata.url) ? _googlePreviewImage(metadata.imageUrl) : "";
         if (!imageUrl) {
           metadata = await fetchMetadata(mapsUrl, {
@@ -142,11 +173,12 @@ async function getPlacePreviewImages(links) {
           });
           if (metadata.success && _googleMapsLink(metadata.url)) imageUrl = _googlePreviewImage(metadata.imageUrl);
         }
+        if (imageUrl) await writeGooglePreviewCache(db, cached, id, mapsUrl, imageUrl);
         if (!imageUrl && metadata.error) console.warn("[place previews] Google metadata unavailable:", metadata.error);
-        return [id, imageUrl];
+        return [id, imageUrl || cached?.url || ""];
       } catch (error) {
         console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
-        return [id, ""];
+        return [id, cached?.url || ""];
       }
     })));
   }
@@ -404,7 +436,7 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  const { request } = context;
+  const { env, request } = context;
   const headers = {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
@@ -417,7 +449,7 @@ export async function onRequestPost(context) {
     const raw = await request.text();
     if (raw.length > 16_384) return json({ error: "Too many preview links" }, 413, headers);
     const body = JSON.parse(raw);
-    return json({ previews: await getPlacePreviewImages(body.links) }, 200, headers);
+    return json({ previews: await getPlacePreviewImages(body.links, env?.DB) }, 200, headers);
   } catch {
     return json({ error: "Preview links could not be loaded" }, 400, headers);
   }
