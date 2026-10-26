@@ -5,15 +5,15 @@
  */
 
 export const ALLOWED_ORIGINS = [
-  "https://manarah-v3.pages.dev",
   "https://maps.karamahcollective.com",
   "https://manarah.karamahcollective.com",
+  "https://manarah-v3.pages.dev",
 ];
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function allowedOrigin(request) {
   const origin = request.headers.get("Origin") || "";
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) || (origin && isLoopbackRequest(request)) ? origin : ALLOWED_ORIGINS[0];
 }
 
 /**

@@ -110,13 +110,13 @@ function _googleMapsLink(value) {
   return "";
 }
 
-function _googlePreviewImage(value) {
+export function _googlePreviewImage(value) {
   const cleaned = cleanPublicUrl(value);
   if (!cleaned) return "";
   const url = new URL(cleaned);
   const host = url.hostname.toLowerCase();
-  if (url.protocol !== "https:" || !["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)) return "";
-  if (url.pathname.startsWith("/maps/api/staticmap")) return "";
+  const isStaticPreview = host === "maps.google.com" && url.pathname === "/maps/api/staticmap" && url.searchParams.has("key") && url.searchParams.has("signature");
+  if (url.protocol !== "https:" || (!isStaticPreview && !["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host))) return "";
   return cleaned;
 }
 
@@ -130,23 +130,19 @@ async function getPlacePreviewImages(links) {
       const mapsUrl = _googleMapsLink(link?.url);
       if (!mapsUrl) return [id, ""];
       try {
-        const metadata = await fetchMetadata(mapsUrl, {
-          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-          headers: {
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
-          },
-        });
-        if (!metadata.success) {
-          console.warn("[place previews] Google metadata unavailable:", metadata.error);
-          return [id, ""];
+        let metadata = await fetchMetadata(mapsUrl, { userAgent: "WhatsApp/2.24.24.83 A" });
+        let imageUrl = metadata.success && _googleMapsLink(metadata.url) ? _googlePreviewImage(metadata.imageUrl) : "";
+        if (!imageUrl) {
+          metadata = await fetchMetadata(mapsUrl, {
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            headers: {
+              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+            },
+          });
+          if (metadata.success && _googleMapsLink(metadata.url)) imageUrl = _googlePreviewImage(metadata.imageUrl);
         }
-        if (!_googleMapsLink(metadata.url)) {
-          console.warn("[place previews] Google redirect left Maps:", new URL(metadata.url).hostname);
-          return [id, ""];
-        }
-        const imageUrl = _googlePreviewImage(metadata.imageUrl);
-        if (!imageUrl) console.warn("[place previews] Google image missing or unsupported:", metadata.imageUrl ? new URL(metadata.imageUrl).hostname : "no og:image");
+        if (!imageUrl && metadata.error) console.warn("[place previews] Google metadata unavailable:", metadata.error);
         return [id, imageUrl];
       } catch (error) {
         console.warn("[place previews] Google metadata request failed:", error?.name || "Error", error?.message || "unknown error");
@@ -379,6 +375,7 @@ export async function onRequestGet(context) {
     "Content-Type": "application/json",
     "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=300",
     "Access-Control-Allow-Origin": allowedOrigin(request),
+    Vary: "Origin",
   };
 
   if (!env.DB) return json({ error: "Service temporarily unavailable" }, 500, headers);
@@ -412,6 +409,7 @@ export async function onRequestPost(context) {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
     "Access-Control-Allow-Origin": allowedOrigin(request),
+    Vary: "Origin",
   };
   if (new URL(request.url).searchParams.get("action") !== "previews") return json({ error: "Invalid action" }, 400, headers);
   if (Number(request.headers.get("content-length") || 0) > 16_384) return json({ error: "Too many preview links" }, 413, headers);
@@ -430,6 +428,7 @@ export async function onRequestOptions(context) {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": allowedOrigin(context.request),
+      Vary: "Origin",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",

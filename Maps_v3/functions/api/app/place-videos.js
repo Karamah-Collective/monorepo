@@ -5,14 +5,12 @@
  * Query: ?ids=8k2rzi,cxjnht  (max 250 place ids)
  * Response: { videos: { [placeId]: SocialVideo[] } }
  */
-import { ALLOWED_ORIGINS, allowedOrigin, json } from "../../_shared.js";
+import { allowedOrigin, json } from "../../_shared.js";
 import { listSocialVideosForPlaces, parsePlaceIdsParam } from "../../_place-videos.js";
 
 const appCors = (request) => {
-  const origin = request.headers.get("Origin") || "";
-  const allowed = allowedOrigin(request) === origin || /^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(origin);
   return {
-    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": allowedOrigin(request),
     Vary: "Origin",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",

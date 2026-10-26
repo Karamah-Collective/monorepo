@@ -5648,8 +5648,7 @@ body.marker-style-bold .custom-mk {
   scrollbar-width: none;
 }
 .pp-media-rail::-webkit-scrollbar { display: none; }
-.pp-media-item,
-.pp-media-skeleton {
+.pp-media-item {
   position: relative;
   width: var(--place-media-card-w);
   height: var(--place-media-card-h);
@@ -5826,8 +5825,7 @@ body.marker-style-bold .custom-mk {
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 768px) {
-  .pp-media-item,
-  .pp-media-skeleton {
+  .pp-media-item {
     width: var(--place-media-card-w-phone);
     height: var(--place-media-card-h-phone);
     flex-basis: var(--place-media-card-w-phone);
@@ -13435,7 +13433,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-app-pages:not([data-phone-page="map"]) #map {
     pointer-events: none;
   }
-  body.phone-app-pages:not([data-phone-page="map"]):not(.phone-page-transition):not(.phone-page-transition-pending) #map {
+  body.phone-app-pages:not([data-phone-page="map"]):not(.phone-page-transition) #map {
     visibility: hidden;
   }
   body.phone-app-pages:not([data-phone-page="map"]) #phone-chrome-top-zone,
@@ -13872,6 +13870,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-home-carousel .phone-home-place-arrow { display: grid; flex: 0 0 24px; place-items: center; color: var(--text-1); }
   .phone-home-carousel .phone-home-place--has-preview { overflow: hidden; border-color: color-mix(in srgb, var(--text-1) 20%, transparent); background: var(--surface-2); color: var(--text-1); }
   .phone-home-carousel .phone-home-place-image { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .phone-home-carousel .phone-home-place--preview-loading { background: linear-gradient(105deg, var(--surface-2) 30%, color-mix(in srgb, var(--surface-3) 50%, var(--surface-2)) 50%, var(--surface-2) 70%); background-size: 200% 100%; animation: shimmer 1.6s ease-in-out infinite; }
   .phone-home-carousel .phone-home-place--has-preview::before { content: ""; position: absolute; z-index: 1; inset: auto 0 0; height: 68px; background: linear-gradient(0deg, color-mix(in srgb, var(--surface) 95%, transparent) 0%, color-mix(in srgb, var(--surface) 72%, transparent) 48%, transparent 100%); pointer-events: none; }
   .phone-home-carousel .phone-home-place--has-preview > :not(.phone-home-place-image) { position: relative; z-index: 2; }
   .phone-home-carousel .phone-home-place--has-preview .phone-home-place-type { background: color-mix(in srgb, var(--surface) 88%, transparent); }
@@ -14296,22 +14295,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   body.phone-page-transition[data-phone-transition-direction="back"] #map {
     animation-name: phone-page-slide-back;
   }
-  :is(.phone-page-surface, #phone-home-page).phone-page-transition-outgoing {
-    display: block !important;
-    z-index: calc(var(--z-overlay) - 1) !important;
-    pointer-events: none;
-    animation-duration: 420ms;
-    animation-timing-function: cubic-bezier(.22, .8, .24, 1);
-    animation-fill-mode: both;
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-  }
-  body.phone-page-transition[data-phone-transition-direction="forward"] .phone-page-transition-outgoing {
-    animation-name: phone-page-exit-forward;
-  }
-  body.phone-page-transition[data-phone-transition-direction="back"] .phone-page-transition-outgoing {
-    animation-name: phone-page-exit-back;
-  }
   @keyframes phone-page-slide-forward {
     from { opacity: .96; transform: translate3d(100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -14319,14 +14302,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   @keyframes phone-page-slide-back {
     from { opacity: .96; transform: translate3d(-100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
-  }
-  @keyframes phone-page-exit-forward {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: .82; transform: translate3d(-14%, 0, 0); }
-  }
-  @keyframes phone-page-exit-back {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: .82; transform: translate3d(14%, 0, 0); }
   }
   @media (prefers-reduced-motion: no-preference) {
     html:not(.reduce-motion) body.welcome-dismissed #map.phone-page-first-entry[data-phone-page-entry="map"] .maplibregl-canvas { animation: phone-map-first-entry 360ms var(--ease-expo) both; }

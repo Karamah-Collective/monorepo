@@ -14,13 +14,18 @@ test.describe("place media layout", () => {
       contentType: "application/json",
       body: JSON.stringify({ communityPhotos: [], googlePhotos: [] }),
     }));
+    await page.route(/\/api\/places\?action=previews/, (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ previews: {} }),
+    }));
 
     const result = await page.evaluate(async () => {
       const host = document.createElement("div");
       host.id = "media-layout-test-host";
       document.body.appendChild(host);
       const { mountPlaceMedia } = await import("/src/place-media.js");
-      mountPlaceMedia(host, { id: "no-image-place", name: "No Image Place" });
+      mountPlaceMedia(host, { id: "no-image-place", name: "No Image Place", mapsUrl: "https://maps.google.com/?cid=1" });
       await new Promise((resolve) => setTimeout(resolve, 50));
       return {
         hostHeight: host.getBoundingClientRect().height,

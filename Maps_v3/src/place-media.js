@@ -114,8 +114,9 @@ async function _loadGoogleLinkPreview(place, mapsUrl) {
     if (!response.ok) return null;
     const { previews = {} } = await response.json();
     const src = _safeMediaUrl(previews[String(place.id)]);
-    const host = src ? new URL(src).hostname.toLowerCase() : "";
-    return ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host)
+    const image = src ? new URL(src) : null;
+    const host = image?.hostname.toLowerCase() || "";
+    return ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) || (host === "maps.google.com" && image.pathname === "/maps/api/staticmap" && image.searchParams.has("key") && image.searchParams.has("signature"))
       ? { src, source: "google", sourceUrl: mapsUrl }
       : null;
   } catch {
@@ -558,7 +559,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
   let community = [];
   let google = [];
   let mapsUrl = place.mapsUrl || "";
-  let googleLoading = Boolean(mapsUrl);
   const mapsUrlPromise = _getMapsUrl(place).then((url) => {
     mapsUrl = url;
     return url;
@@ -569,8 +569,7 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   const render = () => {
     const photos = [...community, ...google];
-    const showGoogleSkeleton = googleLoading && !google.length;
-    if (!photos.length && !showGoogleSkeleton) {
+    if (!photos.length) {
       const wasConnected = section.isConnected;
       section.remove();
       if (wasConnected) onLayoutChange();
@@ -585,12 +584,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
       });
     }
     rail.innerHTML = "";
-    if (showGoogleSkeleton) {
-      const skeleton = document.createElement("div");
-      skeleton.className = "pp-media-skeleton skel-bone";
-      skeleton.setAttribute("aria-hidden", "true");
-      rail.appendChild(skeleton);
-    }
     photos.forEach((photo, index) => {
       rail.appendChild(_photoCard(photo, place.name, index, (photoIndex, returnFocus) => {
         openPhotoViewer(photos, place.name, photoIndex, returnFocus);
@@ -603,12 +596,8 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   const load = async (force = false) => {
     if (force) invalidatePlaceMediaManifest(place.id);
-    googleLoading = Boolean(mapsUrl);
-    render();
     const previewPromise = mapsUrlPromise.then((resolvedMapsUrl) => {
       mapsUrl = resolvedMapsUrl;
-      googleLoading = Boolean(resolvedMapsUrl);
-      render();
       return _loadGoogleLinkPreview(place, resolvedMapsUrl);
     });
     const [data, linkPreview] = await Promise.all([
@@ -617,7 +606,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
     ]);
     community = (data.communityPhotos || []).map((photo) => ({ ...photo, source: "community" }));
     google = linkPreview ? [linkPreview] : [];
-    googleLoading = false;
     render();
   };
 

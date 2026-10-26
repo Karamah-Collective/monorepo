@@ -68,6 +68,7 @@ let _placesActionBarSnapTimer = 0;
 let _pageNavSettleTimer = 0;
 let _pageTransitionTimer = 0;
 let _pageTransitionFrame = 0;
+let _phoneNavPillFrame = 0;
 let _phoneTopbarObserver = null;
 let _phoneTopbarFrame = 0;
 const _phoneTopbarMutations = new Set();
@@ -459,30 +460,18 @@ function _observePhoneTopbars() {
 }
 
 function _playPageTransition(previousPage, page) {
+  if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   window.clearTimeout(_pageTransitionTimer);
   window.cancelAnimationFrame(_pageTransitionFrame);
-  document.querySelectorAll(".phone-page-transition-outgoing").forEach((element) => element.classList.remove("phone-page-transition-outgoing"));
-  document.body.classList.remove("phone-page-transition", "phone-page-transition-pending");
-  if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    delete document.body.dataset.phoneTransitionFrom;
-    delete document.body.dataset.phoneTransitionTo;
-    delete document.body.dataset.phoneTransitionDirection;
-    return;
-  }
-  document.querySelector(".phone-page-surface.phone-page-active")?.classList.add("phone-page-transition-outgoing");
-  document.body.classList.add("phone-page-transition-pending");
   document.body.dataset.phoneTransitionFrom = previousPage;
   document.body.dataset.phoneTransitionTo = page;
   document.body.dataset.phoneTransitionDirection = _phoneTransitionDirection(previousPage, page);
   document.body.classList.remove("phone-page-transition");
   _pageTransitionFrame = window.requestAnimationFrame(() => {
     _pageTransitionFrame = 0;
-    document.body.classList.remove("phone-page-transition-pending");
     document.body.classList.add("phone-page-transition");
     _pageTransitionTimer = window.setTimeout(() => {
       document.body.classList.remove("phone-page-transition");
-      document.body.classList.remove("phone-page-transition-pending");
-      document.querySelectorAll(".phone-page-transition-outgoing").forEach((element) => element.classList.remove("phone-page-transition-outgoing"));
       delete document.body.dataset.phoneTransitionFrom;
       delete document.body.dataset.phoneTransitionTo;
     }, PHONE_PAGE_TRANSITION_MS);
@@ -520,23 +509,32 @@ export function syncPhoneNavPill(tab = null) {
   const bar = document.getElementById("tab-bar");
   const pill = document.getElementById("tab-active-pill");
   if (!bar || !pill || !isPhone() || !document.body.classList.contains("phone-app-pages")) {
+    window.cancelAnimationFrame(_phoneNavPillFrame);
+    _phoneNavPillFrame = 0;
     if (pill) pill.hidden = true;
     return;
   }
   const active = tab || bar.querySelector(".tab.active-tab");
   if (!active) {
+    window.cancelAnimationFrame(_phoneNavPillFrame);
+    _phoneNavPillFrame = 0;
     pill.hidden = true;
     return;
   }
-  const tabLeft = active.offsetLeft;
-  const tabWidth = active.offsetWidth;
-  const width = Math.min(56, Math.max(44, tabWidth - 8));
-  const baseWidth = 48;
-  pill.style.setProperty("--phone-nav-pill-center", `${tabLeft + tabWidth / 2}px`);
-  pill.style.setProperty("--phone-nav-pill-width", `${baseWidth}px`);
-  pill.style.setProperty("--phone-nav-pill-scale-x", String(width / baseWidth));
-  pill.style.setProperty("--phone-nav-pill-height", "34px");
-  pill.hidden = false;
+  window.cancelAnimationFrame(_phoneNavPillFrame);
+  _phoneNavPillFrame = window.requestAnimationFrame(() => {
+    _phoneNavPillFrame = 0;
+    // Measure inside a frame so navigation does not synchronously reflow first.
+    const tabLeft = active.offsetLeft;
+    const tabWidth = active.offsetWidth;
+    const width = Math.min(56, Math.max(44, tabWidth - 8));
+    const baseWidth = 48;
+    pill.style.setProperty("--phone-nav-pill-center", `${tabLeft + tabWidth / 2}px`);
+    pill.style.setProperty("--phone-nav-pill-width", `${baseWidth}px`);
+    pill.style.setProperty("--phone-nav-pill-scale-x", String(width / baseWidth));
+    pill.style.setProperty("--phone-nav-pill-height", "34px");
+    pill.hidden = false;
+  });
 }
 
 function _hideSurface(surface, element) {
@@ -737,14 +735,15 @@ function _applyHomePlacePreview(card, id, imageUrl) {
   image.setAttribute("aria-hidden", "true");
   image.loading = "lazy";
   image.decoding = "async";
-  image.src = imageUrl;
+  image.addEventListener("load", () => card.classList.remove("phone-home-place--preview-loading"), { once: true });
   image.addEventListener("error", () => {
     _homePlacePreviewCache.set(id, "");
-    card.classList.remove("phone-home-place--has-preview");
+    card.classList.remove("phone-home-place--has-preview", "phone-home-place--preview-loading");
     image.remove();
   }, { once: true });
   card.classList.add("phone-home-place--has-preview");
   card.prepend(image);
+  image.src = imageUrl;
 }
 
 function _getHomePlaceStaticMapLinks() {
@@ -761,7 +760,13 @@ function _loadHomePlacePreviews(places) {
   const cards = [...document.querySelectorAll("#phone-suggested-places .phone-home-place")];
   for (const card of cards) {
     const id = card.dataset.phonePlaceId;
-    if (_homePlacePreviewCache.has(id)) _applyHomePlacePreview(card, id, _homePlacePreviewCache.get(id));
+    if (_homePlacePreviewCache.has(id)) {
+      const imageUrl = _homePlacePreviewCache.get(id);
+      if (imageUrl) {
+        card.classList.add("phone-home-place--preview-loading");
+        _applyHomePlacePreview(card, id, imageUrl);
+      } else card.classList.remove("phone-home-place--preview-loading");
+    } else card.classList.add("phone-home-place--preview-loading");
   }
   if (_page !== "home") return;
   const candidates = places.map(place => ({ id: String(place.id || ""), url: place.mapsUrl || "" }))
@@ -784,18 +789,26 @@ function _loadHomePlacePreviews(places) {
       const imageUrl = _safeHomePlacePreviewUrl(previews[id]);
       _homePlacePreviewCache.set(id, imageUrl);
       document.querySelectorAll("#phone-suggested-places .phone-home-place").forEach(card => {
-        if (card.dataset.phonePlaceId === id) _applyHomePlacePreview(card, id, imageUrl);
+        if (card.dataset.phonePlaceId === id) {
+          if (imageUrl) _applyHomePlacePreview(card, id, imageUrl);
+          else card.classList.remove("phone-home-place--preview-loading");
+        }
       });
     }
   };
-  load().catch(() => {}).finally(() => candidates.forEach(({ id }) => _homePlacePreviewPending.delete(id)));
+  load().catch(() => {}).finally(() => candidates.forEach(({ id }) => {
+    _homePlacePreviewPending.delete(id);
+    document.querySelectorAll("#phone-suggested-places .phone-home-place").forEach(card => {
+      if (card.dataset.phonePlaceId === id && !card.querySelector(".phone-home-place-image")) card.classList.remove("phone-home-place--preview-loading");
+    });
+  }));
 }
 
 function _safeHomePlacePreviewUrl(value) {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
-    return url.protocol === "https:" && ["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) ? url.toString() : "";
+    return url.protocol === "https:" && (["dimg-pa.googleapis.com", "lh3.googleusercontent.com"].includes(host) || (host === "maps.google.com" && url.pathname === "/maps/api/staticmap" && url.searchParams.has("key") && url.searchParams.has("signature"))) ? url.toString() : "";
   } catch {
     return "";
   }
@@ -990,13 +1003,11 @@ function _playPhonePageEntry(page) {
 function _render(page, previousPage) {
   if (!isPhone()) return;
   const firstPageEntry = !_phonePagesEntered.has(page);
-  _playPageTransition(previousPage, page);
   _phonePagesEntered.add(page);
   if (page !== "menu") document.body.classList.remove("phone-settings-auth");
   _page = page;
   document.body.dataset.phonePage = page;
   document.body.classList.add("phone-app-pages");
-  _setNav(page);
   document.querySelectorAll(".phone-page-surface").forEach((element) => element.classList.remove("phone-page-active"));
   const home = document.getElementById("phone-home-page");
   if (page !== "home") {
@@ -1018,6 +1029,7 @@ function _render(page, previousPage) {
     if (name === page) _showSurface(surface, element);
     else _hideSurface(surface, element);
   }
+  _setNav(page);
   _renderPhoneBranchHeader(page);
   _primePhoneTopbars();
   _attachPageScroll(page);
@@ -1033,6 +1045,7 @@ function _render(page, previousPage) {
   }
   if (firstPageEntry && !isReduceMotionActive()) _playPhonePageEntry(page);
   if (page === "map") window.dispatchEvent(new Event("hf:phone-map-visible"));
+  _playPageTransition(previousPage, page);
   window.dispatchEvent(new CustomEvent(EVT.PHONE_PAGE_CHANGED, { detail: { page, previousPage } }));
 }
 

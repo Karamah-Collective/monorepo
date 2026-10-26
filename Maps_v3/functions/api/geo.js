@@ -66,6 +66,7 @@ export async function onRequestGet(context) {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': allowedOrigin(request),
+      'Vary': 'Origin',
     },
   });
 }
