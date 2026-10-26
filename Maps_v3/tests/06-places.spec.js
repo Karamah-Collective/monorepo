@@ -304,7 +304,7 @@ test.describe("Places — Place Detail Sheet", () => {
     await expect(body.locator(".pp-addr")).toBeVisible();
     await expect(page.locator("#place-sheet-actions .pp-dir-btn")).toBeVisible();
     await expect(page.locator("#place-sheet-actions .pp-share-btn")).toBeVisible();
-    await expect(body.locator(".pp-fav-btn")).toBeVisible();
+    await expect(page.locator("#place-sheet-toolbar .pp-fav-btn")).toBeVisible();
   });
 
   test("place sheet has edit button", async ({ page }) => {
@@ -325,7 +325,7 @@ test.describe("Places — Place Detail Sheet", () => {
     await page.evaluate(() => localStorage.removeItem("hf_favs"));
     await page.locator(".place-mk-wrap").first().dispatchEvent('click');
     await page.waitForTimeout(800);
-    const favBtn = page.locator("#place-sheet-body .pp-fav-btn");
+    const favBtn = page.locator("#place-sheet-toolbar .pp-fav-btn");
     await expect(favBtn).not.toHaveClass(/active/);
     await favBtn.click();
     await page.waitForTimeout(200);
@@ -337,7 +337,7 @@ test.describe("Places — Place Detail Sheet", () => {
     await page.evaluate(() => localStorage.removeItem("hf_visited"));
     await page.locator(".place-mk-wrap").first().dispatchEvent("click");
     await page.waitForTimeout(800);
-    const visitBtn = page.locator("#place-sheet-body .pp-visit-chip");
+    const visitBtn = page.locator("#place-sheet-toolbar .pp-visit-chip");
     await visitBtn.click();
     await page.waitForTimeout(200);
     await expect(page.locator("#toast-stack .snack-label").last()).toHaveText("Marked as visited");

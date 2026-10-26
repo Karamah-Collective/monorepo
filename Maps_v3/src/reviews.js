@@ -810,30 +810,24 @@ function _restoreReviewSummary(overlay) {
 function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
   const avg = ratingData ? ratingData.avg.toFixed(1) : "–";
   const count = ratingData ? ratingData.count : 0;
-  const communityReviews = reviews.filter((r) => r.source !== "google");
-  const communityCountFallback = communityReviews.length;
-  const communityCount = Number(ratingData?.sources?.community?.count ?? communityCountFallback);
-  const googleCountFromSources = Number(ratingData?.sources?.google?.count || 0);
-  const googleCount = googleCountFromSources > 0 ? googleCountFromSources : Math.max(0, count - communityCount);
   const displayReviews = reviews
     .filter((r) => _getReviewText(r).length > 0 || (Array.isArray(r.images) && r.images.length > 0))
     .sort(_compareReviewPriority);
   const ratedReviews = reviews.filter((r) => _getReviewRating(r) >= 1 && _getReviewRating(r) <= 5);
   const distribution = _calcDistribution(ratedReviews);
-  const distributionTotal = Math.max(1, ratedReviews.length || communityCountFallback || 0);
-
-  const distBars = [5, 4, 3, 2, 1].map((stars) => {
-    const pct = ((distribution[stars] || 0) / distributionTotal) * 100;
-    return `<div class="rv-dist-row">
-      <span class="rv-dist-label">${stars}</span>
-      <div class="rv-dist-bar"><div class="rv-dist-fill" style="width:${pct}%"></div></div>
-    </div>`;
+  const distributionTotal = ratedReviews.length;
+  const distSegments = distributionTotal
+    ? [1, 2, 3, 4, 5].map((stars) => {
+      const countForRating = distribution[stars] || 0;
+      const label = `${countForRating} ${stars}-star rating${countForRating !== 1 ? "s" : ""}`;
+      const zeroClass = countForRating ? "" : " rv-dist-segment--zero";
+      return `<span class="rv-dist-segment rv-dist-segment--${stars}${zeroClass}" style="width:${(countForRating / distributionTotal) * 100}%" title="${label}" aria-label="${label}"></span>`;
+    }).join("")
+    : `<span class="rv-dist-segment rv-dist-segment--empty" title="Rating distribution unavailable" aria-label="Rating distribution unavailable"></span>`;
+  const distLegend = [1, 2, 3, 4, 5].map((stars) => {
+    const countForRating = distribution[stars] || 0;
+    return `<span class="rv-dist-legend-item rv-dist-legend-item--${stars}" title="${countForRating} ${stars}-star rating${countForRating !== 1 ? "s" : ""}"><i aria-hidden="true"></i><span>${stars}</span></span>`;
   }).join("");
-
-  const sourceSummary = `<div class="rv-source-stats">
-            <span class="rv-source-pill rv-source-pill-google">Google ${googleCount}</span>
-            <span class="rv-source-pill rv-source-pill-community">Community ${communityCount}</span>
-          </div>`;
 
   const headerWriteBtn = count > 0
     ? `<button class="sheet-action-btn btn-roundel-accent rv-write-trigger rv-header-add" type="button" aria-label="Write a review" title="Write a review">
@@ -845,12 +839,20 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
     : "";
 
   const summaryHtml = count > 0 ? `<div class="rv-summary">
-        <div class="rv-dist">${distBars}</div>
-        <div class="rv-avg-block">
-          <span class="rv-avg-num">${avg}</span>
-          <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "16")}</div>
-          <span class="rv-avg-count">${count} review${count !== 1 ? "s" : ""}</span>
-          ${sourceSummary}
+        <div class="rv-summary-overview">
+          <div class="rv-avg-block">
+            <span class="rv-avg-num">${avg}</span>
+          </div>
+          <div class="rv-summary-facts">
+            <div class="rv-rating-line">
+              <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "16")}</div>
+              <span class="rv-review-count pp-media-count" aria-label="${count} review${count !== 1 ? "s" : ""}">${count}</span>
+            </div>
+            <div class="rv-distribution">
+              <div class="rv-dist-segment-bar" role="img" aria-label="Rating distribution">${distSegments}</div>
+              <div class="rv-dist-legend">${distLegend}</div>
+            </div>
+          </div>
         </div>
       </div>` : "";
 

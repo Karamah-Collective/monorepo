@@ -9,6 +9,7 @@ test.describe("Phone app pages", () => {
   test("fresh phone launch opens Home with persistent navigation", async ({ page }) => {
     await expect(page.locator("#phone-home-page")).toBeVisible();
     await expect(page.locator("#phone-home-greeting")).toHaveText("Assalamu'Alaikum");
+    await expect(page.locator("#phone-home-city")).toHaveText("Finland");
     await expect(page.locator("#phone-home-title")).toBeHidden();
     await expect(page.locator("#phone-prayer-state")).toBeVisible();
     await expect(page.locator("#tab-bar")).toBeVisible();
@@ -71,6 +72,26 @@ test.describe("Phone app pages", () => {
 
     await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby");
     await expect(page.locator('[data-phone-place-id="home-cemetery-test"]')).toHaveCount(0);
+  });
+
+  test("repeated same-location GPS fixes do not replace the home carousel", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { setCurrentLocationState } = await import("/src/utils.js");
+      setCurrentLocationState({ lat: 60.1699, lng: 24.9384, accuracy: 10, source: "sim" });
+    });
+    const firstCard = page.locator("#phone-suggested-places .phone-home-place").first();
+    await expect(firstCard).toBeVisible();
+    await firstCard.evaluate((card) => card.setAttribute("data-test-card", "keep"));
+
+    await page.evaluate(async () => {
+      const { setCurrentLocationState } = await import("/src/utils.js");
+      for (let i = 0; i < 5; i++) {
+        setCurrentLocationState({ lat: 60.1699 + (i % 2) * 0.0002, lng: 24.9384, accuracy: 10, source: "sim" });
+      }
+    });
+    await page.waitForTimeout(150);
+
+    await expect(page.locator('#phone-suggested-places .phone-home-place[data-test-card="keep"]')).toHaveCount(1);
   });
 
   test("navbar active pill moves with the selected destination", async ({ page }) => {
@@ -873,7 +894,7 @@ test.describe("Phone app pages", () => {
     await page.locator("#dir-btn").click();
     await page.evaluate(async () => {
       const { setCurrentLocationState } = await import("/src/utils.js");
-      setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 12 });
+      setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 12, source: "sim" });
     });
     await expect(page.locator("#map-filter-chips [data-map-nearby]")).toHaveAttribute("aria-hidden", "false");
     await page.locator("#map-filter-chips [data-map-nearby]").click();

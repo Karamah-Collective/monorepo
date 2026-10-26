@@ -223,6 +223,7 @@ function activePromos(place) {
 let placeMarkers = [];
 let savedPinMarkers = [];
 let eventOnlyMarkers = [];
+let _renderedSavedMarkerStateKey = null;
 let _activeEventDetailId = null;
 let _activeEventPlaceId = null;
 
@@ -337,6 +338,7 @@ function _placeCssColor(type, fallback) {
 
 const placeSheetEl = document.getElementById("place-sheet");
 const placeSheetTitle = document.getElementById("place-sheet-title");
+const placeSheetToolbarEl = document.getElementById("place-sheet-toolbar");
 const placeSheetBody = document.getElementById("place-sheet-body");
 // Pinned action row (Directions/Call/Share/Edit) — a sibling of the scrollable
 // #place-sheet-body, not a child of it, so it never scrolls out of reach when
@@ -1814,6 +1816,13 @@ function _setupClusterLayers(geojson) {
 }
 
 export function addPlaceMarkers() {
+  const nearbyLocation = getCurrentLocationState();
+  if (_mapNearbyFilter && nearbyLocation.active && nearbyLocation.lat !== null && nearbyLocation.lng !== null) {
+    _lastMapNearbyLocation = { lat: nearbyLocation.lat, lng: nearbyLocation.lng };
+  } else if (!_mapNearbyFilter) {
+    _lastMapNearbyLocation = null;
+  }
+
   placeMarkers.forEach((m) => m.remove());
   placeMarkers = [];
   savedPinMarkers.forEach((m) => m.remove());
@@ -1918,6 +1927,7 @@ export function addPlaceMarkers() {
   // if a place sheet is currently open, since its old marker element is gone.
   _setActiveMarker(_activeEventDetailId ? _activeEventPlaceId : _activePlaceSheetId);
   addEventOnlyMarkers();
+  _renderedSavedMarkerStateKey = _savedMarkerStateKey();
 }
 
 /**
@@ -2046,7 +2056,7 @@ function _renderPopupRating(container, placeId, placeName, ratingData, reviewsTa
     ratingEl.title = "View reviews";
   } else {
     ratingEl.className = "pp-rating pp-rating--empty";
-    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">Be the first to review</span>${_chevronSVG}`;
+    ratingEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--review)" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="pp-rating-empty-text">No reviews yet</span>${_chevronSVG}`;
   }
   ratingEl.setAttribute("role", "button");
   ratingEl.setAttribute("tabindex", "0");
@@ -2110,7 +2120,22 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   const inner = document.createElement("div");
   inner.className = "pp-inner";
 
-  // Header: icon + type badge
+  const titleRow = document.createElement("div");
+  titleRow.className = "pp-title-row";
+  const titleActions = document.createElement("div");
+  titleActions.className = "pp-title-actions";
+  titleRow.append(placeSheetTitle, titleActions);
+  inner.appendChild(titleRow);
+  const syncTitleActionAlignment = () => {
+    const lineHeight = parseFloat(getComputedStyle(placeSheetTitle).lineHeight) || 0;
+    titleRow.classList.toggle(
+      "pp-title-row--wrapped",
+      placeSheetTitle.getBoundingClientRect().height > lineHeight + 1,
+    );
+  };
+
+  // Header: icon + type badge. The toolbar receives this after its action row
+  // is built so the sheet header reads type → visited → saved.
   const popupSponsor = activeSponsor(place);
   const hdr = document.createElement("div");
   hdr.className = "pp-hdr";
@@ -2118,8 +2143,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     `<span class="pp-icon" style="color:${cssColor}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">${_placeVisualIconHTML(visual)}</svg></span>` +
     `<span class="pp-badge" style="background:color-mix(in srgb, ${cssColor} 12%, transparent);color:${cssColor}">${esc(specificTypeLabel)}</span>` +
     (popupSponsor ? `<span class="pp-sponsor-badge" title="This place is featured by us. All listings are community-sourced — being featured does not affect halal verification.">Featured</span>` : ``);
-  inner.appendChild(hdr);
-
   // Tap-to-show tooltip on mobile for the Featured badge
   const featBadge = hdr.querySelector(".pp-sponsor-badge");
   if (featBadge) {
@@ -2146,24 +2169,27 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   addr.textContent = place.address;
   inner.appendChild(addr);
 
+  const metaRow = document.createElement("div");
+  metaRow.className = "pp-meta-row";
+
   // Contact row — phone / website / Google Maps link (Google-enriched or user-submitted)
   if (place.phone || place.website || place.mapsUrl) {
     const contact = document.createElement("div");
     contact.className = "pp-contact";
     const links = [];
     if (place.phone) {
-      links.push(`<a class="pp-contact-link" href="tel:${escA(place.phone)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${esc(place.phone)}</span></a>`);
+      links.push(`<a class="pp-contact-link" href="tel:${escA(place.phone)}" aria-label="Call" title="Call"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${esc(place.phone)}</span></a>`);
     }
     if (place.website) {
-      links.push(`<a class="pp-contact-link" href="${escA(place.website)}" target="_blank" rel="noopener noreferrer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>Website</span></a>`);
+      links.push(`<a class="pp-contact-link" href="${escA(place.website)}" target="_blank" rel="noopener noreferrer" aria-label="Website" title="Website"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>Website</span></a>`);
     }
     if (place.mapsUrl) {
-      links.push(`<a class="pp-contact-link" href="${escA(place.mapsUrl)}" target="_blank" rel="noopener noreferrer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Google Maps</span></a>`);
+      links.push(`<a class="pp-contact-link" href="${escA(place.mapsUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Google Maps" title="Google Maps"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Google Maps</span></a>`);
     }
     contact.innerHTML = links.join("");
     contact.querySelectorAll('a[href^="tel:"]').forEach((link) => link.addEventListener("click", () => track("phone_clicked", { place_id: place.id, category: String(place.type || "") })));
     contact.querySelectorAll('a[target="_blank"]').forEach((link) => link.addEventListener("click", () => track("website_clicked", { place_id: place.id, category: String(place.type || "") })));
-    inner.appendChild(contact);
+    metaRow.appendChild(contact);
   }
 
   // Keep this row out of the initial DOM. A granted permission can still need
@@ -2179,7 +2205,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     timelineBtn.className = "pp-timeline-btn pp-timeline-pill";
     timelineBtn.setAttribute("aria-label", "Add to timeline");
     timelineBtn.title = "Add to timeline";
-    iconRow.prepend(timelineBtn);
+    titleActions.prepend(timelineBtn);
 
     const renderTimelineState = (state) => {
       const labels = {
@@ -2302,7 +2328,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   window.addEventListener("hf:reviews-loaded", _onReviewsLoaded);
   _activePlaceSheetReviewsListener = _onReviewsLoaded;
 
-  inner.appendChild(reviewsSection);
+  metaRow.appendChild(reviewsSection);
+  inner.appendChild(metaRow);
 
   // Tags (plain text labels, no icons) + Google-sourced info chips (price, accessibility, service options)
   const tagChips = typeTags
@@ -2508,11 +2535,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   actions.appendChild(editBtn);
   root.appendChild(inner);
 
-  // Top-right icon/chip row: "Mark as visited" chip, fav star (to its
-  // right), and (for sponsors with a CTA) the promo-copy button — one flex
-  // row, positioned as a group (see .pp-icon-row in styles.css), so a
-  // wider chip can sit beside the fav star without needing per-button
-  // pixel math.
+  // Topbar icon/chip row: "Mark as visited" chip, fav star (to its right),
+  // and the optional promo-copy button.
   const iconRow = document.createElement("div");
   iconRow.className = "pp-icon-row";
 
@@ -2583,7 +2607,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     iconRow.appendChild(promoBtn);
   }
 
-  root.appendChild(iconRow);
+  placeSheetToolbarEl.replaceChildren(hdr, iconRow);
+  placeSheetTitle.textContent = place.name;
   const staggerContainers = [placeSheetEl.querySelector(".sheet-head"), inner, iconRow, actions].filter(Boolean);
   staggerContainers.forEach((container) => {
     container.classList.remove("stagger-in");
@@ -2599,7 +2624,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   if (fromListScrollTop !== null) _setPlaceSheetCloseAsBack();
   else _resetPlaceSheetCloseButton();
 
-  placeSheetTitle.textContent = place.name;
   placeSheetBody.innerHTML = "";
   placeSheetBody.appendChild(root);
 
@@ -2610,6 +2634,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   // Center the pin inside the map area left after the currently open sheet.
   // The helper also clears stale MapLibre padding when no sheet is open.
   requestAnimationFrame(() => {
+    syncTitleActionAlignment();
     staggerContainers.forEach((container) => container.classList.add("stagger-in"));
     focusMapPoint([place.lng, place.lat], {
       zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
@@ -2830,12 +2855,26 @@ const mapFilterCarousel = document.getElementById("map-filter-carousel");
 const mapFilterChips = document.getElementById("map-filter-chips");
 // shortcut: Nearby uses a fixed 10 km radius, add a user-facing radius control if product needs one.
 const MAP_NEARBY_RADIUS_KM = 10;
+// shortcut: nearby results refresh after 1 km of movement; lower this if boundary precision matters.
+const MAP_NEARBY_REFRESH_DISTANCE_KM = 1;
 let _mapNearbyFilter = false;
+let _lastMapNearbyLocation = null;
 let _mapNearbyPill = null;
 let _mapEventsFilter = false;
 let _mapEventsPill = null;
 let _temporaryMapFilterType = null;
 const TEMPORARY_MAP_FILTER_TYPES = new Set(["mosque"]);
+
+function _savedMarkerStateKey() {
+  const pins = getSavedPins()
+    .map((pin) => `${pin.id}:${pin.lat}:${pin.lng}:${pin.name || ""}`)
+    .sort()
+    .join("|");
+  const savedPlaces = activeTypeFilter === "saved"
+    ? `${[...favourites].sort().join(",")}/${[...visitedPlaces].sort().join(",")}`
+    : "";
+  return `${pins}::${savedPlaces}`;
+}
 
 function _placeHasUpcomingEvent(place) {
   const placeLat = Number(place.lat);
@@ -2968,6 +3007,7 @@ mapFilterChips?.addEventListener("click", (event) => {
     const location = getCurrentLocationState();
     if (!location.active || location.lat === null || location.lng === null) return;
     _mapNearbyFilter = !_mapNearbyFilter;
+    if (!_mapNearbyFilter) _lastMapNearbyLocation = null;
     _syncMapFilterChips();
     _scrollActiveMapFilterIntoView();
     addPlaceMarkers();
@@ -2992,11 +3032,19 @@ mapFilterChips?.addEventListener("click", (event) => {
 _syncMapFilterChips();
 window.addEventListener("hf:current-location-updated", () => {
   const location = getCurrentLocationState();
-  if (!location.active || location.lat === null || location.lng === null) _mapNearbyFilter = false;
+  if (!location.active || location.lat === null || location.lng === null) {
+    _mapNearbyFilter = false;
+    _lastMapNearbyLocation = null;
+  }
   _syncMapFilterChips();
   // Regular GPS fixes only move the user marker. Rebuild place markers when
-  // the location-dependent nearby filter is actually active.
-  if (getPhonePage() === "map" && _mapNearbyFilter) addPlaceMarkers();
+  // the location-dependent nearby filter is actually active and the user has
+  // moved enough to change the nearby result set materially.
+  if (getPhonePage() === "map" && _mapNearbyFilter && location.active && location.lat !== null && location.lng !== null) {
+    const moved = !_lastMapNearbyLocation
+      || haversineDistance(location.lat, location.lng, _lastMapNearbyLocation.lat, _lastMapNearbyLocation.lng) >= MAP_NEARBY_REFRESH_DISTANCE_KM;
+    if (moved) addPlaceMarkers();
+  }
 });
 
 export function openPlacesSheet() {
@@ -3204,7 +3252,7 @@ window.addEventListener("hf:current-location-updated", () => {
 // cheap, harmless no-visible-change pass for the toggle case; it only
 // actually matters for the wholesale sign-in/out swap.
 window.addEventListener(EVT.SAVED_SYNCED, () => {
-  addPlaceMarkers();
+  if (_renderedSavedMarkerStateKey !== _savedMarkerStateKey()) addPlaceMarkers();
   if (activeTypeFilter === "saved") renderPlacesList();
 });
 

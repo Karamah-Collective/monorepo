@@ -1,7 +1,7 @@
 import { EVT } from "./events.js";
 import { PLACE_CONFIG, typeIcon } from "./icons.js";
 import { nextOccurrence } from "./event-recurrence.js";
-import { getCurrentLocationState, getVisitorGeo, haversineDistance, isReduceMotionActive, reverseGeocodeCity } from "./utils.js";
+import { getCurrentLocationState, haversineDistance, isReduceMotionActive, reverseGeocodeCity } from "./utils.js";
 import { isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
 
 const PAGE_NAMES = new Set(["home", "map", "places", "events", "profile", "menu", "timeline"]);
@@ -75,8 +75,9 @@ const _phoneTopbarMutations = new Set();
 let _homeMode = "suggested";
 let _homeIntroPlayed = false;
 const _phonePagesEntered = new Set(["home"]);
-let _homeCity = "Helsinki";
+let _homeCity = "Finland";
 let _homeLocationKey = "";
+let _homeLocationAnchor = null;
 let _homeLocationRequest = 0;
 let _homePlacesReference = null;
 let _homeEventsReference = null;
@@ -87,6 +88,8 @@ let _homeSearchQuery = "";
 const _homePlacePreviewCache = new Map();
 const _homePlacePreviewPending = new Set();
 let _homePlaceStaticMapLinks = null;
+// shortcut: the home rail ignores sub-kilometre GPS jitter; lower this if exact live distances matter.
+const HOME_LOCATION_REFRESH_DISTANCE_KM = 1;
 
 function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null, actionBarElement = null, placesScrollElement = null, cityHeaderElement = null, updateLayout = true) {
   const chrome = document.getElementById("phone-chrome-bottom-zone");
@@ -839,33 +842,38 @@ async function _syncHomeLocation() {
   const places = Array.isArray(window.HFPhoneData?.getPlaces?.()) ? window.HFPhoneData.getPlaces() : [];
   if (location.active && location.lat !== null && location.lng !== null) {
     const key = `${Math.round(location.lat * 100)},${Math.round(location.lng * 100)}`;
-    if (_homeMode === "nearby" && _homeLocationKey === key) {
+    const moved = !_homeLocationAnchor
+      ? Number.POSITIVE_INFINITY
+      : haversineDistance(location.lat, location.lng, _homeLocationAnchor.lat, _homeLocationAnchor.lng);
+    if (_homeMode === "nearby" && _homeLocationKey && moved < HOME_LOCATION_REFRESH_DISTANCE_KM) {
       return;
     }
     _homeMode = "nearby";
     _homeLocationKey = key;
+    _homeLocationAnchor = { lat: location.lat, lng: location.lng };
     _homeCity = _nearestPlaceCity(places, location) || _homeCity;
     _renderHome();
     const city = await reverseGeocodeCity(location.lat, location.lng);
     if (request !== _homeLocationRequest || !getCurrentLocationState().active) return;
-    if (city) _homeCity = city;
-    _renderHome();
+    if (city && city !== _homeCity) {
+      _homeCity = city;
+      _renderHome();
+    }
     return;
   }
 
   const wasNearby = _homeMode === "nearby";
   _homeMode = "suggested";
   _homeLocationKey = "";
+  _homeLocationAnchor = null;
   if (wasNearby) {
     _homeSuggestionIds = [];
     _homeSuggestionsCity = null;
   }
-  _renderHome();
-  const visitor = await getVisitorGeo();
   if (request !== _homeLocationRequest || getCurrentLocationState().active) return;
-  _homeCity = String(visitor?.city || "Helsinki").trim() || "Helsinki";
+  _homeCity = "Finland";
   _renderHome();
-  void _loadHomeSuggestions(_homeCity);
+  void _loadHomeSuggestions("");
 }
 
 function _renderPrayer() {
@@ -893,7 +901,7 @@ function _renderHome() {
   const page = document.getElementById("phone-home-page");
   if (!page) return;
   const date = document.getElementById("phone-home-date");
-  const city = _homeCity || "Helsinki";
+  const city = _homeCity || "Finland";
   const cityLabel = document.getElementById("phone-home-city");
   if (cityLabel) cityLabel.textContent = city;
   if (date) date.textContent = _formatHomeDate();
@@ -934,6 +942,12 @@ function _renderHome() {
   const placeHeading = document.getElementById("phone-suggested-title");
   const placeRail = document.getElementById("phone-suggested-places");
   const nearby = _homeMode === "nearby";
+  const visiblePlaces = places.slice(0, 6);
+  const placeRailKey = JSON.stringify([
+    nearby,
+    nearby ? _homeLocationKey : _homeCity,
+    visiblePlaces.map((place) => [place.id, place.name, place.type, place.lat, place.lng]),
+  ]);
   if (placeHeading) placeHeading.textContent = nearby ? "Nearby" : "Suggested";
   if (placeRail) placeRail.setAttribute("aria-label", nearby ? "Nearby places" : "Suggested places");
 
@@ -946,13 +960,16 @@ function _renderHome() {
         : "No places are available yet.";
   }
   if (placeList) {
-    placeList.innerHTML = places.slice(0, 6).map((place) => `
-      <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}" style="--phone-place-color:${_escape((PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).color)}">
-        <span class="phone-home-place-type">${_escape(String(place.type || "Place").replace(/[_-]+/g, " "))}</span>
-        <span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span>
-        <span class="phone-home-place-copy"><strong>${_escape(place.name || "Unnamed place")}</strong><span class="phone-home-place-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span></span>
-      </button>`).join("");
-    _loadHomePlacePreviews(places.slice(0, 6));
+    if (placeList.dataset.homeRailKey !== placeRailKey) {
+      placeList.innerHTML = visiblePlaces.map((place) => `
+        <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}" style="--phone-place-color:${_escape((PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).color)}">
+          <span class="phone-home-place-type">${_escape(String(place.type || "Place").replace(/[_-]+/g, " "))}</span>
+          <span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span>
+          <span class="phone-home-place-copy"><strong>${_escape(place.name || "Unnamed place")}</strong><span class="phone-home-place-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span></span>
+        </button>`).join("");
+      placeList.dataset.homeRailKey = placeRailKey;
+    }
+    _loadHomePlacePreviews(visiblePlaces);
   }
 
   if (eventState) {
@@ -960,15 +977,23 @@ function _renderHome() {
     eventState.textContent = !data ? "Events are loading." : events.length ? "" : "No upcoming events yet.";
   }
   if (eventList) {
-    eventList.innerHTML = events.slice(0, 3).map((event) => {
-      const dateParts = _formatEventDateParts(event);
-      return `
-        <button class="phone-home-event" type="button" data-phone-event-id="${_escape(event.id)}">
-          <span class="phone-home-event-date" aria-label="${_escape(dateParts.label)}"><span class="phone-home-event-date-visual" aria-hidden="true"><strong>${_escape(dateParts.day)}</strong><small>${_escape(dateParts.month)}</small></span><span class="phone-home-event-date-label">${_escape(dateParts.label)}</span></span>
-          <span class="phone-home-event-copy"><strong>${_escape(event.title || event.name || "Community event")}</strong><small>${_escape([_eventTime(event), event.location || event.placeName || event.locationName].filter(Boolean).join(" · "))}</small></span>
-          <span class="phone-home-event-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
-        </button>`;
-    }).join("");
+    const visibleEvents = events.slice(0, 3);
+    const eventRailKey = JSON.stringify(visibleEvents.map((event) => [
+      event.id, event.title, event.name, event.date, event.startDate, event.startTime, event.time,
+      event.location, event.placeName, event.locationName, event.recurring, event.recurrence,
+    ]));
+    if (eventList.dataset.homeRailKey !== eventRailKey) {
+      eventList.innerHTML = visibleEvents.map((event) => {
+        const dateParts = _formatEventDateParts(event);
+        return `
+          <button class="phone-home-event" type="button" data-phone-event-id="${_escape(event.id)}">
+            <span class="phone-home-event-date" aria-label="${_escape(dateParts.label)}"><span class="phone-home-event-date-visual" aria-hidden="true"><strong>${_escape(dateParts.day)}</strong><small>${_escape(dateParts.month)}</small></span><span class="phone-home-event-date-label">${_escape(dateParts.label)}</span></span>
+            <span class="phone-home-event-copy"><strong>${_escape(event.title || event.name || "Community event")}</strong><small>${_escape([_eventTime(event), event.location || event.placeName || event.locationName].filter(Boolean).join(" · "))}</small></span>
+            <span class="phone-home-event-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
+          </button>`;
+      }).join("");
+      eventList.dataset.homeRailKey = eventRailKey;
+    }
   }
 }
 

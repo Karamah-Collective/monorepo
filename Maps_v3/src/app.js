@@ -24,11 +24,11 @@ import {
   hideOfflineBanner,
   showToast,
   isReduceMotionActive,
+  getCurrentLocationState,
 } from "./utils.js";
 import {
   preloadSatelliteSource,
   centerStoredHomeIfAvailable,
-  centerVisitorCityIfAvailable,
   syncHomeMarker,
   primeLocationAtStartup,
 } from "./map-controls.js";
@@ -49,7 +49,7 @@ const WELCOME_LOGO_URL = "/LOGO%20-%20Manarah.svg";
 const WELCOME_LOGO_CYCLE_MS = 1550;
 const WELCOME_REVEAL_SETTLE_MS = 180;
 const WELCOME_OVERLAY_EXIT_MS = 420;
-const SOFT_CITY_START_BUDGET_MS = 900;
+const SOFT_LOCATION_START_BUDGET_MS = 900;
 const WELCOME_LOGO_TIMEOUT_MS = 2000;
 const WELCOME_MIN_VISIBLE_MS = 1100;
 const TUTORIAL_DELAY_MS = 800;
@@ -175,7 +175,7 @@ function _afterWelcomeIdle() {
 
 // Fetch real startup data while tiles and the welcome animation are loading.
 preloadPlacesData();
-void primeLocationAtStartup();
+const startupLocationReady = primeLocationAtStartup();
 const welcomeReady = _prepareWelcomeScreen();
 void _prepareStartupView();
 
@@ -194,15 +194,14 @@ async function _prepareStartupView() {
     const settings = await appSettingsReady;
     renderAppNotice();
     if (interacted || hasIncomingSharedState() || centerStoredHomeIfAvailable({ instant: true })) return;
-    map.jumpTo({ center: [settings.defaultLng, settings.defaultLat], zoom: settings.defaultZoom });
-    if (settings.autoCityEnabled) {
-      let withinBudget = true;
-      await _withSoftTimeout(centerVisitorCityIfAvailable({
-        instant: true,
-        canApply: () => withinBudget && !interacted && !!document.getElementById("welcome-screen"),
-      }), SOFT_CITY_START_BUDGET_MS);
-      withinBudget = false;
+    await _withSoftTimeout(startupLocationReady, SOFT_LOCATION_START_BUDGET_MS);
+    if (interacted) return;
+    const location = getCurrentLocationState();
+    if (location.active && location.lat !== null && location.lng !== null) {
+      map.jumpTo({ center: [location.lng, location.lat], zoom: settings.defaultZoom });
+      return;
     }
+    map.jumpTo({ center: [settings.defaultLng, settings.defaultLat], zoom: settings.defaultZoom });
   } catch {
     console.warn("Startup centering unavailable; keeping the current map view.");
   } finally { map.off("movestart", onMove); }

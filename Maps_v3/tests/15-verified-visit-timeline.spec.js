@@ -190,10 +190,10 @@ test.describe("verified visit timeline", () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet(placesData[0]);
     });
-    await expect(page.locator("#place-sheet-body .pp-visit-chip")).toBeVisible();
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Add to timeline");
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn svg")).toHaveCount(0);
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveAttribute("aria-label", "Add to timeline");
+    await expect(page.locator("#place-sheet-toolbar .pp-visit-chip")).toBeVisible();
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveText("Add to timeline");
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn svg")).toHaveCount(0);
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveAttribute("aria-label", "Add to timeline");
     const locationCalls = await page.evaluate(() => {
       let calls = 0;
       Object.defineProperty(navigator, "geolocation", {
@@ -204,7 +204,7 @@ test.describe("verified visit timeline", () => {
       return 0;
     });
     expect(locationCalls).toBe(0);
-    await page.click("#place-sheet-body .pp-timeline-btn");
+    await page.click("#place-sheet-body .pp-title-actions .pp-timeline-btn");
     await expect(page.locator("#menu-google-signin")).toBeVisible({ timeout: 10_000 });
     expect(await page.evaluate(() => window.__timelineLocationCalls())).toBe(0);
   });
@@ -257,7 +257,7 @@ test.describe("verified visit timeline", () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet({ ...placesData[0], lat: 60.1699, lng: 24.9384 });
     });
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveAttribute("aria-label", "Add to timeline");
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveAttribute("aria-label", "Add to timeline");
   });
 
   test("GPS-off timeline action offers a toast action to turn location on", async ({ page }) => {
@@ -286,13 +286,13 @@ test.describe("verified visit timeline", () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet({ ...placesData[0], lat: 60.1699, lng: 24.9384 });
     });
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Add to timeline");
-    await page.locator("#place-sheet-body .pp-timeline-btn").click();
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveText("Add to timeline");
+    await page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn").click();
     await expect(page.locator(".share-toast-action")).toContainText("Location is off");
     await expect(page.locator(".share-toast-action")).toContainText("Tap to turn on GPS");
     await page.locator(".share-toast-action").click();
     await expect.poll(() => page.evaluate(() => window.__timelineWatchCalls || 0)).toBe(1);
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Added to timeline", { timeout: 5000 });
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveText("Added to timeline", { timeout: 5000 });
   });
 
   test("startup location notice is persistent and dismissible", async ({ page }) => {
@@ -337,10 +337,10 @@ test.describe("verified visit timeline", () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet({ ...placesData[0], lat: 60.1699, lng: 24.9384 });
     });
-    await page.locator("#place-sheet-body .pp-timeline-btn").click();
+    await page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn").click();
     await page.locator(".share-toast-action").click();
     await expect(page.locator("#toast-stack .share-toast").filter({ hasText: "You’re about" })).toBeVisible();
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveCount(0, { timeout: 1000 });
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveCount(0, { timeout: 1000 });
     expect(await page.evaluate(() => document.querySelectorAll('body > #toast-stack [data-state="idle"]').length)).toBe(0);
   });
 
@@ -398,10 +398,10 @@ test.describe("verified visit timeline", () => {
     const initialTimelineActionCount = await page.evaluate(async () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet({ ...placesData[0], lat: 60.1699, lng: 24.9384 });
-      return document.querySelectorAll("#place-sheet-body .pp-timeline-btn").length;
+      return document.querySelectorAll("#place-sheet-body .pp-title-actions .pp-timeline-btn").length;
     });
     expect(initialTimelineActionCount).toBe(0);
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveCount(0, { timeout: 10_000 });
   });
 
   test("Profile renders summary, month groups, repeated visits, and the empty-coordinate event", async ({ page }) => {
@@ -565,29 +565,28 @@ test.describe("verified visit timeline", () => {
       const { placesData, openPlaceSheet } = await import("/src/places.js");
       openPlaceSheet({ ...placesData[0], id: "p1", lat: 60.1699, lng: 24.9384 });
     });
-    const actionButtons = page.locator("#place-sheet-body .pp-icon-row > button");
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Add to timeline");
-    await expect(actionButtons.nth(0)).toHaveAttribute("aria-label", "Add to timeline");
-    expect(await actionButtons.nth(0).evaluate((button) => getComputedStyle(button).transitionProperty.split(",").map((property) => property.trim()))).toContain("width");
-    const actionLayout = await actionButtons.evaluateAll((buttons) => buttons.slice(0, 3).map((button) => {
-      const box = button.getBoundingClientRect();
-      return { left: box.left, right: box.right, centerY: box.top + box.height / 2 };
-    }));
-    expect(actionLayout[1].left).toBeGreaterThanOrEqual(actionLayout[0].right);
-    expect(actionLayout[2].left).toBeGreaterThanOrEqual(actionLayout[1].right);
-    expect(Math.abs(actionLayout[1].centerY - actionLayout[0].centerY)).toBeLessThanOrEqual(1);
-    expect(Math.abs(actionLayout[2].centerY - actionLayout[0].centerY)).toBeLessThanOrEqual(1);
-    const categoryCenterY = await page.locator("#place-sheet-body .pp-badge").evaluate((badge) => {
-      const box = badge.getBoundingClientRect();
-      return box.top + box.height / 2;
+    const timelineButton = page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn");
+    await expect(timelineButton).toHaveText("Add to timeline");
+    await expect(timelineButton).toHaveAttribute("aria-label", "Add to timeline");
+    expect(await timelineButton.evaluate((button) => getComputedStyle(button).transitionProperty.split(",").map((property) => property.trim()))).toContain("width");
+    const titleActionLayout = await page.evaluate(() => {
+      const title = document.querySelector("#place-sheet-title").getBoundingClientRect();
+      const button = document.querySelector("#place-sheet-body .pp-title-actions .pp-timeline-btn").getBoundingClientRect();
+      return {
+        titleRight: title.right,
+        buttonLeft: button.left,
+        buttonCenterY: button.top + button.height / 2,
+        titleCenterY: title.top + title.height / 2,
+      };
     });
-    expect(Math.abs(actionLayout[0].centerY - categoryCenterY)).toBeLessThanOrEqual(3);
-    expect(await actionButtons.nth(0).evaluate((button) => button.scrollWidth <= button.clientWidth + 1)).toBe(true);
-    await page.locator("#place-sheet-body .pp-timeline-btn").click();
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveText("Added to timeline");
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).toHaveAttribute("data-state", "cooldown");
-    await expect(page.locator("#place-sheet-body .pp-timeline-btn")).not.toBeDisabled();
-    await page.locator("#place-sheet-body .pp-timeline-btn").click();
+    expect(titleActionLayout.buttonLeft).toBeGreaterThanOrEqual(titleActionLayout.titleRight);
+    expect(Math.abs(titleActionLayout.buttonCenterY - titleActionLayout.titleCenterY)).toBeLessThanOrEqual(3);
+    expect(await timelineButton.evaluate((button) => button.scrollWidth <= button.clientWidth + 1)).toBe(true);
+    await page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn").click();
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveText("Added to timeline");
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveAttribute("data-state", "cooldown");
+    await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).not.toBeDisabled();
+    await page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn").click();
     await expect(page.locator(".snack-label", { hasText: "Already added to timeline" })).toBeVisible({ timeout: 3_000 });
     await page.evaluate(() => window.__manarahGpsSim.deactivate());
   });

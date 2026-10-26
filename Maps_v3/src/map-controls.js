@@ -337,10 +337,8 @@ function _normalizeCityKey(city) {
 /**
  * Centers the first map view on the visitor's Cloudflare IP city when known.
  *
- * Carrier networks often route mobile traffic through a different Finnish city,
- * so automatic startup centering is intentionally limited to the Helsinki metro
- * area. Other Finnish cities keep the admin-authored default map view instead
- * of surprising visitors with a far-away first camera.
+ * Uses the same coarse city metadata that powers the home page. Cloudflare's
+ * coordinates cover cities that are not in the local view lookup.
  * @param {{ instant?: boolean, canApply?: () => boolean }} [options={}] - Whether to jump instead of animate, plus an optional freshness guard.
  * @returns {Promise<boolean>} True when a recognized Finnish city was applied.
  */
@@ -349,7 +347,14 @@ export async function centerVisitorCityIfAvailable({ instant = false, canApply =
   if (geo?.country !== "FI") return false;
   if (canApply && !canApply()) return false;
 
-  const center = CITY_START_VIEWS[_normalizeCityKey(geo.city)];
+  const cityCenter = CITY_START_VIEWS[_normalizeCityKey(geo.city)];
+  const geoLat = Number(geo.lat);
+  const geoLng = Number(geo.lon);
+  const center = cityCenter || (
+    Number.isFinite(geoLat) && Number.isFinite(geoLng)
+      ? [geoLng, geoLat]
+      : null
+  );
   if (!center) return false;
 
   const view = {
