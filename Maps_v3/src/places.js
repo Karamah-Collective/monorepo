@@ -1671,6 +1671,17 @@ const PLACE_CLICK_ZOOM = 14;
 const PLACE_SHEET_MAX_HEIGHT_RATIO = 0.9;
 let _clusterLayersReady = false;
 
+function _focusOpenPlace(place, duration = 300) {
+  if (!isPhone() || _activePlaceSheetId !== place.id) return;
+  requestAnimationFrame(() => {
+    if (placeSheetEl.hidden || placeSheetEl.classList.contains("shut") || _activePlaceSheetId !== place.id) return;
+    focusMapPoint([place.lng, place.lat], {
+      zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
+      duration,
+    });
+  });
+}
+
 function _buildPlacesGeoJSON(places) {
   return {
     type: "FeatureCollection",
@@ -2093,9 +2104,9 @@ function _renderPlaceSheetReviews(reviewsSection, reviewsTarget, placeId, placeN
 export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   if (isPhone()) {
     // Programmatic place links can originate on Home/Profile/Timeline; the
-    // detail window still belongs over the Map, while Places keeps its list
-    // as the background for list-originated opens.
-    if (!["map", "places"].includes(getPhonePage())) navigatePhonePage("map");
+    // detail window always belongs over the Map so its selected pin remains
+    // visible, including when the place originated in the Places list.
+    if (getPhonePage() !== "map") navigatePhonePage("map");
     if (placeSheetEl.classList.contains("shut")) pushPhoneWindowState("place");
   }
   track("place_opened", { place_id: place.id, place_name: String(place.name || ""), place_lat: Math.round(Number(place.lat) * 100) / 100, place_lng: Math.round(Number(place.lng) * 100) / 100, category: String(place.type || ""), source: "map_marker", mode: "map" });
@@ -2362,7 +2373,10 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   import("./place-media.js").then(({ mountPlaceMedia }) => {
     if (!mediaHost.isConnected) return;
     mediaController = mountPlaceMedia(mediaHost, place, {
-      onLayoutChange: () => placeSheetSnap.remeasure({ preserveExpansion: true }),
+      onLayoutChange: () => {
+        placeSheetSnap.remeasure({ preserveExpansion: true });
+        _focusOpenPlace(place);
+      },
     });
   }).catch(() => { /* Photos are optional; place details remain complete. */ });
   const _onPlaceMediaChanged = (event) => {
@@ -2636,10 +2650,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   requestAnimationFrame(() => {
     syncTitleActionAlignment();
     staggerContainers.forEach((container) => container.classList.add("stagger-in"));
-    focusMapPoint([place.lng, place.lat], {
-      zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
-      duration: 500,
-    });
+    _focusOpenPlace(place, 500);
   });
 }
 
@@ -3057,9 +3068,6 @@ export function openPlacesSheet() {
   if (isPhone()) {
     clearPhoneWindowState();
     navigatePhonePage("places");
-    // Legacy callers can leave the Events surface open; Places is a peer page,
-    // so never let that surface remain above the newly selected destination.
-    _eventsOverlay?.classList.add("hide");
     placesSheet.classList.remove("shut");
   }
   placesSheet.hidden = false;

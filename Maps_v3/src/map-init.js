@@ -125,6 +125,7 @@ window.addEventListener("hf:phone-map-visible", () => {
 
 function _isVisibleFocusPanel(el) {
   if (!el || el.hidden) return false;
+  if (el.classList.contains("phone-page-transition-leaving") || el.classList.contains("phone-page-transition-underlay")) return false;
   if (
     el.classList.contains("shut") &&
     el.dataset.sheetState !== FOCUS_SHEET_OPENING_STATE

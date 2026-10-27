@@ -157,6 +157,114 @@ test.describe("Phone app pages", () => {
     }
   });
 
+  test("peer pages push while profile branches slide over their origin", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    const profilePushState = await page.evaluate(() => ({
+      mode: document.body.dataset.phoneTransitionMode,
+      incoming: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-active"),
+      outgoing: document.querySelector("#phone-home-page").classList.contains("phone-page-transition-leaving"),
+    }));
+    expect(profilePushState).toEqual({ mode: "push", incoming: true, outgoing: true });
+    await page.waitForTimeout(450);
+    await page.locator("#home-btn").click();
+    await page.waitForTimeout(450);
+
+    await page.locator("#places-btn").click();
+    const pushState = await page.evaluate(() => ({
+      incoming: document.querySelector("#places-sheet").classList.contains("phone-page-transition-active"),
+      outgoing: document.querySelector("#phone-home-page").classList.contains("phone-page-transition-leaving"),
+    }));
+    expect(pushState).toEqual({ incoming: true, outgoing: true });
+    await page.waitForTimeout(450);
+
+    await page.locator("#menu-pill").click();
+    await page.waitForTimeout(450);
+    await page.locator("#phone-profile-settings-btn").click();
+    const branchState = await page.evaluate(() => ({
+      incoming: document.querySelector("#menu-sheet").classList.contains("phone-page-transition-active"),
+      origin: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-underlay"),
+      incomingWindow: (() => {
+        const menu = document.querySelector("#menu-sheet");
+        return !menu.hidden && !menu.classList.contains("shut") && !menu.classList.contains("hide");
+      })(),
+      navbarHidden: getComputedStyle(document.querySelector("#phone-chrome-bottom-zone")).pointerEvents === "none",
+      incomingAboveOrigin: Number(getComputedStyle(document.querySelector("#menu-sheet")).zIndex) >
+        Number(getComputedStyle(document.querySelector("#profile-sheet")).zIndex),
+    }));
+    expect(branchState).toEqual({ incoming: true, origin: true, incomingWindow: true, navbarHidden: true, incomingAboveOrigin: true });
+    await page.waitForTimeout(450);
+
+    await page.locator("#mp-sheet-close").click();
+    const profileFromMenuState = await page.evaluate(() => ({
+      mode: document.body.dataset.phoneTransitionMode,
+      incoming: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-stationary"),
+      outgoing: document.querySelector("#menu-sheet").classList.contains("phone-page-transition-leaving"),
+    }));
+    expect(profileFromMenuState).toEqual({ mode: "overlay", incoming: true, outgoing: true });
+    await page.waitForTimeout(450);
+
+    await page.locator("#events-nav-btn").click();
+    await page.waitForTimeout(450);
+    await page.locator("#menu-pill").click();
+    const profileFromEventsState = await page.evaluate(() => ({
+      mode: document.body.dataset.phoneTransitionMode,
+      incoming: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-active"),
+      outgoing: document.querySelector("#events-overlay").classList.contains("phone-page-transition-leaving"),
+      outgoingDisplay: getComputedStyle(document.querySelector("#events-overlay")).display,
+    }));
+    expect(profileFromEventsState).toEqual({ mode: "push", incoming: true, outgoing: true, outgoingDisplay: "flex" });
+  });
+
+  test("profile branch back buttons animate the child out", async ({ page }) => {
+    await page.locator("#menu-pill").click();
+    await page.waitForTimeout(450);
+    await page.locator("#phone-profile-settings-btn").click();
+    await page.waitForTimeout(450);
+    await page.locator("#mp-sheet-close").click();
+    const backState = await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const menu = document.querySelector("#menu-sheet");
+      resolve({
+        mode: document.body.dataset.phoneTransitionMode,
+        incoming: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-stationary"),
+        outgoing: menu.classList.contains("phone-page-transition-leaving"),
+        outgoingDisplay: getComputedStyle(menu).display,
+        outgoingAnimation: getComputedStyle(menu).animationName,
+      });
+    }))));
+    expect(backState).toMatchObject({
+      mode: "overlay",
+      incoming: true,
+      outgoing: true,
+      outgoingDisplay: "flex",
+      outgoingAnimation: "phone-page-overlay-out",
+    });
+    expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector("#menu-sheet")).zIndex) >
+      Number(getComputedStyle(document.querySelector("#profile-sheet")).zIndex))).toBe(true);
+  });
+
+  test("Events to Places uses the paired push transition", async ({ page }) => {
+    await page.locator("#events-nav-btn").click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
+    await page.waitForTimeout(450);
+    await page.locator("#places-btn").click();
+    const motion = await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const leaving = document.querySelector("#events-overlay");
+      const active = document.querySelector("#places-sheet");
+      resolve({
+        mode: document.body.dataset.phoneTransitionMode,
+        leavingAnimation: getComputedStyle(leaving).animationName,
+        activeAnimation: getComputedStyle(active).animationName,
+        leavingAboveActive: Number(getComputedStyle(leaving).zIndex) > Number(getComputedStyle(active).zIndex),
+      });
+    }))));
+    expect(motion).toEqual({
+      mode: "push",
+      leavingAnimation: "phone-page-push-out-back",
+      activeAnimation: "phone-page-push-in-back",
+      leavingAboveActive: true,
+    });
+  });
+
   test("page surfaces do not use bottom-enter transitions and can scroll", async ({ page }) => {
     for (const id of ["places-btn", "events-nav-btn", "menu-pill"]) {
       await page.locator(`#${id}`).click();
@@ -913,12 +1021,27 @@ test.describe("Phone app pages", () => {
     expect(await page.evaluate(async () => (await import("/src/places.js")).activeTypeFilter)).toBe("service");
   });
 
-  test("place details stay windows and browser back returns to the Places page", async ({ page }) => {
+  test("place details open over Map with the selected pin", async ({ page }) => {
     await page.locator("#places-btn").click();
     const firstPlace = page.locator("#places-list li[data-place-id]").first();
     await expect(firstPlace).toBeVisible({ timeout: 15_000 });
     await firstPlace.click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
+    const placeId = await firstPlace.getAttribute("data-place-id");
+    const marker = page.locator(`.place-mk-wrap[data-place-id="${placeId}"]`);
+    await expect(marker).toHaveClass(/mk-selected/);
+    const pinOffset = () => page.evaluate((id) => {
+      const markerRect = document.querySelector(`.place-mk-wrap[data-place-id="${CSS.escape(id)}"]`).getBoundingClientRect();
+      const mapRect = document.querySelector("#map").getBoundingClientRect();
+      const sheetTop = document.querySelector("#place-sheet").getBoundingClientRect().top;
+      const availableBottom = Math.min(mapRect.bottom, sheetTop);
+      return Math.max(
+        Math.abs((markerRect.left + markerRect.right) / 2 - (mapRect.left + mapRect.right) / 2),
+        Math.abs(markerRect.bottom - (mapRect.top + availableBottom) / 2),
+      );
+    }, placeId);
+    await expect.poll(pinOffset, { timeout: 2_000 }).toBeLessThan(8);
     await expect(page.locator("body")).toHaveClass(/phone-window-open/);
     await expect(page.locator(".phone-window-morph")).toHaveCount(0);
     await page.evaluate(async () => {
@@ -932,8 +1055,6 @@ test.describe("Phone app pages", () => {
     expect(toastLayers.toast).toBeGreaterThan(toastLayers.window);
     await page.waitForTimeout(400);
     const layers = await page.evaluate(() => ({
-      window: Number.parseInt(getComputedStyle(document.querySelector("#place-sheet")).zIndex, 10),
-      nav: Number.parseInt(getComputedStyle(document.querySelector("#phone-chrome-bottom-zone")).zIndex, 10),
       hitStack: (() => {
         const nav = document.querySelector("#phone-chrome-bottom-zone").getBoundingClientRect();
         return document.elementsFromPoint(nav.left + nav.width / 2, nav.top + nav.height / 2)
@@ -941,13 +1062,11 @@ test.describe("Phone app pages", () => {
           .filter(Boolean);
       })(),
     }));
-    expect(layers.window).toBeGreaterThan(layers.nav);
     expect(layers.hitStack[0]).toBe("place-sheet");
     await page.goBack();
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "places");
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await expect(page.locator("body")).not.toHaveClass(/phone-window-open/);
     await expect(page.locator("#place-sheet")).toHaveClass(/shut/);
-    await expect(page.locator("#places-sheet")).not.toHaveClass(/shut/);
   });
 
   test("direct place dismissal restores the Places surface", async ({ page }) => {

@@ -13850,6 +13850,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #places-sheet.phone-page-surface:not(.shut),
   #profile-sheet.phone-page-surface:not(.shut),
   #menu-sheet.phone-page-surface:not(.shut) { display: flex !important; flex-direction: column; padding-bottom: calc(var(--tab-h) + var(--safe-b)); }
+  #menu-sheet.phone-page-surface.hide { display: none !important; }
   #places-sheet.phone-page-surface > .sheet-head,
   #profile-sheet.phone-page-surface > .sheet-head,
   #menu-sheet.phone-page-surface > .sheet-head { flex: 0 0 auto; padding-top: calc(var(--safe-t) + var(--sp-5)); }
@@ -14517,34 +14518,90 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #dir-tab-route-icon { display: none !important; }
   #dir-tab-map-icon { display: block !important; }
 
-  /* Page changes use the same restrained horizontal motion as a native stack.
-     The direction follows the root destination order: Home, Maps, Places,
-     Events, Profile. */
-  body.phone-page-transition[data-phone-transition-direction="forward"] .phone-page-surface.phone-page-active,
-  body.phone-page-transition[data-phone-transition-direction="forward"] #map,
-  body.phone-page-transition[data-phone-transition-direction="back"] .phone-page-surface.phone-page-active,
-  body.phone-page-transition[data-phone-transition-direction="back"] #map {
+  /* Peer pages travel as a two-page push. Profile branches keep Profile
+     mounted underneath and only move the child page. */
+  .phone-page-surface.phone-page-transition-leaving,
+  .phone-page-surface.phone-page-transition-underlay {
+    display: flex !important;
+  }
+  #events-overlay.phone-page-surface.phone-page-transition-leaving,
+  #events-overlay.phone-page-surface.phone-page-transition-underlay,
+  #menu-sheet.phone-page-surface.phone-page-transition-leaving,
+  #menu-sheet.phone-page-surface.phone-page-transition-underlay,
+  #timeline-overlay.phone-page-surface.phone-page-transition-leaving,
+  #timeline-overlay.phone-page-surface.phone-page-transition-underlay {
+    display: flex !important;
+  }
+  body.phone-app-pages[data-phone-transition-mode="push"] .phone-page-transition-active {
+    z-index: var(--z-overlay) !important;
+  }
+  body.phone-app-pages[data-phone-transition-mode="push"] .phone-page-transition-leaving,
+  body.phone-app-pages[data-phone-transition-mode="overlay"] .phone-page-transition-leaving {
+    z-index: calc(var(--z-overlay) + 1) !important;
+  }
+  body.phone-app-pages[data-phone-transition-mode="overlay"] .phone-page-transition-active:not(.phone-page-transition-stationary) {
+    z-index: calc(var(--z-overlay) + 1) !important;
+  }
+  body.phone-app-pages[data-phone-transition-mode="overlay"] .phone-page-transition-stationary,
+  body.phone-app-pages[data-phone-transition-mode="overlay"] .phone-page-transition-underlay {
+    z-index: var(--z-overlay) !important;
+  }
+  #phone-home-page.phone-page-transition-leaving,
+  #phone-home-page.phone-page-transition-underlay {
+    display: block !important;
+  }
+  body.phone-app-pages:not([data-phone-page="map"]) #map.phone-page-transition-leaving {
+    visibility: visible;
+  }
+  body.phone-page-transition .phone-page-transition-active,
+  body.phone-page-transition .phone-page-transition-leaving {
     animation-duration: 420ms;
     animation-timing-function: cubic-bezier(.22, .8, .24, 1);
     animation-fill-mode: both;
     will-change: transform, opacity;
     backface-visibility: hidden;
   }
-  body.phone-page-transition[data-phone-transition-direction="forward"] .phone-page-surface.phone-page-active,
-  body.phone-page-transition[data-phone-transition-direction="forward"] #map {
-    animation-name: phone-page-slide-forward;
+  body.phone-page-transition[data-phone-transition-mode="push"][data-phone-transition-direction="forward"] .phone-page-transition-active {
+    animation-name: phone-page-push-in-forward;
   }
-  body.phone-page-transition[data-phone-transition-direction="back"] .phone-page-surface.phone-page-active,
-  body.phone-page-transition[data-phone-transition-direction="back"] #map {
-    animation-name: phone-page-slide-back;
+  body.phone-page-transition[data-phone-transition-mode="push"][data-phone-transition-direction="forward"] .phone-page-transition-leaving {
+    animation-name: phone-page-push-out-forward;
   }
-  @keyframes phone-page-slide-forward {
-    from { opacity: .96; transform: translate3d(100%, 0, 0); }
+  body.phone-page-transition[data-phone-transition-mode="push"][data-phone-transition-direction="back"] .phone-page-transition-active {
+    animation-name: phone-page-push-in-back;
+  }
+  body.phone-page-transition[data-phone-transition-mode="push"][data-phone-transition-direction="back"] .phone-page-transition-leaving {
+    animation-name: phone-page-push-out-back;
+  }
+  body.phone-page-transition[data-phone-transition-mode="overlay"] .phone-page-transition-active:not(.phone-page-transition-stationary) {
+    animation-name: phone-page-overlay-in;
+  }
+  body.phone-page-transition[data-phone-transition-mode="overlay"] .phone-page-transition-leaving {
+    animation-name: phone-page-overlay-out;
+  }
+  @keyframes phone-page-push-in-forward {
+    from { opacity: .98; transform: translate3d(100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
   }
-  @keyframes phone-page-slide-back {
-    from { opacity: .96; transform: translate3d(-100%, 0, 0); }
+  @keyframes phone-page-push-out-forward {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-100%, 0, 0); }
+  }
+  @keyframes phone-page-push-in-back {
+    from { opacity: .98; transform: translate3d(-100%, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes phone-page-push-out-back {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(100%, 0, 0); }
+  }
+  @keyframes phone-page-overlay-in {
+    from { opacity: .98; transform: translate3d(100%, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes phone-page-overlay-out {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(100%, 0, 0); }
   }
   @media (prefers-reduced-motion: no-preference) {
     html:not(.reduce-motion) body.welcome-dismissed #map.phone-page-first-entry[data-phone-page-entry="map"] .maplibregl-canvas { animation: phone-map-first-entry 360ms var(--ease-expo) both; }
@@ -14564,7 +14621,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   /* Transient windows sit below the navbar while the navbar gracefully hides. */
   body.phone-window-open #phone-chrome-bottom-zone,
-  body.phone-app-pages:has(#timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone {
+  body.phone-app-pages:has(#menu-sheet:not(.hide), #timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone {
     transform: translateX(-50%) scale(calc(var(--phone-page-nav-scale, 1) * .78));
     opacity: 0;
     pointer-events: none;
@@ -14843,7 +14900,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     body.phone-page-transition[data-phone-transition-direction="forward"] #map,
     body.phone-page-transition[data-phone-transition-direction="back"] #map { animation: none !important; }
     body.phone-window-open #phone-chrome-bottom-zone,
-    body.phone-app-pages:has(#timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone { filter: none; transition: none; }
+    body.phone-app-pages:has(#menu-sheet:not(.hide), #timeline-overlay:not(.hide), #profile-detail-overlay:not(.hide), #place-sheet:not(.shut), #event-detail-sheet:not(.shut), #dir-panel:not(.shut), #suggest-overlay:not(.hide), #edit-overlay:not(.hide), #contact-overlay:not(.hide), #wish-form-overlay:not(.hide), #event-overlay:not(.hide), #eid-overlay:not(.hide), #promos-overlay:not(.hide), #wish-overlay:not(.hide), #reviews-overlay:not(.hide), #privacy-overlay:not(.hide), #qibla-overlay:not(.hide)) #phone-chrome-bottom-zone { filter: none; transition: none; }
   }
 }
 

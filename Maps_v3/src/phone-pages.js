@@ -19,7 +19,7 @@ const SURFACES = {
   places: { selector: "#places-sheet", kind: "sheet" },
   events: { selector: "#events-overlay", kind: "overlay" },
   profile: { selector: "#profile-sheet", kind: "sheet" },
-  menu: { selector: "#menu-sheet", kind: "sheet" },
+  menu: { selector: "#menu-sheet", kind: "overlay" },
   timeline: { selector: "#timeline-overlay", kind: "overlay" },
 };
 const PHONE_PAGE_ENTRY_TARGETS = {
@@ -464,12 +464,13 @@ function _observePhoneTopbars() {
   });
 }
 
-function _playPageTransition(previousPage, page) {
-  if (!previousPage || previousPage === page || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+function _playPageTransition(previousPage, page, transitionMode = _phoneTransitionMode(previousPage, page)) {
+  if (!previousPage || previousPage === page || isReduceMotionActive()) return;
   window.clearTimeout(_pageTransitionTimer);
   window.cancelAnimationFrame(_pageTransitionFrame);
   document.body.dataset.phoneTransitionFrom = previousPage;
   document.body.dataset.phoneTransitionTo = page;
+  document.body.dataset.phoneTransitionMode = transitionMode;
   document.body.dataset.phoneTransitionDirection = _phoneTransitionDirection(previousPage, page);
   document.body.classList.remove("phone-page-transition");
   _pageTransitionFrame = window.requestAnimationFrame(() => {
@@ -477,10 +478,48 @@ function _playPageTransition(previousPage, page) {
     document.body.classList.add("phone-page-transition");
     _pageTransitionTimer = window.setTimeout(() => {
       document.body.classList.remove("phone-page-transition");
+      _finishPhonePageTransition();
       delete document.body.dataset.phoneTransitionFrom;
       delete document.body.dataset.phoneTransitionTo;
+      delete document.body.dataset.phoneTransitionMode;
     }, PHONE_PAGE_TRANSITION_MS);
   });
+}
+
+function _phonePageElement(page) {
+  if (page === "map") return document.getElementById("map");
+  if (page === "home") return document.getElementById("phone-home-page");
+  const surface = SURFACES[page];
+  return surface ? document.querySelector(surface.selector) : null;
+}
+
+function _clearPhonePageTransitionClasses() {
+  document.querySelectorAll(
+    ".phone-page-transition-active, .phone-page-transition-leaving, .phone-page-transition-underlay, .phone-page-transition-stationary",
+  ).forEach((element) => element.classList.remove(
+    "phone-page-transition-active",
+    "phone-page-transition-leaving",
+    "phone-page-transition-underlay",
+    "phone-page-transition-stationary",
+  ));
+}
+
+function _finishPhonePageTransition() {
+  document.querySelectorAll(".phone-page-transition-leaving, .phone-page-transition-underlay").forEach((element) => {
+    if (element.id === "phone-home-page") {
+      element.hidden = true;
+      return;
+    }
+    const entry = Object.entries(SURFACES).find(([, surface]) => document.querySelector(surface.selector) === element);
+    if (entry) _hideSurface(entry[1], element);
+  });
+  _clearPhonePageTransitionClasses();
+}
+
+function _phoneTransitionMode(previousPage, page) {
+  const profileBranch = (value) => value === "menu" || value === "timeline";
+  return (previousPage === "profile" && profileBranch(page)) ||
+    (page === "profile" && profileBranch(previousPage)) ? "overlay" : "push";
 }
 
 export function isPhone() {
@@ -562,7 +601,8 @@ function _showSurface(surface, element) {
     element.hidden = false;
     element.classList.remove("shut");
   } else {
-    element.classList.remove("hide");
+    element.hidden = false;
+    element.classList.remove("hide", "shut");
     element.setAttribute("aria-hidden", "false");
   }
 }
@@ -1028,6 +1068,15 @@ function _playPhonePageEntry(page) {
 
 function _render(page, previousPage) {
   if (!isPhone()) return;
+  const pageChanged = !!previousPage && previousPage !== page;
+  const transitionEnabled = pageChanged && !isReduceMotionActive();
+  const transitionMode = transitionEnabled ? _phoneTransitionMode(previousPage, page) : null;
+  const transitionVisiblePages = new Set();
+  if (transitionEnabled) {
+    transitionVisiblePages.add(previousPage);
+    if (transitionMode === "overlay") transitionVisiblePages.add(page);
+  }
+  _clearPhonePageTransitionClasses();
   const firstPageEntry = !_phonePagesEntered.has(page);
   _phonePagesEntered.add(page);
   if (page !== "menu") document.body.classList.remove("phone-settings-auth");
@@ -1049,11 +1098,27 @@ function _render(page, previousPage) {
   }
   if (page === "home") _homeIntroPlayed = true;
   home?.classList.toggle("phone-page-active", page === "home");
-  home?.toggleAttribute("hidden", page !== "home");
+  home?.toggleAttribute("hidden", page !== "home" && !transitionVisiblePages.has("home"));
   for (const [name, surface] of Object.entries(SURFACES)) {
     const element = document.querySelector(surface.selector);
     if (name === page) _showSurface(surface, element);
+    else if (transitionVisiblePages.has(name)) {
+      _showSurface(surface, element);
+      element?.classList.remove("phone-page-active");
+    }
     else _hideSurface(surface, element);
+  }
+  if (transitionEnabled) {
+    _phonePageElement(page)?.classList.add("phone-page-transition-active");
+    const previousElement = _phonePageElement(previousPage);
+    if (transitionMode === "overlay" && page === "profile") {
+      previousElement?.classList.add("phone-page-transition-leaving");
+      _phonePageElement(page)?.classList.add("phone-page-transition-stationary");
+    } else if (transitionMode === "overlay") {
+      previousElement?.classList.add("phone-page-transition-underlay");
+    } else {
+      previousElement?.classList.add("phone-page-transition-leaving");
+    }
   }
   _setNav(page);
   _renderPhoneBranchHeader(page);
@@ -1071,7 +1136,7 @@ function _render(page, previousPage) {
   }
   if (firstPageEntry && !isReduceMotionActive()) _playPhonePageEntry(page);
   if (page === "map") window.dispatchEvent(new Event("hf:phone-map-visible"));
-  _playPageTransition(previousPage, page);
+  _playPageTransition(previousPage, page, transitionMode);
   window.dispatchEvent(new CustomEvent(EVT.PHONE_PAGE_CHANGED, { detail: { page, previousPage } }));
 }
 

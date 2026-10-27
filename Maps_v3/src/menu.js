@@ -131,7 +131,10 @@ export function openMenuSheet() {
  */
 export function closeMenuSheet({ keepContext = false } = {}) {
   if (isPhone()) {
-    if (!keepContext && getPhonePage() === "menu") goBackPhonePage();
+    if (!keepContext && getPhonePage() === "menu") {
+      navigatePhonePage("profile", { replace: true });
+      return true;
+    }
     menuSheet.classList.add("shut");
     menuSheet.hidden = true;
     return true;
@@ -165,7 +168,19 @@ document.getElementById("menu-pill").addEventListener("click", () => {
   else if (menuSheet.classList.contains("shut")) openMenuSheet();
   else closeMenuSheet();
 });
-sheetCloseBtn.addEventListener("click", () => isPhone() ? goBackPhonePage() : closeMenuSheet());
+sheetCloseBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (!isPhone()) {
+    closeMenuSheet();
+    return;
+  }
+  if (getPhonePage() === "menu") {
+    closeMenuSheet();
+    return;
+  }
+  goBackPhonePage();
+});
 profileCloseBtn.addEventListener("click", () => {
   if (isPhone()) { goBackPhonePage(); return; }
   if (profileCloseBtn.classList.contains("mp-sheet-close--back")) _goToMenuSheet();
@@ -194,7 +209,10 @@ export function openProfileSheet({ fromMenu = true, aboveTimeline = false } = {}
 
 export function closeProfileSheet({ keepContext = false } = {}) {
   if (isPhone()) {
-    if (!keepContext && getPhonePage() === "profile") goBackPhonePage();
+    if (!keepContext && getPhonePage() === "profile") {
+      goBackPhonePage();
+      return true;
+    }
     profileSheet.classList.add("shut");
     profileSheet.hidden = true;
     return true;
