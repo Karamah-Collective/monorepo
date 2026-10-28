@@ -7,6 +7,7 @@ import { watch } from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { setupLocalDatabase } from '../Maps/scripts/local-db.mjs';
+import { startBackgroundLocalPreviewSync } from '../Maps_v3/scripts/local-preview-sync.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const wrangler=path.join(root,'node_modules/wrangler/bin/wrangler.js');
 const localState=path.join(root,'Maps','.wrangler','state');
@@ -84,6 +85,7 @@ try {
     if(!await busy(8793)) { const child=launch(wrangler,['dev','workers/admin-integrations/index.js','--config','workers/admin-integrations/wrangler.toml','--port','8793','--ip','127.0.0.1','--persist-to',localState],gmailEventsCwd); await waitUntilReady(8793,child,'Admin integrations'); }
     // Keep an already-running local Maps worker from hiding pending Projects migrations.
     console.log('Preparing the existing local Maps database…'); await setupLocalDatabase();
+    startBackgroundLocalPreviewSync('maps');
     if(!await busy(8788)) { const pagesArgs=['pages','dev','.', '--port','8788','--ip','127.0.0.1','--persist-to',localState,'--do','INBOX_REALTIME=InboxRealtime@manarah-gmail-events','--do','PROJECT_REALTIME=ProjectRealtime@manarah-gmail-events'];const child=launch(wrangler,pagesArgs,path.join(root,'Maps'));await waitUntilReady(8788,child,'Maps'); }
     await waitForProjectsRealtime(8788);
   }

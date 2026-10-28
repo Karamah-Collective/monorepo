@@ -2,7 +2,7 @@ import { isNative } from "./capacitor-bridge.js";
 import { focusMapPoint, map, scheduleMapViewportSync } from "./map-init.js";
 import { appSettingsReady, getAppSettings, getExpandedSearchTerms } from "./app-settings.js";
 import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple, typeIcon } from "./icons.js";
-import { esc, escA, copyToClipboard, showToast, showActionToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition } from "./utils.js";
+import { esc, escA, copyToClipboard, showToast, showActionToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition, isReduceMotionActive } from "./utils.js";
 import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker, showCurrentLocation } from "./map-controls.js";
 import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
@@ -3213,19 +3213,22 @@ window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
 let _placesDirty = false;
 let _phonePlacesRenderFrame = 0;
 let _phonePlacesRenderTimer = 0;
+const PHONE_PLACES_RENDER_SETTLE_MS = 460;
 
 function _schedulePhonePlacesRender() {
   window.cancelAnimationFrame(_phonePlacesRenderFrame);
   window.clearTimeout(_phonePlacesRenderTimer);
   _phonePlacesRenderFrame = window.requestAnimationFrame(() => {
     _phonePlacesRenderFrame = 0;
-    // Let the page transition and nav pill paint before rebuilding the list.
+    // Let the heavy page handoff settle before rebuilding the list. The
+    // skeleton is already visible, so this keeps the innerHTML/layout work out
+    // of the same frame budget as the full-screen transition.
     _phonePlacesRenderTimer = window.setTimeout(() => {
       _phonePlacesRenderTimer = 0;
       if (getPhonePage() !== "places" || placesSheet.classList.contains("shut")) return;
       _placesDirty = false;
       renderPlacesList();
-    }, 0);
+    }, isReduceMotionActive() ? 0 : PHONE_PLACES_RENDER_SETTLE_MS);
   });
 }
 
@@ -4258,6 +4261,7 @@ let _evRecentIds = _readEventIdList(EVENT_RECENT_KEY);
 let _evSavedIds = new Set(_readEventIdList(EVENT_SAVED_KEY));
 let _evAttendedIds = new Set(_readEventIdList(EVENT_ATTENDED_KEY));
 const _eventDetailEl = document.getElementById("event-detail-sheet");
+const _eventDetailToolbar = document.getElementById("event-detail-toolbar");
 const _eventDetailTitle = document.getElementById("event-detail-title");
 const _eventDetailBody = document.getElementById("event-detail-body");
 const _eventDetailActions = document.getElementById("event-detail-actions");
@@ -4974,39 +4978,47 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   _eventDetailTitle.textContent = ev.title || "Event";
   _eventDetailBody.innerHTML = `<div class="pp">
     <div class="pp-inner ev-detail-inner">
-      <div class="pp-hdr ev-detail-hdr">
-        <span class="pp-icon ev-detail-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-        <span class="pp-badge ev-detail-type">Event</span>
-        ${ev.recurring ? `<span class="pp-badge ev-detail-recurring">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</span>` : ""}
-        <div class="pp-icon-row">
-          ${canMarkAttended ? `<button type="button" class="pp-visit-chip pp-icon-action ev-detail-attend-btn${attended ? " active" : ""}" data-state="${attended ? "yes" : ""}" data-event-attend-id="${escA(ev.id)}" title="${attended ? "Attended" : "Mark as attended"}" aria-label="${attended ? "Attended" : "Mark as attended"}" aria-pressed="${attended}"><svg class="pp-visit-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
-          <button type="button" class="pp-fav-btn ev-detail-save-btn${saved ? " active" : ""}" data-event-save-id="${escA(ev.id)}" title="${saved ? "Remove from saved" : "Save event"}" aria-label="${saved ? "Remove from saved" : "Save event"}" aria-pressed="${saved}">${_eventBookmarkSVG(saved)}</button>
-        </div>
-      </div>
-      <div class="pp-addr ev-detail-venue"><strong>${esc(location)}</strong>${ev.address ? `<span>${esc(ev.address)}</span>` : ""}</div>
+      <div class="pp-title-row ev-detail-title-row"></div>
+      <div class="pp-addr ev-detail-venue"><div class="ev-detail-venue-row"><svg class="ev-detail-venue-mark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><strong>${esc(location)}</strong></div>${ev.address ? `<span>${esc(ev.address)}</span>` : ""}</div>
       <div class="pp-events ev-detail-schedule">
-        <div class="pp-events-hdr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Schedule</span></div>
         <div class="ev-detail-schedule-grid">
           <div class="ev-detail-schedule-item"><span class="ev-detail-label">Date</span><strong class="ev-detail-value">${esc(dateLabel)}</strong></div>
           <div class="ev-detail-schedule-item"><span class="ev-detail-label">Time</span><strong class="ev-detail-value">${esc(timeLabel)}</strong></div>
+            ${ev.recurring ? `<div class="ev-detail-schedule-item ev-detail-schedule-item--full"><span class="ev-detail-label">Repeats</span><strong class="ev-detail-value">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</strong></div>` : ""}
         </div>
       </div>
       ${ev.organizerName ? `<div class="ev-detail-section"><span class="ev-detail-label">Organized by</span><strong class="ev-detail-location">${esc(ev.organizerName)}</strong></div>` : ""}
       ${ev.description ? `<div class="ev-detail-section"><span class="ev-detail-label">About</span><p class="ev-detail-description">${esc(ev.description)}</p></div>` : ""}
     </div>
   </div>`;
-  _eventDetailBody.querySelector(".ev-detail-save-btn")?.addEventListener("click", (event) => {
+  const titleRow = _eventDetailBody.querySelector(".ev-detail-title-row");
+  const titleActions = document.createElement("div");
+  titleActions.className = "pp-title-actions";
+  titleRow.append(_eventDetailTitle, titleActions);
+  const syncTitleActionAlignment = () => {
+    const lineHeight = parseFloat(getComputedStyle(_eventDetailTitle).lineHeight) || 0;
+    titleRow.classList.toggle("pp-title-row--wrapped", _eventDetailTitle.getBoundingClientRect().height > lineHeight + 1);
+  };
+  _eventDetailToolbar.innerHTML = `<div class="pp-hdr ev-detail-hdr">
+    <span class="pp-icon ev-detail-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+    <span class="pp-badge ev-detail-type">Event</span>
+    ${ev.recurring ? `<span class="ev-detail-recurring-icon" role="img" aria-label="Recurring event" title="Recurring event"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>` : ""}
+  </div><div class="pp-icon-row">
+    ${canMarkAttended ? `<button type="button" class="pp-visit-chip pp-icon-action ev-detail-attend-btn${attended ? " active" : ""}" data-state="${attended ? "yes" : ""}" data-event-attend-id="${escA(ev.id)}" title="${attended ? "Attended" : "Mark as attended"}" aria-label="${attended ? "Attended" : "Mark as attended"}" aria-pressed="${attended}"><svg class="pp-visit-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>` : ""}
+    <button type="button" class="pp-fav-btn ev-detail-save-btn${saved ? " active" : ""}" data-event-save-id="${escA(ev.id)}" title="${saved ? "Remove from saved" : "Save event"}" aria-label="${saved ? "Remove from saved" : "Save event"}" aria-pressed="${saved}">${_eventBookmarkSVG(saved)}</button>
+  </div>`;
+  _eventDetailToolbar.querySelector(".ev-detail-save-btn")?.addEventListener("click", (event) => {
     event.stopPropagation();
     _toggleEventSaved(ev.id);
   });
-  _eventDetailBody.querySelector(".ev-detail-attend-btn")?.addEventListener("click", (event) => {
+  _eventDetailToolbar.querySelector(".ev-detail-attend-btn")?.addEventListener("click", (event) => {
     event.stopPropagation();
     _toggleEventAttended(ev.id);
   });
 
   // Match the place window: the timeline control only appears for an event
   // whose current occurrence is inside the one-hour verification window.
-  const iconRow = _eventDetailBody.querySelector(".pp-icon-row");
+  const iconRow = titleActions;
   let eventTimelineBtn = null;
   let eventTimelineCheckInFlight = false;
   const mountEventTimelineAction = () => {
@@ -5129,6 +5141,7 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   _eventDetailEl.classList.remove("shut");
   placeSheetScrim.classList.remove("hide");
   _eventDetailSnap.open();
+  requestAnimationFrame(syncTitleActionAlignment);
   if (lat !== null && lng !== null) requestAnimationFrame(() => focusMapPoint([lng, lat], { zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM), duration: 500 }));
 }
 

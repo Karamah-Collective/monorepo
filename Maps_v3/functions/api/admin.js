@@ -176,6 +176,26 @@ import {
 import { enqueueGoogleTaskSync, googleTasksStatus, startGoogleTasksOAuth, syncGoogleTasksForOwner } from "../_google-workspace.js";
 import { publishProjectRealtime } from "../_project-realtime.js";
 
+export function mergeGoogleInfo(existingRaw, next) {
+  let existing = {};
+  try {
+    const parsed = typeof existingRaw === "string" ? JSON.parse(existingRaw || "{}") : existingRaw;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) existing = parsed;
+  } catch { /* malformed legacy metadata is replaced only when new metadata exists */ }
+  const incoming = next && typeof next === "object" && !Array.isArray(next) ? next : {};
+  const merged = { ...existing, ...incoming };
+  return Object.keys(merged).length ? JSON.stringify(merged) : String(existingRaw || "");
+}
+
+function hasStoredGoogleDetails(raw) {
+  try {
+    const info = JSON.parse(raw || "{}");
+    return Object.entries(info).some(([key, value]) => !key.startsWith("preview") && value !== "" && value != null);
+  } catch {
+    return false;
+  }
+}
+
 const ADMIN_ALLOWED_ORIGINS = [
   "https://admin.karamahcollective.com",
   "https://admin.maps.karamahcollective.com",
@@ -1099,7 +1119,7 @@ export async function approveNew(db, rowId, env) {
   // Places Details response before it can become live. Parsed link
   // identity/coordinates are not proof that the link points to the intended place.
   const storedRichDetails = !!(
-    openingHours || googleReview || googleRating != null || googleRatingCount != null || googleInfoRaw
+    openingHours || googleReview || googleRating != null || googleRatingCount != null || hasStoredGoogleDetails(googleInfoRaw)
   );
   let googleDetailsFound = !!(
     (mapsLink ? storedRichDetails : (row.google_name || row.google_address || row.place_id ||
@@ -1132,7 +1152,7 @@ export async function approveNew(db, rowId, env) {
           if (enriched.googleReview) googleReview = enriched.googleReview;
           if (enriched.googleRating != null) googleRating = enriched.googleRating;
           if (enriched.googleRatingCount != null) googleRatingCount = enriched.googleRatingCount;
-          if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = JSON.stringify(enriched.googleInfo);
+          if (enriched.googleInfo && Object.keys(enriched.googleInfo).length) googleInfoRaw = mergeGoogleInfo(googleInfoRaw, enriched.googleInfo);
           googleDetailsFound = !!(enriched.detailsFound || googleDetailsFound);
         }
       } catch { /* best-effort */ }
@@ -1331,7 +1351,7 @@ async function refreshPlaceInfo(db, placeId, env) {
   if (!hasGoogleCoordinates || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return { error: "Google Place Details did not return valid coordinates" };
   }
-  const googleInfoRaw = Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : place.google_info || "";
+  const googleInfoRaw = mergeGoogleInfo(place.google_info, googleInfo);
 
   await db.prepare(
     `UPDATE places

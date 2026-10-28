@@ -4437,6 +4437,8 @@ body.dark-mode .pf-timeline-map .maplibregl-canvas {
 @media (max-width: 768px) {
   .pf-timeline-preview { align-items: center; flex-direction: row; }
   .pf-timeline-open { width: 32px; justify-content: center; }
+  .pf-timeline-event { padding-block: var(--sp-3); }
+  .pf-timeline-event-content { gap: var(--sp-1); }
 }
 @media (max-width: 380px) {
   .pf-timeline { padding-inline: var(--sp-5); }
@@ -4606,6 +4608,10 @@ body.dark-mode .pf-timeline-map .maplibregl-canvas {
 .pf-timeline-event-remove svg { width: 14px; height: 14px; }
 .pf-timeline-event-remove:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .pf-timeline-event-remove:disabled { cursor: wait; opacity: 0.55; }
+@media (max-width: 768px) {
+  .pf-timeline-event-heading { position: static; }
+  .pf-timeline-event-remove { inset-block-start: 50%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .pf-timeline-events,
   .pf-timeline-month-toggle svg {
@@ -14282,7 +14288,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     padding: 0;
     gap: 0;
     overflow: clip;
-    transition: height 420ms cubic-bezier(.22, .8, .24, 1);
+    transition: none;
   }
   #phone-profile-auth .menu-account-signin-row {
     display: flex;
@@ -14325,6 +14331,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     gap: var(--sp-5);
     padding-top: 0;
     border-top-color: var(--border-light);
+    transition: none;
   }
   #phone-profile-auth #menu-password-signin-panel::before {
     content: "or";
@@ -14341,22 +14348,16 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     letter-spacing: var(--ls-wide);
     text-transform: lowercase;
   }
-  #phone-profile-auth .menu-password-form-content {
-    will-change: transform, opacity;
+  #phone-profile-auth #menu-password-submit-label {
+    display: inline-block;
+    transform: translate3d(0, 0, 0);
+    transition:
+      opacity 180ms cubic-bezier(.22, .8, .24, 1),
+      transform 220ms cubic-bezier(.22, .8, .24, 1);
   }
-  #phone-profile-auth #menu-password-signin-panel[data-mode-direction="forward"] .menu-password-form-content {
-    animation: phone-auth-mode-forward 320ms cubic-bezier(.22, .8, .24, 1) both;
-  }
-  #phone-profile-auth #menu-password-signin-panel[data-mode-direction="back"] .menu-password-form-content {
-    animation: phone-auth-mode-back 320ms cubic-bezier(.22, .8, .24, 1) both;
-  }
-  @keyframes phone-auth-mode-forward {
-    from { opacity: .72; transform: translate3d(20px, 0, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-  }
-  @keyframes phone-auth-mode-back {
-    from { opacity: .72; transform: translate3d(-20px, 0, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  #phone-profile-auth #menu-password-submit-label.is-label-swapping {
+    opacity: 0;
+    transform: translate3d(0, -5px, 0);
   }
   #phone-profile-auth .menu-password-mode-switch {
     display: flex;
@@ -14379,7 +14380,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     background: var(--accent);
     box-shadow: none;
     transform: translateX(0);
-    transition: transform 420ms cubic-bezier(.22, .8, .24, 1);
+    transition: none;
   }
   #phone-profile-auth .menu-password-mode-switch[data-mode="signup"] .seg-pill {
     transform: translateX(100%);
@@ -14391,28 +14392,34 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     font-size: var(--txt-sm);
     font-weight: var(--fw-semibold);
     letter-spacing: var(--ls-normal);
-    transition: color var(--t-fast);
+    transition: none;
   }
   #phone-profile-auth .menu-password-mode-switch .mode-opt.active { color: var(--text); }
   #phone-profile-auth #menu-password-name-field {
     display: flex !important;
     min-height: 0;
     max-height: 96px;
+    margin-bottom: 0;
     overflow: clip;
     opacity: 1;
     visibility: visible;
     transition:
-      opacity var(--t-fast),
+      max-height 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-bottom 340ms cubic-bezier(.22, .8, .24, 1),
+      opacity 220ms cubic-bezier(.22, .8, .24, 1),
       visibility 0s linear;
   }
   #phone-profile-auth #menu-password-name-field.hide {
     max-height: 0;
+    margin-bottom: calc(-1 * var(--sp-5));
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition:
-      opacity var(--t-fast),
-      visibility 0s linear var(--t-spring);
+      max-height 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-bottom 340ms cubic-bezier(.22, .8, .24, 1),
+      opacity 220ms cubic-bezier(.22, .8, .24, 1),
+      visibility 0s linear 340ms;
   }
   #phone-profile-auth .rv-field { gap: var(--sp-2); }
   #phone-profile-auth .rv-field-label {
@@ -14441,9 +14448,35 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
   #phone-profile-auth .rv-field-input-btn { right: var(--sp-2); color: var(--text-3); }
   #phone-profile-auth #menu-password-forgot {
+    display: block !important;
     align-self: flex-end;
     margin-top: calc(-1 * var(--sp-2));
+    margin-bottom: 0;
+    max-height: 32px;
+    overflow: clip;
+    opacity: 1;
+    visibility: visible;
     color: var(--text-3);
+    transition:
+      max-height 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-top 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-bottom 340ms cubic-bezier(.22, .8, .24, 1),
+      opacity 220ms cubic-bezier(.22, .8, .24, 1),
+      visibility 0s linear;
+  }
+  #phone-profile-auth #menu-password-forgot.hide {
+    margin-top: calc(-1 * var(--sp-5));
+    margin-bottom: 0;
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      max-height 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-top 340ms cubic-bezier(.22, .8, .24, 1),
+      margin-bottom 340ms cubic-bezier(.22, .8, .24, 1),
+      opacity 220ms cubic-bezier(.22, .8, .24, 1),
+      visibility 0s linear 340ms;
   }
   #phone-profile-auth #menu-password-submit {
     height: 50px;
@@ -16119,7 +16152,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 .ev-detail-value,
 .ev-detail-location { color: var(--text); font-size: var(--txt-sm); font-weight: var(--fw-semibold); }
 .ev-detail-value { display: block; }
-.ev-detail-address { color: var(--text-2); font-size: var(--txt-sm); line-height: var(--lh-normal); }
 .ev-detail-description { margin: 0; color: var(--text-2); font-size: var(--txt-sm); line-height: var(--lh-relaxed); }
 
 @media (min-width: 769px) {
@@ -16139,8 +16171,6 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   min-width: 0;
   box-sizing: border-box;
 }
-#event-detail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* Event details follow the place sheet's quiet, stacked information rhythm. */
 .ev-detail-inner {
   display: flex;
@@ -16148,6 +16178,54 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   gap: var(--sp-3);
   padding: var(--sp-7) var(--sp-8);
 }
+#event-detail-sheet .sheet-head { gap: var(--sp-3); }
+#event-detail-toolbar {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: var(--sp-2);
+}
+#event-detail-toolbar .ev-detail-hdr {
+  flex: 1;
+  min-width: 0;
+  gap: var(--sp-2);
+  padding-right: 0;
+}
+#event-detail-toolbar .pp-icon-row {
+  position: static;
+  flex: 0 0 auto;
+}
+#event-detail-body .pp-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: -2px;
+}
+#event-detail-body #event-detail-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 0;
+  color: var(--text);
+  font-size: var(--txt-xl);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#event-detail-body .pp-title-actions {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  align-self: center;
+  padding-top: 1px;
+}
+#place-sheet-body .pp-title-actions:empty,
+#event-detail-body .pp-title-actions:empty { display: none; }
+#event-detail-body .pp-title-row--wrapped .pp-title-actions { align-self: flex-start; }
 .ev-detail-hdr {
   display: flex;
   align-items: center;
@@ -16156,10 +16234,23 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 }
 .ev-detail-icon { width: 20px; height: 20px; border-radius: var(--r-xs); background: var(--accent-soft); color: var(--accent); }
 .ev-detail-type { color: var(--accent); background: var(--accent-soft); }
-.ev-detail-recurring { color: var(--text-2); background: var(--surface-2); }
+.ev-detail-recurring-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-2);
+}
 .ev-detail-venue { display: grid; gap: var(--sp-1); }
+.ev-detail-venue-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.ev-detail-venue-mark { flex: 0 0 auto; color: var(--accent); }
 .ev-detail-venue strong { color: var(--text); font-size: var(--txt-md); font-weight: var(--fw-semibold); }
-.ev-detail-venue span { color: var(--text-3); font-size: var(--txt-sm); }
+.ev-detail-venue > span { color: var(--text-3); font-size: var(--txt-sm); }
 .ev-detail-schedule {
   display: flex;
   flex-direction: column;
@@ -16172,6 +16263,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 }
 .ev-detail-schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); }
 .ev-detail-schedule-item { display: grid; gap: var(--sp-1); }
+.ev-detail-schedule-item--full { grid-column: 1 / -1; }
 .ev-detail-label { color: var(--text-3); font-size: var(--txt-xs); font-weight: var(--fw-semibold); letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .ev-detail-value { color: var(--text); font-size: var(--txt-sm); font-weight: var(--fw-semibold); }
 .ev-detail-section { display: grid; gap: var(--sp-1); padding-top: var(--sp-3); border-top: 1px solid var(--border-light); }

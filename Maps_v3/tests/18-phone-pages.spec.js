@@ -25,6 +25,41 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#phone-home-greeting")).toHaveCSS("direction", "ltr");
   });
 
+  test("phone startup keeps an already-granted GPS permission active", async ({ page }) => {
+    const state = await page.evaluate(async () => {
+      const utils = await import("/src/utils.js");
+      utils.clearCurrentLocationState();
+      window.__startupGpsWatchCalls = 0;
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: { query: async () => ({ state: "granted" }) },
+      });
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition: (resolve) => resolve({ coords: { latitude: 60.17, longitude: 24.94, accuracy: 12 } }),
+          watchPosition: (onPosition) => {
+            window.__startupGpsWatchCalls += 1;
+            setTimeout(() => onPosition({ coords: { latitude: 60.17, longitude: 24.94, accuracy: 12 } }), 0);
+            return 1;
+          },
+          clearWatch: () => {},
+        },
+      });
+      const { primeLocationAtStartup } = await import("/src/map-controls.js");
+      await primeLocationAtStartup();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return {
+        location: utils.getCurrentLocationState(),
+        tracking: document.getElementById("locate-btn").classList.contains("tracking"),
+        watchCalls: window.__startupGpsWatchCalls,
+      };
+    });
+    expect(state.location.active).toBe(true);
+    expect(state.tracking).toBe(true);
+    expect(state.watchCalls).toBe(1);
+  });
+
   test("Home switches to nearby places and renders event dates", async ({ page }) => {
     await page.route("**/api.digitransit.fi/geocoding/v1/reverse**", (route) =>
       route.fulfill({ json: { features: [{ properties: { locality: "Helsinki" } }] } }));
@@ -51,6 +86,29 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#phone-week-events .phone-home-event-date")).toHaveText("21 Oct");
     await page.evaluate(async () => (await import("/src/utils.js")).clearCurrentLocationState());
     await expect(page.locator("#phone-suggested-title")).toHaveText("Suggested");
+  });
+
+  test("recurring event details use an icon and a schedule field", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { openEventDetail } = await import("/src/places.js");
+      openEventDetail({
+        id: "recurring-detail-test",
+        title: "Recurring event",
+        date: "2099-10-21",
+        time: "18:30",
+        recurring: true,
+        recurrence: "daily",
+        placeId: "",
+        lat: 60.17,
+        lng: 24.94,
+        locationName: "Test venue",
+      });
+    });
+    await expect(page.locator("#event-detail-toolbar .ev-detail-recurring-icon")).toBeVisible();
+    await expect(page.locator("#event-detail-toolbar .ev-detail-recurring-icon")).toHaveAttribute("aria-label", "Recurring event");
+    await expect(page.locator("#event-detail-toolbar .ev-detail-recurring")).toHaveCount(0);
+    await expect(page.locator("#event-detail-body .ev-detail-schedule-item--full")).toContainText("Repeats");
+    await expect(page.locator("#event-detail-body .ev-detail-schedule-item--full")).toContainText("Every day");
   });
 
   test("Home nearby places skip cemeteries", async ({ page }) => {
@@ -713,19 +771,23 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#phone-profile-auth #menu-password-name-field")).toBeVisible();
     await expect(page.locator("#phone-profile-auth #menu-password-submit")).toHaveText("Create account");
     await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).toHaveAttribute("data-mode-direction", "forward");
-    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "phone-auth-mode-forward");
+    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "none");
     await page.locator("#phone-profile-auth [data-password-mode='signin']").click();
     await expect(page.locator("#phone-profile-auth #menu-password-name-field")).toBeHidden();
     await expect(page.locator("#phone-profile-auth #menu-password-submit")).toHaveText("Sign in");
     await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).toHaveAttribute("data-mode-direction", "back");
-    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "phone-auth-mode-back");
+    await expect(page.locator("#phone-profile-auth .menu-password-form-content")).toHaveCSS("animation-name", "none");
     const collapsedNameMotion = await page.locator("#phone-profile-auth #menu-password-name-field").evaluate((element) => {
       const style = getComputedStyle(element);
       return { maxHeight: style.maxHeight, visibility: style.visibility, transition: style.transition };
     });
     expect(collapsedNameMotion.maxHeight).toBe("0px");
     expect(collapsedNameMotion.visibility).toBe("hidden");
+    expect(collapsedNameMotion.transition).toContain("max-height");
     expect(collapsedNameMotion.transition).toContain("opacity");
+    await expect(page.locator("#phone-profile-auth #menu-password-submit-label")).toHaveCSS("transition", /opacity/);
+    await expect(page.locator("#phone-profile-auth #menu-password-signin-panel")).toHaveCSS("transition", "none");
+    await expect(page.locator("#phone-profile-auth .menu-password-mode-switch .seg-pill")).toHaveCSS("transition", "none");
     await page.goBack();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "home");
   });
@@ -893,7 +955,8 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#event-detail-sheet")).not.toHaveClass(/shut/);
     await expect.poll(() => page.locator("#map-filter-carousel").evaluate((element) => getComputedStyle(element).visibility)).toBe("hidden");
     await expect(page.locator("#event-detail-title")).toHaveText("Place card event");
-    await expect(page.locator("#event-detail-body .ev-detail-hdr")).toBeVisible();
+    await expect(page.locator("#event-detail-toolbar .ev-detail-hdr")).toBeVisible();
+    await expect(page.locator("#event-detail-body .ev-detail-venue-mark")).toBeVisible();
     await expect(page.locator("#event-detail-body .ev-detail-venue")).toContainText("Phone Event Mosque");
     await expect(page.locator("#event-detail-body .ev-detail-schedule")).toBeVisible();
     await expect(page.locator(".ev-detail-save-btn")).toBeVisible();

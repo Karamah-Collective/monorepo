@@ -1,0 +1,78 @@
+name: Seed Google place previews
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-preview-seed
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: 4679b2bc7d254ccaf8243a3c727148f9
+  MAPS_ORIGIN: https://manarah-v3.pages.dev
+  GOOGLE_PREVIEW_SEED_LIMIT: 12
+  GOOGLE_PREVIEW_DELAY_MS: 2500
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4.131.2
+
+      - name: Read production preview state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DB_BACKUP_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp
+          wrangler d1 execute halal-finder-db --remote --json \
+            --command "SELECT id, google_info FROM places WHERE disabled = 0" \
+            --config Maps_v3/wrangler.toml \
+            --yes > .tmp/preview-state.json
+
+      - name: Fetch previews from the GitHub runner
+        run: |
+          node Maps_v3/scripts/seed-google-previews.mjs \
+            --state .tmp/preview-state.json \
+            --sql .tmp/google-preview-seed.sql \
+            --results .tmp/google-preview-results.json
+
+      - name: Apply validated preview URLs to production D1
+        if: ${{ hashFiles('.tmp/google-preview-seed.sql') != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DB_BACKUP_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -s .tmp/google-preview-seed.sql ]; then
+            wrangler d1 execute halal-finder-db --remote \
+              --file .tmp/google-preview-seed.sql \
+              --config Maps_v3/wrangler.toml \
+              --yes
+          else
+            echo "No preview updates generated."
+          fi
+
+      - name: Publish run summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .tmp/google-preview-results.json ]; then
+            cat .tmp/google-preview-results.json
+          fi

@@ -11,6 +11,7 @@
  */
 
 import { normaliseAddress, isInsideFinlandBounds } from "./_gas-compat.js";
+import { fetchGooglePreview } from "./_google-preview.js";
 
 const NOMINATIM_USER_AGENT = "Manarah/1.0 (+https://maps.karamahcollective.com)";
 const GOOGLE_MAPS_HOST_RE = /^(?:www\.)?(?:google\.[a-z.]+|maps\.google\.[a-z.]+)$/i;
@@ -23,6 +24,7 @@ const PLACE_DETAILS_FIELDS = [
   "serves_vegetarian_food", "serves_beer", "serves_wine", "editorial_summary",
 ].join(",");
 const NEARBY_RADIUS_METERS = 80;
+const PREVIEW_ENRICH_TIMEOUT_MS = 3000;
 const NEARBY_TYPE_BY_PLACE_TYPE = {
   mosque: "mosque",
   restaurant: "restaurant",
@@ -534,15 +536,23 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
   const out = { googleName: "", googleAddress: "", lat: null, lng: null, placeId: "", website: website || "", phone: phone || "" };
   const rich_ = { openingHours: "", googleReview: "", googleRating: null, googleRatingCount: null, googleInfo: {} };
   const cleanUserName = _normaliseUserSearchText(userName);
+  let resolvedMapsUrl = mapsUrl || "";
+  let previewPromise = Promise.resolve({ imageUrl: "" });
 
   if (mapsUrl) {
-    const resolved = await resolveUrl(mapsUrl);
-    const parsed = parseMapsUrl(resolved);
+    resolvedMapsUrl = await resolveUrl(mapsUrl);
+    const parsed = parseMapsUrl(resolvedMapsUrl);
     out.googleName = parsed.name || "";
     out.googleAddress = parsed.address || "";
     out.lat = parsed.lat;
     out.lng = parsed.lng;
     out.placeId = parsed.placeId || "";
+    if (rich) {
+      previewPromise = Promise.race([
+        fetchGooglePreview(resolvedMapsUrl).catch(() => ({ imageUrl: "" })),
+        new Promise((resolve) => setTimeout(() => resolve({ imageUrl: "" }), PREVIEW_ENRICH_TIMEOUT_MS)),
+      ]);
+    }
   }
 
   let detailsFound = false;
@@ -648,6 +658,13 @@ export async function enrichFromMapsLink(env, { mapsUrl, userName, userAddress, 
       if (detailsFb.rating != null && detailsFb.rating !== "") rich_.googleRating = Number(detailsFb.rating || 0);
       if (detailsFb.user_ratings_total != null && detailsFb.user_ratings_total !== "") rich_.googleRatingCount = Number(detailsFb.user_ratings_total || 0);
     }
+  }
+
+  const preview = await previewPromise;
+  if (preview.imageUrl) {
+    rich_.googleInfo.previewMapsUrl = rich_.googleInfo.mapsUrl || resolvedMapsUrl || mapsUrl;
+    rich_.googleInfo.previewImageUrl = preview.imageUrl;
+    rich_.googleInfo.previewImageFetchedAt = new Date().toISOString();
   }
 
   const hasData = out.lat != null || out.lng != null || out.googleAddress || out.googleName || out.placeId;

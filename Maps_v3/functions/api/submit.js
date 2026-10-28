@@ -267,12 +267,13 @@ async function handleNewSubmission(env, data, emailHash) {
   }
 
   await db.prepare(
-    `INSERT INTO new_places (timestamp, name, type, address, tags, maps_link, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status, reject_reason, opening_hours, google_review, google_rating, google_rating_count, phone, email_hash, app_place_id, app_links)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?,?,'',?)`
+    `INSERT INTO new_places (timestamp, name, type, address, tags, maps_link, notes, score, google_name, google_address, lat, lng, place_id, website, enriched_at, status, reject_reason, opening_hours, google_review, google_rating, google_rating_count, phone, google_info, email_hash, app_place_id, app_links)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending','',?,?,?,?,?,?,?,'',?)`
   ).bind(
     ts, data.name || "", data.type || "", data.address || "", tags, mapsLink, data.notes || "", (data.score != null ? Number(data.score).toFixed(2) : ""),
     googleName, googleAddress, lat, lng, placeId, website, enrichedAt,
-    storedOpeningHours, googleReview, googleRating, googleRatingCount, phone, emailHash || "", appLinksJson
+    storedOpeningHours, googleReview, googleRating, googleRatingCount, phone,
+    Object.keys(googleInfo).length ? JSON.stringify(googleInfo) : "", emailHash || "", appLinksJson
   ).run();
 
   return { success: true };

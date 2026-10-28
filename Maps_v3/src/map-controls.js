@@ -403,7 +403,18 @@ export async function primeGrantedLocation() {
 export async function primeLocationAtStartup() {
   if (getCurrentLocationState().active || new URL(window.location.href).searchParams.has("sim")) return true;
   const active = await primeGrantedLocation();
-  if (active) return true;
+  if (active) {
+    // The silent startup fix feeds Home immediately; keep the phone's GPS
+    // state live as well so it matches the locate control's "on" state.
+    if (isPhone() && locWatchId === null) {
+      const startTracking = () => {
+        if (locWatchId === null) showCurrentLocation({ zoomOnFirstFix: false, silent: true });
+      };
+      if (map.loaded()) startTracking();
+      else map.once("load", startTracking);
+    }
+    return true;
+  }
 
   if (!hasGeolocation()) {
     _showLocationStartupNotice();
@@ -429,8 +440,8 @@ function _isPlaceOrEventWindowOpen() {
   });
 }
 
-export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true } = {}) {
-  track("location_requested");
+export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent = false } = {}) {
+  if (!silent) track("location_requested");
   const locBtn = document.getElementById("locate-btn");
 
   // ── Already tracking ──
@@ -460,7 +471,7 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true } = {}) 
 
   // iOS 13+ requires DeviceOrientation permission from a user gesture.
   // This click handler IS a user gesture, so request it here before async work.
-  _requestOrientationPermission();
+  if (!silent) _requestOrientationPermission();
 
   // If the browser has already confirmed geolocation is denied, skip the
   // loading toast and bail immediately \u2014 no need to wait for the async error.
@@ -476,14 +487,14 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true } = {}) 
 
   locBtn.classList.add("tracking");
   setLocateIcon(true);
-  showLoadingToast("Finding your location\u2026");
+  if (!silent) showLoadingToast("Finding your location\u2026");
   let firstFix = true;
 
   function onPosition(pos) {
     if (firstFix) track("location_granted");
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
     setCurrentLocationState({ lat, lng, accuracy, active: true });
-    if (firstFix) hideLoadingToast();
+    if (firstFix && !silent) hideLoadingToast();
     if (!locMarker) {
       const el = document.createElement("div");
       el.className = "loc-marker";
@@ -521,7 +532,7 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true } = {}) 
     onWatch(id) { locWatchId = id; },
   }).catch((e) => {
     if (e?.denied) track("location_denied");
-    hideLoadingToast();
+    if (!silent) hideLoadingToast();
     clearCurrentLocationState();
     showToast("Location is off", "loc", e.message);
     locBtn.classList.remove("tracking");

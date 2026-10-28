@@ -486,6 +486,23 @@ test.describe("verified visit timeline", () => {
     if (await page.evaluate(() => window.innerWidth <= 768)) {
       await expect(page.locator("body")).toHaveAttribute("data-phone-page", "timeline");
       await page.click("#timeline-close");
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const backState = await page.evaluate(() => ({
+        mode: document.body.dataset.phoneTransitionMode,
+        incoming: document.querySelector("#profile-sheet").classList.contains("phone-page-transition-stationary"),
+        outgoing: document.querySelector("#timeline-overlay").classList.contains("phone-page-transition-leaving"),
+        outgoingDisplay: getComputedStyle(document.querySelector("#timeline-overlay")).display,
+        outgoingAnimation: getComputedStyle(document.querySelector("#timeline-overlay")).animationName,
+        outgoingTransform: getComputedStyle(document.querySelector("#timeline-overlay")).transform,
+      }));
+      expect(backState).toMatchObject({
+        mode: "overlay",
+        incoming: true,
+        outgoing: true,
+        outgoingDisplay: "flex",
+        outgoingAnimation: "phone-page-overlay-out",
+      });
+      expect(backState.outgoingTransform).not.toBe("none");
       await expect(page.locator("body")).toHaveAttribute("data-phone-page", "profile");
       return;
     }
@@ -639,9 +656,9 @@ test.describe("verified visit timeline", () => {
       const { openEventDetail } = await import("/src/places.js");
       openEventDetail({ id: "active-event", title: "Active event", date, time, endTime: "23:59", recurring: false, placeId: "", lat: 60.1699, lng: 24.9384, locationName: "Test venue" });
     }, event);
-    await expect(page.locator("#event-detail-body .ev-detail-attend-btn")).toBeVisible();
-    await page.locator("#event-detail-body .ev-detail-attend-btn").click();
-    await expect(page.locator("#event-detail-body .ev-detail-attend-btn")).toHaveAttribute("aria-label", "Attended");
+    await expect(page.locator("#event-detail-toolbar .ev-detail-attend-btn")).toBeVisible();
+    await page.locator("#event-detail-toolbar .ev-detail-attend-btn").click();
+    await expect(page.locator("#event-detail-toolbar .ev-detail-attend-btn")).toHaveAttribute("aria-label", "Attended");
     await expect(page.locator("#event-detail-body .ev-detail-timeline-btn")).toBeVisible();
     await page.locator("#event-detail-body .ev-detail-timeline-btn").click();
     await expect(page.locator("#event-detail-body .ev-detail-timeline-btn")).toHaveText("Added to timeline");
@@ -660,6 +677,14 @@ test.describe("verified visit timeline", () => {
     await openProfile(page);
     await expect(page.locator(".pf-timeline-event-remove")).toHaveCount(1);
     await expect(page.locator(".pf-timeline-event-remove")).toHaveClass(/btn-roundel-danger/);
+    if (await page.evaluate(() => window.innerWidth <= 768)) {
+      const centerOffset = await page.evaluate(() => {
+        const event = document.querySelector(".pf-timeline-event").getBoundingClientRect();
+        const button = document.querySelector(".pf-timeline-event-remove").getBoundingClientRect();
+        return Math.abs((button.top + button.height / 2) - (event.top + event.height / 2));
+      });
+      expect(centerOffset).toBeLessThanOrEqual(1);
+    }
     await page.locator(".pf-timeline-event-remove").click();
     await page.locator(".confirm-ok").click();
     await expect(page.locator(".pf-timeline-empty")).toBeVisible({ timeout: 10_000 });

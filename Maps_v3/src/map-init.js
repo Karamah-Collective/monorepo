@@ -115,12 +115,9 @@ export function scheduleMapViewportSync() {
 }
 
 window.addEventListener("hf:phone-map-visible", () => {
-  requestAnimationFrame(() => {
-    if (map.loaded()) {
-      map.resize();
-      scheduleMapViewportSync();
-    }
-  });
+  // The map keeps the same full-viewport box while phone pages swap. A forced
+  // WebGL resize here competes with the page handoff on every Map visit.
+  if (map.loaded()) scheduleMapViewportSync();
 });
 
 function _isVisibleFocusPanel(el) {

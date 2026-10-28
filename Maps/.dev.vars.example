@@ -1,6 +1,9 @@
 # Copy this file to .dev.vars for local Cloudflare Pages Function testing.
 # .dev.vars is gitignored. Never commit real secrets.
 
+# Optional: lets local startup sync production places and seed no-API Google previews.
+# CLOUDFLARE_API_TOKEN=YOUR_D1_EDIT_TOKEN
+
 # Allows localhost submissions to skip browser/server Turnstile
 # while testing with `npx wrangler pages dev .`.
 DEV_SKIP_TURNSTILE=true

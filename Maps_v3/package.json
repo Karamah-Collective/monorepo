@@ -24,7 +24,7 @@
     "test:iphone": "npx playwright test --config tests/playwright.config.js --project=\"iPhone 15 Pro\"",
     "test:phones": "npx playwright test --config tests/playwright.config.js --project=\"Pixel 7\" --project=\"Galaxy S24\" --project=\"iPhone 15 Pro\"",
     "build": "node scripts/build.mjs",
-    "dev": "wrangler pages dev . --port 8788"
+    "dev": "node scripts/dev.mjs"
   },
   "repository": {
     "type": "git",

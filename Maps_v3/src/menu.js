@@ -822,7 +822,7 @@ function _buildSignedOutHTML() {
           </div>
         </div>
         <button id="menu-password-forgot" class="rv-resend-link" type="button">Forgot password?</button>
-        <button id="menu-password-submit" class="rv-action-btn btn-primary" type="button">Sign in</button>
+        <button id="menu-password-submit" class="rv-action-btn btn-primary" type="button"><span id="menu-password-submit-label">Sign in</span></button>
         <p id="menu-password-error" class="rv-verify-error hide"></p>
       </div>
     </div>
@@ -1061,18 +1061,37 @@ function _wirePasswordSignIn() {
   const passwordInput = document.getElementById("menu-password-input");
   const visibilityBtn = document.getElementById("menu-password-toggle-visibility");
   const submitBtn = document.getElementById("menu-password-submit");
+  const submitLabel = document.getElementById("menu-password-submit-label");
   const modeToggle = document.getElementById("menu-password-mode-toggle");
   const modeButtons = [...modeToggle.querySelectorAll("[data-password-mode]")];
   const forgotLink = document.getElementById("menu-password-forgot");
   const errorMsg = document.getElementById("menu-password-error");
 
   let mode = "signin"; // "signin" | "signup" — see _updateModeUI() below
+  let submitLabelSwapTimer = 0;
 
   function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.remove("hide"); }
   function hideError() { errorMsg.classList.add("hide"); }
 
+  function updateSubmitLabel(label) {
+    if (!submitLabel) return;
+    window.clearTimeout(submitLabelSwapTimer);
+    submitLabel.classList.remove("is-label-swapping");
+    if (submitLabel.textContent === label) return;
+    if (!isPhone() || isReduceMotionActive()) {
+      submitLabel.textContent = label;
+      return;
+    }
+    void submitLabel.offsetWidth;
+    submitLabel.classList.add("is-label-swapping");
+    submitLabelSwapTimer = window.setTimeout(() => {
+      submitLabel.textContent = label;
+      requestAnimationFrame(() => submitLabel.classList.remove("is-label-swapping"));
+    }, 140);
+  }
+
   function updateModeUI() {
-    submitBtn.textContent = mode === "signin" ? "Sign in" : "Create account";
+    updateSubmitLabel(mode === "signin" ? "Sign in" : "Create account");
     modeToggle.dataset.mode = mode;
     panel.dataset.modeDirection = mode === "signup" ? "forward" : "back";
     modeButtons.forEach((button) => {
@@ -1124,11 +1143,13 @@ function _wirePasswordSignIn() {
   modeToggle.addEventListener("click", (event) => {
     const nextMode = event.target.closest("[data-password-mode]")?.dataset.passwordMode;
     if (!nextMode || nextMode === mode) return;
-    _animateMenuPanelHeight(() => {
+    const applyMode = () => {
       mode = nextMode;
       hideError();
       updateModeUI();
-    });
+    };
+    if (isPhone()) applyMode();
+    else _animateMenuPanelHeight(applyMode);
   });
 
   // Neutral outcome regardless of whether the typed email is actually
@@ -1164,7 +1185,10 @@ function _wirePasswordSignIn() {
 
     submitBtn.disabled = true;
     const busyLabel = mode === "signin" ? "Signing in…" : "Creating account…";
-    submitBtn.innerHTML = `<span class="btn-spinner"></span> ${busyLabel}`;
+    const spinner = document.createElement("span");
+    spinner.className = "btn-spinner";
+    submitBtn.prepend(spinner);
+    updateSubmitLabel(busyLabel);
     const result = mode === "signin"
       ? await _auth.signInWithEmailPassword(email, password)
       : await _auth.signUpWithEmailPassword(name, email, password);
@@ -1174,6 +1198,7 @@ function _wirePasswordSignIn() {
       // On success, EVT.AUTH_CHANGED also fires and _renderAccountSection() re-runs.
     } else {
       submitBtn.disabled = false;
+      submitBtn.querySelector(".btn-spinner")?.remove();
       updateModeUI();
       showError(emailPasswordErrorMessage(result.error, mode));
     }

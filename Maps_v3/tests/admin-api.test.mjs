@@ -1,6 +1,49 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { approveNew } from "../functions/api/admin.js";
+import { approveNew, mergeGoogleInfo } from "../functions/api/admin.js";
+
+test("merges preview metadata instead of discarding it during Google enrichment", () => {
+  const merged = JSON.parse(mergeGoogleInfo(
+    JSON.stringify({ previewImageUrl: "https://lh3.googleusercontent.com/old", previewMapsUrl: "https://maps.google.com/?cid=1" }),
+    { mapsUrl: "https://www.google.com/maps?cid=1", about: "A place" },
+  ));
+  assert.equal(merged.previewImageUrl, "https://lh3.googleusercontent.com/old");
+  assert.equal(merged.mapsUrl, "https://www.google.com/maps?cid=1");
+  assert.equal(merged.about, "A place");
+});
+
+test("does not treat preview-only metadata as verified Google Place Details", async () => {
+  const row = {
+    id: 9,
+    name: "Preview-only place",
+    maps_link: "https://maps.google.com/?cid=preview-only",
+    lat: 60.1699,
+    lng: 24.9384,
+    type: "restaurant",
+    tags: "",
+    notes: "",
+    website: "",
+    phone: "",
+    opening_hours: "",
+    google_review: "",
+    google_rating: null,
+    google_rating_count: null,
+    google_info: JSON.stringify({ previewMapsUrl: "https://maps.google.com/?cid=preview-only", previewImageUrl: "https://lh3.googleusercontent.com/image" }),
+    app_links: "",
+  };
+  const db = {
+    prepare(sql) {
+      return {
+        bind() { return this; },
+        async first() { return sql.includes("SELECT * FROM new_places") ? row : null; },
+        async run() { return { success: true }; },
+      };
+    },
+    async batch() {},
+  };
+  const result = await approveNew(db, row.id, {});
+  assert.match(result.error, /Google Place Details/);
+});
 
 test("approves a pin when stored identity exists without a Maps link", async () => {
   const row = {
