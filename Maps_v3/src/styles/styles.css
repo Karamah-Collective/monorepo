@@ -12184,6 +12184,28 @@ body.dark-mode .sp-chip {
     width: 100%;
     pointer-events: auto;
   }
+  body.phone-app-pages[data-phone-page="map"] .phone-map-filter-carousel {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+    visibility: visible;
+    transition: transform 320ms var(--ease-expo), opacity 220ms ease, visibility 0s linear;
+    will-change: transform, opacity;
+  }
+  body.phone-app-pages[data-phone-page="map"]:has(#place-sheet:not(.shut), #event-detail-sheet:not(.shut)) .phone-map-filter-carousel {
+    transform: translate3d(0, -14px, 0) scale(.97);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 320ms var(--ease-expo), opacity 220ms ease, visibility 0s linear 320ms;
+  }
+  html.reduce-motion body.phone-app-pages[data-phone-page="map"] .phone-map-filter-carousel {
+    transition: none;
+  }
+  html.reduce-motion body.phone-app-pages[data-phone-page="map"]:has(#place-sheet:not(.shut), #event-detail-sheet:not(.shut)) .phone-map-filter-carousel {
+    transform: translate3d(0, -14px, 0) scale(.97);
+    opacity: 0;
+    visibility: hidden;
+  }
   #map-filter-chips {
     display: flex;
     align-items: center;

@@ -265,6 +265,56 @@ test.describe("Phone app pages", () => {
     });
   });
 
+  test("Places navigation lets the transition frame paint before list refresh", async ({ page }) => {
+    await page.locator("#events-nav-btn").click();
+    await page.waitForTimeout(450);
+    await page.evaluate(() => {
+      const list = document.getElementById("places-list");
+      const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+      window.__placesTransitionTrace = { clickAt: 0, firstRafAt: 0, listWriteAt: 0 };
+      if (!descriptor?.set) return;
+      Object.defineProperty(Element.prototype, "innerHTML", {
+        configurable: true,
+        get: descriptor.get,
+        set(value) {
+          if (this === list && window.__placesTransitionTrace.clickAt) {
+            window.__placesTransitionTrace.listWriteAt = performance.now();
+          }
+          descriptor.set.call(this, value);
+        },
+      });
+      document.addEventListener("click", (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest("#places-btn")) return;
+        window.__placesTransitionTrace.clickAt = performance.now();
+        requestAnimationFrame(() => {
+          window.__placesTransitionTrace.firstRafAt = performance.now();
+        });
+      }, { capture: true, once: true });
+    });
+    await page.locator("#places-btn").click();
+    await page.waitForTimeout(80);
+    const trace = await page.evaluate(() => window.__placesTransitionTrace);
+    expect(trace.firstRafAt).toBeGreaterThan(trace.clickAt);
+    expect(trace.listWriteAt === 0 || trace.listWriteAt >= trace.firstRafAt).toBe(true);
+    await expect(page.locator("#tab-active-pill")).not.toBeHidden();
+  });
+
+  test("dirty Places navigation shows the skeleton before rebuilding", async ({ page }) => {
+    await page.locator("#dir-btn").click();
+    await page.waitForTimeout(450);
+    await page.evaluate(async () => {
+      const { setActivePlaceTypeFilter } = await import("/src/places.js");
+      setActivePlaceTypeFilter("restaurant");
+      document.addEventListener("click", (event) => {
+        if (event.target instanceof Element && event.target.closest("#places-btn")) {
+          window.__placesSkeletonSeen = Boolean(document.querySelector("#places-list .pl-skeleton"));
+        }
+      }, { once: true });
+    });
+    await page.locator("#places-btn").click();
+    expect(await page.evaluate(() => window.__placesSkeletonSeen)).toBe(true);
+  });
+
   test("page surfaces do not use bottom-enter transitions and can scroll", async ({ page }) => {
     for (const id of ["places-btn", "events-nav-btn", "menu-pill"]) {
       await page.locator(`#${id}`).click();
@@ -841,6 +891,7 @@ test.describe("Phone app pages", () => {
     await page.locator(".ev-overlay-card[data-ev-id='phone-event-place-card']").click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await expect(page.locator("#event-detail-sheet")).not.toHaveClass(/shut/);
+    await expect.poll(() => page.locator("#map-filter-carousel").evaluate((element) => getComputedStyle(element).visibility)).toBe("hidden");
     await expect(page.locator("#event-detail-title")).toHaveText("Place card event");
     await expect(page.locator("#event-detail-body .ev-detail-hdr")).toBeVisible();
     await expect(page.locator("#event-detail-body .ev-detail-venue")).toContainText("Phone Event Mosque");
@@ -1028,6 +1079,10 @@ test.describe("Phone app pages", () => {
     await firstPlace.click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
+    await expect.poll(() => page.locator("#map-filter-carousel").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { opacity: style.opacity, visibility: style.visibility, pointerEvents: style.pointerEvents };
+    })).toEqual({ opacity: "0", visibility: "hidden", pointerEvents: "none" });
     const placeId = await firstPlace.getAttribute("data-place-id");
     const marker = page.locator(`.place-mk-wrap[data-place-id="${placeId}"]`);
     await expect(marker).toHaveClass(/mk-selected/);
@@ -1067,6 +1122,10 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await expect(page.locator("body")).not.toHaveClass(/phone-window-open/);
     await expect(page.locator("#place-sheet")).toHaveClass(/shut/);
+    await expect.poll(() => page.locator("#map-filter-carousel").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { opacity: style.opacity, visibility: style.visibility, pointerEvents: style.pointerEvents };
+    })).toEqual({ opacity: "1", visibility: "visible", pointerEvents: "auto" });
   });
 
   test("direct place dismissal restores the Places surface", async ({ page }) => {

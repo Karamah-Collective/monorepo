@@ -3076,9 +3076,17 @@ export function openPlacesSheet() {
   setActiveTab("places-btn");
   tryGetUserLocation();
   renderTagFilterBar();
-  if (_placesDirty) _placesDirty = false;
+  const placesList = document.getElementById("places-list");
+  const shouldRenderPlaces = !isPhone() || _placesDirty || placesList?.dataset.placesRendered !== "true";
+  if (isPhone()) {
+    if (shouldRenderPlaces) {
+      _showPlacesListSkeleton();
+      _schedulePhonePlacesRender();
+    }
+    return;
+  }
+  _placesDirty = false;
   renderPlacesList();
-  if (isPhone()) return;
   placesSnap.open();                           // measure content → set initial snap height → reveal
   scheduleMapViewportSync();
 }
@@ -3103,6 +3111,7 @@ export function setActivePlaceTypeFilter(type) {
   if (!LIST_FOCUS_TYPE_OPTIONS.some((option) => option.id === type) && !TEMPORARY_MAP_FILTER_TYPES.has(type)) return false;
   _mapEventsFilter = false;
   _setPlacesTypeFilter(type);
+  if (isPhone() && placesSheet.classList.contains("shut")) _placesDirty = true;
   renderTagFilterBar();
   addPlaceMarkers();
   if (!placesSheet.classList.contains("shut")) renderPlacesList();
@@ -3202,6 +3211,23 @@ window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
 });
 
 let _placesDirty = false;
+let _phonePlacesRenderFrame = 0;
+let _phonePlacesRenderTimer = 0;
+
+function _schedulePhonePlacesRender() {
+  window.cancelAnimationFrame(_phonePlacesRenderFrame);
+  window.clearTimeout(_phonePlacesRenderTimer);
+  _phonePlacesRenderFrame = window.requestAnimationFrame(() => {
+    _phonePlacesRenderFrame = 0;
+    // Let the page transition and nav pill paint before rebuilding the list.
+    _phonePlacesRenderTimer = window.setTimeout(() => {
+      _phonePlacesRenderTimer = 0;
+      if (getPhonePage() !== "places" || placesSheet.classList.contains("shut")) return;
+      _placesDirty = false;
+      renderPlacesList();
+    }, 0);
+  });
+}
 
 // Re-sync userSortLat/Lng from the best location source (live > home > null).
 function _resolveSortLocation() {
@@ -3237,7 +3263,7 @@ function refreshPlacesSort() {
     }
     return;
   }
-  _placesDirty = false;
+  _placesDirty = true;
 }
 
 window.addEventListener("hf:home-updated", () => {
@@ -3925,6 +3951,15 @@ function _placeSkeletonHTML(count = 6) {
   ).join("");
 }
 
+function _showPlacesListSkeleton() {
+  const list = document.getElementById("places-list");
+  if (!list) return;
+  document.getElementById("places-empty")?.classList.add("hide");
+  const count = document.getElementById("places-ct");
+  if (count) count.textContent = "";
+  if (!list.querySelector(".pl-skeleton")) list.innerHTML = _placeSkeletonHTML();
+}
+
 const CROSSFADE_MS = 150;
 let _crossFadeTimer = 0;
 
@@ -3966,12 +4001,12 @@ function renderPlacesList() {
   const list = document.getElementById("places-list");
   const empty = document.getElementById("places-empty");
   const ct = document.getElementById("places-ct");
+  if (list) list.dataset.placesRendered = "true";
+  _placesDirty = false;
 
   // Show skeleton placeholders while data is still loading
   if (!placesLoaded) {
-    empty.classList.add("hide");
-    ct.textContent = "";
-    list.innerHTML = _placeSkeletonHTML();
+    _showPlacesListSkeleton();
     return;
   }
 
