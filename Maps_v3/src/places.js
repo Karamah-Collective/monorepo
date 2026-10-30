@@ -12,6 +12,7 @@ import { getPlaceRating, buildStarDisplay, renderPlaceReviews, openPlaceReviewFo
 import { EVT } from "./events.js";
 import { addVerifiedEventVisit, addVerifiedVisit, eventHasEnded, eventHasOccurred, getTimelineCooldown, peekEventTimelineEligibility, peekTimelineEligibility } from "./timeline.js";
 import { clearPhoneWindowState, getPhonePage, goBackPhonePage, isPhone, navigatePhonePage, pushPhoneWindowState } from "./phone-pages.js";
+import { HSL_STYLE } from "./map-style.js";
 
 export let placesData = [];
 export let tagsData = {};
@@ -240,6 +241,7 @@ function sortSubtags() {
 let _activePlaceSheetId = null;
 let _activePlaceSheetReviewsListener = null;
 let _activePlaceSheetMediaListener = null;
+const _detailLocationMaps = { place: null, event: null };
 const PLACE_REVIEW_RETURN_KEY = "hf:place-review-return";
 
 window.addEventListener(EVT.AUTH_CHANGED, (event) => {
@@ -252,13 +254,10 @@ window.addEventListener(EVT.AUTH_CHANGED, (event) => {
   const resume = () => {
     const place = placesData.find((item) => String(item.id) === String(intent.placeId));
     if (!place) return;
-    navigatePhonePage("map", { replace: true });
-    setTimeout(() => {
-      openPlaceSheet(place);
-      const section = placeSheetBody.querySelector(`.pp-reviews-detail[data-place-id="${CSS.escape(String(place.id))}"]`);
-      if (section) _scrollPlaceReviewsIntoView(section);
-      if (section) openPlaceReviewForm(section, place.id, place.name);
-    }, 80);
+    openPlaceSheet(place);
+    const section = placeSheetBody.querySelector(`.pp-reviews-detail[data-place-id="${CSS.escape(String(place.id))}"]`);
+    if (section) _scrollPlaceReviewsIntoView(section);
+    if (section) openPlaceReviewForm(section, place.id, place.name);
   };
   if (placesLoaded) resume();
   else window.addEventListener("hf:places-data-ready", resume, { once: true });
@@ -356,6 +355,129 @@ function _scrollPlaceReviewsIntoView(section) {
   });
 }
 
+function _loadDetailBanner(banner, place, placeholderCategory) {
+  if (!banner) return;
+  const category = placeholderCategory || (place?.type === "restaurant" ? "Food" : SERVICE_TYPES.has(place?.type) ? "Services" : "Spaces");
+  const placeholders = ["Light", "Dark"].map((theme) => {
+    const filename = `Manarah_${category}_${theme}_21x9`;
+    const picture = document.createElement("picture");
+    picture.className = `detail-banner-placeholder detail-banner-placeholder--${theme.toLowerCase()}`;
+    const source = document.createElement("source");
+    source.type = "image/webp";
+    source.srcset = `/assets/placeholders/WEBP/${filename}.webp`;
+    const image = document.createElement("img");
+    image.className = "detail-banner-image detail-banner-image--placeholder";
+    image.src = `/assets/placeholders/PNG/${filename}.png`;
+    image.alt = "";
+    image.setAttribute("aria-hidden", "true");
+    image.decoding = "async";
+    image.loading = "lazy";
+    picture.append(source, image);
+    return picture;
+  });
+  banner.replaceChildren(...placeholders);
+  if (!place) return;
+
+  import("./place-media.js")
+    .then(({ loadGooglePlacePreview }) => loadGooglePlacePreview(place))
+    .then((preview) => {
+      if (!preview?.src) return;
+      const image = new Image();
+      image.className = "detail-banner-image";
+      image.alt = "";
+      image.setAttribute("aria-hidden", "true");
+      image.decoding = "async";
+      image.addEventListener("load", () => {
+        if (banner.isConnected) banner.replaceChildren(image);
+      }, { once: true });
+      image.src = preview.src;
+    })
+    .catch(() => {});
+}
+
+const DETAIL_CONTACT_ICONS = {
+  phone: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  website: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+  maps: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  external: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+};
+
+function _buildDetailContactPills({ phone, website, mapsUrl, eventUrl } = {}) {
+  const row = document.createElement("div");
+  row.className = "pp-contact";
+  const add = (href, label, icon, external = false, title = label) => {
+    const link = document.createElement("a");
+    link.className = "pp-contact-link";
+    link.href = href;
+    link.title = title;
+    link.setAttribute("aria-label", label);
+    if (external) {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+    link.innerHTML = icon;
+    row.append(link);
+  };
+  if (phone) add(`tel:${phone}`, "Call", DETAIL_CONTACT_ICONS.phone, false, `Call ${phone}`);
+  if (website) add(website, "Website", DETAIL_CONTACT_ICONS.website, true);
+  if (mapsUrl) add(mapsUrl, "Google Maps", DETAIL_CONTACT_ICONS.maps, true);
+  if (eventUrl) add(eventUrl, "Event page", DETAIL_CONTACT_ICONS.external, true);
+  return row.childElementCount ? row : null;
+}
+
+function _createDetailLocationSection(name, latValue, lngValue) {
+  if (!window.maplibregl || latValue == null || lngValue == null) return null;
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) return null;
+
+  const section = document.createElement("section");
+  section.className = "timeline-section";
+  const label = document.createElement("div");
+  label.className = "menu-section-label";
+  label.textContent = "Location";
+  const map = document.createElement("div");
+  map.className = "pf-timeline-map";
+  map.setAttribute("role", "img");
+  map.setAttribute("aria-label", `Map showing ${name}`);
+  section.append(label, map);
+  return { section, map, lat, lng, name };
+}
+
+function _mountDetailLocationMap(kind, preview) {
+  if (!preview) return;
+  const sheet = kind === "place" ? placeSheetEl : _eventDetailEl;
+  requestAnimationFrame(() => {
+    if (!preview.map.isConnected || sheet.hidden || sheet.classList.contains("shut") || !window.maplibregl) return;
+    const map = new window.maplibregl.Map({
+      container: preview.map,
+      style: HSL_STYLE,
+      center: [preview.lng, preview.lat],
+      zoom: 2,
+      attributionControl: false,
+      interactive: false,
+    });
+    _detailLocationMaps[kind] = map;
+    const markerEl = document.createElement("span");
+    markerEl.className = "pf-timeline-map-marker";
+    markerEl.setAttribute("aria-label", preview.name);
+    markerEl.title = preview.name;
+    new window.maplibregl.Marker({ element: markerEl, anchor: "center" })
+      .setLngLat([preview.lng, preview.lat])
+      .addTo(map);
+    map.once("load", () => {
+      if (_detailLocationMaps[kind] !== map) return;
+      map.resize();
+      map.easeTo({ zoom: 12, duration: isReduceMotionActive() ? 0 : 500 });
+    });
+  });
+}
+
+function _clearDetailLocationMap(kind) {
+  _detailLocationMaps[kind]?.remove();
+  _detailLocationMaps[kind] = null;
+}
+
 function _restorePlacesAfterPlaceClose(scrollTop) {
   if (scrollTop === null) return;
   openPlacesSheet();
@@ -390,6 +512,7 @@ function _setActiveEventMarker(eventId) {
 
 /** Close the place-detail sheet and clear its active-marker tracking state. */
 export function closePlaceSheet() {
+  _clearDetailLocationMap("place");
   const placesScrollTop = _placeSheetFromListScrollTop;
   if (placeSheetEl._animCleanup) { clearTimeout(placeSheetEl._animCleanup); placeSheetEl._animCleanup = null; }
   if (placeSheetEl._hideTimeout) { clearTimeout(placeSheetEl._hideTimeout); placeSheetEl._hideTimeout = null; }
@@ -1668,19 +1791,7 @@ const CLUSTER_ZOOM = 10;
 // already at or past this zoom, clicking just pans/recenters, it never
 // zooms in further.
 const PLACE_CLICK_ZOOM = 14;
-const PLACE_SHEET_MAX_HEIGHT_RATIO = 0.9;
 let _clusterLayersReady = false;
-
-function _focusOpenPlace(place, duration = 300) {
-  if (!isPhone() || _activePlaceSheetId !== place.id) return;
-  requestAnimationFrame(() => {
-    if (placeSheetEl.hidden || placeSheetEl.classList.contains("shut") || _activePlaceSheetId !== place.id) return;
-    focusMapPoint([place.lng, place.lat], {
-      zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM),
-      duration,
-    });
-  });
-}
 
 function _buildPlacesGeoJSON(places) {
   return {
@@ -2102,13 +2213,8 @@ function _renderPlaceSheetReviews(reviewsSection, reviewsTarget, placeId, placeN
  * @returns {void}
  */
 export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
-  if (isPhone()) {
-    // Programmatic place links can originate on Home/Profile/Timeline; the
-    // detail window always belongs over the Map so its selected pin remains
-    // visible, including when the place originated in the Places list.
-    if (getPhonePage() !== "map") navigatePhonePage("map");
-    if (placeSheetEl.classList.contains("shut")) pushPhoneWindowState("place");
-  }
+  _clearDetailLocationMap("place");
+  if (isPhone() && placeSheetEl.classList.contains("shut")) pushPhoneWindowState("place");
   track("place_opened", { place_id: place.id, place_name: String(place.name || ""), place_lat: Math.round(Number(place.lat) * 100) / 100, place_lng: Math.round(Number(place.lng) * 100) / 100, category: String(place.type || ""), source: "map_marker", mode: "map" });
   if (_activePlaceSheetReviewsListener) {
     window.removeEventListener("hf:reviews-loaded", _activePlaceSheetReviewsListener);
@@ -2130,6 +2236,15 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
 
   const inner = document.createElement("div");
   inner.className = "pp-inner";
+  const locationPreview = isPhone()
+    ? _createDetailLocationSection(place.name || "this place", place.lat, place.lng)
+    : null;
+
+  const banner = document.createElement("div");
+  banner.className = "detail-banner";
+  banner.setAttribute("aria-hidden", "true");
+  inner.appendChild(banner);
+  _loadDetailBanner(banner, place);
 
   const titleRow = document.createElement("div");
   titleRow.className = "pp-title-row";
@@ -2184,20 +2299,8 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   metaRow.className = "pp-meta-row";
 
   // Contact row — phone / website / Google Maps link (Google-enriched or user-submitted)
-  if (place.phone || place.website || place.mapsUrl) {
-    const contact = document.createElement("div");
-    contact.className = "pp-contact";
-    const links = [];
-    if (place.phone) {
-      links.push(`<a class="pp-contact-link" href="tel:${escA(place.phone)}" aria-label="Call" title="Call"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${esc(place.phone)}</span></a>`);
-    }
-    if (place.website) {
-      links.push(`<a class="pp-contact-link" href="${escA(place.website)}" target="_blank" rel="noopener noreferrer" aria-label="Website" title="Website"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>Website</span></a>`);
-    }
-    if (place.mapsUrl) {
-      links.push(`<a class="pp-contact-link" href="${escA(place.mapsUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Google Maps" title="Google Maps"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Google Maps</span></a>`);
-    }
-    contact.innerHTML = links.join("");
+  const contact = _buildDetailContactPills(place);
+  if (contact) {
     contact.querySelectorAll('a[href^="tel:"]').forEach((link) => link.addEventListener("click", () => track("phone_clicked", { place_id: place.id, category: String(place.type || "") })));
     contact.querySelectorAll('a[target="_blank"]').forEach((link) => link.addEventListener("click", () => track("website_clicked", { place_id: place.id, category: String(place.type || "") })));
     metaRow.appendChild(contact);
@@ -2375,7 +2478,6 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     mediaController = mountPlaceMedia(mediaHost, place, {
       onLayoutChange: () => {
         placeSheetSnap.remeasure({ preserveExpansion: true });
-        _focusOpenPlace(place);
       },
     });
   }).catch(() => { /* Photos are optional; place details remain complete. */ });
@@ -2470,6 +2572,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     });
     inner.appendChild(eventsSection);
   }
+  if (locationPreview) inner.appendChild(locationPreview.section);
   if (reviewsDetailSection) {
     inner.appendChild(reviewsDetailSection);
     renderPlaceReviews(reviewsDetailSection, place.id, place.name);
@@ -2644,13 +2747,11 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   placeSheetEl.hidden = false;
   placeSheetScrim.classList.remove("hide");
   placeSheetSnap.open();
+  _mountDetailLocationMap("place", locationPreview);
 
-  // Center the pin inside the map area left after the currently open sheet.
-  // The helper also clears stale MapLibre padding when no sheet is open.
   requestAnimationFrame(() => {
     syncTitleActionAlignment();
     staggerContainers.forEach((container) => container.classList.add("stagger-in"));
-    _focusOpenPlace(place, 500);
   });
 }
 
@@ -3185,10 +3286,7 @@ document.getElementById("places-close").addEventListener("click", closePlacesShe
 
 window.addEventListener(EVT.PHONE_PLACE_OPEN, (event) => {
   const place = placesData.find((item) => String(item.id) === String(event.detail?.id));
-  if (place) {
-    if (isPhone()) navigatePhonePage("map");
-    openPlaceSheet(place);
-  }
+  if (place) openPlaceSheet(place);
 });
 
 window.addEventListener(EVT.PHONE_EVENT_OPEN, (event) => {
@@ -3197,10 +3295,7 @@ window.addEventListener(EVT.PHONE_EVENT_OPEN, (event) => {
 });
 
 const placesSnap = initSheetDrag(placesSheet, closePlacesSheet);
-const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, {
-  contentBoundedExpansion: true,
-  maxHeightRatio: PLACE_SHEET_MAX_HEIGHT_RATIO,
-});
+const placeSheetSnap = initSheetDrag(placeSheetEl, closePlaceSheet, { fixedFullScreen: true });
 
 window.addEventListener(EVT.WINDOW_THREAD_CLOSE, () => {
   if (_eventDetailEl && !_eventDetailEl.classList.contains("shut")) closeEventDetail();
@@ -4903,13 +4998,16 @@ function _closeEventsNavigation({ leavePhonePage = false } = {}) {
 
 function _eventPlaceAndCoords(ev) {
   const place = placesData.find((item) => String(item.id) === String(ev.placeId));
-  const lat = Number(ev.lat ?? place?.lat);
-  const lng = Number(ev.lng ?? place?.lng);
+  const latValue = ev.lat ?? place?.lat;
+  const lngValue = ev.lng ?? place?.lng;
+  const lat = latValue == null ? null : Number(latValue);
+  const lng = lngValue == null ? null : Number(lngValue);
   return { place, lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null };
 }
 
 function closeEventDetail() {
   if (!_eventDetailEl || _eventDetailEl.classList.contains("shut")) return;
+  _clearDetailLocationMap("event");
   const returnToEvents = _eventDetailFromEvents;
   const eventOnly = _eventDetailEventOnly;
   _eventDetailFromEvents = false;
@@ -4931,7 +5029,6 @@ function closeEventDetail() {
   }, 400);
   if (returnToEvents) {
     if (isPhone()) {
-      navigatePhonePage("events", { replace: true });
       _renderEventsList({ animate: false });
     } else {
       _openEventsNavigation();
@@ -4941,9 +5038,11 @@ function closeEventDetail() {
 
 export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   if (!ev || !_eventDetailEl) return;
+  _clearDetailLocationMap("event");
   _trackRecentlyViewedEvent(ev.id);
   const { place, lat, lng } = _eventPlaceAndCoords(ev);
-  const location = place?.name || ev.locationName || ev.location || ev.address || "Location to be announced";
+  const location = place?.name || ev.locationName || ev.location || "";
+  const directionsName = location || ev.address || ev.title || "Event";
   const date = _nextEventDate(ev);
   const dateLabel = date
     ? date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
@@ -4970,16 +5069,29 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
     }
   }
   if (isPhone()) {
-    navigatePhonePage("map");
     pushPhoneWindowState("event-detail");
   } else {
     _eventsOverlay.classList.add("hide");
   }
   _eventDetailTitle.textContent = ev.title || "Event";
+  const eventVenue = location
+    ? `<strong>${esc(location)}</strong>`
+    : "";
+  const eventAddress = ev.address ? `<span>${esc(ev.address)}</span>` : "";
+  const eventLocation = eventVenue || eventAddress
+    ? `<div class="pp-addr ev-detail-venue">${eventVenue}${eventAddress}</div>`
+    : "";
+  const eventContacts = _buildDetailContactPills({
+    phone: ev.phone || place?.phone,
+    website: ev.website || place?.website,
+    mapsUrl: ev.mapsUrl || place?.mapsUrl,
+    eventUrl: ev.url,
+  });
   _eventDetailBody.innerHTML = `<div class="pp">
     <div class="pp-inner ev-detail-inner">
+      <div class="detail-banner" aria-hidden="true"></div>
       <div class="pp-title-row ev-detail-title-row"></div>
-      <div class="pp-addr ev-detail-venue"><div class="ev-detail-venue-row"><svg class="ev-detail-venue-mark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><strong>${esc(location)}</strong></div>${ev.address ? `<span>${esc(ev.address)}</span>` : ""}</div>
+      ${eventLocation}
       <div class="pp-events ev-detail-schedule">
         <div class="ev-detail-schedule-grid">
           <div class="ev-detail-schedule-item"><span class="ev-detail-label">Date</span><strong class="ev-detail-value">${esc(dateLabel)}</strong></div>
@@ -4991,6 +5103,12 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
       ${ev.description ? `<div class="ev-detail-section"><span class="ev-detail-label">About</span><p class="ev-detail-description">${esc(ev.description)}</p></div>` : ""}
     </div>
   </div>`;
+  _loadDetailBanner(_eventDetailBody.querySelector(".detail-banner"), place, "Events");
+  if (eventContacts) _eventDetailBody.querySelector(".ev-detail-schedule")?.before(eventContacts);
+  const locationPreview = isPhone()
+    ? _createDetailLocationSection(location || ev.title || "this event", lat, lng)
+    : null;
+  if (locationPreview) _eventDetailBody.querySelector(".ev-detail-schedule")?.after(locationPreview.section);
   const titleRow = _eventDetailBody.querySelector(".ev-detail-title-row");
   const titleActions = document.createElement("div");
   titleActions.className = "pp-title-actions";
@@ -5094,18 +5212,6 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
     event.stopPropagation();
     openEventOverlay(null, ev);
   });
-  let externalLink = null;
-  if (ev.url) {
-    externalLink = document.createElement("a");
-    const link = externalLink;
-    link.className = "pp-contact-btn ev-detail-external";
-    link.href = ev.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = "Open event page";
-    link.setAttribute("aria-label", "Open event page");
-    link.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-  }
   if (lat !== null && lng !== null) {
     const directions = document.createElement("button");
     directions.className = "pp-dir-btn ev-detail-directions";
@@ -5114,8 +5220,8 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
     directions.title = "Directions";
     directions.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>`;
     directions.addEventListener("click", () => {
-      dir.dest = { lat, lng, name: location };
-      document.getElementById("dir-to").value = location;
+      dir.dest = { lat, lng, name: directionsName };
+      document.getElementById("dir-to").value = directionsName;
       placeDestMarker(lng, lat);
       updateGoButton();
       _eventDetailFromEvents = false;
@@ -5124,7 +5230,6 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
     });
     _eventDetailActions.appendChild(directions);
   }
-  if (externalLink) _eventDetailActions.appendChild(externalLink);
   const share = document.createElement("button");
   share.className = "pp-share-btn ev-detail-share";
   share.type = "button";
@@ -5141,14 +5246,11 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   _eventDetailEl.classList.remove("shut");
   placeSheetScrim.classList.remove("hide");
   _eventDetailSnap.open();
+  _mountDetailLocationMap("event", locationPreview);
   requestAnimationFrame(syncTitleActionAlignment);
-  if (lat !== null && lng !== null) requestAnimationFrame(() => focusMapPoint([lng, lat], { zoom: Math.max(map.getZoom(), PLACE_CLICK_ZOOM), duration: 500 }));
 }
 
-const _eventDetailSnap = initSheetDrag(_eventDetailEl, closeEventDetail, {
-  contentBoundedExpansion: true,
-  maxHeightRatio: PLACE_SHEET_MAX_HEIGHT_RATIO,
-});
+const _eventDetailSnap = initSheetDrag(_eventDetailEl, closeEventDetail, { fixedFullScreen: true });
 _eventDetailCloseBtn?.addEventListener("click", closeEventDetail);
 
 _eventsPill.addEventListener("click", _openEventsNavigation);
@@ -5334,7 +5436,10 @@ function _renderSponsorCarousel(filteredPlaces) {
     const card = e.target.closest(".sponsor-card");
     if (!card) return;
     const place = placesData.find(p => p.id === card.dataset.placeId);
-    if (place) { closePlacesSheet({ keepPage: isPhone() }); openPlaceSheet(place); }
+    if (place) {
+      if (!isPhone()) closePlacesSheet();
+      openPlaceSheet(place);
+    }
   });
 
   // Desktop: mouse wheel over carousel → scroll horizontally, not vertically
@@ -6211,9 +6316,13 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   const placeId = li.dataset.placeId;
   const place = placesData.find((p) => String(p.id) === placeId);
   if (place) {
-    const savedScrollTop = document.getElementById("places-scroll").scrollTop;
-    closePlacesSheet({ keepPage: isPhone() });
-    openPlaceSheet(place, { fromListScrollTop: savedScrollTop });
+    if (isPhone()) {
+      openPlaceSheet(place);
+    } else {
+      const savedScrollTop = document.getElementById("places-scroll").scrollTop;
+      closePlacesSheet();
+      openPlaceSheet(place, { fromListScrollTop: savedScrollTop });
+    }
   }
 });
 

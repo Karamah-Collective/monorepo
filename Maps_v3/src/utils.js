@@ -1273,12 +1273,13 @@ export function animateSheetHeight(sheet, changeFn, { force = false } = {}) {
  * Attach mobile drag/snap behavior to a bottom sheet.
  * @param {HTMLElement} sheet - Sheet element with drag/header handles.
  * @param {function(): void} closeFn - Close callback used by dismiss gestures.
- * @param {{contentBoundedExpansion?: boolean, maxHeightRatio?: number}} [options={}] - Optional content-aware expansion cap.
+ * @param {{contentBoundedExpansion?: boolean, maxHeightRatio?: number, fixedFullScreen?: boolean}} [options={}] - Optional sheet sizing behavior.
  * @returns {object} Sheet open, close, measurement, and cleanup controller.
  */
 export function initSheetDrag(sheet, closeFn, {
   contentBoundedExpansion = false,
   maxHeightRatio = 1,
+  fixedFullScreen = false,
 } = {}) {
   const isMobile = () => window.innerWidth <= 768;
   const SHEET_STATE_OPENING = "opening";
@@ -1434,6 +1435,7 @@ export function initSheetDrag(sheet, closeFn, {
   /* ── bind drag handles (start on handle, move/end on document) ── */
   sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
     handle.addEventListener("touchstart", (e) => {
+      if (fixedFullScreen && isMobile()) return;
       if (e.target.closest("button, a, [role='button']")) return;
       // preventDefault stops the browser from starting a scroll/pan,
       // replacing the old CSS touch-action:none on .sheet-head.
@@ -1441,6 +1443,7 @@ export function initSheetDrag(sheet, closeFn, {
       onStart(e.touches[0].clientY);
     }, { passive: false });
     handle.addEventListener("mousedown",  (e) => {
+      if (fixedFullScreen && isMobile()) return;
       if (e.target.closest("button, a, [role='button']")) return;
       onStart(e.clientY); e.preventDefault();
     });
@@ -1468,6 +1471,18 @@ export function initSheetDrag(sheet, closeFn, {
         sheet.style.height = "";
         sheet.dataset.sheetState = SHEET_STATE_OPEN;
         prevDesktopH = sheet.offsetHeight; // prime so first RO callback can animate immediately
+        return;
+      }
+      if (fixedFullScreen) {
+        sheet.style.height = "";
+        sheet.classList.add("full", "shut");
+        sheet.dataset.sheetState = SHEET_STATE_OPENING;
+        void sheet.offsetHeight;
+        openRAF = requestAnimationFrame(() => {
+          openRAF = null;
+          sheet.classList.remove("shut");
+          sheet.dataset.sheetState = SHEET_STATE_OPEN;
+        });
         return;
       }
       sheet.classList.remove("full");
@@ -1502,7 +1517,7 @@ export function initSheetDrag(sheet, closeFn, {
      *    4. Restore transition → set target  (smooth CSS animation)
      */
     remeasure({ preserveExpansion = false } = {}) {
-      if (!isMobile() || sheet.classList.contains("shut")) return;
+      if (fixedFullScreen || !isMobile() || sheet.classList.contains("shut")) return;
 
       // 1. Current visual height
       const startH = sheet.offsetHeight;
@@ -1546,7 +1561,7 @@ export function initSheetDrag(sheet, closeFn, {
     /** Update cached cap (e.g. after a tab switch).
      *  Only updates the drag cap — never changes the current height. */
     softRemeasure() {
-      if (!isMobile() || sheet.classList.contains("shut")) return;
+      if (fixedFullScreen || !isMobile() || sheet.classList.contains("shut")) return;
       const prev = sheet.style.height;
       sheet.style.height = "auto";
       void sheet.offsetHeight;

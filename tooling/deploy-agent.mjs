@@ -109,6 +109,7 @@ const DEPLOY_FILES = [
   "Maps_v3/_routes.json",
   "Maps_v3/kc_logo_big.inline.svg",
   "Maps_v3/LOGO - Manarah.svg",
+  "Maps_v3/assets",
   "Maps_v3/src",
   "Maps_v3/data",
   "Maps_v3/functions",

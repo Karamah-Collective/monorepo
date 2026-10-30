@@ -846,7 +846,7 @@ function _buildOverlayContent(placeId, placeName, ratingData, reviews) {
           <div class="rv-summary-facts">
             <div class="rv-rating-line">
               <div class="rv-avg-stars">${buildStarDisplay(ratingData?.avg || 0, "16")}</div>
-              <span class="rv-review-count pp-media-count" aria-label="${count} review${count !== 1 ? "s" : ""}">${count}</span>
+              <span class="rv-review-count pp-rating-count count-badge" aria-label="${count} review${count !== 1 ? "s" : ""}">${count}</span>
             </div>
             <div class="rv-distribution">
               <div class="rv-dist-segment-bar" role="img" aria-label="Rating distribution">${distSegments}</div>

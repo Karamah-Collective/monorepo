@@ -13,6 +13,7 @@ const VIEWER_ZOOM_ANIMATION_MS = 180;
 
 const _fullManifestPromises = new Map();
 const _communityManifestPromises = new Map();
+const _googlePreviewPromises = new Map();
 let _staticMapsLinks;
 
 let _viewer = null;
@@ -496,6 +497,21 @@ export function loadPlaceMediaManifest(placeId, { communityOnly = false } = {}) 
   return promise;
 }
 
+export function loadGooglePlacePreview(place) {
+  const placeId = String(place?.id || "");
+  if (!placeId) return Promise.resolve(null);
+  if (!_googlePreviewPromises.has(placeId)) {
+    const promise = _getMapsUrl(place)
+      .then((mapsUrl) => _loadGoogleLinkPreview(place, mapsUrl))
+      .then((preview) => {
+        if (!preview) _googlePreviewPromises.delete(placeId);
+        return preview;
+      });
+    _googlePreviewPromises.set(placeId, promise);
+  }
+  return _googlePreviewPromises.get(placeId);
+}
+
 /**
  * Clear cached media metadata after an upload or review-state change.
  * @param {string} placeId - Stable app place ID.
@@ -504,6 +520,7 @@ export function loadPlaceMediaManifest(placeId, { communityOnly = false } = {}) 
 export function invalidatePlaceMediaManifest(placeId) {
   _fullManifestPromises.delete(placeId);
   _communityManifestPromises.delete(placeId);
+  _googlePreviewPromises.delete(String(placeId));
 }
 
 function _updateRailControls(rail, previous, next, controls) {
@@ -558,11 +575,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   let community = [];
   let google = [];
-  let mapsUrl = place.mapsUrl || "";
-  const mapsUrlPromise = _getMapsUrl(place).then((url) => {
-    mapsUrl = url;
-    return url;
-  });
   // The summary flag is only an optimization hint and may be stale in local
   // development. An opened place always gets one lightweight manifest check.
   const shouldLoad = true;
@@ -596,13 +608,9 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   const load = async (force = false) => {
     if (force) invalidatePlaceMediaManifest(place.id);
-    const previewPromise = mapsUrlPromise.then((resolvedMapsUrl) => {
-      mapsUrl = resolvedMapsUrl;
-      return _loadGoogleLinkPreview(place, resolvedMapsUrl);
-    });
     const [data, linkPreview] = await Promise.all([
       loadPlaceMediaManifest(place.id, { communityOnly: true }),
-      previewPromise,
+      loadGooglePlacePreview(place),
     ]);
     community = (data.communityPhotos || []).map((photo) => ({ ...photo, source: "community" }));
     google = linkPreview ? [linkPreview] : [];
