@@ -80,15 +80,22 @@
             </div>
             <div id="phone-home-search-results" class="phone-home-search-results home-search-results-list" aria-live="polite" hidden></div>
           </section>
-          <button id="phone-prayer-state" class="phone-prayer-card" type="button" data-phone-qibla aria-label="Open Qibla compass">
-            <div class="phone-prayer-card-current">
-              <span class="phone-prayer-card-copy"><span class="phone-prayer-card-top">Current prayer</span><strong id="phone-current-prayer-name">Prayer times</strong><span id="phone-prayer-location" class="phone-prayer-location">Finland local time</span></span>
+          <button id="phone-prayer-state" class="phone-prayer-card" type="button" data-phone-qibla aria-label="Open prayer times and Qibla compass">
+            <span class="phone-prayer-card-current" aria-live="polite">
+              <span class="phone-prayer-card-copy">
+                <span class="phone-prayer-card-top">Current prayer</span>
+                <strong id="phone-current-prayer-name">Prayer times</strong>
+                <span id="phone-prayer-location" class="phone-prayer-location">Finland local time</span>
+              </span>
               <span class="phone-prayer-card-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
-            </div>
-            <div class="phone-prayer-card-next">
-              <span class="phone-prayer-card-next-copy"><span class="phone-prayer-card-next-label">Next</span><strong id="phone-next-prayer-name">Prayer times</strong><time id="phone-next-prayer-time">--:--</time></span>
+            </span>
+            <span class="phone-prayer-card-next" aria-live="polite">
+              <span class="phone-prayer-card-next-copy">
+                <strong id="phone-next-prayer-name">Prayer times</strong>
+                <time id="phone-next-prayer-time">--:--</time>
+              </span>
               <span class="phone-prayer-card-countdown" id="phone-next-prayer-countdown">Loading prayer times</span>
-            </div>
+            </span>
           </button>
           <section class="phone-home-section phone-home-explore" aria-label="Quick access">
             <div class="phone-action-grid">
@@ -511,7 +518,7 @@
             <button
               id="dir-focused-close"
               class="sheet-x btn-roundel"
-              aria-label="Close"
+             aria-label="Back"
             >
               <svg
                 width="16"
@@ -893,7 +900,8 @@
               stroke-width="2.5"
               stroke-linecap="round"
             >
-              <path d="M18 6L6 18M6 6l12 12" />
+              <path d="M19 12H5" />
+              <path d="M12 19l-7-7 7-7" />
             </svg>
           </button>
         </div>
@@ -1085,9 +1093,10 @@
         <div class="sheet-head">
           <div id="event-detail-toolbar" class="place-sheet-toolbar" aria-label="Event details and actions"></div>
           <h2 id="event-detail-title"></h2>
-          <button id="event-detail-close" class="sheet-x btn-roundel" aria-label="Close event details">
+          <button id="event-detail-close" class="sheet-x btn-roundel" aria-label="Back">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
+              <path d="M19 12H5" />
+              <path d="M12 19l-7-7 7-7" />
             </svg>
           </button>
         </div>

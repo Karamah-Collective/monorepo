@@ -925,23 +925,25 @@ function _renderPrayer() {
   const welcome = document.querySelector(".phone-home-welcome");
   if (welcome) welcome.dataset.prayerPeriod = snapshot?.period || "";
   const currentName = document.getElementById("phone-current-prayer-name");
-  const name = document.getElementById("phone-next-prayer-name");
-  const time = document.getElementById("phone-next-prayer-time");
+  const nextName = document.getElementById("phone-next-prayer-name");
+  const nextTime = document.getElementById("phone-next-prayer-time");
   const countdown = document.getElementById("phone-next-prayer-countdown");
   const state = document.getElementById("phone-prayer-state");
-  if (!currentName || !name || !time || !countdown || !state) return;
+  if (!currentName || !nextName || !nextTime || !countdown || !state) return;
   if (!snapshot) {
     currentName.textContent = "Prayer times";
-    name.textContent = "Prayer times";
-    time.textContent = "--:--";
+    nextName.textContent = "Prayer times";
+    nextTime.textContent = "--:--";
     countdown.textContent = "Loading prayer times";
+    state.setAttribute("aria-label", "Open prayer times and Qibla compass");
     state.hidden = false;
     return;
   }
   currentName.textContent = snapshot.currentName || "Between prayers";
-  name.textContent = snapshot.name || "Next prayer";
-  time.textContent = snapshot.time || "--:--";
+  nextName.textContent = snapshot.name || "Next prayer";
+  nextTime.textContent = snapshot.time || "--:--";
   countdown.textContent = snapshot.countdown || "Coming up";
+  state.setAttribute("aria-label", `Current prayer: ${currentName.textContent}. Next prayer: ${nextName.textContent} at ${nextTime.textContent}, ${countdown.textContent}. Open prayer times and Qibla compass`);
   state.hidden = false;
 }
 
@@ -953,9 +955,9 @@ function _renderHome() {
   const city = _homeCity || "Finland";
   const cityLabel = document.getElementById("phone-home-city");
   if (cityLabel) cityLabel.textContent = city;
-  if (date) date.textContent = _formatHomeDate();
   const prayerLocation = document.getElementById("phone-prayer-location");
   if (prayerLocation) prayerLocation.textContent = `${city} local time`;
+  if (date) date.textContent = _formatHomeDate();
   const greeting = document.getElementById("phone-home-greeting");
   if (greeting) {
     greeting.textContent = "Assalamu'Alaikum";

@@ -183,6 +183,74 @@ test("local demo profile renders contribution history and an elaborate timeline"
   await expect(page.locator(".pf-timeline-event")).toHaveCount(16);
 });
 
+test("phone profile detail window resizes to discrete content-aware snaps", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("hf_tutorial_v1", "done"));
+  await page.goto("/?demo=profile");
+  await page.waitForFunction(() => document.querySelector("#map canvas")?.offsetWidth > 0, { timeout: 30_000 });
+  test.skip(await page.evaluate(() => window.innerWidth > 768), "Profile detail resizing is phone-only");
+
+  await page.click("#menu-pill");
+  await expect(page.locator("#profile-timeline-open")).toBeVisible({ timeout: 15_000 });
+  await page.click("#profile-my-reviews .pf-summary-chips");
+  await expect(page.locator("#profile-detail-body .pf-review-toolbar")).toBeVisible();
+
+  const initial = await page.locator("#profile-detail-card").evaluate((card) => ({
+    height: card.getBoundingClientRect().height,
+    viewport: window.innerHeight,
+  }));
+  expect(initial.height).toBeLessThanOrEqual(initial.viewport * 0.75 + 2);
+
+  const handle = page.locator("#profile-detail-card .overlay-drag");
+  const handleBox = await handle.boundingBox();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + 180, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(450);
+
+  const snapped = await page.locator("#profile-detail-card").evaluate((card) => ({
+    height: card.getBoundingClientRect().height,
+    viewport: window.innerHeight,
+  }));
+  const snapRatio = Math.round((snapped.height / snapped.viewport) * 4) / 4;
+  expect([0.25, 0.5, 0.75, 1]).toContain(snapRatio);
+  expect(snapped.height).toBeLessThan(initial.height - 20);
+
+  const contentShell = await page.locator("#profile-detail-card").evaluate((card) => {
+    const body = card.querySelector("#profile-detail-body");
+    const handle = card.querySelector(".overlay-drag");
+    const header = card.querySelector(".suggest-head");
+    const bodyStyle = getComputedStyle(body);
+    return {
+      viewport: window.innerHeight,
+      shell: handle.offsetHeight + header.offsetHeight
+        + Number.parseFloat(bodyStyle.paddingTop)
+        + Number.parseFloat(bodyStyle.paddingBottom),
+    };
+  });
+  await page.addStyleTag({
+    content: `#profile-detail-body > .pf-detail-review-content { box-sizing: border-box; height: ${contentShell.viewport * 0.78 - contentShell.shell}px !important; overflow: hidden !important; }`,
+  });
+  await page.click("#profile-detail-close");
+  await expect(page.locator("#profile-detail-overlay")).toHaveClass(/hide/);
+  await page.click("#profile-my-reviews .pf-summary-chips");
+  await expect(page.locator("#profile-detail-body .pf-review-toolbar")).toBeVisible();
+  const cappedInitial = await page.locator("#profile-detail-card").evaluate((card) => ({
+    height: card.getBoundingClientRect().height,
+    viewport: window.innerHeight,
+  }));
+  expect(cappedInitial.height / cappedInitial.viewport).toBeCloseTo(0.75, 1);
+
+  const cappedHandleBox = await handle.boundingBox();
+  await page.mouse.move(cappedHandleBox.x + cappedHandleBox.width / 2, cappedHandleBox.y + cappedHandleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cappedHandleBox.x + cappedHandleBox.width / 2, cappedHandleBox.y - 40, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(450);
+  const cappedSnap = await page.locator("#profile-detail-card").evaluate((card) => card.getBoundingClientRect().height / window.innerHeight);
+  expect(cappedSnap).toBeCloseTo(0.78, 2);
+});
+
 test.describe("verified visit timeline", () => {
   test("keeps manual Visited separate and requires sign-in before GPS", async ({ page }) => {
     await setupApp(page);

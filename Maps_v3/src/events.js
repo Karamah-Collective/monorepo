@@ -19,6 +19,9 @@ export const EVT = {
   /** Fired on window whenever the signed-in Firebase account changes (sign-in,
    *  sign-out, or auth state restored on load). detail: { account: {uid,email,displayName}|null } */
   AUTH_CHANGED: "hf:auth-changed",
+  /** Fired when a place or event moves to the front of its recently-viewed list.
+   *  detail: { kind: "place"|"event", id: string|number } */
+  RECENTLY_VIEWED_CHANGED: "hf:recently-viewed-changed",
   /** Fired on window whenever a signed-in user's server-synced favourites/
    *  saved pins/home location have just changed: on sign-in/sign-out (a full
    *  merge with the server-synced copies), and — since 2026-08-03, see

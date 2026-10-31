@@ -243,6 +243,13 @@ let _activePlaceSheetReviewsListener = null;
 let _activePlaceSheetMediaListener = null;
 const _detailLocationMaps = { place: null, event: null };
 const _detailLocationObservers = { place: null, event: null };
+const DETAIL_MAP_VISIBILITY_THRESHOLD = 0.85;
+const DETAIL_MAP_INITIAL_ZOOM = 2;
+const DETAIL_MAP_MIN_ZOOM = 11;
+const DETAIL_MAP_MAX_ZOOM = 19;
+const DETAIL_MAP_TARGET_ZOOM = 13;
+const DETAIL_MAP_CAMERA_DURATION = 900;
+const DETAIL_MAP_MARKER_INSET = 20;
 const PLACE_REVIEW_RETURN_KEY = "hf:place-review-return";
 
 window.addEventListener(EVT.AUTH_CHANGED, (event) => {
@@ -270,7 +277,6 @@ window.addEventListener(EVT.PHONE_PAGE_CHANGED, (event) => {
 export let activeTypeFilter = "all";
 export let activeTagFilters = new Set();
 
-const _CLOSE_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
 const _BACK_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>`;
 // Contact action-row button icon (phone) — reuses the exact path from the existing
 // .pp-contact row's tel: link icon.
@@ -415,17 +421,10 @@ function _loadDetailBanner(banner, place, placeholderCategory) {
     });
 }
 
-const DETAIL_CONTACT_ICONS = {
-  phone: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
-  website: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
-  maps: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  external: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
-};
-
 function _buildDetailContactPills({ phone, website, mapsUrl, eventUrl } = {}) {
   const row = document.createElement("div");
   row.className = "pp-contact";
-  const add = (href, label, icon, external = false, title = label) => {
+  const add = (href, label, external = false, title = label) => {
     const link = document.createElement("a");
     link.className = "pp-contact-link";
     link.href = href;
@@ -435,13 +434,16 @@ function _buildDetailContactPills({ phone, website, mapsUrl, eventUrl } = {}) {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
     }
-    link.innerHTML = icon;
+    const text = document.createElement("span");
+    text.className = "pp-contact-label";
+    text.textContent = label;
+    link.append(text);
     row.append(link);
   };
-  if (phone) add(`tel:${phone}`, "Call", DETAIL_CONTACT_ICONS.phone, false, `Call ${phone}`);
-  if (website) add(website, "Website", DETAIL_CONTACT_ICONS.website, true);
-  if (mapsUrl) add(mapsUrl, "Google Maps", DETAIL_CONTACT_ICONS.maps, true);
-  if (eventUrl) add(eventUrl, "Event page", DETAIL_CONTACT_ICONS.external, true);
+  if (phone) add(`tel:${phone}`, "Call", false, `Call ${phone}`);
+  if (website) add(website, "Website", true);
+  if (mapsUrl) add(mapsUrl, "Google Maps", true);
+  if (eventUrl) add(eventUrl, "Event page", true);
   return row.childElementCount ? row : null;
 }
 
@@ -457,11 +459,53 @@ function _createDetailLocationSection(name, latValue, lngValue) {
   label.className = "menu-section-label";
   label.textContent = "Location";
   const map = document.createElement("div");
-  map.className = "pf-timeline-map";
-  map.setAttribute("role", "img");
+  map.className = "pf-timeline-map detail-location-map";
+  map.setAttribute("role", "region");
   map.setAttribute("aria-label", `Map showing ${name}`);
   section.append(label, map);
   return { section, map, lat, lng, name };
+}
+
+function _constrainDetailMapCamera(map, lng, lat) {
+  const container = map.getContainer();
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  if (width <= DETAIL_MAP_MARKER_INSET * 2 || height <= DETAIL_MAP_MARKER_INSET * 2) return;
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const markerPoint = map.project([lng, lat]);
+  const markerMinX = DETAIL_MAP_MARKER_INSET;
+  const markerMaxX = width - DETAIL_MAP_MARKER_INSET;
+  const markerMinY = DETAIL_MAP_MARKER_INSET;
+  const markerMaxY = height - DETAIL_MAP_MARKER_INSET;
+  const centerAtMarkerLeft = map.unproject([
+    centerX + markerPoint.x - markerMinX,
+    centerY + markerPoint.y - centerY,
+  ]);
+  const centerAtMarkerRight = map.unproject([
+    centerX + markerPoint.x - markerMaxX,
+    centerY + markerPoint.y - centerY,
+  ]);
+  const centerAtMarkerTop = map.unproject([
+    centerX + markerPoint.x - centerX,
+    centerY + markerPoint.y - markerMinY,
+  ]);
+  const centerAtMarkerBottom = map.unproject([
+    centerX + markerPoint.x - centerX,
+    centerY + markerPoint.y - markerMaxY,
+  ]);
+  const minLng = Math.min(centerAtMarkerLeft.lng, centerAtMarkerRight.lng);
+  const maxLng = Math.max(centerAtMarkerLeft.lng, centerAtMarkerRight.lng);
+  const minLat = Math.min(centerAtMarkerBottom.lat, centerAtMarkerTop.lat);
+  const maxLat = Math.max(centerAtMarkerBottom.lat, centerAtMarkerTop.lat);
+  const center = map.getCenter();
+  const clamped = {
+    lng: Math.min(maxLng, Math.max(minLng, center.lng)),
+    lat: Math.min(maxLat, Math.max(minLat, center.lat)),
+  };
+  if (Math.abs(clamped.lng - center.lng) < 0.000001 && Math.abs(clamped.lat - center.lat) < 0.000001) return;
+  map.setCenter(clamped);
 }
 
 function _mountDetailLocationMap(kind, preview) {
@@ -479,24 +523,39 @@ function _mountDetailLocationMap(kind, preview) {
       container: preview.map,
       style: HSL_STYLE,
       center: [preview.lng, preview.lat],
-      zoom: canObserve ? 2 : 12,
+      zoom: canObserve ? DETAIL_MAP_INITIAL_ZOOM : DETAIL_MAP_TARGET_ZOOM,
+      minZoom: canObserve ? 0 : DETAIL_MAP_MIN_ZOOM,
+      maxZoom: DETAIL_MAP_MAX_ZOOM,
       attributionControl: false,
-      interactive: false,
     });
     _detailLocationMaps[kind] = map;
+    let isConstraining = false;
+    const constrainCamera = () => {
+      if (isConstraining || _detailLocationMaps[kind] !== map) return;
+      isConstraining = true;
+      _constrainDetailMapCamera(map, preview.lng, preview.lat);
+      isConstraining = false;
+    };
+    map.on("move", constrainCamera);
+    map.on("resize", constrainCamera);
     let observer = null;
     const animateWhenVisible = () => {
       if (!canObserve || !fullyVisible || !mapLoaded || hasAnimated || _detailLocationMaps[kind] !== map) return;
       hasAnimated = true;
       observer?.disconnect();
       if (_detailLocationObservers[kind] === observer) _detailLocationObservers[kind] = null;
-      map.easeTo({ zoom: 12, duration: isReduceMotionActive() ? 0 : 500 });
+      map.easeTo({ zoom: DETAIL_MAP_TARGET_ZOOM, duration: isReduceMotionActive() ? 0 : DETAIL_MAP_CAMERA_DURATION });
+      map.once("moveend", () => {
+        if (_detailLocationMaps[kind] !== map) return;
+        map.setMinZoom(DETAIL_MAP_MIN_ZOOM);
+        constrainCamera();
+      });
     };
     if (canObserve) {
       observer = new window.IntersectionObserver(([entry]) => {
-        fullyVisible = entry.isIntersecting && entry.intersectionRatio >= 0.999;
+        fullyVisible = entry.isIntersecting && entry.intersectionRatio >= DETAIL_MAP_VISIBILITY_THRESHOLD;
         animateWhenVisible();
-      }, { root: scrollRoot, threshold: 0.999 });
+      }, { root: scrollRoot, threshold: DETAIL_MAP_VISIBILITY_THRESHOLD });
       _detailLocationObservers[kind] = observer;
       observer.observe(preview.map);
     }
@@ -511,6 +570,7 @@ function _mountDetailLocationMap(kind, preview) {
       if (_detailLocationMaps[kind] !== map) return;
       map.resize();
       mapLoaded = true;
+      constrainCamera();
       animateWhenVisible();
     });
   });
@@ -583,14 +643,8 @@ export function closePlaceSheet() {
   }, 400);
 }
 
-function _resetPlaceSheetCloseButton() {
-  placeSheetCloseBtn.setAttribute("aria-label", "Close");
-  placeSheetCloseBtn.innerHTML = _CLOSE_ICON_SVG;
-  placeSheetCloseBtn.classList.remove("place-sheet-close--back");
-}
-
-function _setPlaceSheetCloseAsBack() {
-  placeSheetCloseBtn.setAttribute("aria-label", "Back to places");
+function _setPlaceSheetCloseAsBack(label = "Back") {
+  placeSheetCloseBtn.setAttribute("aria-label", label);
   placeSheetCloseBtn.innerHTML = _BACK_ICON_SVG;
   placeSheetCloseBtn.classList.add("place-sheet-close--back");
 }
@@ -1149,8 +1203,16 @@ export function exitCloudVisited() {
 const RECENT_KEY = "hf_recent";
 let recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
 function trackRecentlyViewed(id) {
-  recentIds = [id, ...recentIds.filter((x) => x !== id)].slice(0, 5);
+  const nextIds = [id, ...recentIds.filter((x) => x !== id)].slice(0, 5);
+  const changed = nextIds.length !== recentIds.length
+    || nextIds.some((value, index) => value !== recentIds[index]);
+  recentIds = nextIds;
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch (_) {}
+  if (changed) {
+    window.dispatchEvent(new CustomEvent(EVT.RECENTLY_VIEWED_CHANGED, {
+      detail: { kind: "place", id },
+    }));
+  }
 }
 
 // User location for distance badges
@@ -2791,10 +2853,13 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   _activePlaceSheetId = place.id;
   _setActiveMarker(place.id);
   _placeSheetFromListScrollTop = fromListScrollTop;
-  if (fromListScrollTop !== null) _setPlaceSheetCloseAsBack();
-  else _resetPlaceSheetCloseButton();
+  const placeBackLabel = fromListScrollTop !== null || (isPhone() && getPhonePage() === "places")
+    ? "Back to places"
+    : "Back to map";
+  _setPlaceSheetCloseAsBack(placeBackLabel);
 
   placeSheetBody.innerHTML = "";
+  if (isPhone()) placeSheetBody.scrollTop = 0;
   placeSheetBody.appendChild(root);
 
   placeSheetEl.hidden = false;
@@ -3362,6 +3427,90 @@ let _placesDirty = false;
 let _phonePlacesRenderFrame = 0;
 let _phonePlacesRenderTimer = 0;
 const PHONE_PLACES_RENDER_SETTLE_MS = 460;
+
+function _recentPlacesForRenderedList() {
+  if (!placesLoaded || activeTypeFilter === "saved" || placeSearchQuery.trim()) return [];
+
+  let filtered = _filterPlacesForCurrentType();
+  if (activeTagFilters.size) {
+    filtered = filtered.filter((place) =>
+      [...activeTagFilters].every((tagId) => place.tags?.[tagId] === true),
+    );
+  }
+  if (_openNowFilter) filtered = filtered.filter((place) => isPlaceOpenNow(place.hours) === true);
+  if (_ratedFilter) filtered = filtered.filter((place) => getPlaceRating(place.id) !== null);
+
+  return recentIds
+    .map((id) => filtered.find((place) => place.id === id))
+    .filter(Boolean);
+}
+
+function _buildRecentPlaceNodes(recentPlaces) {
+  const collapsed = collapsedCityGroups.has(RECENT_GROUP);
+  const header = document.createElement("li");
+  header.className = `pl-section-hdr pl-city-hdr${collapsed ? " is-collapsed" : ""}`;
+  header.dataset.cityGroup = RECENT_GROUP;
+  header.innerHTML = `<button class="pl-city-toggle" type="button"><svg class="pl-city-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="pl-city-name">Recently viewed</span></button><span class="pl-city-count">${recentPlaces.length}</span>`;
+
+  const body = document.createElement("li");
+  body.className = `pl-city-group-body${collapsed ? " shut" : ""}`;
+  body.dataset.cityGroupBody = RECENT_GROUP;
+  const inner = document.createElement("div");
+  inner.className = "pl-city-group-inner";
+  const list = document.createElement("ul");
+  list.className = "pl-city-group-list";
+  const cards = document.createElement("template");
+  cards.innerHTML = recentPlaces.map((place, index) => _buildCard(place, index)).join("");
+  list.append(...cards.content.children);
+  inner.append(list);
+  body.append(inner);
+  return { header, body };
+}
+
+function _refreshRecentlyViewedPlacesSection() {
+  const list = document.getElementById("places-list");
+  if (!list || list.dataset.placesRendered !== "true" || !placesLoaded) {
+    _placesDirty = true;
+    return;
+  }
+
+  const recentHeader = [...list.children].find((child) => child.dataset.cityGroup === RECENT_GROUP);
+  const recentBody = [...list.children].find((child) => child.dataset.cityGroupBody === RECENT_GROUP);
+  const recentPlaces = _recentPlacesForRenderedList();
+
+  if (!recentPlaces.length) {
+    if (!recentHeader && !recentBody) return;
+    recentHeader?.remove();
+    recentBody?.remove();
+    list.querySelector(":scope > .pl-section-hdr--main")?.remove();
+    placesSnap.softRemeasure();
+    return;
+  }
+
+  if (recentHeader && recentBody) {
+    recentHeader.querySelector(".pl-city-count").textContent = String(recentPlaces.length);
+    const recentList = recentBody.querySelector(":scope > .pl-city-group-inner > .pl-city-group-list");
+    if (recentList) {
+      const cards = document.createElement("template");
+      cards.innerHTML = recentPlaces.map((place, index) => _buildCard(place, index)).join("");
+      recentList.replaceChildren(...cards.content.children);
+    }
+    placesSnap.softRemeasure();
+    return;
+  }
+
+  const { header, body } = _buildRecentPlaceNodes(recentPlaces);
+  const fragment = document.createDocumentFragment();
+  fragment.append(header, body);
+  if (list.children.length) {
+    const divider = document.createElement("li");
+    divider.className = "pl-section-hdr pl-section-hdr--main";
+    divider.textContent = "All places";
+    fragment.append(divider);
+  }
+  list.prepend(fragment);
+  placesSnap.softRemeasure();
+}
 
 function _schedulePhonePlacesRender() {
   window.cancelAnimationFrame(_phonePlacesRenderFrame);
@@ -4419,8 +4568,16 @@ let _eventDetailEventOnly = false;
 
 function _trackRecentlyViewedEvent(id) {
   const key = String(id);
-  _evRecentIds = [key, ..._evRecentIds.filter((item) => item !== key)].slice(0, 5);
+  const nextIds = [key, ..._evRecentIds.filter((item) => item !== key)].slice(0, 5);
+  const changed = nextIds.length !== _evRecentIds.length
+    || nextIds.some((value, index) => value !== _evRecentIds[index]);
+  _evRecentIds = nextIds;
   try { localStorage.setItem(EVENT_RECENT_KEY, JSON.stringify(_evRecentIds)); } catch (_) {}
+  if (changed) {
+    window.dispatchEvent(new CustomEvent(EVT.RECENTLY_VIEWED_CHANGED, {
+      detail: { kind: "event", id: key },
+    }));
+  }
 }
 
 function _isEventSaved(id) {
@@ -4900,6 +5057,70 @@ function _renderEventsList({ animate = !_eventsOverlay?.classList.contains("hide
   }, { skip: !animate || _eventsOverlay?.classList.contains("hide") });
 }
 
+function _recentEventsForRenderedList() {
+  if (_evActiveFilter !== "all" || _evSearchQuery.trim() || _evMosqueFilter?.value) return [];
+  const filtered = _filterEvents();
+  return _evRecentIds
+    .map((id) => filtered.find((item) => String(item.ev.id) === id))
+    .filter(Boolean);
+}
+
+function _eventCardElements(items) {
+  const cards = document.createElement("template");
+  cards.innerHTML = items
+    .map((item) => _buildEventsListCard({ ...item, recent: true }))
+    .join("");
+  return [...cards.content.children];
+}
+
+function _refreshRecentlyViewedEventsSection() {
+  if (!_evFilteredList) return;
+
+  const recentEvents = _recentEventsForRenderedList();
+  if (_evGroupByCity) {
+    const recentGroup = [..._evFilteredList.children]
+      .find((child) => child.dataset.cityGroup === "__recent_events__");
+
+    if (!recentEvents.length) {
+      recentGroup?.remove();
+      _evFilteredList.querySelector(":scope > .ev-section-hdr--main")?.remove();
+      return;
+    }
+
+    const cards = _eventCardElements(recentEvents);
+    if (recentGroup) {
+      const recentList = recentGroup.querySelector(":scope > .ev-city-group-body .ev-city-group-list");
+      if (recentList) recentList.replaceChildren(...cards);
+      recentGroup.querySelector(".ev-city-count").textContent = String(cards.length);
+      return;
+    }
+
+    const section = _buildEventCityGroup("__recent_events__", "Recently viewed", cards, "ev-recent-group");
+    const firstAllGroup = [..._evFilteredList.children]
+      .find((child) => child.classList.contains("ev-city-group"));
+    const fragment = document.createDocumentFragment();
+    fragment.append(section);
+    if (firstAllGroup) {
+      const divider = document.createElement("div");
+      divider.className = "ev-section-hdr ev-section-hdr--main";
+      divider.textContent = "All events";
+      fragment.append(divider);
+    }
+    _evFilteredList.insertBefore(fragment, firstAllGroup || null);
+    return;
+  }
+
+  const currentRecentCards = [..._evFilteredList.children]
+    .filter((child) => child.dataset.eventRecent === "true");
+  currentRecentCards.forEach((card) => card.remove());
+  if (!recentEvents.length) return;
+
+  const cards = _eventCardElements(recentEvents);
+  const firstAllCard = [..._evFilteredList.children]
+    .find((child) => child.dataset.eventRecent !== "true");
+  cards.forEach((card) => _evFilteredList.insertBefore(card, firstAllCard || null));
+}
+
 // ── Filter bar event handlers ────────────────────────────────────────────────
 document.getElementById("ev-filter-bar")?.addEventListener("click", (e) => {
   const chip = e.target.closest(".ev-filter-chip");
@@ -5108,9 +5329,9 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   _eventDetailEventOnly = !place && lat !== null && lng !== null;
   _activeEventDetailId = String(ev.id);
   _activeEventPlaceId = place?.id ?? null;
-  _eventDetailCloseBtn?.classList.toggle("event-detail-close--back", fromEventsPage);
-  _eventDetailCloseBtn?.setAttribute("aria-label", fromEventsPage ? "Back to events" : "Close event details");
-  if (_eventDetailCloseBtn) _eventDetailCloseBtn.innerHTML = fromEventsPage ? _BACK_ICON_SVG : _CLOSE_ICON_SVG;
+  _eventDetailCloseBtn?.classList.add("event-detail-close--back");
+  _eventDetailCloseBtn?.setAttribute("aria-label", fromEventsPage ? "Back to events" : "Back to map");
+  if (_eventDetailCloseBtn) _eventDetailCloseBtn.innerHTML = _BACK_ICON_SVG;
   if (place) {
     _setActiveEventMarker(null);
     _setActiveMarker(place.id);
@@ -5158,6 +5379,7 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
       </div>
     </div>
   </div>`;
+  if (isPhone()) _eventDetailBody.scrollTop = 0;
   _loadDetailBanner(_eventDetailBody.querySelector(".detail-banner"), place, "Events");
   if (eventContacts) _eventDetailBody.querySelector(".ev-detail-schedule")?.before(eventContacts);
   const locationPreview = isPhone()
@@ -5307,6 +5529,30 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
 
 const _eventDetailSnap = initSheetDrag(_eventDetailEl, closeEventDetail, { fixedFullScreen: true });
 _eventDetailCloseBtn?.addEventListener("click", closeEventDetail);
+
+let _recentPlacesRefreshFrame = 0;
+let _recentEventsRefreshFrame = 0;
+
+function _scheduleRecentlyViewedPlacesRefresh() {
+  if (_recentPlacesRefreshFrame) return;
+  _recentPlacesRefreshFrame = window.requestAnimationFrame(() => {
+    _recentPlacesRefreshFrame = 0;
+    _refreshRecentlyViewedPlacesSection();
+  });
+}
+
+function _scheduleRecentlyViewedEventsRefresh() {
+  if (_recentEventsRefreshFrame) return;
+  _recentEventsRefreshFrame = window.requestAnimationFrame(() => {
+    _recentEventsRefreshFrame = 0;
+    _refreshRecentlyViewedEventsSection();
+  });
+}
+
+window.addEventListener(EVT.RECENTLY_VIEWED_CHANGED, (event) => {
+  if (event.detail?.kind === "place") _scheduleRecentlyViewedPlacesRefresh();
+  if (event.detail?.kind === "event") _scheduleRecentlyViewedEventsRefresh();
+});
 
 _eventsPill.addEventListener("click", _openEventsNavigation);
 _eventsNavBtn?.addEventListener("click", () => {

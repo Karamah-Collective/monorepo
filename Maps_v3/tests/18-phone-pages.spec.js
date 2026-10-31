@@ -793,13 +793,17 @@ test.describe("Phone app pages", () => {
   });
 
   test("Home prayer content responds to a live prayer snapshot", async ({ page }) => {
-    await expect(page.locator("#phone-next-prayer-name")).not.toHaveText("Prayer times");
+    await expect(page.locator("#phone-current-prayer-name")).not.toHaveText("Prayer times");
     await page.evaluate(() => window.dispatchEvent(new CustomEvent("hf:prayer-ready", {
-      detail: { name: "Asr", time: "15:45", countdown: "in 12 min" },
+      detail: { currentName: "Dhuhr", name: "Asr", time: "15:45", countdown: "in 12 min" },
     })));
+    await expect(page.locator("#phone-current-prayer-name")).toHaveText("Dhuhr");
     await expect(page.locator("#phone-next-prayer-name")).toHaveText("Asr");
     await expect(page.locator("#phone-next-prayer-time")).toHaveText("15:45");
     await expect(page.locator("#phone-next-prayer-countdown")).toHaveText("in 12 min");
+    await expect(page.locator(".phone-prayer-card-next-label")).toHaveCount(0);
+    await expect(page.locator("#phone-prayer-state")).toContainText("Dhuhr");
+    await expect(page.locator("#phone-prayer-state")).toContainText("Asr");
   });
 
   test("Home greeting uses the signed-in first name", async ({ page }) => {
@@ -1000,6 +1004,59 @@ test.describe("Phone app pages", () => {
     await page.keyboard.press("Escape");
     await expect(page.locator("#event-overlay")).toHaveClass(/hide/);
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
+  });
+
+  test("recently viewed sections update in place while a detail window is open", async ({ page }) => {
+    const places = [
+      { id: "recent-place-one", name: "Recent Place One", type: "mosque", address: "Recent Street 1", lat: 60.17, lng: 24.94, tags: {} },
+      { id: "recent-place-two", name: "Recent Place Two", type: "mosque", address: "Recent Street 2", lat: 60.18, lng: 24.95, tags: {} },
+    ];
+    const events = [
+      { id: "recent-event-one", title: "Recent Event One", date: "2099-10-21", time: "18:30", placeId: "recent-place-one" },
+      { id: "recent-event-two", title: "Recent Event Two", date: "2099-10-22", time: "19:00", placeId: "recent-place-two" },
+    ];
+    await page.route("**/api/places*", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get("action") !== "all") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ places, tags: {}, events }),
+      });
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.HFPhoneData?.getPlaces?.().some((place) => place.id === "recent-place-two"));
+
+    await page.locator("#places-btn").click();
+    await expect(page.locator("#places-list .pl-card[data-place-id]")).toHaveCount(2);
+    await page.locator("#places-list .pl-card[data-place-id='recent-place-two']").evaluate((card) => {
+      card.dataset.recentSentinel = "keep";
+    });
+    await page.locator("#places-list .pl-card[data-place-id='recent-place-one']").click();
+    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#places-list > [data-city-group='__recent__']")).toHaveCount(1);
+    await expect(page.locator("[data-city-group-body='__recent__'] .pl-card[data-place-id='recent-place-one']")).toHaveCount(1);
+    await expect(page.locator("#places-list .pl-card[data-place-id='recent-place-two']")).toHaveAttribute("data-recent-sentinel", "keep");
+    await page.evaluate(async () => (await import("/src/places.js")).closePlaceSheet());
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "places");
+
+    await page.locator("#events-nav-btn").click();
+    await expect(page.locator("#ev-filtered-list .ev-overlay-card[data-ev-id]")).toHaveCount(2);
+    await page.locator("#ev-filtered-list .ev-overlay-card[data-ev-id='recent-event-two']").evaluate((card) => {
+      card.dataset.recentSentinel = "keep";
+    });
+    await page.locator("#ev-filtered-list .ev-overlay-card[data-ev-id='recent-event-one']").click();
+    await expect(page.locator("#event-detail-sheet")).not.toHaveClass(/shut/);
+    await expect(page.locator("#ev-filtered-list > .ev-recent-group")).toHaveCount(1);
+    await expect(page.locator(".ev-recent-group .ev-overlay-card[data-ev-id='recent-event-one']")).toHaveCount(1);
+    await expect(page.locator("#ev-filtered-list .ev-overlay-card[data-ev-id='recent-event-two']")).toHaveAttribute("data-recent-sentinel", "keep");
+    await page.locator("#event-detail-close").click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
+
+    await page.locator("#ev-filtered-list .ev-overlay-card[data-ev-id='recent-event-two']").first().click();
+    await expect.poll(() => page.locator(".ev-recent-group .ev-city-group-list .ev-overlay-card").evaluateAll((cards) =>
+      cards.map((card) => card.dataset.evId),
+    )).toEqual(["recent-event-two", "recent-event-one"]);
   });
 
   test("Map page restores the MapLibre canvas after leaving Home", async ({ page }) => {

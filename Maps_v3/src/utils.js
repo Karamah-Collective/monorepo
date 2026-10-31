@@ -1273,13 +1273,14 @@ export function animateSheetHeight(sheet, changeFn, { force = false } = {}) {
  * Attach mobile drag/snap behavior to a bottom sheet.
  * @param {HTMLElement} sheet - Sheet element with drag/header handles.
  * @param {function(): void} closeFn - Close callback used by dismiss gestures.
- * @param {{contentBoundedExpansion?: boolean, maxHeightRatio?: number, fixedFullScreen?: boolean}} [options={}] - Optional sheet sizing behavior.
+ * @param {{contentBoundedExpansion?: boolean, maxHeightRatio?: number, fixedFullScreen?: boolean, discreteContentSnaps?: boolean}} [options={}] - Optional sheet sizing behavior.
  * @returns {object} Sheet open, close, measurement, and cleanup controller.
  */
 export function initSheetDrag(sheet, closeFn, {
   contentBoundedExpansion = false,
   maxHeightRatio = 1,
   fixedFullScreen = false,
+  discreteContentSnaps = false,
 } = {}) {
   const isMobile = () => window.innerWidth <= 768;
   const SHEET_STATE_OPENING = "opening";
@@ -1290,6 +1291,7 @@ export function initSheetDrag(sheet, closeFn, {
   const DISMISS_HEIGHT_RATIO = 0.25;
   const FULL_SNAP_RATIO = 0.76;
   const SNAP_DEDUP_TOLERANCE = 1;
+  const NEAR_QUARTER_CONTENT_TOLERANCE = DISMISS_HEIGHT_RATIO / 2;
   let startY = 0, startH = 0, dragging = false;
   let cached = null;                               // snap-mode cache (survives tab switches)
 
@@ -1311,6 +1313,31 @@ export function initSheetDrag(sheet, closeFn, {
   function freshCalc() {
     const vh = window.innerHeight;
     const ch = contentHeight();
+    if (discreteContentSnaps) {
+      const natural = Math.min(ch, vh);
+      const naturalRatio = natural / vh;
+      // A near-quarter cap is useful as the final stop, but a larger gap
+      // keeps the lower quarter stop (for example, 90% content stays at 75%).
+      const nearQuarterMax = naturalRatio > THREE_QUARTER_HEIGHT_RATIO
+        && naturalRatio < 1
+        && naturalRatio - THREE_QUARTER_HEIGHT_RATIO <= NEAR_QUARTER_CONTENT_TOLERANCE;
+      const hasContentMax = naturalRatio > DISMISS_HEIGHT_RATIO && naturalRatio < 1
+        && (naturalRatio <= THREE_QUARTER_HEIGHT_RATIO || nearQuarterMax);
+      const maxSnapRatio = naturalRatio >= 1 - SNAP_DEDUP_TOLERANCE / vh
+        ? 1
+        : hasContentMax
+          ? naturalRatio
+          : Math.min(
+            THREE_QUARTER_HEIGHT_RATIO,
+            Math.floor(naturalRatio / DISMISS_HEIGHT_RATIO) * DISMISS_HEIGHT_RATIO,
+          );
+      const maxSnap = maxSnapRatio > 0 ? vh * maxSnapRatio : natural;
+      return {
+        mode: hasContentMax ? "discrete-content-max" : "discrete",
+        initial: Math.min(vh * THREE_QUARTER_HEIGHT_RATIO, natural),
+        cap: maxSnap,
+      };
+    }
     if (contentBoundedExpansion) {
       const cap = Math.min(ch, vh * maxHeightRatio);
       const r = cap / vh;
@@ -1328,6 +1355,32 @@ export function initSheetDrag(sheet, closeFn, {
   function snapTarget(currentH, mode, cap) {
     const vh = window.innerHeight;
     const r  = currentH / vh;
+
+    if (discreteContentSnaps) {
+      if (r < DISMISS_HEIGHT_RATIO) return 0;
+      const candidates = [
+        vh * DISMISS_HEIGHT_RATIO,
+        vh * HALF_HEIGHT_RATIO,
+        vh * THREE_QUARTER_HEIGHT_RATIO,
+        vh,
+      ].filter((height, index, stops) => (
+        height <= cap + SNAP_DEDUP_TOLERANCE
+        && stops.findIndex((stop) => Math.abs(stop - height) <= SNAP_DEDUP_TOLERANCE) === index
+      ));
+      if (mode === "discrete-content-max" && cap > vh * DISMISS_HEIGHT_RATIO && cap < vh - SNAP_DEDUP_TOLERANCE) {
+        candidates.push(cap);
+      }
+      if (mode === "discrete-content-max" && cap > vh * THREE_QUARTER_HEIGHT_RATIO) {
+        const quarterIndex = candidates.findIndex((height) => (
+          Math.abs(height - vh * THREE_QUARTER_HEIGHT_RATIO) <= SNAP_DEDUP_TOLERANCE
+        ));
+        if (quarterIndex >= 0) candidates.splice(quarterIndex, 1);
+      }
+      if (!candidates.length) return cap;
+      return candidates.reduce((nearest, height) => (
+        Math.abs(height - currentH) < Math.abs(nearest - currentH) ? height : nearest
+      ), candidates[0]);
+    }
 
     if (contentBoundedExpansion) {
       if (r < DISMISS_HEIGHT_RATIO) return 0;
@@ -1433,7 +1486,7 @@ export function initSheetDrag(sheet, closeFn, {
   desktopRO.observe(sheet);
 
   /* ── bind drag handles (start on handle, move/end on document) ── */
-  sheet.querySelectorAll(".sheet-drag, .sheet-head").forEach((handle) => {
+  sheet.querySelectorAll(".sheet-drag, .sheet-head, .overlay-drag, .suggest-head").forEach((handle) => {
     handle.addEventListener("touchstart", (e) => {
       if (fixedFullScreen && isMobile()) return;
       if (e.target.closest("button, a, [role='button']")) return;
@@ -1545,7 +1598,9 @@ export function initSheetDrag(sheet, closeFn, {
         ? "full"
         : preserveExpansion && wasExpandedPastContent
           ? Math.min(startH, cached.cap)
-          : contentBoundedExpansion
+          : discreteContentSnaps
+            ? snapTarget(cached.initial, cached.mode, cached.cap)
+            : contentBoundedExpansion
             ? cached.initial
             : snapTarget(cached.initial, cached.mode, cached.cap);
 

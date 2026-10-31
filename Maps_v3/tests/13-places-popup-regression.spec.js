@@ -217,6 +217,7 @@ test.describe("Places Popup Regression", () => {
         toolbarHasType: !!toolbar?.querySelector(".pp-badge"),
         toolbarHasActions: !!toolbar?.querySelector(".pp-icon-row .pp-visit-chip, .pp-icon-row .pp-fav-btn"),
         closeInHeader: !!document.querySelector("#place-sheet .sheet-head #place-sheet-close"),
+        closeButtonLabel: document.querySelector("#place-sheet-close")?.getAttribute("aria-label"),
       };
     });
 
@@ -228,6 +229,7 @@ test.describe("Places Popup Regression", () => {
     expect(sheet.toolbarHasType).toBe(true);
     expect(sheet.toolbarHasActions).toBe(true);
     expect(sheet.closeInHeader).toBe(true);
+    expect(sheet.closeButtonLabel).toBe("Back to places");
   });
 
   test("long place names wrap beside the timeline action", async ({ page }) => {
@@ -428,6 +430,82 @@ test.describe("Places Popup Regression", () => {
     const scrollAfter = await scrollEl.evaluate((el) => el.scrollTop);
     expect(scrollAfter).toBe(scrollBefore);
   });
+
+  test("phone place and event detail windows open at the top with interactive 21:9 maps", async ({ page, browserName }) => {
+    test.skip(browserName === "chromium" && (await page.evaluate(() => window.innerWidth)) > 768, "mobile-only assertion");
+
+    await page.evaluate(async () => {
+      const { openPlaceSheet } = await import("/src/places.js");
+      openPlaceSheet({
+        id: "detail-map-first", name: "First detail map", type: "restaurant",
+        address: "Testikatu 1, Helsinki", lat: 60.1699, lng: 24.9384, tags: {},
+      });
+    });
+    await expect(page.locator("#place-sheet-body .detail-location-map .maplibregl-canvas")).toBeVisible();
+    await expect(page.locator("#place-sheet-close")).toHaveAttribute("aria-label", "Back to map");
+    await page.locator("#place-sheet-body").evaluate((body) => { body.scrollTop = 180; });
+    await page.locator("#place-sheet-close").click();
+    await page.waitForTimeout(450);
+
+    await page.evaluate(async () => {
+      const { openPlaceSheet } = await import("/src/places.js");
+      openPlaceSheet({
+        id: "detail-map-second", name: "Second detail map", type: "restaurant",
+        address: "Testikatu 2, Helsinki", lat: 60.17, lng: 24.94, tags: {},
+      });
+    });
+    const placeState = await page.locator("#place-sheet-body").evaluate((body) => {
+      const map = body.querySelector(".detail-location-map");
+      const rect = map.getBoundingClientRect();
+      return {
+        scrollTop: body.scrollTop,
+        ratio: rect.width / rect.height,
+        interactive: !!map.querySelector(".maplibregl-canvas-container.maplibregl-interactive"),
+        controls: map.querySelectorAll(".maplibregl-ctrl").length,
+      };
+    });
+    expect(placeState.scrollTop).toBe(0);
+    expect(placeState.ratio).toBeCloseTo(21 / 9, 1);
+    expect(placeState.interactive).toBe(true);
+    expect(placeState.controls).toBe(0);
+
+    await page.locator("#place-sheet-close").click();
+    await page.waitForTimeout(450);
+    await page.evaluate(async () => {
+      const { openEventDetail } = await import("/src/places.js");
+      openEventDetail({
+        id: "detail-event-first", title: "First detail event", date: "2099-10-21",
+        time: "18:30", placeId: "", lat: 60.1699, lng: 24.9384, locationName: "Test venue",
+      });
+    });
+    await expect(page.locator("#event-detail-body .detail-location-map .maplibregl-canvas")).toBeVisible();
+    await expect(page.locator("#event-detail-close")).toHaveAttribute("aria-label", "Back to map");
+    await page.locator("#event-detail-body").evaluate((body) => { body.scrollTop = 180; });
+    await page.locator("#event-detail-close").click();
+    await page.waitForTimeout(450);
+
+    await page.evaluate(async () => {
+      const { openEventDetail } = await import("/src/places.js");
+      openEventDetail({
+        id: "detail-event-second", title: "Second detail event", date: "2099-10-22",
+        time: "19:00", placeId: "", lat: 60.17, lng: 24.94, locationName: "Second venue",
+      });
+    });
+    const eventState = await page.locator("#event-detail-body").evaluate((body) => {
+      const map = body.querySelector(".detail-location-map");
+      const rect = map.getBoundingClientRect();
+      return {
+        scrollTop: body.scrollTop,
+        ratio: rect.width / rect.height,
+        interactive: !!map.querySelector(".maplibregl-canvas-container.maplibregl-interactive"),
+        controls: map.querySelectorAll(".maplibregl-ctrl").length,
+      };
+    });
+    expect(eventState.scrollTop).toBe(0);
+    expect(eventState.ratio).toBeCloseTo(21 / 9, 1);
+    expect(eventState.interactive).toBe(true);
+    expect(eventState.controls).toBe(0);
+  });
 });
 
 /**
@@ -458,7 +536,7 @@ test.describe("Place Detail Sheet — Google enrichment fields", () => {
       });
     });
     await expect(page.locator(".pp-status-banner--warn")).toContainText("Temporarily closed");
-    await expect(page.locator(".pp-contact-link[href^='tel:']")).toContainText("+358 40 1234567");
+    await expect(page.locator(".pp-contact-link[href^='tel:']")).toContainText("Call");
     await expect(page.locator(".pp-contact-link[href='https://example.com']")).toContainText("Website");
     await expect(page.locator(".pp-contact-link[href='https://maps.google.com/?cid=12345']")).toContainText("Google Maps");
     const contactLayout = await page.locator("#place-sheet-body .pp-contact").evaluate((contact) => {
@@ -467,7 +545,8 @@ test.describe("Place Detail Sheet — Google enrichment fields", () => {
       const rating = reviews.querySelector(".pp-rating");
       return {
         labels: [...contact.querySelectorAll(".pp-contact-link")].map((link) => link.getAttribute("aria-label")),
-        textDisplays: [...contact.querySelectorAll(".pp-contact-link span")].map((span) => getComputedStyle(span).display),
+        contactIcons: contact.querySelectorAll(".pp-contact-link svg").length,
+        textDisplays: [...contact.querySelectorAll(".pp-contact-label")].map((span) => getComputedStyle(span).display),
         contactBackground: getComputedStyle(contact).backgroundColor,
         contactBorder: getComputedStyle(contact).borderTopStyle,
         ratingBackground: getComputedStyle(rating).backgroundColor,
@@ -475,6 +554,7 @@ test.describe("Place Detail Sheet — Google enrichment fields", () => {
         contactWidth: contact.getBoundingClientRect().width,
         reviewsBesideContact: row.classList.contains("pp-meta-row") && row === reviews.parentElement,
         divider: getComputedStyle(row).borderBottomStyle,
+        reviewsDivider: getComputedStyle(reviews).borderTopStyle,
         contactLeft: contact.getBoundingClientRect().left,
         rowLeft: row.getBoundingClientRect().left,
         ratingRight: rating.getBoundingClientRect().right,
@@ -482,14 +562,16 @@ test.describe("Place Detail Sheet — Google enrichment fields", () => {
       };
     });
     expect(contactLayout.labels).toEqual(["Call", "Website", "Google Maps"]);
-    expect(contactLayout.textDisplays).toEqual(["none", "none", "none"]);
+    expect(contactLayout.contactIcons).toBe(0);
+    expect(contactLayout.textDisplays).toEqual(["block", "block", "block"]);
     expect(contactLayout.contactBackground).toBe("rgba(0, 0, 0, 0)");
     expect(contactLayout.contactBorder).toBe("none");
     expect(contactLayout.ratingBackground).toBe("rgba(0, 0, 0, 0)");
     expect(contactLayout.ratingText).toBe("No reviews yet");
-    expect(contactLayout.contactWidth).toBeLessThan(120);
+    expect(contactLayout.contactWidth).toBeGreaterThan(200);
     expect(contactLayout.reviewsBesideContact).toBe(true);
-    expect(contactLayout.divider).toBe("solid");
+    expect(contactLayout.divider).toBe("none");
+    expect(contactLayout.reviewsDivider).toBe("solid");
     expect(contactLayout.contactLeft).toBeCloseTo(contactLayout.rowLeft, 0);
     expect(contactLayout.ratingRight).toBeCloseTo(contactLayout.rowRight, 0);
     await expect(page.locator(".pp-info-chip")).toContainText([

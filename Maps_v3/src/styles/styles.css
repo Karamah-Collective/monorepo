@@ -2770,89 +2770,73 @@ body.dark-mode .sp-tip {
   align-self: flex-start;
 }
 #place-sheet-body .pp-meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-2);
   min-width: 0;
   margin-bottom: var(--sp-1);
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--border-light);
-}
-#place-sheet-body .pp-contact {
-  display: flex;
-  align-self: flex-start;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-  width: auto;
   padding: 0;
+  border: 0;
 }
-#place-sheet-body .pp-contact-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 36px;
-  min-width: 36px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface-2);
-  color: var(--text-2);
-  text-decoration: none;
-  line-height: 0;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
-}
-#place-sheet-body .pp-contact-link svg {
-  width: 15px;
-  height: 15px;
-}
+#place-sheet-body .pp-contact,
 #event-detail-body .pp-contact {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: var(--sp-3);
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  padding: 0;
 }
+#place-sheet-body .pp-contact::-webkit-scrollbar,
+#event-detail-body .pp-contact::-webkit-scrollbar { display: none; }
+#place-sheet-body .pp-contact-link,
 #event-detail-body .pp-contact-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 36px;
-  min-width: 36px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 9px;
+  width: auto;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
   background: var(--surface-2);
   color: var(--text-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-medium);
   text-decoration: none;
-  line-height: 0;
+  line-height: 1;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+  transition: border-color var(--t-fast), background-color var(--t-fast), color var(--t-fast), box-shadow var(--t-med), transform var(--t-fast);
 }
-#event-detail-body .pp-contact-link svg { width: 15px; height: 15px; flex: 0 0 auto; }
+#place-sheet-body .pp-contact-label,
+#event-detail-body .pp-contact-label { display: inline; white-space: nowrap; }
 #place-sheet-body .pp-contact-link:active,
-#event-detail-body .pp-contact-link:active { transform: scale(.94); }
+#event-detail-body .pp-contact-link:active { transform: scale(.97); }
 #place-sheet-body .pp-contact-link:focus-visible,
 #event-detail-body .pp-contact-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 #place-sheet-body .pp-reviews {
-  flex: 0 0 auto;
-  min-width: 0;
-  margin-left: auto;
-  padding-top: 0;
-  border-top: 0;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-light);
 }
 #place-sheet-body .pp-rating,
 #place-sheet-body .pp-rating--empty {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
   gap: var(--sp-2);
   min-height: 30px;
-  padding: 0;
+  padding: 0 var(--sp-2);
   border-radius: 0;
   background: transparent;
 }
@@ -2869,10 +2853,13 @@ body.dark-mode .sp-tip {
   width: 14px;
   height: 14px;
 }
-#place-sheet-body .pp-rating-count,
+#place-sheet-body .pp-rating-count {
+  margin-left: auto;
+  margin-right: 0;
+}
 #place-sheet-body .pp-rating-empty-text {
   margin-left: 0;
-  margin-right: 0;
+  margin-right: auto;
 }
 #place-sheet-body .pp-rating:hover,
 #place-sheet-body .pp-rating:active,
@@ -2883,9 +2870,10 @@ body.dark-mode .sp-tip {
 @media (hover: hover) {
   #place-sheet-body .pp-contact-link:hover,
   #event-detail-body .pp-contact-link:hover {
-    border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-    background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-    color: var(--accent);
+    background: var(--surface);
+    border-color: var(--surface-3);
+    color: var(--text);
+    box-shadow: var(--shadow-xs);
     text-decoration: none;
   }
 }
@@ -4307,6 +4295,9 @@ button.pf-stat-card:focus-visible {
 }
 .pf-timeline-map .maplibregl-canvas {
   filter: var(--mse-light-filter, none);
+}
+.detail-location-map .maplibregl-canvas-container {
+  touch-action: none;
 }
 body.dark-mode .pf-timeline-map .maplibregl-canvas {
   filter: var(--mse-dark-filter, invert(0.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(0.04));
@@ -6934,15 +6925,20 @@ body.dark-mode .detail-banner-placeholder--dark {
   border-radius: var(--r-2xl);
   background: var(--surface);
   box-shadow: var(--shadow-xl);
-  transition: transform var(--t-med), opacity var(--t-med);
+  transition: transform var(--t-med), opacity var(--t-med), height var(--t-spring);
 }
 #profile-detail-overlay.hide #profile-detail-card {
   transform: scale(0.97);
   opacity: 0;
 }
 #profile-detail-body {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+#profile-detail-card.dragging {
+  transition: none;
+  will-change: height;
 }
 .pf-detail-content {
   display: grid;
@@ -12019,6 +12015,13 @@ body.dark-mode .sp-chip {
     opacity: 1;
     transition: transform var(--t-spring);
   }
+  #profile-detail-card {
+    max-height: 100vh;
+    max-height: 100dvh;
+    transition:
+      transform var(--t-spring),
+      height var(--t-spring);
+  }
   #event-card,
   #events-card,
   #eid-card,
@@ -12070,6 +12073,8 @@ body.dark-mode .sp-chip {
     padding-bottom: var(--safe-b);
   }
   #profile-detail-body {
+    flex: 1 1 auto;
+    min-height: 0;
     padding-bottom: var(--safe-b);
   }
   #suggest-form {
@@ -12218,6 +12223,12 @@ body.dark-mode .sp-chip {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .detail-location-map {
+    aspect-ratio: 21 / 9;
+    height: auto;
+    min-height: 0;
   }
 
   @media (hover: hover) {
@@ -15840,7 +15851,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     position: absolute;
     z-index: 0;
     inset: 0;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--surface) 44%, transparent), color-mix(in srgb, var(--surface) 18%, transparent) 62%, transparent);
+    background: linear-gradient(90deg, rgb(7 24 22 / 38%), rgb(7 24 22 / 16%) 58%, transparent 82%);
     pointer-events: none;
   }
   .phone-home-welcome > * {
@@ -15858,16 +15869,18 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-home-welcome .phone-home-greeting {
     margin: 0;
-    color: var(--text-2);
+    color: rgb(255 255 255 / 88%);
     font-family: inherit;
     font-size: var(--txt-md);
-    font-weight: var(--fw-medium);
+    font-weight: var(--fw-semibold);
+    text-shadow: 0 1px 4px rgb(0 0 0 / 30%);
   }
 
   .phone-home-welcome h1 {
-    color: var(--text);
+    color: #fff;
     font-size: var(--txt-display);
     font-weight: 800;
+    text-shadow: 0 1px 5px rgb(0 0 0 / 34%);
   }
 
   .phone-prayer-card {
@@ -15875,7 +15888,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     display: block;
     width: 100%;
     margin-top: var(--sp-4);
-    padding: var(--sp-5) var(--sp-6);
+    padding: 16px 18px 15px;
     border: 1px solid var(--accent);
     border-radius: var(--r-xl);
     background: var(--accent);
@@ -15891,28 +15904,30 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-4);
+    min-width: 0;
   }
 
   .phone-prayer-card-copy {
     display: grid;
     min-width: 0;
-    gap: var(--sp-0);
+    gap: 1px;
   }
 
   .phone-prayer-card-top {
-    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    color: color-mix(in srgb, var(--on-accent) 80%, transparent);
     font-size: var(--txt-xs);
     font-weight: var(--fw-semibold);
-    letter-spacing: var(--ls-caps);
+    letter-spacing: .06em;
+    line-height: 1.1;
     text-transform: uppercase;
   }
 
   .phone-prayer-card-copy strong {
     overflow: hidden;
-    font-size: var(--txt-display);
+    font-size: clamp(1.5rem, 7vw, 1.8rem);
     font-weight: var(--fw-bold);
     line-height: var(--lh-tight);
-    letter-spacing: -.025em;
+    letter-spacing: -.04em;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -15921,6 +15936,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     overflow: hidden;
     color: color-mix(in srgb, var(--on-accent) 72%, transparent);
     font-size: var(--txt-xs);
+    line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -15930,25 +15946,17 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-3);
-    margin-top: var(--sp-4);
-    padding-top: var(--sp-3);
-    border-top: 1px solid color-mix(in srgb, var(--on-accent) 22%, transparent);
+    margin-top: 14px;
+    padding-top: 11px;
+    border-top: 1px solid color-mix(in srgb, var(--on-accent) 24%, transparent);
   }
 
   .phone-prayer-card-next-copy {
     display: flex;
     align-items: baseline;
     min-width: 0;
-    gap: var(--sp-2);
+    gap: 7px;
     white-space: nowrap;
-  }
-
-  .phone-prayer-card-next-label {
-    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
-    font-size: var(--txt-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--ls-caps);
-    text-transform: uppercase;
   }
 
   .phone-prayer-card-next-copy strong {
@@ -15960,26 +15968,26 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
 
   .phone-prayer-card-next-copy time {
-    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
+    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
     font-size: var(--txt-xs);
     font-variant-numeric: tabular-nums;
+    line-height: 1;
   }
 
   .phone-prayer-card-countdown {
     flex: 0 0 auto;
-    padding: var(--sp-1) var(--sp-2h);
-    border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
-    color: var(--on-accent);
+    color: color-mix(in srgb, var(--on-accent) 82%, transparent);
     font-size: var(--txt-xs);
-    font-weight: var(--fw-semibold);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .phone-prayer-card-arrow {
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+    color: color-mix(in srgb, var(--on-accent) 74%, transparent);
   }
 
   .phone-prayer-card:active { transform: scale(.99); }
@@ -15994,7 +16002,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-home-search {
     position: relative;
-    margin-top: var(--sp-4);
+    margin-top: 0;
     z-index: var(--z-sub-ui);
   }
 

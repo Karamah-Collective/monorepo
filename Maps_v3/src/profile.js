@@ -34,7 +34,7 @@
  * already-cached module namespace with no lazy-load benefit, only the added
  * complexity of an await.
  */
-import { esc, escA, showToast, showConfirmDialog } from "./utils.js";
+import { esc, escA, showToast, showConfirmDialog, initSheetDrag } from "./utils.js";
 import { EVT } from "./events.js";
 import { getPhonePage, goBackPhonePage, isPhone, navigatePhonePage } from "./phone-pages.js";
 import {
@@ -104,6 +104,7 @@ const timelineMapSectionEl = document.getElementById("timeline-map-section");
 const timelineMapEl = document.getElementById("profile-timeline-map");
 const timelineListEl = document.getElementById("profile-timeline-list");
 const profileDetailOverlayEl = document.getElementById("profile-detail-overlay");
+const profileDetailCardEl = document.getElementById("profile-detail-card");
 const profileDetailTitleEl = document.getElementById("profile-detail-title");
 const profileDetailCloseBtn = document.getElementById("profile-detail-close");
 const profileDetailBodyEl = document.getElementById("profile-detail-body");
@@ -136,6 +137,10 @@ let _profileEditSearch = "";
 let _profileEditStatus = "all";
 let _profileEditSort = "recent";
 let _profileEditSortDir = "desc";
+
+const profileDetailSnap = profileDetailCardEl
+  ? initSheetDrag(profileDetailCardEl, _closeProfileDetail, { discreteContentSnaps: true })
+  : null;
 
 function _afterTimelineOpened(callback) {
   if (!timelineCardEl) { callback(); return; }
@@ -1174,6 +1179,7 @@ async function _loadTimelineOnly(profileUid) {
 
 function _closeProfileDetail() {
   if (!profileDetailOverlayEl) return;
+  profileDetailSnap?.close();
   profileDetailOverlayEl.classList.add("hide");
   profileDetailOverlayEl.setAttribute("aria-hidden", "true");
   profileDetailBodyEl.replaceChildren();
@@ -1217,10 +1223,12 @@ function _renderReviewResults(list) {
   });
   if (!sorted.length) {
     results.innerHTML = `<p class="menu-placeholder">${query ? "No reviews match your search." : "You haven't written any reviews yet."}</p>`;
+    profileDetailSnap?.softRemeasure();
     return;
   }
   results.innerHTML = `<div class="pf-detail-list rv-list">${sorted.map(_buildMyReviewRow).join("")}</div>`;
   _wireMyReviewRows(results, sorted);
+  profileDetailSnap?.softRemeasure();
 }
 
 function _submissionStatus(item) {
@@ -1294,10 +1302,12 @@ function _renderEditResults(list, kind = _profileDetailKind) {
   });
   if (!sorted.length) {
     results.innerHTML = `<p class="menu-placeholder">${query || _profileEditStatus !== "all" ? `No ${noun} match your search or filter.` : `You haven't submitted any ${noun} yet.`}</p>`;
+    profileDetailSnap?.softRemeasure();
     return;
   }
   results.innerHTML = `<div class="pf-detail-list pf-submission-list">${sorted.map((item) => _buildSubmissionRow(item, { detail: true, kind })).join("")}</div>`;
   _wireSubmissionRows(results);
+  profileDetailSnap?.softRemeasure();
 }
 
 function _renderEditDetail(kind, list) {
@@ -1406,6 +1416,7 @@ function _openProfileDetail(kind) {
   }
   profileDetailOverlayEl.classList.remove("hide");
   profileDetailOverlayEl.setAttribute("aria-hidden", "false");
+  profileDetailSnap?.open();
   profileDetailCloseBtn?.focus();
 }
 
