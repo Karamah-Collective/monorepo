@@ -1,0 +1,341 @@
+import { createFormSchema, normalizeSchema, publicSchema, validateSchema } from "../../shared/forms-domain.mjs";
+
+const now = () => new Date().toISOString();
+const id = prefix => `${prefix}_${crypto.randomUUID()}`;
+const safeJson = value => { try { return JSON.parse(value); } catch { return null; } };
+const asInt = (value, fallback = 0) => Number.isSafeInteger(Number(value)) ? Number(value) : fallback;
+const FORM_STATUSES = new Set(["draft", "published", "closed", "archived"]);
+const SHORT_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz123456789";
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const INITIAL_ADMIN_EMAIL = "moontasir@karamahcollective.com";
+
+const actorEmail = actor => String(actor?.email || "").trim().toLowerCase();
+const isFormsAdmin = actor => !actor || actor?.admin === true || actor?.role === "administrator" || actorEmail(actor) === INITIAL_ADMIN_EMAIL;
+async function formAccess(db, formId, actor) {
+  if (isFormsAdmin(actor)) return { read: true, write: true, relation: "administrator" };
+  const email = actorEmail(actor);
+  if (!email) return { read: false, write: false, relation: "none" };
+  const form = await db.prepare("SELECT owner_email,created_by FROM forms WHERE id=? AND status != 'deleted'").bind(formId).first();
+  if (!form) return { read: false, write: false, relation: "none" };
+  if (String(form.owner_email || "").toLowerCase() === email || (!form.owner_email && form.created_by === actor?.uid)) return { read: true, write: true, relation: "owner" };
+  const collaborator = await db.prepare("SELECT email FROM form_collaborators WHERE form_id=? AND lower(email)=lower(?)").bind(formId, email).first();
+  return collaborator ? { read: true, write: true, relation: "collaborator" } : { read: false, write: false, relation: "none" };
+}
+
+function serializeForm(row) {
+  return {
+    id: row.id, slug: row.slug, shareCode: row.share_code || null, shortCode: row.short_code || null, title: row.title, status: row.status,
+    revision: row.draft_revision, activeVersionId: row.active_version_id || null,
+    createdBy: row.created_by, updatedBy: row.updated_by, createdAt: row.created_at, updatedAt: row.updated_at,
+    archivedAt: row.archived_at || null, responseCount: row.response_count || 0,
+    lastResponseAt: row.last_response_at || null, ownerEmail: row.owner_email || "",
+    accessRelation: row.access_relation || "owner", collaborators: row.collaborators || [],
+  };
+}
+
+async function uniqueShareCode(db) {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const code = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    const found = await db.prepare("SELECT id FROM forms WHERE share_code=?").bind(code).first();
+    if (!found) return code;
+  }
+  throw new Error("Could not create a unique share code");
+}
+
+async function uniqueShortCode(db) {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    let code = "";
+    while (code.length < 3) {
+      const byte = new Uint8Array(1); crypto.getRandomValues(byte);
+      if (byte[0] < 245) code += SHORT_CODE_ALPHABET[byte[0] % SHORT_CODE_ALPHABET.length];
+    }
+    if (!/[a-z]/.test(code)) continue;
+    const found = await db.prepare("SELECT form_id FROM form_share_code_aliases WHERE code=?").bind(code).first();
+    if (!found) return code;
+  }
+  throw new Error("Could not create a unique short link");
+}
+
+async function uniqueSlug(db, source, exceptId = "") {
+  const base = String(source || "form").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 54) || "form";
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const slug = attempt ? `${base}-${attempt + 1}` : base;
+    const found = await db.prepare("SELECT id FROM forms WHERE slug = ? AND id != ?").bind(slug, exceptId).first();
+    if (!found) return slug;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export async function listForms(db, url, actor) {
+  const search = String(url.searchParams.get("search") || "").trim().slice(0, 100);
+  const status = String(url.searchParams.get("status") || "all");
+  const sort = new Set(["updated_at", "created_at", "title", "status", "response_count"]).has(url.searchParams.get("sort")) ? url.searchParams.get("sort") : "updated_at";
+  const direction = url.searchParams.get("direction") === "asc" ? "ASC" : "DESC";
+  const clauses = ["f.status != 'deleted'"]; const binds = [];
+  if (!isFormsAdmin(actor)) { clauses.push("(lower(f.owner_email)=lower(?) OR (f.owner_email='' AND f.created_by=?) OR EXISTS (SELECT 1 FROM form_collaborators fc WHERE fc.form_id=f.id AND lower(fc.email)=lower(?)))"); binds.push(actorEmail(actor), actor?.uid || "", actorEmail(actor)); }
+  if (FORM_STATUSES.has(status)) { clauses.push("f.status = ?"); binds.push(status); }
+  if (search) { clauses.push("(f.title LIKE ? OR f.slug LIKE ?)"); binds.push(`%${search}%`, `%${search}%`); }
+  const { results } = await db.prepare(`SELECT f.*, MIN(link.code) short_code, COUNT(s.id) response_count, MAX(s.submitted_at) last_response_at
+    FROM forms f LEFT JOIN form_submissions s ON s.form_id=f.id AND s.status='valid'
+    LEFT JOIN form_share_code_aliases link ON link.form_id=f.id AND length(link.code)=3
+    WHERE ${clauses.join(" AND ")} GROUP BY f.id ORDER BY ${sort} ${direction}, f.updated_at DESC LIMIT 250`).bind(...binds).all();
+  return { forms: results.map(row => serializeForm({ ...row, access_relation: isFormsAdmin(actor) ? "administrator" : (String(row.owner_email || "").toLowerCase() === actorEmail(actor) || (!row.owner_email && row.created_by === actor?.uid)) ? "owner" : "collaborator" })) };
+}
+
+export async function getForm(db, url, actor) {
+  const form = await db.prepare("SELECT f.*, (SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f WHERE f.id = ? AND f.status != 'deleted'").bind(url.searchParams.get("id") || "").first();
+  if (!form) return { error: "Form not found" };
+  const access = await formAccess(db, form.id, actor); if (!access.read) return { error: "You do not have access to this form." };
+  const collaborators = await db.prepare("SELECT email,created_at FROM form_collaborators WHERE form_id=? ORDER BY email").bind(form.id).all();
+  const { results: versions } = await db.prepare("SELECT id,version_number,created_by,created_at,published_at FROM form_versions WHERE form_id=? ORDER BY version_number DESC").bind(form.id).all();
+  const draft = normalizeSchema(safeJson(form.draft_schema_json));
+  const active = form.active_version_id ? await db.prepare("SELECT schema_json FROM form_versions WHERE id=?").bind(form.active_version_id).first() : null;
+  const hasUnpublishedChanges = !active || JSON.stringify(publicSchema(draft)) !== JSON.stringify(safeJson(active.schema_json));
+  return { form: { ...serializeForm({ ...form, access_relation: access.relation, collaborators: collaborators.results || [] }), hasUnpublishedChanges }, schema: draft, versions: versions.map(row => ({ id: row.id, number: row.version_number, createdBy: row.created_by, createdAt: row.created_at, publishedAt: row.published_at })) };
+}
+
+export async function createForm(db, data, actor) {
+  const title = String(data.title || "Untitled form").trim().slice(0, 180) || "Untitled form";
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, data.slug || title), shareCode = await uniqueShareCode(db), shortCode = await uniqueShortCode(db);
+  const schema = createFormSchema(title);
+  await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,owner_email,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(formId, slug, shareCode, title, "draft", JSON.stringify(schema), actorEmail(actor), actor.uid, actor.uid, stamp, stamp).run();
+  await db.prepare("INSERT INTO form_share_code_aliases (code,form_id,created_at) VALUES (?,?,?)").bind(shortCode, formId, stamp).run();
+  return { success: true, id: formId, slug, shareCode, shortCode, revision: 0 };
+}
+
+export async function saveForm(db, data, actor) {
+  const formId = String(data.id || "");
+  if (!(await formAccess(db, formId, actor)).write) return { error: "Only the owner or a collaborator can edit this form." };
+  const existing = await db.prepare("SELECT * FROM forms WHERE id=? AND status != 'deleted'").bind(formId).first();
+  if (!existing) return { error: "Form not found" };
+  const revision = asInt(data.revision, -1);
+  if (revision < 0) return { error: "Invalid form revision" };
+  const checked = validateSchema(data.schema);
+  const draft = checked.schema;
+  const slug = await uniqueSlug(db, data.slug || existing.slug, formId);
+  const stamp = now();
+  const { meta } = await db.prepare("UPDATE forms SET slug=?,title=?,draft_schema_json=?,draft_revision=draft_revision+1,updated_by=?,updated_at=? WHERE id=? AND draft_revision=?")
+    .bind(slug, draft.title.slice(0, 180), JSON.stringify(draft), actor.uid, stamp, formId, revision).run();
+  if (!meta.changes) return { error: "This form changed in another tab. Reload the saved draft before continuing.", conflict: true };
+  return { success: true, revision: revision + 1, updatedAt: stamp, slug, warnings: checked.warnings };
+}
+
+export async function publishForm(db, data, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).write) return { error: "Only the owner or a collaborator can publish this form." };
+  const form = await db.prepare("SELECT * FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
+  if (!form) return { error: "Form not found" };
+  if (asInt(data.revision, -1) !== form.draft_revision) return { error: "The draft changed before publishing. Reload and review the latest saved version.", conflict: true };
+  const checked = validateSchema(safeJson(form.draft_schema_json));
+  if (!checked.valid) return { error: "Resolve the form integrity errors before publishing.", validationErrors: checked.errors, warnings: checked.warnings };
+  const latest = await db.prepare("SELECT MAX(version_number) number FROM form_versions WHERE form_id=?").bind(form.id).first();
+  const versionNumber = Number(latest?.number || 0) + 1, versionId = id("version"), stamp = now();
+  const results = await db.batch([
+    db.prepare("INSERT INTO form_versions (id,form_id,version_number,schema_json,created_by,created_at,published_at) SELECT ?,?,?,?,?,?,? FROM forms WHERE id=? AND draft_revision=?")
+      .bind(versionId, form.id, versionNumber, JSON.stringify(publicSchema(checked.schema)), actor.uid, stamp, stamp, form.id, form.draft_revision),
+    db.prepare("UPDATE forms SET status='published',active_version_id=?,updated_by=?,updated_at=? WHERE id=? AND draft_revision=? AND EXISTS (SELECT 1 FROM form_versions WHERE id=?)").bind(versionId, actor.uid, stamp, form.id, form.draft_revision, versionId),
+  ]);
+  if (!results[1]?.meta?.changes) return { error: "The draft changed while publishing. Reload and review the latest saved version.", conflict: true };
+  return { success: true, versionId, versionNumber, status: "published", warnings: checked.warnings };
+}
+
+export async function setFormStatus(db, data, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).write) return { error: "Only the owner or a collaborator can change this form." };
+  if (!FORM_STATUSES.has(data.status)) return { error: "Invalid form status" };
+  const existing = await db.prepare("SELECT active_version_id,status FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
+  if (!existing) return { error: "Form not found" };
+  if (data.status === "published" && !existing.active_version_id) return { error: "Publish this form before reopening it." };
+  const effectiveStatus = data.status === "draft" && existing.status === "archived" && existing.active_version_id ? "published" : data.status;
+  const stamp = now(), archived = effectiveStatus === "archived" ? stamp : null;
+  await db.prepare("UPDATE forms SET status=?,archived_at=?,updated_by=?,updated_at=? WHERE id=?").bind(effectiveStatus, archived, actor.uid, stamp, data.id).run();
+  return { success: true, status: effectiveStatus };
+}
+
+function freshenSchema(schema) {
+  const next = structuredClone(normalizeSchema(schema)), map = new Map();
+  for (const section of next.sections) {
+    const oldSection = section.id; section.id = id("section"); map.set(oldSection, section.id);
+    for (const block of section.blocks || []) {
+      const oldBlock = block.id; block.id = id(block.kind === "question" ? "q" : "block"); map.set(oldBlock, block.id);
+      for (const option of block.options || []) { const old = option.id; option.id = id("opt"); map.set(old, option.id); }
+      for (const row of block.rows || []) { const old = row.id; row.id = id("row"); map.set(old, row.id); }
+      for (const column of block.columns || []) { const old = column.id; column.id = id("col"); map.set(old, column.id); }
+    }
+  }
+  for (const rule of next.rules || []) {
+    rule.id = id("rule");
+    for (const condition of [...(rule.when?.all || []), ...(rule.when?.any || [])]) { condition.questionId = map.get(condition.questionId) || condition.questionId; condition.value = map.get(condition.value) || condition.value; }
+    for (const action of rule.actions || []) { action.targetId = map.get(action.targetId) || action.targetId; action.sourceId = map.get(action.sourceId) || action.sourceId; }
+  }
+  return next;
+}
+
+export async function duplicateForm(db, data, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).read) return { error: "You do not have access to this form." };
+  const source = await db.prepare("SELECT * FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
+  if (!source) return { error: "Form not found" };
+  const schema = freshenSchema(safeJson(source.draft_schema_json)); schema.title = `${schema.title} copy`.slice(0, 180);
+  const formId = id("form"), stamp = now(), slug = await uniqueSlug(db, schema.title), shareCode = await uniqueShareCode(db), shortCode = await uniqueShortCode(db);
+  await db.prepare("INSERT INTO forms (id,slug,share_code,title,status,draft_schema_json,owner_email,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(formId, slug, shareCode, schema.title, "draft", JSON.stringify(schema), actorEmail(actor), actor.uid, actor.uid, stamp, stamp).run();
+  await db.prepare("INSERT INTO form_share_code_aliases (code,form_id,created_at) VALUES (?,?,?)").bind(shortCode, formId, stamp).run();
+  return { success: true, id: formId, slug, shareCode, shortCode };
+}
+
+const escapeHtml = value => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+function inviteCopy(value, replacements) {
+  return String(value || "").replace(/\{\{(formTitle|formUrl)\}\}/g, (_, key) => replacements[key]);
+}
+function inviteMessageHtml(text, formTitle) {
+  const safeText = escapeHtml(text);
+  const safeTitle = escapeHtml(formTitle);
+  const withTitleEmphasis = safeTitle
+    ? safeText.replaceAll(safeTitle, `<strong style="color:#173d2c;font-weight:700;">${safeTitle}</strong>`)
+    : safeText;
+  return withTitleEmphasis.split(/\r?\n\r?\n/).map((paragraph) =>
+    `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#26392e;">${paragraph.replaceAll(/\r?\n/g, "<br>")}</p>`
+  ).join("");
+}
+function formInviteEmail({ title, subtitle, text, formUrl, coverUrl, coverAlt }) {
+  const cover = coverUrl
+    ? `<tr><td><img src="${escapeHtml(coverUrl)}" alt="${escapeHtml(coverAlt || "")}" width="680" style="display:block;width:100%;max-width:680px;height:auto;border:0;outline:none;text-decoration:none;" /></td></tr>`
+    : "";
+  const subtitleHtml = subtitle
+    ? `<p style="margin:5px 0 0;font-size:15px;line-height:1.5;color:#496357;">${escapeHtml(subtitle)}</p>`
+    : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');</style></head><body style="margin:0;padding:0;background:#eef1eb;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#eef1eb;"><tr><td align="center" style="padding:24px 12px;"><table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:680px;background:#fffdf7;border:1px solid #d7ded5;border-radius:16px;overflow:hidden;font-family:'Plus Jakarta Sans',Arial,sans-serif;">${cover}<tr><td style="padding:42px 40px 38px;"><p style="margin:0 0 12px;color:#a68c4c;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;">An invitation from Karamah Collective</p><h1 style="margin:0;color:#173d2c;font-size:30px;line-height:1.14;font-weight:700;letter-spacing:-.04em;">You are invited</h1><p style="margin:12px 0 0;color:#173d2c;font-size:18px;line-height:1.35;font-weight:700;letter-spacing:-.025em;">${escapeHtml(title)}</p>${subtitleHtml}<div style="margin-top:28px;">${inviteMessageHtml(text, title)}</div><a href="${escapeHtml(formUrl)}" style="display:inline-block;margin-top:8px;padding:13px 19px;border-radius:7px;background:#173d2c;color:#fffdf7;font-size:14px;font-weight:800;line-height:1;text-decoration:none;">Open the form&nbsp; →</a></td></tr><tr><td style="padding:23px 40px 27px;border-top:1px solid #d7ded5;background:#f7f6ef;"><p style="margin:0 0 4px;color:#173d2c;font-size:12px;font-weight:700;line-height:1.5;">Karamah Collective Forms</p><p style="margin:0;max-width:410px;color:#647066;font-size:12px;line-height:1.55;">This invitation was sent because a Karamah Collective administrator shared this form with you. The form link is intended for you.</p></td></tr></table></td></tr></table></body></html>`;
+}
+export async function sendFormInvites(db, data, env, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).write) return { error: "Only the owner or a collaborator can invite respondents." };
+  const form = await db.prepare("SELECT f.id,f.title,f.status,f.active_version_id,v.schema_json,(SELECT code FROM form_share_code_aliases WHERE form_id=f.id AND length(code)=3 LIMIT 1) short_code FROM forms f LEFT JOIN form_versions v ON v.id=f.active_version_id WHERE f.id=? AND f.status != 'deleted'").bind(data.id || "").first();
+  if (!form?.active_version_id || form.status !== "published") return { error: "Publish the form before sending invitations." };
+  const recipients = [...new Set((Array.isArray(data.recipients) ? data.recipients : []).map(value => String(value).trim().toLowerCase()).filter(value => emailPattern.test(value)))];
+  if (!recipients.length) return { error: "Add at least one valid email address." };
+  if (recipients.length > 100) return { error: "Send invitations to at most 100 recipients at once." };
+  const apiKey = String(env.BREVO_API_KEY || "").trim();
+  if (!apiKey) return { error: "Email invitations are not configured. Add BREVO_API_KEY to the Forms Pages project secrets." };
+  if (/^xsmtpsib-/i.test(apiKey)) {
+    console.error("Brevo form invite failed: BREVO_API_KEY contains an SMTP key, not an HTTP API key");
+    return { error: "Email invitations need a Brevo API key, not an SMTP key. Update BREVO_API_KEY in the Forms Pages project." };
+  }
+  const origin = String(env.FORMS_ORIGIN || "https://forms.karamahcollective.com").replace(/\/$/, "");
+  const formUrl = `${origin}/f/${encodeURIComponent(form.short_code || "")}`;
+  if (!form.short_code) return { error: "This form does not yet have a short invitation link." };
+  const schema = normalizeSchema(safeJson(form.schema_json));
+  const title = String(schema.title || form.title || "Untitled form").trim();
+  const subtitle = String(schema.subtitle || "").trim();
+  const cover = schema.coverImage?.assetId && /^asset_[0-9a-f-]{36}$/i.test(schema.coverImage.assetId)
+    ? { url: `${origin}/api/media?id=${encodeURIComponent(schema.coverImage.assetId)}`, alt: String(schema.coverImage.alt || "").slice(0, 300) }
+    : null;
+  const replacements = { formTitle: title, formUrl };
+  const subject = inviteCopy(String(data.subject || "You are invited: {{formTitle}}").trim().slice(0, 180), replacements);
+  const text = inviteCopy(String(data.body || "Hello,\n\nYou are invited to complete {{formTitle}}.\n\nOpen the form: {{formUrl}}\n\nThank you,").trim().slice(0, 10_000), replacements);
+  const htmlContent = formInviteEmail({ title, subtitle, text, formUrl, coverUrl: cover?.url, coverAlt: cover?.alt });
+  const common = { sender: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, subject, textContent: text, htmlContent, replyTo: { email: "forms@karamahcollective.com", name: "Karamah Collective Forms" }, tags: ["forms-invite", form.id] };
+  const payload = data.delivery === "group" ? { ...common, to: recipients.map(email => ({ email })) } : { ...common, messageVersions: recipients.map(email => ({ to: [{ email }] })) };
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { accept: "application/json", "api-key": apiKey, "content-type": "application/json" }, body: JSON.stringify(payload) });
+  if (!response.ok) {
+    const details = await response.text();
+    const diagnosis = details.toLowerCase();
+    console.error("Brevo form invite failed", response.status, details);
+    if (diagnosis.includes("sender") || diagnosis.includes("from email")) {
+      return { error: "Brevo rejected forms@karamahcollective.com. Verify that sender (or the karamahcollective.com domain) in Brevo." };
+    }
+    if (response.status === 401 || response.status === 403 || diagnosis.includes("api key") || diagnosis.includes("authentication")) {
+      return { error: "Brevo rejected the API credentials. Put a Brevo API key in BREVO_API_KEY for the Forms Pages project." };
+    }
+    return { error: "Brevo could not send the invitations. Check the Brevo account status and available email credits." };
+  }
+  const result = await response.json();
+  console.log("Forms invitations sent", { formId: form.id, count: recipients.length, delivery: data.delivery === "group" ? "group" : "individual", actor: actor.email || actor.uid });
+  return { success: true, sent: recipients.length, delivery: data.delivery === "group" ? "group" : "individual", messageIds: result.messageIds || (result.messageId ? [result.messageId] : []) };
+}
+
+export async function deleteForm(db, data, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).write) return { error: "Only the owner or a collaborator can delete this form." };
+  const form = await db.prepare("SELECT id FROM forms WHERE id=? AND status != 'deleted'").bind(data.id || "").first();
+  if (!form) return { error: "Form not found" };
+  await db.prepare("UPDATE forms SET status='deleted',deleted_at=?,updated_by=?,updated_at=? WHERE id=?").bind(now(), actor.uid, now(), form.id).run();
+  return { success: true };
+}
+
+export async function listSubmissions(db, url, actor) {
+  const formId = url.searchParams.get("id") || "", max = url.searchParams.get("export") === "1" ? 10_000 : 100, limit = Math.min(Math.max(asInt(url.searchParams.get("limit"), 50), 1), max);
+  if (!(await formAccess(db, formId, actor)).read) return { error: "You do not have access to these responses." };
+  const { results } = await db.prepare(`SELECT s.*,v.version_number FROM form_submissions s JOIN form_versions v ON v.id=s.form_version_id
+    WHERE s.form_id=? AND s.status='valid' ORDER BY s.submitted_at DESC LIMIT ?`).bind(formId, limit).all();
+  if (!results.length) return { submissions: [] };
+  const placeholders = results.map(() => "?").join(",");
+  const answers = await db.prepare(`SELECT submission_id,question_id,value_json FROM form_answers WHERE submission_id IN (${placeholders})`).bind(...results.map(row => row.id)).all();
+  const bySubmission = new Map(results.map(row => [row.id, {}]));
+  for (const answer of answers.results) bySubmission.get(answer.submission_id)[answer.question_id] = safeJson(answer.value_json);
+  return { submissions: results.map(row => ({ id: row.id, submittedAt: row.submitted_at, respondentEmail: row.respondent_email || "", respondentUid: row.respondent_uid || "", version: row.version_number, answers: bySubmission.get(row.id) })) };
+}
+
+export async function deleteSubmission(db, data, env, actor) {
+  if (!(await formAccess(db, String(data.id || ""), actor)).write) return { error: "Only the owner or a collaborator can delete responses." };
+  const { results: files } = await db.prepare("SELECT r2_key FROM form_files WHERE submission_id=?").bind(data.submissionId || "").all();
+  await db.prepare("DELETE FROM form_submissions WHERE id=? AND form_id=?").bind(data.submissionId || "", data.id || "").run();
+  if (env.MEDIA && files.length) await env.MEDIA.delete(files.map(file => file.r2_key));
+  return { success: true };
+}
+
+export async function formAnalytics(db, url, actor) {
+  const formId = url.searchParams.get("id") || "";
+  if (!(await formAccess(db, formId, actor)).read) return { error: "You do not have access to these analytics." };
+  const [summary, trend, answers] = await Promise.all([
+    db.prepare("SELECT COUNT(*) total,MIN(submitted_at) first_at,MAX(submitted_at) last_at FROM form_submissions WHERE form_id=? AND status='valid'").bind(formId).first(),
+    db.prepare("SELECT substr(submitted_at,1,10) day,COUNT(*) count FROM form_submissions WHERE form_id=? AND status='valid' GROUP BY day ORDER BY day DESC LIMIT 30").bind(formId).all(),
+    db.prepare("SELECT a.question_id,a.value_json,v.schema_json FROM form_answers a JOIN form_submissions s ON s.id=a.submission_id JOIN form_versions v ON v.id=s.form_version_id WHERE s.form_id=? AND s.status='valid'").bind(formId).all(),
+  ]);
+  const questions = {};
+  for (const row of answers.results) {
+    const schema = safeJson(row.schema_json), question = schema?.sections?.flatMap(section => section.blocks || []).find(block => block.id === row.question_id);
+    if (!question) continue;
+    const bucket = questions[row.question_id] ||= { label: question.label, type: question.type, responses: 0, values: {} };
+    const value = safeJson(row.value_json); bucket.responses++;
+    for (const item of Array.isArray(value) ? value : [value]) { const key = String(item); bucket.values[key] = (bucket.values[key] || 0) + 1; }
+  }
+  return { total: summary?.total || 0, firstAt: summary?.first_at || null, lastAt: summary?.last_at || null, trend: trend.results.reverse(), questions: Object.values(questions) };
+}
+
+export async function exportResponses(db, url, actor) {
+  const result = await listSubmissions(db, new URL(`${url.origin}${url.pathname}?id=${encodeURIComponent(url.searchParams.get("id") || "")}&limit=10000&export=1`), actor);
+  if (result.error) return result;
+  const form = await db.prepare("SELECT draft_schema_json FROM forms WHERE id=?").bind(url.searchParams.get("id") || "").first();
+  const schema = normalizeSchema(safeJson(form?.draft_schema_json)), questions = schema.sections.flatMap(section => section.blocks || []).filter(block => block.kind === "question");
+  const escape = value => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const header = ["Submission ID", "Submitted at", "Respondent", ...questions.map(question => `${question.label} [${question.id}]`)].map(escape).join(",");
+  const rows = result.submissions.map(submission => [submission.id, submission.submittedAt, submission.respondentEmail || submission.respondentUid, ...questions.map(question => {
+    const value = submission.answers[question.id]; return typeof value === "object" ? JSON.stringify(value ?? "") : value ?? "";
+  })].map(escape).join(","));
+  return { filename: `form-responses-${new Date().toISOString().slice(0,10)}.csv`, csv: [header, ...rows].join("\r\n") };
+}
+
+export async function getVersion(db, url, actor) {
+  if (!(await formAccess(db, url.searchParams.get("id") || "", actor)).read) return { error: "You do not have access to this version." };
+  const version = await db.prepare("SELECT id,form_id,version_number,schema_json,created_by,created_at,published_at FROM form_versions WHERE id=? AND form_id=?").bind(url.searchParams.get("versionId") || "", url.searchParams.get("id") || "").first();
+  if (!version) return { error: "Version not found" };
+  return { version: { id: version.id, formId: version.form_id, number: version.version_number, schema: safeJson(version.schema_json), createdBy: version.created_by, createdAt: version.created_at, publishedAt: version.published_at } };
+}
+
+export async function saveFormCollaborator(db, data, actor) {
+  const formId=String(data.id||""), access=await formAccess(db,formId,actor);
+  if (!(access.relation === "owner" || access.relation === "administrator")) return { error:"Only the form owner can manage collaborators." };
+  const email=String(data.email||"").trim().toLowerCase();
+  if(!/^[^\s@]+@karamahcollective\.com$/i.test(email)) return { error:"Use a @karamahcollective.com team email." };
+  const form=await db.prepare("SELECT owner_email FROM forms WHERE id=?").bind(formId).first();
+  if(String(form?.owner_email||"").toLowerCase()===email) return { error:"The owner already has full access." };
+  await db.prepare("INSERT INTO form_collaborators (form_id,email,added_by,created_at) VALUES (?,?,?,?) ON CONFLICT(form_id,email) DO NOTHING").bind(formId,email,actorEmail(actor),now()).run();
+  return { success:true,email };
+}
+
+export async function deleteFormCollaborator(db, data, actor) {
+  const formId=String(data.id||""), access=await formAccess(db,formId,actor);
+  if (!(access.relation === "owner" || access.relation === "administrator")) return { error:"Only the form owner can manage collaborators." };
+  const email=String(data.email||"").trim().toLowerCase();
+  await db.prepare("DELETE FROM form_collaborators WHERE form_id=? AND lower(email)=lower(?)").bind(formId,email).run();
+  return { success:true };
+}

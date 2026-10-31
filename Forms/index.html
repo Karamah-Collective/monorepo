@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f2f1eb">
+  <meta name="description" content="A Karamah Collective form">
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="stylesheet" href="/styles.css">
+  <title>Karamah Collective Forms</title>
+</head>
+<body>
+  <div class="startup-screen" id="startup-screen" role="status" aria-label="Loading Karamah Collective Forms"><div class="startup-mark"><img src="/assets/karamah-logo.svg" alt="Karamah Collective"><span aria-hidden="true"></span></div></div>
+  <noscript><style>.startup-screen{display:none}</style></noscript>
+  <div class="forms-atmosphere" aria-hidden="true"></div>
+  <header class="site-header masthead">
+    <a class="brand" href="https://forms.karamahcollective.com" aria-label="Karamah Collective Forms"><img src="/assets/karamah-logo.svg" alt=""><span>Karamah Collective</span><small>Forms</small></a>
+    <div class="masthead-actions">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Use dark mode"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 14.6A8.5 8.5 0 0 1 9.4 3a7 7 0 1 0 11.6 11.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <div id="account-slot"></div>
+    </div>
+  </header>
+  <main id="app" tabindex="-1">
+    <section class="state-shell loading-view" aria-live="polite">
+      <span class="skeleton skeleton-kicker"></span><span class="skeleton skeleton-title"></span><span class="skeleton skeleton-copy"></span>
+      <div class="skeleton-card"><span></span><span></span><span></span></div>
+    </section>
+  </main>
+  <footer class="site-footer"><span>© Karamah Collective ry</span><button type="button" data-open-privacy>Privacy</button></footer>
+  <div id="privacy-overlay" class="privacy-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Privacy policy"><div class="privacy-backdrop" data-close-privacy></div></div>
+  <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title">
+    <button class="dialog-close" type="button" data-close-auth aria-label="Close"></button>
+    <h2 id="auth-title" data-auth-title>Sign in</h2>
+    <p data-auth-copy>Use your Karamah Collective account to continue. Your identity is recorded only when a form says so.</p>
+    <div class="provider-stack" aria-label="Sign in providers"><button type="button" data-provider="google" aria-label="Continue with Google" title="Google"><svg viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285f4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.13 4.13 0 0 1-1.8 2.72v2.26h2.91c1.7-1.57 2.69-3.87 2.69-6.62Z"/><path fill="#34a853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18Z"/><path fill="#fbbc05" d="M3.96 10.71A5.4 5.4 0 0 1 3.68 9c0-.59.1-1.17.28-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3-2.33Z"/><path fill="#ea4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.96 8.96 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58Z"/></svg><span class="sr-only">Google</span></button><button type="button" data-provider="microsoft" aria-label="Continue with Microsoft" title="Microsoft"><svg viewBox="0 0 21 21" aria-hidden="true"><path fill="#f25022" d="M1 1h9v9H1z"/><path fill="#7fba00" d="M11 1h9v9h-9z"/><path fill="#00a4ef" d="M1 11h9v9H1z"/><path fill="#ffb900" d="M11 11h9v9h-9z"/></svg><span class="sr-only">Microsoft</span></button><button type="button" data-provider="facebook" aria-label="Continue with Facebook" title="Facebook"><svg viewBox="0 0 320 512" aria-hidden="true"><path fill="currentColor" d="M279 288l14-93h-89v-60c0-25 12-50 52-50h40V6s-36-6-71-6c-73 0-121 44-121 125v70H23v93h81v224h100V288h75Z"/></svg><span class="sr-only">Facebook</span></button></div>
+    <div class="or"><span>or use email</span></div>
+    <div class="email-mode" role="tablist"><button type="button" class="active" data-email-mode="signin">Sign in</button><button type="button" data-email-mode="signup">Sign up</button></div><form id="email-auth"><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="current-password" minlength="6" required></label><button class="auth-reset" type="button" data-reset-password>Forgot password?</button><button class="primary" type="submit">Continue</button></form>
+    <p id="auth-error" class="form-error" role="alert"></p>
+  </dialog>
+  <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">
+    <button class="dialog-close" type="button" data-close-account aria-label="Close"></button>
+    <p class="eyebrow">ACCOUNT</p><h2 id="account-title">Signed in</h2>
+    <p data-account-email></p>
+    <div class="account-dialog-actions"><button class="primary danger" type="button" data-account-signout>Sign out</button><button type="button" data-close-account>Stay signed in</button></div>
+  </dialog>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

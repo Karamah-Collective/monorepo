@@ -1,0 +1,156 @@
+/* Dashboard-only health treatment. Kept isolated from the full health page. */
+.legacy-overview .health-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+}
+
+.legacy-overview .review-panel,
+.legacy-overview .category-panel {
+  align-self: start;
+  min-height: 0;
+}
+
+.legacy-overview .overview-column {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  min-width: 0;
+}
+
+.legacy-overview .health-panel .overview-panel-heading {
+  align-items: center;
+  padding: 14px 20px 10px;
+}
+
+.legacy-overview .health-panel .overview-panel-heading h2 {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.legacy-overview .health-panel .overview-panel-footer {
+  min-height: 37px;
+  padding: 9px 20px;
+  font-size: 11px;
+}
+
+.legacy-overview .health-overall {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt);
+}
+
+.legacy-overview .health-overall > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  color: var(--text-faint);
+  background: var(--bg-inset);
+}
+
+.legacy-overview .health-overall.is-operational {
+  border-color: color-mix(in srgb, var(--success) 32%, var(--border));
+  background: color-mix(in srgb, var(--success-bg) 62%, var(--bg));
+}
+
+.legacy-overview .health-overall.is-operational > span {
+  color: var(--action-on-accent);
+  background: var(--success);
+}
+
+.legacy-overview .health-overall strong,
+.legacy-overview .health-overall small {
+  display: block;
+}
+
+.legacy-overview .health-overall strong { font-size: 13px; }
+.legacy-overview .health-overall small { display: none; }
+
+.legacy-overview .health-services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 0 20px 10px;
+  border-radius: 7px;
+  background: var(--bg-alt);
+}
+
+.legacy-overview .health-services article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.legacy-overview .health-services article + article { border-left: 1px solid var(--border); }
+
+.legacy-overview .health-services article > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.legacy-overview .health-services article > header strong { font-size: 13px; }
+
+.legacy-overview .health-services b {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.legacy-overview .health-services b::before,
+.legacy-overview .health-components i {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.legacy-overview .health-components {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.legacy-overview .health-components span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.legacy-overview .health-operational { color: var(--success); }
+.legacy-overview .health-degraded { color: var(--warning); }
+.legacy-overview .health-down { color: var(--danger); }
+.legacy-overview .health-unknown { color: var(--text-faint); }
+
+@media (max-width: 720px) {
+  .legacy-overview .health-overall { margin-inline: 16px; }
+  .legacy-overview .health-services { grid-template-columns: 1fr; padding-inline: 16px; }
+  .legacy-overview .health-services article + article { border-top: 1px solid var(--border); border-left: 0; }
+}
