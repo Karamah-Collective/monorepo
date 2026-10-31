@@ -2786,7 +2786,7 @@ body.dark-mode .sp-tip {
   flex: 1 1 auto;
   min-width: 0;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: 6px;
   width: auto;
   padding: 0;
 }
@@ -2795,15 +2795,18 @@ body.dark-mode .sp-tip {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 40px;
-  min-width: 40px;
-  height: 26px;
+  width: 36px;
+  min-width: 36px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: var(--r-pill);
+  border-radius: 9px;
   background: var(--surface-2);
   color: var(--text-2);
   text-decoration: none;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 #place-sheet-body .pp-contact-link svg {
   width: 15px;
@@ -2812,24 +2815,31 @@ body.dark-mode .sp-tip {
 #event-detail-body .pp-contact {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: 6px;
 }
 #event-detail-body .pp-contact-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 40px;
-  min-width: 40px;
-  height: 26px;
+  width: 36px;
+  min-width: 36px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: var(--r-pill);
+  border-radius: 9px;
   background: var(--surface-2);
   color: var(--text-2);
   text-decoration: none;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 #event-detail-body .pp-contact-link svg { width: 15px; height: 15px; flex: 0 0 auto; }
+#place-sheet-body .pp-contact-link:active,
+#event-detail-body .pp-contact-link:active { transform: scale(.94); }
+#place-sheet-body .pp-contact-link:focus-visible,
+#event-detail-body .pp-contact-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 #place-sheet-body .pp-reviews {
   flex: 0 0 auto;
   min-width: 0;
@@ -2871,8 +2881,11 @@ body.dark-mode .sp-tip {
   background: transparent;
 }
 @media (hover: hover) {
-  #place-sheet-body .pp-contact-link:hover {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  #place-sheet-body .pp-contact-link:hover,
+  #event-detail-body .pp-contact-link:hover {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+    color: var(--accent);
     text-decoration: none;
   }
 }
@@ -5772,26 +5785,39 @@ body.marker-style-bold .custom-mk {
 }
 
 .detail-banner {
+  display: block;
   flex: 0 0 auto;
   aspect-ratio: 21 / 9;
   margin: calc(-1 * var(--sp-7)) calc(-1 * var(--sp-8)) 0;
   position: relative;
+  z-index: 0;
   overflow: hidden;
+  padding: 0;
+  border: 0;
   border-radius: 0;
   background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  opacity: 1;
 }
-.detail-banner::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 40%;
-  background: linear-gradient(
-    0deg,
-    color-mix(in srgb, var(--surface) 88%, transparent),
-    color-mix(in srgb, var(--surface) 48%, transparent) 54%,
-    transparent
-  );
-  pointer-events: none;
+.detail-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  margin-inline: calc(-1 * var(--sp-8));
+  padding-inline: var(--sp-8);
+  background: var(--surface);
+}
+.detail-content > .pp-title-row { margin-top: var(--sp-4); }
+.detail-banner:not(:disabled) { cursor: zoom-in; }
+.detail-banner:disabled { cursor: default; }
+.detail-banner:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+@media (max-width: 768px) {
+  .detail-banner { position: sticky; top: 0; }
 }
 .detail-banner-image {
   display: block;
@@ -14068,6 +14094,8 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   #place-sheet.full,
   #event-detail-sheet.full { padding-bottom: 0; }
+  #place-sheet.full,
+  #event-detail-sheet.full { overflow: visible; }
   #place-sheet.full .sheet-drag,
   #event-detail-sheet.full .sheet-drag { display: none; }
   #place-sheet.full .sheet-head,
@@ -15791,6 +15819,41 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     max-width: none;
     min-width: 0;
     margin-top: var(--sp-6);
+    padding: var(--sp-8);
+    aspect-ratio: 21 / 9;
+    align-content: center;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--r-xl);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+  .phone-home-welcome[data-prayer-period="morning"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Morning_21x9.webp"); }
+  .phone-home-welcome[data-prayer-period="midday"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Midday_21x9.webp"); }
+  .phone-home-welcome[data-prayer-period="afternoon"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Afternoon_21x9.webp"); }
+  .phone-home-welcome[data-prayer-period="evening"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Evening_21x9.webp"); }
+  .phone-home-welcome[data-prayer-period="night"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Night_21x9.webp"); }
+  .phone-home-welcome::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--surface) 44%, transparent), color-mix(in srgb, var(--surface) 18%, transparent) 62%, transparent);
+    pointer-events: none;
+  }
+  .phone-home-welcome > * {
+    position: relative;
+    z-index: 1;
+  }
+  body:not(.dark-mode) .phone-home-welcome[data-prayer-period="night"]::before {
+    background: linear-gradient(90deg, rgb(8 17 37 / 20%), transparent 72%);
+  }
+  body:not(.dark-mode) .phone-home-welcome[data-prayer-period="night"] .phone-home-greeting,
+  body:not(.dark-mode) .phone-home-welcome[data-prayer-period="night"] h1 {
+    color: #fff;
+    text-shadow: 0 1px 3px rgb(0 0 0 / 35%);
   }
 
   .phone-home-welcome .phone-home-greeting {
@@ -15812,36 +15875,25 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     display: block;
     width: 100%;
     margin-top: var(--sp-4);
-    padding: var(--sp-4);
+    padding: var(--sp-5) var(--sp-6);
     border: 1px solid var(--accent);
     border-radius: var(--r-xl);
     background: var(--accent);
     color: var(--on-accent);
     font: inherit;
     text-align: left;
-    box-shadow: none;
+    box-shadow: var(--shadow-accent-sm);
+    transition: filter var(--t-fast), transform var(--t-fast);
   }
 
-  .phone-prayer-card-main {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  .phone-prayer-card-current {
+    display: flex;
     align-items: center;
-    gap: var(--sp-3);
-    margin-top: 0;
+    justify-content: space-between;
+    gap: var(--sp-4);
   }
 
-  .phone-prayer-card-icon {
-    display: grid;
-    place-items: center;
-    width: var(--home-category-icon-size);
-    height: var(--home-category-icon-size);
-    border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
-    color: var(--on-accent);
-  }
-
-  .phone-prayer-card-copy,
-  .phone-prayer-card-side {
+  .phone-prayer-card-copy {
     display: grid;
     min-width: 0;
     gap: var(--sp-0);
@@ -15849,15 +15901,17 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-prayer-card-top {
     color: color-mix(in srgb, var(--on-accent) 78%, transparent);
-    font-size: var(--txt-sm);
-    font-weight: var(--fw-medium);
-    letter-spacing: var(--ls-normal);
-    text-transform: none;
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-caps);
+    text-transform: uppercase;
   }
 
   .phone-prayer-card-copy strong {
     overflow: hidden;
-    font-size: var(--txt-2xl);
+    font-size: var(--txt-display);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-tight);
     letter-spacing: -.025em;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -15865,36 +15919,72 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-prayer-location {
     overflow: hidden;
-    color: color-mix(in srgb, var(--on-accent) 68%, transparent);
-    font-size: var(--txt-sm);
+    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
+    font-size: var(--txt-xs);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .phone-prayer-card-side {
-    justify-items: end;
-    padding-left: var(--sp-3);
-    border-left: 1px solid color-mix(in srgb, var(--on-accent) 22%, transparent);
+  .phone-prayer-card-next {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-3);
+    border-top: 1px solid color-mix(in srgb, var(--on-accent) 22%, transparent);
   }
 
-  .phone-prayer-card-side span {
-    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+  .phone-prayer-card-next-copy {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: var(--sp-2);
+    white-space: nowrap;
+  }
+
+  .phone-prayer-card-next-label {
+    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
     font-size: var(--txt-xs);
-    white-space: nowrap;
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-caps);
+    text-transform: uppercase;
   }
 
-  .phone-prayer-card-side time {
-    color: var(--on-accent);
-    font-size: var(--txt-2xl);
+  .phone-prayer-card-next-copy strong {
+    overflow: hidden;
+    font-size: var(--txt-lg);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    text-overflow: ellipsis;
+  }
+
+  .phone-prayer-card-next-copy time {
+    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
+    font-size: var(--txt-xs);
     font-variant-numeric: tabular-nums;
-    font-weight: var(--fw-bold);
-    white-space: nowrap;
+  }
+
+  .phone-prayer-card-countdown {
+    flex: 0 0 auto;
+    padding: var(--sp-1) var(--sp-2h);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+    color: var(--on-accent);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-semibold);
   }
 
   .phone-prayer-card-arrow {
     display: grid;
     place-items: center;
-    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    flex: 0 0 auto;
+    color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+  }
+
+  .phone-prayer-card:active { transform: scale(.99); }
+  @media (hover: hover) {
+    .phone-prayer-card:hover { filter: brightness(1.04); }
   }
 
   .phone-prayer-card:focus-visible {

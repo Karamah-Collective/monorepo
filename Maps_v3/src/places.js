@@ -242,6 +242,7 @@ let _activePlaceSheetId = null;
 let _activePlaceSheetReviewsListener = null;
 let _activePlaceSheetMediaListener = null;
 const _detailLocationMaps = { place: null, event: null };
+const _detailLocationObservers = { place: null, event: null };
 const PLACE_REVIEW_RETURN_KEY = "hf:place-review-return";
 
 window.addEventListener(EVT.AUTH_CHANGED, (event) => {
@@ -357,6 +358,7 @@ function _scrollPlaceReviewsIntoView(section) {
 
 function _loadDetailBanner(banner, place, placeholderCategory) {
   if (!banner) return;
+  banner.disabled = true;
   const category = placeholderCategory || (place?.type === "restaurant" ? "Food" : SERVICE_TYPES.has(place?.type) ? "Services" : "Spaces");
   const placeholders = ["Light", "Dark"].map((theme) => {
     const filename = `Manarah_${category}_${theme}_21x9`;
@@ -376,23 +378,41 @@ function _loadDetailBanner(banner, place, placeholderCategory) {
     return picture;
   });
   banner.replaceChildren(...placeholders);
-  if (!place) return;
+  if (!place) {
+    banner.setAttribute("aria-label", "No photo available");
+    return;
+  }
 
   import("./place-media.js")
-    .then(({ loadGooglePlacePreview }) => loadGooglePlacePreview(place))
-    .then((preview) => {
-      if (!preview?.src) return;
+    .then(async ({ loadGooglePlacePreview, openPlacePhotoFromBanner }) => {
+      const preview = await loadGooglePlacePreview(place);
+      if (!preview?.src) {
+        banner.setAttribute("aria-label", "No photo available");
+        return;
+      }
       const image = new Image();
       image.className = "detail-banner-image";
       image.alt = "";
       image.setAttribute("aria-hidden", "true");
       image.decoding = "async";
+      image.addEventListener("error", () => {
+        if (banner.isConnected) banner.setAttribute("aria-label", "No photo available");
+      }, { once: true });
       image.addEventListener("load", () => {
-        if (banner.isConnected) banner.replaceChildren(image);
+        if (!banner.isConnected) return;
+        banner.replaceChildren(image);
+        banner.disabled = false;
+        banner.setAttribute("aria-label", category === "Events" ? "View event venue photo" : `View photos of ${place.name}`);
+        banner.addEventListener("click", (event) => {
+          event.stopPropagation();
+          void openPlacePhotoFromBanner(place, preview.src, banner).catch(() => {});
+        });
       }, { once: true });
       image.src = preview.src;
     })
-    .catch(() => {});
+    .catch(() => {
+      if (banner.isConnected) banner.setAttribute("aria-label", "No photo available");
+    });
 }
 
 const DETAIL_CONTACT_ICONS = {
@@ -449,15 +469,37 @@ function _mountDetailLocationMap(kind, preview) {
   const sheet = kind === "place" ? placeSheetEl : _eventDetailEl;
   requestAnimationFrame(() => {
     if (!preview.map.isConnected || sheet.hidden || sheet.classList.contains("shut") || !window.maplibregl) return;
+    _clearDetailLocationMap(kind);
+    const scrollRoot = preview.section.closest("#place-sheet-body, #event-detail-body");
+    const canObserve = Boolean(scrollRoot && typeof window.IntersectionObserver === "function");
+    let fullyVisible = false;
+    let mapLoaded = false;
+    let hasAnimated = false;
     const map = new window.maplibregl.Map({
       container: preview.map,
       style: HSL_STYLE,
       center: [preview.lng, preview.lat],
-      zoom: 2,
+      zoom: canObserve ? 2 : 12,
       attributionControl: false,
       interactive: false,
     });
     _detailLocationMaps[kind] = map;
+    let observer = null;
+    const animateWhenVisible = () => {
+      if (!canObserve || !fullyVisible || !mapLoaded || hasAnimated || _detailLocationMaps[kind] !== map) return;
+      hasAnimated = true;
+      observer?.disconnect();
+      if (_detailLocationObservers[kind] === observer) _detailLocationObservers[kind] = null;
+      map.easeTo({ zoom: 12, duration: isReduceMotionActive() ? 0 : 500 });
+    };
+    if (canObserve) {
+      observer = new window.IntersectionObserver(([entry]) => {
+        fullyVisible = entry.isIntersecting && entry.intersectionRatio >= 0.999;
+        animateWhenVisible();
+      }, { root: scrollRoot, threshold: 0.999 });
+      _detailLocationObservers[kind] = observer;
+      observer.observe(preview.map);
+    }
     const markerEl = document.createElement("span");
     markerEl.className = "pf-timeline-map-marker";
     markerEl.setAttribute("aria-label", preview.name);
@@ -468,12 +510,15 @@ function _mountDetailLocationMap(kind, preview) {
     map.once("load", () => {
       if (_detailLocationMaps[kind] !== map) return;
       map.resize();
-      map.easeTo({ zoom: 12, duration: isReduceMotionActive() ? 0 : 500 });
+      mapLoaded = true;
+      animateWhenVisible();
     });
   });
 }
 
 function _clearDetailLocationMap(kind) {
+  _detailLocationObservers[kind]?.disconnect();
+  _detailLocationObservers[kind] = null;
   _detailLocationMaps[kind]?.remove();
   _detailLocationMaps[kind] = null;
 }
@@ -2240,9 +2285,11 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
     ? _createDetailLocationSection(place.name || "this place", place.lat, place.lng)
     : null;
 
-  const banner = document.createElement("div");
+  const banner = document.createElement("button");
+  banner.type = "button";
   banner.className = "detail-banner";
-  banner.setAttribute("aria-hidden", "true");
+  banner.disabled = true;
+  banner.setAttribute("aria-label", "Loading place photo");
   inner.appendChild(banner);
   _loadDetailBanner(banner, place);
 
@@ -2650,6 +2697,12 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   if (contactBtn) actions.appendChild(contactBtn);
   actions.appendChild(shareBtn);
   actions.appendChild(editBtn);
+  const content = document.createElement("div");
+  content.className = "detail-content";
+  for (const child of [...inner.children]) {
+    if (child !== banner) content.appendChild(child);
+  }
+  inner.appendChild(content);
   root.appendChild(inner);
 
   // Topbar icon/chip row: "Mark as visited" chip, fav star (to its right),
@@ -5089,18 +5142,20 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
   });
   _eventDetailBody.innerHTML = `<div class="pp">
     <div class="pp-inner ev-detail-inner">
-      <div class="detail-banner" aria-hidden="true"></div>
-      <div class="pp-title-row ev-detail-title-row"></div>
-      ${eventLocation}
-      <div class="pp-events ev-detail-schedule">
-        <div class="ev-detail-schedule-grid">
-          <div class="ev-detail-schedule-item"><span class="ev-detail-label">Date</span><strong class="ev-detail-value">${esc(dateLabel)}</strong></div>
-          <div class="ev-detail-schedule-item"><span class="ev-detail-label">Time</span><strong class="ev-detail-value">${esc(timeLabel)}</strong></div>
+      <button type="button" class="detail-banner" disabled aria-label="No event photo available"></button>
+      <div class="detail-content">
+        <div class="pp-title-row ev-detail-title-row"></div>
+        ${eventLocation}
+        <div class="pp-events ev-detail-schedule">
+          <div class="ev-detail-schedule-grid">
+            <div class="ev-detail-schedule-item"><span class="ev-detail-label">Date</span><strong class="ev-detail-value">${esc(dateLabel)}</strong></div>
+            <div class="ev-detail-schedule-item"><span class="ev-detail-label">Time</span><strong class="ev-detail-value">${esc(timeLabel)}</strong></div>
             ${ev.recurring ? `<div class="ev-detail-schedule-item ev-detail-schedule-item--full"><span class="ev-detail-label">Repeats</span><strong class="ev-detail-value">${esc(formatRecurrence(ev.recurrence) || "Recurring")}</strong></div>` : ""}
+          </div>
         </div>
+        ${ev.organizerName ? `<div class="ev-detail-section"><span class="ev-detail-label">Organized by</span><strong class="ev-detail-location">${esc(ev.organizerName)}</strong></div>` : ""}
+        ${ev.description ? `<div class="ev-detail-section"><span class="ev-detail-label">About</span><p class="ev-detail-description">${esc(ev.description)}</p></div>` : ""}
       </div>
-      ${ev.organizerName ? `<div class="ev-detail-section"><span class="ev-detail-label">Organized by</span><strong class="ev-detail-location">${esc(ev.organizerName)}</strong></div>` : ""}
-      ${ev.description ? `<div class="ev-detail-section"><span class="ev-detail-label">About</span><p class="ev-detail-description">${esc(ev.description)}</p></div>` : ""}
     </div>
   </div>`;
   _loadDetailBanner(_eventDetailBody.querySelector(".detail-banner"), place, "Events");

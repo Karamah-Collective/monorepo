@@ -199,6 +199,18 @@ function getNextPrayer() {
   return { name: "Fajr", time: tomorrow };
 }
 
+function getHomeBackgroundPeriod() {
+  if (!prayerTimesToday) return null;
+  const now = new Date();
+  const minuteOfDay = (time) => time.getHours() * 60 + time.getMinutes();
+  const current = now.getHours() * 60 + now.getMinutes();
+  if (current < minuteOfDay(prayerTimesToday.Fajr) || current >= minuteOfDay(prayerTimesToday.Isha)) return "night";
+  if (current < minuteOfDay(prayerTimesToday.Dhuhr)) return "morning";
+  if (current < minuteOfDay(prayerTimesToday.Asr)) return "midday";
+  if (current < minuteOfDay(prayerTimesToday.Maghrib)) return "afternoon";
+  return "evening";
+}
+
 function formatPrayerCountdown(date) {
   const diffMin = Math.round((date - new Date()) / 60000);
   if (diffMin < 1) return "in less than a minute";
@@ -209,11 +221,14 @@ function formatPrayerCountdown(date) {
 
 /** Read-only snapshot for the phone Home page; the prayer UI remains the source of truth. */
 export function getPrayerHomeSnapshot() {
+  const current = getCurrentPrayer();
   const next = getNextPrayer();
   return next ? {
+    currentName: current ? prayerDisplayName(current.name) : "Between prayers",
     name: prayerDisplayName(next.name),
     time: _formatPrayerTime(next.time),
     countdown: formatPrayerCountdown(next.time),
+    period: getHomeBackgroundPeriod(),
   } : null;
 }
 

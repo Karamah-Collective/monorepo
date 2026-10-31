@@ -752,7 +752,11 @@ function _formatDistance(distance) {
 }
 
 function _homePlaces(places) {
-  const availablePlaces = places.filter((place) => !place.boycott && place.type !== "cemetery");
+  const availablePlaces = places.filter((place) =>
+    !place.boycott
+    && String(place.type || "").trim().toLowerCase() !== "cemetery"
+    && place.tags?.space_type_cemetery !== true
+  );
   const location = getCurrentLocationState();
   if (_homeMode === "nearby" && location.active && location.lat !== null && location.lng !== null) {
     return availablePlaces
@@ -918,18 +922,23 @@ async function _syncHomeLocation() {
 
 function _renderPrayer() {
   const snapshot = _prayerSnapshot;
+  const welcome = document.querySelector(".phone-home-welcome");
+  if (welcome) welcome.dataset.prayerPeriod = snapshot?.period || "";
+  const currentName = document.getElementById("phone-current-prayer-name");
   const name = document.getElementById("phone-next-prayer-name");
   const time = document.getElementById("phone-next-prayer-time");
   const countdown = document.getElementById("phone-next-prayer-countdown");
   const state = document.getElementById("phone-prayer-state");
-  if (!name || !time || !countdown || !state) return;
+  if (!currentName || !name || !time || !countdown || !state) return;
   if (!snapshot) {
+    currentName.textContent = "Prayer times";
     name.textContent = "Prayer times";
     time.textContent = "--:--";
     countdown.textContent = "Loading prayer times";
     state.hidden = false;
     return;
   }
+  currentName.textContent = snapshot.currentName || "Between prayers";
   name.textContent = snapshot.name || "Next prayer";
   time.textContent = snapshot.time || "--:--";
   countdown.textContent = snapshot.countdown || "Coming up";

@@ -512,6 +512,24 @@ export function loadGooglePlacePreview(place) {
   return _googlePreviewPromises.get(placeId);
 }
 
+export async function openPlacePhotoFromBanner(place, src, returnFocus = null) {
+  const placeId = String(place?.id || "");
+  const bannerSrc = _safeMediaUrl(src);
+  if (!placeId || !bannerSrc) return false;
+  const [manifest, preview] = await Promise.all([
+    loadPlaceMediaManifest(placeId, { communityOnly: true }),
+    loadGooglePlacePreview(place),
+  ]);
+  const photos = [
+    ...(manifest.communityPhotos || []).map((photo) => ({ ...photo, source: "community" })),
+    ...(preview ? [preview] : []),
+  ];
+  const index = photos.findIndex((photo) => _safeMediaUrl(photo.src || photo.url) === bannerSrc);
+  if (index < 0) return false;
+  openPhotoViewer(photos, place.name || "Place", index, returnFocus);
+  return true;
+}
+
 /**
  * Clear cached media metadata after an upload or review-state change.
  * @param {string} placeId - Stable app place ID.
