@@ -2878,6 +2878,25 @@ body.dark-mode .sp-tip {
   }
 }
 
+/* Phone place details keep the title, address, and contact pills on one
+   compact rhythm. The timeline pill is taller than a single-line title, so
+   cancel that extra row height only when it is actually mounted. */
+@media (max-width: 768px) {
+  #place-sheet-body .pp-title-row {
+    margin-bottom: 0;
+  }
+  #place-sheet-body .pp-title-row:has(.pp-timeline-btn):not(.pp-title-row--wrapped) {
+    margin-bottom: -6px;
+  }
+  #place-sheet-body .pp-contact-link {
+    min-height: 24px;
+    padding-inline: var(--sp-2);
+    border-width: var(--border-w);
+    font-size: var(--txt-xs);
+    font-weight: var(--fw-semibold);
+  }
+}
+
 @media (min-width: 769px) {
   .sheet {
     left: auto;
@@ -5818,6 +5837,14 @@ body.marker-style-bold .custom-mk {
 }
 .detail-banner-image--placeholder {
   object-fit: fill;
+}
+.detail-banner.detail-banner--placeholder {
+  height: auto;
+  aspect-ratio: auto;
+}
+.detail-banner.detail-banner--placeholder .detail-banner-placeholder,
+.detail-banner.detail-banner--placeholder .detail-banner-image--placeholder {
+  height: auto;
 }
 .detail-banner-placeholder {
   display: none;
@@ -14153,6 +14180,17 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-page-surface .phone-primary-action { color: var(--on-accent); }
   .phone-primary-action .phone-action-icon { color: currentColor; }
 
+  #phone-home-page {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #phone-home-page::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   .phone-edge-carousel {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -15831,7 +15869,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     min-width: 0;
     margin-top: var(--sp-6);
     padding: var(--sp-8);
-    aspect-ratio: 21 / 9;
+    aspect-ratio: 16 / 9;
     align-content: center;
     position: relative;
     isolation: isolate;
@@ -15841,11 +15879,8 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     background-size: cover;
     background-repeat: no-repeat;
   }
-  .phone-home-welcome[data-prayer-period="morning"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Morning_21x9.webp"); }
-  .phone-home-welcome[data-prayer-period="midday"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Midday_21x9.webp"); }
-  .phone-home-welcome[data-prayer-period="afternoon"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Afternoon_21x9.webp"); }
-  .phone-home-welcome[data-prayer-period="evening"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Evening_21x9.webp"); }
-  .phone-home-welcome[data-prayer-period="night"] { background-image: url("/assets/home-backgrounds/Manarah_Home_Night_21x9.webp"); }
+  .phone-home-welcome { background-image: url("/assets/home-backgrounds/Manarah_Home_Light_16x9.webp"); }
+  body.dark-mode .phone-home-welcome { background-image: url("/assets/home-backgrounds/Manarah_Home_Dark_16x9.png"); }
   .phone-home-welcome::before {
     content: "";
     position: absolute;
@@ -15885,23 +15920,52 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-prayer-card {
     position: relative;
-    display: block;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     margin-top: var(--sp-4);
-    padding: 16px 18px 15px;
-    border: 1px solid var(--accent);
+    aspect-ratio: auto;
+    min-height: 154px;
+    padding: 16px 22px 10px;
+    border: var(--border-w) solid var(--border);
     border-radius: var(--r-xl);
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--surface);
+    color: var(--text);
     font: inherit;
     text-align: left;
-    box-shadow: var(--shadow-accent-sm);
-    transition: filter var(--t-fast), transform var(--t-fast);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .phone-prayer-card > * {
+    position: relative;
+    z-index: 0;
+  }
+
+  .phone-prayer-card-mosque {
+    position: absolute !important;
+    right: -4%;
+    bottom: -1px;
+    z-index: 0 !important;
+    width: 60%;
+    height: 100%;
+    color: color-mix(in srgb, var(--accent) 13%, var(--surface));
+    clip-path: inset(0 0 50% 0);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 26%, transparent 50%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 26%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .phone-prayer-card-mosque svg {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .phone-prayer-card-current {
     display: flex;
-    align-items: center;
+    flex: 0 0 auto;
+    align-items: flex-end;
     justify-content: space-between;
     gap: var(--sp-4);
     min-width: 0;
@@ -15909,32 +15973,39 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   .phone-prayer-card-copy {
     display: grid;
+    flex: 1 1 auto;
     min-width: 0;
     gap: 1px;
   }
 
   .phone-prayer-card-top {
-    color: color-mix(in srgb, var(--on-accent) 80%, transparent);
-    font-size: var(--txt-xs);
+    width: max-content;
+    padding: 6px 13px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+    font-size: 10px;
     font-weight: var(--fw-semibold);
-    letter-spacing: .06em;
-    line-height: 1.1;
+    letter-spacing: .09em;
+    line-height: 1;
     text-transform: uppercase;
   }
 
   .phone-prayer-card-copy strong {
     overflow: hidden;
-    font-size: clamp(1.5rem, 7vw, 1.8rem);
+    margin-top: 2px;
+    font-size: clamp(1.2rem, 5vw, 1.35rem);
     font-weight: var(--fw-bold);
     line-height: var(--lh-tight);
-    letter-spacing: -.04em;
+    letter-spacing: -.035em;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .phone-prayer-location {
     overflow: hidden;
-    color: color-mix(in srgb, var(--on-accent) 72%, transparent);
+    margin-top: 5px;
+    color: var(--text-3);
     font-size: var(--txt-xs);
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -15944,16 +16015,27 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   .phone-prayer-card-next {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
-    margin-top: 14px;
-    padding-top: 11px;
-    border-top: 1px solid color-mix(in srgb, var(--on-accent) 24%, transparent);
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .phone-prayer-card-next-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-lg);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
   }
 
   .phone-prayer-card-next-copy {
     display: flex;
     align-items: baseline;
+    flex: 1 1 auto;
     min-width: 0;
     gap: 7px;
     white-space: nowrap;
@@ -15968,36 +16050,65 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
 
   .phone-prayer-card-next-copy time {
-    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
-    font-size: var(--txt-xs);
+    padding: 6px 9px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+    font-size: var(--txt-md);
     font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-bold);
     line-height: 1;
   }
 
   .phone-prayer-card-countdown {
     flex: 0 0 auto;
-    color: color-mix(in srgb, var(--on-accent) 82%, transparent);
-    font-size: var(--txt-xs);
+    color: var(--text-2);
+    font-size: var(--txt-sm);
     font-weight: var(--fw-medium);
     line-height: 1;
     white-space: nowrap;
   }
 
-  .phone-prayer-card-arrow {
-    display: grid;
-    place-items: center;
+  .phone-prayer-qibla {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex: 0 0 auto;
-    color: color-mix(in srgb, var(--on-accent) 74%, transparent);
+    gap: 7px;
+    min-height: 36px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent) 86%, transparent);
+    color: var(--on-accent);
+    font: inherit;
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 18%, transparent);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: filter var(--t-fast), transform var(--t-fast);
   }
 
-  .phone-prayer-card:active { transform: scale(.99); }
+  .phone-prayer-qibla-icon {
+    flex: 0 0 auto;
+  }
+
+  .phone-prayer-qibla-arrow {
+    flex: 0 0 auto;
+    opacity: .84;
+  }
+
+  .phone-prayer-qibla:active { transform: scale(.97); }
   @media (hover: hover) {
-    .phone-prayer-card:hover { filter: brightness(1.04); }
+    .phone-prayer-qibla:hover { filter: brightness(1.07); }
   }
 
-  .phone-prayer-card:focus-visible {
+  .phone-prayer-qibla:focus-visible {
     outline: none;
-    box-shadow: var(--focus-ring);
+    box-shadow: var(--focus-ring), 0 5px 14px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
   .phone-home-search {
@@ -16435,4 +16546,734 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 }
 @media (max-width: 768px) {
   #event-detail-actions { padding-inline: var(--sp-8); }
+}
+
+/* Phone home redesign: illustrated welcome, split prayer banner, and a
+   compact discovery feed that keeps the map as the primary destination. */
+@media (max-width: 768px) {
+  #phone-home-page {
+    background: color-mix(in srgb, var(--surface) 96%, var(--accent-soft));
+  }
+
+  #phone-home-page .phone-page-content {
+    width: 100%;
+    max-width: 620px;
+    padding: 0 20px calc(var(--tab-h) + var(--safe-b) + 28px);
+  }
+
+  #phone-home-page .phone-home-header {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: calc(100% + 40px);
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    margin-left: -20px;
+    padding: max(0px, var(--safe-t)) 20px 0;
+    background-color: var(--surface);
+    background-image: url("/assets/home-backgrounds/Manarah_Home_Light_16x9.webp");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+    overflow: hidden;
+  }
+
+  body.dark-mode #phone-home-page .phone-home-header {
+    background-image: url("/assets/home-backgrounds/Manarah_Home_Dark_16x9.png");
+  }
+
+  #phone-home-page .phone-home-toolbar {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    min-height: 48px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--text-1);
+    gap: 16px;
+  }
+
+  #phone-home-page .phone-home-location {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    height: 48px;
+    min-width: 0;
+    color: var(--text-1);
+  }
+
+  #phone-home-page .phone-home-location-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+  }
+
+  #phone-home-page .phone-home-location-copy strong {
+    overflow: hidden;
+    color: var(--text-1);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: var(--fw-bold);
+    letter-spacing: .02em;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-home-date {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: var(--fw-medium);
+    letter-spacing: .08em;
+    flex: 0 0 auto;
+    text-transform: uppercase;
+  }
+
+  #phone-home-page .phone-home-welcome {
+    display: grid;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 7px 0 24px;
+    aspect-ratio: auto;
+    align-content: start;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #phone-home-page .phone-home-welcome::before {
+    display: none;
+  }
+
+  #phone-home-page .phone-home-welcome .phone-home-greeting {
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: var(--txt-lg);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-tight);
+    text-shadow: none;
+  }
+
+  body.dark-mode #phone-home-page .phone-home-welcome .phone-home-greeting,
+  body.dark-mode #phone-home-page .phone-home-welcome h1 {
+    color: var(--on-accent);
+    text-shadow: 0 1px 3px rgb(0 0 0 / 35%);
+  }
+
+  #phone-home-page .phone-home-welcome h1 {
+    margin-top: 2px;
+    color: var(--accent);
+    font-size: 2rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: -.04em;
+    line-height: .98;
+    text-shadow: none;
+  }
+
+  #phone-home-page .phone-prayer-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    align-items: stretch;
+    min-height: 85px;
+    margin-top: -9px;
+    position: relative;
+    z-index: 2;
+    padding: 10px 18px 9px;
+    border: 0;
+    border-radius: 24px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 84%, var(--text-1)), var(--accent));
+    color: var(--on-accent);
+    box-shadow: 0 12px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  #phone-home-page .phone-prayer-card-current {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  #phone-home-page .phone-prayer-card-copy {
+    display: grid;
+    grid-template-rows: 20px 20px 18px;
+    align-content: start;
+    row-gap: 4px;
+    min-width: 0;
+  }
+
+  #phone-home-page .phone-prayer-card-top {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    max-width: 100%;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
+    font-size: 10px;
+    font-weight: var(--fw-semibold);
+    letter-spacing: .06em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  #phone-home-page .phone-prayer-card-copy strong {
+    margin: 0;
+    align-self: end;
+    color: var(--on-accent);
+    font-size: var(--txt-xl);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-tight);
+  }
+
+  #phone-home-page .phone-prayer-location {
+    margin: 0;
+    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  #phone-home-page .phone-prayer-card-current-meta {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
+    font-size: var(--txt-base);
+    font-weight: var(--fw-regular);
+    line-height: 18px;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-prayer-card-meta-separator {
+    flex: 0 0 auto;
+    color: color-mix(in srgb, var(--on-accent) 52%, transparent);
+  }
+
+  #phone-home-page .phone-prayer-card-current-time {
+    flex: 0 0 auto;
+    color: var(--on-accent);
+    font-family: var(--font-mono);
+    font-size: var(--txt-base);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-regular);
+    line-height: 18px;
+  }
+
+  #phone-home-page .phone-prayer-card-current-meta .phone-prayer-card-countdown {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  #phone-home-page .phone-prayer-card-divider {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    width: 1px;
+    margin: 0;
+    background: color-mix(in srgb, #7de7c6 64%, transparent);
+  }
+
+  #phone-home-page .phone-prayer-card-next {
+    display: grid;
+    grid-column: 3;
+    grid-row: 1;
+    grid-template-rows: 20px 20px 18px;
+    align-content: start;
+    row-gap: 4px;
+    min-width: 0;
+    margin: 0;
+    padding: 0 28px 0 16px;
+    border: 0;
+  }
+
+  #phone-home-page .phone-prayer-card-next-label {
+    width: max-content;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
+    font-size: 10px;
+    font-weight: var(--fw-semibold);
+    letter-spacing: .06em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  #phone-home-page .phone-prayer-card-next-copy {
+    display: contents;
+    min-width: 0;
+  }
+
+  #phone-home-page .phone-prayer-card-next-copy strong {
+    align-self: end;
+    overflow: hidden;
+    color: var(--on-accent);
+    font-size: var(--txt-xl);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-tight);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-prayer-card-next-meta {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    gap: 8px;
+    min-width: 0;
+    color: color-mix(in srgb, var(--on-accent) 76%, transparent);
+    font-size: var(--txt-base);
+    font-weight: var(--fw-regular);
+    line-height: 18px;
+  }
+
+  #phone-home-page .phone-prayer-card-next-copy time {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--on-accent);
+    font-family: var(--font-mono);
+    font-size: var(--txt-base);
+    font-weight: var(--fw-regular);
+    line-height: 18px;
+  }
+
+  #phone-home-page .phone-prayer-card-countdown {
+    overflow: hidden;
+    color: color-mix(in srgb, var(--on-accent) 84%, transparent);
+    font-size: var(--txt-base);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-regular);
+    line-height: var(--lh-tight);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-prayer-qibla {
+    position: absolute !important;
+    top: 50%;
+    right: 8px;
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 36px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--on-accent);
+    box-shadow: none;
+    transform: translateY(-50%);
+  }
+
+  #phone-home-page .phone-prayer-qibla-arrow { width: 24px; height: 24px; opacity: .9; }
+
+  #phone-home-page .phone-home-search {
+    margin-top: 18px;
+  }
+
+  #phone-home-page .phone-home-search-field {
+    min-height: 52px;
+    padding: 0 16px;
+    border: 2px solid color-mix(in srgb, var(--text-1) 18%, var(--border));
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  #phone-home-page .phone-home-search-icon { color: var(--accent); }
+  #phone-home-page .phone-home-search-field input { font-size: 16px; }
+
+  #phone-home-page .phone-home-section { margin-top: 24px; }
+  #phone-home-page .phone-home-explore { margin-top: 24px; }
+
+  #phone-home-page .phone-section-heading {
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  #phone-home-page .phone-section-heading h2 {
+    color: var(--text-1);
+    font-size: var(--txt-2xl);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-tight);
+  }
+
+  #phone-home-page .phone-text-action {
+    color: var(--accent);
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-text-action span {
+    display: inline-block;
+    margin-left: 3px;
+    font-size: 16px;
+    line-height: .7;
+    vertical-align: -1px;
+  }
+
+  #phone-home-page .phone-home-explore-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.28fr) minmax(116px, .82fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  #phone-home-page .phone-home-discover {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-width: 0;
+    min-height: 220px;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+    color: var(--text-1);
+    font: inherit;
+    text-align: left;
+  }
+
+  #phone-home-page .phone-home-discover-map {
+    position: relative;
+    display: block;
+    min-height: 156px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    color: color-mix(in srgb, var(--accent) 74%, var(--surface));
+  }
+
+  #phone-home-page .phone-home-discover-map svg {
+    display: none;
+  }
+
+  #phone-home-page #phone-home-mini-map {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  #phone-home-page #phone-home-mini-map .maplibregl-canvas-container,
+  #phone-home-page #phone-home-mini-map .maplibregl-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  #phone-home-page #phone-home-mini-map .maplibregl-canvas {
+    display: block;
+    filter: none;
+    transition: filter var(--t-x-slow);
+  }
+
+  body.dark-mode #phone-home-page #phone-home-mini-map .maplibregl-canvas {
+    filter: var(--mse-dark-filter, invert(.86) hue-rotate(180deg) brightness(1.55) contrast(1.2) saturate(1.35) sepia(.04));
+  }
+
+  #phone-home-page .phone-home-discover-count {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    padding: 7px 11px;
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 88%, var(--accent-soft));
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: var(--fw-bold);
+  }
+
+  body.dark-mode #phone-home-page .phone-home-discover-count {
+    border-color: color-mix(in srgb, var(--accent) 68%, var(--border));
+    background: color-mix(in srgb, var(--accent) 30%, var(--surface-2));
+    color: color-mix(in srgb, var(--accent) 52%, var(--text));
+  }
+
+  #phone-home-page .phone-home-discover-copy {
+    display: grid;
+    align-items: center;
+    justify-items: start;
+    padding: 5px 14px 7px;
+    text-align: left;
+  }
+
+  #phone-home-page .phone-home-discover-copy strong {
+    color: var(--text-1);
+    font-size: 15px;
+    font-weight: 780;
+    letter-spacing: -.025em;
+  }
+
+  #phone-home-page .phone-home-discover-copy small {
+    color: var(--text-2);
+    font-size: 14px;
+  }
+
+  #phone-home-page .phone-home-discover-arrow {
+    position: absolute;
+    right: 13px;
+    bottom: 5px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 0;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0;
+  }
+
+  #phone-home-page .phone-home-discover-arrow::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border-top: 1.8px solid currentColor;
+    border-right: 1.8px solid currentColor;
+    transform: rotate(45deg);
+  }
+
+  #phone-home-page .phone-action-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0;
+  }
+
+  #phone-home-page .phone-action-grid button {
+    grid-template-columns: 28px minmax(0, 1fr) 14px;
+    align-items: center;
+    justify-items: stretch;
+    gap: 6px;
+    min-height: 48px;
+    padding: 5px 6px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--text-1);
+    font-size: 12px;
+    font-weight: var(--fw-bold);
+    text-align: left;
+    box-shadow: none;
+  }
+
+  #phone-home-page .phone-action-grid button::after {
+    display: block;
+    width: 7px;
+    height: 7px;
+    content: "";
+    border-top: 1.5px solid var(--text-3);
+    border-right: 1.5px solid var(--text-3);
+    justify-self: center;
+    transform: rotate(45deg);
+  }
+
+  #phone-home-page .phone-action-grid button > span:first-child {
+    display: grid;
+    place-items: center;
+    align-self: center;
+    justify-self: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+
+  #phone-home-page .phone-action-grid button > span:first-child svg { width: 16px; height: 16px; }
+  #phone-home-page .phone-action-grid button > span:nth-child(2) {
+    align-self: center;
+    justify-self: start;
+    min-width: 0;
+    text-align: left;
+  }
+
+  #phone-home-page .phone-home-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: visible;
+    width: calc(100% + 40px);
+    margin-inline: -20px;
+    padding: 0 20px 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #phone-home-page .phone-home-carousel .phone-home-place {
+    position: relative;
+    flex: 0 0 calc((100% - 10px) / 2);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) 36px;
+    grid-template-areas: "visual visual" "copy arrow";
+    align-items: start;
+    align-content: start;
+    gap: 0;
+    min-height: 144px;
+    height: 144px;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: none;
+    scroll-snap-align: start;
+  }
+
+  #phone-home-page .phone-home-place-visual {
+    position: relative;
+    grid-area: visual;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+    overflow: hidden;
+    border-radius: 15px 15px 0 0;
+    background: color-mix(in srgb, var(--phone-place-color, var(--accent)) 14%, var(--surface));
+    color: var(--phone-place-color, var(--accent));
+  }
+
+  #phone-home-page .phone-home-place-type {
+    position: absolute;
+    top: 7px;
+    left: 8px;
+    z-index: 2;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    padding: 5px 9px;
+    border: 1px solid color-mix(in srgb, var(--phone-place-color, var(--accent)) 20%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    color: var(--phone-place-color, var(--accent));
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-home-place-visual .phone-home-place-badge {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    z-index: 2;
+    padding: 5px 8px;
+    border: 1px solid color-mix(in srgb, var(--text-1) 12%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    color: var(--text-1);
+    font-size: 10px;
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-home-place-image {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  #phone-home-page .phone-home-place-copy {
+    grid-area: copy;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+    padding: 0 0 0 10px;
+  }
+
+  #phone-home-page .phone-home-place-copy strong {
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: -.025em;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #phone-home-page .phone-home-place-copy small { display: none; }
+
+  #phone-home-page .phone-home-place-arrow {
+    grid-area: arrow;
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    padding: 0;
+    justify-self: center;
+    color: var(--text-2);
+  }
+
+  #phone-home-page .phone-home-place-arrow svg { width: 18px; height: 18px; }
+
+  #phone-home-page .phone-home-place--has-preview::before { display: none; }
+  #phone-home-page .phone-home-place--has-preview > :not(.phone-home-place-image) { position: relative; z-index: 2; }
+
+  #phone-home-page .phone-home-community .phone-home-event {
+    grid-template-columns: 48px minmax(0, 1fr) 20px;
+    min-height: 74px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  #phone-home-page .phone-home-community .phone-home-event-date {
+    min-width: 48px;
+    min-height: 48px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--success) 14%, var(--surface));
+    color: var(--accent);
+  }
+
+  #phone-home-page .phone-home-community .phone-home-event-date-visual strong,
+  #phone-home-page .phone-home-community .phone-home-event-date-visual small { color: var(--accent); }
+
+  #phone-home-page .phone-home-community .phone-home-event-copy { gap: 3px; }
+  #phone-home-page .phone-home-community .phone-home-event-copy strong { font-size: 15px; }
+  #phone-home-page .phone-home-community .phone-home-event-copy small { font-size: 13px; }
+  #phone-home-page .phone-home-community .phone-home-event-date-visual strong { font-size: 20px; }
+  #phone-home-page .phone-home-community .phone-home-event-date-visual small { font-size: 10px; }
+  #phone-home-page .phone-home-community .phone-home-event-arrow {
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+  }
+
+  #phone-home-page .phone-inline-state { border-color: var(--border); background: var(--surface); }
 }

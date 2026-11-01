@@ -98,11 +98,8 @@ const SHELL_ASSETS = [
   '/assets/placeholders/WEBP/Manarah_Services_Dark_21x9.webp',
   '/assets/placeholders/WEBP/Manarah_Events_Light_21x9.webp',
   '/assets/placeholders/WEBP/Manarah_Events_Dark_21x9.webp',
-  '/assets/home-backgrounds/Manarah_Home_Morning_21x9.webp',
-  '/assets/home-backgrounds/Manarah_Home_Midday_21x9.webp',
-  '/assets/home-backgrounds/Manarah_Home_Afternoon_21x9.webp',
-  '/assets/home-backgrounds/Manarah_Home_Evening_21x9.webp',
-  '/assets/home-backgrounds/Manarah_Home_Night_21x9.webp',
+  '/assets/home-backgrounds/Manarah_Home_Light_16x9.webp',
+  '/assets/home-backgrounds/Manarah_Home_Dark_16x9.png',
   // MapLibre GL JS — pinned version, stable URL
   'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js',
   'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css',

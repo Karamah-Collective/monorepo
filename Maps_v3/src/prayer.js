@@ -35,6 +35,7 @@ function _formatPrayerTime(date) {
 }
 
 let prayerTimesToday = null;
+let prayerEndTimesToday = null;
 let sunriseTime = null;
 let isRamadan = false;
 let prayerWatchInterval = null;
@@ -162,17 +163,44 @@ async function fetchPrayerTimes(lat, lng) {
   return (await resp.json()).data;
 }
 
-function parsePrayerTimings(raw) {
+function _parseClockTime(value, today = new Date()) {
+  const source = typeof value === "string" ? value : value?.time || value?.value || "";
+  const match = String(source).match(/(?:T|\b)(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hours = Number(match[1]), minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0);
+}
+
+function _apiPrayerEnd(raw, name) {
+  const containers = [raw, raw?.endTimes, raw?.EndTimes, raw?.prayerEnds, raw?.PrayerEnds];
+  const keys = [`${name}End`, `${name}_end`, `${name}EndTime`, `${name}_end_time`];
+  for (const container of containers) {
+    if (!container || typeof container !== "object") continue;
+    for (const key of keys) {
+      if (container[key]) return container[key];
+    }
+  }
+  return null;
+}
+
+function parsePrayerTimings(payload) {
+  const raw = payload?.timings && typeof payload.timings === "object" ? payload.timings : payload || {};
   const today = new Date();
   const result = {};
+  const ends = {};
   for (const name of PRAYER_NAMES) {
-    const [h, m] = raw[name].split(":").map(Number);
-    result[name] = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
+    const time = _parseClockTime(raw[name], today);
+    if (!time) continue;
+    result[name] = time;
+    const end = _parseClockTime(_apiPrayerEnd(raw, name) || _apiPrayerEnd(payload, name), today);
+    if (end) {
+      if (end <= time) end.setDate(end.getDate() + 1);
+      ends[name] = end;
+    }
   }
-  if (raw.Sunrise) {
-    const [h, m] = raw.Sunrise.split(":").map(Number);
-    sunriseTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
-  }
+  sunriseTime = _parseClockTime(raw.Sunrise, today);
+  prayerEndTimesToday = ends;
   return result;
 }
 
@@ -199,6 +227,13 @@ function getNextPrayer() {
   return { name: "Fajr", time: tomorrow };
 }
 
+function getCurrentPrayerEnd(current, next) {
+  if (!current) return null;
+  if (current.name === "Fajr" && sunriseTime) return sunriseTime;
+  if (prayerEndTimesToday?.[current.name]) return prayerEndTimesToday[current.name];
+  return next?.time ? new Date(next.time.getTime() - 60000) : null;
+}
+
 function getHomeBackgroundPeriod() {
   if (!prayerTimesToday) return null;
   const now = new Date();
@@ -223,8 +258,11 @@ function formatPrayerCountdown(date) {
 export function getPrayerHomeSnapshot() {
   const current = getCurrentPrayer();
   const next = getNextPrayer();
+  const currentEnd = getCurrentPrayerEnd(current, next);
   return next ? {
     currentName: current ? prayerDisplayName(current.name) : "Between prayers",
+    currentEndTime: currentEnd ? _formatPrayerTime(currentEnd) : "",
+    currentCountdown: currentEnd ? formatPrayerCountdown(currentEnd) : "",
     name: prayerDisplayName(next.name),
     time: _formatPrayerTime(next.time),
     countdown: formatPrayerCountdown(next.time),
@@ -402,7 +440,7 @@ function findNearestMosque() {
 async function _loadAndApplyPrayerTimes(lat, lng) {
   try {
     const data = await fetchPrayerTimes(lat, lng);
-    prayerTimesToday = parsePrayerTimings(data.timings);
+    prayerTimesToday = parsePrayerTimings(data);
     isRamadan = Number(data.date?.hijri?.month?.number) === 9;
     _applyPrayerTimesToUI();
   } catch (err) {

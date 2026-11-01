@@ -469,6 +469,32 @@ test.describe("Places Popup Regression", () => {
     expect(placeState.interactive).toBe(true);
     expect(placeState.controls).toBe(0);
 
+    if (browserName === "chromium") {
+      await page.waitForTimeout(1000);
+      const mapBox = await page.locator("#place-sheet-body .detail-location-map").boundingBox();
+      expect(mapBox).not.toBeNull();
+      await page.mouse.move(mapBox.x + mapBox.width / 2 - 40, mapBox.y + mapBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(mapBox.x + mapBox.width + 240, mapBox.y + mapBox.height / 2, { steps: 12 });
+      await page.mouse.up();
+      const markerState = await page.locator("#place-sheet-body .detail-location-map").evaluate((map) => {
+        const mapRect = map.getBoundingClientRect();
+        const markerRect = map.querySelector(".pf-timeline-map-marker").getBoundingClientRect();
+        return {
+          markerCenterX: markerRect.left + markerRect.width / 2,
+          markerCenterY: markerRect.top + markerRect.height / 2,
+          minX: mapRect.left + 20,
+          maxX: mapRect.right - 20,
+          minY: mapRect.top + 20,
+          maxY: mapRect.bottom - 20,
+        };
+      });
+      expect(markerState.markerCenterX).toBeGreaterThanOrEqual(markerState.minX - 1);
+      expect(markerState.markerCenterX).toBeLessThanOrEqual(markerState.maxX + 1);
+      expect(markerState.markerCenterY).toBeGreaterThanOrEqual(markerState.minY - 1);
+      expect(markerState.markerCenterY).toBeLessThanOrEqual(markerState.maxY + 1);
+    }
+
     await page.locator("#place-sheet-close").click();
     await page.waitForTimeout(450);
     await page.evaluate(async () => {

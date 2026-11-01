@@ -365,6 +365,7 @@ function _scrollPlaceReviewsIntoView(section) {
 function _loadDetailBanner(banner, place, placeholderCategory) {
   if (!banner) return;
   banner.disabled = true;
+  banner.classList.add("detail-banner--placeholder");
   const category = placeholderCategory || (place?.type === "restaurant" ? "Food" : SERVICE_TYPES.has(place?.type) ? "Services" : "Spaces");
   const placeholders = ["Light", "Dark"].map((theme) => {
     const filename = `Manarah_${category}_${theme}_21x9`;
@@ -407,6 +408,7 @@ function _loadDetailBanner(banner, place, placeholderCategory) {
       image.addEventListener("load", () => {
         if (!banner.isConnected) return;
         banner.replaceChildren(image);
+        banner.classList.remove("detail-banner--placeholder");
         banner.disabled = false;
         banner.setAttribute("aria-label", category === "Events" ? "View event venue photo" : `View photos of ${place.name}`);
         banner.addEventListener("click", (event) => {
@@ -466,11 +468,11 @@ function _createDetailLocationSection(name, latValue, lngValue) {
   return { section, map, lat, lng, name };
 }
 
-function _constrainDetailMapCamera(map, lng, lat) {
+function _getDetailMapBounds(map, lng, lat) {
   const container = map.getContainer();
   const width = container.clientWidth;
   const height = container.clientHeight;
-  if (width <= DETAIL_MAP_MARKER_INSET * 2 || height <= DETAIL_MAP_MARKER_INSET * 2) return;
+  if (width <= DETAIL_MAP_MARKER_INSET * 2 || height <= DETAIL_MAP_MARKER_INSET * 2) return null;
 
   const centerX = width / 2;
   const centerY = height / 2;
@@ -479,33 +481,27 @@ function _constrainDetailMapCamera(map, lng, lat) {
   const markerMaxX = width - DETAIL_MAP_MARKER_INSET;
   const markerMinY = DETAIL_MAP_MARKER_INSET;
   const markerMaxY = height - DETAIL_MAP_MARKER_INSET;
-  const centerAtMarkerLeft = map.unproject([
+  const centerAtMarkerLeft = [
     centerX + markerPoint.x - markerMinX,
     centerY + markerPoint.y - centerY,
-  ]);
-  const centerAtMarkerRight = map.unproject([
+  ];
+  const centerAtMarkerRight = [
     centerX + markerPoint.x - markerMaxX,
     centerY + markerPoint.y - centerY,
-  ]);
-  const centerAtMarkerTop = map.unproject([
+  ];
+  const centerAtMarkerTop = [
     centerX + markerPoint.x - centerX,
     centerY + markerPoint.y - markerMinY,
-  ]);
-  const centerAtMarkerBottom = map.unproject([
+  ];
+  const centerAtMarkerBottom = [
     centerX + markerPoint.x - centerX,
     centerY + markerPoint.y - markerMaxY,
-  ]);
-  const minLng = Math.min(centerAtMarkerLeft.lng, centerAtMarkerRight.lng);
-  const maxLng = Math.max(centerAtMarkerLeft.lng, centerAtMarkerRight.lng);
-  const minLat = Math.min(centerAtMarkerBottom.lat, centerAtMarkerTop.lat);
-  const maxLat = Math.max(centerAtMarkerBottom.lat, centerAtMarkerTop.lat);
-  const center = map.getCenter();
-  const clamped = {
-    lng: Math.min(maxLng, Math.max(minLng, center.lng)),
-    lat: Math.min(maxLat, Math.max(minLat, center.lat)),
-  };
-  if (Math.abs(clamped.lng - center.lng) < 0.000001 && Math.abs(clamped.lat - center.lat) < 0.000001) return;
-  map.setCenter(clamped);
+  ];
+  const west = map.unproject([centerAtMarkerRight[0] - width / 2, centerAtMarkerRight[1]]).lng;
+  const east = map.unproject([centerAtMarkerLeft[0] + width / 2, centerAtMarkerLeft[1]]).lng;
+  const north = map.unproject([centerAtMarkerBottom[0], centerAtMarkerBottom[1] - height / 2]).lat;
+  const south = map.unproject([centerAtMarkerTop[0], centerAtMarkerTop[1] + height / 2]).lat;
+  return [[Math.min(west, east), Math.min(south, north)], [Math.max(west, east), Math.max(south, north)]];
 }
 
 function _mountDetailLocationMap(kind, preview) {
@@ -526,18 +522,19 @@ function _mountDetailLocationMap(kind, preview) {
       zoom: canObserve ? DETAIL_MAP_INITIAL_ZOOM : DETAIL_MAP_TARGET_ZOOM,
       minZoom: canObserve ? 0 : DETAIL_MAP_MIN_ZOOM,
       maxZoom: DETAIL_MAP_MAX_ZOOM,
+      touchPitch: false,
       attributionControl: false,
     });
     _detailLocationMaps[kind] = map;
-    let isConstraining = false;
-    const constrainCamera = () => {
-      if (isConstraining || _detailLocationMaps[kind] !== map) return;
-      isConstraining = true;
-      _constrainDetailMapCamera(map, preview.lng, preview.lat);
-      isConstraining = false;
+    const updateMapBoundary = () => {
+      if (_detailLocationMaps[kind] !== map) return;
+      const bounds = _getDetailMapBounds(map, preview.lng, preview.lat);
+      if (bounds) map.setMaxBounds(bounds);
     };
-    map.on("move", constrainCamera);
-    map.on("resize", constrainCamera);
+    // Native maxBounds keeps the marker in view without fighting the active touch gesture.
+    map.on("zoom", updateMapBoundary);
+    map.on("resize", updateMapBoundary);
+    updateMapBoundary();
     let observer = null;
     const animateWhenVisible = () => {
       if (!canObserve || !fullyVisible || !mapLoaded || hasAnimated || _detailLocationMaps[kind] !== map) return;
@@ -548,7 +545,7 @@ function _mountDetailLocationMap(kind, preview) {
       map.once("moveend", () => {
         if (_detailLocationMaps[kind] !== map) return;
         map.setMinZoom(DETAIL_MAP_MIN_ZOOM);
-        constrainCamera();
+        updateMapBoundary();
       });
     };
     if (canObserve) {
@@ -570,7 +567,7 @@ function _mountDetailLocationMap(kind, preview) {
       if (_detailLocationMaps[kind] !== map) return;
       map.resize();
       mapLoaded = true;
-      constrainCamera();
+      updateMapBoundary();
       animateWhenVisible();
     });
   });

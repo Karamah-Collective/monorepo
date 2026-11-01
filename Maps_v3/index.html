@@ -61,9 +61,9 @@
         <div class="phone-page-content phone-home-content">
           <header class="phone-home-header">
             <div class="phone-home-toolbar">
-              <div class="phone-home-location">
+              <div class="phone-home-location" aria-label="Current city">
                 <span class="phone-home-location-copy">
-                  <strong id="phone-home-city">Finland</strong>
+                  <strong id="phone-home-city">Helsinki</strong>
                   <span id="phone-home-date" class="phone-home-date">LOADING</span>
                 </span>
               </div>
@@ -73,45 +73,63 @@
               <h1 id="phone-home-title" hidden aria-live="polite"></h1>
             </div>
           </header>
+          <section id="phone-prayer-state" class="phone-prayer-card" aria-label="Current prayer">
+            <span class="phone-prayer-card-current" aria-live="polite">
+              <span class="phone-prayer-card-copy">
+                <span class="phone-prayer-card-top">Current</span>
+                <strong id="phone-current-prayer-name">Prayer times</strong>
+                    <span class="phone-prayer-card-current-meta">
+                      <time id="phone-current-prayer-end-time" class="phone-prayer-card-current-time">--:--</time>
+                      <span class="phone-prayer-card-meta-separator" aria-hidden="true">·</span>
+                      <span class="phone-prayer-card-countdown" id="phone-current-prayer-countdown">Loading prayer times</span>
+                    </span>
+              </span>
+            </span>
+            <span class="phone-prayer-card-divider" aria-hidden="true"></span>
+            <span class="phone-prayer-card-next" aria-live="polite">
+              <span class="phone-prayer-card-next-label">Next</span>
+              <span class="phone-prayer-card-next-copy">
+                <strong id="phone-next-prayer-name">Prayer times</strong>
+                <span class="phone-prayer-card-next-meta"><time id="phone-next-prayer-time" class="phone-prayer-card-next-time">--:--</time><span class="phone-prayer-card-meta-separator" aria-hidden="true">·</span><span class="phone-prayer-card-countdown" id="phone-next-prayer-countdown">Loading prayer times</span></span>
+              </span>
+            </span>
+            <button id="phone-prayer-qibla" class="phone-prayer-qibla" type="button" data-phone-qibla aria-label="Open Qibla compass">
+              <svg class="phone-prayer-qibla-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </section>
           <section class="phone-home-search" aria-label="Search the directory">
             <div class="phone-home-search-field">
               <svg class="phone-home-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-              <input id="phone-home-search-input" type="search" placeholder="Search places or keywords" autocomplete="off" spellcheck="false" maxlength="100" />
+              <input id="phone-home-search-input" type="search" placeholder="Search places, events, or services" autocomplete="off" spellcheck="false" maxlength="100" />
             </div>
             <div id="phone-home-search-results" class="phone-home-search-results home-search-results-list" aria-live="polite" hidden></div>
           </section>
-          <button id="phone-prayer-state" class="phone-prayer-card" type="button" data-phone-qibla aria-label="Open prayer times and Qibla compass">
-            <span class="phone-prayer-card-current" aria-live="polite">
-              <span class="phone-prayer-card-copy">
-                <span class="phone-prayer-card-top">Current prayer</span>
-                <strong id="phone-current-prayer-name">Prayer times</strong>
-                <span id="phone-prayer-location" class="phone-prayer-location">Finland local time</span>
-              </span>
-              <span class="phone-prayer-card-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
-            </span>
-            <span class="phone-prayer-card-next" aria-live="polite">
-              <span class="phone-prayer-card-next-copy">
-                <strong id="phone-next-prayer-name">Prayer times</strong>
-                <time id="phone-next-prayer-time">--:--</time>
-              </span>
-              <span class="phone-prayer-card-countdown" id="phone-next-prayer-countdown">Loading prayer times</span>
-            </span>
-          </button>
-          <section class="phone-home-section phone-home-explore" aria-label="Quick access">
-            <div class="phone-action-grid">
+          <section class="phone-home-section phone-home-explore" aria-labelledby="phone-explore-title">
+            <div class="phone-section-heading"><h2 id="phone-explore-title">Explore <span id="phone-home-explore-city">Helsinki</span></h2><button class="phone-text-action phone-section-action" type="button" data-phone-page="map">Map view <span aria-hidden="true">→</span></button></div>
+            <div class="phone-home-explore-layout">
+              <button class="phone-home-discover" type="button" data-phone-page="map" aria-label="Open interactive map">
+                <span class="phone-home-discover-map" aria-hidden="true">
+                  <span id="phone-home-mini-map" role="img" aria-label="Map showing nearby places"></span>
+                  <span class="phone-home-discover-count">222 places</span>
+                </span>
+                <span class="phone-home-discover-copy"><strong>Discover Places</strong></span>
+                <span class="phone-home-discover-arrow" aria-hidden="true">→</span>
+              </button>
+              <div class="phone-action-grid">
               <button class="phone-action--food" type="button" data-phone-page="map" data-phone-map-filter="restaurant"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18M14 3v5a3 3 0 0 0 6 0V3" /></svg></span><span>Food</span></button>
               <button class="phone-action--mosque" type="button" data-phone-page="map" data-phone-map-filter="mosque"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19h18M5 17v-5l7-5 7 5v5M8 17v-4h8v4M12 7V4m-2 2 2-2 2 2" /></svg></span><span>Mosques</span></button>
               <button class="phone-action--events" type="button" data-phone-page="map" data-phone-map-filter="events"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg></span><span>Events</span></button>
               <button class="phone-action--services" type="button" data-phone-page="map" data-phone-map-filter="service"><span aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></svg></span><span>Services</span></button>
+              </div>
             </div>
           </section>
-          <section class="phone-home-section" aria-labelledby="phone-suggested-title">
-            <div class="phone-section-heading"><h2 id="phone-suggested-title">Suggested</h2><button class="phone-text-action" type="button" data-phone-page="places">See all</button></div>
+          <section class="phone-home-section phone-home-around" aria-labelledby="phone-suggested-title">
+            <div class="phone-section-heading"><h2 id="phone-suggested-title">Nearby Places</h2><button class="phone-text-action" type="button" data-phone-page="places">See all <span aria-hidden="true">→</span></button></div>
             <div id="phone-suggested-places" class="phone-home-carousel phone-edge-carousel" aria-label="Suggested places"></div>
             <p id="phone-places-state" class="phone-inline-state">Places are loading. You can browse the map in the meantime.</p>
           </section>
-          <section class="phone-home-section" aria-labelledby="phone-week-title">
-            <div class="phone-section-heading"><h2 id="phone-week-title">This week</h2><button class="phone-text-action" type="button" data-phone-page="events">All events</button></div>
+          <section class="phone-home-section phone-home-community" aria-labelledby="phone-week-title">
+            <div class="phone-section-heading"><h2 id="phone-week-title">Community</h2><button class="phone-text-action" type="button" data-phone-page="events">All events <span aria-hidden="true">→</span></button></div>
             <div id="phone-week-events" class="phone-home-list"></div>
             <p id="phone-events-state" class="phone-inline-state">No upcoming events yet.</p>
           </section>

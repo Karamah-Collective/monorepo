@@ -1,6 +1,7 @@
 import { EVT } from "./events.js";
 import { PLACE_CONFIG, typeIcon } from "./icons.js";
 import { nextOccurrence } from "./event-recurrence.js";
+import { HSL_STYLE } from "./map-style.js";
 import { getCurrentLocationState, haversineDistance, isReduceMotionActive, reverseGeocodeCity } from "./utils.js";
 import { isLocalDemoProfileEnabled, LOCAL_DEMO_ACCOUNT } from "./local-demo.js";
 
@@ -75,7 +76,7 @@ const _phoneTopbarMutations = new Set();
 let _homeMode = "suggested";
 let _homeIntroPlayed = false;
 const _phonePagesEntered = new Set(["home"]);
-let _homeCity = "Finland";
+let _homeCity = "Helsinki";
 let _homeLocationKey = "";
 let _homeLocationAnchor = null;
 let _homeLocationRequest = 0;
@@ -88,8 +89,11 @@ let _homeSearchQuery = "";
 const _homePlacePreviewCache = new Map();
 const _homePlacePreviewPending = new Set();
 let _homePlaceStaticMapLinks = null;
+let _homeMiniMap = null;
 // shortcut: the home rail ignores sub-kilometre GPS jitter; lower this if exact live distances matter.
 const HOME_LOCATION_REFRESH_DISTANCE_KM = 1;
+const HOME_MAP_CENTER = [24.941, 60.173];
+const HOME_MAP_CLUSTER_RADIUS_KM = 3.5;
 
 function _setPageNavScale(progress, actionBarProgress = 0, measuredActionBarHeight = null, measuredActionBarTop = null, actionBarElement = null, placesScrollElement = null, cityHeaderElement = null, updateLayout = true) {
   const chrome = document.getElementById("phone-chrome-bottom-zone");
@@ -686,7 +690,10 @@ function _renderHomeSearch() {
 }
 
 function _formatHomeDate(date = new Date()) {
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long" }).format(date);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long" })
+    .format(date)
+    .replace(",", "")
+    .toUpperCase();
 }
 
 function _phoneFirstName(account) {
@@ -791,7 +798,7 @@ function _applyHomePlacePreview(card, id, imageUrl) {
     image.remove();
   }, { once: true });
   card.classList.add("phone-home-place--has-preview");
-  card.prepend(image);
+  (card.querySelector(".phone-home-place-visual") || card).append(image);
   image.src = imageUrl;
 }
 
@@ -851,6 +858,100 @@ function _loadHomePlacePreviews(places) {
       if (card.dataset.phonePlaceId === id && !card.querySelector(".phone-home-place-image")) card.classList.remove("phone-home-place--preview-loading");
     });
   }));
+}
+
+function _homeMiniMapData(places) {
+  const features = places
+    .filter((place) => Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng)))
+    .map((place) => ({
+      type: "Feature",
+      properties: { kind: "place" },
+      geometry: { type: "Point", coordinates: [Number(place.lng), Number(place.lat)] },
+    }));
+  const location = getCurrentLocationState();
+  if (location.active && Number.isFinite(location.lat) && Number.isFinite(location.lng)) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "location" },
+      geometry: { type: "Point", coordinates: [location.lng, location.lat] },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+function _homeMapPlaceCategory(place) {
+  const type = String(place.type || "").trim().toLowerCase();
+  if (type === "shop" || type === "service") return "service";
+  if (type === "space" || type === "mosque" || type === "prayer_room") return "space";
+  return type || "other";
+}
+
+function _homeMapFocusPlaces(places) {
+  const candidates = places.filter((place) => Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng)));
+  if (candidates.length <= 1) return candidates;
+  let best = null;
+  for (const anchor of candidates) {
+    const cluster = candidates.filter((place) => haversineDistance(anchor.lat, anchor.lng, place.lat, place.lng) <= HOME_MAP_CLUSTER_RADIUS_KM);
+    const variety = new Set(cluster.map(_homeMapPlaceCategory)).size;
+    const score = cluster.length * 3 + variety * 8;
+    if (!best || score > best.score || (score === best.score && variety > best.variety) || (score === best.score && variety === best.variety && cluster.length > best.places.length)) {
+      best = { places: cluster, score, variety };
+    }
+  }
+  return best?.places || candidates;
+}
+
+function _updateHomeMiniMap(places) {
+  const host = document.getElementById("phone-home-mini-map");
+  if (!host || !window.maplibregl) return;
+  const data = _homeMiniMapData(places);
+  const focusPlaces = _homeMapFocusPlaces(places);
+  const location = getCurrentLocationState();
+  const center = location.active && Number.isFinite(location.lat) && Number.isFinite(location.lng)
+    ? [location.lng, location.lat]
+    : HOME_MAP_CENTER;
+  const updateCamera = () => {
+    const source = _homeMiniMap.getSource("home-preview-places");
+    if (source) source.setData(data);
+    const points = focusPlaces.map((place) => [Number(place.lng), Number(place.lat)]);
+    if (points.length > 1) {
+      const bounds = new window.maplibregl.LngLatBounds();
+      points.forEach((point) => bounds.extend(point));
+      _homeMiniMap.fitBounds(bounds, { padding: 28, maxZoom: 13.5, duration: 0 });
+    } else if (points.length === 1) {
+      _homeMiniMap.jumpTo({ center: points[0], zoom: 12.2 });
+    } else {
+      _homeMiniMap.jumpTo({ center, zoom: 12.2 });
+    }
+    _homeMiniMap.resize();
+  };
+  if (!_homeMiniMap) {
+    _homeMiniMap = new window.maplibregl.Map({
+      container: host,
+      style: typeof structuredClone === "function" ? structuredClone(HSL_STYLE) : HSL_STYLE,
+      center,
+      zoom: 12.2,
+      attributionControl: false,
+      interactive: false,
+    });
+    _homeMiniMap.once("load", () => {
+      _homeMiniMap.addSource("home-preview-places", { type: "geojson", data });
+      _homeMiniMap.addLayer({
+        id: "home-preview-place-points",
+        type: "circle",
+        source: "home-preview-places",
+        paint: {
+          "circle-color": ["match", ["get", "kind"], "location", "#f59e0b", "#087f69"],
+          "circle-radius": ["match", ["get", "kind"], "location", 6, 4],
+          "circle-stroke-color": "#f6fbf7",
+          "circle-stroke-width": 2,
+        },
+      });
+      updateCamera();
+    });
+    return;
+  }
+  if (_homeMiniMap.isStyleLoaded()) updateCamera();
 }
 
 function _safeHomePlacePreviewUrl(value) {
@@ -915,7 +1016,7 @@ async function _syncHomeLocation() {
     _homeSuggestionsCity = null;
   }
   if (request !== _homeLocationRequest || getCurrentLocationState().active) return;
-  _homeCity = "Finland";
+  _homeCity = "Helsinki";
   _renderHome();
   void _loadHomeSuggestions("");
 }
@@ -924,26 +1025,36 @@ function _renderPrayer() {
   const snapshot = _prayerSnapshot;
   const welcome = document.querySelector(".phone-home-welcome");
   if (welcome) welcome.dataset.prayerPeriod = snapshot?.period || "";
+  const prayerCard = document.getElementById("phone-prayer-state");
+  if (prayerCard) prayerCard.dataset.prayerPeriod = snapshot?.period || "";
   const currentName = document.getElementById("phone-current-prayer-name");
+  const currentEndTime = document.getElementById("phone-current-prayer-end-time");
+  const currentCountdown = document.getElementById("phone-current-prayer-countdown");
   const nextName = document.getElementById("phone-next-prayer-name");
   const nextTime = document.getElementById("phone-next-prayer-time");
   const countdown = document.getElementById("phone-next-prayer-countdown");
   const state = document.getElementById("phone-prayer-state");
-  if (!currentName || !nextName || !nextTime || !countdown || !state) return;
+  if (!currentName || !currentEndTime || !currentCountdown || !nextName || !nextTime || !countdown || !state) return;
   if (!snapshot) {
     currentName.textContent = "Prayer times";
+    currentEndTime.textContent = "--:--";
+    currentCountdown.textContent = "Loading prayer times";
     nextName.textContent = "Prayer times";
     nextTime.textContent = "--:--";
     countdown.textContent = "Loading prayer times";
-    state.setAttribute("aria-label", "Open prayer times and Qibla compass");
+    state.setAttribute("aria-label", "Prayer times are loading");
     state.hidden = false;
     return;
   }
   currentName.textContent = snapshot.currentName || "Between prayers";
+  currentEndTime.textContent = snapshot.currentEndTime || "--:--";
+  const currentCountdownLabel = snapshot.currentCountdown || "Coming up";
+  currentCountdown.textContent = currentCountdownLabel.replace(/^in\s+/i, "");
   nextName.textContent = snapshot.name || "Next prayer";
   nextTime.textContent = snapshot.time || "--:--";
-  countdown.textContent = snapshot.countdown || "Coming up";
-  state.setAttribute("aria-label", `Current prayer: ${currentName.textContent}. Next prayer: ${nextName.textContent} at ${nextTime.textContent}, ${countdown.textContent}. Open prayer times and Qibla compass`);
+  const nextCountdownLabel = snapshot.countdown || "Coming up";
+  countdown.textContent = nextCountdownLabel.replace(/^in\s+/i, "");
+  state.setAttribute("aria-label", `Current prayer: ${currentName.textContent} until ${currentEndTime.textContent}, ${currentCountdownLabel}. Next prayer: ${nextName.textContent} at ${nextTime.textContent}, ${nextCountdownLabel}.`);
   state.hidden = false;
 }
 
@@ -952,11 +1063,11 @@ function _renderHome() {
   const page = document.getElementById("phone-home-page");
   if (!page) return;
   const date = document.getElementById("phone-home-date");
-  const city = _homeCity || "Finland";
+  const city = _homeCity || "Helsinki";
   const cityLabel = document.getElementById("phone-home-city");
   if (cityLabel) cityLabel.textContent = city;
-  const prayerLocation = document.getElementById("phone-prayer-location");
-  if (prayerLocation) prayerLocation.textContent = `${city} local time`;
+  const exploreCity = document.getElementById("phone-home-explore-city");
+  if (exploreCity) exploreCity.textContent = city === "Finland" ? "Helsinki" : city;
   if (date) date.textContent = _formatHomeDate();
   const greeting = document.getElementById("phone-home-greeting");
   if (greeting) {
@@ -981,6 +1092,8 @@ function _renderHome() {
   const data = window.HFPhoneData;
   const allPlaces = Array.isArray(data?.getPlaces?.()) ? data.getPlaces() : [];
   const places = _homePlaces(allPlaces);
+  const discoverCount = document.querySelector(".phone-home-discover-count");
+  if (discoverCount) discoverCount.textContent = allPlaces.length ? `${allPlaces.length} places` : "Nearby places";
   const events = (Array.isArray(data?.getEvents?.()) ? [...data.getEvents()] : []).sort((a, b) => {
     const aDate = _eventDate(a)?.getTime() ?? Number.POSITIVE_INFINITY;
     const bDate = _eventDate(b)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -999,8 +1112,9 @@ function _renderHome() {
     nearby ? _homeLocationKey : _homeCity,
     visiblePlaces.map((place) => [place.id, place.name, place.type, place.lat, place.lng]),
   ]);
-  if (placeHeading) placeHeading.textContent = nearby ? "Nearby" : "Suggested";
+  if (placeHeading) placeHeading.textContent = "Nearby Places";
   if (placeRail) placeRail.setAttribute("aria-label", nearby ? "Nearby places" : "Suggested places");
+  _updateHomeMiniMap(places);
 
   if (placeState) {
     placeState.hidden = places.length > 0;
@@ -1014,9 +1128,9 @@ function _renderHome() {
     if (placeList.dataset.homeRailKey !== placeRailKey) {
       placeList.innerHTML = visiblePlaces.map((place) => `
         <button class="phone-home-place ${nearby ? "phone-home-place--nearby" : "phone-home-place--suggested"}" type="button" data-phone-place-id="${_escape(place.id)}" style="--phone-place-color:${_escape((PLACE_CONFIG[place.type] || PLACE_CONFIG.mosque).color)}">
-          <span class="phone-home-place-type">${_escape(String(place.type || "Place").replace(/[_-]+/g, " "))}</span>
-          <span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span>
-          <span class="phone-home-place-copy"><strong>${_escape(place.name || "Unnamed place")}</strong><span class="phone-home-place-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span></span>
+          <span class="phone-home-place-visual" aria-hidden="true"><span class="phone-home-place-type">${_escape(place.type === "restaurant" ? "Food" : PLACE_CONFIG[place.type]?.label || "Place")}</span><span class="phone-home-place-badge">${nearby ? _escape(_formatDistance(haversineDistance(getCurrentLocationState().lat, getCurrentLocationState().lng, place.lat, place.lng))) : "Popular"}</span><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 18v-6l6-5 6 5v6M9 18v-4h6v4M12 7V4m-2 2 2-2 2 2" /></svg></span>
+          <span class="phone-home-place-copy"><strong>${_escape(place.name || "Unnamed place")}</strong></span>
+          <span class="phone-home-place-arrow" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></span>
         </button>`).join("");
       placeList.dataset.homeRailKey = placeRailKey;
     }

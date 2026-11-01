@@ -9,7 +9,7 @@ test.describe("Phone app pages", () => {
   test("fresh phone launch opens Home with persistent navigation", async ({ page }) => {
     await expect(page.locator("#phone-home-page")).toBeVisible();
     await expect(page.locator("#phone-home-greeting")).toHaveText("Assalamu'Alaikum");
-    await expect(page.locator("#phone-home-city")).toHaveText("Finland");
+    await expect(page.locator("#phone-home-city")).toHaveText("Helsinki");
     await expect(page.locator("#phone-home-title")).toBeHidden();
     await expect(page.locator("#phone-prayer-state")).toBeVisible();
     await expect(page.locator("#tab-bar")).toBeVisible();
@@ -19,10 +19,137 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("#dir-btn")).toHaveAttribute("aria-label", "Maps");
     await expect(page.locator("#dir-tab-map-icon")).toBeVisible();
     await expect(page.locator("#dir-tab-route-icon")).toBeHidden();
-    await expect(page.locator(".phone-primary-action svg")).toHaveCount(2);
+    await expect(page.locator("#phone-home-mini-map .maplibregl-canvas")).toBeVisible();
+    await expect(page.locator(".phone-home-discover-copy strong")).toHaveText("Discover Places");
+    const miniMapTheme = await page.evaluate(() => {
+      const canvas = document.querySelector("#phone-home-mini-map .maplibregl-canvas");
+      document.documentElement.classList.remove("dark-mode");
+      document.body.classList.remove("dark-mode");
+      const light = getComputedStyle(canvas).filter;
+      document.documentElement.classList.add("dark-mode");
+      document.body.classList.add("dark-mode");
+      const dark = getComputedStyle(canvas).filter;
+      document.documentElement.classList.remove("dark-mode");
+      document.body.classList.remove("dark-mode");
+      return { light, dark };
+    });
+    expect(miniMapTheme.light).toBe("none");
+    expect(miniMapTheme.dark).not.toBe("none");
     await expect(page.locator(".phone-action-grid button svg")).toHaveCount(4);
-    await expect(page.locator("#phone-home-greeting")).toHaveCSS("font-family", /Roboto Mono|monospace/);
+    const actionIconAlignment = await page.locator(".phone-action--food").evaluate((button) => {
+      const icon = button.querySelector("span:first-child").getBoundingClientRect();
+      const label = button.querySelector("span:nth-child(2)").getBoundingClientRect();
+      return Math.abs((icon.top + icon.height / 2) - (label.top + label.height / 2));
+    });
+    expect(actionIconAlignment).toBeLessThanOrEqual(1);
+    const categoryLabels = await page.locator(".phone-action-grid button > span:nth-child(2)").evaluateAll((labels) => labels.map((label) => ({
+      text: label.textContent,
+      fits: label.scrollWidth <= label.clientWidth + 2,
+    })));
+    expect(categoryLabels.every(({ fits }) => fits)).toBe(true);
+    const exploreHeight = await page.locator(".phone-home-explore-layout").evaluate((element) => element.getBoundingClientRect().height);
+    expect(exploreHeight).toBeLessThanOrEqual(224);
+    await expect(page.locator(".phone-home-place-type").first()).toBeVisible();
+    await expect(page.locator(".phone-home-place-visual .phone-home-place-badge").first()).toBeVisible();
+    await expect(page.locator("#phone-home-greeting")).toHaveCSS("font-family", /Plus Jakarta Sans|sans-serif/);
     await expect(page.locator("#phone-home-greeting")).toHaveCSS("direction", "ltr");
+    await expect(page.locator("#phone-home-date")).toHaveText(/^[A-Z]{3} \d{1,2} [A-Z]+$/);
+    const heroLayout = await page.evaluate(() => {
+      const hero = document.querySelector(".phone-home-header").getBoundingClientRect();
+      const welcome = document.querySelector(".phone-home-welcome").getBoundingClientRect();
+      const toolbar = document.querySelector(".phone-home-toolbar").getBoundingClientRect();
+      const prayer = document.querySelector("#phone-prayer-state").getBoundingClientRect();
+      return {
+        heroWidth: hero.width,
+        viewportWidth: window.innerWidth,
+        heroHeight: hero.height,
+        heroAspect: hero.height / hero.width,
+        welcomeWidth: welcome.width,
+        welcomeHeight: welcome.height,
+        toolbarHeight: toolbar.height,
+        toolbarGap: welcome.top - toolbar.bottom,
+        overlap: welcome.bottom - prayer.top,
+        prayerHeight: prayer.height,
+        backgroundImage: getComputedStyle(document.querySelector(".phone-home-header")).backgroundImage,
+      };
+    });
+    expect(Math.abs(heroLayout.heroWidth - heroLayout.viewportWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs((heroLayout.welcomeWidth + 40) - heroLayout.viewportWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(heroLayout.heroAspect - (9 / 16))).toBeLessThanOrEqual(0.01);
+    expect(heroLayout.welcomeHeight).toBeGreaterThanOrEqual(135);
+    expect(heroLayout.toolbarHeight).toBeGreaterThanOrEqual(36);
+    expect(Math.abs(heroLayout.toolbarGap)).toBeLessThanOrEqual(1);
+    expect(heroLayout.overlap).toBeGreaterThanOrEqual(heroLayout.prayerHeight * 0.08);
+    expect(heroLayout.overlap).toBeLessThanOrEqual(heroLayout.prayerHeight * 0.12);
+    expect(heroLayout.backgroundImage).toContain("Manarah_Home_Light_16x9.webp");
+    const darkHeroBackground = await page.evaluate(() => {
+      document.body.classList.add("dark-mode");
+      return getComputedStyle(document.querySelector(".phone-home-header")).backgroundImage;
+    });
+    expect(darkHeroBackground).toContain("Manarah_Home_Dark_16x9.png");
+    const homeTypography = await page.evaluate(() => {
+      const styleOf = (selector) => Number.parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+      const home = document.querySelector("#phone-home-page");
+      return {
+        overflow: home.scrollWidth - home.clientWidth,
+        city: styleOf("#phone-home-city"),
+        date: styleOf("#phone-home-date"),
+        greeting: styleOf("#phone-home-greeting"),
+        name: styleOf("#phone-home-title"),
+        sectionHeading: styleOf("#phone-explore-title"),
+        action: styleOf(".phone-action--food"),
+        search: styleOf("#phone-home-search-input"),
+      };
+    });
+    expect(homeTypography.overflow).toBeLessThanOrEqual(1);
+    expect(homeTypography.city).toBeLessThanOrEqual(18);
+    expect(homeTypography.date).toBeLessThanOrEqual(15);
+    expect(homeTypography.greeting).toBe(15);
+    expect(homeTypography.name).toBeLessThanOrEqual(32);
+    expect(homeTypography.sectionHeading).toBeLessThanOrEqual(18);
+    expect(homeTypography.action).toBeLessThanOrEqual(14);
+    expect(homeTypography.search).toBeLessThanOrEqual(17);
+    await expect(page.locator(".phone-text-action span")).toHaveCount(3);
+    await expect(page.locator(".phone-text-action span")).toHaveText(["→", "→", "→"]);
+    await expect(page.locator(".phone-home-location-chevron")).toHaveCount(0);
+    const homeAlignment = await page.evaluate(() => {
+      const center = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return box.top + (box.height / 2);
+      };
+      const toolbar = document.querySelector(".phone-home-toolbar").getBoundingClientRect();
+      const action = document.querySelector(".phone-action--food");
+      const actionIcon = action.querySelector("span:first-child").getBoundingClientRect();
+      const actionText = action.querySelector("span:nth-child(2)").getBoundingClientRect();
+      const actionArrow = getComputedStyle(action, "::after");
+      const discover = document.querySelector(".phone-home-discover");
+      const discoverCopy = discover.querySelector(".phone-home-discover-copy").getBoundingClientRect();
+      const discoverArrow = discover.querySelector(".phone-home-discover-arrow").getBoundingClientRect();
+      const event = document.querySelector("#phone-week-events .phone-home-event");
+      return {
+        toolbarHeight: toolbar.height,
+        toolbarRadius: Number.parseFloat(getComputedStyle(document.querySelector(".phone-home-toolbar")).borderTopLeftRadius),
+        toolbarCity: center("#phone-home-city"),
+        toolbarDate: center("#phone-home-date"),
+        actionIcon: actionIcon.top + (actionIcon.height / 2),
+        actionText: actionText.top + (actionText.height / 2),
+        actionArrowHeight: Number.parseFloat(actionArrow.height),
+        discoverCopy: discoverCopy.top + (discoverCopy.height / 2),
+        discoverArrow: discoverArrow.top + (discoverArrow.height / 2),
+        discoverArrowRadius: Number.parseFloat(getComputedStyle(discover.querySelector(".phone-home-discover-arrow")).borderTopLeftRadius),
+        eventHeight: event ? event.getBoundingClientRect().height : 0,
+        eventArrow: event ? center("#phone-week-events .phone-home-event-arrow") : 0,
+        eventCard: event ? event.getBoundingClientRect() : null,
+      };
+    });
+    expect(homeAlignment.toolbarHeight).toBeGreaterThanOrEqual(46);
+    expect(homeAlignment.toolbarRadius).toBe(0);
+    expect(Math.abs(homeAlignment.toolbarCity - homeAlignment.toolbarDate)).toBeLessThanOrEqual(1);
+    expect(Math.abs(homeAlignment.actionIcon - homeAlignment.actionText)).toBeLessThanOrEqual(1);
+    expect(homeAlignment.actionArrowHeight).toBeGreaterThan(0);
+    expect(Math.abs(homeAlignment.discoverCopy - homeAlignment.discoverArrow)).toBeLessThanOrEqual(1);
+    expect(homeAlignment.discoverArrowRadius).toBe(0);
+    if (homeAlignment.eventCard) expect(homeAlignment.eventHeight).toBeLessThanOrEqual(78);
   });
 
   test("phone startup keeps an already-granted GPS permission active", async ({ page }) => {
@@ -74,18 +201,29 @@ test.describe("Phone app pages", () => {
       window.dispatchEvent(new Event("hf:places-data-ready"));
       utils.setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 10 });
     });
-    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby");
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby Places");
     const nearbyCard = page.locator("#phone-suggested-places .phone-home-place--nearby").first();
     await expect(nearbyCard).toBeVisible();
-    const footerAlignment = await nearbyCard.evaluate((card) => {
-      const city = card.querySelector(".phone-home-place-meta").getBoundingClientRect();
-      const arrow = card.querySelector(".phone-home-place-arrow").getBoundingClientRect();
-      return Math.abs((city.top + city.height / 2) - (arrow.top + arrow.height / 2));
+    const placeRowLayout = await nearbyCard.evaluate((card) => {
+      const style = getComputedStyle(card);
+      return {
+        display: style.display,
+        columns: style.gridTemplateColumns,
+        height: card.getBoundingClientRect().height,
+        arrowWidth: card.querySelector(".phone-home-place-arrow").getBoundingClientRect().width,
+        imageHeight: card.querySelector(".phone-home-place-visual").getBoundingClientRect().height,
+        imageRatio: card.querySelector(".phone-home-place-visual").getBoundingClientRect().height / card.getBoundingClientRect().height,
+      };
     });
-    expect(footerAlignment).toBeLessThanOrEqual(1);
-    await expect(page.locator("#phone-week-events .phone-home-event-date")).toHaveText("21 Oct");
+    expect(placeRowLayout.display).toBe("grid");
+    expect(placeRowLayout.columns.split(" ")).toHaveLength(2);
+    expect(placeRowLayout.height).toBeGreaterThanOrEqual(140);
+    expect(placeRowLayout.arrowWidth).toBeGreaterThan(0);
+    expect(placeRowLayout.imageHeight).toBeGreaterThanOrEqual(100);
+    expect(placeRowLayout.imageRatio).toBeGreaterThan(0.72);
+    await expect(page.locator("#phone-week-events .phone-home-event-date")).toHaveAttribute("aria-label", "21 Oct");
     await page.evaluate(async () => (await import("/src/utils.js")).clearCurrentLocationState());
-    await expect(page.locator("#phone-suggested-title")).toHaveText("Suggested");
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby Places");
   });
 
   test("recurring event details use an icon and a schedule field", async ({ page }) => {
@@ -128,7 +266,7 @@ test.describe("Phone app pages", () => {
       utils.setCurrentLocationState({ lat: 60.17, lng: 24.94, accuracy: 10 });
     });
 
-    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby");
+    await expect(page.locator("#phone-suggested-title")).toHaveText("Nearby Places");
     await expect(page.locator('[data-phone-place-id="home-cemetery-test"]')).toHaveCount(0);
   });
 
@@ -795,15 +933,64 @@ test.describe("Phone app pages", () => {
   test("Home prayer content responds to a live prayer snapshot", async ({ page }) => {
     await expect(page.locator("#phone-current-prayer-name")).not.toHaveText("Prayer times");
     await page.evaluate(() => window.dispatchEvent(new CustomEvent("hf:prayer-ready", {
-      detail: { currentName: "Dhuhr", name: "Asr", time: "15:45", countdown: "in 12 min" },
+      detail: { currentName: "Dhuhr", currentEndTime: "15:44", currentCountdown: "in 11 min", name: "Asr", time: "15:45", countdown: "in 12 min", period: "midday" },
     })));
     await expect(page.locator("#phone-current-prayer-name")).toHaveText("Dhuhr");
+    await expect(page.locator("#phone-current-prayer-end-time")).toHaveText("15:44");
+    await expect(page.locator("#phone-current-prayer-countdown")).toHaveText("11 min");
     await expect(page.locator("#phone-next-prayer-name")).toHaveText("Asr");
     await expect(page.locator("#phone-next-prayer-time")).toHaveText("15:45");
-    await expect(page.locator("#phone-next-prayer-countdown")).toHaveText("in 12 min");
-    await expect(page.locator(".phone-prayer-card-next-label")).toHaveCount(0);
+    await expect(page.locator("#phone-next-prayer-countdown")).toHaveText("12 min");
+    await expect(page.locator(".phone-prayer-card-top")).toHaveText("Current");
+    await expect(page.locator(".phone-prayer-card-next-label")).toHaveText("Next");
     await expect(page.locator("#phone-prayer-state")).toContainText("Dhuhr");
     await expect(page.locator("#phone-prayer-state")).toContainText("Asr");
+    await expect(page.locator("#phone-prayer-state")).toHaveAttribute("data-prayer-period", "midday");
+    await expect(page.locator("#phone-prayer-qibla")).toBeVisible();
+    await expect(page.locator(".phone-prayer-card-next-icon")).toHaveCount(0);
+    await expect(page.locator("#phone-prayer-qibla")).not.toContainText("Qibla");
+    const cardVisual = await page.locator("#phone-prayer-state").evaluate((card) => ({
+      cardHeight: card.getBoundingClientRect().height,
+      dividerCenter: card.querySelector(".phone-prayer-card-divider").getBoundingClientRect().left + (card.querySelector(".phone-prayer-card-divider").getBoundingClientRect().width / 2),
+      cardCenter: card.getBoundingClientRect().left + (card.getBoundingClientRect().width / 2),
+      currentWidth: card.querySelector(".phone-prayer-card-current").getBoundingClientRect().width,
+      nextWidth: card.querySelector(".phone-prayer-card-next").getBoundingClientRect().width,
+      qiblaWidth: card.querySelector("#phone-prayer-qibla").getBoundingClientRect().width,
+      labelAlignment: Math.abs(card.querySelector(".phone-prayer-card-top").getBoundingClientRect().top - card.querySelector(".phone-prayer-card-next-label").getBoundingClientRect().top),
+      prayerAlignment: Math.abs((card.querySelector("#phone-current-prayer-name").getBoundingClientRect().bottom) - (card.querySelector("#phone-next-prayer-name").getBoundingClientRect().bottom)),
+      metaAlignment: Math.abs(card.querySelector(".phone-prayer-card-current-meta").getBoundingClientRect().top - card.querySelector(".phone-prayer-card-next-meta").getBoundingClientRect().top),
+      currentNameSize: getComputedStyle(card.querySelector("#phone-current-prayer-name")).fontSize,
+      nextNameSize: getComputedStyle(card.querySelector("#phone-next-prayer-name")).fontSize,
+      currentNameWeight: getComputedStyle(card.querySelector("#phone-current-prayer-name")).fontWeight,
+      nextNameWeight: getComputedStyle(card.querySelector("#phone-next-prayer-name")).fontWeight,
+      currentMetaSize: getComputedStyle(card.querySelector(".phone-prayer-card-current-meta")).fontSize,
+      currentMetaWeight: getComputedStyle(card.querySelector(".phone-prayer-card-current-meta")).fontWeight,
+      currentTimeSize: getComputedStyle(card.querySelector("#phone-current-prayer-end-time")).fontSize,
+      currentTimeWeight: getComputedStyle(card.querySelector("#phone-current-prayer-end-time")).fontWeight,
+      currentTimeFamily: getComputedStyle(card.querySelector("#phone-current-prayer-end-time")).fontFamily,
+      nextTimeFamily: getComputedStyle(card.querySelector("#phone-next-prayer-time")).fontFamily,
+      nextTimeWeight: getComputedStyle(card.querySelector("#phone-next-prayer-time")).fontWeight,
+    }));
+    expect(cardVisual.cardHeight).toBeLessThanOrEqual(91);
+    expect(cardVisual.cardHeight).toBeGreaterThanOrEqual(83);
+    expect(Math.abs(cardVisual.dividerCenter - cardVisual.cardCenter)).toBeLessThanOrEqual(1);
+    expect(cardVisual.currentWidth).toBeGreaterThan(0);
+    expect(cardVisual.nextWidth).toBeGreaterThan(0);
+    expect(cardVisual.qiblaWidth).toBeGreaterThan(0);
+    expect(cardVisual.labelAlignment).toBeLessThanOrEqual(1);
+    expect(cardVisual.prayerAlignment).toBeLessThanOrEqual(1);
+    expect(cardVisual.metaAlignment).toBeLessThanOrEqual(1);
+    expect(cardVisual.currentNameSize).toBe(cardVisual.nextNameSize);
+    expect(cardVisual.currentNameWeight).toBe(cardVisual.nextNameWeight);
+    expect(cardVisual.currentNameSize).toBe("16px");
+    expect(cardVisual.currentNameWeight).toBe("500");
+    expect(cardVisual.currentMetaSize).toBe("13px");
+    expect(cardVisual.currentMetaWeight).toBe("400");
+    expect(cardVisual.currentTimeSize).toBe(cardVisual.currentMetaSize);
+    expect(cardVisual.currentTimeWeight).toBe(cardVisual.currentMetaWeight);
+    expect(cardVisual.currentTimeFamily).toMatch(/Roboto Mono|monospace/);
+    expect(cardVisual.nextTimeFamily).toMatch(/Roboto Mono|monospace/);
+    expect(cardVisual.nextTimeWeight).toBe(cardVisual.currentMetaWeight);
   });
 
   test("Home greeting uses the signed-in first name", async ({ page }) => {
@@ -828,12 +1015,14 @@ test.describe("Phone app pages", () => {
   });
 
   test("Home action buttons route to Map and Events", async ({ page }) => {
-    await page.locator(".phone-primary-action").click();
+    await page.locator(".phone-home-discover").click();
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
     await page.locator("#home-btn").click();
-    await page.locator(".phone-action-grid button[data-phone-page='events']").click();
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "events");
-    await expect(page.locator("#events-overlay")).toBeVisible();
+    const eventsAction = page.locator(".phone-home-explore .phone-action-grid .phone-action--events");
+    await expect(eventsAction).toBeVisible();
+    await eventsAction.click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
+    await expect(page.locator("#map-filter-chips .map-filter-pill[data-map-events='true']")).toHaveClass(/active/);
   });
 
   test("Events filters, place selection, add form, and external links work", async ({ page }) => {
