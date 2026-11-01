@@ -607,9 +607,15 @@ test.describe("Phone app pages", () => {
     const homeMotion = await home.evaluate((element) => ({
       shift: parseFloat(element.style.getPropertyValue("--phone-home-header-shift")),
       opacity: parseFloat(element.style.getPropertyValue("--phone-home-header-opacity")),
+      bannerSize: getComputedStyle(element.querySelector(".phone-home-header")).backgroundSize,
+      toolbarTransform: getComputedStyle(element.querySelector(".phone-home-toolbar")).transform,
+      copyTransform: getComputedStyle(element.querySelector(".phone-home-welcome")).transform,
     }));
     expect(homeMotion.shift).toBeLessThan(0);
     expect(homeMotion.opacity).toBeLessThan(1);
+    expect(homeMotion.bannerSize).not.toBe("cover");
+    expect(homeMotion.toolbarTransform).not.toBe("none");
+    expect(homeMotion.copyTransform).not.toBe("none");
 
     await page.locator("#events-nav-btn").click();
     const events = page.locator("#events-list");
@@ -641,6 +647,35 @@ test.describe("Phone app pages", () => {
     expect(await page.locator("#ev-filter-bar").evaluate((element) =>
       parseFloat(element.style.getPropertyValue("--phone-places-actionbar-progress")),
     )).toBe(0);
+  });
+
+  test("Home gives a top pull an elastic hero response", async ({ page }) => {
+    const home = page.locator("#phone-home-page");
+    await home.evaluate((element) => {
+      const touchEvent = (type, clientY) => {
+        const event = new Event(type, { bubbles: true });
+        Object.defineProperty(event, "touches", { value: clientY === null ? [] : [{ clientY }] });
+        return event;
+      };
+      element.scrollTop = 0;
+      element.dispatchEvent(touchEvent("touchstart", 120));
+      element.dispatchEvent(touchEvent("touchmove", 168));
+    });
+    await page.waitForTimeout(80);
+    const pulled = await home.evaluate((element) => ({
+      shift: parseFloat(element.style.getPropertyValue("--phone-home-header-shift")),
+      bannerSize: getComputedStyle(element.querySelector(".phone-home-header")).backgroundSize,
+    }));
+    expect(pulled.shift).toBeGreaterThan(0);
+    expect(pulled.bannerSize).not.toBe("cover");
+
+    await home.evaluate((element) => {
+      const event = new Event("touchend", { bubbles: true });
+      Object.defineProperty(event, "touches", { value: [] });
+      element.dispatchEvent(event);
+    });
+    await page.waitForTimeout(420);
+    expect(await home.evaluate((element) => parseFloat(element.style.getPropertyValue("--phone-home-header-shift")))).toBe(0);
   });
 
   test("Map, Home, and Events carousels use edge-to-edge scrolling rails", async ({ page }) => {

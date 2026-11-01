@@ -15801,6 +15801,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     @keyframes phone-home-name-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
     @keyframes phone-home-caret-move { from { left: 0; } to { left: 100%; } }
     @keyframes phone-home-caret-blink { 50% { opacity: 0; } }
+    @keyframes phone-home-hero-enter {
+      from { background-size: 112% auto; background-position: center 58%; }
+      to { background-size: 100% auto; background-position: center 50%; }
+    }
+    @keyframes phone-home-hero-copy-enter {
+      from { opacity: 0; translate: 0 10px; }
+      to { opacity: 1; translate: 0 0; }
+    }
   }
 
   .phone-home-header {
@@ -16558,7 +16566,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   #phone-home-page .phone-page-content {
     width: 100%;
     max-width: 620px;
-    padding: 0 20px calc(var(--tab-h) + var(--safe-b) + 28px);
+    padding: 0 20px;
   }
 
   #phone-home-page .phone-home-header {
@@ -16572,16 +16580,76 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     padding: max(0px, var(--safe-t)) 20px 0;
     background-color: var(--surface);
     background-image: url("/assets/home-backgrounds/Manarah_Home_Light_16x9.webp");
-    background-position: center;
-    background-size: cover;
+    background-position: var(--phone-home-banner-position, center);
+    background-size: var(--phone-home-banner-size, cover);
     background-repeat: no-repeat;
     border-radius: 0 0 var(--r-xl) var(--r-xl);
     overflow: hidden;
+    will-change: background-position, background-size;
   }
 
   body.dark-mode #phone-home-page .phone-home-header {
     background-image: url("/assets/home-backgrounds/Manarah_Home_Dark_16x9.png");
   }
+
+  body.dark-mode #phone-home-page .phone-home-header::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background: rgb(0 0 0 / 8%);
+    -webkit-backdrop-filter: saturate(.75) brightness(.94);
+    backdrop-filter: saturate(.75) brightness(.94);
+    pointer-events: none;
+  }
+
+  #phone-home-page .phone-home-header > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  #phone-home-page.phone-home-pull-settling .phone-home-header {
+    transition:
+      transform 380ms var(--ease-expo),
+      background-size 380ms var(--ease-expo),
+      background-position 380ms var(--ease-expo);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #phone-home-page .phone-home-header {
+      background-position: center;
+      background-size: cover;
+      will-change: auto;
+    }
+
+    #phone-home-page .phone-home-welcome {
+      transform: none;
+      will-change: auto;
+    }
+
+    #phone-home-page .phone-home-toolbar {
+      transform: none;
+      opacity: 1;
+      will-change: auto;
+    }
+  }
+
+  html.reduce-motion #phone-home-page .phone-home-header {
+    background-position: center;
+    background-size: cover;
+    will-change: auto;
+  }
+
+  html.reduce-motion #phone-home-page .phone-home-welcome {
+    transform: none;
+    will-change: auto;
+  }
+
+html.reduce-motion #phone-home-page .phone-home-toolbar {
+  transform: none;
+  opacity: 1;
+  will-change: auto;
+}
 
   #phone-home-page .phone-home-toolbar {
     display: flex;
@@ -16593,6 +16661,29 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     background: transparent;
     color: var(--text-1);
     gap: 16px;
+    transform: translate3d(0, var(--phone-home-toolbar-shift, 0px), 0);
+    opacity: var(--phone-home-toolbar-opacity, 1);
+    will-change: transform, opacity;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) .phone-home-entering .phone-home-header {
+      background-size: 112% auto;
+      background-position: center 58%;
+    }
+
+    html:not(.reduce-motion) body.welcome-dismissed .phone-home-entering .phone-home-header {
+      animation: phone-home-hero-enter 620ms var(--ease-expo) both;
+    }
+
+    html:not(.reduce-motion) .phone-home-entering .phone-home-welcome {
+      opacity: 0;
+      translate: 0 10px;
+    }
+
+    html:not(.reduce-motion) body.welcome-dismissed .phone-home-entering .phone-home-welcome {
+      animation: phone-home-hero-copy-enter 500ms var(--ease-expo) 70ms both;
+    }
   }
 
   #phone-home-page .phone-home-location {
@@ -16650,6 +16741,8 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+    transform: translate3d(0, var(--phone-home-copy-shift, 0px), 0);
+    will-change: transform;
   }
 
   #phone-home-page .phone-home-welcome::before {
@@ -16953,7 +17046,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     padding: 0;
     border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
     border-radius: 24px;
-    background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+    background: var(--surface);
     color: var(--text-1);
     font: inherit;
     text-align: left;
@@ -17001,33 +17094,36 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     top: 14px;
     left: 14px;
     padding: 7px 11px;
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    border: 1px solid var(--border);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--surface) 88%, var(--accent-soft));
-    color: var(--accent);
+    background: var(--surface-2);
+    color: var(--text-2);
     font-size: 12px;
     font-weight: var(--fw-bold);
   }
 
   body.dark-mode #phone-home-page .phone-home-discover-count {
-    border-color: color-mix(in srgb, var(--accent) 68%, var(--border));
-    background: color-mix(in srgb, var(--accent) 30%, var(--surface-2));
-    color: color-mix(in srgb, var(--accent) 52%, var(--text));
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
   }
 
   #phone-home-page .phone-home-discover-copy {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) 16px;
     align-items: center;
-    justify-items: start;
-    padding: 5px 14px 7px;
+    justify-items: stretch;
+    padding: 8px 14px 10px;
+    background: var(--surface-2);
     text-align: left;
   }
 
   #phone-home-page .phone-home-discover-copy strong {
     color: var(--text-1);
-    font-size: 15px;
-    font-weight: 780;
-    letter-spacing: -.025em;
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-normal);
+    line-height: 18px;
   }
 
   #phone-home-page .phone-home-discover-copy small {
@@ -17036,16 +17132,15 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
 
   #phone-home-page .phone-home-discover-arrow {
-    position: absolute;
-    right: 13px;
-    bottom: 5px;
     display: grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    align-self: center;
+    width: 16px;
+    height: 18px;
+    justify-self: end;
     border-radius: 0;
     background: transparent;
-    color: var(--accent);
+    color: var(--text-1);
     font-size: 0;
   }
 

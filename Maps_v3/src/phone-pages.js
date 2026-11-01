@@ -191,6 +191,11 @@ function _attachPageScroll(page) {
   if (!scrollElement) return;
 
   let progress = 0;
+  let homePullProgress = 0;
+  let homePullFrame = 0;
+  let homePullResetTimer = 0;
+  let homeTouchStartY = 0;
+  let homeTouchTracking = false;
   let actionBarProgress = 0;
   let lastTop = scrollElement.scrollTop;
   let direction = 0;
@@ -216,10 +221,65 @@ function _attachPageScroll(page) {
   const syncPageScrollVisuals = () => {
     const top = Math.max(0, scrollElement.scrollTop);
     if (page === "home") {
-      const progress = Math.min(1, top / 48);
-      scrollElement.style.setProperty("--phone-home-header-shift", `${-6 * progress}px`);
+      const heroHeight = Math.max(1, scrollElement.querySelector(".phone-home-header")?.offsetHeight || 1);
+      const progress = Math.min(1, top / heroHeight);
+      const pull = homePullProgress;
+      scrollElement.style.setProperty("--phone-home-header-shift", `${(-12 * progress) + (14 * pull)}px`);
       scrollElement.style.setProperty("--phone-home-header-opacity", String(1 - (0.08 * progress)));
+      scrollElement.style.setProperty("--phone-home-scroll-progress", String(progress));
+      scrollElement.style.setProperty("--phone-home-banner-size", progress || pull ? `${100 + (12 * progress) + (8 * pull)}% auto` : "cover");
+      scrollElement.style.setProperty("--phone-home-banner-position", `center ${50 - (12 * progress) + (4 * pull)}%`);
+      scrollElement.style.setProperty("--phone-home-copy-shift", `${-18 * progress}px`);
+      scrollElement.style.setProperty("--phone-home-toolbar-shift", `${-10 * progress}px`);
+      scrollElement.style.setProperty("--phone-home-toolbar-opacity", String(1 - (0.18 * progress)));
     }
+  };
+  const scheduleHomePullVisuals = () => {
+    if (homePullFrame) return;
+    homePullFrame = requestAnimationFrame(() => {
+      homePullFrame = 0;
+      syncPageScrollVisuals();
+    });
+  };
+  const onHomeTouchStart = (event) => {
+    if (
+      page !== "home" ||
+      event.touches.length !== 1 ||
+      scrollElement.scrollTop > 0 ||
+      event.target.closest("button, a, input, textarea, select, .phone-edge-carousel")
+    ) {
+      homeTouchTracking = false;
+      return;
+    }
+    homeTouchStartY = event.touches[0].clientY;
+    homeTouchTracking = true;
+    window.clearTimeout(homePullResetTimer);
+    scrollElement.classList.remove("phone-home-pull-settling");
+  };
+  const onHomeTouchMove = (event) => {
+    if (!homeTouchTracking || event.touches.length !== 1) return;
+    const delta = event.touches[0].clientY - homeTouchStartY;
+    if (scrollElement.scrollTop > 0 || delta <= 0) {
+      homePullProgress = 0;
+      homeTouchTracking = scrollElement.scrollTop <= 0 && delta > 0;
+      scheduleHomePullVisuals();
+      return;
+    }
+    homePullProgress = Math.min(1, delta / 96);
+    scheduleHomePullVisuals();
+  };
+  const finishHomeTouch = () => {
+    if (!homeTouchTracking && !homePullProgress) return;
+    homeTouchTracking = false;
+    if (!homePullProgress) return;
+    scrollElement.classList.add("phone-home-pull-settling");
+    homePullProgress = 0;
+    scheduleHomePullVisuals();
+    window.clearTimeout(homePullResetTimer);
+    homePullResetTimer = window.setTimeout(() => {
+      scrollElement.classList.remove("phone-home-pull-settling");
+      homePullResetTimer = 0;
+    }, 380);
   };
   const twoCardsUnderActionBar = () => {
     return Boolean(actionBar && scrollElement.scrollTop >= actionBarFollowScrollTop);
@@ -377,12 +437,37 @@ function _attachPageScroll(page) {
   };
   syncPageScrollVisuals();
   scrollElement.addEventListener("scroll", onScroll, { passive: true });
+  if (page === "home" && !isReduceMotionActive()) {
+    scrollElement.addEventListener("touchstart", onHomeTouchStart, { passive: true });
+    scrollElement.addEventListener("touchmove", onHomeTouchMove, { passive: true });
+    scrollElement.addEventListener("touchend", finishHomeTouch, { passive: true });
+    scrollElement.addEventListener("touchcancel", finishHomeTouch, { passive: true });
+  }
   _pageScrollCleanup = () => {
     scrollElement.removeEventListener("scroll", onScroll);
+    if (page === "home") {
+      scrollElement.removeEventListener("touchstart", onHomeTouchStart);
+      scrollElement.removeEventListener("touchmove", onHomeTouchMove);
+      scrollElement.removeEventListener("touchend", finishHomeTouch);
+      scrollElement.removeEventListener("touchcancel", finishHomeTouch);
+    }
     if (scrollFrame) cancelAnimationFrame(scrollFrame);
+    if (homePullFrame) cancelAnimationFrame(homePullFrame);
+    window.clearTimeout(homePullResetTimer);
     scrollFrame = 0;
+    homePullFrame = 0;
+    homePullResetTimer = 0;
+    homePullProgress = 0;
+    homeTouchTracking = false;
+    scrollElement.classList.remove("phone-home-pull-settling");
     scrollElement.style.removeProperty("--phone-home-header-shift");
     scrollElement.style.removeProperty("--phone-home-header-opacity");
+    scrollElement.style.removeProperty("--phone-home-scroll-progress");
+    scrollElement.style.removeProperty("--phone-home-banner-size");
+    scrollElement.style.removeProperty("--phone-home-banner-position");
+    scrollElement.style.removeProperty("--phone-home-copy-shift");
+    scrollElement.style.removeProperty("--phone-home-toolbar-shift");
+    scrollElement.style.removeProperty("--phone-home-toolbar-opacity");
   };
 }
 
