@@ -21,7 +21,7 @@ import {
   getCurrentPosition,
   hasGeolocation,
 } from "./utils.js";
-import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
+import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick, resetDirectionsForNewRequest } from "./directions.js";
 import { getPhonePage, isPhone, navigatePhonePage, syncPhoneNavPill } from "./phone-pages.js";
 import { track } from "./analytics.js";
 import { placesData, updateMarkerVisibility } from "./places.js";
@@ -267,6 +267,7 @@ function openHomePopup() {
     if (dirBtn) {
       const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
       const name = home.address || home.name || await reverseGeocode(pLat, pLng);
+      resetDirectionsForNewRequest();
       dir.origin = { lat: pLat, lng: pLng, name };
       document.getElementById("dir-from").value = name;
       placeOriginMarker(pLng, pLat);
@@ -514,7 +515,7 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
     }
     _updateGpsHeading(lat, lng);
     if (firstFix) {
-      if (!_navigationCameraActive && !_isPlaceOrEventWindowOpen()) {
+      if (!_navigationCameraActive && !_isPlaceOrEventWindowOpen() && !document.body.classList.contains("route-preview-active")) {
         if (zoomOnFirstFix) {
           focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
         } else {
@@ -523,7 +524,7 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
       }
       firstFix = false;
         try { onFirstFix?.({ lat, lng, accuracy }); } catch { /* optional consumer callback */ }
-    } else if (dir.routeLayers.length > 0 && !_navigationCameraActive && !_isPlaceOrEventWindowOpen()) {
+    } else if (dir.routeLayers.length > 0 && !document.body.classList.contains("route-preview-active") && !_navigationCameraActive && !_isPlaceOrEventWindowOpen()) {
       // Route preview follows the user while the directions result is visible.
       focusMapPoint([lng, lat], { duration: 600 });
     }

@@ -134,6 +134,221 @@ body.hf-hide-tags .pl-tags-summary { display: none !important; }
     min-height: calc(100dvh + var(--safe-b));
   }
 }
+
+@media (max-width: 768px) {
+  #dir-panel.route-focused:not(.dir-panel-nav-exit) {
+    animation: dir-route-details-in 420ms cubic-bezier(.22, .8, .24, 1) both;
+  }
+  @keyframes dir-route-details-in {
+    from { opacity: .98; transform: translate3d(100%, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+}
+#dir-panel.dir-panel-nav-exit {
+  animation: dir-route-panel-out 220ms cubic-bezier(.22, .8, .24, 1) both;
+}
+@keyframes dir-route-panel-out {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: .98; transform: translate3d(0, 100%, 0); }
+}
+
+/* The compact route snackbar opens this existing sheet in a short, selected
+   route overview; the stable ETA strip handles route picking without map labels. */
+#dir-panel.route-overview #dir-inputs,
+#dir-panel.route-overview #dir-mode-bar,
+#dir-panel.route-overview #dir-time-bar,
+#dir-panel.route-overview #dir-go {
+  display: none !important;
+}
+#dir-panel.route-overview #dir-summary { display: flex !important; }
+#dir-panel.route-overview #dir-results { padding-bottom: 8px; overflow: visible; }
+#dir-panel.route-overview .direct-card:not(.active) { display: none; }
+#dir-panel.route-overview .direct-card.active {
+  margin: 10px 16px 14px;
+  padding: 13px 14px 14px;
+}
+#dir-panel.route-overview .direct-card.active .itin-legs { display: none; }
+#dir-panel.route-overview .direct-card.active .itin-navigate {
+  width: 100%;
+  height: 40px;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  gap: 8px;
+  border-radius: var(--r-pill);
+}
+#dir-panel.route-overview .direct-card.active .itin-navigate span { display: inline; }
+#dir-panel.route-overview .direct-card.active .itin-walk { margin-top: 1px; }
+
+/* Route preview is a picking state: remove place/event pins so the route
+   geometry and ETA labels are the only map decisions competing for attention. */
+body.route-preview-active .maplibregl-marker.place-mk-wrap,
+body.route-preview-active .maplibregl-marker.event-mk-wrap,
+body.route-preview-active .maplibregl-marker.pf-timeline-map-marker,
+body.route-preview-active .maplibregl-marker.loc-marker,
+body.route-preview-active .loc-marker {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Selection mode is intentionally quiet: the map and the route window are
+   the only active surfaces while the user compares options. */
+body.route-preview-active #gps-sim-badge,
+body.route-preview-active #nav-hud,
+body.route-preview-active #nav-right-rail,
+body.route-preview-active #nav-speed,
+body.route-preview-active #search-card,
+body.route-preview-active #locate-pill-wrap,
+body.route-preview-active #contribute-place-btn,
+body.route-preview-active #layers-btn,
+body.route-preview-active #zoom-pill,
+body.route-preview-active #tab-bar,
+body.route-preview-active #map-filter-carousel,
+body.route-preview-active #phone-map-layers-popover,
+body.route-preview-active #map .maplibregl-ctrl-top-right,
+body.route-preview-active #map .maplibregl-ctrl-bottom-right,
+body.route-preview-active #map .maplibregl-ctrl-bottom-left,
+body.route-preview-active #phone-chrome-top-zone,
+body.route-preview-active #phone-chrome-right-zone,
+body.route-preview-active #phone-chrome-bottom-zone,
+body.route-preview-active #prayer-snack,
+body.route-preview-active #eid-pill,
+body.route-preview-active #events-pill,
+body.route-preview-active #promos-pill {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate3d(0, 10px, 0) !important;
+  transition: opacity .22s var(--ease-expo), transform .28s var(--ease-expo) !important;
+}
+body.route-preview-active #nav-hud { transform: translate3d(-50%, 10px, 0) !important; }
+
+/* Navigation is map-first: turn guidance stays at the top, controls form a
+   single rail, and the regular app chrome is out of the camera's way. */
+#nav-right-rail { display: none; }
+body.nav-mode #nav-hud {
+  top: max(12px, env(safe-area-inset-top));
+  width: min(560px, calc(100vw - 32px));
+}
+body.nav-mode #nav-hud .nav-hud-bar { justify-content: center; }
+body.nav-mode #nav-right-rail {
+  position: fixed;
+  z-index: 61;
+  top: auto;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  right: max(12px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 54px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, #000 16%, transparent), var(--shadow-float);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  backdrop-filter: blur(16px) saturate(1.15);
+  transform: none;
+  pointer-events: auto;
+  transition: gap .28s var(--ease-expo), padding .28s var(--ease-expo), background-color var(--t-med);
+}
+body.nav-mode.nav-following #nav-right-rail {
+  gap: 0;
+}
+body.nav-mode #nav-right-rail .nav-hud-btn {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--text-2);
+  box-shadow: none;
+  transition: background-color var(--t-fast), color var(--t-fast), transform var(--t-fast), opacity .2s var(--ease-expo), height .28s var(--ease-expo), flex-basis .28s var(--ease-expo), margin .28s var(--ease-expo);
+}
+body.nav-mode #nav-right-rail .nav-hud-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+body.nav-mode #nav-right-rail #nav-overview { order: 1; }
+body.nav-mode #nav-right-rail #nav-recenter { order: 2; }
+body.nav-mode #nav-right-rail #nav-mute { order: 3; }
+body.nav-mode #nav-right-rail #nav-stop {
+  order: 4;
+  margin-top: 3px;
+  border-radius: 15px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--border) 70%, transparent);
+}
+body.nav-mode #nav-right-rail #nav-recenter.is-active {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+body.nav-mode #nav-right-rail #nav-mute.is-muted {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+body.nav-mode #nav-recenter {
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  overflow: hidden;
+  transition: opacity .2s var(--ease-expo), transform .28s var(--ease-expo), height .28s var(--ease-expo), max-height .28s var(--ease-expo), min-height .28s var(--ease-expo), flex-basis .28s var(--ease-expo), margin .28s var(--ease-expo), padding .28s var(--ease-expo), border-width .28s var(--ease-expo);
+}
+body.nav-mode.nav-following #nav-right-rail #nav-recenter {
+  height: 0;
+  min-height: 0;
+  max-height: 0;
+  flex-basis: 0;
+  margin-block: -4px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  transform: scale(.72);
+  pointer-events: none;
+}
+body.nav-mode #nav-speed {
+  top: auto;
+  bottom: calc(var(--map-edge) + var(--safe-b) + 86px);
+  transform: none;
+}
+body.nav-mode:not(.nav-status-alert) #nav-hud .nav-hud-bar { display: none; }
+body.nav-mode #dir-panel,
+body.nav-mode #scrim,
+body.nav-mode #phone-chrome-top-zone,
+body.nav-mode #phone-chrome-right-zone,
+body.nav-mode #phone-chrome-bottom-zone,
+body.nav-mode #search-card,
+body.nav-mode #locate-pill-wrap,
+body.nav-mode #contribute-place-btn,
+body.nav-mode #layers-btn,
+body.nav-mode #zoom-pill,
+body.nav-mode #tab-bar,
+body.nav-mode #prayer-snack,
+body.nav-mode #eid-pill,
+body.nav-mode #events-pill,
+body.nav-mode #promos-pill {
+  display: none !important;
+}
+body.nav-mode #map .maplibregl-ctrl-top-right {
+  top: auto !important;
+  right: auto !important;
+  bottom: calc(var(--map-edge) + var(--safe-b) + 38px) !important;
+  left: max(var(--map-edge), env(safe-area-inset-left)) !important;
+}
+body.nav-mode #map .maplibregl-ctrl-top-right .maplibregl-ctrl { margin: 0 !important; }
+body.nav-mode .map-attribution-btn {
+  bottom: max(var(--map-edge), var(--safe-b)) !important;
+  display: inline-flex !important;
+}
 #map .maplibregl-canvas-container,
 #map .maplibregl-canvas {
   width: 100% !important;
@@ -8798,6 +9013,7 @@ body.dark-mode .fallback-notice {
 }
 .itin-navigate:hover { filter: brightness(1.12); transform: translateX(1px); }
 .itin-navigate svg { width: 15px; height: 15px; }
+.itin-navigate span { display: none; }
 .itin-card.active .itin-navigate { display: flex; }
 .itin-card.focused .itin-navigate { display: none; }
 @media (hover: hover) {
@@ -8847,7 +9063,12 @@ body.dark-mode .fallback-notice {
 
 #dir-sum-edit {
   flex-shrink: 0;
-  padding: 7px 14px;
+  width: 38px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font-size: var(--txt-base);
 }
 
@@ -9220,6 +9441,77 @@ body.dark-mode .fallback-notice {
   margin-left: 2px;
 }
 
+/* Route choice deck — stable in screen space while the map moves underneath it. */
+#route-map-picker {
+  position: absolute;
+  z-index: var(--z-bar);
+  top: max(14px, calc(var(--safe-t) + 10px));
+  left: 50%;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0);
+  transition: opacity .24s var(--ease-expo), transform .32s var(--ease-expo), visibility .24s;
+}
+#route-map-picker.is-hidden,
+body.nav-mode #route-map-picker {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(-50%, -12px, 0);
+}
+.route-map-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+}
+.route-map-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 82px;
+  height: 42px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--route-color) 45%, var(--border));
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--surface) 91%, var(--route-color));
+  color: var(--route-color);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 5px 16px color-mix(in srgb, #000 12%, transparent);
+  transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+.route-map-option:hover { transform: translateY(-1px); }
+.route-map-option:active { transform: scale(.97); }
+.route-map-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), 0 6px 16px color-mix(in srgb, var(--route-color) 20%, transparent);
+}
+.route-map-option.active {
+  border-color: var(--route-color);
+  background: var(--route-color);
+  color: #fff;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--route-color) 30%, transparent);
+}
+.route-map-option-line {
+  width: 22px;
+  height: 3px;
+  flex: 0 0 22px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.route-map-option strong {
+  font-family: var(--font-mono);
+  font-size: var(--txt-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* #10 — Route snackbar (Design E — Elevated Tag Card) */
 #route-snackbar {
   position: absolute;
@@ -9236,12 +9528,13 @@ body.dark-mode .fallback-notice {
   align-items: center;
   gap: var(--sp-2);
   animation: snackUp 0.3s var(--ease-expo) forwards;
-  max-width: min(calc(100vw - 24px), 360px);
+  max-width: min(calc(100vw - 16px), 420px);
   min-width: 0;
   width: max-content;
 }
 #route-snackbar.hide {
   display: flex !important;
+  visibility: hidden;
   animation: snackDown 0.25s ease-in forwards;
   pointer-events: none;
 }
@@ -11859,7 +12152,7 @@ body.dark-mode .sp-chip {
   }
 
   #route-snackbar {
-    bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+    bottom: calc(var(--tab-h) + var(--safe-b) + 8px);
   }
   #suggest-overlay,
   #timeline-overlay,

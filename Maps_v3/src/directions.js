@@ -11,6 +11,7 @@ import { EVT } from "./events.js";
 // --- State ---
 export let dirTravelMode = "drive";
 let routeRequested = false;
+let routeRequestId = 0;
 export let findingNearestMosque = false;
 export function setFindingNearestMosque(v) { findingNearestMosque = v; }
 
@@ -23,11 +24,20 @@ function osrmColor(mode) { return mode === "walk" ? getThemeWalkColor() : OSRM_C
 const OSRM_COLORS = { cycle: "#1FA86A", drive: "#FF6319" };
 const OSRM_CSS_COLORS = { walk: "var(--walk)", cycle: "var(--hsl-tram)", drive: "var(--hsl-trunk)" };
 export const OSRM_LABELS = { walk: "Walking", cycle: "Cycling", drive: "Driving" };
-const OSRM_ALT_COLORS = { walk: "#94A3B8", cycle: "#34D399", drive: "#FBBF24" };
-const ALT_ROUTE_OPACITY = 0.4;
-const ALT_ROUTE_WIDTH = 4;
+const DIRECT_ROUTE_COLORS = {
+  walk: ["#0E7490", "#2563EB", "#C026D3"],
+  cycle: ["#1FA86A", "#2563EB", "#C026D3"],
+  drive: ["#FF6319", "#2563EB", "#C026D3"],
+};
+const OSRM_ALT_COLORS = { walk: "#0E7490", cycle: "#2563EB", drive: "#2563EB" };
+const ALT_ROUTE_OPACITY = 0.72;
+const ALT_ROUTE_WIDTH = 5;
 const ROAD_CORRIDOR_OPACITY = 0.18;
 const ROAD_CORRIDOR_WIDTH_ADD = 10;
+
+function directRouteColor(mode, idx) {
+  return DIRECT_ROUTE_COLORS[mode]?.[idx] || DIRECT_ROUTE_COLORS.drive[idx] || "#2563EB";
+}
 
 export const dir = {
   origin: null, dest: null, pickField: null,
@@ -48,11 +58,15 @@ const dirErr = document.getElementById("dir-error");
 const dirItins = document.getElementById("dir-itineraries");
 const routeSnackbar = document.getElementById("route-snackbar");
 const snackTags = document.getElementById("snack-tags");
+const routeMapPicker = document.getElementById("route-map-picker");
+const routeMapOptions = document.getElementById("route-map-options");
 const dirClearBtn = document.getElementById("dir-clear-route");
 const dirShareBtn = document.getElementById("dir-share-route");
 const dirWaypointsCt = document.getElementById("dir-waypoints");
 const dirAddStopBtn = document.getElementById("dir-add-stop");
 const MAX_WAYPOINTS = 3;
+
+const directRouteLayerHandlers = new Map();
 
 // --- Waypoints ---
 function _createWaypointEl(idx) {
@@ -120,6 +134,7 @@ dirWaypointsCt.addEventListener("click", (e) => {
 // --- Panel open/close ---
 export function openDirPanel() {
   const wasShut = dirPanel.classList.contains("shut");
+  const showingDirectResults = Boolean(dir.directInfo && dir._directAlts?.length);
   if (isPhone()) {
     navigatePhonePage("map");
     if (wasShut) pushPhoneWindowState("directions");
@@ -130,11 +145,20 @@ export function openDirPanel() {
   dirPanel.style.height = "";
   document.getElementById("scrim").classList.remove("hide");
   routeSnackbar.classList.add("hide");
+  routeMapPicker?.classList.add("is-hidden");
+  routeMapPicker?.setAttribute("aria-hidden", "true");
   setActiveTab("dir-btn");
+  if (showingDirectResults) {
+    dirPanel.classList.add("results-shown", "route-overview");
+    dirPanel.classList.remove("search-editing", "route-focused");
+    _setDirectRoutePreview(true);
+  } else {
+    dirPanel.classList.remove("route-overview");
+  }
   if (dir.originMarker) dir.originMarker.getElement().style.display = "";
   if (dir.destMarker) dir.destMarker.getElement().style.display = "";
   dir.waypointMarkers.forEach(m => { if (m) m.getElement().style.display = ""; });
-  if (!dir.pickField) startPick("from");
+  if (!showingDirectResults && !dir.pickField) startPick("from");
   dirSnap.open();
 }
 
@@ -167,6 +191,41 @@ export function fullCloseDirPanel() {
   dir.waypoints = [];
   dirWaypointsCt.innerHTML = "";
   dirAddStopBtn.classList.remove("hide");
+}
+
+/** Start a genuinely new directions request from an external place action. */
+export function resetDirectionsForNewRequest() {
+  routeRequestId++;
+  dirPanel.classList.remove("route-focused", "full");
+  document.querySelectorAll(".itin-card").forEach((card) => card.classList.remove("focused", "card-hidden"));
+  clearRoute();
+  dir.itineraries = [];
+  dir.activeIdx = -1;
+  dir.origin = null;
+  dir.dest = null;
+  dirFrom.value = "";
+  dirTo.value = "";
+  if (dir.originMarker) { dir.originMarker.remove(); dir.originMarker = null; }
+  if (dir.destMarker) { dir.destMarker.remove(); dir.destMarker = null; }
+  clearWaypointMarkers();
+  dir.waypoints = [];
+  dirWaypointsCt.innerHTML = "";
+  dirAddStopBtn.classList.remove("hide");
+  dirItins.innerHTML = "";
+  dirEmpty.classList.remove("hide");
+  dirLoad.classList.add("hide");
+  dirErr.classList.add("hide");
+  routeRequested = false;
+  findingNearestMosque = false;
+  stopPick();
+  exitResultsMode();
+  _resetDirCloseButton();
+  dirSnap.remeasure();
+  return routeRequestId;
+}
+
+export function isDirectionsRequestCurrent(requestId) {
+  return requestId === routeRequestId;
 }
 
 // ─── Back-to-places context ───────────────────────────────────────────────────
@@ -308,6 +367,12 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
 document.querySelector(".snack-body").addEventListener("click", () => {
   if (dirPanel.classList.contains("shut")) openDirPanel();
 });
+routeMapOptions?.addEventListener("click", (event) => {
+  const option = event.target.closest(".route-map-option");
+  if (!option) return;
+  event.stopPropagation();
+  _selectDirectRoute(Number(option.dataset.directIdx));
+});
 document.getElementById("snackbar-close").addEventListener("click", (e) => {
   e.stopPropagation();
   fullCloseDirPanel();
@@ -384,6 +449,7 @@ dirShareBtn.addEventListener("click", async () => {
 
 let _pendingItinIdx = null;
 export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tmode, tdate, ttime, waypoints, itinIdx, _compressedItinerary }) {
+  resetDirectionsForNewRequest();
   _pendingItinIdx = itinIdx != null ? itinIdx : null;
   dir.origin = { lat: olat, lng: olng, name: oname || `${olat.toFixed(4)}, ${olng.toFixed(4)}` };
   dir.dest = { lat: dlat, lng: dlng, name: dname || `${dlat.toFixed(4)}, ${dlng.toFixed(4)}` };
@@ -1413,18 +1479,22 @@ function pickTransitEndpoint(lat1, lon1, lat2, lon2) {
 dirGo.addEventListener("click", findRoutes);
 
 export async function findRoutes() {
+  const requestId = ++routeRequestId;
   setGoLoading(true);
   routeRequested = true;
   if (!dir.origin && dirFrom.value.trim()) {
     showDirLoading();
     const r = await autoResolveLocation(dirFrom);
+    if (requestId !== routeRequestId) return;
     if (r) { dir.origin = r; dirFrom.value = r.name; placeOriginMarker(r.lng, r.lat); autoSetNearestMosque(r.lat, r.lng); }
   }
   if (!dir.dest && dirTo.value.trim()) {
     showDirLoading();
     const r = await autoResolveLocation(dirTo);
+    if (requestId !== routeRequestId) return;
     if (r) { dir.dest = r; dirTo.value = r.name; placeDestMarker(r.lng, r.lat); }
   }
+  if (requestId !== routeRequestId) return;
   updateGoButton();
   if (!dir.origin) { showDirError("Select an origin on the map or type a place"); return; }
   if (!dir.dest) { showDirError("Select a destination on the map or type a place"); return; }
@@ -1435,6 +1505,7 @@ export async function findRoutes() {
       const wpInput = document.getElementById(`dir-wp-${i}`);
       if (wpInput?.value.trim()) {
         const r = await autoResolveLocation(wpInput);
+        if (requestId !== routeRequestId) return;
         if (r) { dir.waypoints[i] = r; wpInput.value = r.name; placeWaypointMarker(i, r.lng, r.lat); }
       }
     }
@@ -1442,11 +1513,11 @@ export async function findRoutes() {
   // Remove null waypoints (empty rows the user didn't fill)
   const validWaypoints = dir.waypoints.filter(Boolean);
 
-  if (dirTravelMode !== "transit") { await findRoutesDirect(dirTravelMode); return; }
+  if (dirTravelMode !== "transit") { await findRoutesDirect(dirTravelMode, { requestId }); return; }
 
   // Transit with waypoints — chain A→B segments
   if (validWaypoints.length > 0) {
-    await _findTransitWithWaypoints(validWaypoints);
+    await _findTransitWithWaypoints(validWaypoints, requestId);
     return;
   }
 
@@ -1474,7 +1545,7 @@ export async function findRoutes() {
   if (!dtEndpoint) {
     // Cross-regional or unknown area — skip Digitransit, go straight to Transitous
     console.warn("[Transit] Route spans multiple/unknown regions, using Transitous…");
-    await findRoutesTransitous();
+    await findRoutesTransitous(requestId);
     return;
   }
   try {
@@ -1486,6 +1557,7 @@ export async function findRoutes() {
     });
     if (!res.ok) throw new Error(`dt_${res.status}`);
     const json = await res.json();
+    if (requestId !== routeRequestId) return;
     if (json.errors) throw new Error("dt_query");
     const edges = json.data?.planConnection?.edges;
     if (!edges || !edges.length) throw new Error("dt_empty");
@@ -1493,8 +1565,9 @@ export async function findRoutes() {
     dir.itineraries = edges.map((e) => e.node);
     renderItineraries();
   } catch (err) {
+    if (requestId !== routeRequestId) return;
     console.warn("[Transit] Digitransit unavailable (" + (err.message || err) + "), trying Transitous…");
-    await findRoutesTransitous();
+    await findRoutesTransitous(requestId);
   }
 }
 
@@ -1528,7 +1601,8 @@ function normalizeMOTISItinerary(itin) {
   };
 }
 
-async function findRoutesTransitous() {
+async function findRoutesTransitous(requestId = routeRequestId) {
+  if (requestId !== routeRequestId) return;
   const arriveBy = dirTimeMode === "arrive";
   const time = dirUseNow ? new Date().toISOString() : new Date(`${getDateValue()}T${getTimeValue()}`).toISOString();
   const params = new URLSearchParams({ fromPlace: `${dir.origin.lat},${dir.origin.lng}`, toPlace: `${dir.dest.lat},${dir.dest.lng}`, time, arriveBy: arriveBy ? "true" : "false", numItineraries: "5", transitModes: "TRANSIT" });
@@ -1539,11 +1613,13 @@ async function findRoutesTransitous() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
+    if (requestId !== routeRequestId) return;
     const itins = json.itineraries;
     if (!itins || !itins.length) { showDirError("No routes found"); return; }
     dir.usingFallback = true;
     dir.itineraries = itins.map(normalizeMOTISItinerary);
   } catch (err) {
+    if (requestId !== routeRequestId) return;
     showDirError("No routes found");
     console.error("[Transitous] Failed:", err.message);
     return;
@@ -1552,7 +1628,8 @@ async function findRoutesTransitous() {
 }
 
 // Transit routing with intermediate waypoints — chain A→B segments sequentially
-async function _findTransitWithWaypoints(waypoints) {
+async function _findTransitWithWaypoints(waypoints, requestId = routeRequestId) {
+  if (requestId !== routeRequestId) return;
   showDirLoading();
   dirPanel.classList.remove("search-editing");
   const stops = [dir.origin, ...waypoints, dir.dest];
@@ -1563,6 +1640,7 @@ async function _findTransitWithWaypoints(waypoints) {
   let usedFallback = false;
 
   for (let i = 0; i < stops.length - 1; i++) {
+    if (requestId !== routeRequestId) return;
     const from = stops[i], to = stops[i + 1];
     const itin = await _transitSegment(from, to, departureTime);
     if (!itin) {
@@ -1576,6 +1654,8 @@ async function _findTransitWithWaypoints(waypoints) {
     const arrivalMs = new Date(lastLeg.end.scheduledTime).getTime();
     departureTime = new Date(arrivalMs + 120000).toISOString();
   }
+
+  if (requestId !== routeRequestId) return;
 
   const startTime = combinedLegs[0].start.scheduledTime;
   const endTime = combinedLegs[combinedLegs.length - 1].end.scheduledTime;
@@ -1825,7 +1905,7 @@ async function _osrmDirectRoute(mode) {
     `${dir.dest.lng},${dir.dest.lat}`,
   ].join(";");
   const hasWaypoints = dir.waypoints.filter(Boolean).length > 0;
-  const altParam = hasWaypoints ? "" : "&alternatives=3";
+  const altParam = hasWaypoints ? "" : "&alternatives=true";
   const url = `${OSRM_URLS[mode]}/${points}?overview=full&geometries=geojson&steps=true${altParam}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Routing error ${res.status}`);
@@ -1861,7 +1941,60 @@ function _osrmProcessRoute(route, mode) {
   };
 }
 
-export async function findRoutesDirect(mode, { preserveView = false } = {}) {
+function _directRoutePoint(route, progress) {
+  const coords = route?.coords || [];
+  if (!coords.length) return null;
+  return coords[Math.min(coords.length - 1, Math.round((coords.length - 1) * progress))];
+}
+
+function _sameDirectRoute(a, b) {
+  const distanceRatio = Math.abs((a.distance || 0) - (b.distance || 0)) / Math.max(a.distance || 1, b.distance || 1);
+  if (distanceRatio > 0.015) return false;
+  const separations = [0.2, 0.5, 0.8].map((progress) => {
+    const aPoint = _directRoutePoint(a, progress), bPoint = _directRoutePoint(b, progress);
+    return aPoint && bPoint ? haversineDistance(aPoint[1], aPoint[0], bPoint[1], bPoint[0]) : 0;
+  });
+  return separations.reduce((sum, value) => sum + value, 0) / separations.length < 0.05 && Math.max(...separations) < 0.12;
+}
+
+function _directDurationLabel(seconds) {
+  const minutes = Math.round(seconds / 60);
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function _bindDirectRouteLayer(layerId, idx) {
+  const previous = directRouteLayerHandlers.get(layerId);
+  if (previous) map.off("click", layerId, previous);
+  const handler = () => _selectDirectRoute(idx);
+  map.on("click", layerId, handler);
+  directRouteLayerHandlers.set(layerId, handler);
+}
+
+function _clearDirectRouteLayerHandlers() {
+  directRouteLayerHandlers.forEach((handler, layerId) => map.off("click", layerId, handler));
+  directRouteLayerHandlers.clear();
+}
+
+function _setDirectRoutePreview(active) {
+  document.body.classList.toggle("route-preview-active", active);
+  window.dispatchEvent(new CustomEvent("hf:route-preview-changed", { detail: { active } }));
+}
+
+function _fitDirectRouteBounds(bounds, duration = 600) {
+  if (!bounds || bounds.isEmpty()) return;
+  const mob = window.innerWidth <= 768;
+  const preview = document.body.classList.contains("route-preview-active");
+  map.fitBounds(bounds, {
+    padding: mob
+      ? { top: preview ? 94 : 42, bottom: preview ? 118 : 92, left: 24, right: 24 }
+      : { top: preview ? 92 : 64, bottom: preview ? 96 : 64, left: 52, right: 52 },
+    duration,
+  });
+}
+
+export async function findRoutesDirect(mode, { preserveView = false, requestId = null } = {}) {
+  const activeRequestId = requestId ?? ++routeRequestId;
+  if (activeRequestId !== routeRequestId) return;
   if (!preserveView) {
     showDirLoading();
     dirPanel.classList.remove("search-editing");
@@ -1871,68 +2004,74 @@ export async function findRoutesDirect(mode, { preserveView = false } = {}) {
     _dtDirectRoute(mode).then(d => [d]),
     _osrmDirectRoute(mode),
   ]);
+  if (activeRequestId !== routeRequestId) return;
   const dtRoutes = dtResult.status === "fulfilled" ? dtResult.value : [];
   const osrmRoutes = osrmResult.status === "fulfilled" ? osrmResult.value : [];
   if (!dtRoutes.length && !osrmRoutes.length) {
     showDirError("Could not find route");
     return;
   }
-  // Merge: DT first (typically more accurate locally), then OSRM alts
-  // Deduplicate by skipping OSRM routes whose distance is within 5% of an existing route
-  const allRoutes = [...dtRoutes];
-  for (const osrmRt of osrmRoutes) {
-    const dominated = allRoutes.some(r => Math.abs(r.distance - osrmRt.distance) / (r.distance || 1) < 0.05);
-    if (!dominated) allRoutes.push(osrmRt);
+  // Merge DT first (typically more accurate locally), then keep distinct OSRM
+  // alternatives. Similar ETA is not a duplicate when the road geometry differs.
+  const allRoutes = [];
+  const candidates = [...dtRoutes, ...osrmRoutes];
+  const fastestDuration = Math.min(...candidates.map((route) => route.duration).filter(Number.isFinite));
+  for (const candidate of candidates.filter((route) => route.duration <= fastestDuration + 600)) {
+    if (allRoutes.length >= 3) break;
+    if (!allRoutes.some((route) => _sameDirectRoute(route, candidate))) allRoutes.push(candidate);
   }
-  // If DT failed, OSRM routes are all we have
-  if (!allRoutes.length) allRoutes.push(...osrmRoutes);
+  // A provider can return only one route; never manufacture a fake alternative.
+  if (!allRoutes.length) allRoutes.push(...osrmRoutes.slice(0, 3));
+  // A reroute updates the active guidance line in place; alternatives belong only
+  // to route picking, never to the live navigation camera.
+  const displayRoutes = preserveView ? allRoutes.slice(0, 1) : allRoutes;
   clearRoute();
-  dir._directAlts = allRoutes;
+  dir._directAlts = displayRoutes;
   dir._directMode = mode;
+  dir.activeIdx = 0;
 
-  const color = osrmColor(mode);
+  const color = directRouteColor(mode, 0);
   const cssColor = OSRM_CSS_COLORS[mode];
 
   // --- Draw alt route lines on map (all except primary, which is drawn by _drawDirectPrimary) ---
-  allRoutes.forEach((alt, i) => {
+  displayRoutes.forEach((alt, i) => {
     if (i === 0) return; // primary drawn separately
     const srcId = `dir-alt-src-${i - 1}`, lnId = `dir-alt-ln-${i - 1}`, casId = `dir-alt-cas-${i - 1}`;
     const geoData = { type: "Feature", geometry: { type: "LineString", coordinates: alt.coords } };
     map.addSource(srcId, { type: "geojson", data: geoData });
     map.addLayer({ id: casId, type: "line", source: srcId, paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 6 : 7, "line-opacity": 0.5 }, layout: { "line-cap": "round", "line-join": "round" } });
-    map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": color, "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+    map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": directRouteColor(mode, i), "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+    _bindDirectRouteLayer(lnId, i);
     dir.routeSources.push(srcId);
     dir.routeLayers.push(casId, lnId);
   });
 
   // --- Draw primary route ---
-  _drawDirectPrimary(allRoutes[0], mode, color);
+  _drawDirectPrimary(displayRoutes[0], mode, color);
 
-  // --- Fit bounds to primary route ---
-  const { coords } = allRoutes[0];
+  // --- Fit bounds to the complete route set, never the current GPS fix ---
   const bounds = new maplibregl.LngLatBounds();
-  coords.forEach((c) => bounds.extend(c));
-  const mob = window.innerWidth <= 768;
-  const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
-  if (!preserveView) {
-    map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
-  }
+  displayRoutes.forEach((route) => route.coords.forEach((c) => bounds.extend(c)));
 
   // --- Store route-preview data for primary ---
-  const data = allRoutes[0];
+  const data = displayRoutes[0];
   const durMin = Math.round(data.duration / 60);
   const distKm = (data.distance / 1000).toFixed(1);
   dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
-  dir.activeIdx = 0;
+  if (!preserveView) {
+    enterResultsMode();
+    closeDirPanel();
+    requestAnimationFrame(() => _fitDirectRouteBounds(bounds));
+  }
 
   // --- Render route cards ---
   dirEmpty.classList.add("hide");
   dirLoad.classList.add("hide");
   dirErr.classList.add("hide");
-  dirItins.innerHTML = allRoutes.map((rt, i) => {
+  dirItins.innerHTML = displayRoutes.map((rt, i) => {
     const rtDurMin = Math.round(rt.duration / 60);
     const rtDistKm = (rt.distance / 1000).toFixed(1);
-    const durLabel = rtDurMin < 60 ? `${rtDurMin} min` : `${Math.floor(rtDurMin / 60)}h ${rtDurMin % 60}m`;
+    const durLabel = _directDurationLabel(rt.duration);
     return `<div class="itin-card direct-card${i === 0 ? " active" : ""}" data-direct-idx="${i}" style="--dc:${cssColor};--i:${i}">
         <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + rt.duration * 1000))}</div><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${rtDistKm} km</div></div>
         <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
@@ -1947,17 +2086,14 @@ export async function findRoutesDirect(mode, { preserveView = false } = {}) {
     navigate.type = "button";
     navigate.title = "Start navigation";
     navigate.setAttribute("aria-label", "Start navigation");
-    navigate.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
+    navigate.innerHTML = '<span>Start route</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
     expand.before(navigate);
   });
   document.getElementById("dir-btn").classList.add("route-active");
   dirClearBtn.classList.remove("hide");
   dirShareBtn.classList.remove("hide");
   _bindDirectCardClicks();
-  if (!preserveView) {
-    enterResultsMode();
-    updateSnackbar();
-  }
+  updateSnackbar();
 }
 
 /**
@@ -1968,10 +2104,14 @@ export async function findRoutesDirect(mode, { preserveView = false } = {}) {
  */
 function _drawDirectPrimary(data, mode, color) {
   const { coords, srcData, stepFeatures } = data;
-  const altColor = data.altColor || OSRM_ALT_COLORS[mode];
 
   // Remove existing primary layers
   ["dir-highlight-ln", "dir-direct-ln", "dir-direct-cas", "dir-corridor-ln"].forEach(id => {
+    if (id === "dir-direct-ln") {
+      const handler = directRouteLayerHandlers.get(id);
+      if (handler) map.off("click", id, handler);
+      directRouteLayerHandlers.delete(id);
+    }
     if (map.getLayer(id)) map.removeLayer(id);
   });
   ["dir-direct-src", "dir-highlight-src", "dir-corridor-src"].forEach(id => {
@@ -1998,6 +2138,7 @@ function _drawDirectPrimary(data, mode, color) {
     },
     layout: { "line-cap": "round", "line-join": "round" },
   });
+  _bindDirectRouteLayer("dir-direct-ln", dir.activeIdx >= 0 ? dir.activeIdx : 0);
 
   // Step highlight
   map.addSource("dir-highlight-src", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -2018,7 +2159,7 @@ function _selectDirectRoute(idx) {
   dir.activeIdx = idx;
   const data = alts[idx];
   const mode = dir._directMode;
-  const color = osrmColor(mode);
+  const color = directRouteColor(mode, idx);
 
   // Update active card
   document.querySelectorAll(".itin-card.direct-card").forEach((c) => {
@@ -2050,13 +2191,10 @@ function _selectDirectRoute(idx) {
   const durMin = Math.round(data.duration / 60);
   const distKm = (data.distance / 1000).toFixed(1);
   dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
-
-  // Fit bounds to new route
+  // Keep every option in view while the user compares routes.
   const bounds = new maplibregl.LngLatBounds();
-  data.coords.forEach((c) => bounds.extend(c));
-  const mob = window.innerWidth <= 768;
-  const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
-  map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
+  alts.forEach((alt) => alt.coords.forEach((c) => bounds.extend(c)));
+  _fitDirectRouteBounds(bounds);
 
   updateSnackbar();
   if (dirPanel.classList.contains("results-shown") && !dirPanel.classList.contains("route-focused")) {
@@ -2087,7 +2225,8 @@ function _ensureAltLayerForRoute0(alts, mode, color, activeIdx) {
   map.addSource(srcId, { type: "geojson", data: geoData });
   const beforeLayer = map.getLayer("dir-corridor-ln") ? "dir-corridor-ln" : undefined;
   map.addLayer({ id: casId, type: "line", source: srcId, paint: { "line-color": "#ffffff", "line-width": mode === "walk" ? 6 : 7, "line-opacity": 0.5 }, layout: { "line-cap": "round", "line-join": "round" } }, beforeLayer);
-  map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": color, "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+  map.addLayer({ id: lnId, type: "line", source: srcId, paint: { "line-color": directRouteColor(mode, 0), "line-width": ALT_ROUTE_WIDTH, "line-opacity": ALT_ROUTE_OPACITY, "line-dasharray": mode === "walk" ? [1.5, 2] : [1] }, layout: { "line-cap": "round", "line-join": "round" } });
+  _bindDirectRouteLayer(lnId, 0);
   dir.routeSources.push(srcId);
   dir.routeLayers.push(casId, lnId);
 }
@@ -2100,7 +2239,7 @@ function _bindDirectCardClicks() {
     card.querySelector(".itin-navigate")?.addEventListener("click", (e) => {
       e.stopPropagation();
       _selectDirectRoute(parseInt(card.dataset.directIdx, 10));
-      window.dispatchEvent(new CustomEvent("hf:start-navigation-requested"));
+      _requestNavigationStart();
     });
     card.onclick = (e) => {
       const idx = parseInt(card.dataset.directIdx);
@@ -2123,6 +2262,31 @@ function _bindDirectCardClicks() {
   });
 }
 
+let navigationStartPending = false;
+function _requestNavigationStart() {
+  if (navigationStartPending) return;
+  const finish = () => {
+    if (!navigationStartPending) return;
+    navigationStartPending = false;
+    dirPanel.classList.remove("dir-panel-nav-exit");
+    dirPanel.removeEventListener("animationend", onAnimationEnd);
+    clearTimeout(timer);
+    closeDirPanel();
+    window.dispatchEvent(new CustomEvent("hf:start-navigation-requested"));
+  };
+  const onAnimationEnd = (event) => {
+    if (event.target === dirPanel) finish();
+  };
+  if (dirPanel.classList.contains("shut") || dirPanel.hidden) {
+    window.dispatchEvent(new CustomEvent("hf:start-navigation-requested"));
+    return;
+  }
+  navigationStartPending = true;
+  dirPanel.addEventListener("animationend", onAnimationEnd);
+  dirPanel.classList.add("dir-panel-nav-exit");
+  const timer = setTimeout(finish, 240);
+}
+
 /**
  * Focus (expand full-screen) a direct route card.
  * @param {number} idx - Index in dir._directAlts
@@ -2141,6 +2305,8 @@ function _focusDirectRoute(idx) {
   const isMobile_fr = window.innerWidth <= 768;
   const shouldSync_fr = isMobile_fr && !dirPanel.classList.contains("shut");
   const beforeH_fr = shouldSync_fr ? dirPanel.offsetHeight : 0;
+  _setDirectRoutePreview(true);
+  dirPanel.classList.remove("route-overview");
   dirPanel.classList.add("route-focused");
   document.querySelectorAll(".itin-card.direct-card").forEach((c) => {
     const cardIdx = parseInt(c.dataset.directIdx);
@@ -2291,6 +2457,10 @@ function focusRoute(idx) {
 function unfocusRoute() {
   dirPanel.classList.remove("route-focused");
   document.querySelectorAll(".itin-card").forEach((c) => { c.classList.remove("focused", "card-hidden"); });
+  if (dir.directInfo && dir._directAlts?.length && dirPanel.classList.contains("results-shown")) {
+    dirPanel.classList.add("route-overview");
+    _setDirectRoutePreview(true);
+  }
   // remeasure handles the smooth transition from full-screen back to snap height
   dirSnap.remeasure();
 }
@@ -2310,23 +2480,55 @@ function highlightDirectStep(idx, stepEl) {
   }
 }
 
-document.getElementById("dir-focused-back").addEventListener("click", unfocusRoute);
-document.getElementById("dir-focused-close").addEventListener("click", () => { unfocusRoute(); closeDirPanel(); });
+document.getElementById("dir-focused-close").addEventListener("click", unfocusRoute);
 
 export function clearRoute() {
+  _clearDirectRouteLayerHandlers();
   dir.routeLayers.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
   dir.routeSources.forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = []; dir.directInfo = null;
   dir._directAlts = null; dir._directMode = null;
+  _setDirectRoutePreview(false);
+  routeMapPicker?.classList.add("is-hidden");
+  routeMapPicker?.setAttribute("aria-hidden", "true");
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
   dirClearBtn.classList.add("hide");
   dirShareBtn.classList.add("hide");
 }
 
+/** Remove route-picking alternatives once live guidance has started. */
+export function keepActiveDirectRouteOnly() {
+  dir.routeLayers.filter((id) => id.startsWith("dir-alt-")).forEach((id) => {
+    const handler = directRouteLayerHandlers.get(id);
+    if (handler) map.off("click", id, handler);
+    directRouteLayerHandlers.delete(id);
+    if (map.getLayer(id)) map.removeLayer(id);
+  });
+  dir.routeSources.filter((id) => id.startsWith("dir-alt-")).forEach((id) => {
+    if (map.getSource(id)) map.removeSource(id);
+  });
+  dir.routeLayers = dir.routeLayers.filter((id) => !id.startsWith("dir-alt-"));
+  dir.routeSources = dir.routeSources.filter((id) => !id.startsWith("dir-alt-"));
+}
+
 /** Return the selected direct route in the shape used by live navigation. */
 export function getActiveDirectRoute() {
   return dir._directAlts?.[dir.activeIdx] || null;
+}
+
+function renderRouteMapPicker() {
+  if (!routeMapPicker || !routeMapOptions) return;
+  const routes = dir.directInfo && dir._directAlts?.length && dirPanel.classList.contains("shut")
+    ? dir._directAlts
+    : [];
+  routeMapPicker.classList.toggle("is-hidden", routes.length === 0);
+  routeMapPicker.setAttribute("aria-hidden", String(routes.length === 0));
+  routeMapOptions.innerHTML = routes.map((route, idx) => {
+    const color = directRouteColor(dir._directMode, idx);
+    const active = idx === dir.activeIdx;
+    return `<button type="button" class="route-map-option${active ? " active" : ""}" data-direct-idx="${idx}" style="--route-color:${color}" aria-label="Choose ${esc(_directDurationLabel(route.duration))} route" aria-pressed="${active}"><span class="route-map-option-line"></span><strong>${esc(_directDurationLabel(route.duration))}</strong></button>`;
+  }).join("");
 }
 
 function updateSnackbar() {
@@ -2340,6 +2542,7 @@ function updateSnackbar() {
         `<span class="snack-tag snack-tag-dur">${durMin} min</span>`,
         `<span class="snack-tag snack-tag-dist">${distKm} km</span>`,
       ].join("");
+      renderRouteMapPicker();
       routeSnackbar.classList.remove("hide");
     } else if (dir.itineraries[dir.activeIdx]) {
       const itin = dir.itineraries[dir.activeIdx];
@@ -2353,11 +2556,14 @@ function updateSnackbar() {
         `<span class="snack-tag snack-tag-mode">${chainHtml}</span>`,
         `<span class="snack-tag snack-tag-dur">${durMin} min</span>`,
       ].join("");
+      renderRouteMapPicker();
       routeSnackbar.classList.remove("hide");
     } else {
+      renderRouteMapPicker();
       routeSnackbar.classList.add("hide");
     }
   } else {
+    renderRouteMapPicker();
     routeSnackbar.classList.add("hide");
   }
 }
@@ -2416,13 +2622,17 @@ function enterResultsMode() {
   // Apply class changes — on mobile this hides inputs/mode-bar/go, shows summary
   dirPanel.classList.add("results-shown");
   dirPanel.classList.remove("search-editing");
+  _setDirectRoutePreview(Boolean(dir.directInfo && dir._directAlts?.length));
 
   // Let remeasure handle snapping to the correct height with smooth CSS transition.
   // This avoids transitioning to raw content height (which could be huge for
   // step-by-step routes) and then snapping down — remeasure caps correctly.
   syncResultsPanelHeight();
 }
-function exitResultsMode() { dirPanel.classList.remove("results-shown", "search-editing"); }
+function exitResultsMode() {
+  dirPanel.classList.remove("results-shown", "search-editing");
+  _setDirectRoutePreview(false);
+}
 dirSumEdit.addEventListener("click", () => { dirPanel.classList.toggle("search-editing"); dirSnap.remeasure(); });
 
 function _itinSkeletonHTML() {

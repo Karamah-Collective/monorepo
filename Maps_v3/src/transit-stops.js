@@ -2,7 +2,7 @@ import { map } from "./map-init.js";
 import { DIGITRANSIT_URL, DIGITRANSIT_WALTTI_URL, DT_API_KEY } from "./config.js";
 import { TRANSIT_COLORS, modeIcon } from "./icons.js";
 import { esc, escA, copyToClipboard, showToast, shareUrl, encodeCompactPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup } from "./utils.js";
-import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, startPick } from "./directions.js";
+import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, startPick, resetDirectionsForNewRequest } from "./directions.js";
 
 const _starSVG = (filled) =>
   `<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="${filled ? "currentColor" : "none"}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
@@ -216,6 +216,7 @@ function _openStopFeaturePopup(f) {
       // rationale — this was the other call site of the same bug).
     } else if (dirBtn) {
       const stopName = displayName || `${(+lat).toFixed(5)}, ${(+lng).toFixed(5)}`;
+      resetDirectionsForNewRequest();
       dir.origin = { lat, lng, name: stopName };
       document.getElementById("dir-from").value = stopName;
       placeOriginMarker(lng, lat);
@@ -787,4 +788,4 @@ async function fetchStopRoutesFromOSM(lat, lon) {
   }
   return [];
 }
-// 
+//

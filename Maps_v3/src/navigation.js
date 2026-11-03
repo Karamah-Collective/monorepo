@@ -3,6 +3,8 @@ import {
   dir,
   dirTravelMode,
   findRoutesDirect,
+  clearRoute,
+  keepActiveDirectRouteOnly,
   getActiveDirectRoute,
   maneuverIconSvg,
   stepInstruction,
@@ -30,7 +32,7 @@ const NAV_HEADING_MIN_SPEED_MS = 2;
 const NAV_HEADING_MIN_MOTION_M = 8;
 const NAV_HEADING_STRONG_MOTION_M = 12;
 const NAV_HEADING_MAX_MOTION_SPEED_MS = 70;
-const NAV_HEADING_DEADBAND_DEG = 3;
+const NAV_HEADING_DEADBAND_DEG = 4;
 const NAV_HEADING_MIN_APPLY_DEG = 4;
 const NAV_HEADING_MAX_JUMP_DEG = 75;
 const NAV_HEADING_AGREE_DEG = 35;
@@ -128,6 +130,7 @@ function setFollowing(next) {
   followButton?.classList.toggle("is-active", following);
   followButton?.setAttribute("aria-label", following ? "Following location" : "Recenter on location");
   followButton?.setAttribute("aria-pressed", String(following));
+  if (followButton) followButton.tabIndex = following ? -1 : 0;
   document.body.classList.toggle("nav-following", following);
 }
 
@@ -135,6 +138,7 @@ function updateStatus(text, tone = "") {
   if (!statusEl) return;
   statusEl.textContent = text;
   statusEl.dataset.tone = tone;
+  document.body.classList.toggle("nav-status-alert", Boolean(tone) || text !== "Following route");
 }
 
 function updateFollowButton() {
@@ -142,6 +146,7 @@ function updateFollowButton() {
   followButton.classList.toggle("is-active", following);
   followButton.setAttribute("aria-pressed", String(following));
   followButton.setAttribute("aria-label", following ? "Following location" : "Recenter on location");
+  followButton.tabIndex = following ? -1 : 0;
 }
 
 function renderWaiting() {
@@ -293,7 +298,8 @@ function updateNavigationBearing(location, processed) {
   if (navigationBearing === null) navigationBearing = normalizeBearing(map.getBearing());
   if (navigationBearingTarget === null) navigationBearingTarget = navigationBearing;
   const delta = degreesDelta(candidate, navigationBearingTarget);
-  if (Math.abs(delta) < NAV_HEADING_DEADBAND_DEG) return;
+  const renderedDelta = degreesDelta(candidate, navigationBearing);
+  if (Math.abs(delta) < NAV_HEADING_DEADBAND_DEG && Math.abs(renderedDelta) < NAV_HEADING_MIN_APPLY_DEG) return;
   if (Math.abs(delta) > NAV_HEADING_MAX_JUMP_DEG && orientationHasLock && !motionIsStrong && road === null) return;
   navigationBearingTarget = candidate;
   orientationHasLock = true;
@@ -306,9 +312,6 @@ function stepNavigationBearing(now) {
   const elapsed = bearingLastFrameAt ? Math.min(100, Math.max(0, now - bearingLastFrameAt)) : 16;
   bearingLastFrameAt = now;
   const delta = degreesDelta(navigationBearingTarget, navigationBearing);
-  if (Math.abs(delta) < NAV_HEADING_MIN_APPLY_DEG) {
-    return { changed: false, moving: false };
-  }
   const rate = navigationSpeed >= 45
     ? NAV_HEADING_VERY_HIGH_SPEED_RATE_DEG_PER_SEC
     : navigationSpeed >= 20
@@ -496,6 +499,7 @@ export function startNavigation() {
     return false;
   }
   route = nextRoute;
+  keepActiveDirectRouteOnly();
   if (window.innerWidth <= 768) navigatePhonePage("map");
   active = true;
   following = true;
@@ -508,7 +512,11 @@ export function startNavigation() {
   bearingLastFrameAt = 0;
   navigationSpeed = 0;
   resetRoadBearing();
+  document.body.classList.remove("route-preview-active");
+  window.dispatchEvent(new CustomEvent("hf:route-preview-changed", { detail: { active: false } }));
+  map.resize();
   if (map.getZoom() !== navigationZoom) map.jumpTo({ zoom: navigationZoom });
+  requestAnimationFrame(() => map.resize());
   position = null;
   previousLocation = null;
   lastSample = null;
@@ -548,10 +556,12 @@ export function stopNavigation() {
   if (cameraRaf) cancelAnimationFrame(cameraRaf);
   cameraRaf = 0;
   document.body.classList.remove("nav-mode", "nav-following");
+  document.body.classList.remove("nav-status-alert");
   setNavigationCameraActive(false);
   hud?.classList.add("hide");
   speedometer?.classList.add("hide");
   removeProgressLayer();
+  clearRoute();
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 

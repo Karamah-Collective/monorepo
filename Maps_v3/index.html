@@ -54,6 +54,9 @@
     </div>
     <div id="app">
       <div id="map"></div>
+      <div id="route-map-picker" class="route-map-picker is-hidden" aria-hidden="true">
+        <div id="route-map-options" class="route-map-options" role="group" aria-label="Choose a route"></div>
+      </div>
       <div id="map-filter-carousel" class="phone-map-filter-carousel" aria-hidden="true">
         <div id="map-filter-chips" class="phone-edge-carousel" role="group" aria-label="Filter map"></div>
       </div>
@@ -474,7 +477,9 @@
           <button
             id="dir-sum-edit"
             class="btn-primary"
-            aria-label="Edit search"
+            type="button"
+            title="Edit route"
+            aria-label="Edit route"
           >
             <svg
               width="14"
@@ -489,31 +494,12 @@
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
-            Edit
           </button>
         </div>
 
         <!-- Focused route header (shown in focus mode) -->
         <div id="dir-focused-head">
           <div class="focused-top-row">
-            <button
-              id="dir-focused-back"
-              class="btn-roundel"
-              aria-label="Back to results"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
             <div class="focused-od">
               <span class="dir-dot origin"></span>
               <span id="focused-origin" class="focused-od-text">Origin</span>
@@ -534,8 +520,8 @@
             </div>
             <button
               id="dir-focused-close"
-              class="sheet-x btn-roundel"
-             aria-label="Back"
+              class="btn-roundel"
+              aria-label="Back to routes"
             >
               <svg
                 width="16"
@@ -546,7 +532,7 @@
                 stroke-width="2.5"
                 stroke-linecap="round"
               >
-                <path d="M18 6L6 18M6 6l12 12" />
+                <path d="M19 12H5M12 19l-7-7 7-7" />
               </svg>
             </button>
           </div>
@@ -1945,13 +1931,7 @@
       <!-- ─── Live navigation HUD ─── -->
       <section id="nav-hud" class="hide" aria-live="polite" aria-label="Live navigation">
         <div class="nav-hud-bar">
-          <button id="nav-stop" class="nav-hud-btn nav-hud-btn--stop" aria-label="Stop navigation">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6h12v12H6z"/></svg>
-          </button>
           <span id="nav-status">Following route</span>
-          <button id="nav-mute" class="nav-hud-btn" aria-label="Mute navigation" aria-pressed="false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M19 9a5 5 0 0 1 0 6"/><path d="M22 6a9 9 0 0 1 0 12"/></svg>
-          </button>
         </div>
         <div class="nav-turn-card">
           <div id="nav-turn-icon" class="nav-turn-icon" aria-hidden="true"></div>
@@ -1961,15 +1941,21 @@
             <div id="nav-next-instruction" class="nav-next-instruction">Keep the map visible while location starts</div>
           </div>
         </div>
-        <div class="nav-hud-controls">
-          <button id="nav-recenter" class="nav-hud-btn is-active" aria-label="Following location" aria-pressed="true">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-          </button>
-          <button id="nav-overview" class="nav-hud-btn" aria-label="Show route overview">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 15 3-3 2 2 4-5 2 3"/></svg>
-          </button>
-        </div>
       </section>
+      <aside id="nav-right-rail" aria-label="Navigation controls">
+        <button id="nav-stop" class="nav-hud-btn nav-hud-btn--stop" aria-label="Stop navigation" title="End navigation">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6h12v12H6z"/></svg>
+        </button>
+        <button id="nav-mute" class="nav-hud-btn" aria-label="Mute navigation" aria-pressed="false" title="Mute guidance">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M19 9a5 5 0 0 1 0 6"/><path d="M22 6a9 9 0 0 1 0 12"/></svg>
+        </button>
+        <button id="nav-recenter" class="nav-hud-btn is-active" aria-label="Following location" aria-pressed="true" title="Recenter map">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+        <button id="nav-overview" class="nav-hud-btn" aria-label="Show route overview" title="Route overview">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 15 3-3 2 2 4-5 2 3"/></svg>
+        </button>
+      </aside>
       <aside id="nav-speed" class="hide" aria-label="Current speed">
         <span id="nav-speed-value">0</span><small>km/h</small>
       </aside>

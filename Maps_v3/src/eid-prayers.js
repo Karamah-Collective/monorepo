@@ -5,7 +5,7 @@
 
 import { focusMapPoint, map } from "./map-init.js";
 import { esc, fadeAndRemovePopup, showToast, copyToClipboard, shareUrl, requestLocation } from "./utils.js";
-import { dir, placeDestMarker, updateGoButton, openDirPanel, placeOriginMarker, reverseGeocode } from "./directions.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, placeOriginMarker, reverseGeocode, resetDirectionsForNewRequest, isDirectionsRequestCurrent } from "./directions.js";
 
 let eidLocations = [];
 let eidMarkers = [];
@@ -382,13 +382,16 @@ function showEidPopup(loc) {
 function navigateToEid(loc) {
   if (_activeEidPopup) { fadeAndRemovePopup(_activeEidPopup); _activeEidPopup = null; }
 
+  const requestId = resetDirectionsForNewRequest();
   dir.dest = { lat: loc.lat, lng: loc.lng, name: loc.name };
   document.getElementById("dir-to").value = loc.name;
   placeDestMarker(loc.lng, loc.lat);
 
   requestLocation().then(
     async (pos) => {
+      if (!isDirectionsRequestCurrent(requestId)) return;
       const originName = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      if (!isDirectionsRequestCurrent(requestId)) return;
       dir.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: originName };
       document.getElementById("dir-from").value = originName;
       placeOriginMarker(pos.coords.longitude, pos.coords.latitude);
@@ -396,6 +399,7 @@ function navigateToEid(loc) {
       openDirPanel();
     },
     (error) => {
+      if (!isDirectionsRequestCurrent(requestId)) return;
       showToast("Location is off", "loc", error.message);
       updateGoButton();
       openDirPanel();

@@ -1,6 +1,6 @@
 import { map } from "./map-init.js";
 import { showToast, haversineDistance, requestLocation, hasGeolocation, getCurrentPosition } from "./utils.js";
-import { dir, openDirPanel, placeOriginMarker, placeDestMarker, updateGoButton, reverseGeocode, setFindingNearestMosque } from "./directions.js";
+import { dir, openDirPanel, placeOriginMarker, placeDestMarker, updateGoButton, reverseGeocode, setFindingNearestMosque, resetDirectionsForNewRequest, isDirectionsRequestCurrent } from "./directions.js";
 import { placesData, activeTagFilters, closePlacesSheet } from "./places.js";
 
 // --- Constants / state ---
@@ -384,9 +384,11 @@ function togglePrayerExpanded() {
 
 // Finds nearest mosque using device location, then sets up directions
 function findNearestMosque() {
+  const requestId = resetDirectionsForNewRequest();
   setFindingNearestMosque(true);
   requestLocation().then(
     async (pos) => {
+      if (!isDirectionsRequestCurrent(requestId)) return;
       const userLat = pos.coords.latitude, userLng = pos.coords.longitude;
       let mosques = placesData.filter((p) => p.type === "mosque" || p.tags?.space_type_mosque === true);
       if (activeTagFilters.size) mosques = mosques.filter((p) => [...activeTagFilters].every((tagId) => p.tags?.[tagId] === true));
@@ -402,6 +404,7 @@ function findNearestMosque() {
       }
       if (nearest) {
         const originName = await reverseGeocode(userLat, userLng);
+        if (!isDirectionsRequestCurrent(requestId)) return;
         dir.origin = { lat: userLat, lng: userLng, name: originName };
         document.getElementById("dir-from").value = originName;
         placeOriginMarker(userLng, userLat);
@@ -417,6 +420,7 @@ function findNearestMosque() {
       }
     },
     (error) => {
+      if (!isDirectionsRequestCurrent(requestId)) return;
       console.error("Geolocation error:", error);
       showToast("Location is off", "loc", error.message);
       dismissPrayerSnack();

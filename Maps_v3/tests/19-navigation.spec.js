@@ -48,8 +48,10 @@ test.describe("Live navigation", () => {
     await expect(page.locator("body")).toHaveClass(/nav-mode/);
     await expect(page.locator("#nav-hud")).not.toHaveClass(/hide/);
     await expect(page.locator("#nav-speed")).not.toHaveClass(/hide/);
+    await expect(page.locator("#nav-hud .nav-hud-bar")).toBeHidden();
+    await expect(page.locator("#nav-right-rail")).toBeVisible();
     await expect(page.locator("#nav-speed-value")).toHaveText("36");
-    await expect.poll(async () => page.evaluate(async () => (await import("/src/map-init.js")).map.getBearing())).toBeGreaterThan(70);
+    await expect.poll(async () => page.evaluate(async () => (await import("/src/map-init.js")).map.getBearing())).toBeGreaterThan(85);
     await expect.poll(async () => page.evaluate(async () => (await import("/src/map-init.js")).map.getBearing())).toBeLessThan(95);
     const followZoom = await page.evaluate(async () => {
       const { map } = await import("/src/map-init.js");
@@ -102,6 +104,16 @@ test.describe("Live navigation", () => {
             { distance: 8000, duration: 450, name: "Start Street", geometry: { type: "LineString", coordinates: [[24.9384, 60.1699], [24.9400, 60.1699]] }, maneuver: { type: "depart", bearing_after: 90 } },
             { distance: 8000, duration: 450, name: "Destination Road", geometry: { type: "LineString", coordinates: [[24.9400, 60.1699], [24.9420, 60.1699]] }, maneuver: { type: "arrive", modifier: "right" } },
           ] }],
+        }, {
+          duration: 1020,
+          distance: 16800,
+          geometry: { type: "LineString", coordinates: [[24.9384, 60.1699], [24.9390, 60.1705], [24.9410, 60.1705], [24.9420, 60.1699]] },
+          legs: [{ steps: [] }],
+        }, {
+          duration: 1080,
+          distance: 17000,
+          geometry: { type: "LineString", coordinates: [[24.9384, 60.1699], [24.9390, 60.1688], [24.9410, 60.1688], [24.9420, 60.1699]] },
+          legs: [{ steps: [] }],
         }],
       },
     }));
@@ -111,9 +123,104 @@ test.describe("Live navigation", () => {
       dir.dest = { lat: 60.1699, lng: 24.9420, name: "Destination" };
       await findRoutesDirect("drive");
     });
-    await expect(page.locator(".direct-card.active .itin-navigate")).toBeVisible();
-    await page.locator(".direct-card.active .itin-navigate").click();
+    await expect(page.locator("#route-snackbar")).toBeVisible();
+    await expect(page.locator(".route-map-option")).toHaveCount(3);
+    await page.locator(".route-map-option").nth(1).click();
+    await expect(page.locator(".route-map-option.active")).toHaveAttribute("data-direct-idx", "1");
+    await expect(page.locator(".direct-card.active")).toHaveAttribute("data-direct-idx", "1");
+    await expect(page.locator("body")).toHaveClass(/route-preview-active/);
+    await expect(page.locator("#dir-panel")).toHaveClass(/shut/);
+    await page.locator(".snack-body").click();
+    await expect(page.locator("#dir-panel")).not.toHaveClass(/shut/);
+    await expect(page.locator("#dir-panel")).toHaveClass(/route-overview/);
+    await expect(page.locator(".direct-card.active .itin-navigate span")).toHaveText("Start route");
+    await expect(page.locator(".direct-card")).toHaveCount(3);
+    await page.locator(".direct-card.active .direct-expand").click();
+    await expect(page.locator("#dir-panel")).toHaveClass(/route-focused/);
+    await expect(page.locator("#dir-focused-close")).toBeVisible();
+    await page.locator("#dir-focused-close").click();
+    await expect(page.locator("#dir-panel")).toHaveClass(/route-overview/);
+    await page.locator("#dir-close").click();
+    await expect(page.locator("#route-snackbar")).toBeVisible();
+    await page.locator("#snackbar-nav").click();
     await expect(page.locator("body")).toHaveClass(/nav-mode/);
+    await expect(page.locator("#nav-right-rail")).toBeVisible();
+    await expect(page.locator("#tab-bar")).toBeHidden();
+    await expect.poll(() => page.evaluate(async () => {
+      const { dir } = await import("/src/directions.js");
+      return dir.routeLayers.filter((id) => id.startsWith("dir-alt-")).length;
+    })).toBe(0);
+    await page.locator("#nav-stop").click();
+    await expect(page.locator("body")).not.toHaveClass(/nav-mode/);
+    await expect(page.locator("#route-snackbar")).toBeHidden();
+  });
+
+  test("phone route preview uses the bottom snackbar and route overview sheet", async ({ page }) => {
+    await setupApp(page);
+    test.skip(await page.evaluate(() => window.innerWidth > 768), "Phone-only route preview regression");
+    await page.locator("#dir-btn").click();
+    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
+    await page.route("**/api.digitransit.fi/**", (route) => route.fulfill({ status: 500, body: "disabled" }));
+    await page.route("**/routing.openstreetmap.de/**", (route) => route.fulfill({
+      json: {
+        code: "Ok",
+        routes: [{
+          duration: 900,
+          distance: 16000,
+          geometry: { type: "LineString", coordinates: [[24.9384, 60.1699], [24.9400, 60.1699], [24.9420, 60.1699]] },
+          legs: [{ steps: [] }],
+        }],
+      },
+    }));
+    await page.evaluate(async () => {
+      const { dir, findRoutesDirect } = await import("/src/directions.js");
+      dir.origin = { lat: 60.1699, lng: 24.9384, name: "Start" };
+      dir.dest = { lat: 60.1699, lng: 24.9420, name: "Destination" };
+      await findRoutesDirect("drive");
+    });
+    await expect(page.locator("#route-snackbar")).toBeVisible();
+    await expect(page.locator("body")).toHaveClass(/route-preview-active/);
+    await expect(page.locator("#map-filter-carousel")).toHaveCSS("opacity", "0");
+    await expect(page.locator("#tab-bar")).toHaveCSS("opacity", "0");
+    await expect(page.locator("#locate-pill-wrap")).toHaveCSS("opacity", "0");
+    const snackbarBottom = await page.locator("#route-snackbar").evaluate((el) => parseFloat(getComputedStyle(el).bottom));
+    const tabHeight = await page.locator("#tab-bar").evaluate((el) => el.getBoundingClientRect().height);
+    expect(snackbarBottom).toBeGreaterThanOrEqual(tabHeight);
+    await page.locator(".snack-body").click();
+    await expect(page.locator("#dir-panel")).toHaveClass(/route-overview/);
+    await expect(page.locator(".direct-card.active .itin-navigate span")).toHaveText("Start route");
+  });
+
+  test("a new directions request removes the previous route state", async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const { dir, resetDirectionsForNewRequest } = await import("/src/directions.js");
+      dir.origin = { lat: 60.1699, lng: 24.9384, name: "Old origin" };
+      dir.dest = { lat: 60.1710, lng: 24.9500, name: "Old destination" };
+      dir._directAlts = [{ duration: 900, distance: 1000, coords: [[24.9384, 60.1699], [24.9500, 60.1710]] }];
+      dir.directInfo = { mode: "drive", durMin: 15, distKm: "1.0" };
+      document.getElementById("dir-from").value = "Old origin";
+      document.getElementById("dir-to").value = "Old destination";
+      document.body.classList.add("route-preview-active");
+      resetDirectionsForNewRequest();
+      return {
+        origin: dir.origin,
+        dest: dir.dest,
+        alternatives: dir._directAlts,
+        directInfo: dir.directInfo,
+        from: document.getElementById("dir-from").value,
+        to: document.getElementById("dir-to").value,
+        preview: document.body.classList.contains("route-preview-active"),
+      };
+    }).then((state) => {
+      expect(state.origin).toBeNull();
+      expect(state.dest).toBeNull();
+      expect(state.alternatives).toBeNull();
+      expect(state.directInfo).toBeNull();
+      expect(state.from).toBe("");
+      expect(state.to).toBe("");
+      expect(state.preview).toBe(false);
+    });
   });
 
   test("course-up follows the road when the compass heading is noisy", async ({ page }) => {
@@ -139,7 +246,7 @@ test.describe("Live navigation", () => {
       window.__roadBearingMap = map;
       window.__stopRoadBearingNavigation = stopNavigation;
     });
-    await expect.poll(() => page.evaluate(() => window.__roadBearingMap?.getBearing())).toBeGreaterThan(80);
+    await expect.poll(() => page.evaluate(() => window.__roadBearingMap?.getBearing())).toBeGreaterThan(85);
     await expect.poll(() => page.evaluate(() => window.__roadBearingMap?.getBearing())).toBeLessThan(100);
     await page.evaluate(() => window.__stopRoadBearingNavigation());
   });

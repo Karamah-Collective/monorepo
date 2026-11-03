@@ -2,7 +2,7 @@ import { focusMapPoint, map } from "./map-init.js";
 import { typeIcon } from "./icons.js";
 import { esc, copyToClipboard, showToast, shareUrl, encodeCompactPin, getSavedPins, removeSavedPin, isPinSaved, toggleSavedPin, pinId, fadeAndRemovePopup, fadeAndRemoveMarker, setHomeLocation, hasHomeLocation, isSavedDataCloudScoped } from "./utils.js";
 import { NOMINATIM_VB, DT_API_KEY, DIGITRANSIT_GEO_URL, isInsideFinland } from "./config.js";
-import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick } from "./directions.js";
+import { dir, placeOriginMarker, autoSetNearestMosque, updateGoButton, openDirPanel, reverseGeocode, startPick, resetDirectionsForNewRequest } from "./directions.js";
 import { placesData, openPlaceSheet, activeSponsor, openEventOverlay } from "./places.js";
 import { getExpandedSearchTerms } from "./app-settings.js";
 import { track } from "./analytics.js";
@@ -276,6 +276,7 @@ function _openPinPopup(lng, lat, kind, entry) {
     } else if (dirBtn) {
       const pLng = +dirBtn.dataset.lng, pLat = +dirBtn.dataset.lat;
       const name = resolvedAddr != null ? (resolvedAddr || `${pLat.toFixed(5)}, ${pLng.toFixed(5)}`) : await reverseGeocode(pLat, pLng);
+      resetDirectionsForNewRequest();
       dir.origin = { lat: pLat, lng: pLng, name };
       document.getElementById("dir-from").value = name;
       placeOriginMarker(pLng, pLat);

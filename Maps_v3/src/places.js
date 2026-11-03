@@ -5,7 +5,7 @@ import { PLACE_CONFIG, iconContent, makePlaceMarkerHTML, getThemeRailShopPurple,
 import { esc, escA, copyToClipboard, showToast, showActionToast, hideLoadingToast, buildShareUrl, shareUrl, encryptToken, decryptToken, _decodeLegacyToken, decodeCompactRoute, decodeCompactPin, initSheetDrag, animateSheetHeight, animateElementHeight, getSavedPins, removeSavedPin, haversineDistance, getTurnstileToken, requestLocation, getHomeLocation, getCurrentLocationState, showConfirmDialog, hasGeolocation, getCurrentPosition, isReduceMotionActive } from "./utils.js";
 import { TURNSTILE_SITE_KEY, isInsideFinland } from "./config.js";
 import { setActiveTab, refreshHeatmapSource, isHeatmapActive, syncHomeMarker, showCurrentLocation } from "./map-controls.js";
-import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations } from "./directions.js";
+import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadSharedRoute, setFromPlacesContext, searchDirLocations, resetDirectionsForNewRequest } from "./directions.js";
 import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, renderPlaceReviews, openPlaceReviewForm, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
@@ -1914,17 +1914,26 @@ const HEATMAP_PIN_ZOOM = 14.5;
 
 export function updateMarkerVisibility() {
   const isHeatmap = isHeatmapActive;
+  const isRoutePreview = document.body.classList.contains("route-preview-active");
   const zoom = map.getZoom();
-  const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
+  const shouldHide = isRoutePreview || (isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM);
   placeMarkers.forEach((marker) => {
     const el = marker.getElement();
     if (el) el.classList.toggle("mk-hidden", shouldHide);
   });
   const clusterVis = isHeatmap && zoom < HEATMAP_PIN_ZOOM ? "none" : "visible";
   CLUSTER_LAYER_IDS.forEach((id) => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", clusterVis);
+    if (!map.getLayer(id)) return;
+    const isCount = id === "places-cluster-count";
+    const opacityProp = isCount ? "text-opacity" : "circle-opacity";
+    const normalOpacity = id === "places-cluster-circle" ? 0.18 : id === "places-cluster-inner" ? 0.92 : 1;
+    map.setPaintProperty(id, `${opacityProp}-transition`, { duration: 220 });
+    map.setPaintProperty(id, opacityProp, isRoutePreview ? 0 : normalOpacity);
+    map.setLayoutProperty(id, "visibility", clusterVis);
   });
 }
+
+window.addEventListener("hf:route-preview-changed", updateMarkerVisibility);
 
 function _setupClusterLayers(geojson) {
   map.addSource("places-cluster", {
@@ -2695,6 +2704,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
   dirBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     track("directions_clicked", { place_id: place.id, category: String(place.type || ""), source: "map_marker" });
+    resetDirectionsForNewRequest();
     dir.dest = { lat: place.lat, lng: place.lng, name: place.name };
     document.getElementById("dir-to").value = place.name;
     placeDestMarker(place.lng, place.lat);
@@ -5491,6 +5501,7 @@ export function openEventDetail(ev, { fromEventsPage = false } = {}) {
     directions.title = "Directions";
     directions.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-6 6"/><path d="M4 20v-6a4 4 0 0 1 4-4h12"/></svg>`;
     directions.addEventListener("click", () => {
+      resetDirectionsForNewRequest();
       dir.dest = { lat, lng, name: directionsName };
       document.getElementById("dir-to").value = directionsName;
       placeDestMarker(lng, lat);
@@ -6563,6 +6574,7 @@ document.getElementById("places-list").addEventListener("click", (e) => {
   if (dirBtn) {
     e.stopPropagation();
     const { lat, lng, name } = dirBtn.dataset;
+    resetDirectionsForNewRequest();
     dir.dest = { lat: +lat, lng: +lng, name };
     document.getElementById("dir-to").value = name;
     placeDestMarker(+lng, +lat);
