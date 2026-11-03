@@ -193,13 +193,19 @@ export function getCurrentLocationState() {
   return { ..._currentLocationState };
 }
 
-export function setCurrentLocationState({ lat, lng, accuracy, active = true, source = null } = {}) {
+export function setCurrentLocationState({ lat, lng, accuracy, active = true, source = null, speed = null, heading = null, timestamp = null } = {}) {
   const accuracyNum = Number(accuracy);
+  const speedNum = Number(speed);
+  const headingNum = Number(heading);
+  const timestampNum = Number(timestamp);
   const next = {
     active: !!active && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)),
     lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
     lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
     accuracy: Number.isFinite(accuracyNum) ? accuracyNum : null,
+    speed: Number.isFinite(speedNum) ? speedNum : null,
+    heading: Number.isFinite(headingNum) ? headingNum : null,
+    timestamp: Number.isFinite(timestampNum) ? timestampNum : null,
     source: active && source === "sim" ? "sim" : null,
   };
   _currentLocationState = next;

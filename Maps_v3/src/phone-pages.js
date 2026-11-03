@@ -1362,10 +1362,6 @@ function _phoneTransitionDirection(previousPage, page) {
 
 export function navigatePhonePage(page, { replace = false, fromPopstate = false } = {}) {
   if (!isPhone() || !PAGE_NAMES.has(page)) return false;
-  // Turn-by-turn navigation owns the phone viewport until it stops. Any
-  // legacy caller that tries to open another destination must leave the HUD
-  // and map visible instead of putting a page over an active route.
-  if (document.body.classList.contains("nav-mode") && page !== "map") page = "map";
   if (!_initialised) initPhonePages();
   if (!fromPopstate && page === _page) {
     _setNav(page);

@@ -1918,50 +1918,6 @@
         </div>
       </div>
 
-      <!-- ─── Navigation HUD ─── -->
-      <div id="nav-hud" class="hide">
-        <div id="nav-progress-bar" class="nav-progress-bar"><div id="nav-progress-fill" class="nav-progress-fill"></div></div>
-        <div class="nav-hud-body">
-          <div class="nav-hud-row1">
-            <div id="nav-maneuver-icon" class="nav-maneuver-icon"></div>
-            <div class="nav-hud-col">
-              <span id="nav-instruction" class="nav-instruction"></span>
-              <span id="nav-next-info" class="nav-detail hide"></span>
-            </div>
-            <button id="nav-exit" class="btn-roundel" aria-label="Exit navigation" title="Exit navigation">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div class="nav-hud-row2">
-            <div id="nav-tags" class="nav-tags">
-              <span id="nav-turn-chip" class="nav-chip nav-chip-turn"></span>
-              <span id="nav-dist-chip" class="nav-chip nav-chip-dist"></span>
-              <span id="nav-eta-chip" class="nav-chip nav-chip-eta"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── Navigation Speedometer ─── -->
-      <div id="nav-speed" class="nav-speed hide" aria-label="Current speed">
-        <span id="nav-speed-val" class="nav-speed-val">0</span>
-        <span class="nav-speed-unit">km/h</span>
-      </div>
-
-      <!-- ─── Navigation Recenter Button ─── -->
-      <button id="nav-recenter" class="nav-recenter hide" aria-label="Re-center on location" title="Re-center on location">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-        </svg>
-      </button>
-
-      <!-- ─── Navigation Overview Button ─── -->
-      <button id="nav-overview" class="nav-overview hide" aria-label="Route overview" title="Route overview">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>
-        </svg>
-      </button>
-
       <!-- ─── Route Snackbar ─── -->
       <div id="route-snackbar" class="hide">
         <div class="snack-icon snack-icon--info">
@@ -1977,14 +1933,47 @@
           <div id="snack-tags" class="snack-tags"></div>
         </div>
         <div class="snack-btns">
-          <button id="snackbar-nav" class="snack-nav-btn" aria-label="Start navigation" title="Start navigation">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button id="snackbar-nav" class="snack-nav-btn" aria-label="Start navigation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
           </button>
           <button id="snackbar-close" class="snack-close-btn" aria-label="Clear route">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
       </div>
+
+      <!-- ─── Live navigation HUD ─── -->
+      <section id="nav-hud" class="hide" aria-live="polite" aria-label="Live navigation">
+        <div class="nav-hud-bar">
+          <button id="nav-stop" class="nav-hud-btn nav-hud-btn--stop" aria-label="Stop navigation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6h12v12H6z"/></svg>
+          </button>
+          <span id="nav-status">Following route</span>
+          <button id="nav-mute" class="nav-hud-btn" aria-label="Mute navigation" aria-pressed="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M19 9a5 5 0 0 1 0 6"/><path d="M22 6a9 9 0 0 1 0 12"/></svg>
+          </button>
+        </div>
+        <div class="nav-turn-card">
+          <div id="nav-turn-icon" class="nav-turn-icon" aria-hidden="true"></div>
+          <div class="nav-turn-copy">
+            <div id="nav-turn-distance" class="nav-turn-distance">GPS</div>
+            <div id="nav-turn-instruction" class="nav-turn-instruction">Waiting for a location fix</div>
+            <div id="nav-next-instruction" class="nav-next-instruction">Keep the map visible while location starts</div>
+          </div>
+        </div>
+        <div class="nav-hud-controls">
+          <button id="nav-recenter" class="nav-hud-btn is-active" aria-label="Following location" aria-pressed="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          </button>
+          <button id="nav-overview" class="nav-hud-btn" aria-label="Show route overview">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 15 3-3 2 2 4-5 2 3"/></svg>
+          </button>
+        </div>
+      </section>
+      <aside id="nav-speed" class="hide" aria-label="Current speed">
+        <span id="nav-speed-value">0</span><small>km/h</small>
+      </aside>
+      <div id="gps-sim-badge" class="hide" role="status">GPS SIM · Shift-click to move</div>
 
       <!-- ─── Prayer Times Card ─── -->
       <div id="prayer-snack" class="pill-expand collapsed">

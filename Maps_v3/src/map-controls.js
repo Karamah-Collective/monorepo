@@ -32,6 +32,12 @@ import { EVT } from "./events.js";
 let locMarker = null;
 let locWatchId = null;
 let homeMarker = null;
+let _navigationCameraActive = false;
+
+/** Let live navigation own the camera while the shared GPS watch stays active. */
+export function setNavigationCameraActive(active) {
+  _navigationCameraActive = !!active;
+}
 
 // Cache geolocation permission state so we can skip the "Finding location" toast
 // when GPS is already known-denied. Resolves in one microtask (from browser cache).
@@ -383,7 +389,7 @@ export async function primeGrantedLocation() {
       if (status?.location !== "granted") return false;
       const position = await requestLocation();
       const { latitude: lat, longitude: lng, accuracy } = position.coords;
-      setCurrentLocationState({ lat, lng, accuracy, active: true });
+      setCurrentLocationState({ lat, lng, accuracy, active: true, speed: position.coords.speed, heading: position.coords.heading, timestamp: position.timestamp });
       return true;
     } catch { return false; }
   }
@@ -394,7 +400,7 @@ export async function primeGrantedLocation() {
     if (permission.state !== "granted") return false;
     const position = await new Promise((resolve, reject) => getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }));
     const { latitude: lat, longitude: lng, accuracy } = position.coords;
-    setCurrentLocationState({ lat, lng, accuracy, active: true });
+    setCurrentLocationState({ lat, lng, accuracy, active: true, speed: position.coords.speed, heading: position.coords.heading, timestamp: position.timestamp });
     return true;
   } catch { return false; }
 }
@@ -493,7 +499,7 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
   function onPosition(pos) {
     if (firstFix) track("location_granted");
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-    setCurrentLocationState({ lat, lng, accuracy, active: true });
+    setCurrentLocationState({ lat, lng, accuracy, active: true, speed: pos.coords.speed, heading: pos.coords.heading, timestamp: pos.timestamp });
     if (firstFix && !silent) hideLoadingToast();
     if (!locMarker) {
       const el = document.createElement("div");
@@ -503,14 +509,17 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
       locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
       _locLerpPos = { lng, lat };
       _startHeadingWatch();
+    } else if (document.body.classList.contains("nav-mode")) {
+      if (_locLerpRaf) cancelAnimationFrame(_locLerpRaf);
+      _locLerpRaf = null;
+      locMarker.setLngLat([lng, lat]);
+      _locLerpPos = { lng, lat };
     } else {
       _lerpLocMarkerTo(lng, lat);
     }
     _updateGpsHeading(lat, lng);
-    const isNavMode = document.body.classList.contains("nav-mode");
     if (firstFix) {
-      // Navigation mode owns the camera and applies its own HUD offset.
-      if (!isNavMode && !_isPlaceOrEventWindowOpen()) {
+      if (!_isPlaceOrEventWindowOpen()) {
         if (zoomOnFirstFix) {
           focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
         } else {
@@ -519,9 +528,8 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
       }
       firstFix = false;
         try { onFirstFix?.({ lat, lng, accuracy }); } catch { /* optional consumer callback */ }
-    } else if (dir.routeLayers.length > 0 && !isNavMode && !_isPlaceOrEventWindowOpen()) {
-      // Regular route preview follows the user only when turn-by-turn nav
-      // is not active. Navigation mode handles its own camera behavior.
+    } else if (dir.routeLayers.length > 0 && !_navigationCameraActive && !_isPlaceOrEventWindowOpen()) {
+      // Route preview follows the user while the directions result is visible.
       focusMapPoint([lng, lat], { duration: 600 });
     }
   }
@@ -540,6 +548,12 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
     locWatchId = null;
     if (!_isPlaceOrEventWindowOpen()) focusMapPoint(HELSINKI, { method: "flyTo", zoom: 12.2, duration: 600 });
   });
+}
+
+/** Start the shared GPS watch without toggling it off when it is already live. */
+export function ensureLocationTracking(options = {}) {
+  if (locWatchId === null) showCurrentLocation(options);
+  return locWatchId !== null;
 }
 
 /* ── Heading (compass direction) ──────────────────────────────────────────── */

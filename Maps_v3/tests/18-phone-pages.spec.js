@@ -1504,14 +1504,6 @@ test.describe("Phone app pages", () => {
     await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
   });
 
-  test("active navigation keeps the phone shell on Map", async ({ page }) => {
-    await page.locator("#places-btn").click();
-    await page.evaluate(() => document.body.classList.add("nav-mode"));
-    await page.locator("#home-btn").dispatchEvent("click");
-    await expect(page.locator("body")).toHaveAttribute("data-phone-page", "map");
-    await page.evaluate(() => document.body.classList.remove("nav-mode"));
-  });
-
   test("legacy event visibility changes cannot reveal Events over another page", async ({ page }) => {
     await page.locator("#events-nav-btn").click();
     await page.locator("#home-btn").click();

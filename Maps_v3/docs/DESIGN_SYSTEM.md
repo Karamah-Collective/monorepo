@@ -365,19 +365,6 @@ space while keeping long place details progressively expandable.
 | `--tab-place-soft` | teal-soft / dark-mode light-gold tint | Places icon-core background |
 | `--tab-place-count-text` | theme contrast token | Digits on the Places count badge |
 | `--tab-place-indicator-shadow` | tokenized glow | Theme-aware Places active-indicator glow |
-| `--nav-turn-marker-size` | `36px` | Navigation turn overlay badge and fixed road-arrow size |
-| `--nav-turn-icon-size` | `20px` | Navigation overlay icon size |
-| `--nav-turn-pointer-size` | `8px` | Navigation turn overlay pointer width |
-| `--nav-turn-highlight` | `#fff` | Bright on-road turn segment and arrow fill |
-| `--nav-turn-arrow-edge` | `color-mix(...)` | Subtle edge for the on-road arrow so it stays visible on map tiles |
-
-### `.nav-turn-overlay` and `.nav-turn-road-arrow`
-
-Navigation turn markers use a shared fixed-size system so the side overlay badge and the on-road arrow stay visually aligned.
-
-**`.nav-turn-overlay`**: fixed accent badge with right-edge pointer; sits beside the road and must never block the route geometry.
-
-**`.nav-turn-road-arrow`**: fixed-size on-road arrow marker anchored by its visible tip, not its center. Use for the outgoing-road direction marker only; keep it screen-sized and do not scale it with map zoom.
 
 ### Puck shape
 
@@ -1631,15 +1618,6 @@ Pill-expand element beside the Prayer Times pill. Lists all active place promos 
 ### 2026-10-23 - Event-only map markers
 
 - Event-only markers remain available on the unfiltered map and Events filter, but hide while a place filter is active.
-
-### 2026-10-23 - Navigation overview
-
-- Start navigation in a flat route overview with live route progress and location updates; hide the live-camera controls and floating turn badges.
-
-### 2026-10-23 - Navigation map focus
-
-- During navigation, show only the origin, destination, and updating current-location marker; hide directory pins, event pins, waypoints, and map editing/layer controls.
-
 
 ### 2026-10-23 - Events navbar and settled scroll geometry
 

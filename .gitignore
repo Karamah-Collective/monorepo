@@ -2,6 +2,9 @@
 # LOCAL SECRETS & GENERATED FILES (Never commit)
 # ════════════════════════════════════════════════════════════════
 
+# Local reference checkout; never include it in this repository.
+/osmand/
+
 # Configuration files with actual keys
 Maps/src/config.local.js
 /.local-backups/

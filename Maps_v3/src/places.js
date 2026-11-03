@@ -1914,20 +1914,17 @@ const HEATMAP_PIN_ZOOM = 14.5;
 
 export function updateMarkerVisibility() {
   const isHeatmap = isHeatmapActive;
-  const isNavigation = document.body.classList.contains("nav-mode");
   const zoom = map.getZoom();
   const shouldHide = isHeatmap ? zoom < HEATMAP_PIN_ZOOM : zoom < CLUSTER_ZOOM;
   placeMarkers.forEach((marker) => {
     const el = marker.getElement();
-    if (el) el.classList.toggle("mk-hidden", isNavigation || shouldHide);
+    if (el) el.classList.toggle("mk-hidden", shouldHide);
   });
-  const clusterVis = isNavigation || (isHeatmap && zoom < HEATMAP_PIN_ZOOM) ? "none" : "visible";
+  const clusterVis = isHeatmap && zoom < HEATMAP_PIN_ZOOM ? "none" : "visible";
   CLUSTER_LAYER_IDS.forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", clusterVis);
   });
 }
-
-window.addEventListener("hf:navigation-marker-visibility", () => updateMarkerVisibility());
 
 function _setupClusterLayers(geojson) {
   map.addSource("places-cluster", {

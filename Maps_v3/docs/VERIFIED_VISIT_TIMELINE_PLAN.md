@@ -815,19 +815,6 @@ The exact internal shape can follow existing project conventions, but it must ca
 
 This separation makes the UI messages testable and prevents the place-sheet event handler from becoming a large conditional block.
 
-### 10.1 Local GPS simulation
-
-The existing development GPS simulator must exercise the same location state as the timeline check so the feature can be tested without physically moving.
-
-- `Shift+G` or `?sim` activates the simulator.
-- Shift-clicking the map sets the simulated position; ordinary clicks remain available for opening places.
-- Existing route playback also updates the simulated position as it moves.
-- Simulated fixes are tagged internally as `source: "sim"` so timeline verification can use them without mistaking a stale real-device location for test data.
-- Local development exposes `window.__manarahGpsSim.setLocation(lat, lng, accuracy)` for deterministic checks while a place sheet is open.
-- `window.__manarahGpsSim.getLocation()` reads the current simulated fix, and `.deactivate()` clears it.
-
-The simulator remains development-only. It must never change the production API contract or cause raw coordinates to be sent to the server.
-
 ## 11. Privacy and security
 
 ### 11.1 Stored data
@@ -1016,7 +1003,6 @@ Test:
 - Timeline success state appears
 - Success toast appears
 - Profile timeline refresh event is dispatched
-- Active local GPS simulation can satisfy the same successful timeline path without calling browser geolocation
 - The button returns to an intentional “Add another visit” state
 
 ### 14.4 GPS rejection

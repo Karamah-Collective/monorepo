@@ -58,6 +58,8 @@ const SHELL_ASSETS = [
   '/src/search.js',
   '/src/directions.js',
   '/src/navigation.js',
+  '/src/navigation-core.js',
+  '/src/gps-sim.js',
   '/src/phone-pages.js',
   '/src/prayer.js',
   '/src/icons.js',

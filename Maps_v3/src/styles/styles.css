@@ -8632,7 +8632,7 @@ body.dark-mode .fallback-notice {
   display: grid;
   grid-template:
     "dur time nav expand" auto
-    "walk walk  .    .  " auto
+    "walk walk walk ." auto
     / auto 1fr auto auto;
   align-items: center;
   column-gap: var(--sp-3);
@@ -8780,6 +8780,26 @@ body.dark-mode .fallback-notice {
   color: var(--on-accent);
   transition: filter var(--t-fast);
 }
+.itin-navigate {
+  grid-area: nav;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--on-accent);
+  transition: filter var(--t-fast), transform var(--t-fast);
+}
+.itin-navigate:hover { filter: brightness(1.12); transform: translateX(1px); }
+.itin-navigate svg { width: 15px; height: 15px; }
+.itin-card.active .itin-navigate { display: flex; }
+.itin-card.focused .itin-navigate { display: none; }
 @media (hover: hover) {
   .itin-expand:hover {
     filter: brightness(1.12);
@@ -8795,38 +8815,6 @@ body.dark-mode .fallback-notice {
 .itin-card.focused .itin-expand {
   display: none;
 }
-.itin-navigate {
-  grid-area: nav;
-  align-self: center;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  border: none;
-  border-radius: var(--r-sm);
-  cursor: pointer;
-  color: var(--on-accent);
-  transition: filter var(--t-fast);
-}
-@media (hover: hover) {
-  .itin-navigate:hover {
-    filter: brightness(1.12);
-  }
-}
-.itin-navigate svg {
-  width: 14px;
-  height: 14px;
-}
-.itin-card.active .itin-navigate {
-  display: flex;
-}
-.itin-card.focused .itin-navigate {
-  display: none;
-}
-
 #dir-summary {
   display: flex;
   align-items: center;
@@ -9232,154 +9220,6 @@ body.dark-mode .fallback-notice {
   margin-left: 2px;
 }
 
-/* ─── Navigation HUD ────────────────────────────────────────────────────── */
-#nav-hud {
-  position: absolute;
-  z-index: var(--z-nav-hud);
-  top: calc(var(--safe-t) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(calc(100vw - 24px), 400px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-  display: none;
-}
-#nav-hud.nav-active {
-  display: block;
-  animation: hudSlideIn 0.28s var(--ease-expo) forwards;
-}
-#nav-hud.nav-active.hide {
-  display: block !important;
-  animation: hudSlideOut 0.2s ease-in forwards;
-  pointer-events: none;
-}
-#nav-hud.hide:not(.nav-active) {
-  display: none;
-}
-
-.nav-hud-body {
-  padding: var(--sp-3) var(--sp-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  cursor: pointer;
-}
-
-.nav-hud-row1 {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-.nav-hud-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.nav-hud-row1 .btn-roundel {
-  flex-shrink: 0;
-}
-
-.nav-hud-row2 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.nav-tags {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  flex: 1;
-  min-width: 0;
-}
-
-/* Hide non-essential controls during navigation for clean map */
-body.nav-mode #search-card,
-body.nav-mode .tool-pill,
-body.nav-mode #zoom-pill,
-body.nav-mode #prayer-snack,
-body.nav-mode #eid-pill,
-body.nav-mode #events-pill,
-body.nav-mode #promos-pill,
-body.nav-mode .phone-map-filter-carousel,
-body.nav-mode #tab-bar,
-body.nav-mode #route-snackbar,
-body.nav-mode #locate-pill-wrap,
-body.nav-mode #contribute-place-btn,
-body.nav-mode #layers-btn,
-body.nav-mode #phone-map-layers-popover,
-body.nav-mode #map-attribution-popover,
-body.nav-mode .place-mk-wrap,
-body.nav-mode .event-mk-wrap,
-body.nav-mode .dir-waypoint-marker {
-  display: none !important;
-}
-
-/* Mobile: adjust nav element positions without tab bar */
-@media (max-width: 768px) {
-  body.nav-mode .nav-speed {
-    bottom: calc(var(--safe-b) + 16px);
-  }
-  body.nav-mode .nav-recenter,
-  body.nav-mode .nav-overview {
-    bottom: calc(var(--safe-b) + 16px);
-  }
-}
-
-/* ─── Navigation Speedometer layout ──────────────────────────────────────── */
-.nav-speed {
-  position: absolute;
-  z-index: var(--z-nav-hud);
-  bottom: calc(var(--safe-b) + 16px);
-  left: auto;
-  right: var(--sp-4);
-}
-.nav-speed.hide { display: none; }
-
-/* ─── Navigation Recenter Button layout ──────────────────────────────────── */
-.nav-recenter {
-  position: absolute;
-  z-index: var(--z-nav-hud);
-  bottom: calc(var(--safe-b) + 16px);
-  right: var(--sp-4);
-}
-.nav-recenter.hide { display: none; }
-
-/* ─── Navigation Overview Button layout ──────────────────────────────────── */
-.nav-overview {
-  position: absolute;
-  z-index: var(--z-nav-hud);
-  bottom: calc(var(--safe-b) + 16px);
-  right: var(--sp-4);
-}
-.nav-overview.hide { display: none; }
-
-/* Navigation stays in the stable route overview; there is no live-camera
-   escape hatch while this mode is intentionally disabled. */
-body.nav-mode .nav-recenter,
-body.nav-mode .nav-overview { display: none !important; }
-
-/* Desktop: position speed/recenter/overview at bottom edges */
-@media (min-width: 769px) {
-  .nav-speed {
-    bottom: calc(var(--safe-b) + 24px);
-    left: auto;
-    right: var(--sp-6);
-  }
-  .nav-recenter {
-    bottom: calc(var(--safe-b) + 24px);
-    right: var(--sp-6);
-  }
-  .nav-overview {
-    bottom: calc(var(--safe-b) + 24px);
-    right: var(--sp-6);
-  }
-}
-
 /* #10 — Route snackbar (Design E — Elevated Tag Card) */
 #route-snackbar {
   position: absolute;
@@ -9425,27 +9265,6 @@ body.nav-mode .nav-overview { display: none !important; }
     transform: translateX(-50%) translateY(16px);
   }
 }
-@keyframes hudSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-@keyframes hudSlideOut {
-  from {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-16px);
-  }
-}
-
 .snack-body {
   flex: 1;
   min-width: 0;
@@ -9482,7 +9301,6 @@ body.nav-mode .nav-overview { display: none !important; }
   gap: var(--sp-1);
   flex-shrink: 0;
 }
-.snack-nav-btn,
 .snack-close-btn {
   width: 28px;
   height: 28px;
@@ -9494,18 +9312,185 @@ body.nav-mode .nav-overview { display: none !important; }
   cursor: pointer;
   transition: filter var(--t-fast);
 }
-.snack-nav-btn {
-  background: var(--accent);
-  color: var(--on-accent);
-}
 .snack-close-btn {
   background: var(--surface-2);
   color: var(--text-3);
 }
-.snack-nav-btn:hover,
 .snack-close-btn:hover {
   filter: brightness(1.12);
 }
+.snack-nav-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+  transition: transform var(--t-fast), filter var(--t-fast);
+}
+.snack-nav-btn:hover { filter: brightness(1.08); transform: translateX(1px); }
+
+/* Live navigation: the map moves under a fixed location puck, as in OsmAnd. */
+#nav-hud {
+  position: absolute;
+  z-index: 60;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  width: min(410px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+#nav-hud.hide,
+#nav-speed.hide { display: none !important; }
+.nav-hud-bar,
+.nav-turn-card,
+.nav-hud-controls { pointer-events: auto; }
+.nav-hud-bar {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(14px);
+  color: var(--text-2);
+  font-size: var(--txt-sm);
+  font-weight: var(--fw-semibold);
+}
+.nav-hud-bar #nav-status { flex: 1; text-align: center; }
+#nav-status[data-tone="warning"] { color: var(--danger); }
+.nav-hud-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+}
+.nav-hud-btn:hover { transform: translateY(-1px); }
+.nav-hud-btn.is-active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.nav-hud-btn--stop { color: var(--danger); }
+.nav-hud-btn.is-muted { color: var(--danger); }
+.nav-turn-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 98px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(16px);
+}
+.nav-turn-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.nav-turn-icon svg { width: 28px; height: 28px; }
+.nav-turn-copy { min-width: 0; }
+.nav-turn-distance {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--txt-lg);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+.nav-turn-instruction {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--txt-base);
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-next-instruction {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--txt-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-hud-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+#nav-speed {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  left: max(14px, env(safe-area-inset-left));
+  min-width: 66px;
+  padding: 9px 10px 8px;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(14px);
+  color: var(--text);
+  text-align: center;
+  pointer-events: none;
+}
+#nav-speed-value {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 25px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+#nav-speed small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-semibold);
+}
+#gps-sim-badge {
+  position: absolute;
+  z-index: 61;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  padding: 5px 10px;
+  transform: translateX(-50%);
+  border: 1px solid var(--warning);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--warning-soft) 94%, transparent);
+  color: var(--warning);
+  font-family: var(--font-mono);
+  font-size: var(--txt-xs);
+  font-weight: var(--fw-bold);
+  pointer-events: none;
+  white-space: nowrap;
+}
+body.nav-mode #route-snackbar { display: none !important; }
+
 .snack-tags {
   display: flex;
   align-items: center;
@@ -10906,9 +10891,6 @@ body.dark-mode .qibla-center-puck {
   #route-snackbar {
     bottom: 24px;
   }
-  #nav-hud {
-    top: calc(var(--safe-t) + 12px);
-  }
   .share-toast,
   #toast-stack,
   .eid-banner {
@@ -11001,119 +10983,6 @@ body.dark-mode .loc-ring {
     transform: translate(-50%, -50%) scale(2);
     opacity: 0;
   }
-}
-
-/* ─── GPS Simulation Badge ─────────────────────────────────────────────────── */
-.gps-sim-badge {
-  position: fixed;
-  top: var(--sp-3);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: var(--z-overlay);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1h);
-  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
-  background: var(--danger);
-  color: var(--on-accent);
-  font-size: var(--txt-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
-  border-radius: var(--r-pill);
-  box-shadow: var(--shadow-md);
-  pointer-events: auto;
-  animation: gpsSimPulse 2s ease-in-out infinite;
-}
-.gps-sim-badge svg { flex-shrink: 0; }
-
-.gps-sim-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  margin-left: var(--sp-1);
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: var(--r-full);
-  color: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-@keyframes gpsSimPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* ─── GPS Simulation Playback Controls ─────────────────────────────────────── */
-.gps-sim-controls {
-  position: fixed;
-  top: calc(var(--sp-3) + 32px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: var(--z-overlay);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1h);
-  padding: var(--sp-1h);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  box-shadow: var(--shadow-lg);
-}
-
-.gps-sim-play-btn,
-.gps-sim-stop-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--accent);
-  color: var(--on-accent);
-  border: none;
-  border-radius: var(--r-full);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity var(--t-fast);
-}
-.gps-sim-play-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.gps-sim-stop-btn {
-  background: var(--danger);
-}
-
-.gps-sim-speeds {
-  display: flex;
-  gap: var(--sp-0h);
-}
-
-.gps-sim-speed-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 var(--sp-1h);
-  background: transparent;
-  color: var(--text-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  font-size: var(--txt-sm);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
-}
-.gps-sim-speed-btn.active {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
 }
 
 .maplibregl-popup-content {
@@ -11972,10 +11841,6 @@ body.dark-mode .sp-chip {
   #route-snackbar {
     bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
   }
-  #nav-hud {
-    top: calc(var(--safe-t) + 12px);
-  }
-
   #suggest-overlay,
   #timeline-overlay,
   #profile-detail-overlay,
@@ -14846,10 +14711,10 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   /* Reassert original button/icon contrast after the page shell's inherited
      text color. Original accent and danger controls always use on-accent. */
-  .phone-page-surface :is(.btn-primary, .btn-danger-filled, .pp-rm-btn, .pp-dir-btn, .sp-dir-btn, .eid-dir-btn, .gps-sim-play-btn, .gps-sim-stop-btn, .btn-icon-card.active) {
+  .phone-page-surface :is(.btn-primary, .btn-danger-filled, .pp-rm-btn, .pp-dir-btn, .sp-dir-btn, .eid-dir-btn, .btn-icon-card.active) {
     color: var(--on-accent) !important;
   }
-  .phone-page-surface :is(.btn-primary, .btn-danger-filled, .pp-rm-btn, .pp-dir-btn, .sp-dir-btn, .eid-dir-btn, .gps-sim-play-btn, .gps-sim-stop-btn, .btn-icon-card.active) svg {
+  .phone-page-surface :is(.btn-primary, .btn-danger-filled, .pp-rm-btn, .pp-dir-btn, .sp-dir-btn, .eid-dir-btn, .btn-icon-card.active) svg {
     color: currentColor !important;
     stroke: currentColor;
   }

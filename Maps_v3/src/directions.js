@@ -8,12 +8,6 @@ import { placesData, activeTagFilters, closePlacesSheet, dismissPlacesSearch, op
 import { scoreMosque } from "./prayer.js";
 import { EVT } from "./events.js";
 
-// Navigation module hooks — set by navigation.js to avoid circular import
-let _navHooks = { startNav: () => {}, stop: () => {}, pause: () => {}, resume: () => false, isActive: () => false, isPaused: () => false };
-export function setNavHooks(hooks) { _navHooks = hooks; }
-// Called by navigation.js when nav stops — re-shows snackbar if route is still active
-export function onNavStopped() { updateSnackbar(); }
-
 // --- State ---
 export let dirTravelMode = "drive";
 let routeRequested = false;
@@ -41,9 +35,6 @@ export const dir = {
   originMarker: null, destMarker: null,
   waypoints: [], waypointMarkers: [],
   routeLayers: [], routeSources: [], usingFallback: false,
-  directRouteCoords: null, // [lng,lat][] for direct routes — used by navigation
-  directSteps: null,       // raw OSRM/OTP steps — used by navigation
-  directMaxspeeds: null,   // OSRM per-segment maxspeed annotations
 };
 
 // --- DOM refs ---
@@ -135,7 +126,6 @@ export function openDirPanel() {
   }
   if (dirPanel._hideTimeout) { clearTimeout(dirPanel._hideTimeout); dirPanel._hideTimeout = null; }
   closePlacesSheet();
-  if (_navHooks.isActive()) _navHooks.pause();
   dirPanel.hidden = false;
   dirPanel.style.height = "";
   document.getElementById("scrim").classList.remove("hide");
@@ -156,8 +146,6 @@ export function closeDirPanel() {
   dirSnap.close();                               // cleanup → reflow → adds .shut with real transition
   document.getElementById("scrim").classList.add("hide");
   stopPick();
-  // If nav was paused (user opened panel via expand), resume it on close
-  if (_navHooks.isPaused()) { _navHooks.resume(); }
   updateSnackbar();
   setActiveTab(isPhone() ? "dir-btn" : null);
   if ((dir.activeIdx < 0 || !dir.itineraries[dir.activeIdx]) && !dir.directInfo) {
@@ -319,10 +307,6 @@ document.querySelectorAll(".mode-opt").forEach((btn) => {
 
 document.querySelector(".snack-body").addEventListener("click", () => {
   if (dirPanel.classList.contains("shut")) openDirPanel();
-});
-document.getElementById("snackbar-nav").addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
 });
 document.getElementById("snackbar-close").addEventListener("click", (e) => {
   e.stopPropagation();
@@ -490,12 +474,6 @@ export function loadSharedRoute({ olat, olng, oname, dlat, dlng, dname, mode, tm
 dirItins.addEventListener("click", (e) => {
   // Direct-card clicks are handled by _bindDirectCardClicks — skip them here
   if (e.target.closest(".direct-card")) return;
-  if (e.target.closest(".itin-navigate")) {
-    e.stopPropagation();
-    closeDirPanel();
-    if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
-    return;
-  }
   const stepEl = e.target.closest(".direct-step");
   if (stepEl && dir.directInfo?.stepGeometries) {
     const idx = parseInt(stepEl.dataset.stepIdx, 10);
@@ -1437,8 +1415,6 @@ dirGo.addEventListener("click", findRoutes);
 export async function findRoutes() {
   setGoLoading(true);
   routeRequested = true;
-  // New route calculation invalidates any paused navigation state
-  if (_navHooks.isPaused()) _navHooks.stop();
   if (!dir.origin && dirFrom.value.trim()) {
     showDirLoading();
     const r = await autoResolveLocation(dirFrom);
@@ -1837,17 +1813,8 @@ async function _dtDirectRoute(mode) {
   }).join("");
   return {
     coords: allCoords, duration: totalDuration, distance: totalDistance, stepsHTML,
-    stepGeometries: null, stepFeatures: null,
+    steps: allSteps, stepGeometries: null, stepFeatures: null,
     srcData: { type: "Feature", geometry: { type: "LineString", coordinates: allCoords } },
-    rawSteps: allSteps.map((step, i) => ({
-      source: "otp",
-      instruction: _otpStepInstruction(step, i === 0, i === allSteps.length - 1),
-      iconHtml: _otpManeuverIcon(step, i === 0, i === allSteps.length - 1),
-      distance: step.distance || 0,
-      name: (step.streetName && step.streetName !== "road" && step.streetName !== "Track") ? step.streetName : "",
-      lat: step.lat, lng: step.lon,
-      isFirst: i === 0, isLast: i === allSteps.length - 1,
-    })),
   };
 }
 
@@ -1874,7 +1841,6 @@ async function _osrmDirectRoute(mode) {
  * @returns {Object}
  */
 function _osrmProcessRoute(route, mode) {
-  const maxspeeds = route.legs?.flatMap(leg => leg.annotation?.maxspeed || []) || [];
   const allSteps = route.legs.flatMap(leg => leg.steps || []);
   const altColor = OSRM_ALT_COLORS[mode];
   let segIdx = 0;
@@ -1891,21 +1857,7 @@ function _osrmProcessRoute(route, mode) {
   }).join("");
   return {
     coords: route.geometry.coordinates, duration: route.duration, distance: route.distance, stepsHTML,
-    stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData, maxspeeds,
-    rawSteps: allSteps.map((step, si) => ({
-      source: "osrm",
-      instruction: stepInstruction(step),
-      iconHtml: maneuverIconSvg(step.maneuver.type, step.maneuver.modifier || ""),
-      distance: step.distance || 0,
-      duration: step.duration || 0,
-      lat: step.maneuver.location[1],
-      lng: step.maneuver.location[0],
-      maneuverType: step.maneuver.type,
-      maneuverMod: step.maneuver.modifier || "",
-      name: step.name || "",
-      geometry: step.geometry,
-      isFirst: si === 0, isLast: si === allSteps.length - 1,
-    })),
+    steps: allSteps, stepGeometries: allSteps.map((s) => s.geometry), stepFeatures, altColor, srcData,
   };
 }
 
@@ -1962,14 +1914,11 @@ export async function findRoutesDirect(mode) {
   const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
   map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
 
-  // --- Store navigation data for primary ---
+  // --- Store route-preview data for primary ---
   const data = allRoutes[0];
   const durMin = Math.round(data.duration / 60);
   const distKm = (data.distance / 1000).toFixed(1);
   dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
-  dir.directRouteCoords = data.coords;
-  dir.directSteps = data.rawSteps || null;
-  dir.directMaxspeeds = data.maxspeeds || null;
   dir.activeIdx = 0;
 
   // --- Render route cards ---
@@ -1981,11 +1930,22 @@ export async function findRoutesDirect(mode) {
     const rtDistKm = (rt.distance / 1000).toFixed(1);
     const durLabel = rtDurMin < 60 ? `${rtDurMin} min` : `${Math.floor(rtDurMin / 60)}h ${rtDurMin % 60}m`;
     return `<div class="itin-card direct-card${i === 0 ? " active" : ""}" data-direct-idx="${i}" style="--dc:${cssColor};--i:${i}">
-        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + rt.duration * 1000))}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${rtDistKm} km</div></div>
+        <div class="itin-header"><div class="itin-dur">${durLabel}</div><div class="itin-time">${fmtTime(new Date())} → ${fmtTime(new Date(Date.now() + rt.duration * 1000))}</div><button class="itin-expand direct-expand" title="Full screen directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${dirModeIconSvg(mode, 12)} ${OSRM_LABELS[mode]} · ${rtDistKm} km</div></div>
         <div class="itin-chain"><span class="leg-badge mode-${mode}">${dirModeIconSvg(mode, 14)}</span></div>
         <div class="itin-legs"><div class="itin-legs-inner"><div class="direct-steps">${rt.stepsHTML}</div></div></div>
       </div>`;
   }).join("");
+  dirItins.querySelectorAll(".direct-card").forEach((card) => {
+    const expand = card.querySelector(".itin-expand");
+    if (!expand) return;
+    const navigate = document.createElement("button");
+    navigate.className = "itin-navigate";
+    navigate.type = "button";
+    navigate.title = "Start navigation";
+    navigate.setAttribute("aria-label", "Start navigation");
+    navigate.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
+    expand.before(navigate);
+  });
   document.getElementById("dir-btn").classList.add("route-active");
   dirClearBtn.classList.remove("hide");
   dirShareBtn.classList.remove("hide");
@@ -2042,7 +2002,7 @@ function _drawDirectPrimary(data, mode, color) {
 }
 
 /**
- * Select a direct route card — redraws the primary route and updates navigation data.
+ * Select a direct route card — redraws the primary route and updates preview data.
  * @param {number} idx - Index in dir._directAlts
  */
 function _selectDirectRoute(idx) {
@@ -2080,13 +2040,10 @@ function _selectDirectRoute(idx) {
   // Handle by drawing route 0 as an alt if it's deselected
   _ensureAltLayerForRoute0(alts, mode, color, idx);
 
-  // Update navigation data
+  // Update the selected route data
   const durMin = Math.round(data.duration / 60);
   const distKm = (data.distance / 1000).toFixed(1);
   dir.directInfo = { mode, durMin, distKm, stepGeometries: data.stepGeometries };
-  dir.directRouteCoords = data.coords;
-  dir.directSteps = data.rawSteps || null;
-  dir.directMaxspeeds = data.maxspeeds || null;
 
   // Fit bounds to new route
   const bounds = new maplibregl.LngLatBounds();
@@ -2134,15 +2091,13 @@ function _ensureAltLayerForRoute0(alts, mode, color, activeIdx) {
  */
 function _bindDirectCardClicks() {
   dirItins.querySelectorAll(".itin-card.direct-card").forEach((card) => {
+    card.querySelector(".itin-navigate")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _selectDirectRoute(parseInt(card.dataset.directIdx, 10));
+      window.dispatchEvent(new CustomEvent("hf:start-navigation-requested"));
+    });
     card.onclick = (e) => {
       const idx = parseInt(card.dataset.directIdx);
-      if (e.target.closest(".itin-navigate")) {
-        e.stopPropagation();
-        _selectDirectRoute(idx);
-        closeDirPanel();
-        if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav();
-        return;
-      }
       if (e.target.closest(".itin-expand")) {
         e.stopPropagation();
         _selectDirectRoute(idx);
@@ -2211,7 +2166,7 @@ function renderItineraries() {
     const transitLegs = itin.legs.filter((l) => l.mode !== "WALK").length;
     const hdr = document.createElement("div");
     hdr.className = "itin-header";
-    hdr.innerHTML = `<div class="itin-dur">${durMin} min</div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-navigate" title="Start navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div>`;
+    hdr.innerHTML = `<div class="itin-dur">${durMin} min</div><div class="itin-time">${fmtTime(startT)} → ${fmtTime(endT)}</div><button class="itin-expand" title="Expand route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button><div class="itin-walk">${modeIcon("WALK", 12)} ${Math.round(walkSec / 60)} min walk · ${transitLegs > 1 ? transitLegs - 1 + " transfer" + (transitLegs > 2 ? "s" : "") : "direct"}</div>`;
     const chain = document.createElement("div"); chain.className = "itin-chain";
     itin.legs.forEach((leg, li) => {
       if (li > 0) chain.insertAdjacentHTML("beforeend", '<span class="leg-arrow">›</span>');
@@ -2265,7 +2220,6 @@ function renderItineraries() {
     card.appendChild(legsDiv);
     dirItins.appendChild(card);
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".itin-navigate")) { e.stopPropagation(); selectItinerary(idx); closeDirPanel(); if (!_navHooks.isActive() && !_navHooks.resume()) _navHooks.startNav(); return; }
       if (e.target.closest(".itin-expand")) { e.stopPropagation(); selectItinerary(idx); focusRoute(idx); return; }
       selectItinerary(idx);
     });
@@ -2354,11 +2308,9 @@ document.getElementById("dir-focused-back").addEventListener("click", unfocusRou
 document.getElementById("dir-focused-close").addEventListener("click", () => { unfocusRoute(); closeDirPanel(); });
 
 export function clearRoute() {
-  if (_navHooks.isActive()) _navHooks.stop();
   dir.routeLayers.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
   dir.routeSources.forEach((id) => { if (map.getSource(id)) map.removeSource(id); });
   dir.routeLayers = []; dir.routeSources = []; dir.directInfo = null;
-  dir.directRouteCoords = null; dir.directSteps = null; dir.directMaxspeeds = null;
   dir._directAlts = null; dir._directMode = null;
   document.getElementById("dir-btn").classList.remove("route-active");
   routeSnackbar.classList.add("hide");
@@ -2366,9 +2318,12 @@ export function clearRoute() {
   dirShareBtn.classList.add("hide");
 }
 
+/** Return the selected direct route in the shape used by live navigation. */
+export function getActiveDirectRoute() {
+  return dir._directAlts?.[dir.activeIdx] || null;
+}
+
 function updateSnackbar() {
-  // Don't show the snackbar when navigation HUD is active
-  if (_navHooks.isActive()) { routeSnackbar.classList.add("hide"); return; }
   if (dir.activeIdx >= 0 && dirPanel.classList.contains("shut")) {
     document.getElementById("snackbar-from").textContent = dir.origin?.name || "Origin";
     document.getElementById("snackbar-to").textContent = dir.dest?.name || "Destination";

@@ -14,7 +14,6 @@ A community-driven Progressive Web App for discovering halal food, shops, and pr
   - [Place Discovery & Filtering](#place-discovery--filtering)
   - [Search & Geocoding](#search--geocoding)
   - [Directions & Routing](#directions--routing)
-  - [Turn-by-Turn Navigation](#turn-by-turn-navigation)
   - [Prayer Times & Qibla](#prayer-times--qibla)
   - [Eid Prayer Locations](#eid-prayer-locations)
   - [Community Features](#community-features)
@@ -191,7 +190,7 @@ The Directions panel is a bottom sheet that supports four travel modes and provi
 - Origin marker (green dot), destination marker (red pin)
 - Route polyline in mode-specific color
 - Alternative routes in lighter opacity
-- Active step highlighting during navigation
+- Active step highlighting in the route preview
 
 **Origin/Destination Picking:**
 - Click any marker or the map to set origin or destination in pick mode
@@ -206,22 +205,12 @@ The Directions panel is a bottom sheet that supports four travel modes and provi
 **Route Snackbar:**
 - Compact summary card (duration, distance, departure time) visible when the full Directions sheet is collapsed
 
----
-
-### Turn-by-Turn Navigation
-
-A full voice + visual turn-by-turn navigator built on top of OSRM step data and the Web Speech API.
-
-**Features:**
-- Parses OSRM / OTP step maneuvers (turn left, continue, arrive, etc.)
-- Announces upcoming maneuvers via `SpeechSynthesisUtterance`:
-  - "In 200 metres, turn right onto Fleminginkatu"
-  - "You have arrived at your destination"
-- Highlights the current step's road segment on the map in real time
-- Tracks user position via `watchPosition`; detects when the user is off-route
-- Pause/resume without clearing the route
-- Auto-dismiss when the destination geofence is entered
-- **Mosque alert** — when arriving near a mosque during a prayer window, highlights the nearest mosque with a contextual notification
+**Live Navigation:**
+- OsmAnd-inspired route following for walking, cycling, and driving routes
+- GPS positions are projected onto the route with accuracy-aware tolerance, look-ahead progress, wrong-way detection, off-route recalculation, and arrival detection
+- The map camera follows a fixed on-screen location puck; manual map gestures pause following until the recenter control is used
+- Turn HUD, optional Web Speech prompts, route progress, route overview, and a left-side speedometer
+- Local testing: press `Shift+G` to toggle the GPS simulator, then `Shift+click` the map to move the simulated position; `window.__manarahGpsSim.setLocation(lat, lng, accuracy)` is available for deterministic browser tests
 
 ---
 
@@ -389,7 +378,6 @@ A `localStorage` flag prevents the tutorial from showing again on return visits.
 | Alt Geocoding | Digitransit Geocoding API | Transit-aware |
 | Prayer Times | Aladhan REST API | 5 daily prayers + Ramadan |
 | Transit Stops | Overpass API + local cache | 10 498 stops pre-cached |
-| Voice | Web Speech API | Turn-by-turn announcements |
 | Compass | DeviceOrientationEvent | Qibla bearing |
 | Serverless | Cloudflare Pages Functions | 7 API functions |
 | Data Persistence | Cloudflare D1 | Places, reviews, contact, saved account data |
@@ -427,7 +415,6 @@ Maps/
 │   │
 │   ├── places.js               # Place markers, popups, filtering, favorites (4 436 lines)
 │   ├── directions.js           # Routing — transit, OSRM, UI, waypoints (2 516 lines)
-│   ├── navigation.js           # Turn-by-turn voice/visual navigator (2 581 lines)
 │   ├── search.js               # Search bar, geocoding, dropped pins (483 lines)
 │   ├── prayer.js               # Prayer times, Ramadan, Qibla launcher (332 lines)
 │   ├── qibla.js                # Qibla compass (DeviceOrientationEvent) (239 lines)
@@ -436,7 +423,6 @@ Maps/
 │   ├── wishlist.js             # Feature request board (403 lines)
 │   ├── contact.js              # Contact form overlay (278 lines)
 │   ├── transit-stops.js        # Transit stop rendering + Overpass API (787 lines)
-│   ├── gps-sim.js              # Dev-only location simulator (443 lines)
 │   ├── tutorial.js             # 10-step first-run spotlight tour (520 lines)
 │   ├── icons.js                # SVG helpers, PLACE_CONFIG, color definitions (331 lines)
 │   ├── utils.js                # Toast, sheets, clipboard, crypto, haversine (1 302 lines)
@@ -494,7 +480,7 @@ Maps/
 1. Registers the service worker (skipped on `localhost` in dev)
 2. Imports and initializes core modules synchronously: `map-init`, `directions`, `navigation`, `places`, `search`
 3. After the map fires its `load` event, lazy-loads non-critical modules:
-   - `transit-stops`, `prayer`, `map-style-editor`, `contact`, `eid-prayers`, `gps-sim`, `wishlist`
+   - `transit-stops`, `prayer`, `map-style-editor`, `contact`, `eid-prayers`, `wishlist`
 4. Applies the **fast-tap handler** — synthesizes immediate `click` events on touch interactions to eliminate the 300 ms mobile delay
 5. Prevents pinch-zoom outside the map container (iOS Safari workaround)
 6. Wires up the privacy overlay and tools toggle
@@ -585,10 +571,6 @@ npx serve .
 ```
 
 The app is served from `http://localhost:3000`. MapLibre tiles, OSRM, and Nominatim work without a key. Digitransit and reCAPTCHA require the keys from step 3.
-
-**5. (Optional) GPS Simulator**
-
-A dev-only GPS simulator is included (`src/gps-sim.js`). It is lazy-loaded only when `location.hostname === 'localhost'`. Use it to simulate walking/driving routes without leaving your desk — open the GPS Sim panel from the settings overlay.
 
 ### Running Tests
 

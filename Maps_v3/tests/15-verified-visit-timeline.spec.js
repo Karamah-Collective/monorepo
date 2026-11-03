@@ -291,26 +291,6 @@ test.describe("verified visit timeline", () => {
     expect(results).toEqual({ eligible: "eligible", inaccurate: "accuracy-too-low", distant: "too-far" });
   });
 
-  test("local GPS simulator supplies the timeline location without browser geolocation", async ({ page }) => {
-    const requests = mockAccountApi(page, []);
-    await setupApp(page);
-    await signInFromMenu(page);
-    const result = await page.evaluate(async () => {
-      window.__manarahGpsSim.setLocation(60.1699, 24.9384, 5);
-      Object.defineProperty(navigator, "geolocation", {
-        configurable: true,
-        value: { getCurrentPosition: () => { throw new Error("browser geolocation should not be called"); } },
-      });
-      const { addVerifiedVisit } = await import("/src/timeline.js");
-      const visit = await addVerifiedVisit({ id: "p1", lat: 60.1699, lng: 24.9384 });
-      window.__manarahGpsSim.deactivate();
-      return visit;
-    });
-
-    expect(result.success).toBe(true);
-    expect(requests.filter((body) => body.action === "add-verified-visit")).toHaveLength(1);
-  });
-
   test("keeps the timeline action available while live GPS is off", async ({ page }) => {
     await setupApp(page);
     await signInFromMenu(page);
@@ -410,24 +390,6 @@ test.describe("verified visit timeline", () => {
     await expect(page.locator("#toast-stack .share-toast").filter({ hasText: "You’re about" })).toBeVisible();
     await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).toHaveCount(0, { timeout: 1000 });
     expect(await page.evaluate(() => document.querySelectorAll('body > #toast-stack [data-state="idle"]').length)).toBe(0);
-  });
-
-  test("GPS simulator moves only on Shift-click, not on a normal map click", async ({ page }) => {
-    await setupApp(page);
-    await expect(page.locator("#welcome-screen")).toBeHidden({ timeout: 15_000 });
-    if (await page.evaluate(() => window.innerWidth <= 768)) await page.click("#dir-btn");
-    // Use an unobstructed map area so the first click cannot open a place sheet
-    // and cover the second click that is testing the simulator gesture.
-    await page.evaluate(() => window.__manarahGpsSim.activate());
-    expect(await page.evaluate(() => window.__manarahGpsSim.getLocation().active)).toBe(false);
-    await page.locator("#map canvas").click({ position: { x: 150, y: 180 } });
-    expect(await page.evaluate(() => window.__manarahGpsSim.getLocation().active)).toBe(false);
-    await page.locator("#map canvas").click({ position: { x: 180, y: 200 }, modifiers: ["Shift"] });
-    const location = await page.evaluate(() => window.__manarahGpsSim.getLocation());
-    expect(location).toMatchObject({ active: true, source: "sim", accuracy: 5 });
-    await page.locator(".place-mk-wrap").first().dispatchEvent("click");
-    await expect(page.locator("#place-sheet")).not.toHaveClass(/shut/);
-    await page.evaluate(() => window.__manarahGpsSim.deactivate());
   });
 
   test("rejects distant and low-accuracy fixes without calling the account API", async ({ page }) => {
@@ -646,8 +608,11 @@ test.describe("verified visit timeline", () => {
     await page.click("#mp-sheet-close");
     await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
     await page.evaluate(async () => {
-      window.__manarahGpsSim.setLocation(60.1699, 24.9384, 5);
-      const { placesData, openPlaceSheet } = await import("/src/places.js");
+      const [{ setCurrentLocationState }, { placesData, openPlaceSheet }] = await Promise.all([
+        import("/src/utils.js"),
+        import("/src/places.js"),
+      ]);
+      setCurrentLocationState({ lat: 60.1699, lng: 24.9384, accuracy: 5, source: "test" });
       openPlaceSheet({ ...placesData[0], id: "p1", lat: 60.1699, lng: 24.9384 });
     });
     const timelineButton = page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn");
@@ -673,7 +638,6 @@ test.describe("verified visit timeline", () => {
     await expect(page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn")).not.toBeDisabled();
     await page.locator("#place-sheet-body .pp-title-actions .pp-timeline-btn").click();
     await expect(page.locator(".snack-label", { hasText: "Already added to timeline" })).toBeVisible({ timeout: 3_000 });
-    await page.evaluate(() => window.__manarahGpsSim.deactivate());
   });
 
   test("recurring events use their start date and create one timeline entry per occurrence", async ({ page }) => {
@@ -713,6 +677,8 @@ test.describe("verified visit timeline", () => {
     const requests = mockAccountApi(page, []);
     await setupApp(page);
     await signInFromMenu(page);
+    await page.click("#mp-sheet-close");
+    await expect(page.locator("#menu-sheet")).toHaveClass(/shut/);
     const event = await page.evaluate(() => {
       const now = new Date();
       const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -720,8 +686,11 @@ test.describe("verified visit timeline", () => {
       return { date, time: `${hour}:${String(now.getMinutes()).padStart(2, "0")}` };
     });
     await page.evaluate(async ({ date, time }) => {
-      window.__manarahGpsSim.setLocation(60.1699, 24.9384, 5);
-      const { openEventDetail } = await import("/src/places.js");
+      const [{ setCurrentLocationState }, { openEventDetail }] = await Promise.all([
+        import("/src/utils.js"),
+        import("/src/places.js"),
+      ]);
+      setCurrentLocationState({ lat: 60.1699, lng: 24.9384, accuracy: 5, source: "test" });
       openEventDetail({ id: "active-event", title: "Active event", date, time, endTime: "23:59", recurring: false, placeId: "", lat: 60.1699, lng: 24.9384, locationName: "Test venue" });
     }, event);
     await expect(page.locator("#event-detail-toolbar .ev-detail-attend-btn")).toBeVisible();
@@ -734,7 +703,6 @@ test.describe("verified visit timeline", () => {
     expect(eventRequest).toMatchObject({ eventId: "active-event" });
     expect(eventRequest).not.toHaveProperty("lat");
     expect(eventRequest).not.toHaveProperty("accuracy");
-    await page.evaluate(() => window.__manarahGpsSim.deactivate());
   });
 
   test("removes one timeline event and refreshes the list", async ({ page }) => {

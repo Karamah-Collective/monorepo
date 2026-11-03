@@ -33,7 +33,8 @@ import {
   primeLocationAtStartup,
 } from "./map-controls.js";
 import "./directions.js";
-import "./navigation.js"; // registers nav hooks with directions.js
+import "./navigation.js";
+import "./gps-sim.js";
 import { loadPlacesData, preloadPlacesData } from "./places.js";
 import { appSettingsReady, renderAppNotice } from "./app-settings.js";
 import "./search.js";
@@ -214,7 +215,6 @@ async function _loadStartupModules() {
     { initStyleEditor },
     _contact, // side-effect import - attaches event listeners
     { initEidPrayers },
-    { initGpsSim },
     { initWishlist, preloadWishes },
     { initTrafficOverlay },
     { initProfile },
@@ -225,7 +225,6 @@ async function _loadStartupModules() {
     import("./map-style-editor.js"),
     import("./contact.js"),
     import("./eid-prayers.js"),
-    import("./gps-sim.js"),
     import("./wishlist.js"),
     import("./traffic-overlay.js"),
     import("./profile.js"),
@@ -242,7 +241,6 @@ async function _loadStartupModules() {
   await _yieldStartupFrame();
   initWishlist();
   preloadWishes();
-  initGpsSim(); // DEV-ONLY - comment out before deploying, restore after
   initTrafficOverlay();
   // Register the sync listeners before the welcome screen is dismissed, so
   // the first place action cannot race account-sync initialization.
