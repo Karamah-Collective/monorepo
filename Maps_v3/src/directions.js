@@ -1861,9 +1861,11 @@ function _osrmProcessRoute(route, mode) {
   };
 }
 
-export async function findRoutesDirect(mode) {
-  showDirLoading();
-  dirPanel.classList.remove("search-editing");
+export async function findRoutesDirect(mode, { preserveView = false } = {}) {
+  if (!preserveView) {
+    showDirLoading();
+    dirPanel.classList.remove("search-editing");
+  }
   // Query Digitransit + OSRM in parallel to collect multiple route options
   const [dtResult, osrmResult] = await Promise.allSettled([
     _dtDirectRoute(mode).then(d => [d]),
@@ -1912,7 +1914,9 @@ export async function findRoutesDirect(mode) {
   coords.forEach((c) => bounds.extend(c));
   const mob = window.innerWidth <= 768;
   const sheetPad = mob ? Math.round(window.innerHeight * 0.55) + 32 : 0;
-  map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
+  if (!preserveView) {
+    map.fitBounds(bounds, { padding: mob ? { top: 90, bottom: sheetPad, left: 40, right: 40 } : { top: 80, bottom: 80, left: 60, right: 540 }, duration: 600 });
+  }
 
   // --- Store route-preview data for primary ---
   const data = allRoutes[0];
@@ -1950,8 +1954,10 @@ export async function findRoutesDirect(mode) {
   dirClearBtn.classList.remove("hide");
   dirShareBtn.classList.remove("hide");
   _bindDirectCardClicks();
-  enterResultsMode();
-  updateSnackbar();
+  if (!preserveView) {
+    enterResultsMode();
+    updateSnackbar();
+  }
 }
 
 /**

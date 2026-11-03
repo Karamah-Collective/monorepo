@@ -1973,7 +1973,18 @@
       <aside id="nav-speed" class="hide" aria-label="Current speed">
         <span id="nav-speed-value">0</span><small>km/h</small>
       </aside>
-      <div id="gps-sim-badge" class="hide" role="status">GPS SIM · Shift-click to move</div>
+      <div id="gps-sim-badge" class="hide" role="status">
+        <span>GPS SIM</span>
+        <button id="gps-sim-move" type="button" aria-label="Start GPS movement" title="Start GPS movement">▶</button>
+        <select id="gps-sim-speed" aria-label="GPS simulator speed">
+          <option value="5">5 km/h</option>
+          <option value="15">15 km/h</option>
+          <option value="30" selected>30 km/h</option>
+          <option value="50">50 km/h</option>
+          <option value="90">90 km/h</option>
+        </select>
+        <small>Shift+M</small>
+      </div>
 
       <!-- ─── Prayer Times Card ─── -->
       <div id="prayer-snack" class="pill-expand collapsed">

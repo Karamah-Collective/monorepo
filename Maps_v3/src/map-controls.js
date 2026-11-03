@@ -509,17 +509,12 @@ export function showCurrentLocation({ onFirstFix, zoomOnFirstFix = true, silent 
       locMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
       _locLerpPos = { lng, lat };
       _startHeadingWatch();
-    } else if (document.body.classList.contains("nav-mode")) {
-      if (_locLerpRaf) cancelAnimationFrame(_locLerpRaf);
-      _locLerpRaf = null;
-      locMarker.setLngLat([lng, lat]);
-      _locLerpPos = { lng, lat };
     } else {
       _lerpLocMarkerTo(lng, lat);
     }
     _updateGpsHeading(lat, lng);
     if (firstFix) {
-      if (!_isPlaceOrEventWindowOpen()) {
+      if (!_navigationCameraActive && !_isPlaceOrEventWindowOpen()) {
         if (zoomOnFirstFix) {
           focusMapPoint([lng, lat], { method: "flyTo", zoom: Math.max(map.getZoom(), 15), duration: 800 });
         } else {
@@ -738,6 +733,17 @@ function _cancelLocLerp() {
   if (_locLerpRaf) { cancelAnimationFrame(_locLerpRaf); _locLerpRaf = null; }
   _locLerpPos = null;
 }
+
+function _applyNavigationVisualLocation(event) {
+  if (!_navigationCameraActive || !locMarker) return;
+  const location = event.detail?.location;
+  if (!Number.isFinite(Number(location?.lat)) || !Number.isFinite(Number(location?.lng))) return;
+  _cancelLocLerp();
+  locMarker.setLngLat([Number(location.lng), Number(location.lat)]);
+  _locLerpPos = { lng: Number(location.lng), lat: Number(location.lat) };
+}
+
+window.addEventListener("hf:navigation-visual-location-updated", _applyNavigationVisualLocation);
 
 export function setActiveTab(id) {
   if (isPhone() && document.body.classList.contains("phone-app-pages")) {

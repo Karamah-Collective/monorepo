@@ -9473,12 +9473,15 @@ body.dark-mode .fallback-notice {
   font-weight: var(--fw-semibold);
 }
 #gps-sim-badge {
-  position: absolute;
-  z-index: 61;
+  position: fixed;
+  z-index: calc(var(--z-top) + 3);
   top: max(12px, env(safe-area-inset-top));
-  left: 50%;
-  padding: 5px 10px;
-  transform: translateX(-50%);
+  right: max(12px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px 5px 10px;
+  transform: none;
   border: 1px solid var(--warning);
   border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--warning-soft) 94%, transparent);
@@ -9486,9 +9489,26 @@ body.dark-mode .fallback-notice {
   font-family: var(--font-mono);
   font-size: var(--txt-xs);
   font-weight: var(--fw-bold);
-  pointer-events: none;
+  pointer-events: auto;
   white-space: nowrap;
 }
+#gps-sim-badge button,
+#gps-sim-badge select {
+  min-height: 24px;
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+#gps-sim-badge button {
+  width: 25px;
+  padding: 0;
+  cursor: pointer;
+}
+#gps-sim-badge button.is-moving { background: var(--warning); color: #fff; }
+#gps-sim-badge select { padding: 0 5px; cursor: pointer; }
+#gps-sim-badge small { font-size: 10px; font-weight: var(--fw-semibold); }
 body.nav-mode #route-snackbar { display: none !important; }
 
 .snack-tags {

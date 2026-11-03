@@ -20,8 +20,10 @@ import {
 } from "./navigation-core.js";
 
 const NAV_TARGET_X = 0.5;
-const NAV_TARGET_Y = 0.62;
-const NAV_CAMERA_MS = 240;
+const NAV_TARGET_Y = 0.70;
+const NAV_MIN_FOLLOW_ZOOM = 15;
+const NAV_CAMERA_MIN_MS = 250;
+const NAV_CAMERA_SKIP_MS = 10000;
 const NAV_ARRIVAL_M = 35;
 const NAV_REROUTE_COOLDOWN_MS = 15000;
 const NAV_REROUTE_FIXES = 2;
@@ -52,6 +54,10 @@ let lastRerouteAt = 0;
 let rerouting = false;
 let cameraRaf = 0;
 let pendingCameraLocation = null;
+let cameraMotion = null;
+let cameraVisualLocation = null;
+let cameraLastTargetAt = 0;
+let navigationZoom = null;
 let progressSource = null;
 
 function formatDistance(meters) {
@@ -79,6 +85,9 @@ function stepIcon(step, index) {
 
 function setFollowing(next) {
   following = !!next;
+  if (following) {
+    navigationZoom = Math.min(map.getMaxZoom(), Math.max(map.getZoom(), NAV_MIN_FOLLOW_ZOOM));
+  }
   followButton?.classList.toggle("is-active", following);
   followButton?.setAttribute("aria-label", following ? "Following location" : "Recenter on location");
   followButton?.setAttribute("aria-pressed", String(following));
@@ -163,20 +172,70 @@ function queueCamera(location) {
   if (!active || !following || !location) return;
   pendingCameraLocation = location;
   if (cameraRaf) return;
-  cameraRaf = requestAnimationFrame(() => {
-    cameraRaf = 0;
-    const next = pendingCameraLocation;
-    pendingCameraLocation = null;
-    if (!next || !active || !following) return;
-    keepLocationAtTarget(next);
-  });
+  cameraRaf = requestAnimationFrame(stepCamera);
 }
 
-function keepLocationAtTarget(location) {
+function interpolateLocation(from, to, progress) {
+  return {
+    lat: from.lat + (to.lat - from.lat) * progress,
+    lng: from.lng + (to.lng - from.lng) * progress,
+    speed: to.speed,
+  };
+}
+
+function emitNavigationVisualLocation(location) {
+  window.dispatchEvent(new CustomEvent("hf:navigation-visual-location-updated", {
+    detail: { location: { ...location } },
+  }));
+}
+
+function stepCamera(now) {
+  cameraRaf = 0;
+  if (!active || !following) {
+    cameraMotion = null;
+    pendingCameraLocation = null;
+    return;
+  }
+
+  // Finish the current frame before replacing its target. This mirrors
+  // OsmAnd's stopAnimatingSync(): restart from what is actually rendered.
+  if (cameraMotion) {
+    const progress = Math.min(1, (now - cameraMotion.startedAt) / cameraMotion.duration);
+    cameraVisualLocation = interpolateLocation(cameraMotion.from, cameraMotion.to, 1 - Math.pow(1 - progress, 3));
+    if (progress >= 1) cameraMotion = null;
+  }
+
+  const next = pendingCameraLocation;
+  pendingCameraLocation = null;
+  if (next) {
+    const fixInterval = cameraLastTargetAt ? now - cameraLastTargetAt : 0;
+    const duration = fixInterval > 0 && fixInterval <= NAV_CAMERA_SKIP_MS
+      ? Math.max(NAV_CAMERA_MIN_MS, fixInterval)
+      : 0;
+    cameraLastTargetAt = now;
+    const from = cameraVisualLocation || next;
+    cameraMotion = duration ? { from, to: next, startedAt: now, duration } : null;
+    if (!cameraMotion) {
+      cameraVisualLocation = next;
+      keepLocationAtTarget(next);
+    }
+  }
+
+  if (cameraMotion) {
+    const progress = Math.min(1, (now - cameraMotion.startedAt) / cameraMotion.duration);
+    cameraVisualLocation = interpolateLocation(cameraMotion.from, cameraMotion.to, 1 - Math.pow(1 - progress, 3));
+    keepLocationAtTarget(cameraVisualLocation);
+    if (progress < 1) cameraRaf = requestAnimationFrame(stepCamera);
+    else cameraMotion = null;
+  }
+  if (pendingCameraLocation && !cameraRaf) cameraRaf = requestAnimationFrame(stepCamera);
+}
+
+function cameraForLocation(location) {
   const container = map.getContainer();
   const width = container.clientWidth;
   const height = container.clientHeight;
-  if (!width || !height) return;
+  if (!width || !height) return { center: map.getCenter(), zoom: navigationZoom ?? map.getZoom(), bearing: map.getBearing() };
   const projected = map.project([location.lng, location.lat]);
   const centerPx = map.project(map.getCenter());
   const target = { x: width * NAV_TARGET_X, y: height * NAV_TARGET_Y };
@@ -184,11 +243,14 @@ function keepLocationAtTarget(location) {
     centerPx.x + projected.x - target.x,
     centerPx.y + projected.y - target.y,
   ]);
-  const camera = { center, duration: NAV_CAMERA_MS, essential: true };
-  if (Number.isFinite(Number(location.heading)) && Number(location.speed || 0) > 2) {
-    camera.bearing = Number(location.heading);
-  }
-  map.easeTo(camera);
+  // Keep the current bearing while following. OsmAnd only changes rotation
+  // through its separate compass/heading animator, never during route redraw.
+  return { center, zoom: navigationZoom ?? map.getZoom(), bearing: map.getBearing() };
+}
+
+function keepLocationAtTarget(location) {
+  map.jumpTo({ ...cameraForLocation(location), duration: 0, essential: true });
+  emitNavigationVisualLocation(location);
 }
 
 function handleUserMapGesture(event) {
@@ -219,7 +281,7 @@ async function reroute(location) {
   updateStatus("Recalculating route…", "warning");
   try {
     dir.origin = { lat: location.lat, lng: location.lng, name: "Current location" };
-    await findRoutesDirect(dirTravelMode);
+    await findRoutesDirect(dirTravelMode, { preserveView: true });
     const data = getActiveDirectRoute();
     const nextRoute = buildRouteModel(data || {});
     if (!nextRoute) throw new Error("No route returned");
@@ -269,6 +331,9 @@ export function startNavigation() {
   if (window.innerWidth <= 768) navigatePhonePage("map");
   active = true;
   following = true;
+  map.stop();
+  navigationZoom = Math.min(map.getMaxZoom(), Math.max(map.getZoom(), NAV_MIN_FOLLOW_ZOOM));
+  if (map.getZoom() !== navigationZoom) map.jumpTo({ zoom: navigationZoom });
   position = null;
   previousLocation = null;
   lastSample = null;
@@ -283,7 +348,7 @@ export function startNavigation() {
   mountProgressLayer();
   const current = getCurrentLocationState();
   if (current.active) handleLocation({ detail: { location: current } });
-  ensureLocationTracking({ zoomOnFirstFix: false, silent: true });
+  if (current.source !== "sim") ensureLocationTracking({ zoomOnFirstFix: false, silent: true });
   return true;
 }
 
@@ -294,6 +359,10 @@ export function stopNavigation() {
   position = null;
   previousLocation = null;
   pendingCameraLocation = null;
+  cameraMotion = null;
+  cameraVisualLocation = null;
+  cameraLastTargetAt = 0;
+  navigationZoom = null;
   if (cameraRaf) cancelAnimationFrame(cameraRaf);
   cameraRaf = 0;
   document.body.classList.remove("nav-mode", "nav-following");
