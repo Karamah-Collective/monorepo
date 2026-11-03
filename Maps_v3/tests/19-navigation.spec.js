@@ -49,6 +49,8 @@ test.describe("Live navigation", () => {
     await expect(page.locator("#nav-hud")).not.toHaveClass(/hide/);
     await expect(page.locator("#nav-speed")).not.toHaveClass(/hide/);
     await expect(page.locator("#nav-speed-value")).toHaveText("36");
+    await expect.poll(async () => page.evaluate(async () => (await import("/src/map-init.js")).map.getBearing())).toBeGreaterThan(70);
+    await expect.poll(async () => page.evaluate(async () => (await import("/src/map-init.js")).map.getBearing())).toBeLessThan(95);
     const followZoom = await page.evaluate(async () => {
       const { map } = await import("/src/map-init.js");
       return map.getZoom();
@@ -112,6 +114,34 @@ test.describe("Live navigation", () => {
     await expect(page.locator(".direct-card.active .itin-navigate")).toBeVisible();
     await page.locator(".direct-card.active .itin-navigate").click();
     await expect(page.locator("body")).toHaveClass(/nav-mode/);
+  });
+
+  test("course-up follows the road when the compass heading is noisy", async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const [{ dir }, { startNavigation, stopNavigation }, { setCurrentLocationState }, { map }] = await Promise.all([
+        import("/src/directions.js"),
+        import("/src/navigation.js"),
+        import("/src/utils.js"),
+        import("/src/map-init.js"),
+      ]);
+      const base = { lat: 60.1699, lng: 24.9400 };
+      dir._directAlts = [{
+        coords: [[base.lng, base.lat], [base.lng + 0.01, base.lat]],
+        steps: [{ maneuver: { type: "depart", bearing_after: 90 }, name: "Test road" }],
+      }];
+      dir.activeIdx = 0;
+      dir._directMode = "drive";
+      dir.origin = { ...base, name: "Current location" };
+      dir.dest = { lat: base.lat, lng: base.lng + 0.01, name: "Destination" };
+      setCurrentLocationState({ ...base, accuracy: 5, speed: 50, heading: 150, source: "sim", timestamp: Date.now() });
+      startNavigation();
+      window.__roadBearingMap = map;
+      window.__stopRoadBearingNavigation = stopNavigation;
+    });
+    await expect.poll(() => page.evaluate(() => window.__roadBearingMap?.getBearing())).toBeGreaterThan(80);
+    await expect.poll(() => page.evaluate(() => window.__roadBearingMap?.getBearing())).toBeLessThan(100);
+    await page.evaluate(() => window.__stopRoadBearingNavigation());
   });
 
   test("rerouting does not take control of the navigation camera", async ({ page }) => {
@@ -261,5 +291,39 @@ test.describe("Live navigation", () => {
     expect(anchor.x).toBeCloseTo(0.5, 1);
     expect(anchor.y).toBeCloseTo(0.70, 1);
     await page.evaluate(() => window.__manarahGpsSim.stop());
+  });
+
+  test("course-up falls back to the direction of GPS movement", async ({ page }) => {
+    await setupApp(page);
+    await page.evaluate(async () => {
+      const [{ dir }, { startNavigation, stopNavigation }, { setCurrentLocationState }, { map }] = await Promise.all([
+        import("/src/directions.js"),
+        import("/src/navigation.js"),
+        import("/src/utils.js"),
+        import("/src/map-init.js"),
+      ]);
+      const base = { lat: 60.1699, lng: 24.9400 };
+      dir._directAlts = [{
+        coords: [[base.lng, base.lat], [base.lng + 0.01, base.lat]],
+        steps: [{ maneuver: { type: "depart", bearing_after: 90 }, name: "Test road" }],
+      }];
+      dir.activeIdx = 0;
+      dir._directMode = "drive";
+      dir.origin = { ...base, name: "Current location" };
+      dir.dest = { lat: base.lat, lng: base.lng + 0.01, name: "Destination" };
+      const offRoute = { ...base, lat: base.lat + 0.002 };
+      setCurrentLocationState({ ...offRoute, accuracy: 5, speed: null, heading: null, source: "sim", timestamp: Date.now() });
+      startNavigation();
+      dir.dest = null;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setCurrentLocationState({ ...offRoute, lng: offRoute.lng + 0.00012, accuracy: 5, speed: null, heading: null, source: "sim", timestamp: Date.now() });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setCurrentLocationState({ ...offRoute, lng: offRoute.lng + 0.00024, accuracy: 5, speed: null, heading: null, source: "sim", timestamp: Date.now() });
+      window.__movementFallbackMap = map;
+      window.__stopMovementFallbackNavigation = stopNavigation;
+    });
+    await expect.poll(() => page.evaluate(() => window.__movementFallbackMap?.getBearing())).toBeGreaterThan(80);
+    await expect.poll(() => page.evaluate(() => window.__movementFallbackMap?.getBearing())).toBeLessThan(100);
+    await page.evaluate(() => window.__stopMovementFallbackNavigation());
   });
 });

@@ -127,6 +127,21 @@ export function nearestRoutePosition(location, coords, currentSegment = 0, lookA
   return { ...best, alongMeters: alongMeters + best.segmentMeters * best.fraction, currentDistanceMeters: current.distanceMeters };
 }
 
+function pointAtRouteDistance(route, distanceMeters, startSegment = 0) {
+  if (!route?.coords?.length || !route?.cumulative?.length) return null;
+  const target = Math.max(0, Math.min(route.totalDistance, distanceMeters));
+  let segment = Math.max(0, Math.min(route.coords.length - 2, Number(startSegment) || 0));
+  while (segment < route.coords.length - 2 && route.cumulative[segment + 1] < target) segment += 1;
+  const start = route.coords[segment];
+  const end = route.coords[segment + 1];
+  const span = route.cumulative[segment + 1] - route.cumulative[segment];
+  const fraction = span > 0 ? (target - route.cumulative[segment]) / span : 0;
+  return {
+    lng: start[0] + (end[0] - start[0]) * fraction,
+    lat: start[1] + (end[1] - start[1]) * fraction,
+  };
+}
+
 export function processRoutePosition(location, route, state = {}) {
   if (!route?.coords?.length) return null;
   const accuracy = Number(location?.accuracy);
@@ -137,12 +152,17 @@ export function processRoutePosition(location, route, state = {}) {
     ? nearest
     : nearestRoutePosition(location, route.coords, state.segmentIndex || 0, lookAhead);
   const segmentEnd = route.coords[Math.min(selected.segmentIndex + 1, route.coords.length - 1)];
-  const routeBearing = bearingDegrees(selected.point || location, segmentEnd);
+  const speed = Number(location?.speed);
+  const lookAheadMeters = Math.min(36, Math.max(12, Number.isFinite(speed) && speed > 0 ? speed * 0.55 : 12));
+  const ahead = pointAtRouteDistance(route, selected.alongMeters + lookAheadMeters, selected.segmentIndex);
+  const localRouteBearing = bearingDegrees(selected.point || location, segmentEnd);
+  const routeBearing = ahead && haversineMeters(selected.point || location, ahead) > 1
+    ? bearingDegrees(selected.point || location, ahead)
+    : localRouteBearing;
   const previous = state.previousLocation;
-  const motionBearing = Number.isFinite(Number(location?.heading)) && Number(location.heading) >= 0
-    ? Number(location.heading)
-    : previous ? bearingDegrees(previous, location) : null;
-  const wrongMovement = motionBearing !== null && Math.abs(degreesDelta(motionBearing, routeBearing)) > 90
+  const movedMeters = previous ? haversineMeters(previous, location) : 0;
+  const motionBearing = movedMeters >= 8 ? bearingDegrees(previous, location) : null;
+  const wrongMovement = motionBearing !== null && Math.abs(degreesDelta(motionBearing, localRouteBearing)) > 90
     && Number(location?.speed || 0) > 2;
   return {
     ...selected,

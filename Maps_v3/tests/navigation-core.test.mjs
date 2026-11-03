@@ -26,3 +26,20 @@ test("route deviation uses GPS accuracy plus OsmAnd's tolerance multiplier", () 
   assert.equal(progress.deviated, true);
   assert.ok(progress.allowableDeviation >= 70);
 });
+
+test("route bearing looks ahead through short turns", () => {
+  const curve = buildRouteModel({
+    coords: [[24.9400, 60.1699], [24.9402, 60.1699], [24.9402, 60.1701], [24.9405, 60.1701]],
+    steps: [{ maneuver: { type: "depart", bearing_after: 90 }, name: "Curve" }],
+  });
+  const progress = processRoutePosition({ lat: 60.1699, lng: 24.94018, accuracy: 5, speed: 20 }, curve);
+  assert.ok(progress.routeBearing > 0);
+  assert.ok(progress.routeBearing < 80);
+});
+
+test("a stale compass heading does not trigger wrong-movement rerouting", () => {
+  const progress = processRoutePosition({ lat: 60.1699, lng: 24.9408, accuracy: 5, speed: 10, heading: 270 }, route, {
+    previousLocation: { lat: 60.1699, lng: 24.9407 },
+  });
+  assert.equal(progress.wrongMovement, false);
+});

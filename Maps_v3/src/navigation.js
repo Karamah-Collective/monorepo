@@ -14,6 +14,8 @@ import { navigatePhonePage } from "./phone-pages.js";
 import { getCurrentLocationState, showToast } from "./utils.js";
 import {
   buildRouteModel,
+  bearingDegrees,
+  degreesDelta,
   haversineMeters,
   processRoutePosition,
   nextInstruction,
@@ -24,6 +26,24 @@ const NAV_TARGET_Y = 0.70;
 const NAV_MIN_FOLLOW_ZOOM = 15;
 const NAV_CAMERA_MIN_MS = 250;
 const NAV_CAMERA_SKIP_MS = 10000;
+const NAV_HEADING_MIN_SPEED_MS = 2;
+const NAV_HEADING_MIN_MOTION_M = 8;
+const NAV_HEADING_STRONG_MOTION_M = 12;
+const NAV_HEADING_MAX_MOTION_SPEED_MS = 70;
+const NAV_HEADING_DEADBAND_DEG = 3;
+const NAV_HEADING_MIN_APPLY_DEG = 4;
+const NAV_HEADING_MAX_JUMP_DEG = 75;
+const NAV_HEADING_AGREE_DEG = 35;
+const NAV_HEADING_RATE_DEG_PER_SEC = 120;
+const NAV_HEADING_HIGH_SPEED_RATE_DEG_PER_SEC = 180;
+const NAV_HEADING_VERY_HIGH_SPEED_RATE_DEG_PER_SEC = 240;
+const NAV_HEADING_RESPONSE_MS = 600;
+const NAV_HEADING_HIGH_SPEED_RESPONSE_MS = 440;
+const NAV_HEADING_VERY_HIGH_SPEED_RESPONSE_MS = 370;
+const NAV_ROAD_TURN_DEG = 20;
+const NAV_ROAD_DEADBAND_DEG = 2;
+const NAV_ROAD_FILTER_MS = 320;
+const NAV_ROAD_HIGH_SPEED_FILTER_MS = 160;
 const NAV_ARRIVAL_M = 35;
 const NAV_REROUTE_COOLDOWN_MS = 15000;
 const NAV_REROUTE_FIXES = 2;
@@ -58,6 +78,15 @@ let cameraMotion = null;
 let cameraVisualLocation = null;
 let cameraLastTargetAt = 0;
 let navigationZoom = null;
+let navigationBearing = null;
+let navigationBearingTarget = null;
+let orientationHasLock = false;
+let orientationReference = null;
+let bearingLastFrameAt = 0;
+let stableRoadBearing = null;
+let stableRoadSegment = null;
+let roadBearingLastAt = 0;
+let navigationSpeed = 0;
 let progressSource = null;
 
 function formatDistance(meters) {
@@ -87,12 +116,19 @@ function setFollowing(next) {
   following = !!next;
   if (following) {
     navigationZoom = Math.min(map.getMaxZoom(), Math.max(map.getZoom(), NAV_MIN_FOLLOW_ZOOM));
+    navigationBearing = normalizeBearing(map.getBearing());
+    navigationBearingTarget = navigationBearing;
+    orientationHasLock = false;
+    const current = getCurrentLocationState();
+    if (current?.active) {
+      updateNavigationBearing(current, position);
+      queueCamera(current);
+    }
   }
   followButton?.classList.toggle("is-active", following);
   followButton?.setAttribute("aria-label", following ? "Following location" : "Recenter on location");
   followButton?.setAttribute("aria-pressed", String(following));
   document.body.classList.toggle("nav-following", following);
-  if (following && position) queueCamera(position);
 }
 
 function updateStatus(text, tone = "") {
@@ -142,6 +178,7 @@ function renderPosition(location, processed) {
   }
   updateProgress(processed);
   updateSpeed(location);
+  updateNavigationBearing(location, processed);
   queueCamera(location);
   if (processed.progress > 0.96 && haversineMeters(location, route.coords.at(-1)) <= Math.max(NAV_ARRIVAL_M, processed.posTolerance)) {
     showToast("Arrived at destination", "check");
@@ -166,6 +203,131 @@ function updateProgress(processed) {
   if (processed.point) coords.push([processed.point.lng, processed.point.lat]);
   if (coords.length < 2) return;
   progressSource.setData({ type: "Feature", geometry: { type: "LineString", coordinates: coords } });
+}
+
+function normalizeBearing(value) {
+  return (Number(value) % 360 + 360) % 360;
+}
+
+function blendBearings(first, second, secondWeight = 0.5) {
+  return normalizeBearing(Number(first) + degreesDelta(second, first) * secondWeight);
+}
+
+function getMotionBearing(location) {
+  const now = performance.now();
+  const current = { lat: Number(location.lat), lng: Number(location.lng) };
+  if (!orientationReference) {
+    orientationReference = { ...current, time: now };
+    return null;
+  }
+  const distance = haversineMeters(orientationReference, current);
+  if (distance < NAV_HEADING_MIN_MOTION_M) return null;
+  const bearing = bearingDegrees(orientationReference, current);
+  const elapsed = Math.max(0.1, (now - orientationReference.time) / 1000);
+  orientationReference = { ...current, time: now };
+  const speed = distance / elapsed;
+  if (speed > NAV_HEADING_MAX_MOTION_SPEED_MS) return { invalid: true };
+  return { bearing, distance, speed };
+}
+
+function getStableRoadBearing(processed) {
+  const raw = Number(processed?.routeBearing);
+  if (!Number.isFinite(raw) || processed?.deviated) return null;
+  const now = performance.now();
+  const segment = Number(processed.segmentIndex);
+  if (stableRoadBearing === null) {
+    stableRoadBearing = normalizeBearing(raw);
+    stableRoadSegment = Number.isFinite(segment) ? segment : null;
+    roadBearingLastAt = now;
+    return stableRoadBearing;
+  }
+  const rawDelta = degreesDelta(raw, stableRoadBearing);
+  const segmentChanged = Number.isFinite(segment) && stableRoadSegment !== null && segment !== stableRoadSegment;
+  stableRoadSegment = Number.isFinite(segment) ? segment : stableRoadSegment;
+  const elapsed = Math.min(1000, Math.max(0, now - roadBearingLastAt));
+  roadBearingLastAt = now;
+  if (Math.abs(rawDelta) <= NAV_ROAD_DEADBAND_DEG) {
+    return stableRoadBearing;
+  }
+  if (segmentChanged && Math.abs(rawDelta) >= NAV_ROAD_TURN_DEG) {
+    stableRoadBearing = normalizeBearing(raw);
+    return stableRoadBearing;
+  }
+  const filterMs = navigationSpeed >= 20 ? NAV_ROAD_HIGH_SPEED_FILTER_MS : NAV_ROAD_FILTER_MS;
+  const alpha = 1 - Math.exp(-elapsed / filterMs);
+  stableRoadBearing = blendBearings(stableRoadBearing, raw, alpha);
+  return stableRoadBearing;
+}
+
+function resetRoadBearing() {
+  stableRoadBearing = null;
+  stableRoadSegment = null;
+  roadBearingLastAt = 0;
+}
+
+function updateNavigationBearing(location, processed) {
+  const motion = getMotionBearing(location);
+  if (rerouting) return;
+  const usableMotion = motion?.invalid ? null : motion;
+  const rawSpeed = Number(location.speed);
+  const speed = Number.isFinite(rawSpeed) && rawSpeed >= 0 ? rawSpeed : usableMotion?.speed || 0;
+  navigationSpeed = speed;
+  const signalHeading = Number(location.heading);
+  const signal = Number.isFinite(signalHeading) && signalHeading >= 0 && speed >= NAV_HEADING_MIN_SPEED_MS
+    ? normalizeBearing(signalHeading)
+    : null;
+
+  const road = getStableRoadBearing(processed);
+  let candidate = road;
+  const motionIsStrong = usableMotion && usableMotion.distance >= NAV_HEADING_STRONG_MOTION_M && speed >= NAV_HEADING_MIN_SPEED_MS;
+  if (candidate === null) {
+    candidate = signal;
+    if (usableMotion) {
+      if (signal === null) candidate = usableMotion.bearing;
+      else if (Math.abs(degreesDelta(signal, usableMotion.bearing)) <= NAV_HEADING_AGREE_DEG) candidate = blendBearings(signal, usableMotion.bearing, 0.20);
+      else if (motionIsStrong) candidate = usableMotion.bearing;
+    }
+  }
+  if (candidate === null) return;
+
+  if (navigationBearing === null) navigationBearing = normalizeBearing(map.getBearing());
+  if (navigationBearingTarget === null) navigationBearingTarget = navigationBearing;
+  const delta = degreesDelta(candidate, navigationBearingTarget);
+  if (Math.abs(delta) < NAV_HEADING_DEADBAND_DEG) return;
+  if (Math.abs(delta) > NAV_HEADING_MAX_JUMP_DEG && orientationHasLock && !motionIsStrong && road === null) return;
+  navigationBearingTarget = candidate;
+  orientationHasLock = true;
+}
+
+function stepNavigationBearing(now) {
+  if (navigationBearing === null) navigationBearing = normalizeBearing(map.getBearing());
+  if (navigationBearingTarget === null) navigationBearingTarget = navigationBearing;
+  const previousBearing = navigationBearing;
+  const elapsed = bearingLastFrameAt ? Math.min(100, Math.max(0, now - bearingLastFrameAt)) : 16;
+  bearingLastFrameAt = now;
+  const delta = degreesDelta(navigationBearingTarget, navigationBearing);
+  if (Math.abs(delta) < NAV_HEADING_MIN_APPLY_DEG) {
+    return { changed: false, moving: false };
+  }
+  const rate = navigationSpeed >= 45
+    ? NAV_HEADING_VERY_HIGH_SPEED_RATE_DEG_PER_SEC
+    : navigationSpeed >= 20
+      ? NAV_HEADING_HIGH_SPEED_RATE_DEG_PER_SEC
+      : NAV_HEADING_RATE_DEG_PER_SEC;
+  const responseMs = navigationSpeed >= 45
+    ? NAV_HEADING_VERY_HIGH_SPEED_RESPONSE_MS
+    : navigationSpeed >= 20
+      ? NAV_HEADING_HIGH_SPEED_RESPONSE_MS
+      : NAV_HEADING_RESPONSE_MS;
+  const weightedStep = Math.abs(delta) * (1 - Math.exp(-elapsed / responseMs));
+  const maxStep = Math.min(weightedStep, rate * elapsed / 1000);
+  navigationBearing = Math.abs(delta) <= maxStep
+    ? navigationBearingTarget
+    : normalizeBearing(navigationBearing + Math.sign(delta) * maxStep);
+  return {
+    changed: Math.abs(degreesDelta(navigationBearing, previousBearing)) > 0.01,
+    moving: Math.abs(degreesDelta(navigationBearingTarget, navigationBearing)) > 0.5,
+  };
 }
 
 function queueCamera(location) {
@@ -215,19 +377,20 @@ function stepCamera(now) {
     cameraLastTargetAt = now;
     const from = cameraVisualLocation || next;
     cameraMotion = duration ? { from, to: next, startedAt: now, duration } : null;
-    if (!cameraMotion) {
-      cameraVisualLocation = next;
-      keepLocationAtTarget(next);
-    }
+    if (!cameraMotion) cameraVisualLocation = next;
   }
 
+  const { changed: bearingChanged, moving: bearingMoving } = stepNavigationBearing(now);
   if (cameraMotion) {
     const progress = Math.min(1, (now - cameraMotion.startedAt) / cameraMotion.duration);
     cameraVisualLocation = interpolateLocation(cameraMotion.from, cameraMotion.to, 1 - Math.pow(1 - progress, 3));
     keepLocationAtTarget(cameraVisualLocation);
     if (progress < 1) cameraRaf = requestAnimationFrame(stepCamera);
     else cameraMotion = null;
+  } else if (cameraVisualLocation && (next || bearingChanged)) {
+    keepLocationAtTarget(cameraVisualLocation);
   }
+  if (bearingMoving && !cameraRaf) cameraRaf = requestAnimationFrame(stepCamera);
   if (pendingCameraLocation && !cameraRaf) cameraRaf = requestAnimationFrame(stepCamera);
 }
 
@@ -235,7 +398,7 @@ function cameraForLocation(location) {
   const container = map.getContainer();
   const width = container.clientWidth;
   const height = container.clientHeight;
-  if (!width || !height) return { center: map.getCenter(), zoom: navigationZoom ?? map.getZoom(), bearing: map.getBearing() };
+  if (!width || !height) return { center: map.getCenter(), zoom: navigationZoom ?? map.getZoom(), bearing: navigationBearing ?? map.getBearing() };
   const projected = map.project([location.lng, location.lat]);
   const centerPx = map.project(map.getCenter());
   const target = { x: width * NAV_TARGET_X, y: height * NAV_TARGET_Y };
@@ -245,11 +408,15 @@ function cameraForLocation(location) {
   ]);
   // Keep the current bearing while following. OsmAnd only changes rotation
   // through its separate compass/heading animator, never during route redraw.
-  return { center, zoom: navigationZoom ?? map.getZoom(), bearing: map.getBearing() };
+  return { center, zoom: navigationZoom ?? map.getZoom(), bearing: navigationBearing ?? map.getBearing() };
 }
 
 function keepLocationAtTarget(location) {
-  map.jumpTo({ ...cameraForLocation(location), duration: 0, essential: true });
+  const bearing = navigationBearing ?? map.getBearing();
+  if (Math.abs(degreesDelta(bearing, map.getBearing())) > 0.1) {
+    map.jumpTo({ bearing, zoom: navigationZoom ?? map.getZoom(), duration: 0, essential: true });
+  }
+  map.jumpTo({ ...cameraForLocation(location), bearing, duration: 0, essential: true });
   emitNavigationVisualLocation(location);
 }
 
@@ -286,6 +453,7 @@ async function reroute(location) {
     const nextRoute = buildRouteModel(data || {});
     if (!nextRoute) throw new Error("No route returned");
     route = nextRoute;
+    resetRoadBearing();
     position = null;
     lastStepIndex = -1;
     offRouteFixes = 0;
@@ -333,6 +501,13 @@ export function startNavigation() {
   following = true;
   map.stop();
   navigationZoom = Math.min(map.getMaxZoom(), Math.max(map.getZoom(), NAV_MIN_FOLLOW_ZOOM));
+  navigationBearing = normalizeBearing(map.getBearing());
+  navigationBearingTarget = navigationBearing;
+  orientationHasLock = false;
+  orientationReference = null;
+  bearingLastFrameAt = 0;
+  navigationSpeed = 0;
+  resetRoadBearing();
   if (map.getZoom() !== navigationZoom) map.jumpTo({ zoom: navigationZoom });
   position = null;
   previousLocation = null;
@@ -363,6 +538,13 @@ export function stopNavigation() {
   cameraVisualLocation = null;
   cameraLastTargetAt = 0;
   navigationZoom = null;
+  navigationBearing = null;
+  navigationBearingTarget = null;
+  orientationHasLock = false;
+  orientationReference = null;
+  bearingLastFrameAt = 0;
+  navigationSpeed = 0;
+  resetRoadBearing();
   if (cameraRaf) cancelAnimationFrame(cameraRaf);
   cameraRaf = 0;
   document.body.classList.remove("nav-mode", "nav-following");
